@@ -1,0 +1,14 @@
+spring:
+  liquibase:
+    change-log: classpath:changelog/000-changelog.yaml
+  datasource:
+    url: jdbc:h2:mem:mydb
+    username: sa
+    password:
+    driverClassName: org.h2.Driver
+  jpa:
+    spring.jpa.database-platform: org.hibernate.dialect.H2Dialect
+
+
+app:
+  name: "Execution Gate"

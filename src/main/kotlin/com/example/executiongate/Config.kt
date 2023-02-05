@@ -1,0 +1,47 @@
+package com.example.executiongate
+
+import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.core.annotation.Order
+import org.springframework.http.HttpStatus
+import org.springframework.stereotype.Component
+import org.springframework.web.bind.MethodArgumentNotValidException
+import org.springframework.web.bind.annotation.ExceptionHandler
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestMethod
+import org.springframework.web.bind.annotation.ResponseStatus
+import org.springframework.web.bind.annotation.RestControllerAdvice
+import javax.validation.ConstraintViolationException
+
+
+@Component
+@ConfigurationProperties("app")
+class MyProperties {
+    lateinit var name: String
+
+}
+
+
+@RestControllerAdvice
+@Order(1)
+class RestControllerExceptionHandler {
+    @RequestMapping(value = ["error/404"], method = [RequestMethod.GET])
+    @ExceptionHandler(Exception::class)
+    fun handleUnexpectedException(e: Exception?): String {
+        return "views/base/rest-error"
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(MethodArgumentNotValidException::class)
+    fun handleMethodArgumentNotValid(exception: MethodArgumentNotValidException): String { //
+        // TODO you can choose to return your custom object here, which will then get transformed to json/xml etc.
+        return exception.message
+    }
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(ConstraintViolationException::class)
+    fun handleConstraintViolation(exception: ConstraintViolationException): String { //
+        // TODO you can choose to return your custom object here, which will then get transformed to json/xml etc.
+        return exception.message ?: ""
+    }
+
+}

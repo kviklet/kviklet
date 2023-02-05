@@ -1,0 +1,60 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-initial
+      author: nils
+      changes:
+        - createTable:
+            tableName: connection
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: connection_pkey
+                  name: id
+                  type: CHAR(22)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: name
+                  type: VARCHAR(255)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: uri
+                  type: VARCHAR(255)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: username
+                  type: VARCHAR(255)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: password
+                  type: VARCHAR(255)
+        - createTable:
+            tableName: execution_request
+            columns:
+              - column:
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: execution_request
+                  name: id
+                  type: CHAR(22)
+              - column:
+                  constraints:
+                    nullable: false
+                  name: statement
+                  type: TEXT
+              - column:
+                  constraints:
+                    nullable: false
+                  name: created_at
+                  type: datetime
+              - column:
+                  constraints:
+                    nullable: false
+                  name: state
+                  type: VARCHAR(255)
