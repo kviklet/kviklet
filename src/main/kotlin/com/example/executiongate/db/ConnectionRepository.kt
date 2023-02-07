@@ -10,17 +10,12 @@ import javax.persistence.GeneratedValue
 import javax.persistence.Id
 
 @Entity(name = "connection")
-data class ConnectionEntity(
+class ConnectionEntity(
     val name: String,
     val uri: String,
     val username: String,
     val password: String,
-) {
-
-    @Id
-    @GeneratedValue(generator = "uuid")
-    @GenericGenerator(name = "uuid", strategy = "com.example.executiongate.db.IdGenerator")
-    lateinit var id: String
+): BaseEntity() {
 
     override fun toString(): String {
         return ToStringBuilder(this, SHORT_PREFIX_STYLE)
@@ -38,4 +33,4 @@ data class ConnectionEntity(
     )
 }
 
-interface ConnectionRepository : JpaRepository<ConnectionEntity?, Long?>
+interface ConnectionRepository : JpaRepository<ConnectionEntity?, String>

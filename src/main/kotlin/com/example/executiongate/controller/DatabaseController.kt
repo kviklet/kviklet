@@ -80,6 +80,7 @@ class DatabaseController(
         )
     }
 
+    /*
     @PostMapping("/test")
     fun testConnection(@Valid @RequestBody connection: TestDatabaseConnection): ResponseEntity<Any> {
         println(config.name)
@@ -99,4 +100,5 @@ class DatabaseController(
             ResponseEntity(HttpStatus.BAD_REQUEST)
         }
     }
+     */
 }

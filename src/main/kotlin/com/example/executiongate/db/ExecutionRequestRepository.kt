@@ -16,12 +16,7 @@ data class ExecutionRequestEntity(
     val databaseId: String,
     val state: String,
     val createdAt: LocalDateTime = LocalDateTime.now(),
-) {
-
-    @Id
-    @GeneratedValue(generator = "uuid")
-    @GenericGenerator(name = "uuid", strategy = "com.example.executiongate.db.IdGenerator")
-    lateinit var id: String
+): BaseEntity() {
 
     override fun toString(): String {
         return ToStringBuilder(this, SHORT_PREFIX_STYLE)
@@ -30,4 +25,4 @@ data class ExecutionRequestEntity(
     }
 }
 
-interface ExecutionRequestRepository : JpaRepository<ExecutionRequestEntity?, Long?>
+interface ExecutionRequestRepository : JpaRepository<ExecutionRequestEntity?, String?>

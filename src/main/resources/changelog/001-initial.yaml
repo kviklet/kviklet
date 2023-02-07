@@ -46,6 +46,11 @@ databaseChangeLog:
               - column:
                   constraints:
                     nullable: false
+                  name: database_id
+                  type: CHAR(22)
+              - column:
+                  constraints:
+                    nullable: false
                   name: statement
                   type: TEXT
               - column:

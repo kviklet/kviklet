@@ -33,33 +33,5 @@ class DatasourceService(
         return true
     }
 
-    fun testConnection(
-        type: DbType,
-        hostname: String,
-        port: Int,
-        path: String,
-        username: String,
-        password: String
-    ): Boolean {
-        val dataSource: HikariDataSource = DataSourceBuilder
-            .create()
-            .url("jdbc:${type.schema}://$hostname:$port/$path")
-            .username(username)
-            .password(password)
-            .type(HikariDataSource::class.java).build()
-
-        dataSource.maximumPoolSize = 1
-
-        return try {
-            val isValid = dataSource.connection.isValid(10)
-            dataSource.catalog
-            isValid
-        } catch (e: SQLException) {
-            false
-        } finally {
-            dataSource.close()
-        }
-    }
-
     fun listConnections() = connectionRepository.findAll().mapNotNull { it?.toDto() }
 }
