@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.CrossOrigin
 import java.time.LocalDateTime
 import javax.validation.Valid
 
@@ -23,6 +24,7 @@ data class CreateExecutionResponse(
 
 @RestController()
 @Validated
+@CrossOrigin(origins = ["http://localhost:3000"])
 @RequestMapping("/execution-request")
 class ExecutionRequestController(
     val executionRequestService: ExecutionRequestService
