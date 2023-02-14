@@ -1,5 +1,6 @@
 package com.example.executiongate
 
+import com.example.executiongate.service.EntityNotFound
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.core.annotation.Order
 import org.springframework.http.HttpStatus
@@ -17,8 +18,14 @@ import javax.validation.ConstraintViolationException
 @ConfigurationProperties("app")
 class MyProperties {
     lateinit var name: String
-
 }
+
+data class ErrorResponse(
+    val code: Int,
+    val type: String,
+    val message: String,
+    val detail: String? = null,
+)
 
 
 @RestControllerAdvice
@@ -26,9 +33,12 @@ class MyProperties {
 class RestControllerExceptionHandler {
     @RequestMapping(value = ["error/404"], method = [RequestMethod.GET])
     @ExceptionHandler(Exception::class)
-    fun handleUnexpectedException(e: Exception?): String {
-        return "views/base/rest-error"
-    }
+    fun handleUnexpectedException(exception: Exception?) = ErrorResponse(
+        code = 500,
+        type = "InternalServerError",
+        message = exception?.message ?: "",
+    )
+
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(MethodArgumentNotValidException::class)
@@ -36,6 +46,15 @@ class RestControllerExceptionHandler {
         // TODO you can choose to return your custom object here, which will then get transformed to json/xml etc.
         return exception.message
     }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(EntityNotFound::class)
+    fun handleEntityNotFound(exception: EntityNotFound) = ErrorResponse(
+        code = 404,
+        type = "EntityNotFound",
+        message = exception.message,
+        detail = exception.detail
+    )
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(ConstraintViolationException::class)

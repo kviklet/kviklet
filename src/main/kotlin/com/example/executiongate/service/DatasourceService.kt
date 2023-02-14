@@ -1,37 +1,72 @@
 package com.example.executiongate.service
 
-import com.example.executiongate.db.ConnectionEntity
-import com.example.executiongate.db.ConnectionRepository
-import com.zaxxer.hikari.HikariDataSource
+import com.example.executiongate.db.DatasourceConnectionEntity
+import com.example.executiongate.db.DatasourceConnectionRepository
+import com.example.executiongate.db.DatasourceEntity
+import com.example.executiongate.db.DatasourceRepository
+import com.example.executiongate.service.dto.AuthenticationType
+import com.example.executiongate.service.dto.DatasourceConnectionDto
+import com.example.executiongate.service.dto.DatasourceDto
+import com.example.executiongate.service.dto.DatasourceType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import org.springframework.boot.jdbc.DataSourceBuilder
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
-import java.sql.SQLException
+import javax.transaction.Transactional
 
-enum class DbType(val schema: String) {
-    POSTGRESQL("postgresql"),
-    MYSQL("mysql")
-}
+class EntityNotFound(override val message: String, val detail: String): Exception(message)
 
 @Service
 class DatasourceService(
-    val connectionRepository: ConnectionRepository,
+    val datasourceRepository: DatasourceRepository,
+    val datasourceConnectionRepository: DatasourceConnectionRepository
 ) {
     var logger: Logger = LoggerFactory.getLogger(DatasourceService::class.java)
 
-    fun createConnection(
-        name: String,
-        uri: String,
-        username: String,
-        password: String,
-    ): Boolean {
-        val entity = ConnectionEntity(name = name, uri = uri, username = username, password = password)
-        val savedEntity = connectionRepository.save(entity)
-        logger.info("Created $savedEntity")
+//    fun listConnections() = connectionRepository.findAll().mapNotNull { it?.toDto() }
 
-        return true
+    @Transactional
+    fun createDatasource(
+        displayName: String,
+        datasourceType: DatasourceType,
+        hostname: String,
+        port: Int
+    ): DatasourceDto {
+        return datasourceRepository.save(
+            DatasourceEntity(
+                displayName = displayName,
+                type = datasourceType,
+                hostname = hostname,
+                port = port
+            )
+        ).toDto().also {
+            logger.info("Created $it")
+        }
     }
 
-    fun listConnections() = connectionRepository.findAll().mapNotNull { it?.toDto() }
+    @Transactional
+    fun createDatasourceConnection(
+        datasourceId: String,
+        displayName: String,
+        username: String,
+        password: String
+    ): DatasourceConnectionDto {
+        val datasource = getDatasource(datasourceId)
+
+        return datasourceConnectionRepository.save(
+            DatasourceConnectionEntity(
+                displayName = displayName,
+                datasourceId = datasource.id,
+                authenticationType = AuthenticationType.USER_PASSWORD,
+                username = username,
+                password = password
+            )
+        ).toDto(datasource).also {
+            logger.info("Created $it")
+        }
+    }
+
+    private fun getDatasource(datasourceId: String): DatasourceDto =
+        datasourceRepository.findByIdOrNull(datasourceId)?.toDto()
+            ?: throw EntityNotFound("Datasource Not Found", "Datasource with id $datasourceId does not exist.")
 }

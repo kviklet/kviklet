@@ -1,14 +1,10 @@
 package com.example.executiongate.db
 
-import com.example.executiongate.service.dto.ConnectionDto
 import org.apache.commons.lang3.builder.ToStringBuilder
 import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
-import org.hibernate.annotations.GenericGenerator
 import org.springframework.data.jpa.repository.JpaRepository
 import java.time.LocalDateTime
 import javax.persistence.Entity
-import javax.persistence.GeneratedValue
-import javax.persistence.Id
 
 @Entity(name = "execution_request")
 data class ExecutionRequestEntity(
