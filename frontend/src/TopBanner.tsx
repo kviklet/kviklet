@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./App.css";
+import { Link } from "react-router-dom";
 
 function TopBanner() {
   return (
@@ -16,20 +17,20 @@ function TopBanner() {
               <nav className="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200">
                 <ul className="flex space-x-8">
                   <li>
-                    <a
+                    <Link
+                      to={"/connections"}
                       className="hover:text-sky-500 dark:hover:text-sky-400"
-                      href="/connections"
                     >
                       Connections
-                    </a>
+                    </Link>
                   </li>
                   <li>
-                    <a
+                    <Link
+                      to={"/requests"}
                       className="hover:text-sky-500 dark:hover:text-sky-400"
-                      href="/requests"
                     >
                       Requests
-                    </a>
+                    </Link>
                   </li>
                 </ul>
               </nav>
