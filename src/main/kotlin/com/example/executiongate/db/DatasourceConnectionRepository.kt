@@ -9,11 +9,15 @@ import org.springframework.data.jpa.repository.JpaRepository
 import javax.persistence.Entity
 import javax.persistence.EnumType
 import javax.persistence.Enumerated
+import javax.persistence.JoinColumn
+import javax.persistence.ManyToOne
 
 
 @Entity(name = "datasource_connection")
 class DatasourceConnectionEntity(
-    val datasourceId: String,
+    @ManyToOne
+    @JoinColumn(name = "datasource_id")
+    val datasource: DatasourceEntity,
     val displayName: String,
     @Enumerated(EnumType.STRING)
     val authenticationType: AuthenticationType,
@@ -26,10 +30,9 @@ class DatasourceConnectionEntity(
         .append("name", displayName)
         .toString()
 
-    fun toDto(datasource: DatasourceDto) = DatasourceConnectionDto(
+    fun toDto() = DatasourceConnectionDto(
         id = id,
         displayName = displayName,
-        datasource = datasource,
         authenticationType = authenticationType,
         username = username,
         password = password,

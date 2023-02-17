@@ -37,7 +37,8 @@ class DatasourceService(
                 displayName = displayName,
                 type = datasourceType,
                 hostname = hostname,
-                port = port
+                port = port,
+                datasourceConnections = emptySet()
             )
         ).toDto().also {
             logger.info("Created $it")
@@ -56,17 +57,19 @@ class DatasourceService(
         return datasourceConnectionRepository.save(
             DatasourceConnectionEntity(
                 displayName = displayName,
-                datasourceId = datasource.id,
+                datasource = datasource,
                 authenticationType = AuthenticationType.USER_PASSWORD,
                 username = username,
                 password = password
             )
-        ).toDto(datasource).also {
+        ).toDto().also {
             logger.info("Created $it")
         }
     }
 
-    private fun getDatasource(datasourceId: String): DatasourceDto =
-        datasourceRepository.findByIdOrNull(datasourceId)?.toDto()
+    private fun getDatasource(datasourceId: String): DatasourceEntity =
+        datasourceRepository.findByIdOrNull(datasourceId)
             ?: throw EntityNotFound("Datasource Not Found", "Datasource with id $datasourceId does not exist.")
+
+    fun listConnections(): List<DatasourceDto> = datasourceRepository.findAllDatasourcesAndConnections().map { it.toDto() }
 }

@@ -17,6 +17,7 @@ data class DatasourceDto(
     val type: DatasourceType,
     val hostname: String,
     val port: Int,
+    val datasourceConnections: List<DatasourceConnectionDto>
 ) {
     fun getConnectionString() = "jdbc:${type.schema}://$hostname:$port"
 }
@@ -24,7 +25,6 @@ data class DatasourceDto(
 data class DatasourceConnectionDto(
     val id: String,
     val displayName: String,
-    val datasource: DatasourceDto,
     val authenticationType: AuthenticationType,
     val username: String,
     val password: String,

@@ -57,7 +57,6 @@ data class CreateDatasourceConnectionRequest(
 
 data class DatasourceConnectionResponse(
     val id: String,
-    val datasource: DatasourceResponse,
     val authenticationType: AuthenticationType,
     val displayName: String,
     val username: String,
@@ -68,7 +67,6 @@ data class DatasourceConnectionResponse(
             id = datasourceConnection.id,
             authenticationType = datasourceConnection.authenticationType,
             displayName = datasourceConnection.displayName,
-            datasource = DatasourceResponse.fromDto(datasourceConnection.datasource),
             username = datasourceConnection.username,
             password = datasourceConnection.password
         )
@@ -80,7 +78,8 @@ data class DatasourceResponse(
     val displayName: String,
     val datasourceType: DatasourceType,
     val hostname: String,
-    val port: Int
+    val port: Int,
+    val datasourceConnections: List<DatasourceConnectionResponse>,
 ) {
     companion object {
         fun fromDto(dto: DatasourceDto) = DatasourceResponse(
@@ -88,24 +87,14 @@ data class DatasourceResponse(
             displayName = dto.displayName,
             datasourceType = dto.type,
             hostname = dto.hostname,
-            port = dto.port
+            port = dto.port,
+            datasourceConnections = dto.datasourceConnections.map { DatasourceConnectionResponse.fromDto(it) }
         )
     }
 }
 
-data class ListDatabaseResponse(
-    val databases: List<DatabaseResponse>
-)
-
-data class DatabaseResponse(
-    @Schema(example = "cJpuWgFcyUsyZUnjU9G5tW")
-    val id: String,
-    @Schema(example = "My Postgres Db")
-    val name: String,
-    @Schema(example = "postgresql://localhost:5432/postgres")
-    val uri: String,
-    @Schema(example = "root")
-    val username: String
+data class ListDatasourceResponse(
+    val databases: List<DatasourceResponse>
 )
 
 @RestController()
@@ -143,20 +132,12 @@ class DatasourceController(
         return DatasourceConnectionResponse.fromDto(datasource)
     }
 
-    /*
+
     @GetMapping("/")
-    fun getConnections(): ListDatabaseResponse {
+    fun getConnections(): ListDatasourceResponse {
         val dbs = datasourceService.listConnections()
-        return ListDatabaseResponse(
-            databases = dbs.map { DatabaseResponse(
-                id = it.id,
-                name = it.name,
-                uri = it.uri,
-                username = it.username,
-            )
-            }
-        )
-    }*/
+        return ListDatasourceResponse(databases = dbs.map { DatasourceResponse.fromDto(it) })
+    }
 
     /*
     @PostMapping("/test")

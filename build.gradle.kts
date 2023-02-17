@@ -8,10 +8,13 @@ plugins {
 	kotlin("plugin.spring") version "1.6.21"
 	kotlin("plugin.jpa") version "1.6.21"
 	id("org.springframework.experimental.aot") version "0.12.1"
+
+    kotlin("kapt") version "1.8.10" // needed for query-dsl
 }
 
 group = "com.example"
 version = "0.0.1-SNAPSHOT"
+val queryDslVersion = "5.0.0"
 java.sourceCompatibility = JavaVersion.VERSION_17
 
 configurations {
@@ -44,6 +47,12 @@ dependencies {
 	annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.security:spring-security-test")
+
+    //querydsl
+    implementation("com.querydsl:querydsl-jpa:${queryDslVersion}")
+    kapt("com.querydsl:querydsl-apt:${queryDslVersion}:jpa" )
+    implementation(group="javax.inject", name="javax.inject", version="1")
+
 }
 
 tasks.withType<KotlinCompile> {
