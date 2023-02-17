@@ -4,32 +4,32 @@ import { Link } from "react-router-dom";
 
 function TopBanner() {
   return (
-    <div className="sticky top-0 z-40 w-full backdrop-blur flex-none transition-colors duration-500 supports-backdrop-blur:bg-white/95 lg:z-50 lg:border-b lg:border-slate-900/10">
+    <div className="sticky top-0 z-40 w-full backdrop-blur flex-none transition-colors duration-500 supports-backdrop-blur:bg-white/95 border-b border-slate-900/10">
       <div className="max-w-8xl mx-auto">
-        <div className="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 mx-4 lg:mx-0">
+        <div className="py-4 border-b border-slate-900/10 px-8 border-0 mx-4 mx-0">
           <div className="relative flex items-center">
             <a href="http://execution-gate.com/">
               <h1 className="text-xl font-bold text-slate-700">
                 Execution-Gate
               </h1>
             </a>
-            <div className="relative hidden lg:flex items-center ml-auto">
+            <div className="relative flex items-center ml-auto">
               <nav className="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200">
                 <ul className="flex space-x-8">
-                  <li>
-                    <Link
-                      to={"/connections"}
-                      className="hover:text-sky-500 dark:hover:text-sky-400"
-                    >
-                      Connections
-                    </Link>
-                  </li>
                   <li>
                     <Link
                       to={"/requests"}
                       className="hover:text-sky-500 dark:hover:text-sky-400"
                     >
                       Requests
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to={"/settings"}
+                      className="hover:text-sky-500 dark:hover:text-sky-400"
+                    >
+                      Settings
                     </Link>
                   </li>
                 </ul>

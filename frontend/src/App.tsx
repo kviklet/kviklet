@@ -9,7 +9,7 @@ import {
   icon,
 } from "@fortawesome/fontawesome-svg-core/import.macro";
 import { RouterProvider, createBrowserRouter } from "react-router-dom";
-import Connections from "./Connections";
+import Settings from "./Settings";
 import DefaultLayout from "./DefaultLayout";
 import Requests from "./Requests";
 
@@ -32,8 +32,8 @@ const router = createBrowserRouter([
     element: <DefaultLayout />,
     children: [
       {
-        path: "/connections",
-        element: <Connections />,
+        path: "/settings",
+        element: <Settings />,
       },
       {
         path: "/requests",
