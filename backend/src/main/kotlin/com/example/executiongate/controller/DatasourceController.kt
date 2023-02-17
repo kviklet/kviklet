@@ -99,6 +99,7 @@ data class ListDatasourceResponse(
 
 @RestController()
 @Validated
+@CrossOrigin(origins = ["http://localhost:3000"])
 @RequestMapping("/datasource")
 class DatasourceController(
     val datasourceService: DatasourceService,
