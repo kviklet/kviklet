@@ -1,4 +1,3 @@
-import "./App.css";
 import TopBanner from "./TopBanner";
 import { Outlet } from "react-router-dom";
 

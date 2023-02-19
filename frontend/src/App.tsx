@@ -1,17 +1,7 @@
-import React, { useEffect, useState } from "react";
-import "./App.css";
-import TopBanner from "./TopBanner";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  solid,
-  regular,
-  brands,
-  icon,
-} from "@fortawesome/fontawesome-svg-core/import.macro";
 import { RouterProvider, createBrowserRouter } from "react-router-dom";
-import Settings from "./Settings";
-import DefaultLayout from "./DefaultLayout";
-import Requests from "./Requests";
+import Settings from "./routes/Settings";
+import DefaultLayout from "./layout/DefaultLayout";
+import Requests from "./routes/Requests";
 
 class Database {
   id: string;
