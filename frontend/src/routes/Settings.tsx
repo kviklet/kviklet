@@ -1,49 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
+import { fetchDatabases, Database, Connection } from "../api/DatasoourceApi";
 
-class Database {
-  id: string;
-  displayName: string;
-  datasourceType: string;
-  hostname: string;
-  port: Number;
-
-  constructor(
-    id: string,
-    displayName: string,
-    datasourceType: string,
-    hostname: string,
-    port: Number
-  ) {
-    this.id = id;
-    this.displayName = displayName;
-    this.datasourceType = datasourceType;
-    this.hostname = hostname;
-    this.port = port;
-  }
-}
-
-class Connection {
-  constructor(
-    readonly displayName: string,
-    readonly authenticationType: string,
-    username: string,
-    password: string
-  ) {}
-}
-
-function ConnectionSettings() {
-  const connections = [...Array(5)].map(
-    (_, i) =>
-      new Connection(`Connection ${i}`, "USER_PASSWORD", "user", "password")
-  );
+function ConnectionSettings(props: {
+  selectedIndex: number | undefined;
+  connections: Connection[];
+}) {
   return (
     <div className="w-full ml-10">
       <h2 className="text-lg font-bold m-5 pl-1.5">Connection Settings</h2>
-      {connections.map((connection) => (
+      {props.connections.map((connection) => (
         <div>{connection.displayName}</div>
       ))}
+      {props.selectedIndex}
     </div>
   );
 }
@@ -52,13 +22,18 @@ function Settings() {
   const datasourceUrl = "http://localhost:8080/datasource/";
   const [databases, setDatabases] = useState<Database[]>([]);
 
+  const [selectedIndex, setSelectedIndex] = useState<number | undefined>(
+    undefined
+  );
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(datasourceUrl);
-        const json = await response.json();
-        console.log(json);
-        setDatabases(json.databases);
+        const databases = await fetchDatabases();
+        setDatabases(databases);
+        if (databases.length > 0) {
+          setSelectedIndex(0);
+        }
       } catch (error) {
         console.log("error", error);
       }
@@ -93,9 +68,14 @@ function Settings() {
           <h2 className="text-2xl font-bold m-5 pl-1.5">Databases</h2>
           <div className="text-center max-h-96 overflow-y-scroll scrollbar-thin scrollbar-track-slate-300 scrollbar-thumb-slate-600 scrollbar-thumb-rounded">
             <div className="inline">
-              {databases.map((database) => (
+              {databases.map((database, index) => (
                 //flex items-center rounded-md p-1.5 bg-indigo-600 text-white
-                <div className="flex items-center rounded-md m-5 p-1.5 hover:bg-sky-500 hover:text-white ">
+                <div
+                  className={`flex items-center rounded-md m-5 p-1.5 cursor-pointer hover:bg-sky-500 hover:text-white ${
+                    index === selectedIndex ? "bg-sky-500 text-white" : ""
+                  }`}
+                  onClick={() => setSelectedIndex(index)}
+                >
                   <div className="basis-1/2 my-auto text-left">
                     {database.displayName}
                   </div>
@@ -182,7 +162,14 @@ function Settings() {
             </div>
           </div>
         </div>
-        <ConnectionSettings />
+        <ConnectionSettings
+          selectedIndex={selectedIndex}
+          connections={
+            selectedIndex === undefined
+              ? []
+              : databases[selectedIndex].datasourceConnections
+          }
+        />
       </div>
     </div>
   );
