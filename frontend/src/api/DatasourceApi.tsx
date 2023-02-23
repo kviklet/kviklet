@@ -15,7 +15,7 @@ const Database = z.object({
   displayName: z.coerce.string(),
   datasourceType: z.enum(["POSTGRESQL"]),
   hostname: z.coerce.string(),
-  port: z.number(),
+  port: z.coerce.number(),
   datasourceConnections: z.array(Connection),
 });
 
@@ -23,9 +23,14 @@ const ApiResponse = z.object({
   databases: z.array(Database),
 });
 
-// extract the inferred type
-type Database = z.infer<typeof Database>;
-type Connection = z.infer<typeof Connection>;
+const DatabasePayload = Database.omit({
+  id: true,
+  datasourceConnections: true,
+});
+const ConnectionPayload = Connection.omit({
+  id: true,
+  authenticationType: true,
+});
 
 const fetchDatabases = async (): Promise<Database[]> => {
   const response = await fetch(datasourceUrl);
@@ -35,4 +40,14 @@ const fetchDatabases = async (): Promise<Database[]> => {
   return parsedResponse.databases;
 };
 
-export { fetchDatabases, Database, Connection };
+// extract the inferred type
+type Database = z.infer<typeof Database>;
+type Connection = z.infer<typeof Connection>;
+
+export {
+  fetchDatabases,
+  Database,
+  Connection,
+  DatabasePayload,
+  ConnectionPayload,
+};
