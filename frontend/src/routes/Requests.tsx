@@ -1,6 +1,8 @@
 import { SubmitHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Connection, fetchDatabases } from "../api/DatasourceApi";
+import { useEffect, useState } from "react";
 
 function Requests() {
   const ExecutionRequestSchema = z.object({
@@ -16,6 +18,19 @@ function Requests() {
     ]),
     confidential: z.boolean(),
   });
+
+  const [connections, setConnections] = useState<Connection[]>([]);
+
+  const datasource = useEffect(() => {
+    const fetchData = async () => {
+      const databases = await fetchDatabases();
+      const requestedConnections = databases.flatMap((database) => {
+        return database.datasourceConnections;
+      });
+      setConnections(requestedConnections);
+    };
+    fetchData();
+  }, []);
 
   type ExecutionRequest = z.infer<typeof ExecutionRequestSchema>;
 
@@ -52,9 +67,11 @@ function Requests() {
                 id="connection-input"
                 {...register("connection")}
               >
-                <option>Connection 1</option>
-                <option>Connection 2</option>
-                <option>Some random connection</option>
+                {connections.map((connection) => (
+                  <option value={connection.displayName}>
+                    {connection.displayName}
+                  </option>
+                ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                 <svg
