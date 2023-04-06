@@ -100,7 +100,7 @@ data class ListDatasourceResponse(
 @RestController()
 @Validated
 @CrossOrigin(origins = ["http://localhost:3000"])
-@RequestMapping("/datasource")
+@RequestMapping("/datasources")
 class DatasourceController(
     val datasourceService: DatasourceService,
     val config: MyProperties
@@ -119,7 +119,7 @@ class DatasourceController(
         return DatasourceResponse.fromDto(datasource)
     }
 
-    @PostMapping("/{datasourceId}/connection")
+    @PostMapping("/{datasourceId}/connections")
     fun createDatasourceConnection(
         @PathVariable datasourceId: String,
         @Valid @RequestBody datasourceConnection: CreateDatasourceConnectionRequest

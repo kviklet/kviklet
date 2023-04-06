@@ -7,6 +7,8 @@ import {
   Connection,
   ConnectionPayload,
   DatabasePayload,
+  addDatabase,
+  addConnection,
 } from "../api/DatasourceApi";
 
 function ConnectionSettings(props: {
@@ -102,7 +104,7 @@ function CreateConnectionForm(props: {
 }
 
 function Settings() {
-  const datasourceUrl = "http://localhost:8080/datasource/";
+  const datasourceUrl = "http://localhost:8080/datasources/";
   const [databases, setDatabases] = useState<Database[]>([]);
 
   const [selectedIndex, setSelectedIndex] = useState<number | undefined>(
@@ -138,13 +140,7 @@ function Settings() {
     const json = Object.fromEntries(formData.entries());
     const payload = DatabasePayload.parse(json);
     console.log(payload);
-    await fetch(datasourceUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+    await addDatabase(payload);
     setShowAddDatasourceModal(false);
   };
 
@@ -156,13 +152,7 @@ function Settings() {
     const payload = ConnectionPayload.parse(json);
     console.log(payload);
     const id = databases[selectedIndex || 0].id;
-    await fetch(`${datasourceUrl}${id}/connection`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+    await addConnection(payload, id);
     setShowAddConnectionModal(false);
   };
 

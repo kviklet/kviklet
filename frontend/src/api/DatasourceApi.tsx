@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const datasourceUrl = "http://localhost:8080/datasource/";
+const datasourceUrl = "http://localhost:8080/datasources/";
 
 const Connection = z.object({
   id: z.coerce.string(),
@@ -44,8 +44,37 @@ const fetchDatabases = async (): Promise<Database[]> => {
 type Database = z.infer<typeof Database>;
 type Connection = z.infer<typeof Connection>;
 
+const addDatabase = async (
+  payload: z.infer<typeof DatabasePayload>
+): Promise<boolean> => {
+  const response = await fetch(datasourceUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  return true;
+};
+
+const addConnection = async (
+  payload: z.infer<typeof ConnectionPayload>,
+  datasourceId: string
+): Promise<boolean> => {
+  const response = await fetch(`${datasourceUrl}${datasourceId}/connections`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  return true;
+};
+
 export {
   fetchDatabases,
+  addDatabase,
+  addConnection,
   Database,
   Connection,
   DatabasePayload,
