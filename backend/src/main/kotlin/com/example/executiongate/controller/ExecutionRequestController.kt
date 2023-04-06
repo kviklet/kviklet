@@ -22,10 +22,6 @@ data class CreateExecutionResponse(
     val id: String
 )
 
-data class ExecutionRequestListReponse(
-    val requests: List<CreateExecutionRequest>
-)
-
 @RestController()
 @Validated
 @CrossOrigin(origins = ["http://localhost:3000"])
@@ -46,10 +42,5 @@ class ExecutionRequestController(
     @PostMapping("/{requestId}")
     fun execute(@PathVariable requestId: String): QueryResult {
         return executionRequestService.execute(requestId)
-    }
-
-    @GetMapping("/")
-    fun list(): ExecutionRequestListReponse {
-        return executionRequestService.getRequests()
     }
 }
