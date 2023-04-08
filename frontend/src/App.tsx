@@ -1,7 +1,7 @@
 import { RouterProvider, createBrowserRouter } from "react-router-dom";
 import Settings from "./routes/Settings";
 import DefaultLayout from "./layout/DefaultLayout";
-import Requests from "./routes/Requests";
+import { AddRequestForm } from "./routes/AddRequestForm";
 
 class Database {
   id: string;
@@ -27,7 +27,7 @@ const router = createBrowserRouter([
       },
       {
         path: "/requests",
-        element: <Requests />,
+        element: <AddRequestForm />,
       },
     ],
   },
