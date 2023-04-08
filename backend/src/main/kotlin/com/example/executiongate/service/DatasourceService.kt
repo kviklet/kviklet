@@ -6,13 +6,16 @@ import com.example.executiongate.db.DatasourceEntity
 import com.example.executiongate.db.DatasourceRepository
 import com.example.executiongate.service.dto.AuthenticationType
 import com.example.executiongate.service.dto.DatasourceConnectionDto
+import com.example.executiongate.service.dto.DatasourceConnectionId
 import com.example.executiongate.service.dto.DatasourceDto
+import com.example.executiongate.service.dto.DatasourceId
 import com.example.executiongate.service.dto.DatasourceType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import javax.transaction.Transactional
+import javax.xml.crypto.Data
 
 class EntityNotFound(override val message: String, val detail: String): Exception(message)
 
@@ -47,7 +50,7 @@ class DatasourceService(
 
     @Transactional
     fun createDatasourceConnection(
-        datasourceId: String,
+        datasourceId: DatasourceId,
         displayName: String,
         username: String,
         password: String
@@ -67,9 +70,13 @@ class DatasourceService(
         }
     }
 
-    private fun getDatasource(datasourceId: String): DatasourceEntity =
-        datasourceRepository.findByIdOrNull(datasourceId)
+    private fun getDatasource(datasourceId: DatasourceId): DatasourceEntity =
+        datasourceRepository.findByIdOrNull(datasourceId.toString())
             ?: throw EntityNotFound("Datasource Not Found", "Datasource with id $datasourceId does not exist.")
+
+    fun getDatasourceConnection(id: DatasourceConnectionId): DatasourceConnectionEntity =
+        datasourceConnectionRepository.findByIdOrNull(id.toString())
+            ?: throw EntityNotFound("Datasource Connection Not Found", "Datasource Connection with id $id does not exist.")
 
     fun listConnections(): List<DatasourceDto> = datasourceRepository.findAllDatasourcesAndConnections().map { it.toDto() }
 }

@@ -4,7 +4,9 @@ import com.example.executiongate.MyProperties
 import com.example.executiongate.service.DatasourceService
 import com.example.executiongate.service.dto.AuthenticationType
 import com.example.executiongate.service.dto.DatasourceConnectionDto
+import com.example.executiongate.service.dto.DatasourceConnectionId
 import com.example.executiongate.service.dto.DatasourceDto
+import com.example.executiongate.service.dto.DatasourceId
 import com.example.executiongate.service.dto.DatasourceType
 import io.swagger.v3.oas.annotations.media.Schema
 import org.springframework.validation.annotation.Validated
@@ -56,7 +58,7 @@ data class CreateDatasourceConnectionRequest(
 )
 
 data class DatasourceConnectionResponse(
-    val id: String,
+    val id: DatasourceConnectionId,
     val authenticationType: AuthenticationType,
     val displayName: String,
     val username: String,
@@ -74,7 +76,7 @@ data class DatasourceConnectionResponse(
 }
 
 data class DatasourceResponse(
-    val id: String,
+    val id: DatasourceId,
     val displayName: String,
     val datasourceType: DatasourceType,
     val hostname: String,
@@ -121,7 +123,7 @@ class DatasourceController(
 
     @PostMapping("/{datasourceId}/connections")
     fun createDatasourceConnection(
-        @PathVariable datasourceId: String,
+        @PathVariable datasourceId: DatasourceId,
         @Valid @RequestBody datasourceConnection: CreateDatasourceConnectionRequest
     ): DatasourceConnectionResponse {
         val datasource = datasourceService.createDatasourceConnection(
@@ -134,8 +136,8 @@ class DatasourceController(
     }
 
 
-    @GetMapping("/")
-    fun getConnections(): ListDatasourceResponse {
+    @GetMapping("")
+    fun getDatasources(): ListDatasourceResponse {
         val dbs = datasourceService.listConnections()
         return ListDatasourceResponse(databases = dbs.map { DatasourceResponse.fromDto(it) })
     }

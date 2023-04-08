@@ -72,29 +72,98 @@ databaseChangeLog:
             tableName: execution_request
             columns:
               - column:
-                  constraints:
-                    nullable: false
-                    primaryKey: true
-                    primaryKeyName: execution_request
                   name: id
                   type: CHAR(22)
-              - column:
                   constraints:
+                    primaryKey: true
+                    primaryKeyName: execution_request_pkey
                     nullable: false
-                  name: database_id
+              - column:
+                  name: datasource_id
                   type: CHAR(22)
-              - column:
                   constraints:
                     nullable: false
+              - column:
+                  name: title
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
                   name: statement
-                  type: TEXT
-              - column:
+                  type: text
                   constraints:
                     nullable: false
+              - column:
+                  name: read_only
+                  type: boolean
+                  constraints:
+                    nullable: false
+              - column:
+                  name: review_status
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: execution_status
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
                   name: created_at
                   type: datetime
-              - column:
+                  defaultValueDate: 'now()'
                   constraints:
                     nullable: false
-                  name: state
-                  type: VARCHAR(255)
+            foreignKeys:
+              - foreignKey:
+                  name: fk_execution_request_datasource_id
+                  references:
+                    tableName: datasource_connection
+                    columnNames:
+                      - datasource_id
+                    referencedColumnNames:
+                      - id
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: event
+            columns:
+              - column:
+                  name: id
+                  type: CHAR(22)
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: even_pkey
+                    nullable: false
+              - column:
+                  name: execution_request_id
+                  type: CHAR(22)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payload
+                  type: json
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: datetime
+                  defaultValueDate: 'now()'
+                  constraints:
+                    nullable: false
+            foreignKeys:
+              - foreignKey:
+                  name: fk_event_execution_request_id
+                  references:
+                    tableName: execution_request
+                    columnNames:
+                      - execution_request_id
+                    referencedColumnNames:
+                      - id
+                  constraints:
+                    nullable: false

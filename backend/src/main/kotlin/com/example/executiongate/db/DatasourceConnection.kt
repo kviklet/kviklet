@@ -1,8 +1,9 @@
 package com.example.executiongate.db
 
+import com.example.executiongate.db.util.BaseEntity
 import com.example.executiongate.service.dto.AuthenticationType
 import com.example.executiongate.service.dto.DatasourceConnectionDto
-import com.example.executiongate.service.dto.DatasourceDto
+import com.example.executiongate.service.dto.DatasourceConnectionId
 import org.apache.commons.lang3.builder.ToStringBuilder
 import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
 import org.springframework.data.jpa.repository.JpaRepository
@@ -31,7 +32,7 @@ class DatasourceConnectionEntity(
         .toString()
 
     fun toDto() = DatasourceConnectionDto(
-        id = id,
+        id = DatasourceConnectionId(id),
         displayName = displayName,
         authenticationType = authenticationType,
         username = username,
@@ -41,3 +42,4 @@ class DatasourceConnectionEntity(
 }
 
 interface DatasourceConnectionRepository : JpaRepository<DatasourceConnectionEntity, String>
+

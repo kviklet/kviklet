@@ -1,4 +1,4 @@
-package com.example.executiongate.db
+package com.example.executiongate.db.util
 
 import com.example.executiongate.db.util.base58encode
 import org.hibernate.engine.spi.SharedSessionContractImplementor
