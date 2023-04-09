@@ -2,6 +2,7 @@ package com.example.executiongate.db.util
 
 import com.example.executiongate.db.Payload
 import com.fasterxml.jackson.databind.ObjectMapper
+import liquibase.repackaged.org.apache.commons.text.StringEscapeUtils
 import javax.persistence.AttributeConverter
 import javax.persistence.Converter
 
@@ -15,7 +16,11 @@ class EventPayloadConverter(
     }
 
     override fun convertToEntityAttribute(payloadJson: String): Payload {
-        return objectMapper.readValue(payloadJson, Payload::class.java)
+        val unquoteJson = StringEscapeUtils.unescapeJson(payloadJson).removeSurrounding("\"")
+        val res = objectMapper.readValue(unquoteJson, Payload::class.java)
+        println(res)
+        return res
+
     }
 }
 

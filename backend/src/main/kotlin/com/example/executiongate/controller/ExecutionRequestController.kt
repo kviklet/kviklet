@@ -3,7 +3,9 @@ package com.example.executiongate.controller
 import com.example.executiongate.service.ExecutionRequestService
 import com.example.executiongate.service.QueryResult
 import com.example.executiongate.service.dto.DatasourceConnectionId
+import com.example.executiongate.service.dto.Event
 import com.example.executiongate.service.dto.ExecutionRequest
+import com.example.executiongate.service.dto.ExecutionRequestDetails
 import com.example.executiongate.service.dto.ExecutionRequestId
 import com.example.executiongate.service.dto.ReviewAction
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -63,6 +65,36 @@ data class ExecutionRequestResponse(
     }
 }
 
+/**
+ * A DTO for the {@link com.example.executiongate.db.ExecutionRequestEntity} entity
+ */
+data class ExecutionRequestDetailResponse(
+    val id: ExecutionRequestId,
+    val title: String,
+    val description: String?,
+    val statement: String,
+    val readOnly: Boolean,
+    val reviewStatus: String,
+    val executionStatus: String,
+    val events: List<Event>,
+    val createdAt: LocalDateTime = LocalDateTime.now()
+) {
+
+    companion object {
+        fun fromDto(dto: ExecutionRequestDetails) = ExecutionRequestDetailResponse(
+            id = dto.request.id,
+            title = dto.request.title,
+            description = dto.request.description,
+            statement = dto.request.statement,
+            readOnly = dto.request.readOnly,
+            reviewStatus = dto.request.reviewStatus,
+            executionStatus = dto.request.executionStatus,
+            createdAt = dto.request.createdAt,
+            events = dto.events.sortedBy { it.createdAt },
+        )
+    }
+}
+
 @RestController()
 @Validated
 @CrossOrigin(origins = ["http://localhost:3000"])
@@ -83,6 +115,11 @@ class ExecutionRequestController(
         return ExecutionRequestResponse.fromDto(executionRequest)
     }
 
+    @GetMapping("/{id}")
+    fun get(@PathVariable id: ExecutionRequestId): ExecutionRequestDetailResponse {
+        return executionRequestService.get(id).let { ExecutionRequestDetailResponse.fromDto(it) }
+    }
+
     @GetMapping
     fun list(): List<ExecutionRequestResponse> {
         return executionRequestService.list().map { ExecutionRequestResponse.fromDto(it) }
@@ -97,8 +134,8 @@ class ExecutionRequestController(
         executionRequestService.createReview(id, request)
     }
 
-    @PostMapping("/{requestId}")
-    fun execute(@PathVariable requestId: String): QueryResult {
-        return executionRequestService.execute(requestId)
-    }
+//    @PostMapping("/{requestId}")
+//    fun execute(@PathVariable requestId: String): QueryResult {
+//        return executionRequestService.execute(requestId)
+//    }
 }

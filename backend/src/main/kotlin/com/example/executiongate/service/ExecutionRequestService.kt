@@ -11,6 +11,7 @@ import com.example.executiongate.db.ReviewPayload
 import com.example.executiongate.service.dto.Event
 import com.example.executiongate.service.dto.EventType
 import com.example.executiongate.service.dto.ExecutionRequest
+import com.example.executiongate.service.dto.ExecutionRequestDetails
 import com.example.executiongate.service.dto.ExecutionRequestId
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
@@ -37,6 +38,7 @@ class ExecutionRequestService(
                 readOnly = request.readOnly,
                 reviewStatus = "PENDING",
                 executionStatus = "PENDING",
+                events = emptySet(),
             ),
         )
         return entity.toDto()
@@ -44,21 +46,10 @@ class ExecutionRequestService(
 
     fun list(): List<ExecutionRequest> = executionRequestRepository.findAll().map { it.toDto() }
 
-    @Transactional
-    fun execute(executionRequestId: String): QueryResult {
-        /*
-        val executionRequestEntity: ExecutionRequestEntity? = executionRequestRepository.findByIdOrNull(
-            executionRequestId
-        )
-
-        if (executionRequestEntity != null) {
-            val connectionEntity = datasourceConnectionRepository.findByIdOrNull(executionRequestEntity.databaseId)
-
-            if (connectionEntity != null) {
-                return ExecutorService().execute(connectionEntity., executionRequestEntity.statement)
-            }
-        }*/
-        throw Exception("Failed to run query")
+    fun get(id: ExecutionRequestId): ExecutionRequestDetails {
+        val executionRequestDetails = getExecutionRequestDetails(id)
+        println("details fetched")
+        return executionRequestDetails.toDetailDto()
     }
 
     fun createReview(id: ExecutionRequestId, request: CreateReviewRequest): Event {
@@ -78,7 +69,10 @@ class ExecutionRequestService(
 
     private fun getExecutionRequest(id: ExecutionRequestId): ExecutionRequestEntity =
         executionRequestRepository.findByIdOrNull(id.toString())
-            ?: throw EntityNotFound("Execution Request Not Found", "Datasource with id $id does not exist.")
+            ?: throw EntityNotFound("Execution Request Not Found", "Execution Request with id $id does not exist.")
 
-    // fun addReview(requestId: ExecutionRequestId, request: CreateReviewRequest): ExecutionRequest {}
+    private fun getExecutionRequestDetails(id: ExecutionRequestId): ExecutionRequestEntity =
+        executionRequestRepository.findByIdWithDetails(id)
+            ?: throw EntityNotFound("Execution Request Not Found", "Execution Request with id $id does not exist.")
+
 }

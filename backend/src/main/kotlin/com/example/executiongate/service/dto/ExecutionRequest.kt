@@ -13,7 +13,6 @@ value class ExecutionRequestId(private val id: String): Serializable {
  */
 data class ExecutionRequest(
     val id: ExecutionRequestId,
-    val connection: DatasourceConnectionDto,
     val title: String,
     val description: String?,
     val statement: String,
@@ -21,4 +20,10 @@ data class ExecutionRequest(
     val reviewStatus: String,
     val executionStatus: String,
     val createdAt: LocalDateTime = LocalDateTime.now()
+)
+
+
+data class ExecutionRequestDetails(
+    val request: ExecutionRequest,
+    val events: List<Event>
 )

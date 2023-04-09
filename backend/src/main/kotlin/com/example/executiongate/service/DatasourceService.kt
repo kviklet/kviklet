@@ -26,8 +26,6 @@ class DatasourceService(
 ) {
     var logger: Logger = LoggerFactory.getLogger(DatasourceService::class.java)
 
-//    fun listConnections() = connectionRepository.findAll().mapNotNull { it?.toDto() }
-
     @Transactional
     fun createDatasource(
         displayName: String,

@@ -146,8 +146,13 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: type
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
                   name: payload
-                  type: json
+                  type: JSON
                   constraints:
                     nullable: false
               - column:
