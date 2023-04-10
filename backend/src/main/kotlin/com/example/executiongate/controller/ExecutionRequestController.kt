@@ -35,6 +35,10 @@ data class CreateReviewRequest(
     val action: ReviewAction,
 )
 
+data class CreateCommentRequest(
+    val comment: String,
+)
+
 /**
  * A DTO for the {@link com.example.executiongate.db.ExecutionRequestEntity} entity
  */
@@ -132,6 +136,15 @@ class ExecutionRequestController(
         @Valid @RequestBody request: CreateReviewRequest
     ) {
         executionRequestService.createReview(id, request)
+    }
+
+    @PostMapping("/{id}/comments")
+    @ResponseStatus(value = HttpStatus.NO_CONTENT)
+    fun createComment(
+        @PathVariable id: ExecutionRequestId,
+        @Valid @RequestBody request: CreateCommentRequest
+    ) {
+        executionRequestService.createComment(id, request)
     }
 
 //    @PostMapping("/{requestId}")

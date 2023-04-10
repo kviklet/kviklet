@@ -1,12 +1,15 @@
 package com.example.executiongate.service
 
+import com.example.executiongate.controller.CreateCommentRequest
 import com.example.executiongate.controller.CreateExecutionRequest
 import com.example.executiongate.controller.CreateReviewRequest
+import com.example.executiongate.db.CommentPayload
 import com.example.executiongate.db.DatasourceConnectionRepository
 import com.example.executiongate.db.EventEntity
 import com.example.executiongate.db.EventRepository
 import com.example.executiongate.db.ExecutionRequestEntity
 import com.example.executiongate.db.ExecutionRequestRepository
+import com.example.executiongate.db.Payload
 import com.example.executiongate.db.ReviewPayload
 import com.example.executiongate.service.dto.Event
 import com.example.executiongate.service.dto.EventType
@@ -48,21 +51,30 @@ class ExecutionRequestService(
 
     fun get(id: ExecutionRequestId): ExecutionRequestDetails {
         val executionRequestDetails = getExecutionRequestDetails(id)
-        println("details fetched")
-        return executionRequestDetails.toDetailDto()
+            return executionRequestDetails.toDetailDto()
     }
 
-    fun createReview(id: ExecutionRequestId, request: CreateReviewRequest): Event {
+    fun createReview(id: ExecutionRequestId, request: CreateReviewRequest) = saveEvent(
+        id,
+        ReviewPayload(comment = request.comment, action = request.action)
+    )
+
+    fun createComment(id: ExecutionRequestId, request: CreateCommentRequest) = saveEvent(
+        id,
+        CommentPayload(comment = request.comment)
+    )
+
+    private fun saveEvent(
+        id: ExecutionRequestId,
+        payload: Payload
+    ): Event {
         val executionRequestEntity = getExecutionRequest(id)
 
         return eventRepository.save(
             EventEntity(
                 executionRequest = executionRequestEntity,
                 type = EventType.REVIEW,
-                payload = ReviewPayload(
-                    comment = request.comment,
-                    action = request.action,
-                ),
+                payload = payload,
             ),
         ).toDto()
     }
@@ -74,5 +86,6 @@ class ExecutionRequestService(
     private fun getExecutionRequestDetails(id: ExecutionRequestId): ExecutionRequestEntity =
         executionRequestRepository.findByIdWithDetails(id)
             ?: throw EntityNotFound("Execution Request Not Found", "Execution Request with id $id does not exist.")
+
 
 }

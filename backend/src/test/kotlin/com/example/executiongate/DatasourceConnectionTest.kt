@@ -1,5 +1,6 @@
 package com.example.executiongate
 
+import com.example.executiongate.controller.CreateCommentRequest
 import com.example.executiongate.controller.CreateDatasourceConnectionRequest
 import com.example.executiongate.controller.CreateDatasourceRequest
 import com.example.executiongate.controller.CreateExecutionRequest
@@ -10,6 +11,7 @@ import com.example.executiongate.controller.ExecutionRequestController
 import com.example.executiongate.controller.ListDatasourceResponse
 import com.example.executiongate.db.CustomDatasourceRepository
 import com.example.executiongate.db.DatasourceRepository
+import com.example.executiongate.service.dto.CommentEvent
 import com.example.executiongate.service.dto.DatasourceType
 import com.example.executiongate.service.dto.EventId
 import com.example.executiongate.service.dto.ReviewAction
@@ -95,16 +97,25 @@ class DatasourceConnectionTest(
             comment = "Comment", action = ReviewAction.APPROVE
         ))
 
+        executionRequestController.createComment(request.id, CreateCommentRequest(
+            comment = """Comment with a "quote"!"""
+        )
+        )
+
         val requestDetails = executionRequestController.get(request.id)
 
-        requestDetails.events.forAtLeastOne {
-            it.shouldBeEqualToIgnoringFields(ReviewEvent(
+        requestDetails.events[0].shouldBeEqualToIgnoringFields(ReviewEvent(
                 id = EventId("id"),
                 createdAt = LocalDateTime.now(),
                 comment = "Comment",
                 action = ReviewAction.APPROVE,
             ), ReviewEvent::createdAt, ReviewEvent::id)
-        }
+
+        requestDetails.events[1].shouldBeEqualToIgnoringFields(CommentEvent(
+                id = EventId("id"),
+                createdAt = LocalDateTime.now(),
+                comment = "Comment with a \"quote\"!",
+            ), ReviewEvent::createdAt, ReviewEvent::id)
 
     }
 

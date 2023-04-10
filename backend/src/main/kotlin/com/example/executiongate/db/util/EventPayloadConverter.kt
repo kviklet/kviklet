@@ -16,11 +16,11 @@ class EventPayloadConverter(
     }
 
     override fun convertToEntityAttribute(payloadJson: String): Payload {
-        val unquoteJson = StringEscapeUtils.unescapeJson(payloadJson).removeSurrounding("\"")
-        val res = objectMapper.readValue(unquoteJson, Payload::class.java)
-        println(res)
-        return res
-
+        val unquoteJson = if (payloadJson.startsWith("\""))
+            StringEscapeUtils.unescapeJson(payloadJson).removeSurrounding("\"")
+        else
+            payloadJson
+        return objectMapper.readValue(unquoteJson, Payload::class.java)
     }
 }
 
