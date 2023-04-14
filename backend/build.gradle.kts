@@ -45,8 +45,12 @@ dependencies {
 	runtimeOnly("com.h2database:h2")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
+
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.security:spring-security-test")
+    testImplementation("io.kotest:kotest-assertions-core:5.5.5")
+    testImplementation("io.mockk:mockk:1.13.4")
+
 
     //querydsl
     implementation("com.querydsl:querydsl-jpa:${queryDslVersion}")

@@ -1,5 +1,6 @@
 package com.example.executiongate
 
+import com.example.executiongate.controller.CreateCommentRequest
 import com.example.executiongate.controller.CreateDatasourceConnectionRequest
 import com.example.executiongate.controller.CreateDatasourceRequest
 import com.example.executiongate.controller.CreateExecutionRequest
@@ -10,8 +11,17 @@ import com.example.executiongate.controller.ExecutionRequestController
 import com.example.executiongate.controller.ListDatasourceResponse
 import com.example.executiongate.db.CustomDatasourceRepository
 import com.example.executiongate.db.DatasourceRepository
+import com.example.executiongate.service.dto.CommentEvent
 import com.example.executiongate.service.dto.DatasourceType
+import com.example.executiongate.service.dto.EventId
 import com.example.executiongate.service.dto.ReviewAction
+import com.example.executiongate.service.dto.ReviewEvent
+import io.kotest.inspectors.forAtLeastOne
+import io.kotest.matchers.equality.shouldBeEqualToIgnoringFields
+import io.mockk.AllAnyMatcher
+import io.mockk.Matcher
+import io.mockk.MockKMatcherScope
+import io.mockk.mockkStatic
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -22,6 +32,11 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.time.LocalDateTime
+import io.mockk.every
+import io.mockk.internalSubstitute
+import io.mockk.mockk
+import io.mockk.verify
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -82,10 +97,26 @@ class DatasourceConnectionTest(
             comment = "Comment", action = ReviewAction.APPROVE
         ))
 
+        executionRequestController.createComment(request.id, CreateCommentRequest(
+            comment = """Comment with a "quote"!"""
+        )
+        )
 
+        val requestDetails = executionRequestController.get(request.id)
 
+        requestDetails.events[0].shouldBeEqualToIgnoringFields(ReviewEvent(
+                id = EventId("id"),
+                createdAt = LocalDateTime.now(),
+                comment = "Comment",
+                action = ReviewAction.APPROVE,
+            ), ReviewEvent::createdAt, ReviewEvent::id)
 
-
+        requestDetails.events[1].shouldBeEqualToIgnoringFields(CommentEvent(
+                id = EventId("id"),
+                createdAt = LocalDateTime.now(),
+                comment = "Comment with a \"quote\"!",
+            ), ReviewEvent::createdAt, ReviewEvent::id)
 
     }
+
 }
