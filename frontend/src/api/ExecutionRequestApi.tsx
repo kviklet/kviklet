@@ -20,6 +20,7 @@ const ExecutionRequestPayload = z.object({
 });
 
 const Comment = z.object({
+  author: z.string().optional(),
   comment: z.string(),
   createdAt: DateTime,
   id: z.string(),
@@ -27,6 +28,7 @@ const Comment = z.object({
 
 const ExecutionRequestResponse = z.object({
   id: z.string(),
+  author: z.string().optional(),
   title: z.string().min(1),
   description: z.string(),
   statement: z.string().min(1),
@@ -34,6 +36,7 @@ const ExecutionRequestResponse = z.object({
   // connection: z.string().min(1), currently not contained in response
   executionStatus: z.string(),
   createdAt: DateTime,
+  connectionName: z.string().optional(),
 });
 
 const ExecutionRequestResponseWithComments = ExecutionRequestResponse.extend({
