@@ -122,7 +122,7 @@ function RequestReview() {
   const [request, setRequest] = useState<
     ExecutionRequestResponseWithComments | undefined
   >(undefined);
-  const [commentFormVisible, setCommentFormVisible] = useState<boolean>(false);
+  const [commentFormVisible, setCommentFormVisible] = useState<boolean>(true);
   const [commentFormValue, setCommentFormValue] = useState<string>("");
   const loadData = async () => {
     if (params.requestId === "test") {
@@ -267,20 +267,20 @@ function RequestReview() {
                   {" "}
                 </div>
               </div>
-              <div className="border-slate-500 rounded-md border relative mb-5">
-                <div className="comment-clip border-slate-500 bg-slate-500 w-2 h-4 absolute -left-2 top-2"></div>
-                <div className="comment-clip border-slate-500 bg-slate-100 w-2 h-4 absolute -left-2 top-2 ml-px"></div>
+              <div className="border-slate-300 rounded-md border relative mb-5">
+                <div className="comment-clip border-slate-300 bg-slate-300 w-2 h-4 absolute -left-2 top-2"></div>
+                <div className="comment-clip border-slate-300 bg-slate-100 w-2 h-4 absolute -left-2 top-2 ml-px"></div>
                 <div className="absolute -left-12 rounded-full p-2 bg-slate-500 text-gray-100  w-8 h-8 flex items-center justify-center text-l font-bold">
                   {firstTwoLetters("Jascha Beste")}
                 </div>
-                <div className="mb-2 border-b-slate-500 border bg-slate-100 rounded-t-md">
+                <div className="mb-2 border-b-slate-300 border bg-slate-100 rounded-t-md">
                   <div className="-mb-px z-10 overflow-auto">
                     <button
                       className={`mt-2 ml-2 ${
                         commentFormVisible
                           ? "border rounded-t-md border-b-white bg-white"
                           : ""
-                      }  border-gray-500 px-4 py-2 text-sm text-slate-600 leading-6`}
+                      }  border-slate-300 px-4 py-2 text-sm text-slate-600 leading-6`}
                       onClick={() => setCommentFormVisible(true)}
                     >
                       write
@@ -290,7 +290,7 @@ function RequestReview() {
                         commentFormVisible
                           ? ""
                           : "border rounded-t-md border-b-white bg-white"
-                      } border-gray-500  px-4 py-2 text-sm text-slate-600 leading-6`}
+                      } border-slate-300  px-4 py-2 text-sm text-slate-600 leading-6`}
                       onClick={() => setCommentFormVisible(false)}
                     >
                       preview
@@ -318,21 +318,23 @@ function RequestReview() {
                       {commentFormValue}
                     </ReactMarkdown>
                   )}
-                  <div className="flex justify-end mb-2">
-                    <Button
-                      className="mr-2"
-                      id="addComment"
-                      onClick={handleAddComment}
-                    >
-                      Add Comment
-                    </Button>
-                    <Button
-                      id="approve"
-                      type="submit"
-                      onClick={handleAddComment}
-                    >
-                      Approve
-                    </Button>
+                  <div className="px-1">
+                    <div className="flex justify-end mb-2">
+                      <Button
+                        className="mr-2"
+                        id="addComment"
+                        onClick={handleAddComment}
+                      >
+                        Add Comment
+                      </Button>
+                      <Button
+                        id="approve"
+                        type="submit"
+                        onClick={handleAddComment}
+                      >
+                        Approve
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
