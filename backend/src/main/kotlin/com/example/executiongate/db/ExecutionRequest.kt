@@ -100,7 +100,7 @@ class ExecutionRequestAdapter(
 ) {
 
     fun addEvent(id: ExecutionRequestId, payload: Payload): Pair<ExecutionRequestDetails, Event> {
-        val executionRequestEntity = getExecutionRequestDetails(id)
+        val executionRequestEntity = getExecutionRequestDetailsEntity(id)
         val eventEntity = EventEntity(
                 executionRequest = executionRequestEntity,
                 type = payload.type,
@@ -142,17 +142,14 @@ class ExecutionRequestAdapter(
         executionRequestRepository.findAll().map { it.toDto() }
 
     fun updateReviewStatus(id: ExecutionRequestId, reviewStatus: ReviewStatus) {
-        val executionRequestEntity = getExecutionRequestDetails(id)
+        val executionRequestEntity = getExecutionRequestDetailsEntity(id)
         executionRequestEntity.reviewStatus = reviewStatus
         executionRequestRepository.save(executionRequestEntity)
     }
 
-    fun getExecutionRequest(id: ExecutionRequestId): ExecutionRequestEntity =
-        executionRequestRepository.findByIdOrNull(id.toString())
-            ?: throw EntityNotFound("Execution Request Not Found", "Execution Request with id $id does not exist.")
-
-    fun getExecutionRequestDetails(id: ExecutionRequestId): ExecutionRequestEntity =
+    private fun getExecutionRequestDetailsEntity(id: ExecutionRequestId): ExecutionRequestEntity =
         executionRequestRepository.findByIdWithDetails(id)
             ?: throw EntityNotFound("Execution Request Not Found", "Execution Request with id $id does not exist.")
 
+    fun getExecutionRequestDetails(id: ExecutionRequestId): ExecutionRequestDetails = getExecutionRequestDetailsEntity(id).toDetailDto()
 }

@@ -44,10 +44,8 @@ class ExecutionRequestService(
 
     fun list(): List<ExecutionRequest> = executionRequestAdapter.listExecutionRequests()
 
-    fun get(id: ExecutionRequestId): ExecutionRequestDetails {
-        val executionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
-        return executionRequestDetails.toDetailDto()
-    }
+    fun get(id: ExecutionRequestId): ExecutionRequestDetails =
+        executionRequestAdapter.getExecutionRequestDetails(id)
 
     @Transactional
     fun createReview(id: ExecutionRequestId, request: CreateReviewRequest) = saveEvent(
