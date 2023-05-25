@@ -26,9 +26,11 @@ enum class ReviewAction {
 /**
  * A DTO for the {@link com.example.executiongate.db.EventEntity} entity
  */
-abstract class Event {
+abstract class Event(
+    val type: EventType,
+    open val createdAt: LocalDateTime = LocalDateTime.now(),
+) {
     abstract val id: EventId
-    abstract val createdAt: LocalDateTime
 
     companion object {
         fun create(id: EventId, createdAt: LocalDateTime, payload: Payload): Event = when (payload) {
@@ -41,13 +43,13 @@ abstract class Event {
 
 data class CommentEvent(
     override val id: EventId,
-    override val createdAt: LocalDateTime,
+    override val createdAt: LocalDateTime = LocalDateTime.now(),
     val comment: String,
-): Event()
+): Event(EventType.COMMENT, createdAt)
 
 data class ReviewEvent(
     override val id: EventId,
-    override val createdAt: LocalDateTime,
+    override val createdAt: LocalDateTime = LocalDateTime.now(),
     val comment: String,
     val action: ReviewAction,
-): Event()
+): Event(EventType.REVIEW, createdAt)

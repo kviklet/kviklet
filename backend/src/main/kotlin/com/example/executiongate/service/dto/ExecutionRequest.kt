@@ -8,16 +8,22 @@ value class ExecutionRequestId(private val id: String): Serializable {
     override fun toString() = id
 }
 
+enum class ReviewStatus {
+    AWAITING_APPROVAL,
+    APPROVED,
+}
+
 /**
  * A DTO for the {@link com.example.executiongate.db.ExecutionRequestEntity} entity
  */
 data class ExecutionRequest(
     val id: ExecutionRequestId,
+    val connection: DatasourceConnectionDto,
     val title: String,
     val description: String?,
     val statement: String,
     val readOnly: Boolean,
-    val reviewStatus: String,
+    val reviewStatus: ReviewStatus,
     val executionStatus: String,
     val createdAt: LocalDateTime = LocalDateTime.now()
 )
@@ -25,5 +31,18 @@ data class ExecutionRequest(
 
 data class ExecutionRequestDetails(
     val request: ExecutionRequest,
-    val events: List<Event>
-)
+    val events: Set<Event>
+) {
+    fun addEvent(event: Event): ExecutionRequestDetails {
+        val allEvents = events + event
+
+        val numReviews = events.count { it.type == EventType.REVIEW }
+        val reviewStatus = if (numReviews >= request.connection.reviewConfig.numTotalRequired) {
+            ReviewStatus.APPROVED
+        } else {
+            ReviewStatus.AWAITING_APPROVAL
+        }
+
+        return copy(events = allEvents, request = request.copy(reviewStatus = reviewStatus))
+    }
+}

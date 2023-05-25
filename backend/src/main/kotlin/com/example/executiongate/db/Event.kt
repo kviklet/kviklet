@@ -22,18 +22,20 @@ import javax.persistence.ManyToOne
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "foobar", visible = false)
-sealed class Payload()
+sealed class Payload(
+    val type: EventType,
+)
 
 @JsonTypeName("COMMENT")
 data class CommentPayload(
     val comment: String,
-): Payload()
+): Payload(EventType.COMMENT)
 
 @JsonTypeName("REVIEW")
 data class ReviewPayload(
     val comment: String,
     val action: ReviewAction,
-): Payload()
+): Payload(EventType.REVIEW)
 
 
 @Entity(name = "event")

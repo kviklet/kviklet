@@ -55,6 +55,11 @@ data class CreateDatasourceConnectionRequest(
     @field:Size(min = 1, max = 255, message = "Maximum length 255")
     val password: String,
 
+    val reviewConfig: ReviewConfigRequest
+)
+
+data class ReviewConfigRequest(
+    val numTotalRequired: Int = 0,
 )
 
 data class DatasourceConnectionResponse(
@@ -127,10 +132,8 @@ class DatasourceController(
         @Valid @RequestBody datasourceConnection: CreateDatasourceConnectionRequest
     ): DatasourceConnectionResponse {
         val datasource = datasourceService.createDatasourceConnection(
-            displayName = datasourceConnection.displayName,
             datasourceId = datasourceId,
-            username = datasourceConnection.username,
-            password = datasourceConnection.password,
+            request = datasourceConnection,
         )
         return DatasourceConnectionResponse.fromDto(datasource)
     }

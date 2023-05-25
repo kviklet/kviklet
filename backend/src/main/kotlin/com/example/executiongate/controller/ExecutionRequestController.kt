@@ -8,6 +8,7 @@ import com.example.executiongate.service.dto.ExecutionRequest
 import com.example.executiongate.service.dto.ExecutionRequestDetails
 import com.example.executiongate.service.dto.ExecutionRequestId
 import com.example.executiongate.service.dto.ReviewAction
+import com.example.executiongate.service.dto.ReviewStatus
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.validation.annotation.Validated
@@ -48,7 +49,7 @@ data class ExecutionRequestResponse(
     val description: String?,
     val statement: String,
     val readOnly: Boolean,
-    val reviewStatus: String,
+    val reviewStatus: ReviewStatus,
     val executionStatus: String,
     val createdAt: LocalDateTime = LocalDateTime.now()
 ) {
@@ -78,7 +79,7 @@ data class ExecutionRequestDetailResponse(
     val description: String?,
     val statement: String,
     val readOnly: Boolean,
-    val reviewStatus: String,
+    val reviewStatus: ReviewStatus,
     val executionStatus: String,
     val events: List<Event>,
     val createdAt: LocalDateTime = LocalDateTime.now()

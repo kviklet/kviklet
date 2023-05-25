@@ -4,88 +4,84 @@ import com.example.executiongate.controller.CreateCommentRequest
 import com.example.executiongate.controller.CreateExecutionRequest
 import com.example.executiongate.controller.CreateReviewRequest
 import com.example.executiongate.db.CommentPayload
+import com.example.executiongate.db.DatasourceConnectionAdapter
 import com.example.executiongate.db.DatasourceConnectionRepository
-import com.example.executiongate.db.EventEntity
 import com.example.executiongate.db.EventRepository
+import com.example.executiongate.db.ExecutionRequestAdapter
 import com.example.executiongate.db.ExecutionRequestEntity
-import com.example.executiongate.db.ExecutionRequestRepository
 import com.example.executiongate.db.Payload
+import com.example.executiongate.db.ReviewConfig
 import com.example.executiongate.db.ReviewPayload
 import com.example.executiongate.service.dto.Event
-import com.example.executiongate.service.dto.EventType
 import com.example.executiongate.service.dto.ExecutionRequest
 import com.example.executiongate.service.dto.ExecutionRequestDetails
 import com.example.executiongate.service.dto.ExecutionRequestId
+import com.example.executiongate.service.dto.ReviewStatus
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import javax.transaction.Transactional
 
 @Service
 class ExecutionRequestService(
-    val executionRequestRepository: ExecutionRequestRepository,
-    val eventRepository: EventRepository,
-    val datasourceConnectionRepository: DatasourceConnectionRepository,
-    val datasourceService: DatasourceService,
+    val executionRequestAdapter: ExecutionRequestAdapter,
+    val datasourceConnectionAdapter: DatasourceConnectionAdapter,
 ) {
 
     @Transactional
     fun create(request: CreateExecutionRequest): ExecutionRequest {
-        val connectionEntity = datasourceService.getDatasourceConnection(request.datasourceConnectionId)
+        val datasourceConnection = datasourceConnectionAdapter.getDatasourceConnection(request.datasourceConnectionId)
 
-        val entity = executionRequestRepository.save(
-            ExecutionRequestEntity(
-                connection = connectionEntity,
-                title = request.title,
-                description = request.description,
-                statement = request.statement,
-                readOnly = request.readOnly,
-                reviewStatus = "PENDING",
-                executionStatus = "PENDING",
-                events = emptySet(),
-            ),
+        return executionRequestAdapter.createExecutionRequest(
+            connectionId = request.datasourceConnectionId,
+            title = request.title,
+            description = request.description,
+            statement = request.statement,
+            readOnly = request.readOnly,
+            reviewStatus = resolveReviewStatus(emptySet(), datasourceConnection.reviewConfig),
+            executionStatus = "PENDING",
         )
-        return entity.toDto()
     }
 
-    fun list(): List<ExecutionRequest> = executionRequestRepository.findAll().map { it.toDto() }
+    fun list(): List<ExecutionRequest> = executionRequestAdapter.listExecutionRequests()
 
     fun get(id: ExecutionRequestId): ExecutionRequestDetails {
-        val executionRequestDetails = getExecutionRequestDetails(id)
-            return executionRequestDetails.toDetailDto()
+        val executionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
+        return executionRequestDetails.toDetailDto()
     }
 
+    @Transactional
     fun createReview(id: ExecutionRequestId, request: CreateReviewRequest) = saveEvent(
         id,
-        ReviewPayload(comment = request.comment, action = request.action)
+        ReviewPayload(comment = request.comment, action = request.action),
     )
 
+    @Transactional
     fun createComment(id: ExecutionRequestId, request: CreateCommentRequest) = saveEvent(
         id,
-        CommentPayload(comment = request.comment)
+        CommentPayload(comment = request.comment),
     )
 
     private fun saveEvent(
         id: ExecutionRequestId,
-        payload: Payload
+        payload: Payload,
     ): Event {
-        val executionRequestEntity = getExecutionRequest(id)
+        val (executionRequest, event) = executionRequestAdapter.addEvent(id, payload)
 
-        return eventRepository.save(
-            EventEntity(
-                executionRequest = executionRequestEntity,
-                type = EventType.REVIEW,
-                payload = payload,
-            ),
-        ).toDto()
+        val reviewStatus: ReviewStatus = resolveReviewStatus(
+            executionRequest.events,
+            executionRequest.request.connection.reviewConfig,
+        )
+
+        executionRequestAdapter.updateReviewStatus(id, reviewStatus)
+
+        return event
     }
 
-    private fun getExecutionRequest(id: ExecutionRequestId): ExecutionRequestEntity =
-        executionRequestRepository.findByIdOrNull(id.toString())
-            ?: throw EntityNotFound("Execution Request Not Found", "Execution Request with id $id does not exist.")
-
-    private fun getExecutionRequestDetails(id: ExecutionRequestId): ExecutionRequestEntity =
-        executionRequestRepository.findByIdWithDetails(id)
-            ?: throw EntityNotFound("Execution Request Not Found", "Execution Request with id $id does not exist.")
-
-
+    fun resolveReviewStatus(
+        events: Set<Event>,
+        reviewConfig: ReviewConfig,
+    ): ReviewStatus {
+        println("events: $events")
+        return ReviewStatus.APPROVED
+    }
 }

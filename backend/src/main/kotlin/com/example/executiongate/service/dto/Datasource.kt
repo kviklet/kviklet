@@ -1,5 +1,6 @@
 package com.example.executiongate.service.dto
 
+import com.example.executiongate.db.ReviewConfig
 import java.io.Serializable
 
 enum class DatasourceType(val schema: String) {
@@ -40,6 +41,7 @@ data class DatasourceConnectionDto(
     val authenticationType: AuthenticationType,
     val username: String,
     val password: String,
+    val reviewConfig: ReviewConfig
 )
 
 

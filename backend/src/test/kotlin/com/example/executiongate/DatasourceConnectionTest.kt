@@ -9,6 +9,7 @@ import com.example.executiongate.controller.DatasourceController
 import com.example.executiongate.controller.DatasourceResponse
 import com.example.executiongate.controller.ExecutionRequestController
 import com.example.executiongate.controller.ListDatasourceResponse
+import com.example.executiongate.controller.ReviewConfigRequest
 import com.example.executiongate.db.CustomDatasourceRepository
 import com.example.executiongate.db.DatasourceRepository
 import com.example.executiongate.service.dto.CommentEvent
@@ -82,6 +83,9 @@ class DatasourceConnectionTest(
                 displayName = "My Connection",
                 username = "root",
                 password = "root",
+                reviewConfig = ReviewConfigRequest(
+                    numTotalRequired = 1,
+                )
             )
         )
 
@@ -118,5 +122,4 @@ class DatasourceConnectionTest(
             ), ReviewEvent::createdAt, ReviewEvent::id)
 
     }
-
 }

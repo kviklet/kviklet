@@ -68,6 +68,11 @@ databaseChangeLog:
                     nullable: true
                   name: password
                   type: VARCHAR(255)
+              - column:
+                  name: review_config
+                  type: JSON
+                  constraints:
+                    nullable: false
         - createTable:
             tableName: execution_request
             columns:

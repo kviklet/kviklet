@@ -1,9 +1,11 @@
 package com.example.executiongate.service
 
+import com.example.executiongate.controller.CreateDatasourceConnectionRequest
 import com.example.executiongate.db.DatasourceConnectionEntity
 import com.example.executiongate.db.DatasourceConnectionRepository
 import com.example.executiongate.db.DatasourceEntity
 import com.example.executiongate.db.DatasourceRepository
+import com.example.executiongate.db.ReviewConfig
 import com.example.executiongate.service.dto.AuthenticationType
 import com.example.executiongate.service.dto.DatasourceConnectionDto
 import com.example.executiongate.service.dto.DatasourceConnectionId
@@ -49,19 +51,20 @@ class DatasourceService(
     @Transactional
     fun createDatasourceConnection(
         datasourceId: DatasourceId,
-        displayName: String,
-        username: String,
-        password: String
+        request: CreateDatasourceConnectionRequest
     ): DatasourceConnectionDto {
         val datasource = getDatasource(datasourceId)
 
         return datasourceConnectionRepository.save(
             DatasourceConnectionEntity(
-                displayName = displayName,
                 datasource = datasource,
+                displayName = request.displayName,
                 authenticationType = AuthenticationType.USER_PASSWORD,
-                username = username,
-                password = password
+                username = request.username,
+                password = request.password,
+                reviewConfig = ReviewConfig(
+                    numTotalRequired = request.reviewConfig.numTotalRequired,
+                )
             )
         ).toDto().also {
             logger.info("Created $it")

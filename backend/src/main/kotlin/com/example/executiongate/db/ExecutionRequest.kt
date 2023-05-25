@@ -1,14 +1,21 @@
 package com.example.executiongate.db
 
 import com.example.executiongate.db.util.BaseEntity
+import com.example.executiongate.service.EntityNotFound
+import com.example.executiongate.service.dto.DatasourceConnectionId
+import com.example.executiongate.service.dto.Event
 import com.example.executiongate.service.dto.ExecutionRequest
 import com.example.executiongate.service.dto.ExecutionRequestDetails
 import com.example.executiongate.service.dto.ExecutionRequestId
+import com.example.executiongate.service.dto.ReviewStatus
 import com.querydsl.jpa.impl.JPAQuery
 import org.apache.commons.lang3.builder.ToStringBuilder
 import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.repository.findByIdOrNull
+import org.springframework.stereotype.Service
 import java.time.LocalDateTime
+import javax.persistence.CascadeType
 import javax.persistence.Entity
 import javax.persistence.EntityManager
 import javax.persistence.FetchType
@@ -27,13 +34,14 @@ class ExecutionRequestEntity(
     private val statement: String,
     private val readOnly: Boolean,
 
-    private val reviewStatus: String,
-    private val executionStatus: String,
+    var reviewStatus: ReviewStatus,
+    var executionStatus: String,
 
     private val createdAt: LocalDateTime = LocalDateTime.now(),
 
-    @OneToMany(mappedBy = "executionRequest")
-    private val events: Set<EventEntity>
+    @OneToMany(cascade = [CascadeType.ALL])
+    @JoinColumn(name = "execution_request_id")
+    val events: MutableSet<EventEntity>
 ): BaseEntity() {
 
     override fun toString(): String {
@@ -44,6 +52,7 @@ class ExecutionRequestEntity(
 
     fun toDto(): ExecutionRequest = ExecutionRequest(
         id = ExecutionRequestId(id),
+        connection = connection.toDto(),
         title = title,
         description = description,
         statement = statement,
@@ -55,7 +64,7 @@ class ExecutionRequestEntity(
 
     fun toDetailDto() = ExecutionRequestDetails(
         request = toDto(),
-        events = events.map { it.toDto() }
+        events = events.map { it.toDto() }.toSet()
     )
 
 }
@@ -81,4 +90,69 @@ class CustomExecutionRequestRepositoryImpl(
             .toSet()
             .firstOrNull()
     }
+}
+
+@Service
+class ExecutionRequestAdapter(
+    val executionRequestRepository: ExecutionRequestRepository,
+    val connectionRepository: DatasourceConnectionRepository
+
+) {
+
+    fun addEvent(id: ExecutionRequestId, payload: Payload): Pair<ExecutionRequestDetails, Event> {
+        val executionRequestEntity = getExecutionRequestDetails(id)
+        val eventEntity = EventEntity(
+                executionRequest = executionRequestEntity,
+                type = payload.type,
+                payload = payload,
+            )
+
+        executionRequestEntity.events.add(eventEntity)
+        executionRequestRepository.saveAndFlush(executionRequestEntity)
+
+        return Pair(executionRequestEntity.toDetailDto(), eventEntity.toDto())
+    }
+
+    fun createExecutionRequest(
+        connectionId: DatasourceConnectionId,
+        title: String,
+        description: String?,
+        statement: String,
+        readOnly: Boolean,
+        reviewStatus: ReviewStatus,
+        executionStatus: String
+    ): ExecutionRequest {
+        val connection = connectionRepository.findByIdOrNull(connectionId.toString()) ?: throw EntityNotFound("Connection Not Found", "Connection with id $connectionId does not exist.")
+
+        return executionRequestRepository.save(
+            ExecutionRequestEntity(
+                connection = connection,
+                title = title,
+                description = description,
+                statement = statement,
+                readOnly = readOnly,
+                reviewStatus = reviewStatus,
+                executionStatus = executionStatus,
+                events = mutableSetOf(),
+            )
+        ).toDto()
+    }
+
+    fun listExecutionRequests(): List<ExecutionRequest> =
+        executionRequestRepository.findAll().map { it.toDto() }
+
+    fun updateReviewStatus(id: ExecutionRequestId, reviewStatus: ReviewStatus) {
+        val executionRequestEntity = getExecutionRequestDetails(id)
+        executionRequestEntity.reviewStatus = reviewStatus
+        executionRequestRepository.save(executionRequestEntity)
+    }
+
+    fun getExecutionRequest(id: ExecutionRequestId): ExecutionRequestEntity =
+        executionRequestRepository.findByIdOrNull(id.toString())
+            ?: throw EntityNotFound("Execution Request Not Found", "Execution Request with id $id does not exist.")
+
+    fun getExecutionRequestDetails(id: ExecutionRequestId): ExecutionRequestEntity =
+        executionRequestRepository.findByIdWithDetails(id)
+            ?: throw EntityNotFound("Execution Request Not Found", "Execution Request with id $id does not exist.")
+
 }
