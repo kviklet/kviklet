@@ -1,26 +1,19 @@
 import { RouterProvider, createBrowserRouter } from "react-router-dom";
 import Settings from "./routes/Settings";
 import DefaultLayout from "./layout/DefaultLayout";
-import Requests from "./routes/Requests";
+import { AddRequestForm } from "./routes/AddRequestForm";
+import { Requests } from "./routes/Requests";
+import RequestReview from "./routes/RequestReview";
 
-class Database {
-  id: string;
-  name: string;
-  uri: string;
-  username: string;
-
-  constructor(id: string, name: string, uri: string, username: string) {
-    this.id = id;
-    this.name = name;
-    this.uri = uri;
-    this.username = username;
-  }
-}
 const router = createBrowserRouter([
   {
     path: "/",
     element: <DefaultLayout />,
     children: [
+      {
+        element: <Requests />,
+        path: "/",
+      },
       {
         path: "/settings",
         element: <Settings />,
@@ -28,6 +21,14 @@ const router = createBrowserRouter([
       {
         path: "/requests",
         element: <Requests />,
+      },
+      {
+        path: "/requests/new",
+        element: <AddRequestForm />,
+      },
+      {
+        path: "/requests/:requestId",
+        element: <RequestReview />,
       },
     ],
   },
