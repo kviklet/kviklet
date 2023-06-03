@@ -71,7 +71,10 @@ const addRequest = async (payload: ExecutionRequest): Promise<boolean> => {
 };
 
 const getRequests = async (): Promise<ExecutionRequestsResponse> => {
-  const response = await fetch(requestUrl);
+  const response = await fetch(requestUrl, {
+    method: "GET",
+    credentials: "include",
+  });
   const json = await response.json();
   console.log(json);
   const requests = ExecutionRequestsResponse.parse(json);

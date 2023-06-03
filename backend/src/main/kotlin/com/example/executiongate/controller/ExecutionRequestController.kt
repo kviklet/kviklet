@@ -102,7 +102,6 @@ data class ExecutionRequestDetailResponse(
 
 @RestController()
 @Validated
-@CrossOrigin(origins = ["http://localhost:3000"])
 @RequestMapping("/execution-requests")
 @Tag(
     name = "Execution Requests",

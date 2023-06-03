@@ -8,6 +8,7 @@ function Button(props: {
   return (
     <button
       id={props.id}
+      onClick={props.onClick}
       className={`${props.className} px-4 py-2  text-md ${
         (props.type == "submit" &&
           "bg-green-700 font-semibold text-white hover:bg-green-900") ||
