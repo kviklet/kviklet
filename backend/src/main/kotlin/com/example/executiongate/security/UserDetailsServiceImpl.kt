@@ -1,6 +1,8 @@
 package com.example.executiongate.security
 
-import com.example.executiongate.db.UserRepository
+import com.example.executiongate.db.UserAdapter
+import org.springframework.security.core.GrantedAuthority
+import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.userdetails.User
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UserDetailsService
@@ -9,17 +11,22 @@ import org.springframework.stereotype.Service
 
 @Service
 class UserDetailsServiceImpl(
-        private val userRepository: UserRepository
+        private val userAdapter: UserAdapter
 ) : UserDetailsService {
 
-    override fun loadUserByUsername(username: String): UserDetails {
-        val user = userRepository.findByUsername(username)
-                ?: throw UsernameNotFoundException("User not found.")
+    override fun loadUserByUsername(email: String): UserDetails {
+        val user = userAdapter.findByEmail(email)
+                ?: throw UsernameNotFoundException("User '$email' not found.")
 
-        return User
-                .withUsername(user.username)
-                .password(user.password)
-                .roles("USERS")
-                .build()
+        val authorities = listOf(SimpleGrantedAuthority("USERS"))
+
+        return UserDetailsWithId(user.id, user.email, user.password, authorities)
     }
 }
+
+class UserDetailsWithId(
+    val id: String,
+    email: String,
+    password: String?,
+    authorities: Collection<out GrantedAuthority>
+) : User(email, password, authorities)

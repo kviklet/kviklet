@@ -28,7 +28,7 @@ class ExecutionRequestService(
 ) {
 
     @Transactional
-    fun create(request: CreateExecutionRequest): ExecutionRequest {
+    fun create(request: CreateExecutionRequest, userId: String): ExecutionRequest {
         val datasourceConnection = datasourceConnectionAdapter.getDatasourceConnection(request.datasourceConnectionId)
 
         return executionRequestAdapter.createExecutionRequest(
@@ -39,6 +39,7 @@ class ExecutionRequestService(
             readOnly = request.readOnly,
             reviewStatus = resolveReviewStatus(emptySet(), datasourceConnection.reviewConfig),
             executionStatus = "PENDING",
+            authorId = userId,
         )
     }
 

@@ -26,13 +26,17 @@ import javax.persistence.OneToMany
 @Entity(name = "execution_request")
 class ExecutionRequestEntity(
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "datasource_id")
+    @JoinColumn(name = "datasource_id", nullable = false)
     val connection: DatasourceConnectionEntity,
 
     private val title: String,
     private val description: String?,
     private val statement: String,
     private val readOnly: Boolean,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "author_id", nullable = false)
+    private val author: UserEntity,
 
     var reviewStatus: ReviewStatus,
     var executionStatus: String,
@@ -60,6 +64,7 @@ class ExecutionRequestEntity(
         reviewStatus = reviewStatus,
         executionStatus = executionStatus,
         createdAt = createdAt,
+        author = author.toDto(),
     )
 
     fun toDetailDto() = ExecutionRequestDetails(
@@ -95,7 +100,8 @@ class CustomExecutionRequestRepositoryImpl(
 @Service
 class ExecutionRequestAdapter(
     val executionRequestRepository: ExecutionRequestRepository,
-    val connectionRepository: DatasourceConnectionRepository
+    val connectionRepository: DatasourceConnectionRepository,
+    val userRepository: UserRepository,
 
 ) {
 
@@ -120,9 +126,11 @@ class ExecutionRequestAdapter(
         statement: String,
         readOnly: Boolean,
         reviewStatus: ReviewStatus,
-        executionStatus: String
+        executionStatus: String,
+        authorId: String,
     ): ExecutionRequest {
         val connection = connectionRepository.findByIdOrNull(connectionId.toString()) ?: throw EntityNotFound("Connection Not Found", "Connection with id $connectionId does not exist.")
+        val authorEntity = userRepository.findByIdOrNull(authorId) ?: throw EntityNotFound("User Not Found", "User with id ${authorId} does not exist.")
 
         return executionRequestRepository.save(
             ExecutionRequestEntity(
@@ -134,6 +142,7 @@ class ExecutionRequestAdapter(
                 reviewStatus = reviewStatus,
                 executionStatus = executionStatus,
                 events = mutableSetOf(),
+                author = authorEntity,
             )
         ).toDto()
     }

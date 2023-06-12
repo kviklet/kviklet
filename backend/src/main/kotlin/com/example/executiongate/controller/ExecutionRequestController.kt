@@ -1,5 +1,6 @@
 package com.example.executiongate.controller
 
+import com.example.executiongate.security.UserDetailsWithId
 import com.example.executiongate.service.ExecutionRequestService
 import com.example.executiongate.service.QueryResult
 import com.example.executiongate.service.dto.DatasourceConnectionId
@@ -11,6 +12,7 @@ import com.example.executiongate.service.dto.ReviewAction
 import com.example.executiongate.service.dto.ReviewStatus
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.CrossOrigin
 import org.springframework.web.bind.annotation.GetMapping
@@ -46,6 +48,7 @@ data class CreateCommentRequest(
 data class ExecutionRequestResponse(
     val id: ExecutionRequestId,
     val title: String,
+    val author: UserResponse,
     val description: String?,
     val statement: String,
     val readOnly: Boolean,
@@ -56,8 +59,10 @@ data class ExecutionRequestResponse(
 
     companion object {
         fun fromDto(dto: ExecutionRequest): ExecutionRequestResponse {
+            val userResponse = UserResponse(dto.author)
             return ExecutionRequestResponse(
                 id = dto.id,
+                author = userResponse,
                 title = dto.title,
                 description = dto.description,
                 statement = dto.statement,
@@ -75,6 +80,7 @@ data class ExecutionRequestResponse(
  */
 data class ExecutionRequestDetailResponse(
     val id: ExecutionRequestId,
+    val author: UserResponse,
     val title: String,
     val description: String?,
     val statement: String,
@@ -88,6 +94,7 @@ data class ExecutionRequestDetailResponse(
     companion object {
         fun fromDto(dto: ExecutionRequestDetails) = ExecutionRequestDetailResponse(
             id = dto.request.id,
+            author = UserResponse(dto.request.author),
             title = dto.request.title,
             description = dto.request.description,
             statement = dto.request.statement,
@@ -113,9 +120,10 @@ class ExecutionRequestController(
 
     @PostMapping("/")
     fun create(
-        @Valid @RequestBody request: CreateExecutionRequest
+        @Valid @RequestBody request: CreateExecutionRequest,
+        @AuthenticationPrincipal userDetails: UserDetailsWithId
     ): ExecutionRequestResponse {
-        val executionRequest = executionRequestService.create(request)
+        val executionRequest = executionRequestService.create(request, userDetails.id )
         return ExecutionRequestResponse.fromDto(executionRequest)
     }
 

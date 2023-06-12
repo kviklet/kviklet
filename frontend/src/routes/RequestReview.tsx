@@ -39,7 +39,11 @@ const componentMap = {
 const testRequest = {
   id: "test",
   title: "JIRA-123: Test Request",
-  author: "Jascha Beste",
+  author: {
+    id: "test3",
+    fullName: "Jascha Beste",
+    email: "jascha@opsgate.io",
+  },
   description:
     "I want to debug something which is why I join it with something else and order it by something else.",
   statement: `Select * from somewhere
@@ -157,7 +161,7 @@ function RequestReview() {
       <div className="max-w-3xl m-auto">
         <h1 className="text-3xl my-2 w-full flex">
           <div className="mr-auto">{request?.title}</div>
-          <div className="bg-yellow-400 font-bold rounded-full text-lg ml-auto text-white py-1 px-1.5">
+          <div className="bg-lime-400 font-bold rounded-full text-lg ml-auto text-white py-1 px-1.5">
             {request?.executionStatus}
           </div>
         </h1>
@@ -188,15 +192,15 @@ function RequestBox({
 }) {
   return (
     <div>
-      <div className="relative border-orange-500 rounded-md border">
-        <div className="comment-clip border-orange-500 bg-orange-500 w-2 h-4 absolute -left-2 top-2"></div>
-        <div className="comment-clip border-orange-500 bg-orange-200 w-2 h-4 absolute -left-2 top-2 ml-px"></div>
-        <div className="absolute -left-12 rounded-full p-2 bg-orange-500 text-gray-100  w-8 h-8 flex items-center justify-center text-l font-bold">
-          {firstTwoLetters(request?.author ?? "")}
+      <div className="relative border-cyan-500 rounded-md border">
+        <div className="comment-clip border-cyan-500 bg-cyan-500 w-2 h-4 absolute -left-2 top-2"></div>
+        <div className="comment-clip border-cyan-500 bg-cyan-200 w-2 h-4 absolute -left-2 top-2 ml-px"></div>
+        <div className="absolute -left-12 rounded-full p-2 bg-cyan-500 text-gray-100  w-8 h-8 flex items-center justify-center text-l font-bold">
+          {firstTwoLetters(request?.author.fullName ?? "")}
         </div>
-        <p className="text-slate-800 px-2 py-2 text-sm flex justify-between bg-orange-200 border-b border-orange-500 rounded-t-md">
+        <p className="text-slate-800 px-2 py-2 text-sm flex justify-between bg-cyan-200 border-b border-cyan-500 rounded-t-md">
           <div>
-            {request?.author} wants to execute on:{" "}
+            {request?.author.fullName} wants to execute on:{" "}
             <span className="italic">{request?.connectionName}</span>
           </div>
           <div>
@@ -214,7 +218,14 @@ function RequestBox({
         <div className="bg-slate-500 w-0.5 absolute block whitespace-pre left-0 top-0 bottom-0">
           {" "}
         </div>
-        <Button className="mt-3" id="runQuery" type="submit" onClick={runQuery}>
+        <Button
+          className="mt-3"
+          id="runQuery"
+          type={
+            (request?.executionStatus == "SUCCESS" && "disabled") || "submit"
+          }
+          onClick={runQuery}
+        >
           <div className="play-triangle inline-block bg-white w-2 h-3 mr-2"></div>
           Run Query
         </Button>
@@ -239,13 +250,13 @@ function Comment({
         </svg>
         <div className="text-slate-500 text-sm">{event?.author} commented:</div>
       </div>
-      <div className="relative border-orange-500 rounded-md border">
-        <div className="comment-clip border-orange-500 bg-orange-500 w-2 h-4 absolute -left-2 top-2"></div>
-        <div className="comment-clip border-orange-500 bg-orange-200 w-2 h-4 absolute -left-2 top-2 ml-px"></div>
-        <div className="absolute -left-12 rounded-full p-2 bg-orange-500 text-gray-100  w-8 h-8 flex items-center justify-center text-l font-bold">
+      <div className="relative border-cyan-500 rounded-md border">
+        <div className="comment-clip border-cyan-500 bg-cyan-500 w-2 h-4 absolute -left-2 top-2"></div>
+        <div className="comment-clip border-cyan-500 bg-cyan-200 w-2 h-4 absolute -left-2 top-2 ml-px"></div>
+        <div className="absolute -left-12 rounded-full p-2 bg-cyan-500 text-gray-100  w-8 h-8 flex items-center justify-center text-l font-bold">
           {firstTwoLetters(event?.author ?? "")}
         </div>
-        <p className="text-slate-800 px-2 py-2 text-sm flex justify-between bg-orange-200 border-b border-orange-500 rounded-t-md">
+        <p className="text-slate-800 px-2 py-2 text-sm flex justify-between bg-cyan-200 border-b border-cyan-500 rounded-t-md">
           <div>
             Created at: {new Date(event?.createdAt ?? "").toLocaleString()}
           </div>

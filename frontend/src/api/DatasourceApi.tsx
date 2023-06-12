@@ -13,7 +13,7 @@ const Connection = z.object({
 const Database = z.object({
   id: z.coerce.string(),
   displayName: z.coerce.string(),
-  datasourceType: z.enum(["POSTGRESQL"]),
+  datasourceType: z.enum(["POSTGRESQL", "MYSQL"]).or(z.string()),
   hostname: z.coerce.string(),
   port: z.coerce.number(),
   datasourceConnections: z.array(Connection),
@@ -33,7 +33,10 @@ const ConnectionPayload = Connection.omit({
 });
 
 const fetchDatabases = async (): Promise<Database[]> => {
-  const response = await fetch(datasourceUrl);
+  const response = await fetch(datasourceUrl, {
+    method: "GET",
+    credentials: "include",
+  });
   const json = await response.json();
   console.log(json);
   const parsedResponse = ApiResponse.parse(json);
@@ -52,6 +55,7 @@ const addDatabase = async (
     headers: {
       "Content-Type": "application/json",
     },
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return true;
@@ -66,6 +70,7 @@ const addConnection = async (
     headers: {
       "Content-Type": "application/json",
     },
+    credentials: "include",
     body: JSON.stringify(payload),
   });
   return true;

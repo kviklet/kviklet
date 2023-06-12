@@ -1,5 +1,6 @@
 package com.example.executiongate.service.dto
 
+import com.example.executiongate.db.User
 import java.io.Serializable
 import java.time.LocalDateTime
 
@@ -25,7 +26,8 @@ data class ExecutionRequest(
     val readOnly: Boolean,
     val reviewStatus: ReviewStatus,
     val executionStatus: String,
-    val createdAt: LocalDateTime = LocalDateTime.now()
+    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val author: User
 )
 
 

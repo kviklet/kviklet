@@ -8,17 +8,13 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: bigint
-                  autoIncrement: true
+                  type: CHAR(22)
                   constraints:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: username
-                  type: varchar(50)
-                  constraints:
-                    nullable: false
-                    unique: true
+                  name: full_name
+                  type: varchar(255)
               - column:
                   name: password
                   type: varchar(60)

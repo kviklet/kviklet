@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ExecutionRequest } from "../routes/AddRequestForm";
 import { type } from "os";
+import { userResponseSchema } from "./UserApi";
 
 const requestUrl = "http://localhost:8080/execution-requests/";
 
@@ -28,7 +29,7 @@ const Comment = z.object({
 
 const ExecutionRequestResponse = z.object({
   id: z.string(),
-  author: z.string().optional(),
+  author: userResponseSchema,
   title: z.string().min(1),
   description: z.string(),
   statement: z.string().min(1),
@@ -65,6 +66,7 @@ const addRequest = async (payload: ExecutionRequest): Promise<boolean> => {
     headers: {
       "Content-Type": "application/json",
     },
+    credentials: "include",
     body: JSON.stringify(mappedPayload),
   });
   return true;
@@ -84,7 +86,10 @@ const getRequests = async (): Promise<ExecutionRequestsResponse> => {
 const getSingleRequest = async (
   id: string
 ): Promise<ExecutionRequestResponseWithComments | undefined> => {
-  const response = await fetch(requestUrl + id);
+  const response = await fetch(requestUrl + id, {
+    method: "GET",
+    credentials: "include",
+  });
   if (response.status == 404) {
     return undefined;
   }

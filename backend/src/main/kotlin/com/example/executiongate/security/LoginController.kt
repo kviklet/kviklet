@@ -5,11 +5,10 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.web.bind.annotation.CrossOrigin
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken
+import org.springframework.web.bind.annotation.*
 import javax.naming.AuthenticationException
 import javax.servlet.http.HttpServletRequest
 
@@ -20,7 +19,7 @@ class LoginController(private val customAuthenticationProvider: CustomAuthentica
     fun login(@RequestBody credentials: LoginCredentials, request: HttpServletRequest): ResponseEntity<Any> {
         try {
             // Create an unauthenticated token
-            val authenticationToken = UsernamePasswordAuthenticationToken(credentials.username, credentials.password)
+            val authenticationToken = UsernamePasswordAuthenticationToken(credentials.email, credentials.password)
 
             // Attempt to authenticate the user
             val authentication = customAuthenticationProvider.authenticate(authenticationToken)
@@ -40,5 +39,21 @@ class LoginController(private val customAuthenticationProvider: CustomAuthentica
     }
 }
 
-data class LoginCredentials(val username: String, val password: String)
+@RestController
+class Oauth2Controller {
+
+    @GetMapping("/oauth2info")
+    fun oauth2Info(): Map<String, Any>? {
+        val authentication = SecurityContextHolder.getContext().authentication
+        if (authentication == null) {
+            return mapOf("error" to "User is not authenticated")
+        } else if (authentication is OAuth2AuthenticationToken) {
+            return authentication.principal.attributes
+        }
+        return mapOf("error" to "Unexpected authentication type: ${authentication.javaClass}")
+
+    }
+}
+
+data class LoginCredentials(val email: String, val password: String)
 

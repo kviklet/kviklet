@@ -5,3 +5,9 @@ databaseChangeLog:
   - include:
       file: 002-add-users.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 003-add-google-users.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: 004-add-author-to-request.yaml
+      relativeToChangelogFile: true

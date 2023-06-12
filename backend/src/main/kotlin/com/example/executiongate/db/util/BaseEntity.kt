@@ -11,5 +11,5 @@ open class BaseEntity {
     @Id
     @GeneratedValue(generator = "uuid")
     @GenericGenerator(name = "uuid", strategy = "com.example.executiongate.db.util.IdGenerator")
-    val id: String = ""
+    open val id: String = ""
 }

@@ -1,5 +1,7 @@
 package com.example.executiongate.security
 
+import com.example.executiongate.db.User
+import com.example.executiongate.db.UserAdapter
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpStatus
@@ -10,15 +12,17 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
+import org.springframework.security.core.Authentication
 import org.springframework.security.core.AuthenticationException
-import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken
 import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
-import org.springframework.security.web.authentication.logout.LogoutSuccessHandler
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher
+import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
@@ -37,18 +41,21 @@ class PasswordEncoderConfig {
 
 @Configuration
 @EnableWebSecurity
-class SecurityConfig(private val customAuthenticationProvider: CustomAuthenticationProvider) {
+class SecurityConfig(private val customAuthenticationProvider: CustomAuthenticationProvider, private val oauth2LoginSuccessHandler: OAuth2LoginSuccessHandler) {
 
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http.cors().and()
             .authenticationProvider(customAuthenticationProvider)
+            .oauth2Login {
+                it.successHandler(oauth2LoginSuccessHandler)
+            }
             .exceptionHandling {
                 it.authenticationEntryPoint(CustomAuthenticationEntryPoint())
                     .accessDeniedHandler(CustomAccessDeniedHandler())
             }
             .authorizeRequests {
-                it.antMatchers("/login").permitAll()
+                it.antMatchers("/login**", "/oauth2**", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
                     .anyRequest().authenticated()
             }
             .sessionManagement {
@@ -62,7 +69,7 @@ class SecurityConfig(private val customAuthenticationProvider: CustomAuthenticat
                         response.status = HttpStatus.OK.value()
                     }
             }
-            .csrf { it.disable() }
+            .csrf { it.disable() }.headers().frameOptions().disable(); //necessary for H2 console
 
         return http.build()
     }
@@ -103,19 +110,26 @@ class CustomAuthenticationEntryPoint : AuthenticationEntryPoint {
 }
 
 @Service
-class CustomAuthenticationProvider(val userDetailsService: UserDetailsService, val passwordEncoder: PasswordEncoder) :
+class CustomAuthenticationProvider(val userAdapter: UserAdapter, val passwordEncoder: PasswordEncoder) :
     AuthenticationProvider {
     override fun authenticate(authentication: org.springframework.security.core.Authentication?): org.springframework.security.core.Authentication? {
-        val username = authentication?.name
-        val password = authentication?.credentials.toString()
+        val email = authentication?.name!!
+        val password = authentication.credentials.toString()
 
-        val userDetails = userDetailsService.loadUserByUsername(username)
+        val user = userAdapter.findByEmail(email)
 
-        if (passwordEncoder.matches(password, userDetails.password)) {
-            return UsernamePasswordAuthenticationToken(userDetails, password, userDetails.authorities)
+        if (user == null || user.googleId != null || !passwordEncoder.matches(password, user.password)) {
+            throw BadCredentialsException("Invalid username or password, or user is an OAuth user.")
         }
 
-        throw BadCredentialsException("Authentication failed")
+        // Create a CustomUserDetails object
+        val userDetails = UserDetailsWithId(user.id, email, user.password, emptyList())
+
+        return UsernamePasswordAuthenticationToken(
+            userDetails,
+            password,
+            ArrayList() // Use actual authorities if you have any
+        )
     }
 
     override fun supports(authentication: Class<*>): Boolean {
@@ -123,3 +137,42 @@ class CustomAuthenticationProvider(val userDetailsService: UserDetailsService, v
     }
 }
 
+@Component
+class OAuth2LoginSuccessHandler(
+    private val userAdapter: UserAdapter
+) : SimpleUrlAuthenticationSuccessHandler() {
+
+    override fun onAuthenticationSuccess(request: HttpServletRequest?, response: HttpServletResponse?, authentication: Authentication?) {
+        if (authentication is OAuth2AuthenticationToken) {
+            val oauth2User = authentication.principal
+            val googleId = oauth2User.getAttribute<String>("sub")!!
+            val email = oauth2User.getAttribute<String>("email")!!
+            val name = oauth2User.getAttribute<String>("name")
+
+            var user = userAdapter.findByGoogleId(googleId)
+
+            if (user == null) {
+                // If the user is signing in for the first time, create a new user
+                user = User(
+                    googleId = googleId,
+                    email = email,
+                    fullName = name,
+                    // Set default roles and other user properties here
+                )
+            } else {
+                // If the user has already signed in before, update the user's information
+                user = User(
+                    id = user.id,
+                    email = email,
+                    fullName = name,
+                    // Set default roles and other user properties here
+                )
+                // Update other user properties here
+            }
+
+            userAdapter.createOrUpdateUser(user)
+        }
+
+        getRedirectStrategy().sendRedirect(request, response, "http://localhost:3000/requests")
+    }
+}

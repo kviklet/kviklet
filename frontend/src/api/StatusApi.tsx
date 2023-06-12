@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const StatusResponse = z.object({
-  username: z.string(),
+  email: z.string(),
   status: z.string(),
 });
 
@@ -17,7 +17,7 @@ const checklogin = async (): Promise<string | false> => {
   }
   const json = await response.json();
   const parsedResponse = StatusResponse.parse(json);
-  return parsedResponse.username;
+  return parsedResponse.email;
 };
 
 export { checklogin };
