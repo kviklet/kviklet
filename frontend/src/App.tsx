@@ -5,6 +5,7 @@ import {
   Navigate,
   BrowserRouter as Router,
   Routes,
+  useLocation,
 } from "react-router-dom";
 import Settings from "./routes/Settings";
 import DefaultLayout from "./layout/DefaultLayout";
@@ -25,6 +26,7 @@ export const ProtectedRoute = ({
   const [userName, setUserName] = useState<string | false | undefined>(
     undefined
   );
+  const location = useLocation();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -32,7 +34,7 @@ export const ProtectedRoute = ({
       setUserName(userName);
     };
     fetchData();
-  }, []);
+  }, [location.pathname]);
 
   if (userName === undefined) {
     return <div>Loading...</div>;
@@ -42,39 +44,6 @@ export const ProtectedRoute = ({
   }
   return children;
 };
-
-const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <DefaultLayout />,
-    children: [
-      {
-        element: <Requests />,
-        path: "/",
-      },
-      {
-        path: "/settings",
-        element: <Settings />,
-      },
-      {
-        path: "/requests",
-        element: <Requests />,
-      },
-      {
-        path: "/requests/new",
-        element: <AddRequestForm />,
-      },
-      {
-        path: "/requests/:requestId",
-        element: <RequestReview />,
-      },
-      {
-        path: "/login",
-        element: <Login />,
-      },
-    ],
-  },
-]);
 
 function App() {
   return (
@@ -90,10 +59,38 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="settings" element={<Settings />} />
-            <Route path="requests" element={<Requests />} />
-            <Route path="requests/new" element={<AddRequestForm />} />
-            <Route path="requests/:requestId" element={<RequestReview />} />
+            <Route
+              path="settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="requests"
+              element={
+                <ProtectedRoute>
+                  <Requests />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="requests/new"
+              element={
+                <ProtectedRoute>
+                  <AddRequestForm />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="requests/:requestId"
+              element={
+                <ProtectedRoute>
+                  <RequestReview />
+                </ProtectedRoute>
+              }
+            />
             <Route path="login" element={<Login />} />
           </Route>
         </Routes>

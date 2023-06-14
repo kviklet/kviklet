@@ -51,6 +51,37 @@ class DataInitializer(
             events = mutableSetOf() // Replace with actual EventEntity instances if needed
         )
     }
+
+    fun generateDatasourceEntity(
+        displayName: String,
+        type: DatasourceType,
+        hostname: String,
+        port: Int,
+        numConnections: Int
+    ): DatasourceEntity {
+        val datasource = DatasourceEntity(
+            displayName = displayName,
+            type = type,
+            hostname = hostname,
+            port = port,
+            datasourceConnections = emptySet()
+        )
+        val savedDatasource = datasourceRepository.saveAndFlush(datasource)
+        val connections = mutableSetOf<DatasourceConnectionEntity>()
+        for (i in 1..numConnections) {
+            val connection = DatasourceConnectionEntity(
+                displayName = "Connection $i",
+                authenticationType = AuthenticationType.USER_PASSWORD,
+                username = "test",
+                password = "test",
+                reviewConfig = ReviewConfig(numTotalRequired = 1),
+                datasource = savedDatasource
+            )
+            connections.add(connection)
+        }
+        datasourceConnectionRepository.saveAll(connections)
+        return datasource
+    }
     @Bean
     fun initializer(userRepository: UserRepository, passwordEncoder: PasswordEncoder): ApplicationRunner {
         return ApplicationRunner { args ->
@@ -92,6 +123,18 @@ class DataInitializer(
                 password = "test2",
                 reviewConfig = ReviewConfig(numTotalRequired = 1)
             )
+
+            for (i in 1..10) {
+                //generate some random datasources
+                val datasource = generateDatasourceEntity(
+                    displayName = "Test Datasource $i",
+                    type = DatasourceType.POSTGRESQL,
+                    hostname = "localhost",
+                    port = 5432,
+                    numConnections = 2
+                )
+            }
+
 
             // Save the connections
             val savedConnection1 = datasourceConnectionRepository.saveAndFlush(connection1)

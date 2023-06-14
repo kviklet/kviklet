@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ExecutionRequest } from "../routes/AddRequestForm";
 import { type } from "os";
 import { userResponseSchema } from "./UserApi";
+import { Connection, ConnectionResponse } from "./DatasourceApi";
 
 const requestUrl = "http://localhost:8080/execution-requests/";
 
@@ -34,7 +35,7 @@ const ExecutionRequestResponse = z.object({
   description: z.string(),
   statement: z.string().min(1),
   readOnly: z.boolean(),
-  // connection: z.string().min(1), currently not contained in response
+  connection: ConnectionResponse,
   executionStatus: z.string(),
   createdAt: DateTime,
   connectionName: z.string().optional(),

@@ -17,7 +17,7 @@ function ConnectionSettings(props: {
   addConnectionHandler: () => void;
 }) {
   return (
-    <div className="w-full ml-10">
+    <div className="w-full ml-10 basis-4/5">
       <h2 className="text-lg font-bold m-5 pl-1.5">Connection Settings</h2>
       <ul className="list-disc">
         {props.connections.map((connection) => (
@@ -165,8 +165,8 @@ function Settings() {
 
   return (
     <div>
-      <div className="flex max-w-6xl mx-auto">
-        <div className="basis-1/5 mr-auto">
+      <div className="flex max-w-5xl mx-auto">
+        <div className="basis-1/5 grow-0 mr-auto">
           <h2 className="text-2xl font-bold m-5 pl-1.5">Databases</h2>
           <div className="text-center max-h-96 overflow-y-scroll scrollbar-thin scrollbar-track-slate-300 scrollbar-thumb-slate-600 scrollbar-thumb-rounded border-r-slate-300 border-r-2">
             <div className="inline">
@@ -178,7 +178,7 @@ function Settings() {
                   }`}
                   onClick={() => setSelectedIndex(index)}
                 >
-                  <div className="basis-1/2 my-auto text-left">
+                  <div className="basis-1/3 my-auto text-left truncate">
                     {database.displayName}
                   </div>
                   <div className="basis-1/4 self-end my-2 px-5 text-right">

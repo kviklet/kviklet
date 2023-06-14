@@ -49,6 +49,7 @@ data class ExecutionRequestResponse(
     val id: ExecutionRequestId,
     val title: String,
     val author: UserResponse,
+    val connection: DatasourceConnectionResponse,
     val description: String?,
     val statement: String,
     val readOnly: Boolean,
@@ -70,6 +71,7 @@ data class ExecutionRequestResponse(
                 reviewStatus = dto.reviewStatus,
                 executionStatus = dto.executionStatus,
                 createdAt = dto.createdAt,
+                connection = DatasourceConnectionResponse.fromDto(dto.connection)
             )
         }
     }
@@ -81,6 +83,7 @@ data class ExecutionRequestResponse(
 data class ExecutionRequestDetailResponse(
     val id: ExecutionRequestId,
     val author: UserResponse,
+    val connection: DatasourceConnectionResponse,
     val title: String,
     val description: String?,
     val statement: String,
@@ -103,6 +106,7 @@ data class ExecutionRequestDetailResponse(
             executionStatus = dto.request.executionStatus,
             createdAt = dto.request.createdAt,
             events = dto.events.sortedBy { it.createdAt },
+            connection = DatasourceConnectionResponse.fromDto(dto.request.connection)
         )
     }
 }

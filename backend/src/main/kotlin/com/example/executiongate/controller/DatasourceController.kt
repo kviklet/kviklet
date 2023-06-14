@@ -66,16 +66,12 @@ data class DatasourceConnectionResponse(
     val id: DatasourceConnectionId,
     val authenticationType: AuthenticationType,
     val displayName: String,
-    val username: String,
-    val password: String,
 ) {
     companion object {
         fun fromDto(datasourceConnection: DatasourceConnectionDto) = DatasourceConnectionResponse(
             id = datasourceConnection.id,
             authenticationType = datasourceConnection.authenticationType,
             displayName = datasourceConnection.displayName,
-            username = datasourceConnection.username,
-            password = datasourceConnection.password
         )
     }
 }

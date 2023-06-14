@@ -9,6 +9,7 @@ import {
 } from "../api/ExecutionRequestApi";
 import { z } from "zod";
 import Button from "../components/Button";
+import { AuthenticationType } from "../api/DatasourceApi";
 
 interface RequestReviewParams {
   requestId: string;
@@ -57,7 +58,13 @@ order by something_else_else_else.id`,
   // connection: z.string().min(1), currently not contained in response
   executionStatus: "PENDING",
   createdAt: new Date().toISOString(),
-  connectionName: "Production Database",
+  connection: {
+    id: "test",
+    displayName: "Test Connection",
+    authenticationType: AuthenticationType.USER_PASSWORD,
+    username: "test",
+    password: "password",
+  },
   events: [
     {
       author: "Nils Borrmann",
@@ -201,7 +208,7 @@ function RequestBox({
         <p className="text-slate-800 px-2 py-2 text-sm flex justify-between bg-cyan-200 border-b border-cyan-500 rounded-t-md">
           <div>
             {request?.author.fullName} wants to execute on:{" "}
-            <span className="italic">{request?.connectionName}</span>
+            <span className="italic">{request?.connection.displayName}</span>
           </div>
           <div>
             Created at: {new Date(request?.createdAt ?? "").toLocaleString()}

@@ -2,34 +2,38 @@ import { z } from "zod";
 
 const datasourceUrl = "http://localhost:8080/datasources/";
 
-const Connection = z.object({
+enum AuthenticationType {
+  USER_PASSWORD = "USER_PASSWORD",
+}
+
+const ConnectionResponse = z.object({
   id: z.coerce.string(),
   displayName: z.coerce.string(),
-  authenticationType: z.enum(["USER_PASSWORD"]),
-  username: z.string(),
-  password: z.string(),
+  authenticationType: z.nativeEnum(AuthenticationType),
 });
 
-const Database = z.object({
+const DatabaseResponse = z.object({
   id: z.coerce.string(),
   displayName: z.coerce.string(),
   datasourceType: z.enum(["POSTGRESQL", "MYSQL"]).or(z.string()),
   hostname: z.coerce.string(),
   port: z.coerce.number(),
-  datasourceConnections: z.array(Connection),
+  datasourceConnections: z.array(ConnectionResponse),
 });
 
 const ApiResponse = z.object({
-  databases: z.array(Database),
+  databases: z.array(DatabaseResponse),
 });
 
-const DatabasePayload = Database.omit({
+const DatabasePayload = DatabaseResponse.omit({
   id: true,
   datasourceConnections: true,
 });
-const ConnectionPayload = Connection.omit({
-  id: true,
-  authenticationType: true,
+
+const ConnectionPayload = z.object({
+  displayName: z.coerce.string(),
+  username: z.string(),
+  password: z.string(),
 });
 
 const fetchDatabases = async (): Promise<Database[]> => {
@@ -44,8 +48,8 @@ const fetchDatabases = async (): Promise<Database[]> => {
 };
 
 // extract the inferred type
-type Database = z.infer<typeof Database>;
-type Connection = z.infer<typeof Connection>;
+type Database = z.infer<typeof DatabaseResponse>;
+type Connection = z.infer<typeof ConnectionResponse>;
 
 const addDatabase = async (
   payload: z.infer<typeof DatabasePayload>
@@ -80,8 +84,11 @@ export {
   fetchDatabases,
   addDatabase,
   addConnection,
-  Database,
-  Connection,
+  DatabaseResponse,
+  ConnectionResponse,
   DatabasePayload,
   ConnectionPayload,
+  AuthenticationType,
 };
+
+export type { Database, Connection };
