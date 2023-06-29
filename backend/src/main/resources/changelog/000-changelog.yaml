@@ -11,3 +11,6 @@ databaseChangeLog:
   - include:
       file: 004-add-author-to-request.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 005-add-description-field.yaml
+      relativeToChangelogFile: true

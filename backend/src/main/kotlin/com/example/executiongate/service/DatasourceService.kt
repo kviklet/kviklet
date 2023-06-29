@@ -62,6 +62,7 @@ class DatasourceService(
                 authenticationType = AuthenticationType.USER_PASSWORD,
                 username = request.username,
                 password = request.password,
+                description = request.description,
                 reviewConfig = ReviewConfig(
                     numTotalRequired = request.reviewConfig.numTotalRequired,
                 )

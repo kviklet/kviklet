@@ -38,6 +38,7 @@ class DatasourceConnectionEntity(
     val authenticationType: AuthenticationType,
     val username: String,
     val password: String,
+    val description: String,
     @Convert(converter = ReviewConfigConverter::class)
     @Column(columnDefinition = "json")
     val reviewConfig: ReviewConfig,
@@ -54,6 +55,7 @@ class DatasourceConnectionEntity(
         authenticationType = authenticationType,
         username = username,
         password = password,
+        description = description,
         reviewConfig = reviewConfig,
     )
 

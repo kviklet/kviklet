@@ -10,6 +10,8 @@ const ConnectionResponse = z.object({
   id: z.coerce.string(),
   displayName: z.coerce.string(),
   authenticationType: z.nativeEnum(AuthenticationType),
+  shortUsername: z.coerce.string(),
+  description: z.coerce.string(),
 });
 
 const DatabaseResponse = z.object({

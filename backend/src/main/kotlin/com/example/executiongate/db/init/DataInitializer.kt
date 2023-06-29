@@ -73,6 +73,8 @@ class DataInitializer(
                 displayName = "Connection $i",
                 authenticationType = AuthenticationType.USER_PASSWORD,
                 username = "test",
+                description = "This is connection $i it is used for some purpose or another" +
+                        "and is very important to the business",
                 password = "test",
                 reviewConfig = ReviewConfig(numTotalRequired = 1),
                 datasource = savedDatasource
@@ -110,6 +112,8 @@ class DataInitializer(
                 datasource = savedDatasource1,
                 displayName = "Test Connection",
                 authenticationType = AuthenticationType.USER_PASSWORD,
+                description = "This is connection 1 it is used for some purpose or another" +
+                        "and is very important to the business",
                 username = "test",
                 password = "test",
                 reviewConfig = ReviewConfig(numTotalRequired = 1)
@@ -119,6 +123,8 @@ class DataInitializer(
                 datasource = savedDatasource1,
                 displayName = "Another Connection",
                 authenticationType = AuthenticationType.USER_PASSWORD,
+                description = "This is connection 2 it is used for some purpose or another" +
+                        "and is very important to the business",
                 username = "test2",
                 password = "test2",
                 reviewConfig = ReviewConfig(numTotalRequired = 1)
@@ -157,6 +163,8 @@ class DataInitializer(
                 datasource = savedDatasource2,
                 displayName = "Test Connection 2",
                 authenticationType = AuthenticationType.USER_PASSWORD,
+                description = "This is connection 3 it is used for some purpose or another" +
+                        "and is very important to the business",
                 username = "test3",
                 password = "test3",
                 reviewConfig = ReviewConfig(numTotalRequired = 1)

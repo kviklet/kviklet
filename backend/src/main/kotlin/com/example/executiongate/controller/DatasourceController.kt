@@ -55,6 +55,8 @@ data class CreateDatasourceConnectionRequest(
     @field:Size(min = 1, max = 255, message = "Maximum length 255")
     val password: String,
 
+    val description: String = "",
+
     val reviewConfig: ReviewConfigRequest
 )
 
@@ -66,12 +68,16 @@ data class DatasourceConnectionResponse(
     val id: DatasourceConnectionId,
     val authenticationType: AuthenticationType,
     val displayName: String,
+    val shortUsername: String,
+    val description: String,
 ) {
     companion object {
         fun fromDto(datasourceConnection: DatasourceConnectionDto) = DatasourceConnectionResponse(
             id = datasourceConnection.id,
             authenticationType = datasourceConnection.authenticationType,
             displayName = datasourceConnection.displayName,
+            shortUsername = datasourceConnection.username.take(3),
+            description = datasourceConnection.description
         )
     }
 }

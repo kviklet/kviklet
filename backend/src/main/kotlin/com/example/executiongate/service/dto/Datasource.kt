@@ -41,6 +41,7 @@ data class DatasourceConnectionDto(
     val authenticationType: AuthenticationType,
     val username: String,
     val password: String,
+    val description: String,
     val reviewConfig: ReviewConfig
 )
 

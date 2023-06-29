@@ -11,11 +11,13 @@ function Button(props: {
   const defaultStyle = "border border-gray-300 hover:border-gray-400";
 
   const disabled = props.type == "disabled" ? true : undefined;
+  const submit = props.type == "submit" ? "submit" : undefined;
 
   return (
     <button
       id={props.id}
       onClick={props.onClick}
+      type={submit}
       disabled={disabled}
       className={`${props.className} px-4 py-2  text-md ${
         (props.type == "submit" && submitStyle) ||

@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: add-description-field
+      author: jascha
+      changes:
+        - addColumn:
+            tableName: datasource_connection
+            columns:
+              - column:
+                  name: description
+                  type: TEXT
+                  constraints:
+                    nullable: false
