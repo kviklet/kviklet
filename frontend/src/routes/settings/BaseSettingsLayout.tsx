@@ -1,5 +1,8 @@
 import { ReactNode, useState } from "react";
-import { TableDataCellComponent } from "react-markdown/lib/ast-to-react";
+import { Outlet, Route, Routes } from "react-router-dom";
+import DatabaseSettings from "./DatabaseSettings";
+import UserSettings from "./UserSettings";
+import GroupSettings from "./GroupsSettings";
 
 const Tab = (props: {
   children: React.ReactNode;
@@ -21,11 +24,11 @@ const Tab = (props: {
 interface TabObject {
   name: string;
   tabContent: ReactNode;
-  renderContent: () => ReactNode;
 }
 
 interface LayoutProps {
   tabs: TabObject[];
+  children?: ReactNode;
 }
 
 function SettingsSidebar(props: { children: React.ReactNode }) {
@@ -49,14 +52,7 @@ const BaseSettingsLayout = (props: LayoutProps) => {
       </Tab>
     );
   });
-
-  const getActiveTab = () => {
-    const activeTabObject = props.tabs.find((tab) => tab.name === activeTab);
-    if (activeTabObject) {
-      return activeTabObject.renderContent();
-    }
-    return null;
-  };
+  console.log("hellow1");
 
   return (
     <div className="flex w-screen">
@@ -64,7 +60,15 @@ const BaseSettingsLayout = (props: LayoutProps) => {
         <h1 className="text-2xl font-bold m-5 pl-1.5">Settings</h1>
         <div className="flex w-full">
           <SettingsSidebar>{tabs}</SettingsSidebar>
-          <div className="w-full ml-2">{getActiveTab()}</div>
+          <div className="w-full ml-2">
+            <Routes>
+              <Route path="/*" element={<DatabaseSettings />} />
+              <Route path="databases" element={<DatabaseSettings />} />
+              <Route path="users" element={<UserSettings />} />
+              <Route path="groups" element={<GroupSettings />} />
+            </Routes>
+            <Outlet></Outlet>
+          </div>
         </div>
       </div>
     </div>

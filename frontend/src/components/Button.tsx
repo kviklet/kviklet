@@ -3,7 +3,7 @@ function Button(props: {
   onClick?: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
   children: React.ReactNode;
   className?: string;
-  type?: "button" | "submit" | "reset" | "disabled" | undefined;
+  type?: "button" | "submit" | "reset" | "disabled" | "primary" | undefined;
 }) {
   const submitStyle = "bg-sky-700 font-semibold text-white hover:bg-sky-900";
   const disabledStyle =

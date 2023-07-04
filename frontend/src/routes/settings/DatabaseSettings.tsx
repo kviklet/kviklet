@@ -9,40 +9,8 @@ import {
   fetchDatabases,
 } from "../../api/DatasourceApi";
 import Button from "../../components/Button";
-
-function InputField(props: {
-  id: string;
-  name: string;
-  type?: string;
-  placeholder?: string;
-}) {
-  return (
-    <div className="flex m-2">
-      <label htmlFor={props.id} className="my-auto ml-5 pl-1.5 mr-auto">
-        {props.name}
-      </label>
-      <input
-        type={props.type || "text"}
-        className="basis-2/3 focus:border-blue-600 my-auto appearance-none border rounded w-full mx-1 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-        placeholder={props.placeholder || ""}
-        name={props.id}
-        id={props.id}
-      />
-    </div>
-  );
-}
-function SubmitButton(props: { text: string }) {
-  return (
-    <div className="flex mx-2 my-2">
-      <button
-        className="text-white bg-sky-500 border rounded w-full basis-1/5 py-2 ml-auto active:text-sky-500 active:bg-white"
-        type="submit"
-      >
-        {props.text}
-      </button>
-    </div>
-  );
-}
+import InputField from "../../components/InputField";
+import Modal from "../../components/Modal";
 
 function CreateDatabaseForm(props: {
   handleCreateDatabase: (e: React.SyntheticEvent) => Promise<void>;
@@ -151,7 +119,13 @@ const DatabaseChooser = (props: {
               <div className="basis-1/2 my-auto text-left truncate">
                 {database.displayName}
               </div>
-              <div className="basis-1/2 self-end my-2 text-right text-slate-500">
+              <div
+                className={`basis-1/2 self-end my-2 text-right ${
+                  index === props.selectedIndex
+                    ? "text-white"
+                    : "text-slate-500"
+                }`}
+              >
                 {database.hostname}
               </div>
             </div>
@@ -231,6 +205,7 @@ const DatabaseSettings = () => {
       setShowAddConnectionModal(false);
     }
   };
+  console.log("hellow");
 
   return (
     <div>
@@ -254,28 +229,18 @@ const DatabaseSettings = () => {
         />
       </div>
       {showAddDatasourceModal ? (
-        <div
-          className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full"
-          onClick={disableModalOutsideClick}
-        >
-          <div className="relative top-20 mx-auto max-w-lg">
-            <CreateDatabaseForm handleCreateDatabase={handleCreateDatabase} />
-          </div>
-        </div>
+        <Modal setVisible={setShowAddDatasourceModal}>
+          <CreateDatabaseForm handleCreateDatabase={handleCreateDatabase} />
+        </Modal>
       ) : (
         ""
       )}
       {showAddConnectionModal ? (
-        <div
-          className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full"
-          onClick={disableModalOutsideClick}
-        >
-          <div className="relative top-20 mx-auto max-w-lg">
-            <CreateConnectionForm
-              handleCreateConnection={handleCreateConnection}
-            />
-          </div>
-        </div>
+        <Modal setVisible={setShowAddConnectionModal}>
+          <CreateConnectionForm
+            handleCreateConnection={handleCreateConnection}
+          />
+        </Modal>
       ) : (
         ""
       )}

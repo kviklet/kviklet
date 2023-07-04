@@ -1,7 +1,5 @@
 import {
   Route,
-  RouterProvider,
-  createBrowserRouter,
   Navigate,
   BrowserRouter as Router,
   Routes,
@@ -60,7 +58,7 @@ function App() {
               }
             />
             <Route
-              path="settings"
+              path="settings/*"
               element={
                 <ProtectedRoute>
                   <Settings />
