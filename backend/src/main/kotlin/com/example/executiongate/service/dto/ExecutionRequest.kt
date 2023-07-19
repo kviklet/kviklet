@@ -19,7 +19,7 @@ enum class ReviewStatus {
  */
 data class ExecutionRequest(
     val id: ExecutionRequestId,
-    val connection: DatasourceConnectionDto,
+    val connection: DatasourceConnection,
     val title: String,
     val description: String?,
     val statement: String,

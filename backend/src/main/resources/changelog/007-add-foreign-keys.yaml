@@ -1,0 +1,22 @@
+databaseChangeLog:
+  - changeSet:
+      id: add-foreign-keys
+      author: jascha
+      changes:
+        - createTable:
+            tableName: user_group
+            columns:
+              - column:
+                  name: user_id
+                  type: CHAR(22)
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_user_group_user_id
+                    references: users(id)
+              - column:
+                  name: group_id
+                  type: CHAR(22)
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_user_group_group_id
+                    references: usergroups(id)

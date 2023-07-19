@@ -1,14 +1,11 @@
 package com.example.executiongate.db
 
 import com.example.executiongate.db.util.BaseEntity
-import com.example.executiongate.db.util.EventPayloadConverter
 import com.example.executiongate.db.util.ReviewConfigConverter
 import com.example.executiongate.service.EntityNotFound
 import com.example.executiongate.service.dto.AuthenticationType
-import com.example.executiongate.service.dto.DatasourceConnectionDto
+import com.example.executiongate.service.dto.DatasourceConnection
 import com.example.executiongate.service.dto.DatasourceConnectionId
-import com.example.executiongate.service.dto.DatasourceId
-import com.example.executiongate.service.dto.ExecutionRequestId
 import org.apache.commons.lang3.builder.ToStringBuilder
 import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
 import org.springframework.data.jpa.repository.JpaRepository
@@ -49,7 +46,7 @@ class DatasourceConnectionEntity(
         .append("name", displayName)
         .toString()
 
-    fun toDto() = DatasourceConnectionDto(
+    fun toDto() = DatasourceConnection(
         id = DatasourceConnectionId(id),
         displayName = displayName,
         authenticationType = authenticationType,
@@ -68,7 +65,7 @@ class DatasourceConnectionAdapter(
     val datasourceConnectionRepository: DatasourceConnectionRepository
 ) {
 
-    fun getDatasourceConnection(id: DatasourceConnectionId): DatasourceConnectionDto =
+    fun getDatasourceConnection(id: DatasourceConnectionId): DatasourceConnection =
         datasourceConnectionRepository.findByIdOrNull(id.toString())?.toDto()
             ?: throw EntityNotFound("Datasource Connection Not Found", "Datasource Connection with id $id does not exist.")
 

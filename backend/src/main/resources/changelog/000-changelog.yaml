@@ -14,3 +14,9 @@ databaseChangeLog:
   - include:
       file: 005-add-description-field.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 006-add-groups-and-permissions.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: 007-add-foreign-keys.yaml
+      relativeToChangelogFile: true

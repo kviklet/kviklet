@@ -19,13 +19,13 @@ value class DatasourceId(private val id: String): Serializable {
     override fun toString() = id
 }
 
-data class DatasourceDto(
+data class Datasource(
     val id: DatasourceId,
     val displayName: String,
     val type: DatasourceType,
     val hostname: String,
     val port: Int,
-    val datasourceConnections: List<DatasourceConnectionDto>
+    val datasourceConnections: List<DatasourceConnection>
 ) {
     fun getConnectionString() = "jdbc:${type.schema}://$hostname:$port"
 }
@@ -35,7 +35,7 @@ value class DatasourceConnectionId(private val id: String): Serializable {
     override fun toString() = id
 }
 
-data class DatasourceConnectionDto(
+data class DatasourceConnection(
     val id: DatasourceConnectionId,
     val displayName: String,
     val authenticationType: AuthenticationType,

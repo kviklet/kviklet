@@ -1,0 +1,57 @@
+databaseChangeLog:
+  - changeSet:
+      id: add-groups-and-permissions
+      author: jascha
+      changes:
+        - createTable:
+            tableName: usergroups
+            columns:
+              - column:
+                  name: id
+                  type: CHAR(22)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: permissions
+            columns:
+              - column:
+                  name: id
+                  type: CHAR(22)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: CHAR(22)
+                  constraints:
+                      nullable: true
+                      foreignKeyName: fk_permissions_user_id
+                      references: users(id)
+              - column:
+                  name: group_id
+                  type: CHAR(22)
+                  constraints:
+                      nullable: true
+                      foreignKeyName: fk_permissions_group_id
+                      references: usergroups(id)
+              - column:
+                  name: scope
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: action
+                  type: varchar(255)
+                  constraints:
+                    nullable: false

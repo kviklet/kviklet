@@ -25,15 +25,23 @@ data class CreateUserRequest(
         val fullName: String
 )
 
+data class EditUserRequest(
+        @field:NotBlank
+        @field:Size(min = 1, max = 50)
+        val id: String,
+)
+
 data class UserResponse(
         val id: String,
         val email: String,
-        val fullName: String?
+        val fullName: String?,
+        val permissionString: String
 ) {
     constructor(user: User) : this(
             id = user.id,
             email = user.email,
-            fullName = user.fullName
+            fullName = user.fullName,
+            permissionString = permissionsTopermissionString(user.permissions)
     )
 }
 
@@ -67,3 +75,6 @@ class UserController(
         return UsersResponse.fromUsers(userAdapter.listUsers())
     }
 }
+
+
+

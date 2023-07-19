@@ -7,9 +7,9 @@ import com.example.executiongate.db.DatasourceEntity
 import com.example.executiongate.db.DatasourceRepository
 import com.example.executiongate.db.ReviewConfig
 import com.example.executiongate.service.dto.AuthenticationType
-import com.example.executiongate.service.dto.DatasourceConnectionDto
+import com.example.executiongate.service.dto.DatasourceConnection
 import com.example.executiongate.service.dto.DatasourceConnectionId
-import com.example.executiongate.service.dto.DatasourceDto
+import com.example.executiongate.service.dto.Datasource
 import com.example.executiongate.service.dto.DatasourceId
 import com.example.executiongate.service.dto.DatasourceType
 import org.slf4j.Logger
@@ -17,7 +17,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import javax.transaction.Transactional
-import javax.xml.crypto.Data
 
 class EntityNotFound(override val message: String, val detail: String): Exception(message)
 
@@ -34,7 +33,7 @@ class DatasourceService(
         datasourceType: DatasourceType,
         hostname: String,
         port: Int
-    ): DatasourceDto {
+    ): Datasource {
         return datasourceRepository.save(
             DatasourceEntity(
                 displayName = displayName,
@@ -52,7 +51,7 @@ class DatasourceService(
     fun createDatasourceConnection(
         datasourceId: DatasourceId,
         request: CreateDatasourceConnectionRequest
-    ): DatasourceConnectionDto {
+    ): DatasourceConnection {
         val datasource = getDatasource(datasourceId)
 
         return datasourceConnectionRepository.save(
@@ -80,5 +79,5 @@ class DatasourceService(
         datasourceConnectionRepository.findByIdOrNull(id.toString())
             ?: throw EntityNotFound("Datasource Connection Not Found", "Datasource Connection with id $id does not exist.")
 
-    fun listConnections(): List<DatasourceDto> = datasourceRepository.findAllDatasourcesAndConnections().map { it.toDto() }
+    fun listConnections(): List<Datasource> = datasourceRepository.findAllDatasourcesAndConnections().map { it.toDto() }
 }

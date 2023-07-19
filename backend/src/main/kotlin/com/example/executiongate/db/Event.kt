@@ -62,7 +62,7 @@ class EventEntity(
 
     fun toDto(): Event {
         return Event.create(
-            id = EventId(id),
+            id = id,
             createdAt = createdAt,
             payload = payload,
         )
@@ -70,4 +70,4 @@ class EventEntity(
 
 }
 
-interface EventRepository : JpaRepository<EventEntity, EventId>
+interface EventRepository : JpaRepository<EventEntity, String>

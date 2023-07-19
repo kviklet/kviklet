@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-const datasourceUrl = "http://localhost:8080/datasources/";
+const baseUrl = `${window.location.protocol}//${window.location.hostname}:8080`;
+
+const datasourceUrl = `${baseUrl}/datasources/`;
 
 enum AuthenticationType {
   USER_PASSWORD = "USER_PASSWORD",

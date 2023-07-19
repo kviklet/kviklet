@@ -3,9 +3,9 @@ package com.example.executiongate.controller
 import com.example.executiongate.MyProperties
 import com.example.executiongate.service.DatasourceService
 import com.example.executiongate.service.dto.AuthenticationType
-import com.example.executiongate.service.dto.DatasourceConnectionDto
+import com.example.executiongate.service.dto.DatasourceConnection
 import com.example.executiongate.service.dto.DatasourceConnectionId
-import com.example.executiongate.service.dto.DatasourceDto
+import com.example.executiongate.service.dto.Datasource
 import com.example.executiongate.service.dto.DatasourceId
 import com.example.executiongate.service.dto.DatasourceType
 import io.swagger.v3.oas.annotations.media.Schema
@@ -72,7 +72,7 @@ data class DatasourceConnectionResponse(
     val description: String,
 ) {
     companion object {
-        fun fromDto(datasourceConnection: DatasourceConnectionDto) = DatasourceConnectionResponse(
+        fun fromDto(datasourceConnection: DatasourceConnection) = DatasourceConnectionResponse(
             id = datasourceConnection.id,
             authenticationType = datasourceConnection.authenticationType,
             displayName = datasourceConnection.displayName,
@@ -91,7 +91,7 @@ data class DatasourceResponse(
     val datasourceConnections: List<DatasourceConnectionResponse>,
 ) {
     companion object {
-        fun fromDto(dto: DatasourceDto) = DatasourceResponse(
+        fun fromDto(dto: Datasource) = DatasourceResponse(
             id = dto.id,
             displayName = dto.displayName,
             datasourceType = dto.type,

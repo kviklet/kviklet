@@ -1,20 +1,17 @@
 package com.example.executiongate.db
 
 import com.example.executiongate.db.util.BaseEntity
-import com.example.executiongate.service.dto.DatasourceDto
+import com.example.executiongate.service.dto.Datasource
 import com.example.executiongate.service.dto.DatasourceId
 import com.example.executiongate.service.dto.DatasourceType
 import com.querydsl.jpa.impl.JPAQuery
 import org.apache.commons.lang3.builder.ToStringBuilder
 import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
-import org.hibernate.annotations.GenericGenerator
 import org.springframework.data.jpa.repository.JpaRepository
 import javax.persistence.Entity
 import javax.persistence.EntityManager
 import javax.persistence.EnumType
 import javax.persistence.Enumerated
-import javax.persistence.GeneratedValue
-import javax.persistence.Id
 import javax.persistence.OneToMany
 
 
@@ -34,7 +31,7 @@ class DatasourceEntity(
         .append("displayName", displayName)
         .toString()
 
-    fun toDto() = DatasourceDto(
+    fun toDto() = Datasource(
         id = DatasourceId(id),
         displayName = displayName,
         type = type,

@@ -14,9 +14,10 @@ import java.util.concurrent.ThreadLocalRandom
 class DataInitializer(
     private val datasourceRepository: DatasourceRepository,
     private val datasourceConnectionRepository: DatasourceConnectionRepository,
-    private val executionRequestRepository: ExecutionRequestRepository
+    private val executionRequestRepository: ExecutionRequestRepository,
+    private val groupRepository: GroupRepository,
+    private val permissionRepository: PermissionRepository
 ) {
-
 
 
     // Helper function to generate a random SQL statement
@@ -83,6 +84,31 @@ class DataInitializer(
         }
         datasourceConnectionRepository.saveAll(connections)
         return datasource
+    }
+
+    fun generateGroup() {
+        val group = GroupEntity(
+            name = "Test Group",
+            description = "This is a test group",
+            permissions = emptySet()
+        )
+        val savedGroup = groupRepository.saveAndFlush(group)
+        val permissions = mutableSetOf(
+            PermissionEntity(
+                action = "READ",
+                scope = "Connection1",
+            ),
+            PermissionEntity(
+                action = "WRITE",
+                scope = "Connection2",
+            ),
+            PermissionEntity(
+                action = "EXECUTE",
+                scope = "Connection1",
+            )
+        )
+        savedGroup.permissions = permissions
+        groupRepository.saveAndFlush(savedGroup)
     }
     @Bean
     fun initializer(userRepository: UserRepository, passwordEncoder: PasswordEncoder): ApplicationRunner {
@@ -183,6 +209,7 @@ class DataInitializer(
                 executionRequestRepository.save(request2)
                 executionRequestRepository.save(request3)
             }
+            generateGroup()
 
         }
     }

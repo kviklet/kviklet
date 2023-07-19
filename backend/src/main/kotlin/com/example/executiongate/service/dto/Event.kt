@@ -30,10 +30,10 @@ abstract class Event(
     val type: EventType,
     open val createdAt: LocalDateTime = LocalDateTime.now(),
 ) {
-    abstract val id: EventId
+    abstract val id: String
 
     companion object {
-        fun create(id: EventId, createdAt: LocalDateTime, payload: Payload): Event = when (payload) {
+        fun create(id: String, createdAt: LocalDateTime, payload: Payload): Event = when (payload) {
             is CommentPayload -> CommentEvent(id, createdAt, payload.comment)
             is ReviewPayload -> ReviewEvent(id, createdAt, payload.comment, payload.action)
             else -> throw IllegalArgumentException("Unknown payload type: ${payload::class}")
@@ -42,13 +42,13 @@ abstract class Event(
 }
 
 data class CommentEvent(
-    override val id: EventId,
+    override val id: String,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
     val comment: String,
 ): Event(EventType.COMMENT, createdAt)
 
 data class ReviewEvent(
-    override val id: EventId,
+    override val id: String,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
     val comment: String,
     val action: ReviewAction,

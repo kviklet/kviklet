@@ -109,14 +109,14 @@ class DatasourceConnectionTest(
         val requestDetails = executionRequestController.get(request.id)
 
         requestDetails.events[0].shouldBeEqualToIgnoringFields(ReviewEvent(
-                id = EventId("id"),
+                id = "id",
                 createdAt = LocalDateTime.now(),
                 comment = "Comment",
                 action = ReviewAction.APPROVE,
             ), ReviewEvent::createdAt, ReviewEvent::id)
 
         requestDetails.events[1].shouldBeEqualToIgnoringFields(CommentEvent(
-                id = EventId("id"),
+                id = "id",
                 createdAt = LocalDateTime.now(),
                 comment = "Comment with a \"quote\"!",
             ), ReviewEvent::createdAt, ReviewEvent::id)
