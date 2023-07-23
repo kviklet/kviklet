@@ -4,10 +4,10 @@ import com.example.executiongate.db.GroupEntity
 
 
 data class Group(
-    val id: String,
+    val id: String = "",
     val name: String,
     val description: String,
-    val permissions: Set<Permission>
+    val permissions: Set<Permission> = HashSet()
 ) {
     companion object {
         fun create(

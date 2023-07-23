@@ -45,7 +45,20 @@ class GroupAdapter(
         )
     }
 
+    fun findByIds(ids: List<String>): List<Group> {
+        return groupRepository.findAllById(ids).map { it.toDto() }
+    }
+
     fun findAll(): List<Group> {
         return groupRepository.findAll().map { it.toDto() }
+    }
+
+    fun create(group: Group): Group {
+        return groupRepository.save(
+            GroupEntity(
+                name = group.name,
+                description = group.description
+            )
+        ).toDto()
     }
 }

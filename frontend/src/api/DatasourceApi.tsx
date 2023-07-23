@@ -8,7 +8,7 @@ enum AuthenticationType {
   USER_PASSWORD = "USER_PASSWORD",
 }
 
-const ConnectionResponse = z.object({
+const connectionResponseSchema = z.object({
   id: z.coerce.string(),
   displayName: z.coerce.string(),
   authenticationType: z.nativeEnum(AuthenticationType),
@@ -16,31 +16,34 @@ const ConnectionResponse = z.object({
   description: z.coerce.string(),
 });
 
-const DatabaseResponse = z.object({
+const databaseResponseSchema = z.object({
   id: z.coerce.string(),
   displayName: z.coerce.string(),
   datasourceType: z.enum(["POSTGRESQL", "MYSQL"]).or(z.string()),
   hostname: z.coerce.string(),
   port: z.coerce.number(),
-  datasourceConnections: z.array(ConnectionResponse),
+  datasourceConnections: z.array(connectionResponseSchema),
 });
 
 const ApiResponse = z.object({
-  databases: z.array(DatabaseResponse),
+  databases: z.array(databaseResponseSchema),
 });
 
-const DatabasePayload = DatabaseResponse.omit({
+const databasePayloadSchema = databaseResponseSchema.omit({
   id: true,
   datasourceConnections: true,
 });
 
-const ConnectionPayload = z.object({
+const connectionPayloadSchema = z.object({
   displayName: z.coerce.string(),
   username: z.string(),
   password: z.string(),
+  reviewConfig: z.object({
+    numTotalRequired: z.number(),
+  }),
 });
 
-const fetchDatabases = async (): Promise<Database[]> => {
+const fetchDatabases = async (): Promise<DatabaseResponse[]> => {
   const response = await fetch(datasourceUrl, {
     method: "GET",
     credentials: "include",
@@ -52,12 +55,14 @@ const fetchDatabases = async (): Promise<Database[]> => {
 };
 
 // extract the inferred type
-type Database = z.infer<typeof DatabaseResponse>;
-type Connection = z.infer<typeof ConnectionResponse>;
+type DatabaseResponse = z.infer<typeof databaseResponseSchema>;
+type ConnectionResponse = z.infer<typeof connectionResponseSchema>;
+type DatabasePayload = z.infer<typeof databasePayloadSchema>;
+type ConnectionPayload = z.infer<typeof connectionPayloadSchema>;
 
 const addDatabase = async (
-  payload: z.infer<typeof DatabasePayload>
-): Promise<boolean> => {
+  payload: DatabasePayload
+): Promise<DatabaseResponse> => {
   const response = await fetch(datasourceUrl, {
     method: "POST",
     headers: {
@@ -66,13 +71,14 @@ const addDatabase = async (
     credentials: "include",
     body: JSON.stringify(payload),
   });
-  return true;
+  const newDatabase = databaseResponseSchema.parse(await response.json());
+  return newDatabase;
 };
 
 const addConnection = async (
-  payload: z.infer<typeof ConnectionPayload>,
+  payload: ConnectionPayload,
   datasourceId: string
-): Promise<boolean> => {
+): Promise<ConnectionResponse> => {
   const response = await fetch(`${datasourceUrl}${datasourceId}/connections`, {
     method: "POST",
     headers: {
@@ -81,18 +87,22 @@ const addConnection = async (
     credentials: "include",
     body: JSON.stringify(payload),
   });
-  return true;
+  const connection = connectionResponseSchema.parse(await response.json());
+  return connection;
 };
 
 export {
   fetchDatabases,
   addDatabase,
   addConnection,
+  databaseResponseSchema,
+  connectionResponseSchema,
+  AuthenticationType,
+};
+
+export type {
   DatabaseResponse,
   ConnectionResponse,
   DatabasePayload,
   ConnectionPayload,
-  AuthenticationType,
 };
-
-export type { Database, Connection };

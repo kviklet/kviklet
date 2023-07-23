@@ -7,6 +7,17 @@ import { z } from "zod";
 import { Link } from "react-router-dom";
 import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
+import { type } from "os";
+import {
+  GroupResponse,
+  PermissionResponse,
+  createGroup,
+  getGroups,
+  patchGroup,
+} from "../../api/GroupApi";
+import ColorfulLabel from "../../components/ColorfulLabel";
+import { useDatasources } from "./DatabaseSettings";
+import { ConnectionResponse } from "../../api/DatasourceApi";
 
 const Tooltip = ({
   children,
@@ -39,81 +50,36 @@ const createIcon = (icon: IconDefinition) => {
 };
 const EditOutlined = createIcon(solid("edit"));
 
-const PermissionsObject = z.object({
-  connection: z.string(),
-  permissions: z.array(z.string()),
-});
-type Permissions = z.infer<typeof PermissionsObject>;
-
-const permissionsToText = (permissions: Permissions[]) => {
+const permissionsToText = (permissions: PermissionResponse[]) => {
   return permissions
     .map((permission) => connectionPermissionsToText(permission))
     .join("; ");
 };
 
-const connectionPermissionsToText = (permissions: Permissions) => {
-  return `${permissions.connection}: ${permissions.permissions.join(", ")}`;
+const connectionPermissionsToText = (permissions: PermissionResponse) => {
+  return `${permissions.scope}: ${permissions.permissions.join(", ")}`;
 };
 
-const GroupObject = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string(),
-  permissions: z.array(PermissionsObject),
-});
-
 const useGroups = (): {
-  groups: Group[];
+  groups: GroupResponse[];
   isLoading: boolean;
   error: Error | null;
   deleteGroup: (id: string) => void;
-  addGroup: (group: Group) => void;
-  editGroup: (id: string, group: Group) => void;
+  addGroup: (name: string, description: string) => void;
+  editGroup: (id: string, group: GroupResponse) => void;
 } => {
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [groups, setGroups] = useState<GroupResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    setIsLoading(true);
-    setError(null);
-
-    //fetch groups
-    const groups = [
-      {
-        id: "1",
-        name: "group1",
-        description: "this is group1",
-        permissions: [
-          {
-            connection: "connection1",
-            permissions: ["permission1", "permission2"],
-          },
-          {
-            connection: "connection2",
-            permissions: ["permission1", "permission2"],
-          },
-        ],
-      },
-      {
-        id: "2",
-        name: "group2",
-        description: "this is group2",
-        permissions: [
-          {
-            connection: "connection1",
-            permissions: ["permission1", "permission2"],
-          },
-          {
-            connection: "connection2",
-            permissions: ["permission1", "permission2"],
-          },
-        ],
-      },
-    ];
-
-    setGroups(groups);
+  const loadGroups = async () => {
+    const loadedGroups = await getGroups();
+    setGroups(loadedGroups);
     setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadGroups();
   }, []);
 
   const deleteGroup = (id: string) => {
@@ -124,21 +90,20 @@ const useGroups = (): {
     setGroups(newGroups);
   };
 
-  const addGroup = (group: Group) => {
-    //add group
-
-    //update groups
+  const addGroup = async (name: string, description: string) => {
+    const group = await createGroup({
+      name,
+      description,
+    });
     const newGroups = [...groups, group];
     setGroups(newGroups);
   };
 
-  const editGroup = (id: string, group: Group) => {
-    //edit group
-
-    //update groups
+  const editGroup = async (id: string, group: GroupResponse) => {
+    const newGroup = await patchGroup(id, group);
     const newGroups = groups.map((group) => {
       if (group.id === id) {
-        return group;
+        return newGroup;
       }
       return group;
     });
@@ -148,16 +113,14 @@ const useGroups = (): {
   return { groups, isLoading, error, deleteGroup, addGroup, editGroup };
 };
 
-type Group = z.infer<typeof GroupObject>;
-
 const Table = ({
   groups,
   handleEditGroup,
   handleDeleteGroup,
 }: {
-  groups: Group[];
-  handleEditGroup: (group: Group) => void;
-  handleDeleteGroup: (group: Group) => void;
+  groups: GroupResponse[];
+  handleEditGroup: (group: GroupResponse) => void;
+  handleDeleteGroup: (group: GroupResponse) => void;
 }) => {
   return (
     <div className="flex flex-col w-full">
@@ -237,52 +200,197 @@ const Table = ({
     </div>
   );
 };
-function PermissionForm(props: {
-  group: Group;
-  handleSavePermissions: (group: Group) => Promise<void>;
+function EditGroupForm(props: {
+  connections: ConnectionResponse[];
+  group: GroupResponse;
+  editGroup: (group: GroupResponse) => Promise<void>;
 }) {
   const [permissions, setPermissions] = useState(props.group.permissions);
+  const [name, setName] = useState(props.group.name);
+  const [description, setDescription] = useState(props.group.description);
+  const [connectionToAdd, setConnectionToAdd] = useState("");
+  const [permissionToAdd, setPermissionToAdd] = useState("");
+  const mapActionToColor = (action: string) => {
+    switch (action) {
+      case "READ":
+        return "bg-green-200 text-green-800";
+      case "WRITE":
+        return "bg-blue-200 text-blue-800";
+      case "EXECUTE":
+        return "bg-yellow-200 text-yellow-800";
+      default:
+        return "bg-gray-200 text-gray-800";
+    }
+  };
 
-  const handlePermissionChange = (index: number, value: string) => {
-    const newPermissions = [...permissions];
-    newPermissions[index].permissions = value.split(", ");
+  const permissionOptions = [
+    { value: "READ", label: "Read" },
+    { value: "WRITE", label: "Write" },
+    { value: "EXECUTE", label: "Execute" },
+  ];
+
+  const handleEditGroup = (event: React.SyntheticEvent) => {
+    event.preventDefault();
+    props.editGroup({
+      id: props.group.id,
+      name,
+      description,
+      permissions,
+    });
+  };
+
+  const removePermission = (connectionId: string, permission: string) => {
+    const newPermissions = permissions.map((permissionEntry) => {
+      if (permissionEntry.scope === connectionId) {
+        return {
+          scope: permissionEntry.scope,
+          permissions: permissionEntry.permissions.filter(
+            (p) => p !== permission
+          ),
+        };
+      }
+      return permissionEntry;
+    });
     setPermissions(newPermissions);
   };
 
-  const savePermissions = async (e: React.SyntheticEvent) => {
-    e.preventDefault();
-    const group = {
-      id: props.group.id,
-      name: props.group.name,
-      description: props.group.description,
-      permissions: permissions,
-    };
-
-    await props.handleSavePermissions(group);
+  const addPermission = (connectionId: string, permission: string) => {
+    const newPermissions = permissions.map((permissionEntry) => {
+      if (permissionEntry.scope === connectionId) {
+        return {
+          scope: permissionEntry.scope,
+          permissions: [...permissionEntry.permissions, permission],
+        };
+      }
+      return permissionEntry;
+    });
+    setPermissions(newPermissions);
   };
 
   return (
-    <form method="post" onSubmit={savePermissions}>
+    <form method="post" onSubmit={handleEditGroup}>
       <div className="w-2xl shadow p-3 bg-white rounded">
-        {permissions.map((permission, index) => (
-          <div key={permission.connection} className="flex flex-col mb-3">
-            <label
-              htmlFor={permission.connection}
-              className="text-sm font-medium text-gray-700"
-            >
-              {permission.connection}
-            </label>
-            <InputField
-              id={permission.connection}
-              name="Name"
-              value={connectionPermissionsToText(permission)}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                handlePermissionChange(index, e.target.value)
-              }
-            />
+        <div className="flex flex-col mb-3">
+          <InputField
+            id="name"
+            name="Name"
+            value={name}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setName(e.target.value)
+            }
+          />
+        </div>
+        <div className="flex flex-col mb-3">
+          <InputField
+            id="description"
+            name="Description"
+            value={description || ""}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setDescription(e.target.value)
+            }
+          />
+        </div>
+        <div>
+          <div className="text-gray-400 text-sm mb-2">Permissions</div>
+        </div>
+        {permissions.map((permissionEntry, index) => (
+          <div key={permissionEntry.scope} className="flex flex-col mb-3">
+            <div>{permissionEntry.scope}</div>
+            <div className="text-gray-400 text-sm">
+              {permissionEntry.permissions.map((permission) => (
+                <ColorfulLabel
+                  text={permission}
+                  color={mapActionToColor(permission)}
+                  onDelete={() =>
+                    removePermission(permissionEntry.scope, permission)
+                  }
+                ></ColorfulLabel>
+              ))}
+            </div>
           </div>
         ))}
-        <Button type="submit">Save Permissions</Button>
+        <div className="flex mb-3 border-t">
+          <select
+            name="connection"
+            className="py-1 px-4 m-2  border-gray-200 border rounded-md text-sm focus:border-blue-500 focus:ring-blue-50"
+            value={connectionToAdd}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+              setConnectionToAdd(e.target.value)
+            }
+          >
+            {props.connections.map((connection) => (
+              <option value={connection.id}>{connection.displayName}</option>
+            ))}
+          </select>
+          <select
+            name="permission"
+            className="py-1 px-4 m-2 border border-gray-200 rounded-md text-sm focus:border-blue-500 focus:ring-blue-50"
+            value={permissionToAdd}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+              setPermissionToAdd(e.target.value)
+            }
+          >
+            {permissionOptions.map((option) => (
+              <option value={option.value}>{option.label}</option>
+            ))}
+          </select>
+          <Button
+            className="ml-auto"
+            onClick={() => addPermission(connectionToAdd, permissionToAdd)}
+          >
+            Add Permission
+          </Button>
+        </div>
+        <div className="flex flex-col mb-3">
+          <Button type="submit" className="ml-auto">
+            Save Permissions
+          </Button>
+        </div>
+      </div>
+    </form>
+  );
+}
+
+function GroupForm(props: {
+  handleSaveGroup: (name: string, description: string) => void;
+  handleCancel: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+
+  const saveGroup = (event: React.SyntheticEvent) => {
+    event.preventDefault();
+    props.handleSaveGroup(name, description);
+  };
+
+  return (
+    <form method="post" onSubmit={saveGroup}>
+      <div className="w-2xl shadow p-3 bg-white rounded">
+        <div className="flex flex-col mb-3">
+          <InputField
+            id="name"
+            name="Name"
+            value={name}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setName(e.target.value)
+            }
+          />
+        </div>
+        <div className="flex flex-col mb-3">
+          <InputField
+            id="description"
+            name="Description"
+            value={description}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setDescription(e.target.value)
+            }
+          />
+        </div>
+        <div className="flex flex-col mb-3">
+          <Button className="ml-auto" type="submit">
+            Create
+          </Button>
+        </div>
       </div>
     </form>
   );
@@ -291,55 +399,39 @@ function PermissionForm(props: {
 const GroupSettings = () => {
   const { groups, isLoading, error, deleteGroup, addGroup, editGroup } =
     useGroups();
-  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
-  const [showModal, setShowModal] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<GroupResponse | null>(
+    null
+  );
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const { datasources } = useDatasources();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+
+  const connections = datasources.flatMap((datasource) =>
+    datasource.datasourceConnections.map((connection) => connection)
+  );
 
   const handleAddGroup = () => {
     setShowAddModal(true);
   };
 
-  const handleEditGroup = (group: Group) => {
+  const handleEditGroup = (group: GroupResponse) => {
     setSelectedGroup(group);
     setShowEditModal(true);
   };
 
-  const handleDeleteGroup = (group: Group) => {
+  const handleEditGroupConfirm = async (group: GroupResponse) => {
+    await editGroup(group.id, group);
+    setShowEditModal(false);
+  };
+
+  const handleDeleteGroup = (group: GroupResponse) => {
     setSelectedGroup(group);
     setShowDeleteModal(true);
   };
 
-  const handleDeleteGroupConfirm = () => {
-    if (selectedGroup) {
-      deleteGroup(selectedGroup.id);
-    }
-    setShowDeleteModal(false);
-  };
-
-  const handleAddGroupConfirm = (group: Group) => {
-    addGroup(group);
-    setShowAddModal(false);
-  };
-
-  const handleEditGroupConfirm = async (group: Group) => {
-    if (selectedGroup) {
-      editGroup(selectedGroup.id, group);
-    }
-    setShowEditModal(false);
-  };
-
-  const handleDeleteGroupCancel = () => {
-    setShowDeleteModal(false);
-  };
-
   const handleAddGroupCancel = () => {
     setShowAddModal(false);
-  };
-
-  const handleEditGroupCancel = () => {
-    setShowEditModal(false);
   };
 
   if (isLoading) {
@@ -358,7 +450,6 @@ const GroupSettings = () => {
           handleEditGroup={handleEditGroup}
           handleDeleteGroup={handleDeleteGroup}
         />
-
         <Button
           type="primary"
           onClick={handleAddGroup}
@@ -369,14 +460,24 @@ const GroupSettings = () => {
       </div>
       {showEditModal && selectedGroup && (
         <Modal setVisible={setShowEditModal}>
-          <PermissionForm
+          <EditGroupForm
+            connections={connections}
             group={selectedGroup}
-            handleSavePermissions={handleEditGroupConfirm}
-          ></PermissionForm>
+            editGroup={handleEditGroupConfirm}
+          ></EditGroupForm>
+        </Modal>
+      )}
+      {showAddModal && (
+        <Modal setVisible={setShowAddModal}>
+          <GroupForm
+            handleSaveGroup={addGroup}
+            handleCancel={handleAddGroupCancel}
+          ></GroupForm>
         </Modal>
       )}
     </div>
   );
 };
 
+export { useGroups, GroupSettings };
 export default GroupSettings;

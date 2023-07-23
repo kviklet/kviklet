@@ -1,7 +1,7 @@
 import { SubmitHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Connection, fetchDatabases } from "../api/DatasourceApi";
+import { ConnectionResponse, fetchDatabases } from "../api/DatasourceApi";
 import { useEffect, useState } from "react";
 import { addRequest } from "../api/ExecutionRequestApi";
 
@@ -18,7 +18,7 @@ const ExecutionRequestSchema = z.object({
 type ExecutionRequest = z.infer<typeof ExecutionRequestSchema>;
 
 function AddRequestForm() {
-  const [connections, setConnections] = useState<Connection[]>([]);
+  const [connections, setConnections] = useState<ConnectionResponse[]>([]);
 
   const datasource = useEffect(() => {
     const fetchData = async () => {

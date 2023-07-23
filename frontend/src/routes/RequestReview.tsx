@@ -37,58 +37,6 @@ const componentMap = {
   ),
 };
 
-const testRequest = {
-  id: "test",
-  title: "JIRA-123: Test Request",
-  author: {
-    id: "test3",
-    fullName: "Jascha Beste",
-    email: "jascha@opsgate.io",
-  },
-  description:
-    "I want to debug something which is why I join it with something else and order it by something else.",
-  statement: `Select * from somewhere
-where something = 1
-  and something_else = 2
-  and something_else_else = 3
-join something_else_else_else
-  on something_else_else_else.id = something_else_else.id
-order by something_else_else_else.id`,
-  readOnly: true,
-  // connection: z.string().min(1), currently not contained in response
-  executionStatus: "PENDING",
-  createdAt: new Date().toISOString(),
-  connection: {
-    id: "test",
-    displayName: "Test Connection",
-    authenticationType: AuthenticationType.USER_PASSWORD,
-    description: "This is a test connection",
-    shortUsername: "test",
-    password: "password",
-  },
-  events: [
-    {
-      author: "Nils Borrmann",
-      comment: "This is a comment",
-      createdAt: new Date().toISOString(),
-      id: "test2",
-    },
-    {
-      author: "Jascha Beste",
-      comment: `This is a comment with some markdown:  
-markdown is **cool** and *stuff*
-you can also write syntax highlighted code yay:
-
-\`\`\`sql
-select * from something
-\`\`\`
-      `,
-      createdAt: new Date().toISOString(),
-      id: "test4",
-    },
-  ],
-};
-
 function firstTwoLetters(input: string): string {
   const words = input.split(" ");
   let result = "";
@@ -112,10 +60,6 @@ function RequestReview() {
   const [commentFormVisible, setCommentFormVisible] = useState<boolean>(true);
   const [commentFormValue, setCommentFormValue] = useState<string>("");
   const loadData = async () => {
-    if (params.requestId === "test") {
-      setRequest(testRequest);
-      return;
-    }
     const request = await getSingleRequest(params.requestId);
     setRequest(request);
   };
@@ -179,7 +123,7 @@ function RequestReview() {
             <div>
               {request === undefined
                 ? ""
-                : request.events.map((event) => (
+                : request?.events?.map((event) => (
                     <Comment event={event}></Comment>
                   ))}
               <CommentBox handleAddComment={handleAddComment}></CommentBox>
@@ -204,11 +148,11 @@ function RequestBox({
         <div className="comment-clip border-cyan-500 bg-cyan-500 w-2 h-4 absolute -left-2 top-2"></div>
         <div className="comment-clip border-cyan-500 bg-cyan-200 w-2 h-4 absolute -left-2 top-2 ml-px"></div>
         <div className="absolute -left-12 rounded-full p-2 bg-cyan-500 text-gray-100  w-8 h-8 flex items-center justify-center text-l font-bold">
-          {firstTwoLetters(request?.author.fullName ?? "")}
+          {firstTwoLetters(request?.author?.fullName ?? "")}
         </div>
         <p className="text-slate-800 px-2 py-2 text-sm flex justify-between bg-cyan-200 border-b border-cyan-500 rounded-t-md">
           <div>
-            {request?.author.fullName} wants to execute on:{" "}
+            {request?.author?.fullName} wants to execute on:{" "}
             <span className="italic">{request?.connection.displayName}</span>
           </div>
           <div>

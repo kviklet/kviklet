@@ -1,6 +1,7 @@
 package com.example.executiongate.db
 
 import com.example.executiongate.db.util.BaseEntity
+import com.example.executiongate.service.EntityNotFound
 import com.example.executiongate.service.dto.Group
 import com.example.executiongate.service.dto.Permission
 import org.springframework.data.jpa.repository.JpaRepository
@@ -29,7 +30,7 @@ data class UserEntity(
         joinColumns = [JoinColumn(name = "user_id")],
         inverseJoinColumns = [JoinColumn(name = "group_id")]
     )
-    var groups: Set<GroupEntity> = HashSet(),
+    var groups: MutableSet<GroupEntity> = HashSet(),
 
     @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
@@ -72,6 +73,7 @@ interface UserRepository : JpaRepository<UserEntity, String> {
 @Service
 class UserAdapter(
     private val userRepository: UserRepository,
+    private val groupRepository: GroupRepository,
 ) {
     fun findByEmail(email: String): User? {
         val userEntity = userRepository.findByEmail(email) ?: return null
@@ -80,6 +82,14 @@ class UserAdapter(
 
     fun findByGoogleId(googleId: String): User? {
         val userEntity = userRepository.findByGoogleId(googleId) ?: return null
+        return userEntity.toDto()
+    }
+
+    fun findById(id: String): User {
+        val userEntity = userRepository.findByIdOrNull(id) ?: throw EntityNotFound(
+            "User not found",
+            "User with id $id does not exist"
+        )
         return userEntity.toDto()
     }
 
@@ -99,7 +109,8 @@ class UserAdapter(
 
         if (userEntity == null) {
             return createUser(user)
-        } else {
+        }
+        else {
             userEntity.fullName = user.fullName
             userEntity.password = user.password
             userEntity.googleId = user.googleId
@@ -107,6 +118,27 @@ class UserAdapter(
             val savedUserEntity = userRepository.save(userEntity)
             return savedUserEntity.toDto()
         }
+    }
+
+    fun updateUser(user: User): User {
+        val userEntity = userRepository.findByIdOrNull(user.id) ?: throw EntityNotFound(
+            "User not found",
+            "User with id ${user.id} does not exist"
+        )
+        userEntity.fullName = user.fullName
+        userEntity.password = user.password
+        userEntity.googleId = user.googleId
+        userEntity.email = user.email
+        // update Groups
+        user.groups?.let { newGroupIds ->
+            val newGroups = groupRepository.findAllById(newGroupIds.map { it.id }.toSet())
+            userEntity.groups.clear()
+            userEntity.groups.addAll(newGroups)
+        }
+        val savedUserEntity = userRepository.save(userEntity)
+
+        return savedUserEntity.toDto()
+
     }
 
     fun listUsers(): List<User> {

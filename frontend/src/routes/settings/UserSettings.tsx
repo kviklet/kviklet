@@ -1,150 +1,227 @@
-import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Button from "../../components/Button";
+import {
+  UserResponse,
+  createUser,
+  fetchUsers,
+  updateUser,
+} from "../../api/UserApi";
+import InputField from "../../components/InputField";
+import Modal from "../../components/Modal";
+import { useGroups } from "./GroupsSettings";
+import { GroupResponse } from "../../api/GroupApi";
+import ColorfulLabel from "../../components/ColorfulLabel";
 
-const capitalizeFirstLetter = ([first, ...rest]: string) =>
-  first.toUpperCase() + rest.join("");
+function UserForm(props: {
+  disableModal: () => void;
+  createNewUser: (email: string, password: string, fullName: string) => void;
+}) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
 
-const ColorfulLabel = (props: {
-  text: string;
-  onDelete?: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
-  onClick?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
-  color?: string;
-}) => {
-  // hash the label text to get a color inside the tailwindcss color palette
-  // https://tailwindcss.com/docs/customizing-colors#color-palette-reference
-  const hash = (s: string) => {
-    return s.split("").reduce(function (a, b) {
-      a = (a << 5) - a + b.charCodeAt(0);
-      return a & a;
-    }, 0);
+  const saveUser = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    await props.createNewUser(email, password, fullName);
+    props.disableModal();
   };
-  const colors = [
-    "bg-blue-500",
-    "bg-green-500",
-    "bg-yellow-500",
-    "bg-red-500",
-    "bg-indigo-500",
-    "bg-purple-500",
-    "bg-pink-500",
-    "bg-blue-400",
-    "bg-green-400",
-    "bg-yellow-400",
-  ];
-
-  const color = props.color || colors[hash(props.text) % 10];
 
   return (
-    <div
-      onClick={props.onClick}
-      className={`${color} ${
-        props.onClick && "cursor-pointer"
-      } text-white text-sm rounded-full px-2 py-1 m-1`}
-    >
-      {capitalizeFirstLetter(props.text)}
+    <form method="post" onSubmit={saveUser}>
+      <div className="w-2xl shadow p-3 bg-white rounded">
+        <div className="flex flex-col mb-3">
+          <InputField
+            id="email"
+            name="Email"
+            value={email}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setEmail(e.target.value)
+            }
+          />
+        </div>
+        <div className="flex flex-col mb-3">
+          <InputField
+            id="password"
+            name="Password"
+            type="passwordlike"
+            value={password}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setPassword(e.target.value)
+            }
+          />
+        </div>
+        <div className="flex flex-col mb-3">
+          <InputField
+            id="fullName"
+            name="Full Name"
+            value={fullName}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setFullName(e.target.value)
+            }
+          />
+        </div>
+        <div className="flex flex-col mb-3">
+          <Button className="ml-auto" type="submit">
+            Create
+          </Button>
+        </div>
+      </div>
+    </form>
+  );
+}
 
-      {props.onDelete && (
-        <button onClick={props.onDelete} className="ml-2">
-          <FontAwesomeIcon icon={solid("times")} />
-        </button>
-      )}
+const useUsers = () => {
+  const [users, setUsers] = useState<UserResponse[]>([]);
+  useEffect(() => {
+    async function request() {
+      const apiUsers = await fetchUsers();
+      setUsers(apiUsers);
+    }
+    request();
+  }, []);
+
+  async function addGroupToUser(userId: string, groupId: string) {
+    const currentUser = users.find((u) => u.id === userId);
+    if (!currentUser) {
+      return;
+    }
+    const newUser = await updateUser(userId, {
+      groups: [...currentUser.groups.map((g) => g.id), groupId],
+    });
+    setUsers(users.map((u) => (u.id === userId ? newUser : u)));
+  }
+
+  async function createNewUser(
+    email: string,
+    password: string,
+    fullName: string
+  ) {
+    const newUser = await createUser({
+      email: email,
+      password: password,
+      fullName: fullName,
+    });
+    setUsers([...users, newUser]);
+  }
+
+  async function removeGroupFromUser(userId: string, groupId: string) {
+    const currentUser = users.find((u) => u.id === userId);
+    if (!currentUser) {
+      return;
+    }
+    const newUser = await updateUser(userId, {
+      groups: currentUser.groups
+        .filter((g) => g.id !== groupId)
+        .map((g) => g.id),
+    });
+    setUsers(users.map((u) => (u.id === userId ? newUser : u)));
+  }
+
+  return { addGroupToUser, users, createNewUser, removeGroupFromUser };
+};
+
+const UserRow = (props: {
+  user: UserResponse;
+  groups: GroupResponse[];
+  addGroupToUser: (userId: string, groupId: string) => void;
+  removeGroupFromUser: (userId: string, groupId: string) => void;
+}) => {
+  const [groupsDialogVisible, setGroupsDialogVisible] = useState(false);
+
+  return (
+    <div className="flex flex-row">
+      <div className="flex flex-row justify-between w-full shadow-sm p-2">
+        <div className="flex flex-row w-1/3">
+          <div className="font-bold">{props.user.fullName}</div>
+        </div>
+        <div className="flex flex-row text-slate-400 w-1/3">
+          <div>{props.user.email}</div>
+        </div>
+        <div className="flex flex-row w-1/3 flex-wrap justify-end">
+          {props.user.groups.map((group) => {
+            return (
+              <ColorfulLabel
+                onDelete={() => {
+                  props.removeGroupFromUser(props.user.id, group.id);
+                }}
+                text={group.name}
+              />
+            );
+          })}
+          <ColorfulLabel
+            text="Add Group"
+            onClick={() => {
+              setGroupsDialogVisible(true);
+            }}
+            color="bg-white text-slate-700 border border-slate-400"
+          />
+          {groupsDialogVisible && (
+            <Modal setVisible={setGroupsDialogVisible}>
+              <div className="w-2xl shadow p-3 bg-white rounded">
+                <div className="flex flex-col mb-3">
+                  <div className="font-bold">Add Group</div>
+                </div>
+                <div className="flex flex-col mb-3">
+                  <div className="flex flex-row flex-wrap">
+                    {props.groups.map((group) => {
+                      return (
+                        <ColorfulLabel
+                          onClick={() => {
+                            props.addGroupToUser(props.user.id, group.id);
+                            setGroupsDialogVisible(false);
+                          }}
+                          text={group.name}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </Modal>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
 
 const UserSettings = () => {
-  const listOfusers = [
-    {
-      fullName: "Jascha Beste",
-      email: "jascha@opsgate.io",
-      groups: ["admin", "user"],
-    },
-    {
-      fullName: "Test User",
-      email: "test@example.com",
-      groups: ["user"],
-    },
-    {
-      fullName: "Test User 2",
-      email: "test@example.comm",
-      groups: [],
-    },
-  ];
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const { addGroupToUser, users, createNewUser, removeGroupFromUser } =
+    useUsers();
 
-  const listOfGroups = [
-    {
-      name: "admin",
-      description: "Admin group",
-      users: ["Jascha Beste"],
-      permissions: {
-        connection: "test Connection",
-        actions: [
-          "submitWriteRequest",
-          "submitReadRequest",
-          "viewRequests",
-          "downloadResult",
-          "ByPassReviewConfig",
-        ],
-      },
-    },
-    {
-      name: "user",
-      description: "User group",
-      users: ["Jascha Beste"],
-      permissions: {
-        connection: "test Connection",
-        actions: [
-          "submitWriteRequest",
-          "submitReadRequest",
-          "viewRequests",
-          "downloadResult",
-        ],
-      },
-    },
-  ];
+  const { groups, isLoading, error, deleteGroup, addGroup, editGroup } =
+    useGroups();
 
   return (
     <div>
       <div className="flex flex-col justify-between w-2/3 mx-auto">
-        <div className="flex flex-col h-60">
-          {listOfusers.map((user) => {
-            return (
-              <div className="flex flex-row">
-                <div className="flex flex-row justify-between w-full shadow-sm p-2">
-                  <div className="flex flex-row w-1/3">
-                    <div className="font-bold">{user.fullName}</div>
-                  </div>
-                  <div className="flex flex-row text-slate-400 w-1/3">
-                    <div>{user.email}</div>
-                  </div>
-                  <div className="flex flex-row w-1/3 flex-wrap justify-end">
-                    {user.groups.map((group) => {
-                      return (
-                        <ColorfulLabel
-                          onDelete={() => {
-                            console.log("Remove Group");
-                          }}
-                          text={group}
-                        />
-                      );
-                    })}
-                    <ColorfulLabel
-                      text="Add Group"
-                      onClick={() => {
-                        console.log("Add Group");
-                      }}
-                      color="bg-white text-slate-700 border border-slate-400"
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        <div className="flex flex-col min-h-60">
+          {users.map((user) => (
+            <UserRow
+              user={user}
+              groups={groups}
+              addGroupToUser={addGroupToUser}
+              removeGroupFromUser={removeGroupFromUser}
+            />
+          ))}
         </div>
         <div className="flex">
-          <Button className="ml-auto my-2">Add User</Button>
+          <Button
+            className="ml-auto my-2"
+            onClick={() => setShowCreateUserModal(true)}
+          >
+            Add User
+          </Button>
         </div>
+        {showCreateUserModal && (
+          <Modal setVisible={setShowCreateUserModal}>
+            <UserForm
+              disableModal={() => setShowCreateUserModal(false)}
+              createNewUser={createNewUser}
+            />
+          </Modal>
+        )}
       </div>
     </div>
   );
