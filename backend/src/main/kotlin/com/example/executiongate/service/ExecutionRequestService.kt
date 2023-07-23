@@ -5,10 +5,7 @@ import com.example.executiongate.controller.CreateExecutionRequest
 import com.example.executiongate.controller.CreateReviewRequest
 import com.example.executiongate.db.CommentPayload
 import com.example.executiongate.db.DatasourceConnectionAdapter
-import com.example.executiongate.db.DatasourceConnectionRepository
-import com.example.executiongate.db.EventRepository
 import com.example.executiongate.db.ExecutionRequestAdapter
-import com.example.executiongate.db.ExecutionRequestEntity
 import com.example.executiongate.db.Payload
 import com.example.executiongate.db.ReviewConfig
 import com.example.executiongate.db.ReviewPayload
@@ -17,7 +14,6 @@ import com.example.executiongate.service.dto.ExecutionRequest
 import com.example.executiongate.service.dto.ExecutionRequestDetails
 import com.example.executiongate.service.dto.ExecutionRequestId
 import com.example.executiongate.service.dto.ReviewStatus
-import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import javax.transaction.Transactional
 
@@ -25,6 +21,7 @@ import javax.transaction.Transactional
 class ExecutionRequestService(
     val executionRequestAdapter: ExecutionRequestAdapter,
     val datasourceConnectionAdapter: DatasourceConnectionAdapter,
+    val executorService: ExecutorService,
 ) {
 
     @Transactional
@@ -82,5 +79,17 @@ class ExecutionRequestService(
     ): ReviewStatus {
         println("events: $events")
         return ReviewStatus.APPROVED
+    }
+
+    fun execute(id: ExecutionRequestId): QueryResult {
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
+        val connection = executionRequest.request.connection
+
+        return executorService.execute(
+            connectionString = connection.getConnectionString(),
+            username = connection.username,
+            password = connection.password,
+            executionRequest.request.statement,
+        )
     }
 }

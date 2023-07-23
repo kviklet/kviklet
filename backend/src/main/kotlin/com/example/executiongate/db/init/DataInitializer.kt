@@ -24,7 +24,8 @@ class DataInitializer(
     fun randomSQL(): String {
         val tables = listOf("users", "orders", "products")
         val table = tables[ThreadLocalRandom.current().nextInt(tables.size)]
-        return "SELECT * FROM $table;"
+        // return "SELECT * FROM $table;"
+        return "SELECT 1;"
     }
 
     // Helper function to generate an ExecutionRequestEntity
@@ -191,8 +192,8 @@ class DataInitializer(
                 authenticationType = AuthenticationType.USER_PASSWORD,
                 description = "This is connection 3 it is used for some purpose or another" +
                         "and is very important to the business",
-                username = "test3",
-                password = "test3",
+                username = "root",
+                password = "root",
                 reviewConfig = ReviewConfig(numTotalRequired = 1)
             )
 
@@ -202,8 +203,8 @@ class DataInitializer(
 
             for (i in 1..5) {
                 val request1 = generateExecutionRequest(savedConnection1, "First", i, savedUser)
-                val request2 = generateExecutionRequest(savedConnection1, "Second", i,savedUser)
-                val request3 = generateExecutionRequest(savedConnection2, "Third", i, savedUser)
+                val request2 = generateExecutionRequest(savedConnection2, "Second", i,savedUser)
+                val request3 = generateExecutionRequest(savedConnection3, "Third", i, savedUser)
 
                 executionRequestRepository.save(request1)
                 executionRequestRepository.save(request2)

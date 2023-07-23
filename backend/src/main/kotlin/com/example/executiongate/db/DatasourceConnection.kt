@@ -4,6 +4,7 @@ import com.example.executiongate.db.util.BaseEntity
 import com.example.executiongate.db.util.ReviewConfigConverter
 import com.example.executiongate.service.EntityNotFound
 import com.example.executiongate.service.dto.AuthenticationType
+import com.example.executiongate.service.dto.Datasource
 import com.example.executiongate.service.dto.DatasourceConnection
 import com.example.executiongate.service.dto.DatasourceConnectionId
 import org.apache.commons.lang3.builder.ToStringBuilder
@@ -46,8 +47,9 @@ class DatasourceConnectionEntity(
         .append("name", displayName)
         .toString()
 
-    fun toDto() = DatasourceConnection(
+    fun toDto(datasourceDto: Datasource? = null) = DatasourceConnection(
         id = DatasourceConnectionId(id),
+        datasource = datasourceDto ?: datasource.toDto(),
         displayName = displayName,
         authenticationType = authenticationType,
         username = username,

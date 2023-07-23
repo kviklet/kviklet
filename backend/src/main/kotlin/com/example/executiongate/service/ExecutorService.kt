@@ -2,12 +2,26 @@ package com.example.executiongate.service
 
 import com.zaxxer.hikari.HikariDataSource
 import org.springframework.boot.jdbc.DataSourceBuilder
+import org.springframework.stereotype.Service
 import java.sql.SQLException
+import java.sql.Statement
+import java.util.*
 
-data class QueryResult(
+sealed class QueryResult
+
+data class RecordsQueryResult(
     val columns: List<ColumnInfo>,
-    val data: List<List<String>>,
-)
+    val data: List<Map<String, String>>,
+) : QueryResult()
+
+data class UpdateQueryResult(
+    val rowsUpdated: Int,
+) : QueryResult()
+
+data class ErrorQueryResult(
+    val errorMessage: Int,
+    val message: String?,
+) : QueryResult()
 
 data class ColumnInfo(
     val label: String,
@@ -15,9 +29,10 @@ data class ColumnInfo(
     val typeClass: String, // "java.lang.Integer", "java.lang.String", "java.sql.Timestamp"
 )
 
+@Service
 class ExecutorService {
 
-    fun testConnection(
+/*    fun testConnection(
         url: String
     ): Boolean {
         val dataSource: HikariDataSource = createConnection(url)
@@ -31,54 +46,60 @@ class ExecutorService {
         } finally {
             dataSource.close()
         }
+    }*/
+
+    fun execute(connectionString: String, username: String, password: String, query: String): QueryResult {
+        createConnection(connectionString, username, password).use { dataSource: HikariDataSource ->
+            try {
+                dataSource.connection.createStatement().use { statement ->
+                    val execute = statement.execute(query)
+                    if (execute) {
+                        // Execution returned a ResultSet
+                        return handleResultSet(statement)
+                    } else {
+                        // Execution returned an update count or empty result
+                        return UpdateQueryResult(statement.updateCount)
+                    }
+                }
+            } catch (e: SQLException) {
+                return ErrorQueryResult(e.errorCode, e.message)
+            }
+        }
     }
 
-    fun execute(url: String, statement: String): QueryResult {
-        val dataSource: HikariDataSource = createConnection(url)
-
-        try {
-            val connection = dataSource.connection
-            val query = connection.createStatement()
-            val execution = query.execute(statement)
-            val resultSet = query.resultSet
-
-            val metadata = resultSet.metaData
-            val columns = (1..metadata.columnCount).map { i ->
-                ColumnInfo(
-                    label=metadata.getColumnLabel(i),
-                    typeName = metadata.getColumnTypeName(i),
-                    typeClass = metadata.getColumnClassName(i),
-                )
-            }
-
-            val results: MutableList<List<String>> = mutableListOf<List<String>>()
-            while (resultSet.next()) {
-                results.add(
-                    (1..columns.size).map { i ->
-                        resultSet.getString(i)
-                    }
-                )
-            }
-            connection.close()
-            query.close()
-            resultSet.close()
-
-            return QueryResult(
-                columns = columns,
-                data = results,
+    private fun handleResultSet(statement: Statement): QueryResult {
+        val resultSet = statement.resultSet
+        val metadata = resultSet.metaData
+        val columns = (1..metadata.columnCount).map { i ->
+            ColumnInfo(
+                label = metadata.getColumnLabel(i),
+                typeName = metadata.getColumnTypeName(i),
+                typeClass = metadata.getColumnClassName(i),
             )
-        } finally {
-            dataSource.close()
         }
 
+        val results: MutableList<Map<String, String>> = mutableListOf()
+        while (resultSet.next()) {
+            results.add(columns.associate {
+                if (it.typeClass == "[B") {
+                    Pair(it.label, "0x" + HexFormat.of().formatHex(resultSet.getBytes(it.label)))
+                } else {
+                    Pair(it.label, resultSet.getString(it.label))
+                }
+            })
+        }
+        return RecordsQueryResult(
+            columns = columns,
+            data = results,
+        )
     }
 
-    private fun createConnection(url: String): HikariDataSource {
+    private fun createConnection(url: String, username: String, password: String): HikariDataSource {
         val dataSource: HikariDataSource = DataSourceBuilder
             .create()
-            .url("jdbc:$url")
-            .username("root")
-            .password("root")
+            .url(url)
+            .username(username)
+            .password(password)
             .type(HikariDataSource::class.java)
             .build()
 

@@ -16,6 +16,7 @@ plugins {
 group = "com.example"
 version = "0.0.1-SNAPSHOT"
 val queryDslVersion = "5.0.0"
+val testcontainersVersion = "1.18.3"
 java.sourceCompatibility = JavaVersion.VERSION_17
 
 configurations {
@@ -25,7 +26,7 @@ configurations {
 }
 
 repositories {
-	maven { url = uri("https://repo.spring.io/release") }
+	maven { url = uri("https://repo.spring.io/milestone") }
 	mavenCentral()
 }
 
@@ -52,6 +53,8 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.security:spring-security-test")
     testImplementation("com.tngtech.archunit:archunit-junit5:1.0.1")
+    testImplementation("org.testcontainers:mysql:${testcontainersVersion}")
+    testImplementation("org.testcontainers:postgresql:${testcontainersVersion}")
 
     testImplementation("io.kotest:kotest-assertions-core:5.5.5")
     testImplementation("io.mockk:mockk:1.13.4")
@@ -61,6 +64,10 @@ dependencies {
     implementation("com.querydsl:querydsl-jpa:${queryDslVersion}")
     kapt("com.querydsl:querydsl-apt:${queryDslVersion}:jpa" )
     implementation(group="javax.inject", name="javax.inject", version="1")
+
+    //db drivers
+    implementation("org.mariadb.jdbc:mariadb-java-client:3.1.4")
+    implementation("com.mysql:mysql-connector-j:8.0.33")
 
 }
 

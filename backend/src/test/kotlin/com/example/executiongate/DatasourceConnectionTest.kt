@@ -12,6 +12,7 @@ import com.example.executiongate.controller.ListDatasourceResponse
 import com.example.executiongate.controller.ReviewConfigRequest
 import com.example.executiongate.db.CustomDatasourceRepository
 import com.example.executiongate.db.DatasourceRepository
+import com.example.executiongate.security.UserDetailsWithId
 import com.example.executiongate.service.dto.CommentEvent
 import com.example.executiongate.service.dto.DatasourceType
 import com.example.executiongate.service.dto.EventId
@@ -89,13 +90,21 @@ class DatasourceConnectionTest(
             )
         )
 
-        val request = executionRequestController.create(CreateExecutionRequest(
-            datasourceConnectionId = connection.id,
-            title = "My Request",
-            description = "Request description",
-            statement = "SELECT 1",
-            readOnly = false,
-        ))
+        val request = executionRequestController.create(
+            CreateExecutionRequest(
+                datasourceConnectionId = connection.id,
+                title = "My Request",
+                description = "Request description",
+                statement = "SELECT 1",
+                readOnly = false,
+            ),
+            UserDetailsWithId(
+                id = "foo",
+                email = "email",
+                password = "password",
+                authorities = emptyList(),
+            )
+        )
 
         executionRequestController.createReview(request.id, CreateReviewRequest(
             comment = "Comment", action = ReviewAction.APPROVE

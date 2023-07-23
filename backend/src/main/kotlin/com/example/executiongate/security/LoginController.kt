@@ -1,5 +1,6 @@
 package com.example.executiongate.security
 
+import io.swagger.v3.oas.annotations.media.Schema
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -55,5 +56,10 @@ class Oauth2Controller {
     }
 }
 
-data class LoginCredentials(val email: String, val password: String)
+data class LoginCredentials(
+    @Schema(example = "testUser@example.com")
+    val email: String,
+    @Schema(example = "testPassword")
+    val password: String
+)
 

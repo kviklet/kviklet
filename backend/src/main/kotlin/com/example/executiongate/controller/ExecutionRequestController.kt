@@ -159,8 +159,8 @@ class ExecutionRequestController(
         executionRequestService.createComment(id, request)
     }
 
-//    @PostMapping("/{requestId}")
-//    fun execute(@PathVariable requestId: String): QueryResult {
-//        return executionRequestService.execute(requestId)
-//    }
+    @PostMapping("/{id}/execute")
+    fun execute(@PathVariable id: ExecutionRequestId): QueryResult {
+        return executionRequestService.execute(id)
+    }
 }

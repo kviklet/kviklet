@@ -25,9 +25,9 @@ data class Datasource(
     val type: DatasourceType,
     val hostname: String,
     val port: Int,
-    val datasourceConnections: List<DatasourceConnection>
+    var datasourceConnections: List<DatasourceConnection>
 ) {
-    fun getConnectionString() = "jdbc:${type.schema}://$hostname:$port"
+    fun getConnectionString() = "jdbc:${type.schema}://$hostname:$port?permitMysqlScheme"
 }
 
 @JvmInline
@@ -37,12 +37,15 @@ value class DatasourceConnectionId(private val id: String): Serializable {
 
 data class DatasourceConnection(
     val id: DatasourceConnectionId,
+    val datasource: Datasource,
     val displayName: String,
     val authenticationType: AuthenticationType,
     val username: String,
     val password: String,
     val description: String,
     val reviewConfig: ReviewConfig
-)
+) {
+    fun getConnectionString() = datasource.getConnectionString()
+}
 
 

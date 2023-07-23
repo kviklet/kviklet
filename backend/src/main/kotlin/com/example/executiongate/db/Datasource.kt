@@ -31,14 +31,18 @@ class DatasourceEntity(
         .append("displayName", displayName)
         .toString()
 
-    fun toDto() = Datasource(
-        id = DatasourceId(id),
-        displayName = displayName,
-        type = type,
-        hostname = hostname,
-        port = port,
-        datasourceConnections = datasourceConnections.map { it.toDto() }
-    )
+    fun toDto(): Datasource {
+        val dto = Datasource(
+            id = DatasourceId(id),
+            displayName = displayName,
+            type = type,
+            hostname = hostname,
+            port = port,
+            datasourceConnections = emptyList()
+        )
+        dto.datasourceConnections = datasourceConnections.map { it.toDto(dto) }
+        return dto
+    }
 }
 
 interface DatasourceRepository : JpaRepository<DatasourceEntity, String>, CustomDatasourceRepository
