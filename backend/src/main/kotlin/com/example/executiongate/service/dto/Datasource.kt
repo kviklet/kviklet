@@ -27,7 +27,7 @@ data class Datasource(
     val port: Int,
     var datasourceConnections: List<DatasourceConnection>
 ) {
-    fun getConnectionString() = "jdbc:${type.schema}://$hostname:$port?permitMysqlScheme"
+    fun getConnectionString() = "jdbc:${type.schema}://$hostname:$port/"
 }
 
 @JvmInline

@@ -12,13 +12,7 @@ import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
-import javax.persistence.Column
-import javax.persistence.Convert
-import javax.persistence.Entity
-import javax.persistence.EnumType
-import javax.persistence.Enumerated
-import javax.persistence.JoinColumn
-import javax.persistence.ManyToOne
+import javax.persistence.*
 
 
 data class ReviewConfig(
@@ -28,7 +22,7 @@ data class ReviewConfig(
 
 @Entity(name = "datasource_connection")
 class DatasourceConnectionEntity(
-    @ManyToOne
+    @ManyToOne(cascade = [CascadeType.ALL])
     @JoinColumn(name = "datasource_id")
     val datasource: DatasourceEntity,
     val displayName: String,
@@ -40,6 +34,8 @@ class DatasourceConnectionEntity(
     @Convert(converter = ReviewConfigConverter::class)
     @Column(columnDefinition = "json")
     val reviewConfig: ReviewConfig,
+    @OneToMany(mappedBy = "connection", cascade = [CascadeType.ALL])
+    val executionRequests: Set<ExecutionRequestEntity> = emptySet(),
 ): BaseEntity() {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
@@ -56,6 +52,7 @@ class DatasourceConnectionEntity(
         password = password,
         description = description,
         reviewConfig = reviewConfig,
+
     )
 
 }

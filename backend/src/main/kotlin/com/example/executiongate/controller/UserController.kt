@@ -102,6 +102,11 @@ class UserController(
         val savedUser = userAdapter.updateUser(updatedUser)
         return UserResponse(savedUser)
     }
+
+    @DeleteMapping("/{id}")
+    fun deleteUser(@PathVariable id: String) {
+        userAdapter.deleteUser(id)
+    }
 }
 
 

@@ -3,12 +3,20 @@ function Button(props: {
   onClick?: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
   children: React.ReactNode;
   className?: string;
-  type?: "button" | "submit" | "reset" | "disabled" | "primary" | undefined;
+  type?:
+    | "button"
+    | "submit"
+    | "reset"
+    | "disabled"
+    | "primary"
+    | "danger"
+    | undefined;
 }) {
   const submitStyle = "bg-sky-700 font-semibold text-white hover:bg-sky-900";
   const disabledStyle =
     "bg-gray-300 text-gray-500 hover:bg-gray-300 hover:border-gray-300";
   const defaultStyle = "border border-gray-300 hover:border-gray-400";
+  const dangerStyle = "bg-red-600 text-white hover:bg-red-800"; // this is your new "danger" style
 
   const disabled = props.type == "disabled" ? true : undefined;
   const submit = props.type == "submit" ? "submit" : undefined;
@@ -22,6 +30,7 @@ function Button(props: {
       className={`${props.className} px-4 py-2  text-md ${
         (props.type == "submit" && submitStyle) ||
         (props.type == "disabled" && disabledStyle) ||
+        (props.type == "danger" && dangerStyle) ||
         defaultStyle
       }
       leading-5 align-middle  rounded-lg`}

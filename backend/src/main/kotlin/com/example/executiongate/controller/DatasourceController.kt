@@ -139,13 +139,31 @@ class DatasourceController(
         return DatasourceConnectionResponse.fromDto(datasource)
     }
 
+    @DeleteMapping("/{datasourceId}/connections/{connectionId}")
+    fun deleteDatasourceConnection(
+        @PathVariable datasourceId: DatasourceId,
+        @PathVariable connectionId: DatasourceConnectionId
+    ) {
+        datasourceService.deleteDatasourceConnection(
+            connectionId = connectionId
+        )
+    }
+
+    @DeleteMapping("/{datasourceId}")
+    fun deleteDatasource(
+        @PathVariable datasourceId: DatasourceId
+    ) {
+        datasourceService.deleteDatasource(
+            datasourceId = datasourceId
+        )
+    }
+
 
     @GetMapping("")
     fun getDatasources(): ListDatasourceResponse {
         val dbs = datasourceService.listConnections()
         return ListDatasourceResponse(databases = dbs.map { DatasourceResponse.fromDto(it) })
     }
-
     /*
     @PostMapping("/test")
     fun testConnection(@Valid @RequestBody connection: TestDatabaseConnection): ResponseEntity<Any> {

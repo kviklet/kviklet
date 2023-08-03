@@ -33,6 +33,21 @@ function timeSince(date: Date) {
   return Math.floor(seconds) + " seconds ago";
 }
 
+function mapStatusToColor(status?: string) {
+  switch (status) {
+    case "APPROVED":
+      return "bg-lime-400";
+    case "AWAITING_APPROVAL":
+      return "bg-sky-400";
+    case "PENDING":
+      return "bg-yellow-400";
+    case "SUCCESS":
+      return "bg-lime-400";
+    default:
+      return "bg-gray-400";
+  }
+}
+
 function Requests() {
   const [requests, setRequests] = useState<ExecutionRequestResponse[]>([]);
   useEffect(() => {
@@ -42,26 +57,56 @@ function Requests() {
     };
     fetchData();
   }, []);
+  const [onlyPending, setOnlyPending] = useState(false);
+
+  const visibleRequests = onlyPending
+    ? requests.filter((r) => r.reviewStatus === "AWAITING_APPROVAL")
+    : requests;
 
   return (
     <div>
       <div className="max-w-5xl mx-auto">
         <h1 className="text-2xl font-bold m-5 pl-1.5"> Open Requests</h1>
+        <div className="flex flex-row">
+          <div className="flex flex-row">
+            <input
+              type="checkbox"
+              className="mr-2"
+              checked={onlyPending}
+              onChange={(e) => setOnlyPending(e.target.checked)}
+            />
+            <label>Only show pending requests</label>
+          </div>
+        </div>
 
-        {requests.length === 0 && (
+        {visibleRequests.length === 0 && (
           <div className="my-4 mx-2 px-4 py-2">
             <h2 className="text-lg text-center">No open requests</h2>
           </div>
         )}
-        {requests.map((request) => {
+        {visibleRequests.map((request) => {
           return (
             <Link to={`/requests/${request.id}`}>
-              <div className="shadow-md my-4 mx-2 px-4 py-2" key={request.id}>
-                <h2 className="text-lg font-bold">{request.title}</h2>
-                <p>{request.description}</p>
+              <div
+                className="shadow-md bg-slate-100 my-4 mx-2 px-2 py-2"
+                key={request.id}
+              >
                 <div className="flex">
-                  <div className="ml-auto">
-                    {timeSince(new Date(request.createdAt))}
+                  <div className="flex mb-2 flex-col">
+                    <h2 className="text-lg font-bold">{request.title}</h2>
+                    <p>{request.description}</p>
+                  </div>
+                  <div className="ml-auto flex flex-col">
+                    <div className="mb-2">
+                      {timeSince(new Date(request.createdAt))}
+                    </div>
+                    <div
+                      className={`${mapStatusToColor(
+                        request.reviewStatus
+                      )} font-bold rounded-full text-sm text-center text-white w-20 py-1 px-1.5`}
+                    >
+                      {request?.reviewStatus}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -76,4 +121,4 @@ function Requests() {
   );
 }
 
-export { Requests };
+export { Requests, mapStatusToColor };

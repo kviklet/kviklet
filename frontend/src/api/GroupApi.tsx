@@ -58,6 +58,14 @@ const createGroup = async (
   return groupResponseSchema.parse(data);
 };
 
+const removeGroup = async (id: string): Promise<void> => {
+  const response = await fetch(`${baseUrl}/groups/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  return;
+};
+
 const patchGroup = async (
   id: string,
   group: EditGroupRequest
@@ -74,5 +82,5 @@ const patchGroup = async (
   return groupResponseSchema.parse(data);
 };
 
-export { groupResponseSchema, getGroups, createGroup, patchGroup };
+export { groupResponseSchema, getGroups, createGroup, patchGroup, removeGroup };
 export type { GroupResponse, PermissionResponse, CreateGroupRequest };

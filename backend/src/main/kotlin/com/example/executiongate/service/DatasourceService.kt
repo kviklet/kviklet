@@ -64,11 +64,24 @@ class DatasourceService(
                 description = request.description,
                 reviewConfig = ReviewConfig(
                     numTotalRequired = request.reviewConfig.numTotalRequired,
-                )
+                ),
+                executionRequests = emptySet()
             )
         ).toDto().also {
             logger.info("Created $it")
         }
+    }
+
+    fun deleteDatasource(datasourceId: DatasourceId) {
+        val datasource = getDatasource(datasourceId)
+        datasourceRepository.delete(datasource)
+    }
+
+    fun deleteDatasourceConnection(
+        connectionId: DatasourceConnectionId
+    ) {
+        val datasourceConnection = getDatasourceConnection(connectionId)
+        datasourceConnectionRepository.delete(datasourceConnection)
     }
 
     private fun getDatasource(datasourceId: DatasourceId): DatasourceEntity =

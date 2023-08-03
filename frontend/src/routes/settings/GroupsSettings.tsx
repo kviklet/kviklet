@@ -14,10 +14,12 @@ import {
   createGroup,
   getGroups,
   patchGroup,
+  removeGroup,
 } from "../../api/GroupApi";
 import ColorfulLabel from "../../components/ColorfulLabel";
 import { useDatasources } from "./DatabaseSettings";
 import { ConnectionResponse } from "../../api/DatasourceApi";
+import DeleteConfirm from "../../components/DeleteConfirm";
 
 const Tooltip = ({
   children,
@@ -82,10 +84,9 @@ const useGroups = (): {
     loadGroups();
   }, []);
 
-  const deleteGroup = (id: string) => {
-    //delete group
+  const deleteGroup = async (id: string) => {
+    await removeGroup(id);
 
-    //update groups
     const newGroups = groups.filter((group) => group.id !== id);
     setGroups(newGroups);
   };
@@ -473,6 +474,16 @@ const GroupSettings = () => {
             handleSaveGroup={addGroup}
             handleCancel={handleAddGroupCancel}
           ></GroupForm>
+        </Modal>
+      )}
+      {showDeleteModal && selectedGroup && (
+        <Modal setVisible={setShowDeleteModal}>
+          <DeleteConfirm
+            title="Delete Group"
+            message={`Are you sure you want to delete group ${selectedGroup.name}?`}
+            onConfirm={() => deleteGroup(selectedGroup.id)}
+            onCancel={() => setShowDeleteModal(false)}
+          />
         </Modal>
       )}
     </div>

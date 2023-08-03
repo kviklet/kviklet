@@ -91,10 +91,19 @@ const addConnection = async (
   return connection;
 };
 
+const removeDatabase = async (id: string): Promise<void> => {
+  const response = await fetch(`${datasourceUrl}${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  return;
+};
+
 export {
   fetchDatabases,
   addDatabase,
   addConnection,
+  removeDatabase,
   databaseResponseSchema,
   connectionResponseSchema,
   AuthenticationType,

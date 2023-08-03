@@ -4,6 +4,7 @@ import com.example.executiongate.db.GroupAdapter
 import com.example.executiongate.service.dto.Group
 import com.example.executiongate.service.dto.Permission
 import org.springframework.validation.annotation.Validated
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -96,5 +97,10 @@ class GroupController(private val groupAdapter: GroupAdapter) {
             )
         )
         return GroupResponse.fromDto(savedGroup)
+    }
+
+    @DeleteMapping("/:id")
+    fun deleteGroup(id: String) {
+        groupAdapter.delete(id)
     }
 }

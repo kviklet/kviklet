@@ -5,11 +5,15 @@ import { vs } from "react-syntax-highlighter/dist/esm/styles/prism";
 import ReactMarkdown from "react-markdown";
 import {
   ExecutionRequestResponseWithComments,
+  addCommentToRequest,
+  addReviewToRequest,
   getSingleRequest,
+  runQuery,
 } from "../api/ExecutionRequestApi";
 import { z } from "zod";
 import Button from "../components/Button";
 import { AuthenticationType } from "../api/DatasourceApi";
+import { mapStatusToColor } from "./Requests";
 
 interface RequestReviewParams {
   requestId: string;
@@ -52,81 +56,86 @@ function firstTwoLetters(input: string): string {
   return result;
 }
 
-function RequestReview() {
-  const params = useParams() as unknown as RequestReviewParams;
+const useRequest = (id: string) => {
   const [request, setRequest] = useState<
     ExecutionRequestResponseWithComments | undefined
   >(undefined);
-  const [commentFormVisible, setCommentFormVisible] = useState<boolean>(true);
-  const [commentFormValue, setCommentFormValue] = useState<string>("");
-  const loadData = async () => {
-    const request = await getSingleRequest(params.requestId);
-    setRequest(request);
-  };
-
   useEffect(() => {
-    loadData();
+    async function request() {
+      const request = await getSingleRequest(id);
+      setRequest(request);
+    }
+    request();
   }, []);
 
-  const handleAddComment = async (event: any) => {
-    event.preventDefault();
-    //if approve button was clicked print help
-    //@ts-ignore
-    if (event.nativeEvent.submitter.id == "approve") {
-      console.log("help");
-    }
+  const addComment = async (comment: string) => {
+    await addCommentToRequest(id, comment);
 
-    const form = event.target as HTMLFormElement;
-    const formData = new FormData(form);
-    const json = Object.fromEntries(formData.entries());
-    const response = await fetch(
-      `http://localhost:8080/execution-requests/${params.requestId}/comments/`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ comment: json.comment }),
+    // update the request with the new comment by updating the events propertiy with a new Comment
+    setRequest((request) => {
+      if (request === undefined) {
+        return undefined;
       }
-    );
-    console.log(response);
-    loadData();
+      return {
+        ...request,
+        events: [
+          ...request.events,
+          {
+            id: "",
+            author: "",
+            comment,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      };
+    });
   };
 
-  const runQuery = async () => {
-    const response = await fetch(
-      `http://localhost:8080/requests/${params.requestId}/run`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({}),
-      }
-    );
-    const json = await response.json();
-    console.log(json);
+  const approve = async (comment: string) => {
+    await addReviewToRequest(id, comment, "APPROVE");
+    const newRequest = await getSingleRequest(id);
+    setRequest(newRequest);
   };
+
+  const execute = async () => {
+    await runQuery(id);
+  };
+
+  return { request, addComment, approve, execute };
+};
+
+function RequestReview() {
+  const params = useParams() as unknown as RequestReviewParams;
+  const { request, addComment, approve, execute } = useRequest(
+    params.requestId
+  );
 
   return (
     <div>
       <div className="max-w-3xl m-auto">
         <h1 className="text-3xl my-2 w-full flex">
           <div className="mr-auto">{request?.title}</div>
-          <div className="bg-lime-400 font-bold rounded-full text-lg ml-auto text-white py-1 px-1.5">
-            {request?.executionStatus}
+          <div
+            className={`${mapStatusToColor(
+              request?.reviewStatus
+            )} font-bold rounded-full text-lg ml-auto text-white py-1 px-1.5`}
+          >
+            {request?.reviewStatus}
           </div>
         </h1>
         <div className="">
           <div className="">
-            <RequestBox request={request} runQuery={runQuery}></RequestBox>
+            <RequestBox request={request} runQuery={execute}></RequestBox>
             <div>
               {request === undefined
                 ? ""
                 : request?.events?.map((event) => (
                     <Comment event={event}></Comment>
                   ))}
-              <CommentBox handleAddComment={handleAddComment}></CommentBox>
+              <CommentBox
+                addComment={addComment}
+                approve={approve}
+              ></CommentBox>
             </div>
           </div>
         </div>
@@ -140,7 +149,7 @@ function RequestBox({
   runQuery,
 }: {
   request: ExecutionRequestResponseWithComments | undefined;
-  runQuery: (event: any) => void;
+  runQuery: () => void;
 }) {
   return (
     <div>
@@ -173,9 +182,7 @@ function RequestBox({
         <Button
           className="mt-3"
           id="runQuery"
-          type={
-            (request?.executionStatus == "SUCCESS" && "disabled") || "submit"
-          }
+          type={(request?.reviewStatus == "APPROVED" && "submit") || "disabled"}
           onClick={runQuery}
         >
           <div className="play-triangle inline-block bg-white w-2 h-3 mr-2"></div>
@@ -224,12 +231,24 @@ function Comment({
 }
 
 function CommentBox({
-  handleAddComment,
+  addComment,
+  approve,
 }: {
-  handleAddComment: (event: any) => void;
+  addComment: (comment: string) => Promise<void>;
+  approve: (comment: string) => Promise<void>;
 }) {
   const [commentFormVisible, setCommentFormVisible] = useState<boolean>(true);
-  const [commentFormValue, setCommentFormValue] = useState<string>("");
+  const [comment, setComment] = useState<string>("");
+
+  const handleAddComment = async () => {
+    await addComment(comment);
+    setComment("");
+  };
+
+  const handleApprove = async () => {
+    await approve(comment);
+    setComment("");
+  };
   return (
     <div>
       <div className="relative py-4 ml-4">
@@ -274,8 +293,8 @@ function CommentBox({
               id="comment"
               name="comment"
               rows={4}
-              onChange={(event) => setCommentFormValue(event.target.value)}
-              value={commentFormValue}
+              onChange={(event) => setComment(event.target.value)}
+              value={comment}
               placeholder="Leave a comment"
             ></textarea>
           ) : (
@@ -283,7 +302,7 @@ function CommentBox({
               className="h-28 max-h-48 overflow-y-scroll scrollbar-thin scrollbar-track-slate-100  scrollbar-thumb-slate-300 scrollbar-thumb-rounded scrollbar-track-rounded border-r-slate-300 my-2"
               components={componentMap}
             >
-              {commentFormValue}
+              {comment}
             </ReactMarkdown>
           )}
           <div className="px-1">
@@ -295,7 +314,7 @@ function CommentBox({
               >
                 Add Comment
               </Button>
-              <Button id="approve" type="submit" onClick={handleAddComment}>
+              <Button id="approve" type="submit" onClick={handleApprove}>
                 Approve
               </Button>
             </div>

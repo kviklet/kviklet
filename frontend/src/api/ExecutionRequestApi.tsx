@@ -3,8 +3,9 @@ import { ExecutionRequest } from "../routes/AddRequestForm";
 import { type } from "os";
 import { userResponseSchema } from "./UserApi";
 import { connectionResponseSchema } from "./DatasourceApi";
+import baseUrl from "./base";
 
-const requestUrl = "http://localhost:8080/execution-requests/";
+const requestUrl = `${baseUrl}/execution-requests/`;
 
 const DateTime = z.preprocess(
   (val) => (typeof val == "string" ? val.concat("Z") : undefined),
@@ -37,6 +38,7 @@ const ExecutionRequestResponse = z.object({
   readOnly: z.boolean(),
   connection: connectionResponseSchema,
   executionStatus: z.string(),
+  reviewStatus: z.string(),
   createdAt: DateTime,
   connectionName: z.string().optional(),
 });
@@ -100,7 +102,52 @@ const getSingleRequest = async (
   return request;
 };
 
-export { addRequest, getRequests, getSingleRequest };
+const addCommentToRequest = async (id: string, comment: string) => {
+  const response = await fetch(requestUrl + id + "/comments", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify({ comment }),
+  });
+  return;
+};
+
+const addReviewToRequest = async (
+  id: string,
+  review: string,
+  action: string
+) => {
+  const response = await fetch(requestUrl + id + "/reviews", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify({ comment: review, action }),
+  });
+  return;
+};
+
+const runQuery = async (id: string) => {
+  const response = await fetch(requestUrl + id + "/execute", {
+    method: "POST",
+    credentials: "include",
+  });
+  const json = await response.json();
+  console.log(json);
+  return;
+};
+
+export {
+  addRequest,
+  getRequests,
+  getSingleRequest,
+  addCommentToRequest,
+  addReviewToRequest,
+  runQuery,
+};
 export type {
   ExecutionRequestResponse,
   ExecutionRequestsResponse,

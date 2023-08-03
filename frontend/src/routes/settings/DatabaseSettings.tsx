@@ -7,11 +7,15 @@ import {
   addConnection,
   addDatabase,
   fetchDatabases,
+  removeDatabase,
 } from "../../api/DatasourceApi";
 import Button from "../../components/Button";
 import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
 import Spinner from "../../components/Spinner";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
+import DeleteConfirm from "../../components/DeleteConfirm";
 
 function CreateDatabaseForm(props: {
   handleCreateDatabase: (database: DatabasePayload) => Promise<void>;
@@ -116,7 +120,21 @@ const useDatasources = () => {
     setDatasources(newDatasources);
   };
 
-  return { datasources, createDatabase, loading, createConnection };
+  const deleteDatasource = async (id: string) => {
+    await removeDatabase(id);
+    const newDatasources = datasources.filter((datasource) => {
+      return datasource.id !== id;
+    });
+    setDatasources(newDatasources);
+  };
+
+  return {
+    datasources,
+    createDatabase,
+    loading,
+    createConnection,
+    deleteDatasource,
+  };
 };
 
 function CreateConnectionForm(props: {
@@ -208,6 +226,12 @@ function ConnectionSettings(props: {
                     className="focus:border-blue-600 my-auto appearance-none border rounded mx-1 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                   ></input>
                 </div>
+                <button
+                  onClick={() => {}}
+                  className={`${"text-white"} ml-2 hover:text-gray-900`}
+                >
+                  <FontAwesomeIcon icon={solid("trash")} />
+                </button>
               </div>
             </div>
           ))}
@@ -228,13 +252,13 @@ const DatabaseChooser = (props: {
   setSelectedIndex: (index: number) => void;
   selectedIndex: number | undefined;
   setShowAddDatasourceModal: (show: boolean) => void;
+  handleDeleteDatabase: (database: DatabaseResponse) => void;
 }) => {
   return (
     <div className="m-2 p-1">
       <div className="border-b-slate-300 border-b py-2">
         <div className="text-center max-h-96 w-72  overflow-y-scroll scrollbar-thin scrollbar-track-slate-100 scrollbar-thumb-slate-300 scrollbar-thumb-rounded">
           {props.databases.map((database, index) => (
-            //flex items-center rounded-md p-1.5 bg-indigo-600 text-white
             <div
               className={`flex items-center rounded-md my-3 mx-2 p-1.5 cursor-pointer hover:bg-sky-500 hover:text-white ${
                 index === props.selectedIndex ? "bg-sky-500 text-white" : ""
@@ -253,6 +277,16 @@ const DatabaseChooser = (props: {
               >
                 {database.hostname}
               </div>
+              <button
+                onClick={() => props.handleDeleteDatabase(database)}
+                className={`${
+                  index === props.selectedIndex
+                    ? "text-white"
+                    : "text-slate-500"
+                } ml-2 hover:text-gray-900`}
+              >
+                <FontAwesomeIcon icon={solid("trash")} />
+              </button>
             </div>
           ))}
         </div>
@@ -276,8 +310,13 @@ const DatabaseSettings = () => {
   const [selectedIndex, setSelectedIndex] = useState<number | undefined>(
     undefined
   );
-  const { datasources, createDatabase, loading, createConnection } =
-    useDatasources();
+  const {
+    datasources,
+    createDatabase,
+    loading,
+    createConnection,
+    deleteDatasource,
+  } = useDatasources();
 
   useEffect(() => {
     if (datasources.length > 0 && selectedIndex === undefined) {
@@ -297,6 +336,12 @@ const DatabaseSettings = () => {
   const [showAddConnectionModal, setShowAddConnectionModal] =
     useState<boolean>(false);
 
+  const [showDeleteDatasourceModal, setShowDeleteDatasourceModal] =
+    useState<boolean>(false);
+
+  const [selectedDatasource, setSelectedDatasource] =
+    useState<DatabaseResponse | null>(null);
+
   const handleCreateDatabase = async (database: DatabasePayload) => {
     await createDatabase(database);
     setShowAddDatasourceModal(false);
@@ -308,6 +353,11 @@ const DatabaseSettings = () => {
     }
     await createConnection(datasources[selectedIndex].id, connection);
     setShowAddConnectionModal(false);
+  };
+
+  const deleteDatabase = async (database: DatabaseResponse) => {
+    setSelectedDatasource(database);
+    setShowDeleteDatasourceModal(true);
   };
 
   return (
@@ -322,6 +372,7 @@ const DatabaseSettings = () => {
               setSelectedIndex={setSelectedIndex}
               selectedIndex={selectedIndex}
               setShowAddDatasourceModal={setShowAddDatasourceModal}
+              handleDeleteDatabase={deleteDatabase}
             ></DatabaseChooser>
             <ConnectionSettings
               selectedIndex={selectedIndex}
@@ -347,6 +398,19 @@ const DatabaseSettings = () => {
               />
             </Modal>
           )}
+          {showDeleteDatasourceModal && (
+            <Modal setVisible={setShowDeleteDatasourceModal}>
+              <DeleteConfirm
+                title="Delete Datasource"
+                message="Are you sure you want to delete this datasource?"
+                onConfirm={() => {
+                  selectedDatasource && deleteDatasource(selectedDatasource.id);
+                  setShowDeleteDatasourceModal(false);
+                }}
+                onCancel={() => setShowDeleteDatasourceModal(false)}
+              />
+            </Modal>
+          )}
         </div>
       )}
     </div>
@@ -354,4 +418,5 @@ const DatabaseSettings = () => {
 };
 
 export default DatabaseSettings;
+
 export { useDatasources };

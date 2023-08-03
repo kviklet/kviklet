@@ -61,4 +61,8 @@ class GroupAdapter(
             )
         ).toDto()
     }
+
+    fun delete(id: String) {
+        groupRepository.deleteById(id)
+    }
 }
