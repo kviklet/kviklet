@@ -16,6 +16,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.CrossOrigin
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -31,6 +32,13 @@ data class CreateExecutionRequest(
     val description: String?,
     val statement: String,
     val readOnly: Boolean,
+)
+
+data class UpdateExecutionRequest(
+    val title: String?,
+    val description: String?,
+    val statement: String?,
+    val readOnly: Boolean?,
 )
 
 data class CreateReviewRequest(
@@ -148,6 +156,15 @@ class ExecutionRequestController(
         @Valid @RequestBody request: CreateReviewRequest
     ) {
         executionRequestService.createReview(id, request)
+    }
+
+    @PatchMapping("/{id}")
+    fun update(
+        @PathVariable id: ExecutionRequestId,
+        @Valid @RequestBody request: UpdateExecutionRequest
+    ) : ExecutionRequestDetailResponse {
+        val newRequest = executionRequestService.update(id, request)
+        return ExecutionRequestDetailResponse.fromDto(newRequest)
     }
 
     @PostMapping("/{id}/comments")

@@ -9,10 +9,10 @@ import {
   addReviewToRequest,
   getSingleRequest,
   runQuery,
+  ChangeExecutionRequestPayload,
+  patchRequest,
 } from "../api/ExecutionRequestApi";
-import { z } from "zod";
 import Button from "../components/Button";
-import { AuthenticationType } from "../api/DatasourceApi";
 import { mapStatusToColor } from "./Requests";
 
 interface RequestReviewParams {
@@ -91,6 +91,11 @@ const useRequest = (id: string) => {
     });
   };
 
+  const updateRequest = async (request: ChangeExecutionRequestPayload) => {
+    const newRequest = await patchRequest(id, request);
+    setRequest(newRequest);
+  };
+
   const approve = async (comment: string) => {
     await addReviewToRequest(id, comment, "APPROVE");
     const newRequest = await getSingleRequest(id);
@@ -101,12 +106,12 @@ const useRequest = (id: string) => {
     await runQuery(id);
   };
 
-  return { request, addComment, approve, execute };
+  return { request, addComment, approve, execute, updateRequest };
 };
 
 function RequestReview() {
   const params = useParams() as unknown as RequestReviewParams;
-  const { request, addComment, approve, execute } = useRequest(
+  const { request, addComment, approve, execute, updateRequest } = useRequest(
     params.requestId
   );
 
@@ -125,7 +130,11 @@ function RequestReview() {
         </h1>
         <div className="">
           <div className="">
-            <RequestBox request={request} runQuery={execute}></RequestBox>
+            <RequestBox
+              request={request}
+              runQuery={execute}
+              updateRequest={updateRequest}
+            ></RequestBox>
             <div>
               {request === undefined
                 ? ""
@@ -147,10 +156,23 @@ function RequestReview() {
 function RequestBox({
   request,
   runQuery,
+  updateRequest,
 }: {
   request: ExecutionRequestResponseWithComments | undefined;
   runQuery: () => void;
+  updateRequest: (request: { statement?: string }) => Promise<void>;
 }) {
+  const [editMode, setEditMode] = useState(false);
+  const [statement, setStatement] = useState(request?.statement || "");
+  const changeStatement = async (e: any) => {
+    e.preventDefault();
+    await updateRequest({ statement });
+    setEditMode(false);
+  };
+  useEffect(() => {
+    setStatement(request?.statement || "");
+  }, [request?.statement]);
+
   return (
     <div>
       <div className="relative border-cyan-500 rounded-md border">
@@ -159,20 +181,58 @@ function RequestBox({
         <div className="absolute -left-12 rounded-full p-2 bg-cyan-500 text-gray-100  w-8 h-8 flex items-center justify-center text-l font-bold">
           {firstTwoLetters(request?.author?.fullName ?? "")}
         </div>
-        <p className="text-slate-800 px-2 py-2 text-sm flex justify-between bg-cyan-200 border-b border-cyan-500 rounded-t-md">
+        <p className="text-slate-800 px-2 py-2 text-sm flex bg-cyan-200 border-b border-cyan-500 rounded-t-md">
           <div>
             {request?.author?.fullName} wants to execute on:{" "}
             <span className="italic">{request?.connection.displayName}</span>
           </div>
-          <div>
+          <div className="ml-2">
             Created at: {new Date(request?.createdAt ?? "").toLocaleString()}
+          </div>
+          <div className="ml-auto">
+            {!editMode && (
+              <button
+                onClick={() => {
+                  setEditMode(true);
+                }}
+              >
+                Edit
+              </button>
+            )}
           </div>
         </p>
         <div className="p-3">
           <p className="text-slate-500">{request?.description}</p>
-          <SyntaxHighlighter language="sql" showLineNumbers style={vs}>
-            {request === undefined ? "404" : request.statement}
-          </SyntaxHighlighter>
+          {editMode ? (
+            <div>
+              <textarea
+                className="appearance-none block w-full text-gray-700 border border-gray-200 bg-slate-100 focus:bg-white p-1 rounded leading-normal mb-2 focus:outline-none focus:border-gray-500"
+                id="statement"
+                name="statement"
+                rows={4}
+                onChange={(event) => setStatement(event.target.value)}
+                value={statement}
+              ></textarea>
+              <div className="flex justify-end">
+                <Button
+                  className="mr-2"
+                  type="reset"
+                  onClick={() => {
+                    setEditMode(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" onClick={changeStatement}>
+                  Save
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <SyntaxHighlighter language="sql" showLineNumbers style={vs}>
+              {request === undefined ? "404" : request.statement}
+            </SyntaxHighlighter>
+          )}
         </div>
       </div>
       <div className="relative ml-4 flex justify-end">

@@ -14,7 +14,9 @@ import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import javax.persistence.CascadeType
 import javax.persistence.Entity
 import javax.persistence.EntityManager
@@ -25,25 +27,25 @@ import javax.persistence.OneToMany
 
 @Entity(name = "execution_request")
 class ExecutionRequestEntity(
-    @ManyToOne(fetch = FetchType.LAZY)
+        @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "datasource_id", nullable = false)
     val connection: DatasourceConnectionEntity,
 
-    private val title: String,
-    private val description: String?,
-    private val statement: String,
-    private val readOnly: Boolean,
+        var title: String,
+        var description: String?,
+        var statement: String,
+        var readOnly: Boolean,
 
-    @ManyToOne(fetch = FetchType.LAZY)
+        @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "author_id", nullable = false)
     private val author: UserEntity,
 
-    var reviewStatus: ReviewStatus,
-    var executionStatus: String,
+        var reviewStatus: ReviewStatus,
+        var executionStatus: String,
 
-    private val createdAt: LocalDateTime = LocalDateTime.now(),
+        private val createdAt: LocalDateTime = Instant.now().atZone(ZoneOffset.UTC).toLocalDateTime(),
 
-    @OneToMany(cascade = [CascadeType.ALL])
+        @OneToMany(cascade = [CascadeType.ALL])
     @JoinColumn(name = "execution_request_id")
     val events: MutableSet<EventEntity>
 ): BaseEntity() {
@@ -146,6 +148,24 @@ class ExecutionRequestAdapter(
             )
         ).toDto()
     }
+
+    fun updateExecutionRequest(
+        id: ExecutionRequestId,
+        title: String,
+        description: String?,
+        statement: String,
+        readOnly: Boolean,
+    ): ExecutionRequestDetails {
+        val executionRequestEntity = getExecutionRequestDetailsEntity(id)
+        executionRequestEntity.title = title
+        executionRequestEntity.description = description
+        executionRequestEntity.statement = statement
+        executionRequestEntity.readOnly = readOnly
+
+        executionRequestRepository.save(executionRequestEntity)
+        return executionRequestEntity.toDetailDto()
+    }
+
 
     fun listExecutionRequests(): List<ExecutionRequest> =
         executionRequestRepository.findAll().map { it.toDto() }

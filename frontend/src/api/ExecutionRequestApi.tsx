@@ -43,6 +43,13 @@ const ExecutionRequestResponse = z.object({
   connectionName: z.string().optional(),
 });
 
+const ChangeExecutionRequestPayload = z.object({
+  title: z.string().min(1).optional(),
+  description: z.string().optional(),
+  statement: z.string().min(1).optional(),
+  readOnly: z.boolean().optional(),
+});
+
 const ExecutionRequestResponseWithComments = ExecutionRequestResponse.extend({
   events: z.array(Comment),
 });
@@ -55,6 +62,9 @@ type ExecutionRequestResponseWithComments = z.infer<
 type ExecutionRequestResponse = z.infer<typeof ExecutionRequestResponse>;
 type ExecutionRequestsResponse = z.infer<typeof ExecutionRequestsResponse>;
 type ExecutionRequestPayload = z.infer<typeof ExecutionRequestPayload>;
+type ChangeExecutionRequestPayload = z.infer<
+  typeof ChangeExecutionRequestPayload
+>;
 
 const addRequest = async (payload: ExecutionRequest): Promise<boolean> => {
   const mappedPayload: ExecutionRequestPayload = {
@@ -73,6 +83,23 @@ const addRequest = async (payload: ExecutionRequest): Promise<boolean> => {
     body: JSON.stringify(mappedPayload),
   });
   return true;
+};
+
+const patchRequest = async (
+  id: string,
+  payload: ChangeExecutionRequestPayload
+): Promise<ExecutionRequestResponseWithComments> => {
+  console.log(payload);
+  const response = await fetch(requestUrl + id, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
+  const json = await response.json();
+  return ExecutionRequestResponseWithComments.parse(json);
 };
 
 const getRequests = async (): Promise<ExecutionRequestsResponse> => {
@@ -147,9 +174,11 @@ export {
   addCommentToRequest,
   addReviewToRequest,
   runQuery,
+  patchRequest,
 };
 export type {
   ExecutionRequestResponse,
   ExecutionRequestsResponse,
   ExecutionRequestResponseWithComments,
+  ChangeExecutionRequestPayload,
 };

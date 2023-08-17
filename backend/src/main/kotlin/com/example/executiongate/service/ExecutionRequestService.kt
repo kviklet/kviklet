@@ -3,6 +3,7 @@ package com.example.executiongate.service
 import com.example.executiongate.controller.CreateCommentRequest
 import com.example.executiongate.controller.CreateExecutionRequest
 import com.example.executiongate.controller.CreateReviewRequest
+import com.example.executiongate.controller.UpdateExecutionRequest
 import com.example.executiongate.db.CommentPayload
 import com.example.executiongate.db.DatasourceConnectionAdapter
 import com.example.executiongate.db.ExecutionRequestAdapter
@@ -37,6 +38,19 @@ class ExecutionRequestService(
             reviewStatus = resolveReviewStatus(emptySet(), datasourceConnection.reviewConfig),
             executionStatus = "PENDING",
             authorId = userId,
+        )
+    }
+
+    @Transactional
+    fun update(id: ExecutionRequestId, request: UpdateExecutionRequest): ExecutionRequestDetails {
+        val executionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
+
+        return executionRequestAdapter.updateExecutionRequest(
+            id = executionRequestDetails.request.id,
+            title = request.title ?: executionRequestDetails.request.title,
+            description = request.description ?: executionRequestDetails.request.description,
+            statement = request.statement ?: executionRequestDetails.request.statement,
+            readOnly = request.readOnly ?: executionRequestDetails.request.readOnly,
         )
     }
 
