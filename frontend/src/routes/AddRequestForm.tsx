@@ -4,9 +4,9 @@ import { z } from "zod";
 import { ConnectionResponse, fetchDatabases } from "../api/DatasourceApi";
 import { useEffect, useState } from "react";
 import { addRequest } from "../api/ExecutionRequestApi";
+import { redirect, useNavigate } from "react-router-dom";
 
 const ExecutionRequestSchema = z.object({
-  issueLink: z.string().url(),
   title: z.string().min(1, { message: "Title is required" }),
   description: z.string(),
   statement: z.string().min(1, { message: "An sql statement is required" }),
@@ -19,6 +19,7 @@ type ExecutionRequest = z.infer<typeof ExecutionRequestSchema>;
 
 function AddRequestForm() {
   const [connections, setConnections] = useState<ConnectionResponse[]>([]);
+  const navigate = useNavigate();
 
   const datasource = useEffect(() => {
     const fetchData = async () => {
@@ -45,6 +46,7 @@ function AddRequestForm() {
   ) => {
     console.log(data);
     await addRequest(data);
+    navigate("/requests");
   };
 
   return (
@@ -83,26 +85,6 @@ function AddRequestForm() {
                 </svg>
               </div>
             </div>
-          </div>
-          <div className="w-full px-3 mb-0">
-            <label
-              className="block uppercase t)racking-wide text-gray-700 text-xs font-bold mb-2"
-              htmlFor="ticket-input"
-            >
-              Link to Issue/Ticket
-            </label>
-            <input
-              className="appearance-none block w-full bg-gray-200 text-gray-700 border rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white"
-              id="ticket-input"
-              type="text"
-              placeholder="https://my-company.jira.com/TEAM-123"
-              {...register("issueLink")}
-            />
-            {errors.issueLink && (
-              <p className="text-xs italic text-red-500 mt-2">
-                {errors.issueLink?.message}
-              </p>
-            )}
           </div>
           <div className="w-full px-3">
             <label

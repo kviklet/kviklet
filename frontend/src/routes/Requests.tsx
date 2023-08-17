@@ -33,6 +33,21 @@ function timeSince(date: Date) {
   return Math.floor(seconds) + " seconds ago";
 }
 
+function mapStatus(status?: string) {
+  switch (status) {
+    case "APPROVED":
+      return "Approved";
+    case "AWAITING_APPROVAL":
+      return "Waiting";
+    case "PENDING":
+      return "Pending";
+    case "SUCCESS":
+      return "Success";
+    default:
+      return "Unknown";
+  }
+}
+
 function mapStatusToColor(status?: string) {
   switch (status) {
     case "APPROVED":
@@ -63,6 +78,10 @@ function Requests() {
     ? requests.filter((r) => r.reviewStatus === "AWAITING_APPROVAL")
     : requests;
 
+  const sortedRequests = visibleRequests.sort((a, b) => {
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
   return (
     <div>
       <div className="max-w-5xl mx-auto">
@@ -84,7 +103,7 @@ function Requests() {
             <h2 className="text-lg text-center">No open requests</h2>
           </div>
         )}
-        {visibleRequests.map((request) => {
+        {sortedRequests.map((request) => {
           return (
             <Link to={`/requests/${request.id}`}>
               <div
@@ -96,16 +115,16 @@ function Requests() {
                     <h2 className="text-lg font-bold">{request.title}</h2>
                     <p>{request.description}</p>
                   </div>
-                  <div className="ml-auto flex flex-col">
-                    <div className="mb-2">
+                  <div className="ml-auto flex flex-col items-end">
+                    <div className="mb-2 text-sm">
                       {timeSince(new Date(request.createdAt))}
                     </div>
                     <div
                       className={`${mapStatusToColor(
                         request.reviewStatus
-                      )} font-bold rounded-full text-sm text-center text-white w-20 py-1 px-1.5`}
+                      )} font-bold rounded-full text-sm text-center w-20 text-white py-1 px-1.5`}
                     >
-                      {request?.reviewStatus}
+                      {mapStatus(request?.reviewStatus)}
                     </div>
                   </div>
                 </div>
