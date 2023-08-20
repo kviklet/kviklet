@@ -3,6 +3,7 @@ package com.example.executiongate.db.init
 import com.example.executiongate.db.*
 import com.example.executiongate.service.dto.AuthenticationType
 import com.example.executiongate.service.dto.DatasourceType
+import com.example.executiongate.service.dto.Policy
 import com.example.executiongate.service.dto.ReviewStatus
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Bean
@@ -15,8 +16,8 @@ class DataInitializer(
     private val datasourceRepository: DatasourceRepository,
     private val datasourceConnectionRepository: DatasourceConnectionRepository,
     private val executionRequestRepository: ExecutionRequestRepository,
-    private val groupRepository: GroupRepository,
-    private val permissionRepository: PermissionRepository
+    private val roleRepository: RoleRepository,
+    private val policyRepository: PolicyRepository
 ) {
 
 
@@ -87,37 +88,24 @@ class DataInitializer(
         return datasource
     }
 
-    fun generateGroup() {
-        val group = GroupEntity(
-            name = "Test Group",
-            description = "This is a test group",
-            permissions = emptySet()
+    fun generateRole() {
+        val role = RoleEntity(
+            name = "Test Role",
+            description = "This is a test role",
+            policies = emptySet()
         )
-        val savedGroup = groupRepository.saveAndFlush(group)
-        val permissions = mutableSetOf(
-            PermissionEntity(
-                action = "READ",
-                scope = "Connection1",
-            ),
-            PermissionEntity(
-                action = "WRITE",
-                scope = "Connection2",
-            ),
-            PermissionEntity(
-                action = "EXECUTE",
-                scope = "Connection1",
-            )
-        )
-        savedGroup.permissions = permissions
-        groupRepository.saveAndFlush(savedGroup)
+        val savedRole = roleRepository.saveAndFlush(role)
+        val policies = emptySet<PolicyEntity>()
+        savedRole.policies = policies
+        roleRepository.saveAndFlush(savedRole)
     }
     @Bean
     fun initializer(userRepository: UserRepository, passwordEncoder: PasswordEncoder): ApplicationRunner {
         return ApplicationRunner { args ->
             val user = UserEntity(
-                    email = "testUser@example.com",
-                    fullName = "Admin User",
-                    password = passwordEncoder.encode("testPassword")
+                email = "testUser@example.com",
+                fullName = "Admin User",
+                password = passwordEncoder.encode("testPassword")
             )
 
             val savedUser = userRepository.saveAndFlush(user)
@@ -210,7 +198,7 @@ class DataInitializer(
                 executionRequestRepository.save(request2)
                 executionRequestRepository.save(request3)
             }
-            generateGroup()
+            generateRole()
 
         }
     }

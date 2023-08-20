@@ -1,16 +1,15 @@
 package com.example.executiongate.controller
 
-import com.example.executiongate.db.GroupAdapter
+import com.example.executiongate.db.RoleAdapter
 import com.example.executiongate.db.User
 import com.example.executiongate.db.UserAdapter
-import com.example.executiongate.db.UserEntity
+import jakarta.validation.Valid
+import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Size
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.*
-import javax.validation.Valid
 
-import javax.validation.constraints.NotBlank
-import javax.validation.constraints.Size
 
 data class CreateUserRequest(
     @field:NotBlank
@@ -44,14 +43,14 @@ data class UserResponse(
     val email: String,
     val fullName: String?,
     val permissionString: String,
-    val groups: List<GroupResponse>
+    val roles: List<RoleResponse>
 ) {
     constructor(user: User) : this(
         id = user.id,
         email = user.email,
         fullName = user.fullName,
-        permissionString = permissionsTopermissionString(user.permissions),
-        groups = user.groups.map { GroupResponse.fromDto(it) }
+        permissionString = permissionsToPermissionString(user.policies),
+        roles = user.roles.map { RoleResponse.fromDto(it) }
     )
 }
 
@@ -72,7 +71,7 @@ data class UsersResponse(
 class UserController(
     private val userAdapter: UserAdapter,
     private val passwordEncoder: PasswordEncoder,
-    private val groupAdapter: GroupAdapter
+    private val roleAdapter: RoleAdapter,
 ) {
 
     @PostMapping("/")
@@ -97,7 +96,7 @@ class UserController(
         val updatedUser = user.copy(
             email = userRequest.email ?: user.email,
             fullName = userRequest.fullName ?: user.fullName,
-            groups = userRequest.groups?.let { groupAdapter.findByIds(it).toSet() } ?: user.groups
+            roles = userRequest.groups?.let { roleAdapter.findByIds(it).toSet() } ?: emptySet()
         )
         val savedUser = userAdapter.updateUser(updatedUser)
         return UserResponse(savedUser)

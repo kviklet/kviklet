@@ -2,10 +2,29 @@ package com.example.executiongate.security
 
 import com.example.executiongate.db.User
 import com.example.executiongate.db.UserAdapter
+import org.springframework.cache.CacheManager
+import org.springframework.cache.concurrent.ConcurrentMapCache
+import org.springframework.cache.jcache.JCacheCacheManager
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpStatus
+import org.springframework.security.access.AccessDecisionManager
+import org.springframework.security.access.AccessDecisionVoter
+import org.springframework.security.access.AccessDecisionVoter.ACCESS_GRANTED
 import org.springframework.security.access.AccessDeniedException
+import org.springframework.security.access.ConfigAttribute
+import org.springframework.security.access.vote.AuthenticatedVoter
+import org.springframework.security.access.vote.RoleVoter
+import org.springframework.security.access.vote.UnanimousBased
+import org.springframework.security.acls.domain.AclAuthorizationStrategy
+import org.springframework.security.acls.domain.AclAuthorizationStrategyImpl
+import org.springframework.security.acls.domain.ConsoleAuditLogger
+import org.springframework.security.acls.domain.DefaultPermissionGrantingStrategy
+import org.springframework.security.acls.domain.SpringCacheBasedAclCache
+import org.springframework.security.acls.jdbc.BasicLookupStrategy
+import org.springframework.security.acls.jdbc.JdbcMutableAclService
+import org.springframework.security.acls.jdbc.LookupStrategy
+import org.springframework.security.acls.model.PermissionGrantingStrategy
 import org.springframework.security.authentication.AuthenticationProvider
 import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
@@ -14,12 +33,14 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.AuthenticationException
+import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken
 import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
+import org.springframework.security.web.access.expression.WebExpressionVoter
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher
 import org.springframework.stereotype.Component
@@ -27,9 +48,14 @@ import org.springframework.stereotype.Service
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
-import javax.servlet.http.HttpServletRequest
-import javax.servlet.http.HttpServletResponse
-
+import java.util.*
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
+import org.springframework.security.authentication.ProviderManager
+import org.springframework.security.config.Customizer
+import org.springframework.security.config.annotation.web.invoke
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMatcher
+import org.springframework.security.web.util.matcher.RequestMatcher
 
 @Configuration
 class PasswordEncoderConfig {
@@ -41,10 +67,59 @@ class PasswordEncoderConfig {
 
 @Configuration
 @EnableWebSecurity
-class SecurityConfig(private val customAuthenticationProvider: CustomAuthenticationProvider, private val oauth2LoginSuccessHandler: OAuth2LoginSuccessHandler) {
+class SecurityConfig(
+    private val customAuthenticationProvider: CustomAuthenticationProvider,
+    private val oauth2LoginSuccessHandler: OAuth2LoginSuccessHandler,
+) {
 
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
+//        http.invoke {
+//            cors {  }
+//
+//            authenticationManager = ProviderManager(customAuthenticationProvider)
+//
+//            oauth2Login { authenticationSuccessHandler = oauth2LoginSuccessHandler }
+//
+//            exceptionHandling {
+//                authenticationEntryPoint = CustomAuthenticationEntryPoint()
+//                accessDeniedHandler = CustomAccessDeniedHandler()
+//            }
+//
+//            authorizeHttpRequests {
+//
+//                authorize("/login**", permitAll)
+//                authorize("/oauth2**", permitAll)
+//                authorize("/v3/api-docs/**", permitAll)
+//                authorize("/swagger-ui/**", permitAll)
+//                authorize("/swagger-resources/**", permitAll)
+//                authorize("/webjars**", permitAll)
+//                authorize("/docs/redoc.html", permitAll)
+//
+//                authorize(anyRequest, authenticated)
+//            }
+//
+//            sessionManagement {
+//                sessionCreationPolicy = SessionCreationPolicy.IF_REQUIRED
+//            }
+//
+//            logout {
+//                logoutRequestMatcher = AntPathRequestMatcher("/logout", "POST")
+//                invalidateHttpSession = true
+//                deleteCookies("JSESSIONID")
+//                addLogoutHandler { _, response, _ ->
+//                    response.status = HttpStatus.OK.value()
+//                }
+//            }
+//            csrf {
+//                disable()
+//            }
+//            headers {
+//                frameOptions {  }
+//            }
+//        }
+
+
         http.cors().and()
             .authenticationProvider(customAuthenticationProvider)
             .oauth2Login {
@@ -54,8 +129,13 @@ class SecurityConfig(private val customAuthenticationProvider: CustomAuthenticat
                 it.authenticationEntryPoint(CustomAuthenticationEntryPoint())
                     .accessDeniedHandler(CustomAccessDeniedHandler())
             }
-            .authorizeRequests {
-                it.antMatchers("/login**", "/oauth2**", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
+            .authorizeHttpRequests {
+                it.requestMatchers(antMatcher("/login**")).permitAll()
+                    .requestMatchers(antMatcher("/oauth2**")).permitAll()
+                    .requestMatchers(antMatcher("/swagger-ui/**")).permitAll()
+                    .requestMatchers(antMatcher("/v3/api-docs/**")).permitAll()
+                    .requestMatchers(antMatcher("/swagger-resources/**")).permitAll()
+                    .requestMatchers(antMatcher("/webjars/**")).permitAll()
                     .anyRequest().authenticated()
             }
             .sessionManagement {
@@ -112,7 +192,7 @@ class CustomAuthenticationEntryPoint : AuthenticationEntryPoint {
 @Service
 class CustomAuthenticationProvider(val userAdapter: UserAdapter, val passwordEncoder: PasswordEncoder) :
     AuthenticationProvider {
-    override fun authenticate(authentication: org.springframework.security.core.Authentication?): org.springframework.security.core.Authentication? {
+    override fun authenticate(authentication: Authentication?): Authentication? {
         val email = authentication?.name!!
         val password = authentication.credentials.toString()
 
@@ -176,3 +256,18 @@ class OAuth2LoginSuccessHandler(
         getRedirectStrategy().sendRedirect(request, response, "http://localhost:3000/requests")
     }
 }
+
+class MyVoter(): AccessDecisionVoter<Any> {
+    override fun supports(attribute: ConfigAttribute?) = true
+
+    override fun supports(clazz: Class<*>?)= true
+
+    override fun vote(authentication: Authentication, obj: Any, attributes: MutableCollection<ConfigAttribute>): Int {
+        println(authentication)
+        return ACCESS_GRANTED
+    }
+}
+
+
+
+

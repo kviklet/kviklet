@@ -2,15 +2,15 @@ package com.example.executiongate.db
 
 import com.example.executiongate.db.util.BaseEntity
 import com.example.executiongate.service.EntityNotFound
-import com.example.executiongate.service.dto.Group
-import com.example.executiongate.service.dto.Permission
+import com.example.executiongate.service.dto.Role
+import com.example.executiongate.service.dto.Policy
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
-import javax.persistence.*
+import jakarta.persistence.*
 
 @Entity
-@Table(name = "users")
+@Table(name = "user")
 data class UserEntity(
     @Column(nullable = true)
     var fullName: String? = null,
@@ -26,15 +26,11 @@ data class UserEntity(
 
     @ManyToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     @JoinTable(
-        name = "user_group",
+        name = "user_role",
         joinColumns = [JoinColumn(name = "user_id")],
-        inverseJoinColumns = [JoinColumn(name = "group_id")]
+        inverseJoinColumns = [JoinColumn(name = "role_id")]
     )
-    var groups: MutableSet<GroupEntity> = HashSet(),
-
-    @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    var permissions: Set<PermissionEntity> = HashSet()
+    var roles: Set<RoleEntity> = HashSet(),
 ) : BaseEntity() {
     fun toDto() = User(
         id = id,
@@ -42,8 +38,7 @@ data class UserEntity(
         password = password,
         googleId = googleId,
         email = email,
-        permissions = permissions.map { it.toDto() }.toSet(),
-        groups = groups.map { it.toDto() }.toSet()
+        roles = roles.map { it.toDto() }.toSet()
     )
 }
 
@@ -54,14 +49,14 @@ data class User(
     val password: String? = null,
     val googleId: String? = null,
     val email: String = "",
-    val permissions: Set<Permission> = HashSet(),
-    val groups: Set<Group> = HashSet()
+    val policies: Set<Policy> = HashSet(),
+    val roles: Set<Role> = HashSet()
 ) {
-    fun getAllPermissions(): Set<Permission> {
-        val allPermissions = HashSet<Permission>()
-        allPermissions.addAll(permissions)
-        groups.forEach { allPermissions.addAll(it.permissions) }
-        return allPermissions
+    fun getAllPolicies(): Set<Policy> {
+        val allPolicies = HashSet<Policy>()
+        allPolicies.addAll(policies)
+        roles.forEach { allPolicies.addAll(it.policies) }
+        return allPolicies
     }
 }
 
@@ -73,7 +68,7 @@ interface UserRepository : JpaRepository<UserEntity, String> {
 @Service
 class UserAdapter(
     private val userRepository: UserRepository,
-    private val groupRepository: GroupRepository,
+    private val roleRepository: RoleRepository,
 ) {
     fun findByEmail(email: String): User? {
         val userEntity = userRepository.findByEmail(email) ?: return null
@@ -109,8 +104,7 @@ class UserAdapter(
 
         if (userEntity == null) {
             return createUser(user)
-        }
-        else {
+        } else {
             userEntity.fullName = user.fullName
             userEntity.password = user.password
             userEntity.googleId = user.googleId
@@ -130,10 +124,9 @@ class UserAdapter(
         userEntity.googleId = user.googleId
         userEntity.email = user.email
         // update Groups
-        user.groups?.let { newGroupIds ->
-            val newGroups = groupRepository.findAllById(newGroupIds.map { it.id }.toSet())
-            userEntity.groups.clear()
-            userEntity.groups.addAll(newGroups)
+        user.roles.let { newGroupIds ->
+            val newGroups = roleRepository.findAllById(newGroupIds.map { it.id }.toSet())
+            userEntity.roles = newGroups.toSet()
         }
         val savedUserEntity = userRepository.save(userEntity)
 

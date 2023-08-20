@@ -15,8 +15,11 @@ import com.example.executiongate.service.dto.DatasourceType
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.data.repository.findByIdOrNull
+import org.springframework.security.access.annotation.Secured
+import org.springframework.security.access.prepost.PostFilter
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.stereotype.Service
-import javax.transaction.Transactional
+import jakarta.transaction.Transactional
 
 class EntityNotFound(override val message: String, val detail: String): Exception(message)
 
@@ -84,7 +87,7 @@ class DatasourceService(
         datasourceConnectionRepository.delete(datasourceConnection)
     }
 
-    private fun getDatasource(datasourceId: DatasourceId): DatasourceEntity =
+    private fun getDatasource(datasourceId: DatasourceId?): DatasourceEntity =
         datasourceRepository.findByIdOrNull(datasourceId.toString())
             ?: throw EntityNotFound("Datasource Not Found", "Datasource with id $datasourceId does not exist.")
 
@@ -92,5 +95,7 @@ class DatasourceService(
         datasourceConnectionRepository.findByIdOrNull(id.toString())
             ?: throw EntityNotFound("Datasource Connection Not Found", "Datasource Connection with id $id does not exist.")
 
-    fun listConnections(): List<Datasource> = datasourceRepository.findAllDatasourcesAndConnections().map { it.toDto() }
+    @PostFilter("hasPermission(filterObject, 'read')")
+    fun listConnections(): List<Datasource> = datasourceRepository
+        .findAllDatasourcesAndConnections().map { it.toDto() }
 }

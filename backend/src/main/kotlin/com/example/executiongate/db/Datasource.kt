@@ -5,10 +5,15 @@ import com.example.executiongate.service.dto.Datasource
 import com.example.executiongate.service.dto.DatasourceId
 import com.example.executiongate.service.dto.DatasourceType
 import com.querydsl.jpa.impl.JPAQuery
+import jakarta.persistence.CascadeType
 import org.apache.commons.lang3.builder.ToStringBuilder
 import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
 import org.springframework.data.jpa.repository.JpaRepository
-import javax.persistence.*
+import jakarta.persistence.Entity
+import jakarta.persistence.EntityManager
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
+import jakarta.persistence.OneToMany
 
 
 @Entity(name = "datasource")

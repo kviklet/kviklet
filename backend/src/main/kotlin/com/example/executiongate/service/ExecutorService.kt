@@ -9,6 +9,7 @@ import java.util.*
 
 sealed class QueryResult
 
+
 data class RecordsQueryResult(
     val columns: List<ColumnInfo>,
     val data: List<Map<String, String>>,
@@ -19,7 +20,7 @@ data class UpdateQueryResult(
 ) : QueryResult()
 
 data class ErrorQueryResult(
-    val errorMessage: Int,
+    val errorCode: Int,
     val message: String?,
 ) : QueryResult()
 
@@ -31,22 +32,6 @@ data class ColumnInfo(
 
 @Service
 class ExecutorService {
-
-/*    fun testConnection(
-        url: String
-    ): Boolean {
-        val dataSource: HikariDataSource = createConnection(url)
-
-        return try {
-            val isValid = dataSource.connection.isValid(10)
-            dataSource.catalog
-            isValid
-        } catch (e: SQLException) {
-            false
-        } finally {
-            dataSource.close()
-        }
-    }*/
 
     fun execute(connectionString: String, username: String, password: String, query: String): QueryResult {
         createConnection(connectionString, username, password).use { dataSource: HikariDataSource ->

@@ -16,7 +16,7 @@ import com.example.executiongate.service.dto.ExecutionRequestDetails
 import com.example.executiongate.service.dto.ExecutionRequestId
 import com.example.executiongate.service.dto.ReviewStatus
 import org.springframework.stereotype.Service
-import javax.transaction.Transactional
+import jakarta.transaction.Transactional
 
 @Service
 class ExecutionRequestService(

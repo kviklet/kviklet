@@ -73,6 +73,11 @@ databaseChangeLog:
                   type: JSON
                   constraints:
                     nullable: false
+              - column:
+                  name: description
+                  type: TEXT
+                  constraints:
+                    nullable: false
         - createTable:
             tableName: execution_request
             columns:
@@ -86,6 +91,11 @@ databaseChangeLog:
               - column:
                   name: datasource_id
                   type: CHAR(22)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: author_id
+                  type: varchar(22)
                   constraints:
                     nullable: false
               - column:
@@ -177,3 +187,101 @@ databaseChangeLog:
                       - id
                   constraints:
                     nullable: false
+        - createTable:
+            tableName: user
+            columns:
+              - column:
+                  name: id
+                  type: CHAR(22)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: full_name
+                  type: varchar(255)
+              - column:
+                  name: password
+                  type: varchar(60)
+              - column:
+                  name: google_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+                    unique: true
+              - column:
+                  name: email
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: role
+            columns:
+              - column:
+                  name: id
+                  type: CHAR(22)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+        - createTable:
+            tableName: policy
+            columns:
+              - column:
+                  name: id
+                  type: CHAR(22)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: role_id
+                  type: CHAR(22)
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_policy_role_id
+                    references: role(id)
+              - column:
+                  name: effect
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: action
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: resource
+                  type: varchar(255)
+        - createTable:
+            tableName: user_role
+            columns:
+              - column:
+                  name: id
+                  type: CHAR(22)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: CHAR(22)
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_user_role_user_id
+                    referencedTableName: user
+                    referencedColumnName: id
+              - column:
+                  name: role_id
+                  type: CHAR(22)
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_user_role_role_id
+                    references: role(id)

@@ -5,7 +5,7 @@ import com.tngtech.archunit.junit.AnalyzeClasses
 import com.tngtech.archunit.junit.ArchTest
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes
 import org.junit.jupiter.api.Test
-import javax.persistence.Entity
+import jakarta.persistence.Entity
 
 
 

@@ -3,21 +3,34 @@ import org.springframework.boot.gradle.tasks.bundling.BootBuildImage
 import org.springframework.boot.gradle.tasks.run.BootRun
 
 plugins {
-	id("org.springframework.boot") version "2.7.5"
+	id("org.springframework.boot") version "3.1.2"
 	id("io.spring.dependency-management") version "1.0.15.RELEASE"
-	kotlin("jvm") version "1.6.21"
-	kotlin("plugin.spring") version "1.6.21"
-	kotlin("plugin.jpa") version "1.6.21"
-	id("org.springframework.experimental.aot") version "0.12.1"
+	kotlin("jvm") version "1.9.0"
+	kotlin("plugin.spring") version "1.9.0"
+	kotlin("plugin.jpa") version "1.9.0"
+    kotlin("kapt") version "1.9.0" // needed for query-dsl
 
-    kotlin("kapt") version "1.8.10" // needed for query-dsl
+	//id("org.springframework.experimental.aot") version "0.12.1"
+
 }
+
+kapt {
+    javacOptions {
+        option("querydsl.entityAccessors", true)
+    }
+    arguments {
+        arg("plugin", "com.querydsl.apt.jpa.JPAAnnotationProcessor")
+    }
+
+	correctErrorTypes = true
+}
+
 
 group = "com.example"
 version = "0.0.1-SNAPSHOT"
 val queryDslVersion = "5.0.0"
 val testcontainersVersion = "1.18.3"
-java.sourceCompatibility = JavaVersion.VERSION_17
+java.sourceCompatibility = JavaVersion.VERSION_18
 
 configurations {
 	compileOnly {
@@ -38,13 +51,20 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
     implementation("org.springframework.session:spring-session-jdbc")
+
+	implementation("org.springframework.security:spring-security-acl")
+	implementation("org.springframework.security:spring-security-config")
+	implementation("org.springframework:spring-context-support")
+	//implementation("net.sf.ehcache:ehcache-core:2.6.11")
+
+
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-	implementation("org.springdoc:springdoc-openapi-ui:1.6.13")
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0")
     implementation("org.liquibase:liquibase-core")
-    implementation("javax.validation:validation-api")
-	runtimeOnly("org.springdoc:springdoc-openapi-kotlin:1.6.13")
+    implementation("jakarta.validation:jakarta.validation-api")
+
 	runtimeOnly("org.postgresql:postgresql")
 	runtimeOnly("com.h2database:h2")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
@@ -61,8 +81,15 @@ dependencies {
 
 
     //querydsl
-    implementation("com.querydsl:querydsl-jpa:${queryDslVersion}")
-    kapt("com.querydsl:querydsl-apt:${queryDslVersion}:jpa" )
+	implementation("com.querydsl:querydsl-core:${queryDslVersion}")
+	implementation("com.querydsl:querydsl-jpa:${queryDslVersion}:jakarta")
+	//annotationProcessor("com.querydsl:querydsl-apt:${queryDslVersion}:jakarta")
+	annotationProcessor("jakarta.persistence:jakarta.persistence-api:3.1.0")
+    kapt("com.querydsl:querydsl-apt:$queryDslVersion:jakarta")
+
+
+	//implementation(group="com.querydsl", name="querydsl-jpa", version=queryDslVersion, classifier="jakarta")
+    //kapt("com.querydsl:querydsl-apt:${queryDslVersion}:jpa")
     implementation(group="javax.inject", name="javax.inject", version="1")
 
     //db drivers
@@ -74,7 +101,7 @@ dependencies {
 tasks.withType<KotlinCompile> {
 	kotlinOptions {
 		freeCompilerArgs = listOf("-Xjsr305=strict")
-		jvmTarget = "17"
+		jvmTarget = "18"
 	}
 }
 
@@ -82,10 +109,10 @@ tasks.withType<Test> {
 	useJUnitPlatform()
 }
 
-tasks.withType<BootBuildImage> {
-	builder = "paketobuildpacks/builder:tiny"
-	environment = mapOf("BP_NATIVE_IMAGE" to "true")
-}
+//tasks.withType<BootBuildImage> {
+//	builder = "paketobuildpacks/builder:tiny"
+//	environment = mapOf("BP_NATIVE_IMAGE" to "true")
+//}
 
 tasks.withType<BootRun> {
     systemProperty("spring.profiles.active", System.getProperty("spring.profiles.active"))

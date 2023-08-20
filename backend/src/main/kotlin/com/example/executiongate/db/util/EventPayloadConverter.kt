@@ -3,11 +3,11 @@ package com.example.executiongate.db.util
 import com.example.executiongate.db.Payload
 import com.example.executiongate.db.ReviewConfig
 import com.fasterxml.jackson.databind.ObjectMapper
-import liquibase.repackaged.org.apache.commons.text.StringEscapeUtils
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
-import javax.persistence.AttributeConverter
-import javax.persistence.Converter
+import jakarta.persistence.AttributeConverter
+import jakarta.persistence.Converter
+import org.apache.commons.text.StringEscapeUtils
 
 
 @Component

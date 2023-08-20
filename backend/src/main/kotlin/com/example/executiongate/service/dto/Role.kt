@@ -1,26 +1,24 @@
 package com.example.executiongate.service.dto
 
-import com.example.executiongate.db.GroupEntity
 
-
-data class Group(
+data class Role(
     val id: String = "",
     val name: String,
     val description: String,
-    val permissions: Set<Permission> = HashSet()
+    val policies: Set<Policy> = HashSet()
 ) {
     companion object {
         fun create(
             id: String,
             name: String,
             description: String,
-            permissions: Set<Permission>
-        ): Group {
-            return Group(
+            policies: Set<Policy>
+        ): Role {
+            return Role(
                 id = id,
                 name = name,
                 description = description,
-                permissions = permissions
+                policies = policies
             )
         }
     }
