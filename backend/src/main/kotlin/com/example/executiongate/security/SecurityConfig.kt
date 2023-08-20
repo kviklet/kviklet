@@ -74,82 +74,53 @@ class SecurityConfig(
 
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
-//        http.invoke {
-//            cors {  }
-//
-//            authenticationManager = ProviderManager(customAuthenticationProvider)
-//
-//            oauth2Login { authenticationSuccessHandler = oauth2LoginSuccessHandler }
-//
-//            exceptionHandling {
-//                authenticationEntryPoint = CustomAuthenticationEntryPoint()
-//                accessDeniedHandler = CustomAccessDeniedHandler()
-//            }
-//
-//            authorizeHttpRequests {
-//
-//                authorize("/login**", permitAll)
-//                authorize("/oauth2**", permitAll)
-//                authorize("/v3/api-docs/**", permitAll)
-//                authorize("/swagger-ui/**", permitAll)
-//                authorize("/swagger-resources/**", permitAll)
-//                authorize("/webjars**", permitAll)
-//                authorize("/docs/redoc.html", permitAll)
-//
-//                authorize(anyRequest, authenticated)
-//            }
-//
-//            sessionManagement {
-//                sessionCreationPolicy = SessionCreationPolicy.IF_REQUIRED
-//            }
-//
-//            logout {
-//                logoutRequestMatcher = AntPathRequestMatcher("/logout", "POST")
-//                invalidateHttpSession = true
-//                deleteCookies("JSESSIONID")
-//                addLogoutHandler { _, response, _ ->
-//                    response.status = HttpStatus.OK.value()
-//                }
-//            }
-//            csrf {
-//                disable()
-//            }
-//            headers {
-//                frameOptions {  }
-//            }
-//        }
+        http.invoke {
+            cors {  }
 
+            authenticationManager = ProviderManager(customAuthenticationProvider)
 
-        http.cors().and()
-            .authenticationProvider(customAuthenticationProvider)
-            .oauth2Login {
-                it.successHandler(oauth2LoginSuccessHandler)
+            oauth2Login { authenticationSuccessHandler = oauth2LoginSuccessHandler }
+
+            exceptionHandling {
+                authenticationEntryPoint = CustomAuthenticationEntryPoint()
+                accessDeniedHandler = CustomAccessDeniedHandler()
             }
-            .exceptionHandling {
-                it.authenticationEntryPoint(CustomAuthenticationEntryPoint())
-                    .accessDeniedHandler(CustomAccessDeniedHandler())
+
+            authorizeHttpRequests {
+
+                authorize("/login**", permitAll)
+                authorize("/oauth2**", permitAll)
+                authorize("/v3/api-docs/**", permitAll)
+                authorize("/swagger-ui/**", permitAll)
+                authorize("/swagger-resources/**", permitAll)
+                authorize("/webjars**", permitAll)
+                authorize("/docs/redoc.html", permitAll)
+
+                authorize(anyRequest, authenticated)
             }
-            .authorizeHttpRequests {
-                it.requestMatchers(antMatcher("/login**")).permitAll()
-                    .requestMatchers(antMatcher("/oauth2**")).permitAll()
-                    .requestMatchers(antMatcher("/swagger-ui/**")).permitAll()
-                    .requestMatchers(antMatcher("/v3/api-docs/**")).permitAll()
-                    .requestMatchers(antMatcher("/swagger-resources/**")).permitAll()
-                    .requestMatchers(antMatcher("/webjars/**")).permitAll()
-                    .anyRequest().authenticated()
+
+            securityContext {
+                requireExplicitSave = false
             }
-            .sessionManagement {
-                it.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+            sessionManagement {
+                sessionCreationPolicy = SessionCreationPolicy.IF_REQUIRED
             }
-            .logout {
-                it.logoutRequestMatcher(AntPathRequestMatcher("/logout", "POST"))
-                    .invalidateHttpSession(true)
-                    .deleteCookies("JSESSIONID")
-                    .logoutSuccessHandler { _, response, _ ->
-                        response.status = HttpStatus.OK.value()
-                    }
+
+            logout {
+                logoutRequestMatcher = AntPathRequestMatcher("/logout", "POST")
+                invalidateHttpSession = true
+                deleteCookies("JSESSIONID")
+                addLogoutHandler { _, response, _ ->
+                    response.status = HttpStatus.OK.value()
+                }
             }
-            .csrf { it.disable() }.headers().frameOptions().disable(); //necessary for H2 console
+            csrf {
+                disable()
+            }
+            headers {
+                frameOptions {  }
+            }
+        }
 
         return http.build()
     }
