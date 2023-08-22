@@ -3,7 +3,7 @@ import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 import BaseSettingsLayout, { Tab } from "./BaseSettingsLayout";
 import DatabaseSettings from "./DatabaseSettings";
 import UserSettings from "./UserSettings";
-import GroupSettings from "./GroupsSettings";
+import RoleSettings from "./RolesSettings";
 import { Link, Route, Routes, useLocation } from "react-router-dom";
 
 export const Settings = () => {
@@ -37,13 +37,13 @@ export const Settings = () => {
       ),
     },
     {
-      name: "groups",
+      name: "roles",
       tabContent: (
-        <Link to="/settings/groups">
+        <Link to="/settings/roles">
           <div className="flex flex-col">
             <div className="flex flex-row items-center justify-center text-slate-700 text-lg font-bold p-5">
               <FontAwesomeIcon icon={solid("users")} className="mr-2" />
-              Groups
+              Roles
             </div>
           </div>
         </Link>

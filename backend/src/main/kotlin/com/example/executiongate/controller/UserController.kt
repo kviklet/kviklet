@@ -35,7 +35,7 @@ data class EditUserRequest(
     @field:Size(min = 1, max = 50)
     val permissionString: String? = null,
 
-    val groups: List<String>? = null
+    val roles: List<String>? = null
 )
 
 data class UserResponse(
@@ -96,7 +96,7 @@ class UserController(
         val updatedUser = user.copy(
             email = userRequest.email ?: user.email,
             fullName = userRequest.fullName ?: user.fullName,
-            roles = userRequest.groups?.let { roleAdapter.findByIds(it).toSet() } ?: emptySet()
+            roles = (userRequest.roles?.let { roleAdapter.findByIds(it)})?.toSet() ?: emptySet()
         )
         val savedUser = userAdapter.updateUser(updatedUser)
         return UserResponse(savedUser)

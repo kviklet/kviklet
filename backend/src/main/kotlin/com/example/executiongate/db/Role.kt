@@ -52,11 +52,11 @@ class RoleAdapter(
         return roleRepository.findAll().map { it.toDto() }
     }
 
-    fun create(group: Role): Role {
+    fun create(role: Role): Role {
         return roleRepository.save(
             RoleEntity(
-                name = group.name,
-                description = group.description
+                name = role.name,
+                description = role.description
             )
         ).toDto()
     }

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 
-data class CreateGroupRequest(
+data class CreateRoleRequest(
     val name: String,
     val description: String
 )
@@ -53,12 +53,12 @@ data class RoleResponse(
 }
 
 data class RolesResponse(
-    val groups: List<RoleResponse>
+    val roles: List<RoleResponse>
 ) {
     companion object {
-        fun fromGroups(groups: List<Role>): RolesResponse {
+        fun fromRoles(roles: List<Role>): RolesResponse {
             return RolesResponse(
-                groups = groups.map { RoleResponse.fromDto(it) }
+                roles = roles.map { RoleResponse.fromDto(it) }
             )
         }
     }
@@ -71,34 +71,34 @@ fun permissionsToPermissionString(policies: Set<Policy>): String {
 
 @RestController()
 @Validated
-@RequestMapping("/groups")
-class GroupController(private val roleAdapter: RoleAdapter) {
+@RequestMapping("/roles")
+class RoleController(private val roleAdapter: RoleAdapter) {
 
     @GetMapping("/:id")
-    fun getGroup(id: String): RoleResponse {
-        val group = roleAdapter.findById(id)
-        return RoleResponse.fromDto(group)
+    fun getRole(id: String): RoleResponse {
+        val role = roleAdapter.findById(id)
+        return RoleResponse.fromDto(role)
     }
 
     @GetMapping("/")
-    fun getAllGroups(): List<RoleResponse> {
-        val groups = roleAdapter.findAll()
-        return groups.map { RoleResponse.fromDto(it) }
+    fun getAllRoles(): RolesResponse {
+        val roles = roleAdapter.findAll()
+        return RolesResponse.fromRoles(roles)
     }
 
     @PostMapping("/")
-    fun createGroup(@Valid @RequestBody createGroupRequest: CreateGroupRequest): RoleResponse {
-        val savedGroup = roleAdapter.create(
+    fun createRole(@Valid @RequestBody createRoleRequest: CreateRoleRequest): RoleResponse {
+        val savedRole = roleAdapter.create(
             Role(
-                name = createGroupRequest.name,
-                description = createGroupRequest.description
+                name = createRoleRequest.name,
+                description = createRoleRequest.description
             )
         )
-        return RoleResponse.fromDto(savedGroup)
+        return RoleResponse.fromDto(savedRole)
     }
 
     @DeleteMapping("/:id")
-    fun deleteGroup(id: String) {
+    fun deleteRole(id: String) {
         roleAdapter.delete(id)
     }
 

@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import jakarta.persistence.*
+import org.springframework.transaction.annotation.Transactional
 
 @Entity
 @Table(name = "user")
@@ -114,6 +115,7 @@ class UserAdapter(
         }
     }
 
+    @Transactional
     fun updateUser(user: User): User {
         val userEntity = userRepository.findByIdOrNull(user.id) ?: throw EntityNotFound(
             "User not found",
@@ -123,10 +125,10 @@ class UserAdapter(
         userEntity.password = user.password
         userEntity.googleId = user.googleId
         userEntity.email = user.email
-        // update Groups
-        user.roles.let { newGroupIds ->
-            val newGroups = roleRepository.findAllById(newGroupIds.map { it.id }.toSet())
-            userEntity.roles = newGroups.toSet()
+        // update Roles
+        user.roles.let { newRoleIds ->
+            val newRoles = roleRepository.findAllById(newRoleIds.map { it.id }.toSet())
+            userEntity.roles = newRoles.toMutableSet()
         }
         val savedUserEntity = userRepository.save(userEntity)
 

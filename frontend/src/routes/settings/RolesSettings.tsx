@@ -9,13 +9,13 @@ import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
 import { type } from "os";
 import {
-  GroupResponse,
+  RoleResponse,
   PermissionResponse,
-  createGroup,
-  getGroups,
-  patchGroup,
-  removeGroup,
-} from "../../api/GroupApi";
+  createRole,
+  getRoles,
+  patchRole,
+  removeRole,
+} from "../../api/RoleApi";
 import ColorfulLabel from "../../components/ColorfulLabel";
 import { useDatasources } from "./DatabaseSettings";
 import { ConnectionResponse } from "../../api/DatasourceApi";
@@ -62,66 +62,66 @@ const connectionPermissionsToText = (permissions: PermissionResponse) => {
   return `${permissions.scope}: ${permissions.permissions.join(", ")}`;
 };
 
-const useGroups = (): {
-  groups: GroupResponse[];
+const useRoles = (): {
+  roles: RoleResponse[];
   isLoading: boolean;
   error: Error | null;
-  deleteGroup: (id: string) => void;
-  addGroup: (name: string, description: string) => void;
-  editGroup: (id: string, group: GroupResponse) => void;
+  deleteRole: (id: string) => void;
+  addRole: (name: string, description: string) => void;
+  editRole: (id: string, role: RoleResponse) => void;
 } => {
-  const [groups, setGroups] = useState<GroupResponse[]>([]);
+  const [roles, setRoles] = useState<RoleResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const loadGroups = async () => {
-    const loadedGroups = await getGroups();
-    setGroups(loadedGroups);
+  const loadRoles = async () => {
+    const loadedRoles = await getRoles();
+    setRoles(loadedRoles);
     setIsLoading(false);
   };
 
   useEffect(() => {
-    loadGroups();
+    loadRoles();
   }, []);
 
-  const deleteGroup = async (id: string) => {
-    await removeGroup(id);
+  const deleteRole = async (id: string) => {
+    await removeRole(id);
 
-    const newGroups = groups.filter((group) => group.id !== id);
-    setGroups(newGroups);
+    const newRoles = roles.filter((role) => role.id !== id);
+    setRoles(newRoles);
   };
 
-  const addGroup = async (name: string, description: string) => {
-    const group = await createGroup({
+  const addRole = async (name: string, description: string) => {
+    const role = await createRole({
       name,
       description,
     });
-    const newGroups = [...groups, group];
-    setGroups(newGroups);
+    const newRoles = [...roles, role];
+    setRoles(newRoles);
   };
 
-  const editGroup = async (id: string, group: GroupResponse) => {
-    const newGroup = await patchGroup(id, group);
-    const newGroups = groups.map((group) => {
-      if (group.id === id) {
-        return newGroup;
+  const editRole = async (id: string, role: RoleResponse) => {
+    const newRole = await patchRole(id, role);
+    const newRoles = roles.map((role) => {
+      if (role.id === id) {
+        return newRole;
       }
-      return group;
+      return role;
     });
-    setGroups(newGroups);
+    setRoles(newRoles);
   };
 
-  return { groups, isLoading, error, deleteGroup, addGroup, editGroup };
+  return { roles, isLoading, error, deleteRole, addRole, editRole };
 };
 
 const Table = ({
-  groups,
-  handleEditGroup,
-  handleDeleteGroup,
+  roles,
+  handleEditRole,
+  handleDeleteRole,
 }: {
-  groups: GroupResponse[];
-  handleEditGroup: (group: GroupResponse) => void;
-  handleDeleteGroup: (group: GroupResponse) => void;
+  roles: RoleResponse[];
+  handleEditRole: (role: RoleResponse) => void;
+  handleDeleteRole: (role: RoleResponse) => void;
 }) => {
   return (
     <div className="flex flex-col w-full">
@@ -135,7 +135,7 @@ const Table = ({
                     scope="col"
                     className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
-                    Group Name
+                    Role Name
                   </th>
                   <th
                     scope="col"
@@ -155,16 +155,16 @@ const Table = ({
                 </tr>
               </thead>
               <tbody>
-                {groups.map((group) => (
-                  <tr key={group.id}>
+                {roles.map((role) => (
+                  <tr key={role.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {group.name}
+                      {role.name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {group.description}
+                      {role.description}
                     </td>
                     <td>
-                      <Tooltip text={permissionsToText(group.permissions)}>
+                      <Tooltip text={permissionsToText(role.permissions)}>
                         <div className="text-gray-400 hover:text-gray-900">
                           <FontAwesomeIcon icon={solid("eye")} />
                         </div>
@@ -173,13 +173,13 @@ const Table = ({
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex flex-row">
                         <button
-                          onClick={() => handleEditGroup(group)}
+                          onClick={() => handleEditRole(role)}
                           className="text-gray-400 hover:text-gray-900 mr-2"
                         >
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDeleteGroup(group)}
+                          onClick={() => handleDeleteRole(role)}
                           className="text-gray-400 hover:text-gray-900"
                         >
                           <FontAwesomeIcon icon={solid("trash")} />
@@ -191,9 +191,9 @@ const Table = ({
               </tbody>
             </table>
           </div>
-          {groups.length === 0 && (
+          {roles.length === 0 && (
             <div className="flex flex-row justify-center items-center p-5">
-              <div className="text-gray-400">No groups found</div>
+              <div className="text-gray-400">No roles found</div>
             </div>
           )}
         </div>
@@ -201,14 +201,14 @@ const Table = ({
     </div>
   );
 };
-function EditGroupForm(props: {
+function EditRoleForm(props: {
   connections: ConnectionResponse[];
-  group: GroupResponse;
-  editGroup: (group: GroupResponse) => Promise<void>;
+  role: RoleResponse;
+  editRole: (role: RoleResponse) => Promise<void>;
 }) {
-  const [permissions, setPermissions] = useState(props.group.permissions);
-  const [name, setName] = useState(props.group.name);
-  const [description, setDescription] = useState(props.group.description);
+  const [permissions, setPermissions] = useState(props.role.permissions);
+  const [name, setName] = useState(props.role.name);
+  const [description, setDescription] = useState(props.role.description);
   const [connectionToAdd, setConnectionToAdd] = useState("");
   const [permissionToAdd, setPermissionToAdd] = useState("");
   const mapActionToColor = (action: string) => {
@@ -230,10 +230,10 @@ function EditGroupForm(props: {
     { value: "EXECUTE", label: "Execute" },
   ];
 
-  const handleEditGroup = (event: React.SyntheticEvent) => {
+  const handleEditRole = (event: React.SyntheticEvent) => {
     event.preventDefault();
-    props.editGroup({
-      id: props.group.id,
+    props.editRole({
+      id: props.role.id,
       name,
       description,
       permissions,
@@ -269,7 +269,7 @@ function EditGroupForm(props: {
   };
 
   return (
-    <form method="post" onSubmit={handleEditGroup}>
+    <form method="post" onSubmit={handleEditRole}>
       <div className="w-2xl shadow p-3 bg-white rounded">
         <div className="flex flex-col mb-3">
           <InputField
@@ -352,20 +352,20 @@ function EditGroupForm(props: {
   );
 }
 
-function GroupForm(props: {
-  handleSaveGroup: (name: string, description: string) => void;
+function RoleForm(props: {
+  handleSaveRole: (name: string, description: string) => void;
   handleCancel: () => void;
 }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
-  const saveGroup = (event: React.SyntheticEvent) => {
+  const saveRole = (event: React.SyntheticEvent) => {
     event.preventDefault();
-    props.handleSaveGroup(name, description);
+    props.handleSaveRole(name, description);
   };
 
   return (
-    <form method="post" onSubmit={saveGroup}>
+    <form method="post" onSubmit={saveRole}>
       <div className="w-2xl shadow p-3 bg-white rounded">
         <div className="flex flex-col mb-3">
           <InputField
@@ -397,12 +397,9 @@ function GroupForm(props: {
   );
 }
 
-const GroupSettings = () => {
-  const { groups, isLoading, error, deleteGroup, addGroup, editGroup } =
-    useGroups();
-  const [selectedGroup, setSelectedGroup] = useState<GroupResponse | null>(
-    null
-  );
+const RoleSettings = () => {
+  const { roles, isLoading, error, deleteRole, addRole, editRole } = useRoles();
+  const [selectedRole, setSelectedRole] = useState<RoleResponse | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { datasources } = useDatasources();
   const [showAddModal, setShowAddModal] = useState(false);
@@ -412,26 +409,26 @@ const GroupSettings = () => {
     datasource.datasourceConnections.map((connection) => connection)
   );
 
-  const handleAddGroup = () => {
+  const handleAddRole = () => {
     setShowAddModal(true);
   };
 
-  const handleEditGroup = (group: GroupResponse) => {
-    setSelectedGroup(group);
+  const handleEditRole = (role: RoleResponse) => {
+    setSelectedRole(role);
     setShowEditModal(true);
   };
 
-  const handleEditGroupConfirm = async (group: GroupResponse) => {
-    await editGroup(group.id, group);
+  const handleEditRoleConfirm = async (role: RoleResponse) => {
+    await editRole(role.id, role);
     setShowEditModal(false);
   };
 
-  const handleDeleteGroup = (group: GroupResponse) => {
-    setSelectedGroup(group);
+  const handleDeleteRole = (role: RoleResponse) => {
+    setSelectedRole(role);
     setShowDeleteModal(true);
   };
 
-  const handleAddGroupCancel = () => {
+  const handleAddRoleCancel = () => {
     setShowAddModal(false);
   };
 
@@ -447,41 +444,37 @@ const GroupSettings = () => {
     <div>
       <div className="flex justify-between items-center flex-col">
         <Table
-          groups={groups}
-          handleEditGroup={handleEditGroup}
-          handleDeleteGroup={handleDeleteGroup}
+          roles={roles}
+          handleEditRole={handleEditRole}
+          handleDeleteRole={handleDeleteRole}
         />
-        <Button
-          type="primary"
-          onClick={handleAddGroup}
-          className="ml-auto mt-2"
-        >
-          {"Add Group"}
+        <Button type="primary" onClick={handleAddRole} className="ml-auto mt-2">
+          {"Add Role"}
         </Button>
       </div>
-      {showEditModal && selectedGroup && (
+      {showEditModal && selectedRole && (
         <Modal setVisible={setShowEditModal}>
-          <EditGroupForm
+          <EditRoleForm
             connections={connections}
-            group={selectedGroup}
-            editGroup={handleEditGroupConfirm}
-          ></EditGroupForm>
+            role={selectedRole}
+            editRole={handleEditRoleConfirm}
+          ></EditRoleForm>
         </Modal>
       )}
       {showAddModal && (
         <Modal setVisible={setShowAddModal}>
-          <GroupForm
-            handleSaveGroup={addGroup}
-            handleCancel={handleAddGroupCancel}
-          ></GroupForm>
+          <RoleForm
+            handleSaveRole={addRole}
+            handleCancel={handleAddRoleCancel}
+          ></RoleForm>
         </Modal>
       )}
-      {showDeleteModal && selectedGroup && (
+      {showDeleteModal && selectedRole && (
         <Modal setVisible={setShowDeleteModal}>
           <DeleteConfirm
-            title="Delete Group"
-            message={`Are you sure you want to delete group ${selectedGroup.name}?`}
-            onConfirm={() => deleteGroup(selectedGroup.id)}
+            title="Delete Role"
+            message={`Are you sure you want to delete role ${selectedRole.name}?`}
+            onConfirm={() => deleteRole(selectedRole.id)}
             onCancel={() => setShowDeleteModal(false)}
           />
         </Modal>
@@ -490,5 +483,5 @@ const GroupSettings = () => {
   );
 };
 
-export { useGroups, GroupSettings };
-export default GroupSettings;
+export { useRoles, RoleSettings };
+export default RoleSettings;

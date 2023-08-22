@@ -265,12 +265,6 @@ databaseChangeLog:
             tableName: user_role
             columns:
               - column:
-                  name: id
-                  type: CHAR(22)
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-              - column:
                   name: user_id
                   type: CHAR(22)
                   constraints:

@@ -1,4 +1,11 @@
-import { useEffect, useState } from "react";
+import {
+  JSXElementConstructor,
+  ReactElement,
+  ReactFragment,
+  ReactPortal,
+  useEffect,
+  useState,
+} from "react";
 import { useParams } from "react-router-dom";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vs } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -11,6 +18,8 @@ import {
   runQuery,
   ChangeExecutionRequestPayload,
   patchRequest,
+  SelectExecuteResponse,
+  ErrorResponse,
 } from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
 import { mapStatusToColor } from "./Requests";
@@ -68,6 +77,12 @@ const useRequest = (id: string) => {
     request();
   }, []);
 
+  const [data, setData] = useState<SelectExecuteResponse>();
+  const [updatedRows, setUpdatedRows] = useState<number | undefined>(undefined);
+  const [executionError, setExecutionError] = useState<
+    ErrorResponse | undefined
+  >(undefined);
+
   const addComment = async (comment: string) => {
     await addCommentToRequest(id, comment);
 
@@ -103,17 +118,44 @@ const useRequest = (id: string) => {
   };
 
   const execute = async () => {
-    await runQuery(id);
+    const result = await runQuery(id);
+    switch (result._type) {
+      case "select":
+        setData(result);
+        break;
+      case "update":
+        setUpdatedRows(result.rowsUpdated);
+        break;
+      case "error":
+        setExecutionError(result);
+        break;
+    }
   };
 
-  return { request, addComment, approve, execute, updateRequest };
+  return {
+    request,
+    addComment,
+    approve,
+    execute,
+    updateRequest,
+    data,
+    updatedRows,
+    executionError,
+  };
 };
 
 function RequestReview() {
   const params = useParams() as unknown as RequestReviewParams;
-  const { request, addComment, approve, execute, updateRequest } = useRequest(
-    params.requestId
-  );
+  const {
+    request,
+    addComment,
+    approve,
+    execute,
+    updateRequest,
+    data,
+    updatedRows,
+    executionError,
+  } = useRequest(params.requestId);
 
   return (
     <div>
@@ -135,6 +177,65 @@ function RequestReview() {
               runQuery={execute}
               updateRequest={updateRequest}
             ></RequestBox>
+            {data && (
+              <div className="relative py-4 ml-4 flex">
+                <div className="bg-slate-500 w-0.5 absolute block whitespace-pre left-0 top-0 bottom-0">
+                  {" "}
+                </div>
+                <svg className="h-4 w-4 -ml-2 mr-2 mt-0.5 inline-block align-text-bottom items-center bg-white z-0">
+                  <path d="M11.93 8.5a4.002 4.002 0 0 1-7.86 0H.75a.75.75 0 0 1 0-1.5h3.32a4.002 4.002 0 0 1 7.86 0h3.32a.75.75 0 0 1 0 1.5Zm-1.43-.75a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"></path>
+                </svg>
+                <div className="text-slate-500 text-sm">Data:</div>
+                <table className="table-auto w-full">
+                  <thead>
+                    {data.columns.map(
+                      (column: {
+                        label:
+                          | string
+                          | number
+                          | boolean
+                          | ReactElement<
+                              any,
+                              string | JSXElementConstructor<any>
+                            >
+                          | ReactFragment
+                          | ReactPortal
+                          | null
+                          | undefined;
+                      }) => {
+                        return <tr className="px-4 py-2">{column.label}</tr>;
+                      }
+                    )}
+                  </thead>
+                  <tbody>
+                    {data.data.map(
+                      (row: {
+                        [x: string]:
+                          | string
+                          | number
+                          | boolean
+                          | ReactFragment
+                          | ReactPortal
+                          | ReactElement<
+                              any,
+                              string | JSXElementConstructor<any>
+                            >
+                          | null
+                          | undefined;
+                      }) => (
+                        <tr>
+                          {Object.keys(row).map((cell: string) => {
+                            return (
+                              <td className="border px-4 py-2">{row[cell]}</td>
+                            );
+                          })}
+                        </tr>
+                      )
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
             <div>
               {request === undefined
                 ? ""

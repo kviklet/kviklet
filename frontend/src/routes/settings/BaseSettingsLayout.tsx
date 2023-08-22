@@ -2,7 +2,7 @@ import { ReactNode, useState } from "react";
 import { Outlet, Route, Routes } from "react-router-dom";
 import DatabaseSettings from "./DatabaseSettings";
 import UserSettings from "./UserSettings";
-import GroupSettings from "./GroupsSettings";
+import RoleSettings from "./RolesSettings";
 
 const Tab = (props: {
   children: React.ReactNode;
@@ -65,7 +65,7 @@ const BaseSettingsLayout = (props: LayoutProps) => {
               <Route path="/*" element={<DatabaseSettings />} />
               <Route path="databases" element={<DatabaseSettings />} />
               <Route path="users" element={<UserSettings />} />
-              <Route path="groups" element={<GroupSettings />} />
+              <Route path="roles" element={<RoleSettings />} />
             </Routes>
             <Outlet></Outlet>
           </div>

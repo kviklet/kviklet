@@ -1,6 +1,6 @@
 import { group } from "console";
 import { z } from "zod";
-import { groupResponseSchema } from "./GroupApi";
+import { roleResponseSchema } from "./RoleApi";
 
 const baseUrl = `${window.location.protocol}//${window.location.hostname}:8080`;
 
@@ -9,7 +9,7 @@ const userResponseSchema = z.object({
   id: z.string(),
   email: z.string(),
   fullName: z.string().nullable(),
-  groups: groupResponseSchema.array(),
+  roles: roleResponseSchema.array(),
 });
 
 // Define the type for the user response
@@ -28,7 +28,7 @@ const usersResponseSchema = z.object({
 const UpdateUserRequestSchema = z.object({
   email: z.string().min(3).max(50).optional(),
   fullName: z.string().min(1).max(50).optional(),
-  groups: z.array(z.string()).optional(),
+  roles: z.array(z.string()).optional(),
 });
 
 type UpdateUserRequest = z.infer<typeof UpdateUserRequestSchema>;

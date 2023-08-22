@@ -229,7 +229,7 @@ class ExecutionRequestController(
     }
 
     @Operation(summary = "List Execution Requests")
-    @GetMapping
+    @GetMapping("/")
     fun list(): List<ExecutionRequestResponse> {
         return executionRequestService.list().map { ExecutionRequestResponse.fromDto(it) }
     }

@@ -8,8 +8,8 @@ import {
 } from "../../api/UserApi";
 import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
-import { useGroups } from "./GroupsSettings";
-import { GroupResponse } from "../../api/GroupApi";
+import { useRoles } from "./RolesSettings";
+import { RoleResponse } from "../../api/RoleApi";
 import ColorfulLabel from "../../components/ColorfulLabel";
 
 function UserForm(props: {
@@ -80,13 +80,13 @@ const useUsers = () => {
     request();
   }, []);
 
-  async function addGroupToUser(userId: string, groupId: string) {
+  async function addRoleToUser(userId: string, roleId: string) {
     const currentUser = users.find((u) => u.id === userId);
     if (!currentUser) {
       return;
     }
     const newUser = await updateUser(userId, {
-      groups: [...currentUser.groups.map((g) => g.id), groupId],
+      roles: [...currentUser.roles.map((g) => g.id), roleId],
     });
     setUsers(users.map((u) => (u.id === userId ? newUser : u)));
   }
@@ -104,29 +104,27 @@ const useUsers = () => {
     setUsers([...users, newUser]);
   }
 
-  async function removeGroupFromUser(userId: string, groupId: string) {
+  async function removeRoleFromUser(userId: string, roleId: string) {
     const currentUser = users.find((u) => u.id === userId);
     if (!currentUser) {
       return;
     }
     const newUser = await updateUser(userId, {
-      groups: currentUser.groups
-        .filter((g) => g.id !== groupId)
-        .map((g) => g.id),
+      roles: currentUser.roles.filter((g) => g.id !== roleId).map((g) => g.id),
     });
     setUsers(users.map((u) => (u.id === userId ? newUser : u)));
   }
 
-  return { addGroupToUser, users, createNewUser, removeGroupFromUser };
+  return { addRoleToUser, users, createNewUser, removeRoleFromUser };
 };
 
 const UserRow = (props: {
   user: UserResponse;
-  groups: GroupResponse[];
-  addGroupToUser: (userId: string, groupId: string) => void;
-  removeGroupFromUser: (userId: string, groupId: string) => void;
+  roles: RoleResponse[];
+  addRoleToUser: (userId: string, roleId: string) => void;
+  removeRoleFromUser: (userId: string, roleId: string) => void;
 }) => {
-  const [groupsDialogVisible, setGroupsDialogVisible] = useState(false);
+  const [rolesDialogVisible, setRolesDialogVisible] = useState(false);
 
   return (
     <div className="flex flex-row">
@@ -138,39 +136,39 @@ const UserRow = (props: {
           <div>{props.user.email}</div>
         </div>
         <div className="flex flex-row w-1/3 flex-wrap justify-end">
-          {props.user.groups.map((group) => {
+          {props.user.roles.map((role) => {
             return (
               <ColorfulLabel
                 onDelete={() => {
-                  props.removeGroupFromUser(props.user.id, group.id);
+                  props.removeRoleFromUser(props.user.id, role.id);
                 }}
-                text={group.name}
+                text={role.name}
               />
             );
           })}
           <ColorfulLabel
-            text="Add Group"
+            text="Add Role"
             onClick={() => {
-              setGroupsDialogVisible(true);
+              setRolesDialogVisible(true);
             }}
             color="bg-white text-slate-700 border border-slate-400"
           />
-          {groupsDialogVisible && (
-            <Modal setVisible={setGroupsDialogVisible}>
+          {rolesDialogVisible && (
+            <Modal setVisible={setRolesDialogVisible}>
               <div className="w-2xl shadow p-3 bg-white rounded">
                 <div className="flex flex-col mb-3">
-                  <div className="font-bold">Add Group</div>
+                  <div className="font-bold">Add Role</div>
                 </div>
                 <div className="flex flex-col mb-3">
                   <div className="flex flex-row flex-wrap">
-                    {props.groups.map((group) => {
+                    {props.roles.map((role) => {
                       return (
                         <ColorfulLabel
                           onClick={() => {
-                            props.addGroupToUser(props.user.id, group.id);
-                            setGroupsDialogVisible(false);
+                            props.addRoleToUser(props.user.id, role.id);
+                            setRolesDialogVisible(false);
                           }}
-                          text={group.name}
+                          text={role.name}
                         />
                       );
                     })}
@@ -187,11 +185,10 @@ const UserRow = (props: {
 
 const UserSettings = () => {
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
-  const { addGroupToUser, users, createNewUser, removeGroupFromUser } =
+  const { addRoleToUser, users, createNewUser, removeRoleFromUser } =
     useUsers();
 
-  const { groups, isLoading, error, deleteGroup, addGroup, editGroup } =
-    useGroups();
+  const { roles, isLoading, error, deleteRole, addRole, editRole } = useRoles();
 
   return (
     <div>
@@ -200,9 +197,9 @@ const UserSettings = () => {
           {users.map((user) => (
             <UserRow
               user={user}
-              groups={groups}
-              addGroupToUser={addGroupToUser}
-              removeGroupFromUser={removeGroupFromUser}
+              roles={roles}
+              addRoleToUser={addRoleToUser}
+              removeRoleFromUser={removeRoleFromUser}
             />
           ))}
         </div>

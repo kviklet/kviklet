@@ -157,14 +157,64 @@ const addReviewToRequest = async (
   return;
 };
 
-const runQuery = async (id: string) => {
+function withType<T, U extends string>(schema: z.ZodSchema<T>, typeValue: U) {
+  return schema.transform((data) => ({
+    ...data,
+    _type: typeValue,
+  })) as z.ZodSchema<T & { _type: U }>;
+}
+
+const UpdateExecuteResponseSchema = withType(
+  z.object({
+    _type: z.literal("update"),
+    rowsUpdated: z.number(),
+  }),
+  "update"
+);
+
+const SelectExecuteResponseSchema = withType(
+  z.object({
+    _type: z.literal("select"),
+    columns: z.array(
+      z.object({
+        label: z.string(),
+        typeName: z.string(),
+        typeClass: z.string(),
+      })
+    ),
+    data: z.array(z.record(z.string())),
+  }),
+  "select"
+);
+
+const ErrorResponseSchema = withType(
+  z.object({
+    _type: z.literal("error"),
+    errorCode: z.number(),
+    message: z.string().optional(),
+  }),
+  "error"
+);
+
+const ExecuteResponseSchema = z.union([
+  UpdateExecuteResponseSchema,
+  SelectExecuteResponseSchema,
+  ErrorResponseSchema,
+]);
+
+type ExecuteResponse = z.infer<typeof ExecuteResponseSchema>;
+type UpdateExecuteResponse = z.infer<typeof UpdateExecuteResponseSchema>;
+type SelectExecuteResponse = z.infer<typeof SelectExecuteResponseSchema>;
+type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
+
+const runQuery = async (id: string): Promise<ExecuteResponse> => {
   const response = await fetch(requestUrl + id + "/execute", {
     method: "POST",
     credentials: "include",
   });
   const json = await response.json();
-  console.log(json);
-  return;
+  const result = ExecuteResponseSchema.parse(json);
+  return result;
 };
 
 export {
@@ -181,4 +231,8 @@ export type {
   ExecutionRequestsResponse,
   ExecutionRequestResponseWithComments,
   ChangeExecutionRequestPayload,
+  ExecuteResponse,
+  UpdateExecuteResponse,
+  SelectExecuteResponse,
+  ErrorResponse,
 };
