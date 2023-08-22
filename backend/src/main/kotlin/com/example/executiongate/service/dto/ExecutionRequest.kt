@@ -5,7 +5,7 @@ import java.io.Serializable
 import java.time.LocalDateTime
 
 @JvmInline
-value class ExecutionRequestId(private val id: String): Serializable {
+value class ExecutionRequestId(private val id: String) : Serializable {
     override fun toString() = id
 }
 
@@ -18,27 +18,27 @@ enum class ReviewStatus {
  * A DTO for the {@link com.example.executiongate.db.ExecutionRequestEntity} entity
  */
 data class ExecutionRequest(
-    val id: ExecutionRequestId,
-    val connection: DatasourceConnection,
-    val title: String,
-    val description: String?,
-    val statement: String,
-    val readOnly: Boolean,
-    val reviewStatus: ReviewStatus,
-    val executionStatus: String,
-    val createdAt: LocalDateTime = LocalDateTime.now(),
-    val author: User
+        val id: ExecutionRequestId,
+        val connection: DatasourceConnection,
+        val title: String,
+        val description: String?,
+        val statement: String,
+        val readOnly: Boolean,
+        val reviewStatus: ReviewStatus,
+        val executionStatus: String,
+        val createdAt: LocalDateTime = LocalDateTime.now(),
+        val author: User
 )
 
 
 data class ExecutionRequestDetails(
-    val request: ExecutionRequest,
-    val events: Set<Event>
+        val request: ExecutionRequest,
+        val events: Set<Event>
 ) {
     fun addEvent(event: Event): ExecutionRequestDetails {
         val allEvents = events + event
 
-        val numReviews = events.count { it.type == EventType.REVIEW }
+        val numReviews = events.count { it.type == EventType.REVIEW && it is ReviewEvent && it.action == ReviewAction.APPROVE }
         val reviewStatus = if (numReviews >= request.connection.reviewConfig.numTotalRequired) {
             ReviewStatus.APPROVED
         } else {

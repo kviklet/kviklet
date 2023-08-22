@@ -10,11 +10,7 @@ import com.example.executiongate.db.ExecutionRequestAdapter
 import com.example.executiongate.db.Payload
 import com.example.executiongate.db.ReviewConfig
 import com.example.executiongate.db.ReviewPayload
-import com.example.executiongate.service.dto.Event
-import com.example.executiongate.service.dto.ExecutionRequest
-import com.example.executiongate.service.dto.ExecutionRequestDetails
-import com.example.executiongate.service.dto.ExecutionRequestId
-import com.example.executiongate.service.dto.ReviewStatus
+import com.example.executiongate.service.dto.*
 import org.springframework.stereotype.Service
 import jakarta.transaction.Transactional
 
@@ -94,8 +90,13 @@ class ExecutionRequestService(
             events: Set<Event>,
             reviewConfig: ReviewConfig,
     ): ReviewStatus {
-        println("events: $events")
-        return ReviewStatus.APPROVED
+        val numReviews = events.count { it.type == EventType.REVIEW && it is ReviewEvent && it.action == ReviewAction.APPROVE }
+        val reviewStatus = if (numReviews >= reviewConfig.numTotalRequired) {
+            ReviewStatus.APPROVED
+        } else {
+            ReviewStatus.AWAITING_APPROVAL
+        }
+        return reviewStatus
     }
 
     fun execute(id: ExecutionRequestId): QueryResult {

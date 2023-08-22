@@ -55,39 +55,6 @@ class DataInitializer(
         )
     }
 
-    fun generateDatasourceEntity(
-            displayName: String,
-            type: DatasourceType,
-            hostname: String,
-            port: Int,
-            numConnections: Int
-    ): DatasourceEntity {
-        val datasource = DatasourceEntity(
-                displayName = displayName,
-                type = type,
-                hostname = hostname,
-                port = port,
-                datasourceConnections = emptySet()
-        )
-        val savedDatasource = datasourceRepository.saveAndFlush(datasource)
-        val connections = mutableSetOf<DatasourceConnectionEntity>()
-        for (i in 1..numConnections) {
-            val connection = DatasourceConnectionEntity(
-                    displayName = "Connection $i",
-                    authenticationType = AuthenticationType.USER_PASSWORD,
-                    username = "test",
-                    description = "This is connection $i it is used for some purpose or another" +
-                            "and is very important to the business",
-                    password = "test",
-                    reviewConfig = ReviewConfig(numTotalRequired = 1),
-                    datasource = savedDatasource
-            )
-            connections.add(connection)
-        }
-        datasourceConnectionRepository.saveAll(connections)
-        return datasource
-    }
-
     fun generateRole() {
         val role = RoleEntity(
                 name = "Test Role",
