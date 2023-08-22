@@ -2,15 +2,15 @@ spring:
   liquibase:
     change-log: classpath:changelog/000-changelog.yaml
   datasource:
-    url: jdbc:h2:mem:mydb;MODE=LEGACY
-    username: sa
-    password:
-    driverClassName: org.h2.Driver
+    url: jdbc:postgresql://localhost:5433/opsgate
+    username: postgres
+    password: postgres
+    driverClassName: org.postgresql.Driver
   jpa:
-    spring.jpa.database-platform: org.hibernate.dialect.H2Dialect
     properties:
       hibernate:
         auto_quote_keyword: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
   h2:
     console.enabled: true
 app:

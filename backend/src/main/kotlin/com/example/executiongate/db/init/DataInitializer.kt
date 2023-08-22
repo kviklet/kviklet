@@ -13,11 +13,11 @@ import java.util.concurrent.ThreadLocalRandom
 
 @Configuration
 class DataInitializer(
-    private val datasourceRepository: DatasourceRepository,
-    private val datasourceConnectionRepository: DatasourceConnectionRepository,
-    private val executionRequestRepository: ExecutionRequestRepository,
-    private val roleRepository: RoleRepository,
-    private val policyRepository: PolicyRepository
+        private val datasourceRepository: DatasourceRepository,
+        private val datasourceConnectionRepository: DatasourceConnectionRepository,
+        private val executionRequestRepository: ExecutionRequestRepository,
+        private val roleRepository: RoleRepository,
+        private val policyRepository: PolicyRepository
 ) {
 
 
@@ -31,56 +31,56 @@ class DataInitializer(
 
     // Helper function to generate an ExecutionRequestEntity
     fun generateExecutionRequest(
-        connection: DatasourceConnectionEntity,
-        titlePrefix: String,
-        index: Int,
-        author: UserEntity
+            connection: DatasourceConnectionEntity,
+            titlePrefix: String,
+            index: Int,
+            author: UserEntity
     ): ExecutionRequestEntity {
         val title = "$titlePrefix Execution Request $index"
         val description = "Description of the $titlePrefix execution request $index"
-        val statement = randomSQL()
+        val statement = "Select * from test;"
         val readOnly = ThreadLocalRandom.current().nextBoolean()
         val reviewStatus = if (ThreadLocalRandom.current().nextBoolean()) ReviewStatus.APPROVED else ReviewStatus.AWAITING_APPROVAL
         val executionStatus = if (ThreadLocalRandom.current().nextBoolean()) "SUCCESS" else "PENDING"
         return ExecutionRequestEntity(
-            connection = connection,
-            title = title,
-            description = description,
-            statement = statement,
-            readOnly = readOnly,
-            reviewStatus = reviewStatus,
-            executionStatus = executionStatus,
-            author = author,
-            events = mutableSetOf() // Replace with actual EventEntity instances if needed
+                connection = connection,
+                title = title,
+                description = description,
+                statement = statement,
+                readOnly = readOnly,
+                reviewStatus = reviewStatus,
+                executionStatus = executionStatus,
+                author = author,
+                events = mutableSetOf()
         )
     }
 
     fun generateDatasourceEntity(
-        displayName: String,
-        type: DatasourceType,
-        hostname: String,
-        port: Int,
-        numConnections: Int
+            displayName: String,
+            type: DatasourceType,
+            hostname: String,
+            port: Int,
+            numConnections: Int
     ): DatasourceEntity {
         val datasource = DatasourceEntity(
-            displayName = displayName,
-            type = type,
-            hostname = hostname,
-            port = port,
-            datasourceConnections = emptySet()
+                displayName = displayName,
+                type = type,
+                hostname = hostname,
+                port = port,
+                datasourceConnections = emptySet()
         )
         val savedDatasource = datasourceRepository.saveAndFlush(datasource)
         val connections = mutableSetOf<DatasourceConnectionEntity>()
         for (i in 1..numConnections) {
             val connection = DatasourceConnectionEntity(
-                displayName = "Connection $i",
-                authenticationType = AuthenticationType.USER_PASSWORD,
-                username = "test",
-                description = "This is connection $i it is used for some purpose or another" +
-                        "and is very important to the business",
-                password = "test",
-                reviewConfig = ReviewConfig(numTotalRequired = 1),
-                datasource = savedDatasource
+                    displayName = "Connection $i",
+                    authenticationType = AuthenticationType.USER_PASSWORD,
+                    username = "test",
+                    description = "This is connection $i it is used for some purpose or another" +
+                            "and is very important to the business",
+                    password = "test",
+                    reviewConfig = ReviewConfig(numTotalRequired = 1),
+                    datasource = savedDatasource
             )
             connections.add(connection)
         }
@@ -90,33 +90,39 @@ class DataInitializer(
 
     fun generateRole() {
         val role = RoleEntity(
-            name = "Test Role",
-            description = "This is a test role",
-            policies = emptySet()
+                name = "Test Role",
+                description = "This is a test role",
+                policies = emptySet()
         )
         val savedRole = roleRepository.saveAndFlush(role)
         val policies = emptySet<PolicyEntity>()
         savedRole.policies = policies
         roleRepository.saveAndFlush(savedRole)
     }
+
     @Bean
     fun initializer(userRepository: UserRepository, passwordEncoder: PasswordEncoder): ApplicationRunner {
-        return ApplicationRunner { args ->
+        return ApplicationRunner { _ ->
+
+            if (userRepository.findAll().isNotEmpty()) {
+                return@ApplicationRunner
+            }
+
             val user = UserEntity(
-                email = "testUser@example.com",
-                fullName = "Admin User",
-                password = passwordEncoder.encode("testPassword")
+                    email = "testUser@example.com",
+                    fullName = "Admin User",
+                    password = passwordEncoder.encode("testPassword")
             )
 
             val savedUser = userRepository.saveAndFlush(user)
 
             // Create a datasource
             val datasource1 = DatasourceEntity(
-                displayName = "Test Datasource",
-                type = DatasourceType.POSTGRESQL,
-                hostname = "localhost",
-                port = 5432,
-                datasourceConnections = emptySet()
+                    displayName = "Test Datasource",
+                    type = DatasourceType.POSTGRESQL,
+                    hostname = "localhost",
+                    port = 5432,
+                    datasourceConnections = emptySet()
             )
 
             // Save the datasource
@@ -124,80 +130,21 @@ class DataInitializer(
 
             // Create connections linked to the saved datasource
             val connection1 = DatasourceConnectionEntity(
-                datasource = savedDatasource1,
-                displayName = "Test Connection",
-                authenticationType = AuthenticationType.USER_PASSWORD,
-                description = "This is connection 1 it is used for some purpose or another" +
-                        "and is very important to the business",
-                username = "test",
-                password = "test",
-                reviewConfig = ReviewConfig(numTotalRequired = 1)
-            )
-
-            val connection2 = DatasourceConnectionEntity(
-                datasource = savedDatasource1,
-                displayName = "Another Connection",
-                authenticationType = AuthenticationType.USER_PASSWORD,
-                description = "This is connection 2 it is used for some purpose or another" +
-                        "and is very important to the business",
-                username = "test2",
-                password = "test2",
-                reviewConfig = ReviewConfig(numTotalRequired = 1)
-            )
-
-            for (i in 1..10) {
-                //generate some random datasources
-                val datasource = generateDatasourceEntity(
-                    displayName = "Test Datasource $i",
-                    type = DatasourceType.POSTGRESQL,
-                    hostname = "localhost",
-                    port = 5432,
-                    numConnections = 2
-                )
-            }
-
-
-            // Save the connections
-            val savedConnection1 = datasourceConnectionRepository.saveAndFlush(connection1)
-            val savedConnection2 = datasourceConnectionRepository.saveAndFlush(connection2)
-
-            // Create another datasource
-            val datasource2 = DatasourceEntity(
-                displayName = "Another Datasource",
-                type = DatasourceType.MYSQL,
-                hostname = "localhost",
-                port = 3306,
-                datasourceConnections = emptySet()
-            )
-
-            // Save the datasource
-            val savedDatasource2 = datasourceRepository.saveAndFlush(datasource2)
-
-            // Create a connection linked to the second datasource
-            val connection3 = DatasourceConnectionEntity(
-                datasource = savedDatasource2,
-                displayName = "Test Connection 2",
-                authenticationType = AuthenticationType.USER_PASSWORD,
-                description = "This is connection 3 it is used for some purpose or another" +
-                        "and is very important to the business",
-                username = "root",
-                password = "root",
-                reviewConfig = ReviewConfig(numTotalRequired = 1)
+                    datasource = savedDatasource1,
+                    displayName = "Test Connection",
+                    authenticationType = AuthenticationType.USER_PASSWORD,
+                    description = "This is a localhost connection",
+                    username = "postgres",
+                    password = "postgres",
+                    reviewConfig = ReviewConfig(numTotalRequired = 1)
             )
 
             // Save the connection
-            val savedConnection3 = datasourceConnectionRepository.saveAndFlush(connection3)
+            val savedConnection1 = datasourceConnectionRepository.saveAndFlush(connection1)
 
+            val request1 = generateExecutionRequest(savedConnection1, "First", 1, savedUser)
 
-            for (i in 1..5) {
-                val request1 = generateExecutionRequest(savedConnection1, "First", i, savedUser)
-                val request2 = generateExecutionRequest(savedConnection2, "Second", i,savedUser)
-                val request3 = generateExecutionRequest(savedConnection3, "Third", i, savedUser)
-
-                executionRequestRepository.save(request1)
-                executionRequestRepository.save(request2)
-                executionRequestRepository.save(request3)
-            }
+            executionRequestRepository.save(request1)
             generateRole()
 
         }

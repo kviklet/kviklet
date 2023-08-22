@@ -22,12 +22,26 @@ const ExecutionRequestPayload = z.object({
   //confidential: z.boolean(),
 });
 
-const Comment = z.object({
-  author: z.string().optional(),
-  comment: z.string(),
-  createdAt: DateTime,
-  id: z.string(),
-});
+const Comment = withType(
+  z.object({
+    author: userResponseSchema.optional(),
+    comment: z.string(),
+    createdAt: DateTime,
+    id: z.string(),
+  }),
+  "COMMENT"
+);
+
+const Review = withType(
+  z.object({
+    author: userResponseSchema.optional(),
+    comment: z.string(),
+    createdAt: DateTime,
+    action: z.enum(["APPROVE", "COMMENT", "REQUEST_CHANGE"]),
+    id: z.string(),
+  }),
+  "REVIEW"
+);
 
 const ExecutionRequestResponse = z.object({
   id: z.string(),
@@ -51,7 +65,7 @@ const ChangeExecutionRequestPayload = z.object({
 });
 
 const ExecutionRequestResponseWithComments = ExecutionRequestResponse.extend({
-  events: z.array(Comment),
+  events: z.array(z.union([Comment, Review])),
 });
 
 const ExecutionRequestsResponse = z.array(ExecutionRequestResponse);
@@ -65,6 +79,7 @@ type ExecutionRequestPayload = z.infer<typeof ExecutionRequestPayload>;
 type ChangeExecutionRequestPayload = z.infer<
   typeof ChangeExecutionRequestPayload
 >;
+type Event = z.infer<typeof Comment> | z.infer<typeof Review>;
 
 const addRequest = async (payload: ExecutionRequest): Promise<boolean> => {
   const mappedPayload: ExecutionRequestPayload = {
@@ -138,7 +153,10 @@ const addCommentToRequest = async (id: string, comment: string) => {
     credentials: "include",
     body: JSON.stringify({ comment }),
   });
-  return;
+  const json = await response.json();
+  console.log(json);
+  const event = z.union([Comment, Review]).parse(json);
+  return event;
 };
 
 const addReviewToRequest = async (
@@ -166,7 +184,6 @@ function withType<T, U extends string>(schema: z.ZodSchema<T>, typeValue: U) {
 
 const UpdateExecuteResponseSchema = withType(
   z.object({
-    _type: z.literal("update"),
     rowsUpdated: z.number(),
   }),
   "update"
@@ -174,7 +191,6 @@ const UpdateExecuteResponseSchema = withType(
 
 const SelectExecuteResponseSchema = withType(
   z.object({
-    _type: z.literal("select"),
     columns: z.array(
       z.object({
         label: z.string(),
@@ -189,7 +205,6 @@ const SelectExecuteResponseSchema = withType(
 
 const ErrorResponseSchema = withType(
   z.object({
-    _type: z.literal("error"),
     errorCode: z.number(),
     message: z.string().optional(),
   }),
@@ -235,4 +250,5 @@ export type {
   UpdateExecuteResponse,
   SelectExecuteResponse,
   ErrorResponse,
+  Event,
 };

@@ -19,6 +19,7 @@ import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
+import org.hibernate.annotations.ColumnTransformer
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "foobar", visible = false)
@@ -40,17 +41,21 @@ data class ReviewPayload(
 
 @Entity(name = "event")
 class EventEntity(
+
     @ManyToOne
     @JoinColumn(name = "execution_request_id")
     val executionRequest: ExecutionRequestEntity,
+
+    @ManyToOne
+    @JoinColumn(name = "author_id")
+    val author: UserEntity,
 
     private val type: EventType,
 
     @Convert(converter = EventPayloadConverter::class)
     @Column(columnDefinition = "json")
+    @ColumnTransformer(write = "?::json")
     private val payload: Payload,
-
-    // createdBy
     private val createdAt: LocalDateTime = LocalDateTime.now(),
 ): BaseEntity() {
 
@@ -65,6 +70,7 @@ class EventEntity(
             id = id,
             createdAt = createdAt,
             payload = payload,
+            author = author.toDto(),
         )
     }
 

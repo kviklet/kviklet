@@ -3,6 +3,7 @@ import {
   ReactElement,
   ReactFragment,
   ReactPortal,
+  useContext,
   useEffect,
   useState,
 } from "react";
@@ -20,9 +21,12 @@ import {
   patchRequest,
   SelectExecuteResponse,
   ErrorResponse,
+  Event,
 } from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
 import { mapStatusToColor } from "./Requests";
+import { UserResponse } from "../api/UserApi";
+import { UserStatusContext } from "../components/UserStatusProvider";
 
 interface RequestReviewParams {
   requestId: string;
@@ -84,7 +88,8 @@ const useRequest = (id: string) => {
   >(undefined);
 
   const addComment = async (comment: string) => {
-    await addCommentToRequest(id, comment);
+    const event = await addCommentToRequest(id, comment);
+    console.log(event);
 
     // update the request with the new comment by updating the events propertiy with a new Comment
     setRequest((request) => {
@@ -93,15 +98,7 @@ const useRequest = (id: string) => {
       }
       return {
         ...request,
-        events: [
-          ...request.events,
-          {
-            id: "",
-            author: "",
-            comment,
-            createdAt: new Date().toISOString(),
-          },
-        ],
+        events: [...request.events, event],
       };
     });
   };
@@ -144,6 +141,27 @@ const useRequest = (id: string) => {
   };
 };
 
+const DataTable: React.FC<{ data: SelectExecuteResponse }> = ({ data }) => {
+  return (
+    <table className="table-auto w-full">
+      <thead>
+        {data.columns.map((column) => {
+          return <th className="px-4 py-2">{column.label}</th>;
+        })}
+      </thead>
+      <tbody>
+        {data.data.map((row) => (
+          <tr>
+            {Object.keys(row).map((cell) => {
+              return <td className="border px-4 py-2">{row[cell]}</td>;
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+};
+
 function RequestReview() {
   const params = useParams() as unknown as RequestReviewParams;
   const {
@@ -177,63 +195,13 @@ function RequestReview() {
               runQuery={execute}
               updateRequest={updateRequest}
             ></RequestBox>
-            {data && (
-              <div className="relative py-4 ml-4 flex">
-                <div className="bg-slate-500 w-0.5 absolute block whitespace-pre left-0 top-0 bottom-0">
-                  {" "}
-                </div>
-                <svg className="h-4 w-4 -ml-2 mr-2 mt-0.5 inline-block align-text-bottom items-center bg-white z-0">
-                  <path d="M11.93 8.5a4.002 4.002 0 0 1-7.86 0H.75a.75.75 0 0 1 0-1.5h3.32a4.002 4.002 0 0 1 7.86 0h3.32a.75.75 0 0 1 0 1.5Zm-1.43-.75a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"></path>
-                </svg>
-                <div className="text-slate-500 text-sm">Data:</div>
-                <table className="table-auto w-full">
-                  <thead>
-                    {data.columns.map(
-                      (column: {
-                        label:
-                          | string
-                          | number
-                          | boolean
-                          | ReactElement<
-                              any,
-                              string | JSXElementConstructor<any>
-                            >
-                          | ReactFragment
-                          | ReactPortal
-                          | null
-                          | undefined;
-                      }) => {
-                        return <tr className="px-4 py-2">{column.label}</tr>;
-                      }
-                    )}
-                  </thead>
-                  <tbody>
-                    {data.data.map(
-                      (row: {
-                        [x: string]:
-                          | string
-                          | number
-                          | boolean
-                          | ReactFragment
-                          | ReactPortal
-                          | ReactElement<
-                              any,
-                              string | JSXElementConstructor<any>
-                            >
-                          | null
-                          | undefined;
-                      }) => (
-                        <tr>
-                          {Object.keys(row).map((cell: string) => {
-                            return (
-                              <td className="border px-4 py-2">{row[cell]}</td>
-                            );
-                          })}
-                        </tr>
-                      )
-                    )}
-                  </tbody>
-                </table>
+            {data && <DataTable data={data}></DataTable>}
+            {updatedRows && (
+              <div className="text-slate-500">{updatedRows} rows updated</div>
+            )}
+            {executionError && (
+              <div className="text-red-500">
+                {executionError.errorCode}: {executionError.message}
               </div>
             )}
             <div>
@@ -354,11 +322,7 @@ function RequestBox({
   );
 }
 
-function Comment({
-  event,
-}: {
-  event: { author?: string; createdAt: string; comment: string };
-}) {
+function Comment({ event }: { event: Event }) {
   return (
     <div>
       <div className="relative py-4 ml-4 flex">
@@ -368,18 +332,18 @@ function Comment({
         <svg className="h-4 w-4 -ml-2 mr-2 mt-0.5 inline-block align-text-bottom items-center bg-white z-0">
           <path d="M11.93 8.5a4.002 4.002 0 0 1-7.86 0H.75a.75.75 0 0 1 0-1.5h3.32a4.002 4.002 0 0 1 7.86 0h3.32a.75.75 0 0 1 0 1.5Zm-1.43-.75a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"></path>
         </svg>
-        <div className="text-slate-500 text-sm">{event?.author} commented:</div>
+        <div className="text-slate-500 text-sm">
+          {event?.author?.fullName} commented:
+        </div>
       </div>
       <div className="relative border-cyan-500 rounded-md border">
         <div className="comment-clip border-cyan-500 bg-cyan-500 w-2 h-4 absolute -left-2 top-2"></div>
         <div className="comment-clip border-cyan-500 bg-cyan-200 w-2 h-4 absolute -left-2 top-2 ml-px"></div>
         <div className="absolute -left-12 rounded-full p-2 bg-cyan-500 text-gray-100  w-8 h-8 flex items-center justify-center text-l font-bold">
-          {firstTwoLetters(event?.author ?? "")}
+          {firstTwoLetters(event?.author?.fullName ?? "")}
         </div>
         <p className="text-slate-800 px-2 py-2 text-sm flex justify-between bg-cyan-200 border-b border-cyan-500 rounded-t-md">
-          <div>
-            Created at: {new Date(event?.createdAt ?? "").toLocaleString()}
-          </div>
+          <div>Created at: {(event?.createdAt ?? "").toLocaleString()}</div>
         </p>
         <div className="p-3">
           <ReactMarkdown components={componentMap}>
@@ -401,6 +365,8 @@ function CommentBox({
   const [commentFormVisible, setCommentFormVisible] = useState<boolean>(true);
   const [comment, setComment] = useState<string>("");
 
+  const userStatus = useContext(UserStatusContext);
+
   const handleAddComment = async () => {
     await addComment(comment);
     setComment("");
@@ -421,7 +387,7 @@ function CommentBox({
         <div className="comment-clip border-slate-300 bg-slate-300 w-2 h-4 absolute -left-2 top-2"></div>
         <div className="comment-clip border-slate-300 bg-slate-100 w-2 h-4 absolute -left-2 top-2 ml-px"></div>
         <div className="absolute -left-12 rounded-full p-2 bg-slate-500 text-gray-100  w-8 h-8 flex items-center justify-center text-l font-bold">
-          {firstTwoLetters("Jascha Beste")}
+          {firstTwoLetters((userStatus && userStatus.fullName) || "")}
         </div>
         <div className="mb-2 border-b-slate-300 border bg-slate-100 rounded-t-md">
           <div className="-mb-px z-10 overflow-auto">

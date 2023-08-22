@@ -3,6 +3,7 @@ package com.example.executiongate.db.util
 import com.example.executiongate.db.Payload
 import com.example.executiongate.db.ReviewConfig
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.nimbusds.jose.shaded.gson.Gson
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
 import jakarta.persistence.AttributeConverter

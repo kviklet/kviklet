@@ -13,6 +13,7 @@ import RequestReview from "./routes/RequestReview";
 import Login from "./routes/Login";
 import { checklogin } from "./api/StatusApi";
 import { useEffect, useState } from "react";
+import { UserStatusProvider } from "./components/UserStatusProvider";
 
 export interface ProtectedRouteProps {
   children: JSX.Element;
@@ -28,8 +29,13 @@ export const ProtectedRoute = ({
 
   useEffect(() => {
     const fetchData = async () => {
-      const userName = await checklogin();
-      setUserName(userName);
+      const response = await checklogin();
+      if (response) {
+        setUserName(response.email);
+      }
+      if (response === false) {
+        setUserName(false);
+      }
     };
     fetchData();
   }, [location.pathname]);

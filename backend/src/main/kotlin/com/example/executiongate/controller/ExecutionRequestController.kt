@@ -33,59 +33,59 @@ import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDateTime
 
 data class CreateExecutionRequest(
-    val datasourceConnectionId: DatasourceConnectionId,
-    val title: String,
-    val description: String?,
-    val statement: String,
-    val readOnly: Boolean,
+        val datasourceConnectionId: DatasourceConnectionId,
+        val title: String,
+        val description: String?,
+        val statement: String,
+        val readOnly: Boolean,
 )
 
 data class UpdateExecutionRequest(
-    val title: String?,
-    val description: String?,
-    val statement: String?,
-    val readOnly: Boolean?,
+        val title: String?,
+        val description: String?,
+        val statement: String?,
+        val readOnly: Boolean?,
 )
 
 data class CreateReviewRequest(
-    val comment: String,
-    val action: ReviewAction,
+        val comment: String,
+        val action: ReviewAction,
 )
 
 data class CreateCommentRequest(
-    val comment: String,
+        val comment: String,
 )
 
 /**
  * A DTO for the {@link com.example.executiongate.db.ExecutionRequestEntity} entity
  */
 data class ExecutionRequestResponse(
-    val id: ExecutionRequestId,
-    val title: String,
-    val author: UserResponse,
-    val connection: DatasourceConnectionResponse,
-    val description: String?,
-    val statement: String,
-    val readOnly: Boolean,
-    val reviewStatus: ReviewStatus,
-    val executionStatus: String,
-    val createdAt: LocalDateTime = LocalDateTime.now()
+        val id: ExecutionRequestId,
+        val title: String,
+        val author: UserResponse,
+        val connection: DatasourceConnectionResponse,
+        val description: String?,
+        val statement: String,
+        val readOnly: Boolean,
+        val reviewStatus: ReviewStatus,
+        val executionStatus: String,
+        val createdAt: LocalDateTime = LocalDateTime.now()
 ) {
 
     companion object {
         fun fromDto(dto: ExecutionRequest): ExecutionRequestResponse {
             val userResponse = UserResponse(dto.author)
             return ExecutionRequestResponse(
-                id = dto.id,
-                author = userResponse,
-                title = dto.title,
-                description = dto.description,
-                statement = dto.statement,
-                readOnly = dto.readOnly,
-                reviewStatus = dto.reviewStatus,
-                executionStatus = dto.executionStatus,
-                createdAt = dto.createdAt,
-                connection = DatasourceConnectionResponse.fromDto(dto.connection)
+                    id = dto.id,
+                    author = userResponse,
+                    title = dto.title,
+                    description = dto.description,
+                    statement = dto.statement,
+                    readOnly = dto.readOnly,
+                    reviewStatus = dto.reviewStatus,
+                    executionStatus = dto.executionStatus,
+                    createdAt = dto.createdAt,
+                    connection = DatasourceConnectionResponse.fromDto(dto.connection)
             )
         }
     }
@@ -95,51 +95,51 @@ data class ExecutionRequestResponse(
  * A DTO for the {@link com.example.executiongate.db.ExecutionRequestEntity} entity
  */
 data class ExecutionRequestDetailResponse(
-    val id: ExecutionRequestId,
-    val author: UserResponse,
-    val connection: DatasourceConnectionResponse,
-    val title: String,
-    val description: String?,
-    val statement: String,
-    val readOnly: Boolean,
-    val reviewStatus: ReviewStatus,
-    val executionStatus: String,
-    val events: List<Event>,
-    val createdAt: LocalDateTime = LocalDateTime.now()
+        val id: ExecutionRequestId,
+        val author: UserResponse,
+        val connection: DatasourceConnectionResponse,
+        val title: String,
+        val description: String?,
+        val statement: String,
+        val readOnly: Boolean,
+        val reviewStatus: ReviewStatus,
+        val executionStatus: String,
+        val events: List<Event>,
+        val createdAt: LocalDateTime = LocalDateTime.now()
 ) {
 
     companion object {
         fun fromDto(dto: ExecutionRequestDetails) = ExecutionRequestDetailResponse(
-            id = dto.request.id,
-            author = UserResponse(dto.request.author),
-            title = dto.request.title,
-            description = dto.request.description,
-            statement = dto.request.statement,
-            readOnly = dto.request.readOnly,
-            reviewStatus = dto.request.reviewStatus,
-            executionStatus = dto.request.executionStatus,
-            createdAt = dto.request.createdAt,
-            events = dto.events.sortedBy { it.createdAt },
-            connection = DatasourceConnectionResponse.fromDto(dto.request.connection)
+                id = dto.request.id,
+                author = UserResponse(dto.request.author),
+                title = dto.request.title,
+                description = dto.request.description,
+                statement = dto.request.statement,
+                readOnly = dto.request.readOnly,
+                reviewStatus = dto.request.reviewStatus,
+                executionStatus = dto.request.executionStatus,
+                createdAt = dto.request.createdAt,
+                events = dto.events.sortedBy { it.createdAt },
+                connection = DatasourceConnectionResponse.fromDto(dto.request.connection)
         )
     }
 }
 
 @Schema(
-    name = "ExecutionResultResponse",
-    discriminatorProperty = "type",
-    subTypes = [
-        RecordsQueryResultResponse::class,
-        UpdateQueryResultResponse::class,
-    ],
-    discriminatorMapping = [
-        DiscriminatorMapping(value = "RECORDS", schema = RecordsQueryResultResponse::class),
-        DiscriminatorMapping(value = "UPDATE_COUNT", schema = UpdateQueryResultResponse::class),
-        DiscriminatorMapping(value = "ERROR", schema = ErrorQueryResultResponse::class),
-    ]
+        name = "ExecutionResultResponse",
+        discriminatorProperty = "type",
+        subTypes = [
+            RecordsQueryResultResponse::class,
+            UpdateQueryResultResponse::class,
+        ],
+        discriminatorMapping = [
+            DiscriminatorMapping(value = "RECORDS", schema = RecordsQueryResultResponse::class),
+            DiscriminatorMapping(value = "UPDATE_COUNT", schema = UpdateQueryResultResponse::class),
+            DiscriminatorMapping(value = "ERROR", schema = ErrorQueryResultResponse::class),
+        ]
 )
 sealed class ExecutionResultResponse(
-    val type: ExecutionResultType
+        val type: ExecutionResultType
 ) {
 
     companion object {
@@ -160,42 +160,42 @@ enum class ExecutionResultType {
 }
 
 data class RecordsQueryResultResponse(
-    val columns: List<ColumnInfo>,
-    val data: List<Map<String, String>>,
+        val columns: List<ColumnInfo>,
+        val data: List<Map<String, String>>,
 ) : ExecutionResultResponse(
-    type = ExecutionResultType.RECORDS
+        type = ExecutionResultType.RECORDS
 ) {
     companion object {
         fun fromDto(dto: RecordsQueryResult) = RecordsQueryResultResponse(
-            columns = dto.columns,
-            data = dto.data,
+                columns = dto.columns,
+                data = dto.data,
         )
     }
 }
 
 data class UpdateQueryResultResponse(
-    val rowsUpdated: Int,
+        val rowsUpdated: Int,
 ) : ExecutionResultResponse(
-    type = ExecutionResultType.UPDATE_COUNT
+        type = ExecutionResultType.UPDATE_COUNT
 ) {
     companion object {
         fun fromDto(dto: UpdateQueryResult) = UpdateQueryResultResponse(
-            rowsUpdated=dto.rowsUpdated,
+                rowsUpdated = dto.rowsUpdated,
         )
     }
 }
 
 data class ErrorQueryResultResponse(
-    val errorCode: Int,
-    val message: String?,
+        val errorCode: Int,
+        val message: String?,
 ) : ExecutionResultResponse(
-    type = ExecutionResultType.ERROR
+        type = ExecutionResultType.ERROR
 ) {
 
     companion object {
         fun fromDto(dto: ErrorQueryResult) = ErrorQueryResultResponse(
-            errorCode=dto.errorCode,
-            message=dto.message,
+                errorCode = dto.errorCode,
+                message = dto.message,
         )
     }
 }
@@ -205,20 +205,20 @@ data class ErrorQueryResultResponse(
 @Validated
 @RequestMapping("/execution-requests")
 @Tag(
-    name = "Execution Requests",
-    description = "Run queries against a datasource by interacting with Execution Requests"
+        name = "Execution Requests",
+        description = "Run queries against a datasource by interacting with Execution Requests"
 )
 class ExecutionRequestController(
-    val executionRequestService: ExecutionRequestService
+        val executionRequestService: ExecutionRequestService
 ) {
 
     @Operation(summary = "Create Execution Request")
     @PostMapping("/")
     fun create(
-        @Valid @RequestBody request: CreateExecutionRequest,
-        @AuthenticationPrincipal userDetails: UserDetailsWithId
+            @Valid @RequestBody request: CreateExecutionRequest,
+            @AuthenticationPrincipal userDetails: UserDetailsWithId
     ): ExecutionRequestResponse {
-        val executionRequest = executionRequestService.create(request, userDetails.id )
+        val executionRequest = executionRequestService.create(request, userDetails.id)
         return ExecutionRequestResponse.fromDto(executionRequest)
     }
 
@@ -236,31 +236,31 @@ class ExecutionRequestController(
 
     @Operation(summary = "Review Execution Request", description = "Approve or disapprove an execution request.")
     @PostMapping("/{executionRequestId}/reviews")
-    @ResponseStatus(value = HttpStatus.NO_CONTENT)
     fun createReview(
-        @PathVariable executionRequestId: ExecutionRequestId,
-        @Valid @RequestBody request: CreateReviewRequest
-    ) {
-        executionRequestService.createReview(executionRequestId, request)
+            @PathVariable executionRequestId: ExecutionRequestId,
+            @Valid @RequestBody request: CreateReviewRequest,
+            @AuthenticationPrincipal userDetails: UserDetailsWithId
+    ): Event {
+        return executionRequestService.createReview(executionRequestId, request, userDetails.id)
     }
 
     @PatchMapping("/{id}")
     fun update(
-        @PathVariable id: ExecutionRequestId,
-        @Valid @RequestBody request: UpdateExecutionRequest
-    ) : ExecutionRequestDetailResponse {
+            @PathVariable id: ExecutionRequestId,
+            @Valid @RequestBody request: UpdateExecutionRequest
+    ): ExecutionRequestDetailResponse {
         val newRequest = executionRequestService.update(id, request)
         return ExecutionRequestDetailResponse.fromDto(newRequest)
     }
 
     @Operation(summary = "Comment", description = "Leave a comment on an execution request.")
     @PostMapping("/{executionRequestId}/comments")
-    @ResponseStatus(value = HttpStatus.NO_CONTENT)
     fun createComment(
-        @PathVariable executionRequestId: ExecutionRequestId,
-        @Valid @RequestBody request: CreateCommentRequest
-    ) {
-        executionRequestService.createComment(executionRequestId, request)
+            @PathVariable executionRequestId: ExecutionRequestId,
+            @Valid @RequestBody request: CreateCommentRequest,
+            @AuthenticationPrincipal userDetails: UserDetailsWithId
+    ): Event {
+        return executionRequestService.createComment(executionRequestId, request, userDetails.id)
     }
 
     @Operation(summary = "Execute Execution Request", description = "Run the query after the Execution Request has been approved.")

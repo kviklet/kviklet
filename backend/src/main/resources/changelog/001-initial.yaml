@@ -156,6 +156,11 @@ databaseChangeLog:
                     primaryKeyName: even_pkey
                     nullable: false
               - column:
+                - name: author_id
+                  type: varchar(22)
+                  constraints:
+                    nullable: false
+              - column:
                   name: execution_request_id
                   type: CHAR(22)
                   constraints:

@@ -107,10 +107,12 @@ class ExecutionRequestAdapter(
 
 ) {
 
-    fun addEvent(id: ExecutionRequestId, payload: Payload): Pair<ExecutionRequestDetails, Event> {
+    fun addEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Pair<ExecutionRequestDetails, Event> {
         val executionRequestEntity = getExecutionRequestDetailsEntity(id)
+        val userEntity = getUserEntity(authorId)
         val eventEntity = EventEntity(
                 executionRequest = executionRequestEntity,
+                author = userEntity,
                 type = payload.type,
                 payload = payload,
             )
@@ -180,5 +182,7 @@ class ExecutionRequestAdapter(
         executionRequestRepository.findByIdWithDetails(id)
             ?: throw EntityNotFound("Execution Request Not Found", "Execution Request with id $id does not exist.")
 
+    private fun getUserEntity(id: String): UserEntity =
+        userRepository.findByIdOrNull(id) ?: throw EntityNotFound("User Not Found", "User with id $id does not exist.")
     fun getExecutionRequestDetails(id: ExecutionRequestId): ExecutionRequestDetails = getExecutionRequestDetailsEntity(id).toDetailDto()
 }

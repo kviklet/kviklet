@@ -21,6 +21,7 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
+import org.hibernate.annotations.ColumnTransformer
 
 
 data class ReviewConfig(
@@ -39,8 +40,9 @@ class DatasourceConnectionEntity(
     val username: String,
     val password: String,
     val description: String,
-    @Convert(converter = ReviewConfigConverter::class)
     @Column(columnDefinition = "json")
+    @Convert(converter = ReviewConfigConverter::class)
+    @ColumnTransformer(write = "?::json")
     val reviewConfig: ReviewConfig,
     @OneToMany(mappedBy = "connection", cascade = [CascadeType.ALL])
     val executionRequests: Set<ExecutionRequestEntity> = emptySet(),

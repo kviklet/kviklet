@@ -20,9 +20,9 @@ import jakarta.transaction.Transactional
 
 @Service
 class ExecutionRequestService(
-    val executionRequestAdapter: ExecutionRequestAdapter,
-    val datasourceConnectionAdapter: DatasourceConnectionAdapter,
-    val executorService: ExecutorService,
+        val executionRequestAdapter: ExecutionRequestAdapter,
+        val datasourceConnectionAdapter: DatasourceConnectionAdapter,
+        val executorService: ExecutorService,
 ) {
 
     @Transactional
@@ -30,14 +30,14 @@ class ExecutionRequestService(
         val datasourceConnection = datasourceConnectionAdapter.getDatasourceConnection(request.datasourceConnectionId)
 
         return executionRequestAdapter.createExecutionRequest(
-            connectionId = request.datasourceConnectionId,
-            title = request.title,
-            description = request.description,
-            statement = request.statement,
-            readOnly = request.readOnly,
-            reviewStatus = resolveReviewStatus(emptySet(), datasourceConnection.reviewConfig),
-            executionStatus = "PENDING",
-            authorId = userId,
+                connectionId = request.datasourceConnectionId,
+                title = request.title,
+                description = request.description,
+                statement = request.statement,
+                readOnly = request.readOnly,
+                reviewStatus = resolveReviewStatus(emptySet(), datasourceConnection.reviewConfig),
+                executionStatus = "PENDING",
+                authorId = userId,
         )
     }
 
@@ -46,40 +46,43 @@ class ExecutionRequestService(
         val executionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
 
         return executionRequestAdapter.updateExecutionRequest(
-            id = executionRequestDetails.request.id,
-            title = request.title ?: executionRequestDetails.request.title,
-            description = request.description ?: executionRequestDetails.request.description,
-            statement = request.statement ?: executionRequestDetails.request.statement,
-            readOnly = request.readOnly ?: executionRequestDetails.request.readOnly,
+                id = executionRequestDetails.request.id,
+                title = request.title ?: executionRequestDetails.request.title,
+                description = request.description ?: executionRequestDetails.request.description,
+                statement = request.statement ?: executionRequestDetails.request.statement,
+                readOnly = request.readOnly ?: executionRequestDetails.request.readOnly,
         )
     }
 
     fun list(): List<ExecutionRequest> = executionRequestAdapter.listExecutionRequests()
 
     fun get(id: ExecutionRequestId): ExecutionRequestDetails =
-        executionRequestAdapter.getExecutionRequestDetails(id)
+            executionRequestAdapter.getExecutionRequestDetails(id)
 
     @Transactional
-    fun createReview(id: ExecutionRequestId, request: CreateReviewRequest) = saveEvent(
-        id,
-        ReviewPayload(comment = request.comment, action = request.action),
+    fun createReview(id: ExecutionRequestId, request: CreateReviewRequest, authorId: String) = saveEvent(
+            id,
+            authorId,
+            ReviewPayload(comment = request.comment, action = request.action),
     )
 
     @Transactional
-    fun createComment(id: ExecutionRequestId, request: CreateCommentRequest) = saveEvent(
-        id,
-        CommentPayload(comment = request.comment),
+    fun createComment(id: ExecutionRequestId, request: CreateCommentRequest, authorId: String) = saveEvent(
+            id,
+            authorId,
+            CommentPayload(comment = request.comment),
     )
 
     private fun saveEvent(
-        id: ExecutionRequestId,
-        payload: Payload,
+            id: ExecutionRequestId,
+            authorId: String,
+            payload: Payload,
     ): Event {
-        val (executionRequest, event) = executionRequestAdapter.addEvent(id, payload)
+        val (executionRequest, event) = executionRequestAdapter.addEvent(id, authorId, payload)
 
         val reviewStatus: ReviewStatus = resolveReviewStatus(
-            executionRequest.events,
-            executionRequest.request.connection.reviewConfig,
+                executionRequest.events,
+                executionRequest.request.connection.reviewConfig,
         )
 
         executionRequestAdapter.updateReviewStatus(id, reviewStatus)
@@ -88,8 +91,8 @@ class ExecutionRequestService(
     }
 
     fun resolveReviewStatus(
-        events: Set<Event>,
-        reviewConfig: ReviewConfig,
+            events: Set<Event>,
+            reviewConfig: ReviewConfig,
     ): ReviewStatus {
         println("events: $events")
         return ReviewStatus.APPROVED
@@ -100,10 +103,10 @@ class ExecutionRequestService(
         val connection = executionRequest.request.connection
 
         return executorService.execute(
-            connectionString = connection.getConnectionString(),
-            username = connection.username,
-            password = connection.password,
-            executionRequest.request.statement,
+                connectionString = connection.getConnectionString(),
+                username = connection.username,
+                password = connection.password,
+                executionRequest.request.statement,
         )
     }
 }
