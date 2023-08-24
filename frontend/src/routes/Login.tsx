@@ -1,12 +1,14 @@
-import { MouseEvent, useEffect, useState } from "react";
+import { MouseEvent, useContext, useEffect, useState } from "react";
 import Button from "../components/Button";
 import GoogleButton from "react-google-button";
 import { useNavigate } from "react-router-dom";
+import { UserStatusContext } from "../components/UserStatusProvider";
 
 const Login = () => {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const navigate = useNavigate();
+  const userContext = useContext(UserStatusContext);
 
   const login = async () => {
     console.log("login");
@@ -21,6 +23,7 @@ const Login = () => {
         password: password,
       }),
     });
+    await userContext.refreshState();
 
     navigate("/requests");
   };

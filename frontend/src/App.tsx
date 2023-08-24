@@ -25,13 +25,13 @@ export interface ProtectedRouteProps {
 export const ProtectedRoute = ({
   children,
 }: ProtectedRouteProps): JSX.Element => {
-  const userStatus = useContext(UserStatusContext);
-  console.log(userStatus);
+  const userContext = useContext(UserStatusContext);
+  console.log(userContext);
 
-  if (userStatus === undefined) {
+  if (userContext.userStatus === undefined) {
     return <div>Loading...</div>;
   }
-  if (userStatus === false) {
+  if (userContext.userStatus === false) {
     return <Navigate to="/login" />;
   }
   return children;

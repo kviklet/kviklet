@@ -357,7 +357,7 @@ function CommentBox({
   const [commentFormVisible, setCommentFormVisible] = useState<boolean>(true);
   const [comment, setComment] = useState<string>("");
 
-  const userStatus = useContext(UserStatusContext);
+  const userContext = useContext(UserStatusContext);
 
   const handleAddComment = async () => {
     await addComment(comment);
@@ -379,7 +379,9 @@ function CommentBox({
         <div className="comment-clip border-slate-300 bg-slate-300 w-2 h-4 absolute -left-2 top-2"></div>
         <div className="comment-clip border-slate-300 bg-slate-100 w-2 h-4 absolute -left-2 top-2 ml-px"></div>
         <div className="absolute -left-12 rounded-full p-2 bg-slate-500 text-gray-100  w-8 h-8 flex items-center justify-center text-l font-bold">
-          {firstTwoLetters((userStatus && userStatus.fullName) || "")}
+          {firstTwoLetters(
+            (userContext.userStatus && userContext.userStatus.fullName) || ""
+          )}
         </div>
         <div className="mb-2 border-b-slate-300 border bg-slate-100 rounded-t-md">
           <div className="-mb-px z-10 overflow-auto">
