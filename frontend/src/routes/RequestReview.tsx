@@ -19,6 +19,7 @@ import Button from "../components/Button";
 import { mapStatusToColor } from "./Requests";
 import { UserResponse } from "../api/UserApi";
 import { UserStatusContext } from "../components/UserStatusProvider";
+import Table from "../components/Table";
 
 interface RequestReviewParams {
   requestId: string;
@@ -133,27 +134,6 @@ const useRequest = (id: string) => {
   };
 };
 
-const DataTable: React.FC<{ data: SelectExecuteResponse }> = ({ data }) => {
-  return (
-    <table className="table-auto w-full">
-      <thead>
-        {data.columns.map((column) => {
-          return <th className="px-4 py-2">{column.label}</th>;
-        })}
-      </thead>
-      <tbody>
-        {data.data.map((row) => (
-          <tr>
-            {Object.keys(row).map((cell) => {
-              return <td className="border px-4 py-2">{row[cell]}</td>;
-            })}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-};
-
 function RequestReview() {
   const params = useParams() as unknown as RequestReviewParams;
   const {
@@ -187,7 +167,7 @@ function RequestReview() {
               runQuery={execute}
               updateRequest={updateRequest}
             ></RequestBox>
-            {data && <DataTable data={data}></DataTable>}
+            {data && <Table data={data}></Table>}
             {updatedRows && (
               <div className="text-slate-500">{updatedRows} rows updated</div>
             )}
