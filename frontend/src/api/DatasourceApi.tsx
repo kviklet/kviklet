@@ -14,6 +14,9 @@ const connectionResponseSchema = z.object({
   authenticationType: z.nativeEnum(AuthenticationType),
   shortUsername: z.coerce.string(),
   description: z.coerce.string(),
+  reviewConfig: z.object({
+    numTotalRequired: z.number(),
+  }),
 });
 
 const databaseResponseSchema = z.object({
@@ -43,6 +46,17 @@ const connectionPayloadSchema = z.object({
   }),
 });
 
+const patchConnectionPayloadSchema = z.object({
+  displayName: z.coerce.string().optional(),
+  username: z.string().optional(),
+  password: z.string().optional(),
+  reviewConfig: z
+    .object({
+      numTotalRequired: z.number(),
+    })
+    .optional(),
+});
+
 const fetchDatabases = async (): Promise<DatabaseResponse[]> => {
   const response = await fetch(datasourceUrl, {
     method: "GET",
@@ -59,6 +73,7 @@ type DatabaseResponse = z.infer<typeof databaseResponseSchema>;
 type ConnectionResponse = z.infer<typeof connectionResponseSchema>;
 type DatabasePayload = z.infer<typeof databasePayloadSchema>;
 type ConnectionPayload = z.infer<typeof connectionPayloadSchema>;
+type PatchConnectionPayload = z.infer<typeof patchConnectionPayloadSchema>;
 
 const addDatabase = async (
   payload: DatabasePayload
@@ -91,6 +106,26 @@ const addConnection = async (
   return connection;
 };
 
+const patchConnection = async (
+  payload: PatchConnectionPayload,
+  datasourceId: string,
+  connectionId: string
+): Promise<ConnectionResponse> => {
+  const response = await fetch(
+    `${datasourceUrl}${datasourceId}/connections/${connectionId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    }
+  );
+  const connection = connectionResponseSchema.parse(await response.json());
+  return connection;
+};
+
 const removeDatabase = async (id: string): Promise<void> => {
   const response = await fetch(`${datasourceUrl}${id}`, {
     method: "DELETE",
@@ -107,6 +142,7 @@ export {
   databaseResponseSchema,
   connectionResponseSchema,
   AuthenticationType,
+  patchConnection,
 };
 
 export type {
@@ -114,4 +150,5 @@ export type {
   ConnectionResponse,
   DatabasePayload,
   ConnectionPayload,
+  PatchConnectionPayload,
 };

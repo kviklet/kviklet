@@ -4,9 +4,11 @@ import {
   ConnectionResponse,
   DatabasePayload,
   DatabaseResponse,
+  PatchConnectionPayload,
   addConnection,
   addDatabase,
   fetchDatabases,
+  patchConnection,
   removeDatabase,
 } from "../../api/DatasourceApi";
 import Button from "../../components/Button";
@@ -120,6 +122,35 @@ const useDatasources = () => {
     setDatasources(newDatasources);
   };
 
+  const editConnection = async (
+    datasourceId: string,
+    connectionId: string,
+    connection: PatchConnectionPayload
+  ) => {
+    const updatedConnection = await patchConnection(
+      connection,
+      datasourceId,
+      connectionId
+    );
+    const newDatasources = datasources.map((datasource) => {
+      if (datasource.id === datasourceId) {
+        return {
+          ...datasource,
+          datasourceConnections: datasource.datasourceConnections.map(
+            (connection) => {
+              if (connection.id === connectionId) {
+                return updatedConnection;
+              }
+              return connection;
+            }
+          ),
+        };
+      }
+      return datasource;
+    });
+    setDatasources(newDatasources);
+  };
+
   const deleteDatasource = async (id: string) => {
     await removeDatabase(id);
     const newDatasources = datasources.filter((datasource) => {
@@ -134,6 +165,7 @@ const useDatasources = () => {
     loading,
     createConnection,
     deleteDatasource,
+    editConnection,
   };
 };
 
@@ -194,10 +226,81 @@ function CreateConnectionForm(props: {
   );
 }
 
+function SingleConnectionSettings(props: {
+  connection: ConnectionResponse;
+  editConnectionHandler: (
+    connectionId: string,
+    connection: PatchConnectionPayload
+  ) => Promise<void>;
+}) {
+  const [displayName, setDisplayName] = useState<string>(
+    props.connection.displayName
+  );
+  const [username, setUsername] = useState<string>(
+    props.connection.shortUsername
+  );
+  const [password, setPassword] = useState<string>("");
+  const [numTotalRequired, setNumTotalRequired] = useState<number>(
+    props.connection.reviewConfig.numTotalRequired
+  );
+  const [showCheck, setShowCheck] = useState<boolean>(false);
+
+  const submit = async () => {
+    await props.editConnectionHandler(props.connection.id, {
+      reviewConfig: {
+        numTotalRequired,
+      },
+    });
+    setShowCheck(false);
+  };
+
+  return (
+    <div className="text-slate-700 border-b mb-7 text-lg">
+      <div className="flex justify-between">
+        <div className="font-medium">{props.connection.displayName}</div>
+        <div className="font-mono text-slate-300 text-sm">
+          {props.connection.shortUsername + "..."}
+        </div>
+      </div>
+      <div className="m-2">
+        <div className="text-slate-500 text-sm mb-2">
+          {props.connection.description}
+        </div>
+        <div className="flex justify-between text-sm">
+          <label htmlFor="number" className="mr-auto">
+            Number of required reviews:
+          </label>
+          <input
+            type="number"
+            value={numTotalRequired}
+            onChange={(e) => {
+              setNumTotalRequired(parseInt(e.target.value));
+              setShowCheck(true);
+            }}
+            className="focus:border-blue-600 my-auto appearance-none border rounded mx-1 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+          ></input>
+        </div>
+        <button
+          onClick={submit}
+          className={`text-green-600 ml-2 hover:text-gray-900 ${
+            showCheck ? "visible" : "invisible"
+          }`}
+        >
+          <FontAwesomeIcon icon={solid("check")} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ConnectionSettings(props: {
   selectedIndex: number | undefined;
   connections: ConnectionResponse[];
   addConnectionHandler: () => void;
+  editConnectionHandler: (
+    connectionId: string,
+    connection: PatchConnectionPayload
+  ) => Promise<void>;
 }) {
   return (
     <div className=" border-l-2 flex flex-col min-h-full w-full">
@@ -205,35 +308,10 @@ function ConnectionSettings(props: {
       <div className="pl-8 flex flex-col h-96 justify-between">
         <div className="">
           {props.connections.map((connection) => (
-            <div className="text-slate-700 border-b mb-7 text-lg">
-              <div className="flex justify-between">
-                <div className="font-medium">{connection.displayName}</div>
-                <div className="font-mono text-slate-300 text-sm">
-                  {connection.shortUsername + "..."}
-                </div>
-              </div>
-              <div className="m-2">
-                <div className="text-slate-500 text-sm mb-2">
-                  {connection.description}
-                </div>
-                <div className="flex justify-between text-sm">
-                  <label htmlFor="number" className="mr-auto">
-                    Number of required reviews:
-                  </label>
-                  <input
-                    type="number"
-                    value="2"
-                    className="focus:border-blue-600 my-auto appearance-none border rounded mx-1 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                  ></input>
-                </div>
-                <button
-                  onClick={() => {}}
-                  className={`${"text-white"} ml-2 hover:text-gray-900`}
-                >
-                  <FontAwesomeIcon icon={solid("trash")} />
-                </button>
-              </div>
-            </div>
+            <SingleConnectionSettings
+              connection={connection}
+              editConnectionHandler={props.editConnectionHandler}
+            />
           ))}
         </div>
         <button
@@ -316,6 +394,7 @@ const DatabaseSettings = () => {
     loading,
     createConnection,
     deleteDatasource,
+    editConnection,
   } = useDatasources();
 
   useEffect(() => {
@@ -383,6 +462,13 @@ const DatabaseSettings = () => {
               }
               addConnectionHandler={() => {
                 setShowAddConnectionModal(true);
+              }}
+              editConnectionHandler={async (connectionId, connection) => {
+                await editConnection(
+                  datasources[selectedIndex!!].id,
+                  connectionId,
+                  connection
+                );
               }}
             />
           </div>
