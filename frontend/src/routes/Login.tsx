@@ -1,10 +1,12 @@
 import { MouseEvent, useEffect, useState } from "react";
 import Button from "../components/Button";
 import GoogleButton from "react-google-button";
+import { useNavigate } from "react-router-dom";
 
 const Login = () => {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const navigate = useNavigate();
 
   const login = async () => {
     console.log("login");
@@ -19,7 +21,8 @@ const Login = () => {
         password: password,
       }),
     });
-    window.location.href = "/";
+
+    navigate("/requests");
   };
 
   return (

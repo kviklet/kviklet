@@ -13,8 +13,8 @@ const checklogin = async (): Promise<StatusResponse | false> => {
     method: "GET",
     credentials: "include",
   });
-  console.log("faile tog et status");
   if (response.status != 200) {
+    console.log("not logged in");
     return false;
   }
   const json = await response.json();
