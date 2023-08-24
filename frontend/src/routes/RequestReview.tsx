@@ -185,6 +185,7 @@ function RequestReview() {
               <CommentBox
                 addComment={addComment}
                 approve={approve}
+                userId={request?.author?.id}
               ></CommentBox>
             </div>
           </div>
@@ -330,9 +331,11 @@ function Comment({ event }: { event: Event }) {
 function CommentBox({
   addComment,
   approve,
+  userId,
 }: {
   addComment: (comment: string) => Promise<void>;
   approve: (comment: string) => Promise<void>;
+  userId?: string;
 }) {
   const [commentFormVisible, setCommentFormVisible] = useState<boolean>(true);
   const [comment, setComment] = useState<string>("");
@@ -348,6 +351,9 @@ function CommentBox({
     await approve(comment);
     setComment("");
   };
+
+  const isOwnRequest =
+    userContext.userStatus && userContext.userStatus?.id === userId;
   return (
     <div>
       <div className="relative py-4 ml-4">
@@ -415,7 +421,11 @@ function CommentBox({
               >
                 Add Comment
               </Button>
-              <Button id="approve" type="submit" onClick={handleApprove}>
+              <Button
+                id="approve"
+                type={`${isOwnRequest ? "disabled" : "submit"}`}
+                onClick={handleApprove}
+              >
                 Approve
               </Button>
             </div>

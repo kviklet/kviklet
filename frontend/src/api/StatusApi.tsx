@@ -4,6 +4,7 @@ const StatusResponse = z.object({
   email: z.string(),
   fullName: z.string().optional(),
   status: z.string(),
+  id: z.string(),
 });
 
 type StatusResponse = z.infer<typeof StatusResponse>;

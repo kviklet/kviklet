@@ -90,7 +90,7 @@ class ExecutionRequestService(
             events: Set<Event>,
             reviewConfig: ReviewConfig,
     ): ReviewStatus {
-        val numReviews = events.count { it.type == EventType.REVIEW && it is ReviewEvent && it.action == ReviewAction.APPROVE }
+        val numReviews = events.filter{it.type == EventType.REVIEW && it is ReviewEvent && it.action == ReviewAction.APPROVE}.groupBy{it.author.id}.count()
         val reviewStatus = if (numReviews >= reviewConfig.numTotalRequired) {
             ReviewStatus.APPROVED
         } else {
