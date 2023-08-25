@@ -48,7 +48,6 @@ class DataInitializer(
                 description = description,
                 statement = statement,
                 readOnly = readOnly,
-                reviewStatus = reviewStatus,
                 executionStatus = executionStatus,
                 author = author,
                 events = mutableSetOf()

@@ -28,8 +28,8 @@ import jakarta.persistence.OneToMany
 @Entity(name = "execution_request")
 class ExecutionRequestEntity(
         @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "datasource_id", nullable = false)
-    val connection: DatasourceConnectionEntity,
+        @JoinColumn(name = "datasource_id", nullable = false)
+        val connection: DatasourceConnectionEntity,
 
         var title: String,
         var description: String?,
@@ -37,41 +37,39 @@ class ExecutionRequestEntity(
         var readOnly: Boolean,
 
         @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "author_id", nullable = false)
-    private val author: UserEntity,
+        @JoinColumn(name = "author_id", nullable = false)
+        private val author: UserEntity,
 
-        var reviewStatus: ReviewStatus,
         var executionStatus: String,
 
         private val createdAt: LocalDateTime = Instant.now().atZone(ZoneOffset.UTC).toLocalDateTime(),
 
         @OneToMany(cascade = [CascadeType.ALL])
-    @JoinColumn(name = "execution_request_id")
-    val events: MutableSet<EventEntity>
-): BaseEntity() {
+        @JoinColumn(name = "execution_request_id")
+        val events: MutableSet<EventEntity>
+) : BaseEntity() {
 
     override fun toString(): String {
         return ToStringBuilder(this, SHORT_PREFIX_STYLE)
-            .append("id", id)
-            .toString()
+                .append("id", id)
+                .toString()
     }
 
     fun toDto(): ExecutionRequest = ExecutionRequest(
-        id = ExecutionRequestId(id),
-        connection = connection.toDto(),
-        title = title,
-        description = description,
-        statement = statement,
-        readOnly = readOnly,
-        reviewStatus = reviewStatus,
-        executionStatus = executionStatus,
-        createdAt = createdAt,
-        author = author.toDto(),
+            id = ExecutionRequestId(id),
+            connection = connection.toDto(),
+            title = title,
+            description = description,
+            statement = statement,
+            readOnly = readOnly,
+            executionStatus = executionStatus,
+            createdAt = createdAt,
+            author = author.toDto(),
     )
 
     fun toDetailDto() = ExecutionRequestDetails(
-        request = toDto(),
-        events = events.map { it.toDto() }.toSet()
+            request = toDto(),
+            events = events.map { it.toDto() }.toSet()
     )
 
 }
@@ -83,29 +81,29 @@ interface CustomExecutionRequestRepository {
 }
 
 class CustomExecutionRequestRepositoryImpl(
-    private val entityManager: EntityManager,
-): CustomExecutionRequestRepository {
+        private val entityManager: EntityManager,
+) : CustomExecutionRequestRepository {
 
     private val qExecutionRequestEntity: QExecutionRequestEntity = QExecutionRequestEntity.executionRequestEntity
 
     override fun findByIdWithDetails(id: ExecutionRequestId): ExecutionRequestEntity? {
         return JPAQuery<ExecutionRequestEntity>(entityManager).from(qExecutionRequestEntity)
-            .where(qExecutionRequestEntity.id.eq(id.toString()))
-            .leftJoin(qExecutionRequestEntity.events)
-            .fetchJoin()
-            .fetch()
-            .toSet()
-            .firstOrNull()
+                .where(qExecutionRequestEntity.id.eq(id.toString()))
+                .leftJoin(qExecutionRequestEntity.events)
+                .fetchJoin()
+                .fetch()
+                .toSet()
+                .firstOrNull()
     }
 }
 
 @Service
 class ExecutionRequestAdapter(
-    val executionRequestRepository: ExecutionRequestRepository,
-    val connectionRepository: DatasourceConnectionRepository,
-    val userRepository: UserRepository,
+        val executionRequestRepository: ExecutionRequestRepository,
+        val connectionRepository: DatasourceConnectionRepository,
+        val userRepository: UserRepository,
 
-) {
+        ) {
 
     fun addEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Pair<ExecutionRequestDetails, Event> {
         val executionRequestEntity = getExecutionRequestDetailsEntity(id)
@@ -115,7 +113,7 @@ class ExecutionRequestAdapter(
                 author = userEntity,
                 type = payload.type,
                 payload = payload,
-            )
+        )
 
         executionRequestEntity.events.add(eventEntity)
         executionRequestRepository.saveAndFlush(executionRequestEntity)
@@ -124,39 +122,39 @@ class ExecutionRequestAdapter(
     }
 
     fun createExecutionRequest(
-        connectionId: DatasourceConnectionId,
-        title: String,
-        description: String?,
-        statement: String,
-        readOnly: Boolean,
-        reviewStatus: ReviewStatus,
-        executionStatus: String,
-        authorId: String,
-    ): ExecutionRequest {
-        val connection = connectionRepository.findByIdOrNull(connectionId.toString()) ?: throw EntityNotFound("Connection Not Found", "Connection with id $connectionId does not exist.")
-        val authorEntity = userRepository.findByIdOrNull(authorId) ?: throw EntityNotFound("User Not Found", "User with id ${authorId} does not exist.")
+            connectionId: DatasourceConnectionId,
+            title: String,
+            description: String?,
+            statement: String,
+            readOnly: Boolean,
+            executionStatus: String,
+            authorId: String,
+    ): ExecutionRequestDetails {
+        val connection = connectionRepository.findByIdOrNull(connectionId.toString())
+                ?: throw EntityNotFound("Connection Not Found", "Connection with id $connectionId does not exist.")
+        val authorEntity = userRepository.findByIdOrNull(authorId)
+                ?: throw EntityNotFound("User Not Found", "User with id ${authorId} does not exist.")
 
         return executionRequestRepository.save(
-            ExecutionRequestEntity(
-                connection = connection,
-                title = title,
-                description = description,
-                statement = statement,
-                readOnly = readOnly,
-                reviewStatus = reviewStatus,
-                executionStatus = executionStatus,
-                events = mutableSetOf(),
-                author = authorEntity,
-            )
-        ).toDto()
+                ExecutionRequestEntity(
+                        connection = connection,
+                        title = title,
+                        description = description,
+                        statement = statement,
+                        readOnly = readOnly,
+                        executionStatus = executionStatus,
+                        events = mutableSetOf(),
+                        author = authorEntity,
+                )
+        ).toDetailDto()
     }
 
     fun updateExecutionRequest(
-        id: ExecutionRequestId,
-        title: String,
-        description: String?,
-        statement: String,
-        readOnly: Boolean,
+            id: ExecutionRequestId,
+            title: String,
+            description: String?,
+            statement: String,
+            readOnly: Boolean,
     ): ExecutionRequestDetails {
         val executionRequestEntity = getExecutionRequestDetailsEntity(id)
         executionRequestEntity.title = title
@@ -169,20 +167,16 @@ class ExecutionRequestAdapter(
     }
 
 
-    fun listExecutionRequests(): List<ExecutionRequest> =
-        executionRequestRepository.findAll().map { it.toDto() }
-
-    fun updateReviewStatus(id: ExecutionRequestId, reviewStatus: ReviewStatus) {
-        val executionRequestEntity = getExecutionRequestDetailsEntity(id)
-        executionRequestEntity.reviewStatus = reviewStatus
-        executionRequestRepository.save(executionRequestEntity)
-    }
+    fun listExecutionRequests(): List<ExecutionRequestDetails> =
+            executionRequestRepository.findAll().map { it.toDetailDto() }
 
     private fun getExecutionRequestDetailsEntity(id: ExecutionRequestId): ExecutionRequestEntity =
-        executionRequestRepository.findByIdWithDetails(id)
-            ?: throw EntityNotFound("Execution Request Not Found", "Execution Request with id $id does not exist.")
+            executionRequestRepository.findByIdWithDetails(id)
+                    ?: throw EntityNotFound("Execution Request Not Found", "Execution Request with id $id does not exist.")
 
     private fun getUserEntity(id: String): UserEntity =
-        userRepository.findByIdOrNull(id) ?: throw EntityNotFound("User Not Found", "User with id $id does not exist.")
+            userRepository.findByIdOrNull(id)
+                    ?: throw EntityNotFound("User Not Found", "User with id $id does not exist.")
+
     fun getExecutionRequestDetails(id: ExecutionRequestId): ExecutionRequestDetails = getExecutionRequestDetailsEntity(id).toDetailDto()
 }

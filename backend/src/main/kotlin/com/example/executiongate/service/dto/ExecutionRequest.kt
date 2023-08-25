@@ -1,5 +1,6 @@
 package com.example.executiongate.service.dto
 
+import com.example.executiongate.db.ReviewConfig
 import com.example.executiongate.db.User
 import java.io.Serializable
 import java.time.LocalDateTime
@@ -24,7 +25,6 @@ data class ExecutionRequest(
         val description: String?,
         val statement: String,
         val readOnly: Boolean,
-        val reviewStatus: ReviewStatus,
         val executionStatus: String,
         val createdAt: LocalDateTime = LocalDateTime.now(),
         val author: User
@@ -38,13 +38,18 @@ data class ExecutionRequestDetails(
     fun addEvent(event: Event): ExecutionRequestDetails {
         val allEvents = events + event
 
-        val numReviews = events.count { it.type == EventType.REVIEW && it is ReviewEvent && it.action == ReviewAction.APPROVE }
-        val reviewStatus = if (numReviews >= request.connection.reviewConfig.numTotalRequired) {
+        return copy(events = allEvents)
+    }
+
+    fun resolveReviewStatus(): ReviewStatus {
+        val reviewConfig = request.connection.reviewConfig
+        val numReviews = events.filter{it.type == EventType.REVIEW && it is ReviewEvent && it.action == ReviewAction.APPROVE}.groupBy{it.author.id}.count()
+        val reviewStatus = if (numReviews >= reviewConfig.numTotalRequired) {
             ReviewStatus.APPROVED
         } else {
             ReviewStatus.AWAITING_APPROVAL
         }
 
-        return copy(events = allEvents, request = request.copy(reviewStatus = reviewStatus))
+        return reviewStatus
     }
 }

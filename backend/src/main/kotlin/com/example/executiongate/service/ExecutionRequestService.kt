@@ -22,7 +22,7 @@ class ExecutionRequestService(
 ) {
 
     @Transactional
-    fun create(request: CreateExecutionRequest, userId: String): ExecutionRequest {
+    fun create(request: CreateExecutionRequest, userId: String): ExecutionRequestDetails {
         val datasourceConnection = datasourceConnectionAdapter.getDatasourceConnection(request.datasourceConnectionId)
 
         return executionRequestAdapter.createExecutionRequest(
@@ -31,7 +31,6 @@ class ExecutionRequestService(
                 description = request.description,
                 statement = request.statement,
                 readOnly = request.readOnly,
-                reviewStatus = resolveReviewStatus(emptySet(), datasourceConnection.reviewConfig),
                 executionStatus = "PENDING",
                 authorId = userId,
         )
@@ -50,7 +49,7 @@ class ExecutionRequestService(
         )
     }
 
-    fun list(): List<ExecutionRequest> = executionRequestAdapter.listExecutionRequests()
+    fun list(): List<ExecutionRequestDetails> = executionRequestAdapter.listExecutionRequests()
 
     fun get(id: ExecutionRequestId): ExecutionRequestDetails =
             executionRequestAdapter.getExecutionRequestDetails(id)
@@ -75,13 +74,6 @@ class ExecutionRequestService(
             payload: Payload,
     ): Event {
         val (executionRequest, event) = executionRequestAdapter.addEvent(id, authorId, payload)
-
-        val reviewStatus: ReviewStatus = resolveReviewStatus(
-                executionRequest.events,
-                executionRequest.request.connection.reviewConfig,
-        )
-
-        executionRequestAdapter.updateReviewStatus(id, reviewStatus)
 
         return event
     }

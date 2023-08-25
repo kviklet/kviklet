@@ -73,19 +73,19 @@ data class ExecutionRequestResponse(
 ) {
 
     companion object {
-        fun fromDto(dto: ExecutionRequest): ExecutionRequestResponse {
-            val userResponse = UserResponse(dto.author)
+        fun fromDto(dto: ExecutionRequestDetails): ExecutionRequestResponse {
+            val userResponse = UserResponse(dto.request.author)
             return ExecutionRequestResponse(
-                    id = dto.id,
+                    id = dto.request.id,
                     author = userResponse,
-                    title = dto.title,
-                    description = dto.description,
-                    statement = dto.statement,
-                    readOnly = dto.readOnly,
-                    reviewStatus = dto.reviewStatus,
-                    executionStatus = dto.executionStatus,
-                    createdAt = dto.createdAt,
-                    connection = DatasourceConnectionResponse.fromDto(dto.connection)
+                    title = dto.request.title,
+                    description = dto.request.description,
+                    statement = dto.request.statement,
+                    readOnly = dto.request.readOnly,
+                    reviewStatus = dto.resolveReviewStatus(),
+                    executionStatus = dto.request.executionStatus,
+                    createdAt = dto.request.createdAt,
+                    connection = DatasourceConnectionResponse.fromDto(dto.request.connection)
             )
         }
     }
@@ -116,7 +116,7 @@ data class ExecutionRequestDetailResponse(
                 description = dto.request.description,
                 statement = dto.request.statement,
                 readOnly = dto.request.readOnly,
-                reviewStatus = dto.request.reviewStatus,
+                reviewStatus = dto.resolveReviewStatus(),
                 executionStatus = dto.request.executionStatus,
                 createdAt = dto.request.createdAt,
                 events = dto.events.sortedBy { it.createdAt },
