@@ -1,5 +1,5 @@
 import { ReactNode, useState } from "react";
-import { Outlet, Route, Routes } from "react-router-dom";
+import { Link, Outlet, Route, Routes } from "react-router-dom";
 import DatabaseSettings from "./DatabaseSettings";
 import UserSettings from "./UserSettings";
 import RoleSettings from "./RolesSettings";
@@ -8,22 +8,24 @@ const Tab = (props: {
   children: React.ReactNode;
   active: boolean;
   onClick: () => void;
+  link: string;
 }) => {
   return (
-    <button
-      onClick={props.onClick}
-      className={`flex flex-col border-b border-gray-200 pointer-events-auto ${
-        props.active ? "border-b-2 border-blue-500" : ""
-      }`}
-    >
-      {props.children}
-    </button>
+    <Link to={props.link}>
+      <div
+        onClick={props.onClick}
+        className={(props.active && "bg-gray-200") || ""}
+      >
+        {props.children}
+      </div>
+    </Link>
   );
 };
 
 interface TabObject {
   name: string;
   tabContent: ReactNode;
+  link: string;
 }
 
 interface LayoutProps {
@@ -47,6 +49,7 @@ const BaseSettingsLayout = (props: LayoutProps) => {
       <Tab
         active={activeTab === tab.name}
         onClick={() => setActiveTab(tab.name)}
+        link={tab.link}
       >
         {tab.tabContent}
       </Tab>
