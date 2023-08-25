@@ -119,11 +119,6 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  name: review_status
-                  type: varchar(255)
-                  constraints:
-                    nullable: false
-              - column:
                   name: execution_status
                   type: varchar(255)
                   constraints:
