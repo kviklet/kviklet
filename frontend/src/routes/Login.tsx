@@ -4,6 +4,26 @@ import GoogleButton from "react-google-button";
 import { useNavigate } from "react-router-dom";
 import { UserStatusContext } from "../components/UserStatusProvider";
 
+const StyledInput = (props: {
+  name: string;
+  type: string;
+  value: string;
+  onChange: (event: any) => void;
+}) => {
+  return (
+    <input
+      name={props.name}
+      value={props.value}
+      onChange={props.onChange}
+      className="appearance-none block w-full px-3 py-2 rounded-md border 
+        border-slate-300 dark:bg-slate-900 hover:border-slate-400 focus:border-indigo-600 focus:hover:border-indigo-600
+        focus:outline-none dark:hover:border-slate-600 dark:hover:focus:border-gray-500 dark:border-slate-700
+         dark:focus:border-gray-500 sm:text-sm transition-colors"
+      type={props.type}
+    ></input>
+  );
+};
+
 const Login = () => {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -26,26 +46,6 @@ const Login = () => {
     await userContext.refreshState();
 
     navigate("/requests");
-  };
-
-  const StyledInput = (props: {
-    name: string;
-    type: string;
-    value: string;
-    onChange: (event: any) => void;
-  }) => {
-    return (
-      <input
-        name={props.name}
-        value={props.value}
-        onChange={props.onChange}
-        className="appearance-none block w-full px-3 py-2 rounded-md border 
-        border-slate-300 dark:bg-slate-900 hover:border-slate-400 focus:border-indigo-600 focus:hover:border-indigo-600
-        focus:outline-none focus:ring-gray-500 dark:hover:border-slate-600 dark:hover:focus:border-gray-500 dark:border-slate-700
-         dark:focus:border-gray-500 sm:text-sm transition-colors"
-        type={props.type}
-      ></input>
-    );
   };
 
   return (

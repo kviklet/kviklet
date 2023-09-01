@@ -20,9 +20,9 @@ function TopBanner() {
   };
 
   return (
-    <div className="sticky top-0 z-40 w-full backdrop-blur flex-none transition-colors duration-500 supports-backdrop-blur:bg-white/95 border-b border-slate-900/10">
+    <div className="sticky top-0 z-40 w-full backdrop-blur flex-none transition-colors duration-500 supports-backdrop-blur:bg-white/95 border-b border-slate-900/10 dark:border-b-slate-700">
       <div className="max-w-8xl mx-auto">
-        <div className="py-4 border-b border-slate-900/10 px-8 border-0 mx-4 mx-0">
+        <div className="py-4 px-8 mx-4 mx-0">
           <div className="relative flex items-center">
             <a href="http://localhost:3000">
               <div className="flex">

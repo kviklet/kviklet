@@ -83,58 +83,67 @@ function Requests() {
   });
 
   return (
-    <div>
-      <div className="max-w-5xl mx-auto">
-        <h1 className="text-2xl font-bold m-5 pl-1.5"> Open Requests</h1>
-        <div className="flex flex-row">
+    <div className=" h-full">
+      <div className=" border-b border-slate-300 bg-slate-50 dark:bg-slate-950 dark:border-slate-700">
+        <h1 className=" max-w-5xl mx-auto text-xl m-5 pl-1.5">
+          {" "}
+          Open Requests
+        </h1>
+      </div>
+      <div className="bg-slate-100 h-full dark:bg-slate-950">
+        <div className="max-w-5xl mx-auto ">
           <div className="flex flex-row">
-            <input
-              type="checkbox"
-              className="mr-2"
-              checked={onlyPending}
-              onChange={(e) => setOnlyPending(e.target.checked)}
-            />
-            <label>Only show pending requests</label>
+            <div className="flex flex-row">
+              <input
+                type="checkbox"
+                className="mr-2"
+                checked={onlyPending}
+                onChange={(e) => setOnlyPending(e.target.checked)}
+              />
+              <label>Only show pending requests</label>
+            </div>
           </div>
-        </div>
 
-        {visibleRequests.length === 0 && (
-          <div className="my-4 mx-2 px-4 py-2">
-            <h2 className="text-lg text-center">No open requests</h2>
-          </div>
-        )}
-        {sortedRequests.map((request) => {
-          return (
-            <Link to={`/requests/${request.id}`}>
-              <div
-                className="shadow-md bg-slate-100 my-4 mx-2 px-2 py-2"
-                key={request.id}
-              >
-                <div className="flex">
-                  <div className="flex mb-2 flex-col">
-                    <h2 className="text-lg font-bold">{request.title}</h2>
-                    <p>{request.description}</p>
-                  </div>
-                  <div className="ml-auto flex flex-col items-end">
-                    <div className="mb-2 text-sm">
-                      {timeSince(new Date(request.createdAt))}
+          {visibleRequests.length === 0 && (
+            <div className="my-4 mx-2 px-4 py-2">
+              <h2 className="text-lg text-center">No open requests</h2>
+            </div>
+          )}
+          {sortedRequests.map((request) => {
+            return (
+              <Link to={`/requests/${request.id}`}>
+                <div
+                  className="shadow-md border border-slate-200 bg-slate-50 my-4 mx-2 px-4 py-4 dark:bg-slate-900 dark:border dark:border-slate-700 dark:hover:bg-slate-800 hover:bg-slate-100 rounded-md transition-colors"
+                  key={request.id}
+                >
+                  <div className="flex">
+                    <div className="flex mb-2 flex-col">
+                      <h2 className="text-md">{request.title}</h2>
+                      <p className="dark:text-slate-400 text-slate-600">
+                        {request.description}
+                      </p>
                     </div>
-                    <div
-                      className={`${mapStatusToColor(
-                        request.reviewStatus
-                      )} font-bold rounded-full text-sm text-center w-20 text-white py-1 px-1.5`}
-                    >
-                      {mapStatus(request?.reviewStatus)}
+                    <div className="ml-auto flex flex-col items-end">
+                      <div className="mb-2 text-sm dark:text-slate-400 text-slate-600">
+                        {timeSince(new Date(request.createdAt))}
+                      </div>
+                      <div
+                        className={`${mapStatusToColor(
+                          request.reviewStatus
+                        )} font-bold rounded-full text-sm text-center w-20 text-white py-1 px-1.5`}
+                      >
+                        {mapStatus(request?.reviewStatus)}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </Link>
-          );
-        })}
-        <Link to={"/requests/new"}>
-          <Button className="float-right">Create new Request</Button>
-        </Link>
+              </Link>
+            );
+          })}
+          <Link to={"/requests/new"}>
+            <Button className="float-right">Create new Request</Button>
+          </Link>
+        </div>
       </div>
     </div>
   );
