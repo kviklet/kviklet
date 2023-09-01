@@ -1,13 +1,17 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  ThemeContext,
+  ThemeStatusContext,
+} from "../components/ThemeStatusProvider";
 
 function TopBanner() {
-  const [theme, setTheme] = useState("light");
+  const { currentTheme, setTheme } =
+    useContext<ThemeContext>(ThemeStatusContext);
 
   localStorage.theme = "dark";
   const switchTheme = () => {
-    console.log(theme);
-    if (theme === "light") {
+    if (currentTheme === "light") {
       setTheme("dark");
       localStorage.theme = "dark";
       document.documentElement.classList.add("dark");
@@ -16,7 +20,6 @@ function TopBanner() {
       localStorage.theme = "light";
       document.documentElement.classList.remove("dark");
     }
-    console.log(theme);
   };
 
   return (

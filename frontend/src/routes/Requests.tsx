@@ -6,6 +6,18 @@ import {
 import { Link } from "react-router-dom";
 import Button from "../components/Button";
 
+const Toggle = (props: { active: boolean; onClick: () => void }) => {
+  return (
+    <label
+      className="relative inline-flex items-center cursor-pointer"
+      onClick={props.onClick}
+    >
+      <input type="checkbox" value="" className="sr-only peer"></input>
+      <div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-800"></div>
+    </label>
+  );
+};
+
 function timeSince(date: Date) {
   const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
 
@@ -73,6 +85,7 @@ function Requests() {
     fetchData();
   }, []);
   const [onlyPending, setOnlyPending] = useState(false);
+  console.log(onlyPending);
 
   const visibleRequests = onlyPending
     ? requests.filter((r) => r.reviewStatus === "AWAITING_APPROVAL")
@@ -93,14 +106,12 @@ function Requests() {
       <div className="bg-slate-100 h-full dark:bg-slate-950">
         <div className="max-w-5xl mx-auto ">
           <div className="flex flex-row">
-            <div className="flex flex-row">
-              <input
-                type="checkbox"
-                className="mr-2"
-                checked={onlyPending}
-                onChange={(e) => setOnlyPending(e.target.checked)}
-              />
-              <label>Only show pending requests</label>
+            <div className="ml-auto flex flex-row mb-2 mt-4 mr-2">
+              <label className="mr-2">Only show pending requests</label>
+              <Toggle
+                active={onlyPending}
+                onClick={() => setOnlyPending(!onlyPending)}
+              ></Toggle>
             </div>
           </div>
 
@@ -149,4 +160,4 @@ function Requests() {
   );
 }
 
-export { Requests, mapStatusToColor };
+export { Requests, mapStatusToColor, mapStatus, timeSince };

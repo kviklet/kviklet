@@ -17,6 +17,7 @@ import {
   UserStatusContext,
   UserStatusProvider,
 } from "./components/UserStatusProvider";
+import { ThemeStatusProvider } from "./components/ThemeStatusProvider";
 
 export interface ProtectedRouteProps {
   children: JSX.Element;
@@ -42,51 +43,53 @@ function App() {
     <div className="dark:text-slate-50 dark:bg-slate-950 text-slate-900 bg-slate-50">
       <Router>
         <UserStatusProvider>
-          <Routes>
-            <Route path="/" element={<DefaultLayout />}>
-              <Route
-                index
-                element={
-                  <ProtectedRoute>
-                    <Requests />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="settings/*"
-                element={
-                  <ProtectedRoute>
-                    <Settings />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="requests"
-                element={
-                  <ProtectedRoute>
-                    <Requests />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="requests/new"
-                element={
-                  <ProtectedRoute>
-                    <AddRequestForm />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="requests/:requestId"
-                element={
-                  <ProtectedRoute>
-                    <RequestReview />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="login" element={<Login />} />
-            </Route>
-          </Routes>
+          <ThemeStatusProvider>
+            <Routes>
+              <Route path="/" element={<DefaultLayout />}>
+                <Route
+                  index
+                  element={
+                    <ProtectedRoute>
+                      <Requests />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="settings/*"
+                  element={
+                    <ProtectedRoute>
+                      <Settings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="requests"
+                  element={
+                    <ProtectedRoute>
+                      <Requests />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="requests/new"
+                  element={
+                    <ProtectedRoute>
+                      <AddRequestForm />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="requests/:requestId"
+                  element={
+                    <ProtectedRoute>
+                      <RequestReview />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="login" element={<Login />} />
+              </Route>
+            </Routes>
+          </ThemeStatusProvider>
         </UserStatusProvider>
       </Router>
     </div>

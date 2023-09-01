@@ -1,7 +1,11 @@
 import { useContext, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vs } from "react-syntax-highlighter/dist/esm/styles/prism";
+import {
+  vs,
+  duotoneDark,
+  materialDark,
+} from "react-syntax-highlighter/dist/esm/styles/prism";
 import ReactMarkdown from "react-markdown";
 import {
   ExecutionRequestResponseWithComments,
@@ -16,31 +20,47 @@ import {
   Event,
 } from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
-import { mapStatusToColor } from "./Requests";
+import { mapStatus, mapStatusToColor, timeSince } from "./Requests";
 import { UserResponse } from "../api/UserApi";
 import { UserStatusContext } from "../components/UserStatusProvider";
 import Table from "../components/Table";
+import {
+  nightOwl,
+  paraisoDark,
+  tomorrow,
+  tomorrowNight,
+  tomorrowNightBlue,
+} from "react-syntax-highlighter/dist/esm/styles/hljs";
+import {
+  ThemeContext,
+  ThemeStatusContext,
+} from "../components/ThemeStatusProvider";
 
 interface RequestReviewParams {
   requestId: string;
 }
 
+const Highlighter = (props: { children: string }) => {
+  const { currentTheme } = useContext<ThemeContext>(ThemeStatusContext);
+  const style = currentTheme === "dark" ? nightOwl : tomorrow;
+
+  return (
+    <SyntaxHighlighter
+      showLineNumbers={true}
+      style={style}
+      language="sql"
+      PreTag="div"
+      children={String(props.children).replace(/\n$/, "")}
+      customStyle={{
+        background: "transparent",
+      }}
+    />
+  );
+};
+
 const componentMap = {
   code: ({ node, inline, className, children, ...props }: any) => {
-    const match = /language-(\w+)/.exec(className || "");
-    return !inline && match ? (
-      <SyntaxHighlighter
-        style={vs}
-        language={match[1]}
-        PreTag="div"
-        children={String(children).replace(/\n$/, "")}
-        {...props}
-      />
-    ) : (
-      <code className={className} {...props}>
-        {children}
-      </code>
-    );
+    return <Highlighter>{children}</Highlighter>;
   },
   ul: ({ children }: any) => (
     <ul className="list-disc ml-4 mt-4">{children}</ul>
@@ -157,7 +177,7 @@ function RequestReview() {
               request?.reviewStatus
             )} font-bold rounded-full text-lg ml-auto text-white py-1 px-1.5`}
           >
-            {request?.reviewStatus}
+            {mapStatus(request?.reviewStatus)}
           </div>
         </h1>
         <div className="">
@@ -195,6 +215,14 @@ function RequestReview() {
   );
 }
 
+const InitialBubble = (props: { name?: string | null }) => {
+  return (
+    <div className="absolute -left-12 rounded-full p-2 bg-slate-900 text-slate-50 border border-slate-700 w-8 h-8 flex items-center justify-center text-l font-bold">
+      {firstTwoLetters(props.name ?? "")}
+    </div>
+  );
+};
+
 function RequestBox({
   request,
   runQuery,
@@ -215,40 +243,27 @@ function RequestBox({
     setStatement(request?.statement || "");
   }, [request?.statement]);
 
+  const style = localStorage.theme === "dark" ? tomorrowNight : tomorrowNight;
+
   return (
     <div>
-      <div className="relative border-cyan-500 rounded-md border">
-        <div className="comment-clip border-cyan-500 bg-cyan-500 w-2 h-4 absolute -left-2 top-2"></div>
-        <div className="comment-clip border-cyan-500 bg-cyan-200 w-2 h-4 absolute -left-2 top-2 ml-px"></div>
-        <div className="absolute -left-12 rounded-full p-2 bg-cyan-500 text-gray-100  w-8 h-8 flex items-center justify-center text-l font-bold">
-          {firstTwoLetters(request?.author?.fullName ?? "")}
-        </div>
-        <p className="text-slate-800 px-2 py-2 text-sm flex bg-cyan-200 border-b border-cyan-500 rounded-t-md">
+      <div className="relative border-slate-500 dark:bg-slate-950 dark:border dark:border-slate-950">
+        <InitialBubble name={request?.author.fullName} />
+        <p className="text-slate-800 px-2 py-2 text-sm flex bg-slate-200 dark:bg-slate-950 dark:text-slate-50 dark:border-none border-b border-slate-500 rounded-t-md">
           <div>
             {request?.author?.fullName} wants to execute on:{" "}
             <span className="italic">{request?.connection.displayName}</span>
           </div>
-          <div className="ml-2">
-            Created at: {new Date(request?.createdAt ?? "").toLocaleString()}
-          </div>
           <div className="ml-auto">
-            {!editMode && (
-              <button
-                onClick={() => {
-                  setEditMode(true);
-                }}
-              >
-                Edit
-              </button>
-            )}
+            {timeSince(new Date(request?.createdAt ?? ""))}
           </div>
         </p>
         <div className="p-3">
-          <p className="text-slate-500">{request?.description}</p>
+          <p className="text-slate-500 pb-6">{request?.description}</p>
           {editMode ? (
             <div>
               <textarea
-                className="appearance-none block w-full text-gray-700 border border-gray-200 bg-slate-100 focus:bg-white p-1 rounded leading-normal mb-2 focus:outline-none focus:border-gray-500"
+                className="appearance-none block w-full text-gray-700 border border-gray-200 bg-slate-100 focus:bg-white p-1 rounded-md leading-normal mb-2 focus:outline-none focus:border-gray-500"
                 id="statement"
                 name="statement"
                 rows={4}
@@ -271,26 +286,34 @@ function RequestBox({
               </div>
             </div>
           ) : (
-            <SyntaxHighlighter language="sql" showLineNumbers style={vs}>
-              {request === undefined ? "404" : request.statement}
-            </SyntaxHighlighter>
+            <div
+              className="dark:bg-slate-950 dark:border dark:border-slate-700 rounded dark:hover:border-slate-500 transition-colors"
+              onClick={() => setEditMode(true)}
+            >
+              <Highlighter>
+                {request === undefined ? "404" : request.statement}
+              </Highlighter>
+            </div>
           )}
         </div>
       </div>
       <div className="relative ml-4 flex justify-end">
-        <div className="bg-slate-500 w-0.5 absolute block whitespace-pre left-0 top-0 bottom-0">
-          {" "}
-        </div>
         <Button
           className="mt-3"
           id="runQuery"
           type={(request?.reviewStatus == "APPROVED" && "submit") || "disabled"}
           onClick={runQuery}
         >
-          <div className="play-triangle inline-block bg-white w-2 h-3 mr-2"></div>
+          <div
+            className={`play-triangle inline-block w-2 h-3 mr-2 ${
+              (request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
+              "bg-slate-500"
+            }`}
+          ></div>
           Run Query
         </Button>
       </div>
+      <div className="w-full dark:border-b dark:border-slate-700 mt-3"></div>
     </div>
   );
 }
@@ -299,26 +322,27 @@ function Comment({ event }: { event: Event }) {
   return (
     <div>
       <div className="relative py-4 ml-4 flex">
-        <div className="bg-slate-500 w-0.5 absolute block whitespace-pre left-0 top-0 bottom-0">
+        <div className="bg-slate-700 w-0.5 absolute block whitespace-pre left-0 top-0 bottom-0">
           {" "}
         </div>
-        <svg className="h-4 w-4 -ml-2 mr-2 mt-0.5 inline-block align-text-bottom items-center bg-white z-0">
+        <svg className="h-4 w-4 -ml-2 mr-2 mt-0.5 inline-block align-text-bottom items-center bg-slate-900 fill-slate-50 z-0">
           <path d="M11.93 8.5a4.002 4.002 0 0 1-7.86 0H.75a.75.75 0 0 1 0-1.5h3.32a4.002 4.002 0 0 1 7.86 0h3.32a.75.75 0 0 1 0 1.5Zm-1.43-.75a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"></path>
         </svg>
         <div className="text-slate-500 text-sm">
           {event?.author?.fullName} commented:
         </div>
       </div>
-      <div className="relative border-cyan-500 rounded-md border">
-        <div className="comment-clip border-cyan-500 bg-cyan-500 w-2 h-4 absolute -left-2 top-2"></div>
-        <div className="comment-clip border-cyan-500 bg-cyan-200 w-2 h-4 absolute -left-2 top-2 ml-px"></div>
-        <div className="absolute -left-12 rounded-full p-2 bg-cyan-500 text-gray-100  w-8 h-8 flex items-center justify-center text-l font-bold">
-          {firstTwoLetters(event?.author?.fullName ?? "")}
-        </div>
-        <p className="text-slate-800 px-2 py-2 text-sm flex justify-between bg-cyan-200 border-b border-cyan-500 rounded-t-md">
-          <div>Created at: {(event?.createdAt ?? "").toLocaleString()}</div>
+      <div className="relative border-slate-700 rounded-md border">
+        <InitialBubble name={event?.author?.fullName} />
+        <p className="text-slate-800 dark:text-slate-500 px-2 pt-2 text-sm flex justify-between dark:bg-slate-950 bg-slate-200 border-slate-700 rounded-t-md">
+          <div>
+            {((event?.createdAt &&
+              timeSince(new Date(event.createdAt as any))) as
+              | string
+              | undefined) || ""}
+          </div>
         </p>
-        <div className="p-3">
+        <div className="p-3 dark:bg-slate-950 rounded-md">
           <ReactMarkdown components={componentMap}>
             {event.comment}
           </ReactMarkdown>
@@ -357,24 +381,22 @@ function CommentBox({
   return (
     <div>
       <div className="relative py-4 ml-4">
-        <div className="bg-slate-500 w-0.5 absolute block whitespace-pre left-0 top-0 bottom-0">
+        <div className="bg-slate-700 w-0.5 absolute block whitespace-pre left-0 top-0 bottom-0">
           {" "}
         </div>
       </div>
-      <div className="border-slate-300 rounded-md border relative mb-5">
-        <div className="comment-clip border-slate-300 bg-slate-300 w-2 h-4 absolute -left-2 top-2"></div>
-        <div className="comment-clip border-slate-300 bg-slate-100 w-2 h-4 absolute -left-2 top-2 ml-px"></div>
-        <div className="absolute -left-12 rounded-full p-2 bg-slate-500 text-gray-100  w-8 h-8 flex items-center justify-center text-l font-bold">
-          {firstTwoLetters(
-            (userContext.userStatus && userContext.userStatus.fullName) || ""
-          )}
-        </div>
-        <div className="mb-2 border-b-slate-300 border bg-slate-100 rounded-t-md">
+      <div className="border-slate-300 dark:border-slate-700 rounded-md border relative mb-5">
+        <InitialBubble
+          name={
+            (userContext.userStatus && userContext.userStatus?.fullName) || ""
+          }
+        />
+        <div className="mb-2 border-b-slate-300 border bg-slate-100 dark:bg-slate-900 dark:border-slate-700 rounded-t-md">
           <div className="-mb-px z-10 overflow-auto">
             <button
               className={`mt-2 ml-2 ${
                 commentFormVisible
-                  ? "border rounded-t-md border-b-white bg-white"
+                  ? "border rounded-t-md border-b-white bg-white dark:bg-slate-950 dark:text-slate-50 dark:border-slate-700 dark:border-b-slate-950"
                   : ""
               }  border-slate-300 px-4 py-2 text-sm text-slate-600 leading-6`}
               onClick={() => setCommentFormVisible(true)}
@@ -385,7 +407,7 @@ function CommentBox({
               className={`mt-2 ${
                 commentFormVisible
                   ? ""
-                  : "border rounded-t-md border-b-white bg-white"
+                  : "border rounded-t-md border-b-white bg-white dark:bg-slate-950 dark:text-slate-50 dark:border-slate-700 dark:border-b-slate-950"
               } border-slate-300  px-4 py-2 text-sm text-slate-600 leading-6`}
               onClick={() => setCommentFormVisible(false)}
             >
@@ -396,7 +418,7 @@ function CommentBox({
         <div className="px-3">
           {commentFormVisible ? (
             <textarea
-              className="appearance-none block w-full text-gray-700 border border-gray-200 bg-slate-100 focus:bg-white p-1 rounded leading-normal mb-2 focus:outline-none focus:border-gray-500"
+              className="appearance-none block w-full text-gray-700 border border-gray-200 bg-slate-100 focus:bg-white p-1 rounded-md leading-normal mb-2 focus:outline-none focus:border-slate-500 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-50 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors"
               id="comment"
               name="comment"
               rows={4}
@@ -406,7 +428,7 @@ function CommentBox({
             ></textarea>
           ) : (
             <ReactMarkdown
-              className="h-28 max-h-48 overflow-y-scroll scrollbar-thin scrollbar-track-slate-100  scrollbar-thumb-slate-300 scrollbar-thumb-rounded scrollbar-track-rounded border-r-slate-300 my-2"
+              className="h-28 max-h-48 overflow-y-scroll scrollbar-thin scrollbar-track-slate-100  scrollbar-thumb-slate-300 scrollbar-thumb-rounded-md scrollbar-track-rounded-md border-r-slate-300 my-2"
               components={componentMap}
             >
               {comment}

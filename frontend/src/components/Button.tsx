@@ -15,7 +15,7 @@ function Button(props: {
   const submitStyle =
     "bg-sky-700 font-semibold text-white hover:bg-sky-900 dark:hover:bg-sky-500 dark:bg-sky-500 dark:text-white";
   const disabledStyle =
-    "bg-gray-300 text-gray-500 hover:bg-gray-300 hover:border-gray-300";
+    "bg-slate-300 text-slate-500 hover:bg-slate-300 hover:border-slate-300 dark:bg-slate-700 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:border-slate-700 dark:hover:text-slate-500";
   const defaultStyle =
     "border border-gray-300 hover:border-gray-400 dark:border-slate-700 dark:hover:border-slate-500 dark:bg-slate-800 dark:text-slate-50 transition-colors";
   const dangerStyle = "bg-red-600 text-white hover:bg-red-800"; // this is your new "danger" style
