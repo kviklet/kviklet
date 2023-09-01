@@ -12,10 +12,12 @@ function Button(props: {
     | "danger"
     | undefined;
 }) {
-  const submitStyle = "bg-sky-700 font-semibold text-white hover:bg-sky-900";
+  const submitStyle =
+    "bg-sky-700 font-semibold text-white hover:bg-sky-900 dark:hover:bg-sky-500 dark:bg-sky-500 dark:text-white";
   const disabledStyle =
     "bg-gray-300 text-gray-500 hover:bg-gray-300 hover:border-gray-300";
-  const defaultStyle = "border border-gray-300 hover:border-gray-400";
+  const defaultStyle =
+    "border border-gray-300 hover:border-gray-400 dark:border-slate-700 dark:hover:border-slate-500 dark:bg-slate-800 dark:text-slate-50 transition-colors";
   const dangerStyle = "bg-red-600 text-white hover:bg-red-800"; // this is your new "danger" style
 
   const disabled = props.type == "disabled" ? true : undefined;
@@ -33,7 +35,7 @@ function Button(props: {
         (props.type == "danger" && dangerStyle) ||
         defaultStyle
       }
-      leading-5 align-middle  rounded-lg`}
+      leading-5 align-middle  rounded-md`}
     >
       {props.children}
     </button>

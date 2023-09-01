@@ -5,7 +5,9 @@ function DefaultLayout() {
   return (
     <div>
       <TopBanner></TopBanner>
-      <Outlet />
+      <div className="h-screen">
+        <Outlet />
+      </div>
     </div>
   );
 }

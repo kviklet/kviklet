@@ -39,7 +39,7 @@ export const ProtectedRoute = ({
 
 function App() {
   return (
-    <div>
+    <div className="dark:text-slate-50 dark:bg-slate-950 text-slate-900">
       <Router>
         <UserStatusProvider>
           <Routes>

@@ -9,5 +9,6 @@ module.exports = {
       mono: ["Roboto Mono", "monospace"],
     },
   },
+  darkMode: "class",
   plugins: [require("tailwind-scrollbar")({ nocompatible: true })],
 };
