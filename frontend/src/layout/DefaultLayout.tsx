@@ -5,7 +5,7 @@ function DefaultLayout() {
   return (
     <div>
       <TopBanner></TopBanner>
-      <div className="h-screen">
+      <div className="min-h-screen pb-10">
         <Outlet />
       </div>
     </div>

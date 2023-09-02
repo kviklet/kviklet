@@ -39,7 +39,7 @@ function CreateDatabaseForm(props: {
 
   return (
     <form method="post" onSubmit={handleCreateDatabase}>
-      <div className="w-2xl shadow p-3 bg-white rounded">
+      <div className="w-2xl shadow p-3 bg-slate-50 dark:bg-slate-950 rounded">
         <InputField
           id="displayName"
           name="Name"
@@ -189,7 +189,7 @@ function CreateConnectionForm(props: {
 
   return (
     <form method="post" onSubmit={submit}>
-      <div className="w-2xl shadow p-3 bg-white rounded">
+      <div className="w-2xl shadow p-3 bg-slate-50 border border-slate-300 dark:border-none dark:bg-slate-950 rounded">
         <InputField
           id="displayName"
           name="Name"
@@ -305,8 +305,8 @@ function ConnectionSettings(props: {
   ) => Promise<void>;
 }) {
   return (
-    <div className=" border-l-2 dark:border-slate-700  dark:bg-slate-950 flex flex-col min-h-full w-full">
-      <div className="pl-8 text-lg my-5">Connections</div>
+    <div className=" border-l dark:border-slate-700  dark:bg-slate-950 flex flex-col min-h-full w-full">
+      <div className="pl-8 text-lg">Connections</div>
       <div className="pl-8 flex flex-col h-96 justify-between">
         <div className="">
           {props.connections.map((connection) => (
@@ -352,7 +352,7 @@ const DatabaseChooser = (props: {
               </div>
               <button
                 onClick={() => props.handleDeleteDatabase(database)}
-                className="text-slate-500 hover:text-slate-900 dark:text-slate-400 text-xs"
+                className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 text-xs transition-colors"
               >
                 <FontAwesomeIcon icon={solid("trash")} />
               </button>

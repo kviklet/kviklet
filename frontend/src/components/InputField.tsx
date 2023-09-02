@@ -14,13 +14,16 @@ function InputField(props: {
     <div className="flex m-2">
       <label
         htmlFor={props.id}
-        className="my-auto text-sm font-medium text-gray-700 ml-5 pl-1.5 mr-auto"
+        className="my-auto text-sm font-medium text-slate-700 dark:text-slate-200 ml-2 pl-1.5 mr-auto"
       >
         {props.name}
       </label>
       <input
         type={inputType || "text"}
-        className="basis-2/3 focus:border-blue-600 my-auto appearance-none border rounded w-full mx-1 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+        className="basis-2/3 appearance-none block w-full px-3 py-2 rounded-md border 
+        border-slate-300 dark:bg-slate-900 hover:border-slate-400 focus:border-indigo-600 focus:hover:border-indigo-600
+        focus:outline-none dark:hover:border-slate-600 dark:hover:focus:border-gray-500 dark:border-slate-700
+         dark:focus:border-gray-500 sm:text-sm transition-colors"
         placeholder={props.placeholder || ""}
         name={props.id}
         id={props.id}

@@ -358,7 +358,7 @@ function Comment({ event, index }: { event: Event; index: number }) {
               | undefined) || ""}
           </div>
         </p>
-        <div className="py-3 px-4 dark:bg-slate-900 rounded-md">
+        <div className="py-3 px-4 dark:bg-slate-900 rounded-b-md">
           <ReactMarkdown components={componentMap}>
             {event.comment}
           </ReactMarkdown>

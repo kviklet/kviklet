@@ -15,7 +15,8 @@ const Tab = (props: {
       <div
         onClick={props.onClick}
         className={
-          (props.active && "bg-slate-200 dark:bg-slate-900 rounded") || ""
+          "pr-2 rounded hover:bg-slate-100 dark:hover:bg-slate-900 " +
+            (props.active && "bg-slate-200 dark:bg-slate-900 rounded") || ""
         }
       >
         {props.children}

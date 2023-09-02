@@ -7,16 +7,18 @@ const DeleteConfirm = (props: {
   onCancel: () => void;
 }) => {
   return (
-    <div className="w-2xl shadow p-3 bg-white rounded">
+    <div className="w-2xl shadow p-3 bg-slate-50 border border-slate-200 dark:border-none dark:bg-slate-950 rounded">
       <div className="flex flex-col mb-3">
-        <h1 className="text-2xl font-bold">{props.title}</h1>
-        <p className="text-gray-700">{props.message}</p>
+        <h1 className="text-l">{props.title}</h1>
+        <p className="text-slate-700 dark:text-slate-200 mt-2">
+          {props.message}
+        </p>
 
         <div className="flex flex-row mt-3">
           <Button className="ml-auto" onClick={props.onCancel}>
             Cancel
           </Button>
-          <Button className="ml-2" onClick={props.onConfirm} type="danger">
+          <Button className="ml-2" onClick={props.onConfirm} type="submit">
             Confirm
           </Button>
         </div>
