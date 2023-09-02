@@ -15,7 +15,7 @@ const Tab = (props: {
       <div
         onClick={props.onClick}
         className={
-          (props.active && "bg-slate-100 dark:bg-slate-800 rounded") || ""
+          (props.active && "bg-slate-200 dark:bg-slate-900 rounded") || ""
         }
       >
         {props.children}
@@ -59,15 +59,16 @@ const BaseSettingsLayout = (props: LayoutProps) => {
       </Tab>
     );
   });
-  console.log("hellow1");
 
   return (
-    <div className="flex w-screen">
+    <div className="w-screen h-screen">
+      <div className="border-b border-slate-300 mb-3 dark:border-slate-700">
+        <h1 className="text-xl pl-1.5 w-3/4 m-5 mx-auto">Settings</h1>
+      </div>
       <div className="mx-auto w-3/4">
-        <h1 className="text-2xl font-bold m-5 pl-1.5">Settings</h1>
         <div className="flex w-full">
           <SettingsSidebar>{tabs}</SettingsSidebar>
-          <div className="w-full ml-2">
+          <div className="w-full ml-2 h-full">
             <Routes>
               <Route path="/*" element={<DatabaseSettings />} />
               <Route path="databases" element={<DatabaseSettings />} />

@@ -11,7 +11,7 @@ export const Settings = () => {
       name: "databases",
       tabContent: (
         <div className="flex flex-col">
-          <div className="flex flex-row items-center justify-left text-slate-700 dark:text-slate-50 text-sm font-bold rounded hover:bg-slate-100 dark:hover:bg-slate-800 p-1">
+          <div className="flex flex-row items-center justify-left text-slate-700 dark:text-slate-50 text-sm rounded hover:bg-slate-100 dark:hover:bg-slate-800 p-1">
             <FontAwesomeIcon icon={solid("database")} className="mr-2" />
             Databases
           </div>
@@ -23,7 +23,7 @@ export const Settings = () => {
       name: "users",
       tabContent: (
         <div className="flex flex-col">
-          <div className="flex flex-row items-center justify-left text-slate-700 dark:text-slate-50 text-sm font-bold rounded hover:bg-slate-100 dark:hover:bg-slate-800 p-1">
+          <div className="flex flex-row items-center justify-left text-slate-700 dark:text-slate-50 text-sm rounded hover:bg-slate-100 dark:hover:bg-slate-800 p-1">
             <FontAwesomeIcon icon={solid("user")} className="mr-2" />
             Users
           </div>
@@ -35,7 +35,7 @@ export const Settings = () => {
       name: "roles",
       tabContent: (
         <div className="flex flex-col">
-          <div className="flex flex-row items-center justify-left text-slate-700 dark:text-slate-50 text-sm font-bold rounded hover:bg-slate-100 dark:hover:bg-slate-800 p-1">
+          <div className="flex flex-row items-center justify-left text-slate-700 dark:text-slate-50 text-sm rounded hover:bg-slate-100 dark:hover:bg-slate-800 p-1">
             <FontAwesomeIcon icon={solid("users")} className="mr-2" />
             Roles
           </div>

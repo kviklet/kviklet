@@ -255,19 +255,21 @@ function SingleConnectionSettings(props: {
   };
 
   return (
-    <div className="text-slate-700 border-b mb-7 text-lg">
+    <div className="shadow-md border border-slate-200 bg-slate-50 my-4 mx-2 px-4 py-4 dark:bg-slate-900 dark:border dark:border-slate-700 rounded-md transition-colors">
       <div className="flex justify-between">
-        <div className="font-medium">{props.connection.displayName}</div>
+        <div className="font-medium text-md">
+          {props.connection.displayName}
+        </div>
         <div className="font-mono text-slate-300 text-sm">
           {props.connection.shortUsername + "..."}
         </div>
       </div>
       <div className="m-2">
-        <div className="text-slate-500 text-sm mb-2">
+        <div className="text-slate-500 text-sm mb-2 dark:text-slate-400">
           {props.connection.description}
         </div>
         <div className="flex justify-between text-sm">
-          <label htmlFor="number" className="mr-auto">
+          <label htmlFor="number" className="mr-auto dark:text-slate-400">
             Number of required reviews:
           </label>
           <input
@@ -277,12 +279,12 @@ function SingleConnectionSettings(props: {
               setNumTotalRequired(parseInt(e.target.value));
               setShowCheck(true);
             }}
-            className="focus:border-blue-600 my-auto appearance-none border rounded mx-1 py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+            className="focus:border-slate-500 focus:hover:border-slate-500 my-auto appearance-none border border-slate-200 hover:border-slate-300 rounded mx-1 py-2 px-3 text-slate-600 leading-tight focus:outline-none focus:shadow-outline dark:bg-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors dark:text-slate-50"
           ></input>
         </div>
         <button
           onClick={submit}
-          className={`text-green-600 ml-2 hover:text-gray-900 ${
+          className={`text-green-600 ml-2 hover:text-green-900 transition-colors ${
             showCheck ? "visible" : "invisible"
           }`}
         >
@@ -303,8 +305,8 @@ function ConnectionSettings(props: {
   ) => Promise<void>;
 }) {
   return (
-    <div className=" border-l-2 flex flex-col min-h-full w-full">
-      <div className="pl-8 text-lg font-bold my-5">Connections</div>
+    <div className=" border-l-2 dark:border-slate-700  dark:bg-slate-950 flex flex-col min-h-full w-full">
+      <div className="pl-8 text-lg my-5">Connections</div>
       <div className="pl-8 flex flex-col h-96 justify-between">
         <div className="">
           {props.connections.map((connection) => (
@@ -330,35 +332,27 @@ const DatabaseChooser = (props: {
   handleDeleteDatabase: (database: DatabaseResponse) => void;
 }) => {
   return (
-    <div className="m-2 p-1">
-      <div className="border-b-slate-300 border-b py-2">
-        <div className="text-center max-h-96 w-72  overflow-y-scroll scrollbar-thin scrollbar-track-slate-100 scrollbar-thumb-slate-300 scrollbar-thumb-rounded">
+    <div className="border-slate-200 bg-slate-50 mx-2 px-4 dark:bg-slate-950 dark:border-none rounded-md">
+      <div className="border-b-slate-300 dark:border-b-slate-700 border-b">
+        <div className="text-center max-h-96 w-72 overflow-y-scroll scrollbar-thin scrollbar-track-slate-100 scrollbar-thumb-slate-300 scrollbar-thumb-rounded">
           {props.databases.map((database, index) => (
             <div
-              className={`flex items-center rounded-md my-3 mx-2 p-1.5 cursor-pointer hover:bg-sky-500 hover:text-white ${
-                index === props.selectedIndex ? "bg-sky-500 text-white" : ""
+              className={`flex items-center rounded-md mb-3 transition-colors px-3 cursor-pointer ${
+                index === props.selectedIndex
+                  ? "bg-slate-200 dark:bg-slate-900"
+                  : "hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-900"
               }`}
               onClick={() => props.setSelectedIndex(index)}
             >
               <div className="basis-1/2 my-auto text-left truncate">
                 {database.displayName}
               </div>
-              <div
-                className={`basis-1/2 self-end my-2 text-right ${
-                  index === props.selectedIndex
-                    ? "text-white"
-                    : "text-slate-500"
-                }`}
-              >
+              <div className="basis-1/2 self-end my-2 text-righttext-slate-500 dark:text-slate-400">
                 {database.hostname}
               </div>
               <button
                 onClick={() => props.handleDeleteDatabase(database)}
-                className={`${
-                  index === props.selectedIndex
-                    ? "text-white"
-                    : "text-slate-500"
-                } ml-2 hover:text-gray-900`}
+                className="text-slate-500 hover:text-slate-900 dark:text-slate-400 text-xs"
               >
                 <FontAwesomeIcon icon={solid("trash")} />
               </button>
@@ -437,12 +431,12 @@ const DatabaseSettings = () => {
   };
 
   return (
-    <div>
+    <div className="h-full">
       {loading ? (
         <Spinner />
       ) : (
         <div>
-          <div className="flex w-full">
+          <div className="flex w-full dark:bg-slate-950 h-full">
             <DatabaseChooser
               databases={datasources}
               setSelectedIndex={setSelectedIndex}
