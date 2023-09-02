@@ -4,12 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 const capitalizeFirstLetter = ([first, ...rest]: string) =>
   first.toUpperCase() + rest.join("");
 
-const ColorfulLabel = (props: {
-  text: string;
-  onDelete?: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
-  onClick?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
-  color?: string;
-}) => {
+const colorFromText = (text: string) => {
   // hash the label text to get a color inside the tailwindcss color palette
   // https://tailwindcss.com/docs/customizing-colors#color-palette-reference
   const djb2 = (str: string) => {
@@ -21,20 +16,28 @@ const ColorfulLabel = (props: {
     return hash;
   };
   const colors = [
-    "bg-blue-500",
-    "bg-green-500",
-    "bg-yellow-500",
-    "bg-red-500",
-    "bg-indigo-500",
-    "bg-purple-500",
-    "bg-pink-500",
-    "bg-cyan-500",
-    "bg-lime-500",
-    "bg-emerald-500",
+    "bg-blue-600",
+    "bg-green-600",
+    "bg-yellow-600",
+    "bg-red-600",
+    "bg-indigo-600",
+    "bg-purple-600",
+    "bg-pink-600",
+    "bg-cyan-600",
+    "bg-lime-600",
+    "bg-emerald-600",
   ];
 
-  const color =
-    props.color || colors[Math.abs(djb2(props.text)) % colors.length];
+  return colors[Math.abs(djb2(text)) % colors.length];
+};
+
+const ColorfulLabel = (props: {
+  text: string;
+  onDelete?: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+  onClick?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+  color?: string;
+}) => {
+  const color = props.color || colorFromText(props.text);
 
   return (
     <div
@@ -55,3 +58,4 @@ const ColorfulLabel = (props: {
 };
 
 export default ColorfulLabel;
+export { colorFromText };

@@ -35,6 +35,7 @@ import {
   ThemeContext,
   ThemeStatusContext,
 } from "../components/ThemeStatusProvider";
+import { colorFromText } from "../components/ColorfulLabel";
 
 interface RequestReviewParams {
   requestId: string;
@@ -46,7 +47,7 @@ const Highlighter = (props: { children: string }) => {
 
   return (
     <SyntaxHighlighter
-      showLineNumbers={true}
+      showLineNumbers={false}
       style={style}
       language="sql"
       PreTag="div"
@@ -196,11 +197,14 @@ function RequestReview() {
                 {executionError.errorCode}: {executionError.message}
               </div>
             )}
+            <div className="mt-6">
+              <span>Activity</span>
+            </div>
             <div>
               {request === undefined
                 ? ""
-                : request?.events?.map((event) => (
-                    <Comment event={event}></Comment>
+                : request?.events?.map((event, index) => (
+                    <Comment event={event} index={index}></Comment>
                   ))}
               <CommentBox
                 addComment={addComment}
@@ -215,9 +219,15 @@ function RequestReview() {
   );
 }
 
-const InitialBubble = (props: { name?: string | null }) => {
+const InitialBubble = (props: { name?: string | null; className?: string }) => {
   return (
-    <div className="absolute -left-12 rounded-full p-2 bg-slate-900 text-slate-50 border border-slate-700 w-8 h-8 flex items-center justify-center text-l font-bold">
+    <div
+      className={`absolute -left-12 rounded-full text-slate-50 ${colorFromText(
+        props.name || ""
+      )} w-6 h-6 flex text-xs items-center justify-center font-bold ${
+        props.className ?? ""
+      }`}
+    >
       {firstTwoLetters(props.name ?? "")}
     </div>
   );
@@ -249,21 +259,21 @@ function RequestBox({
     <div>
       <div className="relative border-slate-500 dark:bg-slate-950 dark:border dark:border-slate-950">
         <InitialBubble name={request?.author.fullName} />
-        <p className="text-slate-800 px-2 py-2 text-sm flex bg-slate-200 dark:bg-slate-950 dark:text-slate-50 dark:border-none border-b border-slate-500 rounded-t-md">
+        <p className="text-slate-800 py-2 text-sm flex bg-slate-50 dark:bg-slate-950 dark:text-slate-50 dark:border-none">
           <div>
             {request?.author?.fullName} wants to execute on:{" "}
             <span className="italic">{request?.connection.displayName}</span>
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto dark:text-slate-500">
             {timeSince(new Date(request?.createdAt ?? ""))}
           </div>
         </p>
-        <div className="p-3">
+        <div className="py-3">
           <p className="text-slate-500 pb-6">{request?.description}</p>
           {editMode ? (
             <div>
               <textarea
-                className="appearance-none block w-full text-gray-700 border border-gray-200 bg-slate-100 focus:bg-white p-1 rounded-md leading-normal mb-2 focus:outline-none focus:border-gray-500"
+                className="appearance-none block w-full text-gray-700 border border-gray-200 bg-slate-100 focus:bg-white dark:bg-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors dark:text-slate-50 p-1 rounded-md leading-normal mb-2 focus:outline-none focus:border-gray-500"
                 id="statement"
                 name="statement"
                 rows={4}
@@ -287,7 +297,7 @@ function RequestBox({
             </div>
           ) : (
             <div
-              className="dark:bg-slate-950 dark:border dark:border-slate-700 rounded dark:hover:border-slate-500 transition-colors"
+              className="dark:bg-slate-950 border dark:border-slate-700 rounded border-slate-300 dark:hover:border-slate-500 transition-colors"
               onClick={() => setEditMode(true)}
             >
               <Highlighter>
@@ -313,28 +323,34 @@ function RequestBox({
           Run Query
         </Button>
       </div>
-      <div className="w-full dark:border-b dark:border-slate-700 mt-3"></div>
+      <div className="w-full border-b dark:border-slate-700 border-slate-300 mt-3"></div>
     </div>
   );
 }
 
-function Comment({ event }: { event: Event }) {
+function Comment({ event, index }: { event: Event; index: number }) {
   return (
     <div>
       <div className="relative py-4 ml-4 flex">
-        <div className="bg-slate-700 w-0.5 absolute block whitespace-pre left-0 top-0 bottom-0">
-          {" "}
-        </div>
-        <svg className="h-4 w-4 -ml-2 mr-2 mt-0.5 inline-block align-text-bottom items-center bg-slate-900 fill-slate-50 z-0">
+        {(!(index === 0) && (
+          <div className="bg-slate-700 w-0.5 absolute block whitespace-pre left-0 top-0 bottom-0">
+            {" "}
+          </div>
+        )) || (
+          <div className="bg-slate-700 w-0.5 absolute block whitespace-pre left-0 top-5 bottom-0">
+            {" "}
+          </div>
+        )}
+        <svg className="h-4 w-4 -ml-2 mr-2 mt-0.5 inline-block align-text-bottom items-center dark:bg-slate-950 bg-slate-50 fill-slate-950 dark:fill-slate-50 z-0">
           <path d="M11.93 8.5a4.002 4.002 0 0 1-7.86 0H.75a.75.75 0 0 1 0-1.5h3.32a4.002 4.002 0 0 1 7.86 0h3.32a.75.75 0 0 1 0 1.5Zm-1.43-.75a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"></path>
         </svg>
         <div className="text-slate-500 text-sm">
           {event?.author?.fullName} commented:
         </div>
       </div>
-      <div className="relative border-slate-700 rounded-md border">
+      <div className="relative shadow-md dark:shadow-none dark:border-slate-700 rounded-md border">
         <InitialBubble name={event?.author?.fullName} />
-        <p className="text-slate-800 dark:text-slate-500 px-2 pt-2 text-sm flex justify-between dark:bg-slate-950 bg-slate-200 border-slate-700 rounded-t-md">
+        <p className="text-slate-500 dark:text-slate-500 px-4 pt-2 text-sm flex justify-between dark:bg-slate-900 rounded-t-md">
           <div>
             {((event?.createdAt &&
               timeSince(new Date(event.createdAt as any))) as
@@ -342,7 +358,7 @@ function Comment({ event }: { event: Event }) {
               | undefined) || ""}
           </div>
         </p>
-        <div className="p-3 dark:bg-slate-950 rounded-md">
+        <div className="py-3 px-4 dark:bg-slate-900 rounded-md">
           <ReactMarkdown components={componentMap}>
             {event.comment}
           </ReactMarkdown>
@@ -385,20 +401,20 @@ function CommentBox({
           {" "}
         </div>
       </div>
-      <div className="border-slate-300 dark:border-slate-700 rounded-md border relative mb-5">
+      <div className=" dark:border-slate-700 rounded-md dark:border shadow-md relative mb-5">
         <InitialBubble
           name={
             (userContext.userStatus && userContext.userStatus?.fullName) || ""
           }
         />
-        <div className="mb-2 border-b-slate-300 border bg-slate-100 dark:bg-slate-900 dark:border-slate-700 rounded-t-md">
+        <div className="mb-2 border-b-slate-300 border dark:border-b dark:border-t-0 dark:border-l-0 dark:border-r-0 dark:bg-slate-900 dark:border-slate-700 rounded-t-md">
           <div className="-mb-px z-10 overflow-auto">
             <button
               className={`mt-2 ml-2 ${
                 commentFormVisible
-                  ? "border rounded-t-md border-b-white bg-white dark:bg-slate-950 dark:text-slate-50 dark:border-slate-700 dark:border-b-slate-950"
-                  : ""
-              }  border-slate-300 px-4 py-2 text-sm text-slate-600 leading-6`}
+                  ? "border border-b-slate-50 bg-slate-50 dark:bg-slate-950 dark:text-slate-50 dark:border-slate-700 dark:border-b-slate-950"
+                  : "dark:hover:bg-slate-800"
+              }  border-slate-300 px-4 py-2 text-sm text-slate-600 leading-6 rounded-t-md`}
               onClick={() => setCommentFormVisible(true)}
             >
               write
@@ -406,9 +422,9 @@ function CommentBox({
             <button
               className={`mt-2 ${
                 commentFormVisible
-                  ? ""
-                  : "border rounded-t-md border-b-white bg-white dark:bg-slate-950 dark:text-slate-50 dark:border-slate-700 dark:border-b-slate-950"
-              } border-slate-300  px-4 py-2 text-sm text-slate-600 leading-6`}
+                  ? "dark:hover:bg-slate-800"
+                  : "border border-b-white bg-white dark:bg-slate-950 dark:text-slate-50 dark:border-slate-700 dark:border-b-slate-950"
+              } border-slate-300  px-4 py-2 text-sm text-slate-600 leading-6 rounded-t-md`}
               onClick={() => setCommentFormVisible(false)}
             >
               preview
@@ -418,7 +434,7 @@ function CommentBox({
         <div className="px-3">
           {commentFormVisible ? (
             <textarea
-              className="appearance-none block w-full text-gray-700 border border-gray-200 bg-slate-100 focus:bg-white p-1 rounded-md leading-normal mb-2 focus:outline-none focus:border-slate-500 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-50 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors"
+              className="appearance-none block w-full text-gray-700 border border-slate-100 shadow-sm bg-slate-50 focus:shadow-md p-1 rounded-md leading-normal mb-2 focus:outline-none dark:bg-slate-950 dark:border-slate-700 dark:text-slate-50 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors"
               id="comment"
               name="comment"
               rows={4}
@@ -434,7 +450,7 @@ function CommentBox({
               {comment}
             </ReactMarkdown>
           )}
-          <div className="px-1">
+          <div className="p-1">
             <div className="flex justify-end mb-2">
               <Button
                 className="mr-2"

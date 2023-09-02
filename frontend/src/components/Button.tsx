@@ -13,7 +13,7 @@ function Button(props: {
     | undefined;
 }) {
   const submitStyle =
-    "bg-sky-700 font-semibold text-white hover:bg-sky-900 dark:hover:bg-sky-500 dark:bg-sky-500 dark:text-white";
+    "bg-indigo-700 font-semibold text-white hover:bg-sky-900 dark:hover:bg-indigo-600 dark:bg-indigo-700 dark:text-slate-50 transition-colors dark:shadow-sm";
   const disabledStyle =
     "bg-slate-300 text-slate-500 hover:bg-slate-300 hover:border-slate-300 dark:bg-slate-700 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:border-slate-700 dark:hover:text-slate-500";
   const defaultStyle =
