@@ -314,12 +314,9 @@ function ConnectionSettings(props: {
             />
           ))}
         </div>
-        <button
-          className="rounded-md ml-auto mr-5 text-slate-700 p-2.5 border border-slate-500"
-          onClick={props.addConnectionHandler}
-        >
+        <Button className="ml-auto" onClick={props.addConnectionHandler}>
           Add Connection
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -371,12 +368,12 @@ const DatabaseChooser = (props: {
       </div>
       <div>
         <div className="flex items-start">
-          <button
-            className="rounded-md ml-auto m-2 text-slate-700 p-2.5 border border-slate-500"
+          <Button
+            className="ml-auto m-2"
             onClick={() => props.setShowAddDatasourceModal(true)}
           >
             Add Datasource
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -14,7 +14,9 @@ const Tab = (props: {
     <Link to={props.link}>
       <div
         onClick={props.onClick}
-        className={(props.active && "bg-gray-200") || ""}
+        className={
+          (props.active && "bg-slate-100 dark:bg-slate-800 rounded") || ""
+        }
       >
         {props.children}
       </div>
@@ -35,8 +37,10 @@ interface LayoutProps {
 
 function SettingsSidebar(props: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col bg-white border-r border-gray-200">
-      <div className="flex flex-col">{props.children}</div>
+    <div className="flex flex-col bg-slate-50 dark:bg-slate-950 mx-2">
+      <div className="flex flex-col divide-y-8 divide-slate-50 dark:divide-slate-950">
+        {props.children}
+      </div>
     </div>
   );
 }
