@@ -95,12 +95,12 @@ const Table: React.FC<{ data: SelectExecuteResponse }> = ({ data }) => {
   return (
     <div className="px-2 max-h-screen overflow-y-scroll block font-thin max-w-full border rounded border-slate-300 shadow-md dark:shadow-none dark:border-slate-700 my-4">
       <table className="w-full text-left">
-        <thead className="sticky z-10 top-0 text-sm leading-6 font-semibold dark:bg-slate-950 bg-slate-50 w-full">
+        <thead className="sticky z-10 top-0 text-sm leading-6 font-semibold dark:bg-slate-950 bg-slate-50 w-full border-b border-slate-200 dark:border-slate-800">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
                 <th
-                  className="border-b dark:border-slate-800 border-slate-200 py-2 pr-2 text-sx text-slate-700 dark:text-slate-200"
+                  className="py-2 pr-2 text-sx text-slate-700 dark:text-slate-200"
                   key={header.id}
                 >
                   {header.isPlaceholder
