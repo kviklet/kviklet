@@ -205,6 +205,7 @@ class DatasourceController(
     @GetMapping("/")
     fun getDatasources(): ListDatasourceResponse {
         val dbs = datasourceService.listConnections()
+
         return ListDatasourceResponse(databases = dbs.map { DatasourceResponse.fromDto(it) })
     }
     /*
