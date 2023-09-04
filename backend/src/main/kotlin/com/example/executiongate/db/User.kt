@@ -2,12 +2,19 @@ package com.example.executiongate.db
 
 import com.example.executiongate.db.util.BaseEntity
 import com.example.executiongate.service.EntityNotFound
-import com.example.executiongate.service.dto.Role
 import com.example.executiongate.service.dto.Policy
+import com.example.executiongate.service.dto.Role
+import jakarta.persistence.CascadeType
+import jakarta.persistence.Column
+import jakarta.persistence.Entity
+import jakarta.persistence.FetchType
+import jakarta.persistence.JoinColumn
+import jakarta.persistence.JoinTable
+import jakarta.persistence.ManyToMany
+import jakarta.persistence.Table
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
-import jakarta.persistence.*
 import org.springframework.transaction.annotation.Transactional
 
 @Entity
@@ -29,7 +36,7 @@ data class UserEntity(
     @JoinTable(
         name = "user_role",
         joinColumns = [JoinColumn(name = "user_id")],
-        inverseJoinColumns = [JoinColumn(name = "role_id")]
+        inverseJoinColumns = [JoinColumn(name = "role_id")],
     )
     var roles: Set<RoleEntity> = HashSet(),
 ) : BaseEntity() {
@@ -39,7 +46,7 @@ data class UserEntity(
         password = password,
         googleId = googleId,
         email = email,
-        roles = roles.map { it.toDto() }.toSet()
+        roles = roles.map { it.toDto() }.toSet(),
     )
 }
 
@@ -51,7 +58,7 @@ data class User(
     val googleId: String? = null,
     val email: String = "",
     val policies: Set<Policy> = HashSet(),
-    val roles: Set<Role> = HashSet()
+    val roles: Set<Role> = HashSet(),
 ) {
     fun getAllPolicies(): Set<Policy> {
         val allPolicies = HashSet<Policy>()
@@ -84,7 +91,7 @@ class UserAdapter(
     fun findById(id: String): User {
         val userEntity = userRepository.findByIdOrNull(id) ?: throw EntityNotFound(
             "User not found",
-            "User with id $id does not exist"
+            "User with id $id does not exist",
         )
         return userEntity.toDto()
     }
@@ -94,7 +101,7 @@ class UserAdapter(
             fullName = user.fullName,
             password = user.password,
             googleId = user.googleId,
-            email = user.email
+            email = user.email,
         )
         val savedUserEntity = userRepository.save(userEntity)
         return savedUserEntity.toDto()
@@ -119,7 +126,7 @@ class UserAdapter(
     fun updateUser(user: User): User {
         val userEntity = userRepository.findByIdOrNull(user.id) ?: throw EntityNotFound(
             "User not found",
-            "User with id ${user.id} does not exist"
+            "User with id ${user.id} does not exist",
         )
         userEntity.fullName = user.fullName
         userEntity.password = user.password
@@ -133,7 +140,6 @@ class UserAdapter(
         val savedUserEntity = userRepository.save(userEntity)
 
         return savedUserEntity.toDto()
-
     }
 
     fun deleteUser(id: String) {

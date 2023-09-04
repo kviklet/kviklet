@@ -3,13 +3,11 @@ package com.example.executiongate.db.util
 import com.example.executiongate.db.Payload
 import com.example.executiongate.db.ReviewConfig
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.nimbusds.jose.shaded.gson.Gson
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.stereotype.Component
 import jakarta.persistence.AttributeConverter
 import jakarta.persistence.Converter
 import org.apache.commons.text.StringEscapeUtils
-
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.stereotype.Component
 
 @Component
 abstract class PayloadConverter<T> : AttributeConverter<T, String> {
@@ -21,10 +19,11 @@ abstract class PayloadConverter<T> : AttributeConverter<T, String> {
     }
 
     override fun convertToEntityAttribute(payloadJson: String): T {
-        val unquoteJson = if (payloadJson.startsWith("\""))
+        val unquoteJson = if (payloadJson.startsWith("\"")) {
             StringEscapeUtils.unescapeJson(payloadJson).removeSurrounding("\"")
-        else
+        } else {
             payloadJson
+        }
         return objectMapper.readValue(unquoteJson, clazz())
     }
 

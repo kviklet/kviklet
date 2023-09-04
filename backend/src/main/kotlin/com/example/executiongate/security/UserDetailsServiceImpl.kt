@@ -11,12 +11,12 @@ import org.springframework.stereotype.Service
 
 @Service
 class UserDetailsServiceImpl(
-        private val userAdapter: UserAdapter
+    private val userAdapter: UserAdapter,
 ) : UserDetailsService {
 
     override fun loadUserByUsername(email: String): UserDetails {
         val user = userAdapter.findByEmail(email)
-                ?: throw UsernameNotFoundException("User '$email' not found.")
+            ?: throw UsernameNotFoundException("User '$email' not found.")
 
         val authorities = listOf(SimpleGrantedAuthority("USERS"))
 
@@ -28,5 +28,5 @@ class UserDetailsWithId(
     val id: String,
     email: String,
     password: String?,
-    authorities: Collection<out GrantedAuthority>
+    authorities: Collection<out GrantedAuthority>,
 ) : User(email, password, authorities)

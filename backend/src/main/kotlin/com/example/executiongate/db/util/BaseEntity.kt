@@ -1,9 +1,9 @@
 package com.example.executiongate.db.util
 
-import org.hibernate.annotations.GenericGenerator
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.Id
 import jakarta.persistence.MappedSuperclass
+import org.hibernate.annotations.GenericGenerator
 
 @MappedSuperclass
 open class BaseEntity {

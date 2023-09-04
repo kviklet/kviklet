@@ -7,16 +7,14 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.testcontainers.containers.JdbcDatabaseContainer
-import org.testcontainers.containers.MySQLContainer
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 
-
 @SpringBootTest
 class PostgresExecutorTest(
-    @Autowired override val executorService: ExecutorService
-): AbstractExecutorTest(
-    executorService = executorService
+    @Autowired override val executorService: ExecutorService,
+) : AbstractExecutorTest(
+    executorService = executorService,
 ) {
 
     companion object {
@@ -49,5 +47,4 @@ class PostgresExecutorTest(
         executeQuery("SELECT 1;", username = "root", password = "foo") shouldBe
             ErrorQueryResult(0, "FATAL: password authentication failed for user \"root\"")
     }
-
 }

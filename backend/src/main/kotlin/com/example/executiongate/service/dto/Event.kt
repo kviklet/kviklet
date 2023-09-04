@@ -7,9 +7,8 @@ import com.example.executiongate.db.User
 import java.io.Serializable
 import java.time.LocalDateTime
 
-
 @JvmInline
-value class EventId(private val id: String): Serializable {
+value class EventId(private val id: String) : Serializable {
     override fun toString() = id
 }
 
@@ -48,7 +47,7 @@ data class CommentEvent(
     override val author: User,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
     val comment: String,
-): Event(EventType.COMMENT, createdAt)
+) : Event(EventType.COMMENT, createdAt)
 
 data class ReviewEvent(
     override val id: String,
@@ -56,4 +55,4 @@ data class ReviewEvent(
     override val createdAt: LocalDateTime = LocalDateTime.now(),
     val comment: String,
     val action: ReviewAction,
-): Event(EventType.REVIEW, createdAt)
+) : Event(EventType.REVIEW, createdAt)

@@ -1,9 +1,9 @@
 package com.example.executiongate.controller
 
 import com.example.executiongate.db.RoleAdapter
-import com.example.executiongate.service.dto.Role
 import com.example.executiongate.service.dto.Policy
 import com.example.executiongate.service.dto.PolicyEffect
+import com.example.executiongate.service.dto.Role
 import jakarta.validation.Valid
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -13,10 +13,9 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
-
 data class CreateRoleRequest(
     val name: String,
-    val description: String
+    val description: String,
 )
 
 data class PolicyResponse(
@@ -27,10 +26,10 @@ data class PolicyResponse(
 ) {
     companion object {
         fun fromDto(policy: Policy) = PolicyResponse(
-            id=policy.id,
-            action=policy.action,
-            effect=policy.effect,
-            resource=policy.resource,
+            id = policy.id,
+            action = policy.action,
+            effect = policy.effect,
+            resource = policy.resource,
         )
     }
 }
@@ -39,7 +38,7 @@ data class RoleResponse(
     val id: String,
     val name: String,
     val description: String,
-    val permissions: List<PolicyResponse>
+    val permissions: List<PolicyResponse>,
 ) {
     companion object {
         fun fromDto(dto: Role): RoleResponse {
@@ -47,24 +46,23 @@ data class RoleResponse(
                 id = dto.id,
                 name = dto.name,
                 description = dto.description,
-                permissions = dto.policies.map { PolicyResponse.fromDto(it) }
+                permissions = dto.policies.map { PolicyResponse.fromDto(it) },
             )
         }
     }
 }
 
 data class RolesResponse(
-    val roles: List<RoleResponse>
+    val roles: List<RoleResponse>,
 ) {
     companion object {
         fun fromRoles(roles: List<Role>): RolesResponse {
             return RolesResponse(
-                roles = roles.map { RoleResponse.fromDto(it) }
+                roles = roles.map { RoleResponse.fromDto(it) },
             )
         }
     }
 }
-
 
 fun permissionsToPermissionString(policies: Set<Policy>): String {
     return policies.map { "${it.effect}:${it.action} on ${it.resource}" }.joinToString { ";" }
@@ -92,8 +90,8 @@ class RoleController(private val roleAdapter: RoleAdapter) {
         val savedRole = roleAdapter.create(
             Role(
                 name = createRoleRequest.name,
-                description = createRoleRequest.description
-            )
+                description = createRoleRequest.description,
+            ),
         )
         return RoleResponse.fromDto(savedRole)
     }
@@ -102,5 +100,4 @@ class RoleController(private val roleAdapter: RoleAdapter) {
     fun deleteRole(id: String) {
         roleAdapter.delete(id)
     }
-
 }

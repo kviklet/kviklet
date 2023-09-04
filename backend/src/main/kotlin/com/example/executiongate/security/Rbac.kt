@@ -6,8 +6,8 @@ import org.springframework.security.core.GrantedAuthority
 import org.springframework.util.AntPathMatcher
 
 class PolicyGrantedAuthority(
-    private val policy: Policy
-): GrantedAuthority {
+    private val policy: Policy,
+) : GrantedAuthority {
 
     override fun getAuthority() = null
 

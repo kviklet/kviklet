@@ -6,9 +6,8 @@ import java.io.Serializable
 
 enum class DatasourceType(val schema: String) {
     POSTGRESQL("postgresql"),
-    MYSQL("mysql")
+    MYSQL("mysql"),
 }
-
 
 enum class AuthenticationType {
     USER_PASSWORD,
@@ -16,7 +15,7 @@ enum class AuthenticationType {
 }
 
 @JvmInline
-value class DatasourceId(private val id: String): Serializable, SecuredDomainObject {
+value class DatasourceId(private val id: String) : Serializable, SecuredDomainObject {
     override fun getId() = id
     override fun toString() = id
 }
@@ -27,14 +26,14 @@ data class Datasource(
     val type: DatasourceType,
     val hostname: String,
     val port: Int,
-    var datasourceConnections: List<DatasourceConnection>
+    var datasourceConnections: List<DatasourceConnection>,
 ) : SecuredDomainObject {
     fun getConnectionString() = "jdbc:${type.schema}://$hostname:$port/"
     override fun getId() = id.toString()
 }
 
 @JvmInline
-value class DatasourceConnectionId(private val id: String): Serializable {
+value class DatasourceConnectionId(private val id: String) : Serializable {
     override fun toString() = id
 }
 

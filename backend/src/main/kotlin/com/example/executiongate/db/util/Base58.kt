@@ -2,7 +2,6 @@ package com.example.executiongate.db.util
 
 import java.math.BigInteger
 
-
 private val BASE: BigInteger = BigInteger.valueOf(58)
 private val ALPHABET = "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ".toCharArray()
 

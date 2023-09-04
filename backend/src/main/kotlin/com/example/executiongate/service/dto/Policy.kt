@@ -11,7 +11,7 @@ data class Policy(
     val action: String, // connection:list, connection:*
     val effect: PolicyEffect,
     val resource: String, // uuid
-): Serializable {
+) : Serializable {
     companion object {
         fun create(id: String, action: String, effect: PolicyEffect, resource: String): Policy {
             return Policy(

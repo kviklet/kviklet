@@ -6,15 +6,14 @@ import com.example.executiongate.service.dto.DatasourceId
 import com.example.executiongate.service.dto.DatasourceType
 import com.querydsl.jpa.impl.JPAQuery
 import jakarta.persistence.CascadeType
-import org.apache.commons.lang3.builder.ToStringBuilder
-import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
-import org.springframework.data.jpa.repository.JpaRepository
 import jakarta.persistence.Entity
 import jakarta.persistence.EntityManager
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.OneToMany
-
+import org.apache.commons.lang3.builder.ToStringBuilder
+import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
+import org.springframework.data.jpa.repository.JpaRepository
 
 @Entity(name = "datasource")
 class DatasourceEntity(
@@ -25,7 +24,7 @@ class DatasourceEntity(
     val port: Int,
     @OneToMany(mappedBy = "datasource", cascade = [CascadeType.ALL])
     val datasourceConnections: Set<DatasourceConnectionEntity>,
-): BaseEntity() {
+) : BaseEntity() {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
         .append("id", id)
@@ -39,7 +38,7 @@ class DatasourceEntity(
             type = type,
             hostname = hostname,
             port = port,
-            datasourceConnections = emptyList()
+            datasourceConnections = emptyList(),
         )
         dto.datasourceConnections = datasourceConnections.map { it.toDto(dto) }
         return dto
@@ -54,7 +53,7 @@ interface CustomDatasourceRepository {
 
 class CustomDatasourceRepositoryImpl(
     private val entityManager: EntityManager,
-): CustomDatasourceRepository {
+) : CustomDatasourceRepository {
 
     private val qDatasourceEntity: QDatasourceEntity = QDatasourceEntity.datasourceEntity
 

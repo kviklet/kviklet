@@ -50,7 +50,7 @@ class SecurityConfig(
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http.invoke {
-            cors {  }
+            cors { }
 
             authenticationManager = ProviderManager(customAuthenticationProvider)
 
@@ -77,7 +77,7 @@ class SecurityConfig(
             }
 
             securityContext {
-                requireExplicitSave = false  // TODO: This is discouraged (see spring security 6 migration guide)
+                requireExplicitSave = false // TODO: This is discouraged (see spring security 6 migration guide)
             }
             sessionManagement {
                 sessionCreationPolicy = SessionCreationPolicy.IF_REQUIRED
@@ -124,7 +124,7 @@ class CustomAccessDeniedHandler : AccessDeniedHandler {
     override fun handle(
         request: HttpServletRequest?,
         response: HttpServletResponse?,
-        accessDeniedException: AccessDeniedException?
+        accessDeniedException: AccessDeniedException?,
     ) {
         response?.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")
     }
@@ -134,7 +134,7 @@ class CustomAuthenticationEntryPoint : AuthenticationEntryPoint {
     override fun commence(
         request: HttpServletRequest,
         response: HttpServletResponse,
-        authException: AuthenticationException
+        authException: AuthenticationException,
     ) {
         response.sendError(HttpServletResponse.SC_UNAUTHORIZED, authException.message)
     }
@@ -143,7 +143,7 @@ class CustomAuthenticationEntryPoint : AuthenticationEntryPoint {
 @Service
 class CustomAuthenticationProvider(
     val userAdapter: UserAdapter,
-    val passwordEncoder: PasswordEncoder
+    val passwordEncoder: PasswordEncoder,
 ) : AuthenticationProvider {
 
     override fun authenticate(authentication: Authentication?): Authentication? {
@@ -164,7 +164,7 @@ class CustomAuthenticationProvider(
         return UsernamePasswordAuthenticationToken(
             userDetails,
             password,
-            policies
+            policies,
         )
     }
 
@@ -175,10 +175,14 @@ class CustomAuthenticationProvider(
 
 @Component
 class OAuth2LoginSuccessHandler(
-    private val userAdapter: UserAdapter
+    private val userAdapter: UserAdapter,
 ) : SimpleUrlAuthenticationSuccessHandler() {
 
-    override fun onAuthenticationSuccess(request: HttpServletRequest?, response: HttpServletResponse?, authentication: Authentication?) {
+    override fun onAuthenticationSuccess(
+        request: HttpServletRequest?,
+        response: HttpServletResponse?,
+        authentication: Authentication?,
+    ) {
         if (authentication is OAuth2AuthenticationToken) {
             val oauth2User = authentication.principal
             val googleId = oauth2User.getAttribute<String>("sub")!!
@@ -212,7 +216,3 @@ class OAuth2LoginSuccessHandler(
         redirectStrategy.sendRedirect(request, response, "http://localhost:3000/requests")
     }
 }
-
-
-
-

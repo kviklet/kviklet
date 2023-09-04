@@ -13,7 +13,6 @@ import org.springframework.security.acls.model.MutableAclService
 import org.springframework.security.acls.model.ObjectIdentity
 import org.springframework.test.web.servlet.MockMvc
 
-
 @SpringBootTest
 @AutoConfigureMockMvc
 class AclPlayground(
@@ -30,9 +29,5 @@ class AclPlayground(
     fun test1() {
         val oi: ObjectIdentity = ObjectIdentityImpl(DatasourceConnection::class.java, 123)
         val acl: MutableAcl = mutableAclService.createAcl(oi)
-
-
-
     }
-
 }

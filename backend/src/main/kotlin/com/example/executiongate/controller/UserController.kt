@@ -8,8 +8,14 @@ import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.validation.annotation.Validated
-import org.springframework.web.bind.annotation.*
-
+import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 
 data class CreateUserRequest(
     @field:NotBlank
@@ -22,7 +28,7 @@ data class CreateUserRequest(
 
     @field:NotBlank
     @field:Size(min = 1, max = 50)
-    val fullName: String
+    val fullName: String,
 )
 
 data class EditUserRequest(
@@ -35,7 +41,7 @@ data class EditUserRequest(
     @field:Size(min = 1, max = 50)
     val permissionString: String? = null,
 
-    val roles: List<String>? = null
+    val roles: List<String>? = null,
 )
 
 data class UserResponse(
@@ -43,19 +49,19 @@ data class UserResponse(
     val email: String,
     val fullName: String?,
     val permissionString: String,
-    val roles: List<RoleResponse>
+    val roles: List<RoleResponse>,
 ) {
     constructor(user: User) : this(
         id = user.id,
         email = user.email,
         fullName = user.fullName,
         permissionString = permissionsToPermissionString(user.policies),
-        roles = user.roles.map { RoleResponse.fromDto(it) }
+        roles = user.roles.map { RoleResponse.fromDto(it) },
     )
 }
 
 data class UsersResponse(
-    val users: List<UserResponse>
+    val users: List<UserResponse>,
 ) {
     companion object {
         fun fromUsers(users: List<User>): UsersResponse {
@@ -63,7 +69,6 @@ data class UsersResponse(
         }
     }
 }
-
 
 @RestController()
 @Validated
@@ -79,7 +84,7 @@ class UserController(
         val user = User(
             email = userRequest.email,
             fullName = userRequest.fullName,
-            password = passwordEncoder.encode(userRequest.password)
+            password = passwordEncoder.encode(userRequest.password),
         )
         return UserResponse(userAdapter.createUser(user))
     }
@@ -96,7 +101,7 @@ class UserController(
         val updatedUser = user.copy(
             email = userRequest.email ?: user.email,
             fullName = userRequest.fullName ?: user.fullName,
-            roles = (userRequest.roles?.let { roleAdapter.findByIds(it)})?.toSet() ?: emptySet()
+            roles = (userRequest.roles?.let { roleAdapter.findByIds(it) })?.toSet() ?: emptySet(),
         )
         val savedUser = userAdapter.updateUser(updatedUser)
         return UserResponse(savedUser)
@@ -107,6 +112,3 @@ class UserController(
         userAdapter.deleteUser(id)
     }
 }
-
-
-

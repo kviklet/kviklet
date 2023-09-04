@@ -14,9 +14,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Role
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.AnnotationUtils
-import org.springframework.core.log.LogMessage
 import org.springframework.security.access.AccessDeniedException
-import org.springframework.security.access.expression.ExpressionUtils
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException
 import org.springframework.security.authorization.AuthorizationDecision
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
@@ -25,16 +23,13 @@ import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 import java.util.function.Supplier
 
-
 interface SecuredDomainObject {
     fun getId(): String
 }
 
-
 @Target(AnnotationTarget.FUNCTION)
 @Retention
 annotation class Policy(val policy: String)
-
 
 @Configuration
 @EnableMethodSecurity(prePostEnabled = true)
@@ -44,18 +39,18 @@ class MethodSecurityConfig {
     @Role(ROLE_INFRASTRUCTURE)
     fun authorizationManagerBeforeMethodInterception(manager: MyAuthorizationManager): Advisor {
         return AuthorizationManagerInterceptor(
-            AnnotationMatchingPointcut(null, Policy::class.java, true), manager
+            AnnotationMatchingPointcut(null, Policy::class.java, true),
+            manager,
         )
     }
 }
-
 
 @Component
 class MyAuthorizationManager {
     fun check(
         authentication: Supplier<Authentication>,
         invocation: MethodInvocation,
-        returnObject: SecuredDomainObject? = null
+        returnObject: SecuredDomainObject? = null,
     ): AuthorizationDecision {
         val policyAnnotation: Policy = AnnotationUtils.findAnnotation(invocation.method, Policy::class.java)!!
 
@@ -79,7 +74,8 @@ class AuthorizationManagerInterceptor(
     private val authentication: Supplier<Authentication> = Supplier {
         SecurityContextHolder.getContextHolderStrategy().context.authentication
             ?: throw AuthenticationCredentialsNotFoundException(
-                "An Authentication object was not found in the SecurityContext")
+                "An Authentication object was not found in the SecurityContext",
+            )
     }
 
     override fun getOrder(): Int = 500
@@ -107,7 +103,10 @@ class AuthorizationManagerInterceptor(
         }
     }
 
-    private fun <T> filterCollection(invocation: MethodInvocation, filterTarget: MutableCollection<T>): MutableCollection<T> {
+    private fun <T> filterCollection(
+        invocation: MethodInvocation,
+        filterTarget: MutableCollection<T>,
+    ): MutableCollection<T> {
         val retain: MutableList<T> = ArrayList(filterTarget.size)
         for (filterObject in filterTarget) {
             if (filterObject is SecuredDomainObject) {

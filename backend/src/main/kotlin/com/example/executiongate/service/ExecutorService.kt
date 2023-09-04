@@ -9,7 +9,6 @@ import java.util.*
 
 sealed class QueryResult
 
-
 data class RecordsQueryResult(
     val columns: List<ColumnInfo>,
     val data: List<Map<String, String>>,
@@ -65,13 +64,15 @@ class ExecutorService {
 
         val results: MutableList<Map<String, String>> = mutableListOf()
         while (resultSet.next()) {
-            results.add(columns.associate {
-                if (it.typeClass == "[B") {
-                    Pair(it.label, "0x" + HexFormat.of().formatHex(resultSet.getBytes(it.label)))
-                } else {
-                    Pair(it.label, resultSet.getString(it.label))
-                }
-            })
+            results.add(
+                columns.associate {
+                    if (it.typeClass == "[B") {
+                        Pair(it.label, "0x" + HexFormat.of().formatHex(resultSet.getBytes(it.label)))
+                    } else {
+                        Pair(it.label, resultSet.getString(it.label))
+                    }
+                },
+            )
         }
         return RecordsQueryResult(
             columns = columns,
@@ -91,5 +92,4 @@ class ExecutorService {
         dataSource.maximumPoolSize = 1
         return dataSource
     }
-
 }

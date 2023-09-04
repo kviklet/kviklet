@@ -1,10 +1,21 @@
 package com.example.executiongate.db.init
 
-import com.example.executiongate.db.*
+import com.example.executiongate.db.DatasourceConnectionEntity
+import com.example.executiongate.db.DatasourceConnectionRepository
+import com.example.executiongate.db.DatasourceEntity
+import com.example.executiongate.db.DatasourceRepository
+import com.example.executiongate.db.ExecutionRequestEntity
+import com.example.executiongate.db.ExecutionRequestRepository
+import com.example.executiongate.db.PolicyEntity
+import com.example.executiongate.db.PolicyRepository
+import com.example.executiongate.db.ReviewConfig
+import com.example.executiongate.db.RoleEntity
+import com.example.executiongate.db.RoleRepository
+import com.example.executiongate.db.UserEntity
+import com.example.executiongate.db.UserRepository
 import com.example.executiongate.service.dto.AuthenticationType
 import com.example.executiongate.service.dto.DatasourceType
 import com.example.executiongate.service.dto.PolicyEffect
-import com.example.executiongate.service.dto.ReviewStatus
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -13,13 +24,12 @@ import java.util.concurrent.ThreadLocalRandom
 
 @Configuration
 class DataInitializer(
-        private val datasourceRepository: DatasourceRepository,
-        private val datasourceConnectionRepository: DatasourceConnectionRepository,
-        private val executionRequestRepository: ExecutionRequestRepository,
-        private val roleRepository: RoleRepository,
-        private val policyRepository: PolicyRepository
+    private val datasourceRepository: DatasourceRepository,
+    private val datasourceConnectionRepository: DatasourceConnectionRepository,
+    private val executionRequestRepository: ExecutionRequestRepository,
+    private val roleRepository: RoleRepository,
+    private val policyRepository: PolicyRepository,
 ) {
-
 
     // Helper function to generate a random SQL statement
     fun randomSQL(): String {
@@ -31,38 +41,40 @@ class DataInitializer(
 
     // Helper function to generate an ExecutionRequestEntity
     fun generateExecutionRequest(
-            connection: DatasourceConnectionEntity,
-            titlePrefix: String,
-            index: Int,
-            author: UserEntity
+        connection: DatasourceConnectionEntity,
+        titlePrefix: String,
+        index: Int,
+        author: UserEntity,
     ): ExecutionRequestEntity {
         val title = "$titlePrefix Execution Request $index"
         val description = "Description of the $titlePrefix execution request $index"
         val statement = "Select * from test;"
         val readOnly = ThreadLocalRandom.current().nextBoolean()
-        val reviewStatus = if (ThreadLocalRandom.current().nextBoolean()) ReviewStatus.APPROVED else ReviewStatus.AWAITING_APPROVAL
         val executionStatus = if (ThreadLocalRandom.current().nextBoolean()) "SUCCESS" else "PENDING"
         return ExecutionRequestEntity(
-                connection = connection,
-                title = title,
-                description = description,
-                statement = statement,
-                readOnly = readOnly,
-                executionStatus = executionStatus,
-                author = author,
-                events = mutableSetOf()
+            connection = connection,
+            title = title,
+            description = description,
+            statement = statement,
+            readOnly = readOnly,
+            executionStatus = executionStatus,
+            author = author,
+            events = mutableSetOf(),
         )
     }
 
     fun generateRole(savedUser: UserEntity) {
         val role = RoleEntity(
-                name = "Test Role",
-                description = "This is a test role",
-                policies = emptySet()
+            name = "Test Role",
+            description = "This is a test role",
+            policies = emptySet(),
         )
         val savedRole = roleRepository.saveAndFlush(role)
         val policyEntity = PolicyEntity(
-            role = savedRole, action = "*", effect = PolicyEffect.ALLOW, resource = "*"
+            role = savedRole,
+            action = "*",
+            effect = PolicyEffect.ALLOW,
+            resource = "*",
         )
         val savedPolicy = policyRepository.saveAndFlush(policyEntity)
 
@@ -78,20 +90,20 @@ class DataInitializer(
             }
 
             val user = UserEntity(
-                    email = "testUser@example.com",
-                    fullName = "Admin User",
-                    password = passwordEncoder.encode("testPassword")
+                email = "testUser@example.com",
+                fullName = "Admin User",
+                password = passwordEncoder.encode("testPassword"),
             )
 
             val savedUser = userRepository.saveAndFlush(user)
 
             // Create a datasource
             val datasource1 = DatasourceEntity(
-                    displayName = "Test Datasource",
-                    type = DatasourceType.POSTGRESQL,
-                    hostname = "localhost",
-                    port = 5432,
-                    datasourceConnections = emptySet()
+                displayName = "Test Datasource",
+                type = DatasourceType.POSTGRESQL,
+                hostname = "localhost",
+                port = 5432,
+                datasourceConnections = emptySet(),
             )
 
             // Save the datasource
@@ -99,13 +111,13 @@ class DataInitializer(
 
             // Create connections linked to the saved datasource
             val connection1 = DatasourceConnectionEntity(
-                    datasource = savedDatasource1,
-                    displayName = "Test Connection",
-                    authenticationType = AuthenticationType.USER_PASSWORD,
-                    description = "This is a localhost connection",
-                    username = "postgres",
-                    password = "postgres",
-                    reviewConfig = ReviewConfig(numTotalRequired = 1)
+                datasource = savedDatasource1,
+                displayName = "Test Connection",
+                authenticationType = AuthenticationType.USER_PASSWORD,
+                description = "This is a localhost connection",
+                username = "postgres",
+                password = "postgres",
+                reviewConfig = ReviewConfig(numTotalRequired = 1),
             )
 
             // Save the connection

@@ -1,16 +1,16 @@
 package com.example.executiongate.security
 
 import io.swagger.v3.oas.annotations.media.Schema
-import org.springframework.beans.factory.annotation.Autowired
+import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
-import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
-import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken
-import org.springframework.web.bind.annotation.*
-import jakarta.servlet.http.HttpServletRequest
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RestController
 import javax.naming.AuthenticationException
 
 @RestController
@@ -52,7 +52,6 @@ class Oauth2Controller {
             return authentication.principal.attributes
         }
         return mapOf("error" to "Unexpected authentication type: ${authentication.javaClass}")
-
     }
 }
 
@@ -60,6 +59,5 @@ data class LoginCredentials(
     @Schema(example = "testUser@example.com")
     val email: String,
     @Schema(example = "testPassword")
-    val password: String
+    val password: String,
 )
-
