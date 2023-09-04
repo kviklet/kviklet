@@ -197,6 +197,8 @@ function RequestReview() {
                 {executionError.errorCode}: {executionError.message}
               </div>
             )}
+
+            <div className="w-full border-b dark:border-slate-700 border-slate-300 mt-3"></div>
             <div className="mt-6">
               <span>Activity</span>
             </div>
@@ -323,7 +325,6 @@ function RequestBox({
           Run Query
         </Button>
       </div>
-      <div className="w-full border-b dark:border-slate-700 border-slate-300 mt-3"></div>
     </div>
   );
 }

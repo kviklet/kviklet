@@ -1,7 +1,4 @@
-import React, { useState, useEffect } from "react";
-import { StatusResponse, checklogin } from "../api/StatusApi";
-import { useLocation } from "react-router-dom";
-import { Theme } from "react-data-table-component";
+import React, { useState } from "react";
 
 type ThemeContext = {
   currentTheme: "dark" | "light";

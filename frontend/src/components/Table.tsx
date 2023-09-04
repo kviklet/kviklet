@@ -1,48 +1,139 @@
-import { useContext } from "react";
-import { SelectExecuteResponse } from "../api/ExecutionRequestApi";
-import DataTable, { createTheme } from "react-data-table-component";
-import { ThemeContext, ThemeStatusContext } from "./ThemeStatusProvider";
+import { useContext, useReducer, useState } from "react";
+import { Column, SelectExecuteResponse } from "../api/ExecutionRequestApi";
 
-createTheme(
-  "myDarkTheme",
+import {
+  createColumnHelper,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+
+type Person = {
+  firstName: string;
+  lastName: string;
+  age: number;
+  visits: number;
+  status: string;
+  progress: number;
+};
+
+const defaultData: Person[] = [
   {
-    text: {
-      primary: "slate-50",
-      secondary: "slate-50",
-    },
-    background: {
-      default: "#002b36",
-    },
-    context: {
-      background: "#cb4b16",
-      text: "#FFFFFF",
-    },
-    divider: {
-      default: "#073642",
-    },
-    action: {
-      button: "rgba(0,0,0,.54)",
-      hover: "rgba(0,0,0,.08)",
-      disabled: "rgba(0,0,0,.12)",
-    },
+    firstName: "tanner",
+    lastName: "linsley",
+    age: 24,
+    visits: 100,
+    status: "In Relationship",
+    progress: 50,
   },
-  "dark"
-);
+  {
+    firstName: "tandy",
+    lastName: "miller",
+    age: 40,
+    visits: 40,
+    status: "Single",
+    progress: 80,
+  },
+  {
+    firstName: "joe",
+    lastName: "dirte",
+    age: 45,
+    visits: 20,
+    status: "Complicated",
+    progress: 10,
+  },
+];
+
+const columnHelper = createColumnHelper<Person>();
+
+const columns = [
+  columnHelper.accessor("firstName", {
+    cell: (info) => info.getValue(),
+    footer: (info) => info.column.id,
+  }),
+  columnHelper.accessor((row) => row.lastName, {
+    id: "lastName",
+    cell: (info) => <i>{info.getValue()}</i>,
+    header: () => <span>Last Name</span>,
+    footer: (info) => info.column.id,
+  }),
+  columnHelper.accessor("age", {
+    header: () => "Age",
+    cell: (info) => info.renderValue(),
+    footer: (info) => info.column.id,
+  }),
+  columnHelper.accessor("visits", {
+    header: () => <span>Visits</span>,
+    footer: (info) => info.column.id,
+  }),
+  columnHelper.accessor("status", {
+    header: "Status",
+    footer: (info) => info.column.id,
+  }),
+  columnHelper.accessor("progress", {
+    header: "Profile Progress",
+    footer: (info) => info.column.id,
+  }),
+];
 
 const Table: React.FC<{ data: SelectExecuteResponse }> = ({ data }) => {
-  const { currentTheme } = useContext<ThemeContext>(ThemeStatusContext);
+  const [bla, setBla] = useState(() => [...defaultData]);
+  const rerender = useReducer(() => ({}), {})[1];
+
+  const columns = data.columns.map((column) => {
+    return columnHelper.accessor(column.label as any, {
+      header: column.label,
+    });
+  });
+
+  const table = useReactTable({
+    data: data.data,
+    columns: columns as any,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
   return (
-    <DataTable
-      columns={data.columns.map((column) => ({
-        name: column.label,
-        selector: (row: any) => row[column.label],
-        sortable: true,
-      }))}
-      theme={currentTheme === "light" ? "light" : "myDarkTheme"}
-      data={data.data.map((row, index) => ({ ...row, id: index }))}
-      pagination
-      dense
-    />
+    <div className="px-2 max-h-screen overflow-y-scroll block font-thin max-w-full border rounded border-slate-300 shadow-md dark:shadow-none dark:border-slate-700 my-4">
+      <table className="w-full text-left">
+        <thead className="sticky z-10 top-0 text-sm leading-6 font-semibold dark:bg-slate-950 bg-slate-50 w-full">
+          {table.getHeaderGroups().map((headerGroup) => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
+                <th
+                  className="border-b dark:border-slate-800 border-slate-200 py-2 pr-2 text-sx text-slate-700 dark:text-slate-200"
+                  key={header.id}
+                >
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                </th>
+              ))}
+            </tr>
+          ))}
+        </thead>
+        <tbody className="w-full">
+          {table.getRowModel().rows.map((row) => (
+            <tr
+              key={row.id}
+              className="hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+            >
+              {row.getVisibleCells().map((cell) => (
+                <td
+                  className="border-b dark:border-slate-800 border-slate-200
+                  py-2 pr-2 text-sx text-slate-700 dark:text-slate-200 whitespace-pre"
+                  key={cell.id}
+                >
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 };
 

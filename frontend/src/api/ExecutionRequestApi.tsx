@@ -189,15 +189,15 @@ const UpdateExecuteResponseSchema = withType(
   "update"
 );
 
+const ColumnSchema = z.object({
+  label: z.string(),
+  typeName: z.string(),
+  typeClass: z.string(),
+});
+
 const SelectExecuteResponseSchema = withType(
   z.object({
-    columns: z.array(
-      z.object({
-        label: z.string(),
-        typeName: z.string(),
-        typeClass: z.string(),
-      })
-    ),
+    columns: z.array(ColumnSchema),
     data: z.array(z.record(z.string())),
   }),
   "select"
@@ -221,6 +221,7 @@ type ExecuteResponse = z.infer<typeof ExecuteResponseSchema>;
 type UpdateExecuteResponse = z.infer<typeof UpdateExecuteResponseSchema>;
 type SelectExecuteResponse = z.infer<typeof SelectExecuteResponseSchema>;
 type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
+type Column = z.infer<typeof ColumnSchema>;
 
 const runQuery = async (id: string): Promise<ExecuteResponse> => {
   const response = await fetch(requestUrl + id + "/execute", {
@@ -251,4 +252,5 @@ export type {
   SelectExecuteResponse,
   ErrorResponse,
   Event,
+  Column,
 };

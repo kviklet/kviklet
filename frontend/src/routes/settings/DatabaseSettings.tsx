@@ -334,7 +334,7 @@ const DatabaseChooser = (props: {
   return (
     <div className="border-slate-200 bg-slate-50 mx-2 px-4 dark:bg-slate-950 dark:border-none rounded-md">
       <div className="border-b-slate-300 dark:border-b-slate-700 border-b">
-        <div className="text-center max-h-96 w-72 overflow-y-scroll scrollbar-thin scrollbar-track-slate-100 scrollbar-thumb-slate-300 scrollbar-thumb-rounded">
+        <div className="text-center max-h-96 w-72 overflow-y-scroll pr-4">
           {props.databases.map((database, index) => (
             <div
               className={`flex items-center rounded-md mb-3 transition-colors px-3 cursor-pointer ${
