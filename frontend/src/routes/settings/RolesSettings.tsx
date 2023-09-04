@@ -59,7 +59,7 @@ const permissionsToText = (permissions: PermissionResponse[]) => {
 };
 
 const connectionPermissionsToText = (permissions: PermissionResponse) => {
-  return `${permissions.scope}: ${permissions.permissions.join(", ")}`;
+  return `${permissions.effect}:${permissions.action}:${permissions.resource}`;
 };
 
 const useRoles = (): {
@@ -241,31 +241,12 @@ function EditRoleForm(props: {
   };
 
   const removePermission = (connectionId: string, permission: string) => {
-    const newPermissions = permissions.map((permissionEntry) => {
-      if (permissionEntry.scope === connectionId) {
-        return {
-          scope: permissionEntry.scope,
-          permissions: permissionEntry.permissions.filter(
-            (p) => p !== permission
-          ),
-        };
-      }
-      return permissionEntry;
-    });
+    const newPermissions = permissions.filter((p) => p.id !== permission);
     setPermissions(newPermissions);
   };
 
   const addPermission = (connectionId: string, permission: string) => {
-    const newPermissions = permissions.map((permissionEntry) => {
-      if (permissionEntry.scope === connectionId) {
-        return {
-          scope: permissionEntry.scope,
-          permissions: [...permissionEntry.permissions, permission],
-        };
-      }
-      return permissionEntry;
-    });
-    setPermissions(newPermissions);
+    //todo
   };
 
   return (
@@ -295,18 +276,16 @@ function EditRoleForm(props: {
           <div className="text-gray-400 text-sm mb-2">Permissions</div>
         </div>
         {permissions.map((permissionEntry, index) => (
-          <div key={permissionEntry.scope} className="flex flex-col mb-3">
-            <div>{permissionEntry.scope}</div>
+          <div key={permissionEntry.resource} className="flex flex-col mb-3">
+            <div>{permissionEntry.resource}</div>
             <div className="text-gray-400 text-sm">
-              {permissionEntry.permissions.map((permission) => (
-                <ColorfulLabel
-                  text={permission}
-                  color={mapActionToColor(permission)}
-                  onDelete={() =>
-                    removePermission(permissionEntry.scope, permission)
-                  }
-                ></ColorfulLabel>
-              ))}
+              <ColorfulLabel
+                text={permissionEntry.action}
+                color={mapActionToColor(permissionEntry.action)}
+                onDelete={() =>
+                  removePermission(permissionEntry.resource, permissionEntry.id)
+                }
+              ></ColorfulLabel>
             </div>
           </div>
         ))}
