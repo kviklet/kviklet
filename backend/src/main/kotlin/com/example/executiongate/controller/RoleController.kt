@@ -3,6 +3,7 @@ package com.example.executiongate.controller
 import com.example.executiongate.db.RoleAdapter
 import com.example.executiongate.service.dto.Role
 import com.example.executiongate.service.dto.Policy
+import com.example.executiongate.service.dto.PolicyEffect
 import jakarta.validation.Valid
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -21,7 +22,7 @@ data class CreateRoleRequest(
 data class PolicyResponse(
     val id: String,
     val action: String,
-    val effect: String,
+    val effect: PolicyEffect,
     val resource: String,
 ) {
     companion object {

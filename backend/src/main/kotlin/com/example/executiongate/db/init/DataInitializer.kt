@@ -3,7 +3,7 @@ package com.example.executiongate.db.init
 import com.example.executiongate.db.*
 import com.example.executiongate.service.dto.AuthenticationType
 import com.example.executiongate.service.dto.DatasourceType
-import com.example.executiongate.service.dto.Policy
+import com.example.executiongate.service.dto.PolicyEffect
 import com.example.executiongate.service.dto.ReviewStatus
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Bean
@@ -54,16 +54,19 @@ class DataInitializer(
         )
     }
 
-    fun generateRole() {
+    fun generateRole(savedUser: UserEntity) {
         val role = RoleEntity(
                 name = "Test Role",
                 description = "This is a test role",
                 policies = emptySet()
         )
         val savedRole = roleRepository.saveAndFlush(role)
-        val policies = emptySet<PolicyEntity>()
-        savedRole.policies = policies
-        roleRepository.saveAndFlush(savedRole)
+        val policyEntity = PolicyEntity(
+            role = savedRole, action = "*", effect = PolicyEffect.ALLOW, resource = "*"
+        )
+        val savedPolicy = policyRepository.saveAndFlush(policyEntity)
+
+        savedUser.roles += savedRole
     }
 
     @Bean
@@ -111,8 +114,9 @@ class DataInitializer(
             val request1 = generateExecutionRequest(savedConnection1, "First", 1, savedUser)
 
             executionRequestRepository.save(request1)
-            generateRole()
 
+            generateRole(savedUser)
+            userRepository.saveAndFlush(savedUser)
         }
     }
 }

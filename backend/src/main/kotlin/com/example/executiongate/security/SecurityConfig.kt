@@ -2,45 +2,28 @@ package com.example.executiongate.security
 
 import com.example.executiongate.db.User
 import com.example.executiongate.db.UserAdapter
-import org.springframework.cache.CacheManager
-import org.springframework.cache.concurrent.ConcurrentMapCache
-import org.springframework.cache.jcache.JCacheCacheManager
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpStatus
-import org.springframework.security.access.AccessDecisionManager
-import org.springframework.security.access.AccessDecisionVoter
-import org.springframework.security.access.AccessDecisionVoter.ACCESS_GRANTED
 import org.springframework.security.access.AccessDeniedException
-import org.springframework.security.access.ConfigAttribute
-import org.springframework.security.access.vote.AuthenticatedVoter
-import org.springframework.security.access.vote.RoleVoter
-import org.springframework.security.access.vote.UnanimousBased
-import org.springframework.security.acls.domain.AclAuthorizationStrategy
-import org.springframework.security.acls.domain.AclAuthorizationStrategyImpl
-import org.springframework.security.acls.domain.ConsoleAuditLogger
-import org.springframework.security.acls.domain.DefaultPermissionGrantingStrategy
-import org.springframework.security.acls.domain.SpringCacheBasedAclCache
-import org.springframework.security.acls.jdbc.BasicLookupStrategy
-import org.springframework.security.acls.jdbc.JdbcMutableAclService
-import org.springframework.security.acls.jdbc.LookupStrategy
-import org.springframework.security.acls.model.PermissionGrantingStrategy
 import org.springframework.security.authentication.AuthenticationProvider
 import org.springframework.security.authentication.BadCredentialsException
+import org.springframework.security.authentication.ProviderManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
+import org.springframework.security.config.annotation.web.invoke
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.AuthenticationException
-import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken
 import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
-import org.springframework.security.web.access.expression.WebExpressionVoter
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher
 import org.springframework.stereotype.Component
@@ -48,14 +31,6 @@ import org.springframework.stereotype.Service
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
-import java.util.*
-import jakarta.servlet.http.HttpServletRequest
-import jakarta.servlet.http.HttpServletResponse
-import org.springframework.security.authentication.ProviderManager
-import org.springframework.security.config.Customizer
-import org.springframework.security.config.annotation.web.invoke
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMatcher
-import org.springframework.security.web.util.matcher.RequestMatcher
 
 @Configuration
 class PasswordEncoderConfig {
@@ -87,7 +62,6 @@ class SecurityConfig(
             }
 
             authorizeHttpRequests {
-
                 authorize("/login**", permitAll)
                 authorize("/oauth2**", permitAll)
                 authorize("/v3/api-docs/**", permitAll)
@@ -95,12 +69,15 @@ class SecurityConfig(
                 authorize("/swagger-resources/**", permitAll)
                 authorize("/webjars**", permitAll)
                 authorize("/docs/redoc.html", permitAll)
+                authorize("/h2-console", permitAll)
+                authorize("/h2-console/**", permitAll)
+                authorize("/error", permitAll)
 
                 authorize(anyRequest, authenticated)
             }
 
             securityContext {
-                requireExplicitSave = false
+                requireExplicitSave = false  // TODO: This is discouraged (see spring security 6 migration guide)
             }
             sessionManagement {
                 sessionCreationPolicy = SessionCreationPolicy.IF_REQUIRED
@@ -118,7 +95,10 @@ class SecurityConfig(
                 disable()
             }
             headers {
-                frameOptions {  }
+                frameOptions {
+                    sameOrigin = true // for h2 console
+                    deny = false
+                }
             }
         }
 
@@ -161,8 +141,11 @@ class CustomAuthenticationEntryPoint : AuthenticationEntryPoint {
 }
 
 @Service
-class CustomAuthenticationProvider(val userAdapter: UserAdapter, val passwordEncoder: PasswordEncoder) :
-    AuthenticationProvider {
+class CustomAuthenticationProvider(
+    val userAdapter: UserAdapter,
+    val passwordEncoder: PasswordEncoder
+) : AuthenticationProvider {
+
     override fun authenticate(authentication: Authentication?): Authentication? {
         val email = authentication?.name!!
         val password = authentication.credentials.toString()
@@ -176,10 +159,12 @@ class CustomAuthenticationProvider(val userAdapter: UserAdapter, val passwordEnc
         // Create a CustomUserDetails object
         val userDetails = UserDetailsWithId(user.id, email, user.password, emptyList())
 
+        val policies = user.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
+
         return UsernamePasswordAuthenticationToken(
             userDetails,
             password,
-            ArrayList() // Use actual authorities if you have any
+            policies
         )
     }
 
@@ -224,18 +209,7 @@ class OAuth2LoginSuccessHandler(
             userAdapter.createOrUpdateUser(user)
         }
 
-        getRedirectStrategy().sendRedirect(request, response, "http://localhost:3000/requests")
-    }
-}
-
-class MyVoter(): AccessDecisionVoter<Any> {
-    override fun supports(attribute: ConfigAttribute?) = true
-
-    override fun supports(clazz: Class<*>?)= true
-
-    override fun vote(authentication: Authentication, obj: Any, attributes: MutableCollection<ConfigAttribute>): Int {
-        println(authentication)
-        return ACCESS_GRANTED
+        redirectStrategy.sendRedirect(request, response, "http://localhost:3000/requests")
     }
 }
 

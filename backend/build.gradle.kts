@@ -1,5 +1,4 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.springframework.boot.gradle.tasks.bundling.BootBuildImage
 import org.springframework.boot.gradle.tasks.run.BootRun
 
 plugins {
@@ -9,8 +8,6 @@ plugins {
 	kotlin("plugin.spring") version "1.9.0"
 	kotlin("plugin.jpa") version "1.9.0"
     kotlin("kapt") version "1.9.0" // needed for query-dsl
-
-	//id("org.springframework.experimental.aot") version "0.12.1"
 
 }
 
@@ -55,8 +52,6 @@ dependencies {
 	implementation("org.springframework.security:spring-security-acl")
 	implementation("org.springframework.security:spring-security-config")
 	implementation("org.springframework:spring-context-support")
-	//implementation("net.sf.ehcache:ehcache-core:2.6.11")
-
 
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
@@ -86,7 +81,6 @@ dependencies {
 	//annotationProcessor("com.querydsl:querydsl-apt:${queryDslVersion}:jakarta")
 	annotationProcessor("jakarta.persistence:jakarta.persistence-api:3.1.0")
     kapt("com.querydsl:querydsl-apt:$queryDslVersion:jakarta")
-
 
 	//implementation(group="com.querydsl", name="querydsl-jpa", version=queryDslVersion, classifier="jakarta")
     //kapt("com.querydsl:querydsl-apt:${queryDslVersion}:jpa")

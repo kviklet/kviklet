@@ -25,7 +25,7 @@ import org.hibernate.annotations.ColumnTransformer
 
 
 data class ReviewConfig(
-        val numTotalRequired: Int,
+    val numTotalRequired: Int,
 )
 
 
