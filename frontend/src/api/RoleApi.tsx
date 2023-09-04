@@ -2,8 +2,10 @@ import { z } from "zod";
 import baseUrl from "./base";
 
 const permissionResponseSchema = z.object({
-  scope: z.string(),
-  permissions: z.array(z.string()),
+  id: z.string(),
+  action: z.string(),
+  effect: z.string(),
+  resource: z.string(),
 });
 
 // Define the schema for the user response
