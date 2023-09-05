@@ -179,7 +179,9 @@ function RequestReview() {
               runQuery={execute}
               updateRequest={updateRequest}
             ></RequestBox>
-            {data && <Table data={data}></Table>}
+            <div className="flex justify-center">
+              {data && <Table data={data}></Table>}
+            </div>
             {updatedRows && (
               <div className="text-slate-500">{updatedRows} rows updated</div>
             )}

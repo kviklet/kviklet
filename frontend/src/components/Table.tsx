@@ -77,14 +77,12 @@ const columns = [
 ];
 
 const Table: React.FC<{ data: SelectExecuteResponse }> = ({ data }) => {
-  const [bla, setBla] = useState(() => [...defaultData]);
-  const rerender = useReducer(() => ({}), {})[1];
-
   const columns = data.columns.map((column) => {
     return columnHelper.accessor(column.label as any, {
       header: column.label,
     });
   });
+  const [selected, setSelected] = useState<boolean>(false);
 
   const table = useReactTable({
     data: data.data,
@@ -93,9 +91,16 @@ const Table: React.FC<{ data: SelectExecuteResponse }> = ({ data }) => {
   });
 
   return (
-    <div className="px-2 max-h-screen overflow-y-scroll block font-thin max-w-full border rounded border-slate-300 shadow-md dark:shadow-none dark:border-slate-700 my-4">
-      <table className="w-full text-left">
-        <thead className="sticky z-10 top-0 text-sm leading-6 font-semibold dark:bg-slate-950 bg-slate-50 w-full border-b border-slate-200 dark:border-slate-800">
+    <div
+      className={`px-2 h-[calc(100vh-theme(spacing.16))] overflow-y-scroll block font-thin ${
+        selected ? "w-screen" : "w-full"
+      } transition-width border shrink-0 rounded border-slate-300 shadow-md dark:shadow-none dark:border-slate-700 my-4`}
+    >
+      <table className="text-left w-full">
+        <thead
+          className="sticky z-10 top-0 text-sm leading-6 font-semibold dark:bg-slate-950 dark:hover:bg-slate-900 hover:bg-slate-100 bg-slate-50 w-full border-b border-slate-200 dark:border-slate-800 transition-colors cursor-pointer"
+          onClick={() => setSelected(!selected)}
+        >
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
