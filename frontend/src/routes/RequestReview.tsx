@@ -1,11 +1,6 @@
 import { useContext, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import {
-  vs,
-  duotoneDark,
-  materialDark,
-} from "react-syntax-highlighter/dist/esm/styles/prism";
+import SyntaxHighlighter from "react-syntax-highlighter";
 import ReactMarkdown from "react-markdown";
 import {
   ExecutionRequestResponseWithComments,
@@ -21,15 +16,11 @@ import {
 } from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
 import { mapStatus, mapStatusToColor, timeSince } from "./Requests";
-import { UserResponse } from "../api/UserApi";
 import { UserStatusContext } from "../components/UserStatusProvider";
 import Table from "../components/Table";
 import {
-  nightOwl,
-  paraisoDark,
-  tomorrow,
-  tomorrowNight,
-  tomorrowNightBlue,
+  a11yDark,
+  a11yLight,
 } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import {
   ThemeContext,
@@ -43,19 +34,19 @@ interface RequestReviewParams {
 
 const Highlighter = (props: { children: string }) => {
   const { currentTheme } = useContext<ThemeContext>(ThemeStatusContext);
-  const style = currentTheme === "dark" ? nightOwl : tomorrow;
+  const style = currentTheme === "dark" ? a11yDark : a11yLight;
 
   return (
     <SyntaxHighlighter
-      showLineNumbers={false}
       style={style}
       language="sql"
-      PreTag="div"
-      children={String(props.children).replace(/\n$/, "")}
       customStyle={{
         background: "transparent",
       }}
-    />
+      PreTag={"div"}
+    >
+      {props.children}
+    </SyntaxHighlighter>
   );
 };
 
@@ -254,8 +245,6 @@ function RequestBox({
   useEffect(() => {
     setStatement(request?.statement || "");
   }, [request?.statement]);
-
-  const style = localStorage.theme === "dark" ? tomorrowNight : tomorrowNight;
 
   return (
     <div>
