@@ -8,10 +8,7 @@ import java.util.UUID
 
 class IdGenerator : IdentifierGenerator {
 
-    override fun generate(
-        sharedSessionContractImplementor: SharedSessionContractImplementor,
-        obj: Any,
-    ): Serializable {
+    override fun generate(sharedSessionContractImplementor: SharedSessionContractImplementor, obj: Any): Serializable {
         val uuid = UUID.randomUUID()
         val bb: ByteBuffer = ByteBuffer.allocate(16)
         bb.putLong(uuid.mostSignificantBits)
@@ -20,6 +17,6 @@ class IdGenerator : IdentifierGenerator {
     }
 
     companion object {
-        const val generatorName = "myGenerator"
+        const val GENERATOR_NAME = "myGenerator"
     }
 }

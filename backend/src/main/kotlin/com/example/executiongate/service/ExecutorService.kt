@@ -5,7 +5,7 @@ import org.springframework.boot.jdbc.DataSourceBuilder
 import org.springframework.stereotype.Service
 import java.sql.SQLException
 import java.sql.Statement
-import java.util.*
+import java.util.HexFormat
 
 sealed class QueryResult
 
@@ -25,8 +25,10 @@ data class ErrorQueryResult(
 
 data class ColumnInfo(
     val label: String,
-    val typeName: String, // "int4", "text", "timestamptz"
-    val typeClass: String, // "java.lang.Integer", "java.lang.String", "java.sql.Timestamp"
+    // "int4", "text", "timestamptz"
+    val typeName: String,
+    // "java.lang.Integer", "java.lang.String", "java.sql.Timestamp"
+    val typeClass: String,
 )
 
 @Service

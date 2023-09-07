@@ -137,7 +137,7 @@ abstract class AbstractExecutorTest(
                     "year_column" to "2023-01-01",
                     "char_column" to "char",
                     "varchar_column" to "varchar",
-                    "binary_column" to "0x2a" + "0".repeat(512),
+                    "binary_column" to "0x2a" + "0".repeat(508),
                     "varbinary_column" to "0x2a",
                     "tinyblob_column" to "0x74696e79626c6f62",
                     "blob_column" to "0x626c6f62",

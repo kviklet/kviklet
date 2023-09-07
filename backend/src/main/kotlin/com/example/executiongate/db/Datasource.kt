@@ -14,6 +14,7 @@ import jakarta.persistence.OneToMany
 import org.apache.commons.lang3.builder.ToStringBuilder
 import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.stereotype.Service
 
 @Entity(name = "datasource")
 class DatasourceEntity(
@@ -31,18 +32,14 @@ class DatasourceEntity(
         .append("displayName", displayName)
         .toString()
 
-    fun toDto(): Datasource {
-        val dto = Datasource(
-            id = DatasourceId(id),
-            displayName = displayName,
-            type = type,
-            hostname = hostname,
-            port = port,
-            datasourceConnections = emptyList(),
-        )
-        dto.datasourceConnections = datasourceConnections.map { it.toDto(dto) }
-        return dto
-    }
+    fun toDto(): Datasource = Datasource(
+        id = DatasourceId(id),
+        displayName = displayName,
+        type = type,
+        hostname = hostname,
+        port = port,
+//        datasourceConnections = emptyList(),
+    )
 }
 
 interface DatasourceRepository : JpaRepository<DatasourceEntity, String>, CustomDatasourceRepository
@@ -63,5 +60,36 @@ class CustomDatasourceRepositoryImpl(
             .fetchJoin()
             .fetch()
             .toSet()
+    }
+}
+
+@Service
+class DatasourceAdapter(
+    val datasourceRepository: DatasourceRepository,
+) {
+    fun findAllDatasources(): List<Datasource> = datasourceRepository.findAll().map { it.toDto() }
+
+    fun createDatasource(
+        displayName: String,
+        datasourceType: DatasourceType,
+        hostname: String,
+        port: Int,
+    ): Datasource {
+        return datasourceRepository.save(
+            DatasourceEntity(
+                displayName = displayName,
+                type = datasourceType,
+                hostname = hostname,
+                port = port,
+                datasourceConnections = emptySet(),
+            ),
+        ).toDto()
+    }
+
+    fun getDatasource(datasourceId: DatasourceId): Datasource =
+        datasourceRepository.getReferenceById(datasourceId.toString()).toDto()
+
+    fun deleteDatasource(datasourceId: DatasourceId) {
+        datasourceRepository.deleteById(datasourceId.toString())
     }
 }

@@ -7,12 +7,14 @@ import com.example.executiongate.service.dto.AuthenticationType
 import com.example.executiongate.service.dto.Datasource
 import com.example.executiongate.service.dto.DatasourceConnection
 import com.example.executiongate.service.dto.DatasourceConnectionId
+import com.example.executiongate.service.dto.DatasourceId
 import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
 import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
+import jakarta.persistence.FetchType
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
@@ -29,7 +31,7 @@ data class ReviewConfig(
 
 @Entity(name = "datasource_connection")
 class DatasourceConnectionEntity(
-    @ManyToOne(cascade = [CascadeType.ALL])
+    @ManyToOne(cascade = [CascadeType.ALL], fetch = FetchType.EAGER)
     @JoinColumn(name = "datasource_id")
     val datasource: DatasourceEntity,
     var displayName: String,
@@ -68,6 +70,7 @@ interface DatasourceConnectionRepository : JpaRepository<DatasourceConnectionEnt
 
 @Service
 class DatasourceConnectionAdapter(
+    val datasourceRepository: DatasourceRepository,
     val datasourceConnectionRepository: DatasourceConnectionRepository,
 ) {
 
@@ -77,6 +80,29 @@ class DatasourceConnectionAdapter(
                 "Datasource Connection Not Found",
                 "Datasource Connection with id $id does not exist.",
             )
+
+    fun createDatasourceConnection(
+        datasourceId: DatasourceId,
+        displayName: String,
+        authenticationType: AuthenticationType,
+        username: String,
+        password: String,
+        description: String,
+        reviewConfig: ReviewConfig,
+    ): DatasourceConnection {
+        return datasourceConnectionRepository.save(
+            DatasourceConnectionEntity(
+                datasource = datasourceRepository.getReferenceById(datasourceId.toString()),
+                displayName = displayName,
+                authenticationType = authenticationType,
+                username = username,
+                password = password,
+                description = description,
+                reviewConfig = reviewConfig,
+                executionRequests = emptySet(),
+            ),
+        ).toDto()
+    }
 
     fun updateDatasourceConnection(
         id: DatasourceConnectionId,
@@ -98,5 +124,18 @@ class DatasourceConnectionAdapter(
         datasourceConnection.reviewConfig = reviewConfig
 
         return datasourceConnectionRepository.save(datasourceConnection).toDto()
+    }
+
+    fun deleteDatasourceConnection(id: DatasourceConnectionId) {
+        val datasourceConnection = datasourceConnectionRepository.findByIdOrNull(id.toString())
+            ?: throw EntityNotFound(
+                "Datasource Connection Not Found",
+                "Datasource Connection with id $id does not exist.",
+            )
+        datasourceConnectionRepository.delete(datasourceConnection)
+    }
+
+    fun listDatasourceConnections(): List<DatasourceConnection> {
+        return datasourceConnectionRepository.findAll().map { it.toDto() }
     }
 }

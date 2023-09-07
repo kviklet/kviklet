@@ -41,5 +41,7 @@ class PolicyGrantedAuthority(
 }
 
 enum class VoteResult {
-    ALLOW, DENY, ABSTAIN
+    ALLOW,
+    DENY,
+    ABSTAIN,
 }
