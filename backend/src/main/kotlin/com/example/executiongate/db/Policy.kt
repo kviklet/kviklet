@@ -19,19 +19,20 @@ class PolicyEntity(
     @ManyToOne(cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id", nullable = false)
     val role: RoleEntity,
-    val action: String, // "connection:read", "connection:*", ...
+    // "connection:read", "connection:*", ...
+    val action: String,
     @Enumerated(EnumType.STRING)
-    val effect: PolicyEffect, // allow/deny
-    val resource: String, // ids: *   ids: 1,2,3   tags: foo, bar
+    val effect: PolicyEffect,
+    // ids: *   ids: 1,2,3
+    val resource: String,
     // TODO: conditions
 ) : BaseEntity() {
-    fun toDto() =
-        Policy(
-            id = id,
-            action = action,
-            effect = effect,
-            resource = resource,
-        )
+    fun toDto() = Policy(
+        id = id,
+        action = action,
+        effect = effect,
+        resource = resource,
+    )
 }
 
 interface PolicyRepository : JpaRepository<PolicyEntity, String>

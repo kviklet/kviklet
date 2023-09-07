@@ -58,8 +58,7 @@ class ExecutionRequestService(
     fun list(): List<ExecutionRequestDetails> = executionRequestAdapter.listExecutionRequests()
 
     @Transactional
-    fun get(id: ExecutionRequestId): ExecutionRequestDetails =
-        executionRequestAdapter.getExecutionRequestDetails(id)
+    fun get(id: ExecutionRequestId): ExecutionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
 
     @Transactional
     fun createReview(id: ExecutionRequestId, request: CreateReviewRequest, authorId: String) = saveEvent(
@@ -75,20 +74,13 @@ class ExecutionRequestService(
         CommentPayload(comment = request.comment),
     )
 
-    private fun saveEvent(
-        id: ExecutionRequestId,
-        authorId: String,
-        payload: Payload,
-    ): Event {
+    private fun saveEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Event {
         val (executionRequest, event) = executionRequestAdapter.addEvent(id, authorId, payload)
 
         return event
     }
 
-    fun resolveReviewStatus(
-        events: Set<Event>,
-        reviewConfig: ReviewConfig,
-    ): ReviewStatus {
+    fun resolveReviewStatus(events: Set<Event>, reviewConfig: ReviewConfig): ReviewStatus {
         val numReviews = events.filter {
             it.type == EventType.REVIEW && it is ReviewEvent && it.action == ReviewAction.APPROVE
         }.groupBy { it.author.id }.count()

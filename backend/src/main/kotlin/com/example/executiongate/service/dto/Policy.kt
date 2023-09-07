@@ -3,14 +3,17 @@ package com.example.executiongate.service.dto
 import java.io.Serializable
 
 enum class PolicyEffect {
-    ALLOW, DENY
+    ALLOW,
+    DENY,
 }
 
 data class Policy(
     val id: String,
-    val action: String, // connection:list, connection:*
+    // connection:list, connection:*
+    val action: String,
     val effect: PolicyEffect,
-    val resource: String, // uuid
+    // uuid
+    val resource: String,
 ) : Serializable {
     companion object {
         fun create(id: String, action: String, effect: PolicyEffect, resource: String): Policy {

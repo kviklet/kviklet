@@ -25,8 +25,10 @@ data class ErrorQueryResult(
 
 data class ColumnInfo(
     val label: String,
-    val typeName: String, // "int4", "text", "timestamptz"
-    val typeClass: String, // "java.lang.Integer", "java.lang.String", "java.sql.Timestamp"
+    // "int4", "text", "timestamptz"
+    val typeName: String,
+    // "java.lang.Integer", "java.lang.String", "java.sql.Timestamp"
+    val typeClass: String,
 )
 
 @Service

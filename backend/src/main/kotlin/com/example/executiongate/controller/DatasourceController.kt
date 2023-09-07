@@ -148,9 +148,7 @@ class DatasourceController(
 ) {
 
     @PostMapping("/")
-    fun createDatasource(
-        @Valid @RequestBody datasourceConnection: CreateDatasourceRequest,
-    ): DatasourceResponse {
+    fun createDatasource(@Valid @RequestBody datasourceConnection: CreateDatasourceRequest): DatasourceResponse {
         val datasource = datasourceService.createDatasource(
             displayName = datasourceConnection.displayName,
             datasourceType = datasourceConnection.datasourceType,

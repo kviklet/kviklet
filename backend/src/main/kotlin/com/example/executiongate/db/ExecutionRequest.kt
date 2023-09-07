@@ -171,9 +171,8 @@ class ExecutionRequestAdapter(
         executionRequestRepository.findByIdWithDetails(id)
             ?: throw EntityNotFound("Execution Request Not Found", "Execution Request with id $id does not exist.")
 
-    private fun getUserEntity(id: String): UserEntity =
-        userRepository.findByIdOrNull(id)
-            ?: throw EntityNotFound("User Not Found", "User with id $id does not exist.")
+    private fun getUserEntity(id: String): UserEntity = userRepository.findByIdOrNull(id)
+        ?: throw EntityNotFound("User Not Found", "User with id $id does not exist.")
 
     fun getExecutionRequestDetails(id: ExecutionRequestId): ExecutionRequestDetails = getExecutionRequestDetailsEntity(
         id,

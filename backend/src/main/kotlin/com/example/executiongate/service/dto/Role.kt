@@ -7,12 +7,7 @@ data class Role(
     val policies: Set<Policy> = HashSet(),
 ) {
     companion object {
-        fun create(
-            id: String,
-            name: String,
-            description: String,
-            policies: Set<Policy>,
-        ): Role {
+        fun create(id: String, name: String, description: String, policies: Set<Policy>): Role {
             return Role(
                 id = id,
                 name = name,

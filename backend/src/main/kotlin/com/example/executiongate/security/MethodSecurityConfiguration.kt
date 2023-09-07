@@ -24,7 +24,9 @@ import org.springframework.stereotype.Component
 import java.util.function.Supplier
 
 enum class DomainObjectType {
-    DATASOURCE, DATASOURCE_CONNECTION, EXECUTION_REQUEST
+    DATASOURCE,
+    DATASOURCE_CONNECTION,
+    EXECUTION_REQUEST,
 }
 
 interface SecuredDomainObject {
