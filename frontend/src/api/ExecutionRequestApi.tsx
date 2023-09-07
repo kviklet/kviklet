@@ -9,7 +9,7 @@ const requestUrl = `${baseUrl}/execution-requests/`;
 
 const DateTime = z.preprocess(
   (val) => (typeof val == "string" ? val.concat("Z") : undefined),
-  z.string().datetime()
+  z.string().datetime(),
 );
 
 const ExecutionRequestPayload = z.object({
@@ -29,7 +29,7 @@ const Comment = withType(
     createdAt: DateTime,
     id: z.string(),
   }),
-  "COMMENT"
+  "COMMENT",
 );
 
 const Review = withType(
@@ -40,7 +40,7 @@ const Review = withType(
     action: z.enum(["APPROVE", "COMMENT", "REQUEST_CHANGE"]),
     id: z.string(),
   }),
-  "REVIEW"
+  "REVIEW",
 );
 
 const ExecutionRequestResponse = z.object({
@@ -102,7 +102,7 @@ const addRequest = async (payload: ExecutionRequest): Promise<boolean> => {
 
 const patchRequest = async (
   id: string,
-  payload: ChangeExecutionRequestPayload
+  payload: ChangeExecutionRequestPayload,
 ): Promise<ExecutionRequestResponseWithComments> => {
   console.log(payload);
   const response = await fetch(requestUrl + id, {
@@ -129,7 +129,7 @@ const getRequests = async (): Promise<ExecutionRequestsResponse> => {
 };
 
 const getSingleRequest = async (
-  id: string
+  id: string,
 ): Promise<ExecutionRequestResponseWithComments | undefined> => {
   const response = await fetch(requestUrl + id, {
     method: "GET",
@@ -162,7 +162,7 @@ const addCommentToRequest = async (id: string, comment: string) => {
 const addReviewToRequest = async (
   id: string,
   review: string,
-  action: string
+  action: string,
 ) => {
   const response = await fetch(requestUrl + id + "/reviews", {
     method: "POST",
@@ -186,7 +186,7 @@ const UpdateExecuteResponseSchema = withType(
   z.object({
     rowsUpdated: z.number(),
   }),
-  "update"
+  "update",
 );
 
 const ColumnSchema = z.object({
@@ -200,7 +200,7 @@ const SelectExecuteResponseSchema = withType(
     columns: z.array(ColumnSchema),
     data: z.array(z.record(z.string())),
   }),
-  "select"
+  "select",
 );
 
 const ErrorResponseSchema = withType(
@@ -208,7 +208,7 @@ const ErrorResponseSchema = withType(
     errorCode: z.number(),
     message: z.string().optional(),
   }),
-  "error"
+  "error",
 );
 
 const ExecuteResponseSchema = z.union([

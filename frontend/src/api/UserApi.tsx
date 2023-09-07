@@ -60,7 +60,7 @@ async function createUser(request: CreateUserRequest): Promise<UserResponse> {
 
 async function updateUser(
   id: String,
-  request: UpdateUserRequest
+  request: UpdateUserRequest,
 ): Promise<UserResponse> {
   const response = await fetch(`${baseUrl}/users/${id}`, {
     method: "PATCH",

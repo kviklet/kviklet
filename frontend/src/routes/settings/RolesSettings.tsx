@@ -385,7 +385,7 @@ const RoleSettings = () => {
   const [showEditModal, setShowEditModal] = useState(false);
 
   const connections = datasources.flatMap((datasource) =>
-    datasource.datasourceConnections.map((connection) => connection)
+    datasource.datasourceConnections.map((connection) => connection),
   );
 
   const handleAddRole = () => {

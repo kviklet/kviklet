@@ -96,7 +96,7 @@ function Requests() {
   });
 
   return (
-    <div className=" h-full">
+    <div className="h-full">
       <div className=" border-b border-slate-300 bg-slate-50 dark:bg-slate-950 dark:border-slate-700">
         <h1 className=" max-w-5xl mx-auto text-xl m-5 pl-1.5">
           {" "}
@@ -140,8 +140,8 @@ function Requests() {
                       </div>
                       <div
                         className={`${mapStatusToLabelColor(
-                          request.reviewStatus
-                        )} font-bold rounded-full text-sm text-center w-20 text-white py-1 px-1.5`}
+                          request.reviewStatus,
+                        )} font-bold border rounded-full text-sm text-center w-20 text-white py-1 px-1.5`}
                       >
                         {mapStatus(request?.reviewStatus)}
                       </div>

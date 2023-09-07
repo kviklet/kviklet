@@ -94,7 +94,7 @@ const useUsers = () => {
   async function createNewUser(
     email: string,
     password: string,
-    fullName: string
+    fullName: string,
   ) {
     const newUser = await createUser({
       email: email,
