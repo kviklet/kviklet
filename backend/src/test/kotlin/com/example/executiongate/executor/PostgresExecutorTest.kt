@@ -1,7 +1,9 @@
 package com.example.executiongate.executor
 
+import com.example.executiongate.service.ColumnInfo
 import com.example.executiongate.service.ErrorQueryResult
 import com.example.executiongate.service.ExecutorService
+import com.example.executiongate.service.RecordsQueryResult
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -32,6 +34,17 @@ class PostgresExecutorTest(
     override fun getDb(): JdbcDatabaseContainer<*> = db
 
     override val initScript: String = "psql_init.sql"
+
+    @Test
+    override fun testSelectSimple() {
+        executeQuery("SELECT 1 as col1, '2' as col2;") shouldBe RecordsQueryResult(
+            columns = listOf(
+                ColumnInfo("col1", "int4", "java.lang.Integer"),
+                ColumnInfo("col2", "text", "java.lang.String"),
+            ),
+            data = listOf(mapOf("col1" to "1", "col2" to "2")),
+        )
+    }
 
     @Test
     override fun testDatabaseError() {

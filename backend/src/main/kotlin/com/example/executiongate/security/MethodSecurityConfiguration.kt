@@ -23,8 +23,14 @@ import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 import java.util.function.Supplier
 
+enum class DomainObjectType {
+    DATASOURCE, DATASOURCE_CONNECTION, EXECUTION_REQUEST
+}
+
 interface SecuredDomainObject {
     fun getId(): String
+    fun getDomainObjectType(): DomainObjectType
+    fun getParent(): SecuredDomainObject?
 }
 
 @Target(AnnotationTarget.FUNCTION)

@@ -1,6 +1,7 @@
 package com.example.executiongate.service.dto
 
 import com.example.executiongate.db.ReviewConfig
+import com.example.executiongate.security.DomainObjectType
 import com.example.executiongate.security.SecuredDomainObject
 import java.io.Serializable
 
@@ -15,8 +16,7 @@ enum class AuthenticationType {
 }
 
 @JvmInline
-value class DatasourceId(private val id: String) : Serializable, SecuredDomainObject {
-    override fun getId() = id
+value class DatasourceId(private val id: String) : Serializable {
     override fun toString() = id
 }
 
@@ -26,10 +26,12 @@ data class Datasource(
     val type: DatasourceType,
     val hostname: String,
     val port: Int,
-    var datasourceConnections: List<DatasourceConnection>,
+//    var datasourceConnections: List<DatasourceConnection>,
 ) : SecuredDomainObject {
     fun getConnectionString() = "jdbc:${type.schema}://$hostname:$port/"
     override fun getId() = id.toString()
+    override fun getDomainObjectType() = DomainObjectType.DATASOURCE
+    override fun getParent() = null
 }
 
 @JvmInline
@@ -49,4 +51,6 @@ data class DatasourceConnection(
 ) : SecuredDomainObject {
     fun getConnectionString() = datasource.getConnectionString()
     override fun getId() = id.toString()
+    override fun getDomainObjectType() = DomainObjectType.DATASOURCE_CONNECTION
+    override fun getParent() = datasource
 }

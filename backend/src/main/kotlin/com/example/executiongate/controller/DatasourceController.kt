@@ -1,6 +1,7 @@
 package com.example.executiongate.controller
 
 import com.example.executiongate.MyProperties
+import com.example.executiongate.service.DatasourceConnectionService
 import com.example.executiongate.service.DatasourceService
 import com.example.executiongate.service.dto.AuthenticationType
 import com.example.executiongate.service.dto.Datasource
@@ -122,13 +123,13 @@ data class DatasourceResponse(
     val datasourceConnections: List<DatasourceConnectionResponse>,
 ) {
     companion object {
-        fun fromDto(dto: Datasource) = DatasourceResponse(
-            id = dto.id,
-            displayName = dto.displayName,
-            datasourceType = dto.type,
-            hostname = dto.hostname,
-            port = dto.port,
-            datasourceConnections = dto.datasourceConnections.map { DatasourceConnectionResponse.fromDto(it) },
+        fun fromDto(datasource: Datasource, connections: List<DatasourceConnection>) = DatasourceResponse(
+            id = datasource.id,
+            displayName = datasource.displayName,
+            datasourceType = datasource.type,
+            hostname = datasource.hostname,
+            port = datasource.port,
+            datasourceConnections = connections.map { DatasourceConnectionResponse.fromDto(it) },
         )
     }
 }
@@ -142,6 +143,7 @@ data class ListDatasourceResponse(
 @RequestMapping("/datasources")
 class DatasourceController(
     val datasourceService: DatasourceService,
+    val datasourceConnectionService: DatasourceConnectionService,
     val config: MyProperties,
 ) {
 
@@ -155,7 +157,7 @@ class DatasourceController(
             hostname = datasourceConnection.hostname,
             port = datasourceConnection.port,
         )
-        return DatasourceResponse.fromDto(datasource)
+        return DatasourceResponse.fromDto(datasource, emptyList())
     }
 
     @PostMapping("/{datasourceId}/connections")
@@ -163,7 +165,7 @@ class DatasourceController(
         @PathVariable datasourceId: DatasourceId,
         @Valid @RequestBody datasourceConnection: CreateDatasourceConnectionRequest,
     ): DatasourceConnectionResponse {
-        val datasource = datasourceService.createDatasourceConnection(
+        val datasource = datasourceConnectionService.createDatasourceConnection(
             datasourceId = datasourceId,
             request = datasourceConnection,
         )
@@ -175,7 +177,7 @@ class DatasourceController(
         @PathVariable datasourceId: DatasourceId,
         @PathVariable connectionId: DatasourceConnectionId,
     ) {
-        datasourceService.deleteDatasourceConnection(
+        datasourceConnectionService.deleteDatasourceConnection(
             connectionId = connectionId,
         )
     }
@@ -186,7 +188,7 @@ class DatasourceController(
         @PathVariable connectionId: DatasourceConnectionId,
         @Valid @RequestBody datasourceConnection: UpdateDataSourceConnectionRequest,
     ): DatasourceConnectionResponse {
-        val datasource = datasourceService.updateDatasourceConnection(
+        val datasource = datasourceConnectionService.updateDatasourceConnection(
             connectionId = connectionId,
             request = datasourceConnection,
         )
@@ -194,20 +196,21 @@ class DatasourceController(
     }
 
     @DeleteMapping("/{datasourceId}")
-    fun deleteDatasource(
-        @PathVariable datasourceId: DatasourceId,
-    ) {
-        datasourceService.deleteDatasource(
-            datasourceId = datasourceId,
-        )
+    fun deleteDatasource(@PathVariable datasourceId: DatasourceId) {
+        datasourceService.deleteDatasource(datasourceId = datasourceId)
     }
 
     @GetMapping("/")
-    fun getDatasources(): ListDatasourceResponse {
-        val dbs = datasourceService.listConnections()
+    fun listDatasources(): ListDatasourceResponse {
+        val dbs = datasourceConnectionService.listDatasourceConnections()
 
-        return ListDatasourceResponse(databases = dbs.map { DatasourceResponse.fromDto(it) })
+        return ListDatasourceResponse(
+            databases = dbs.groupBy { it.datasource }.map { (datasource, datasourceConnection) ->
+                DatasourceResponse.fromDto(datasource, datasourceConnection)
+            },
+        )
     }
+
     /*
     @PostMapping("/test")
     fun testConnection(@Valid @RequestBody connection: TestDatabaseConnection): ResponseEntity<Any> {

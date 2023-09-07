@@ -57,6 +57,7 @@ class ExecutionRequestService(
 
     fun list(): List<ExecutionRequestDetails> = executionRequestAdapter.listExecutionRequests()
 
+    @Transactional
     fun get(id: ExecutionRequestId): ExecutionRequestDetails =
         executionRequestAdapter.getExecutionRequestDetails(id)
 
