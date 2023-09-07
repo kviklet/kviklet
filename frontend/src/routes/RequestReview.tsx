@@ -15,7 +15,7 @@ import {
   Event,
 } from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
-import { mapStatus, mapStatusToColor, timeSince } from "./Requests";
+import { mapStatus, mapStatusToLabelColor, timeSince } from "./Requests";
 import { UserStatusContext } from "../components/UserStatusProvider";
 import Table from "../components/Table";
 import {
@@ -161,13 +161,13 @@ function RequestReview() {
 
   return (
     <div>
-      <div className="max-w-3xl m-auto">
+      <div className="max-w-3xl m-auto mt-10">
         <h1 className="text-3xl my-2 w-full flex">
           <div className="mr-auto">{request?.title}</div>
           <div
-            className={`${mapStatusToColor(
+            className={`border ${mapStatusToLabelColor(
               request?.reviewStatus
-            )} font-bold rounded-full text-lg ml-auto text-white py-1 px-1.5`}
+            )} rounded-full text-base ml-auto py-1 px-1.5 transition-colors`}
           >
             {mapStatus(request?.reviewStatus)}
           </div>
@@ -219,7 +219,7 @@ const InitialBubble = (props: { name?: string | null; className?: string }) => {
     <div
       className={`absolute -left-12 rounded-full text-slate-50 ${colorFromText(
         props.name || ""
-      )} w-6 h-6 flex text-xs items-center justify-center font-bold ${
+      )} w-8 h-8 flex text-sm items-center justify-center ${
         props.className ?? ""
       }`}
     >

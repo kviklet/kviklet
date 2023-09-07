@@ -60,18 +60,18 @@ function mapStatus(status?: string) {
   }
 }
 
-function mapStatusToColor(status?: string) {
+function mapStatusToLabelColor(status?: string) {
   switch (status) {
     case "APPROVED":
-      return "bg-lime-400";
+      return "dark:border-lime-400 dark:text-lime-400 border-lime-600 text-lime-600";
     case "AWAITING_APPROVAL":
-      return "bg-sky-400";
+      return "dark:border-sky-400 dark:text-sky-400 border-sky-600 text-sky-600";
     case "PENDING":
-      return "bg-yellow-400";
+      return "dark:border-yellow-400 dark:text-yellow-400 border-yellow-600 text-yellow-600";
     case "SUCCESS":
-      return "bg-lime-400";
+      return "dark:border-lime-400 dark:text-lime-400 border-lime-600 text-lime-600";
     default:
-      return "bg-gray-400";
+      return "dark:border-gray-400 dark:text-gray-400 border-gray-600 text-gray-600";
   }
 }
 
@@ -139,7 +139,7 @@ function Requests() {
                         {timeSince(new Date(request.createdAt))}
                       </div>
                       <div
-                        className={`${mapStatusToColor(
+                        className={`${mapStatusToLabelColor(
                           request.reviewStatus
                         )} font-bold rounded-full text-sm text-center w-20 text-white py-1 px-1.5`}
                       >
@@ -160,4 +160,4 @@ function Requests() {
   );
 }
 
-export { Requests, mapStatusToColor, mapStatus, timeSince };
+export { Requests, mapStatusToLabelColor, mapStatus, timeSince };
