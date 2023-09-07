@@ -166,7 +166,7 @@ function RequestReview() {
           <div className="mr-auto">{request?.title}</div>
           <div
             className={`border ${mapStatusToLabelColor(
-              request?.reviewStatus
+              request?.reviewStatus,
             )} rounded-full text-base ml-auto py-1 px-1.5 transition-colors`}
           >
             {mapStatus(request?.reviewStatus)}
@@ -218,7 +218,7 @@ const InitialBubble = (props: { name?: string | null; className?: string }) => {
   return (
     <div
       className={`absolute -left-12 rounded-full text-slate-50 ${colorFromText(
-        props.name || ""
+        props.name || "",
       )} w-8 h-8 flex text-sm items-center justify-center ${
         props.className ?? ""
       }`}

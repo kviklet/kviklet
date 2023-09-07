@@ -112,7 +112,7 @@ const Table: React.FC<{ data: SelectExecuteResponse }> = ({ data }) => {
                     ? null
                     : flexRender(
                         header.column.columnDef.header,
-                        header.getContext()
+                        header.getContext(),
                       )}
                 </th>
               ))}
