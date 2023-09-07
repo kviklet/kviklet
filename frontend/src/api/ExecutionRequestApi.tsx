@@ -86,7 +86,7 @@ const addRequest = async (payload: ExecutionRequest): Promise<boolean> => {
     title: payload.title,
     description: payload.description,
     statement: payload.statement,
-    readOnly: payload.readOnly,
+    readOnly: false,
     datasourceConnectionId: payload.connection,
   };
   const response = await fetch(requestUrl, {

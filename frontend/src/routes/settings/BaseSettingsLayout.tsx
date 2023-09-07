@@ -68,7 +68,7 @@ const BaseSettingsLayout = (props: LayoutProps) => {
         <h1 className="text-xl pl-1.5 w-3/4 m-5 mx-auto">Settings</h1>
       </div>
       <div className="mx-auto w-3/4">
-        <div className="flex w-full">
+        <div className="flex w-full pt-4">
           <SettingsSidebar>{tabs}</SettingsSidebar>
           <div className="w-full ml-2 h-full">
             <Routes>
