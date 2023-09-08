@@ -1,4 +1,4 @@
-name: Prettier
+name: Frontend Checks
 on: [pull_request]
 jobs:
   prettier:
@@ -28,3 +28,31 @@ jobs:
       - name: Run prettier
         working-directory: ./frontend
         run: yarn prettier --check .
+
+  vitest:
+    name: Vitest
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - name: Clone repo
+        uses: actions/checkout@master
+        with:
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: "16.x"
+          cache: "yarn"
+          cache-dependency-path: "**/yarn.lock"
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Run Vitest
+        working-directory: ./frontend
+        run: yarn run vitest
