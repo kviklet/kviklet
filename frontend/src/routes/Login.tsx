@@ -3,6 +3,7 @@ import Button from "../components/Button";
 import GoogleButton from "react-google-button";
 import { useNavigate } from "react-router-dom";
 import { UserStatusContext } from "../components/UserStatusProvider";
+import image from "../logo.png";
 
 const StyledInput = (props: {
   name: string;
@@ -53,7 +54,7 @@ const Login = () => {
     <div>
       <div className="max-w-sm mx-auto my-2 mt-6 dark:bg-slate-950">
         <div className="text-center">
-          <img src={require("../logo.png")} className="mx-auto h-24 w-auto" />
+          <img src={image} className="mx-auto h-24 w-auto" />
         </div>
         <div className="text-2xl text-center mb-6">Sign in to OpsGate</div>
         <div className=" dark:bg-slate-900 p-6 rounded-md shadow-xl">
