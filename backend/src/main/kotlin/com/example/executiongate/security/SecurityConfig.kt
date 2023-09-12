@@ -126,7 +126,7 @@ class CustomAccessDeniedHandler : AccessDeniedHandler {
         response: HttpServletResponse?,
         accessDeniedException: AccessDeniedException?,
     ) {
-        response?.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized")
+        response?.sendError(HttpServletResponse.SC_FORBIDDEN, "Unauthorized")
     }
 }
 

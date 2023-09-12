@@ -12,6 +12,7 @@ import com.example.executiongate.service.dto.DatasourceType
 import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Max
+import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -33,6 +34,11 @@ data class TestDatabaseConnection(
 )
 
 data class CreateDatasourceRequest(
+    @Schema(example = "My Postgres Db")
+    @field:Size(max = 255, message = "Maximum length 255")
+    @field:Pattern(regexp = "^[a-zA-Z0-9-]+$", message = "Only alphanumeric and dashes (-) allowed")
+    val id: String,
+
     @Schema(example = "My Postgres Db")
     @field:Size(max = 255, message = "Maximum length 255")
     val displayName: String,
@@ -147,9 +153,10 @@ class DatasourceController(
     val config: MyProperties,
 ) {
 
-    @PostMapping("/")
+    @PostMapping("")
     fun createDatasource(@Valid @RequestBody datasourceConnection: CreateDatasourceRequest): DatasourceResponse {
         val datasource = datasourceService.createDatasource(
+            id = datasourceConnection.id,
             displayName = datasourceConnection.displayName,
             datasourceType = datasourceConnection.datasourceType,
             hostname = datasourceConnection.hostname,
@@ -198,7 +205,7 @@ class DatasourceController(
         datasourceService.deleteDatasource(datasourceId = datasourceId)
     }
 
-    @GetMapping("/")
+    @GetMapping("")
     fun listDatasources(): ListDatasourceResponse {
         val dbs = datasourceConnectionService.listDatasourceConnections()
 

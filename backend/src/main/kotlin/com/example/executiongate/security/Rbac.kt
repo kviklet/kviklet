@@ -19,6 +19,11 @@ class PolicyGrantedAuthority(
     }
 
     fun vote(action: String, domainObject: SecuredDomainObject?): VoteResult {
+        // DENY is only effective on specific domainObjects
+        if (domainObject == null && policy.effect == PolicyEffect.DENY && policy.resource != "*") {
+            return VoteResult.ABSTAIN
+        }
+
         if (matchesAction(action) && matchesId(domainObject)) {
             return effectToResult()
         }
@@ -44,4 +49,12 @@ enum class VoteResult {
     ALLOW,
     DENY,
     ABSTAIN,
+}
+
+fun List<PolicyGrantedAuthority>.vote(permission: Permission, obj: SecuredDomainObject? = null): List<VoteResult> {
+    return this.map { it.vote(permission.getPermissionString(), obj) }
+}
+
+fun List<VoteResult>.isAllowed(): Boolean {
+    return this.any { it == VoteResult.ALLOW } && this.none { it == VoteResult.DENY }
 }

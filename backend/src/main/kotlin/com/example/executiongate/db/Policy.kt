@@ -23,7 +23,7 @@ class PolicyEntity(
     val action: String,
     @Enumerated(EnumType.STRING)
     val effect: PolicyEffect,
-    // ids: *   ids: 1,2,3
+    // ids: *   ids: 1,2,3,    ids: dev-*
     val resource: String,
     // TODO: conditions
 ) : BaseEntity() {
