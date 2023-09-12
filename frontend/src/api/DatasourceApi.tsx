@@ -76,7 +76,7 @@ type ConnectionPayload = z.infer<typeof connectionPayloadSchema>;
 type PatchConnectionPayload = z.infer<typeof patchConnectionPayloadSchema>;
 
 const addDatabase = async (
-  payload: DatabasePayload
+  payload: DatabasePayload,
 ): Promise<DatabaseResponse> => {
   const response = await fetch(datasourceUrl, {
     method: "POST",
@@ -92,7 +92,7 @@ const addDatabase = async (
 
 const addConnection = async (
   payload: ConnectionPayload,
-  datasourceId: string
+  datasourceId: string,
 ): Promise<ConnectionResponse> => {
   const response = await fetch(`${datasourceUrl}${datasourceId}/connections`, {
     method: "POST",
@@ -109,7 +109,7 @@ const addConnection = async (
 const patchConnection = async (
   payload: PatchConnectionPayload,
   datasourceId: string,
-  connectionId: string
+  connectionId: string,
 ): Promise<ConnectionResponse> => {
   const response = await fetch(
     `${datasourceUrl}${datasourceId}/connections/${connectionId}`,
@@ -120,7 +120,7 @@ const patchConnection = async (
       },
       credentials: "include",
       body: JSON.stringify(payload),
-    }
+    },
   );
   const connection = connectionResponseSchema.parse(await response.json());
   return connection;

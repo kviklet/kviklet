@@ -104,7 +104,7 @@ const useDatasources = () => {
 
   const createConnection = async (
     datasourceId: string,
-    connection: ConnectionPayload
+    connection: ConnectionPayload,
   ) => {
     const newConnection = await addConnection(connection, datasourceId);
     const newDatasources = datasources.map((datasource) => {
@@ -125,12 +125,12 @@ const useDatasources = () => {
   const editConnection = async (
     datasourceId: string,
     connectionId: string,
-    connection: PatchConnectionPayload
+    connection: PatchConnectionPayload,
   ) => {
     const updatedConnection = await patchConnection(
       connection,
       datasourceId,
-      connectionId
+      connectionId,
     );
     const newDatasources = datasources.map((datasource) => {
       if (datasource.id === datasourceId) {
@@ -142,7 +142,7 @@ const useDatasources = () => {
                 return updatedConnection;
               }
               return connection;
-            }
+            },
           ),
         };
       }
@@ -230,18 +230,18 @@ function SingleConnectionSettings(props: {
   connection: ConnectionResponse;
   editConnectionHandler: (
     connectionId: string,
-    connection: PatchConnectionPayload
+    connection: PatchConnectionPayload,
   ) => Promise<void>;
 }) {
   const [displayName, setDisplayName] = useState<string>(
-    props.connection.displayName
+    props.connection.displayName,
   );
   const [username, setUsername] = useState<string>(
-    props.connection.shortUsername
+    props.connection.shortUsername,
   );
   const [password, setPassword] = useState<string>("");
   const [numTotalRequired, setNumTotalRequired] = useState<number>(
-    props.connection.reviewConfig.numTotalRequired
+    props.connection.reviewConfig.numTotalRequired,
   );
   const [showCheck, setShowCheck] = useState<boolean>(false);
 
@@ -301,7 +301,7 @@ function ConnectionSettings(props: {
   addConnectionHandler: () => void;
   editConnectionHandler: (
     connectionId: string,
-    connection: PatchConnectionPayload
+    connection: PatchConnectionPayload,
   ) => Promise<void>;
 }) {
   return (
@@ -377,7 +377,7 @@ const DatabaseChooser = (props: {
 const DatabaseSettings = () => {
   const datasourceUrl = "http://localhost:8080/datasources/";
   const [selectedIndex, setSelectedIndex] = useState<number | undefined>(
-    undefined
+    undefined,
   );
   const {
     datasources,
@@ -458,7 +458,7 @@ const DatabaseSettings = () => {
                 await editConnection(
                   datasources[selectedIndex!!].id,
                   connectionId,
-                  connection
+                  connection,
                 );
               }}
             />

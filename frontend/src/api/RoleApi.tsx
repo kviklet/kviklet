@@ -68,7 +68,7 @@ const removeRole = async (id: string): Promise<void> => {
 
 const patchRole = async (
   id: string,
-  role: EditRoleRequest
+  role: EditRoleRequest,
 ): Promise<RoleResponse> => {
   const response = await fetch(`${baseUrl}/roles/${id}`, {
     method: "PATCH",

@@ -22,7 +22,7 @@ export const ThemeStatusProvider: React.FC<Props> = ({ children }) => {
     theme = "light";
   }
   const [currentTheme, setCurrentTheme] = useState<"light" | "dark">(
-    theme as "light" | "dark"
+    theme as "light" | "dark",
   );
 
   return (

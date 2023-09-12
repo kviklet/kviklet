@@ -41,7 +41,7 @@ function AddRequestForm() {
   console.log(errors);
 
   const onSubmit: SubmitHandler<ExecutionRequest> = async (
-    data: ExecutionRequest
+    data: ExecutionRequest,
   ) => {
     console.log(data);
     await addRequest(data);
