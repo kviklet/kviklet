@@ -1,6 +1,5 @@
 package com.example.executiongate.db
 
-import com.example.executiongate.db.util.BaseEntity
 import com.example.executiongate.db.util.ReviewConfigConverter
 import com.example.executiongate.service.EntityNotFound
 import com.example.executiongate.service.dto.AuthenticationType
@@ -15,6 +14,7 @@ import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
+import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
@@ -31,6 +31,8 @@ data class ReviewConfig(
 
 @Entity(name = "datasource_connection")
 class DatasourceConnectionEntity(
+    @Id
+    val id: String,
     @ManyToOne(cascade = [CascadeType.ALL], fetch = FetchType.EAGER)
     @JoinColumn(name = "datasource_id")
     val datasource: DatasourceEntity,
@@ -46,7 +48,7 @@ class DatasourceConnectionEntity(
     var reviewConfig: ReviewConfig,
     @OneToMany(mappedBy = "connection", cascade = [CascadeType.ALL])
     val executionRequests: Set<ExecutionRequestEntity> = emptySet(),
-) : BaseEntity() {
+) {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
         .append("id", id)
@@ -83,6 +85,7 @@ class DatasourceConnectionAdapter(
 
     fun createDatasourceConnection(
         datasourceId: DatasourceId,
+        datasourceConnectionId: DatasourceConnectionId,
         displayName: String,
         authenticationType: AuthenticationType,
         username: String,
@@ -93,6 +96,7 @@ class DatasourceConnectionAdapter(
         return datasourceConnectionRepository.save(
             DatasourceConnectionEntity(
                 datasource = datasourceRepository.getReferenceById(datasourceId.toString()),
+                id = datasourceConnectionId.toString(),
                 displayName = displayName,
                 authenticationType = authenticationType,
                 username = username,

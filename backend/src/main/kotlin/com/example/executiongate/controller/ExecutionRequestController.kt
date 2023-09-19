@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDateTime
 
-data class CreateExecutionRequest(
+data class CreateExecutionRequestRequest(
     val datasourceConnectionId: DatasourceConnectionId,
     val title: String,
     val description: String?,
@@ -37,7 +37,7 @@ data class CreateExecutionRequest(
     val readOnly: Boolean,
 )
 
-data class UpdateExecutionRequest(
+data class UpdateExecutionRequestRequest(
     val title: String?,
     val description: String?,
     val statement: String?,
@@ -211,10 +211,10 @@ class ExecutionRequestController(
     @Operation(summary = "Create Execution Request")
     @PostMapping("/")
     fun create(
-        @Valid @RequestBody request: CreateExecutionRequest,
+        @Valid @RequestBody request: CreateExecutionRequestRequest,
         @AuthenticationPrincipal userDetails: UserDetailsWithId,
     ): ExecutionRequestResponse {
-        val executionRequest = executionRequestService.create(request, userDetails.id)
+        val executionRequest = executionRequestService.create(request.datasourceConnectionId, request, userDetails.id)
         return ExecutionRequestResponse.fromDto(executionRequest)
     }
 
@@ -243,7 +243,7 @@ class ExecutionRequestController(
     @PatchMapping("/{id}")
     fun update(
         @PathVariable id: ExecutionRequestId,
-        @Valid @RequestBody request: UpdateExecutionRequest,
+        @Valid @RequestBody request: UpdateExecutionRequestRequest,
     ): ExecutionRequestDetailResponse {
         val newRequest = executionRequestService.update(id, request)
         return ExecutionRequestDetailResponse.fromDto(newRequest)

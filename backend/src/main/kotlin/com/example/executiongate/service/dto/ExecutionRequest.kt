@@ -1,11 +1,16 @@
 package com.example.executiongate.service.dto
 
 import com.example.executiongate.db.User
+import com.example.executiongate.security.Permission
+import com.example.executiongate.security.Resource
+import com.example.executiongate.security.SecuredDomainId
+import com.example.executiongate.security.SecuredDomainObject
+import com.example.executiongate.security.UserDetailsWithId
 import java.io.Serializable
 import java.time.LocalDateTime
 
 @JvmInline
-value class ExecutionRequestId(private val id: String) : Serializable {
+value class ExecutionRequestId(private val id: String) : Serializable, SecuredDomainId {
     override fun toString() = id
 }
 
@@ -32,7 +37,7 @@ data class ExecutionRequest(
 data class ExecutionRequestDetails(
     val request: ExecutionRequest,
     val events: Set<Event>,
-) {
+) : SecuredDomainObject {
     fun addEvent(event: Event): ExecutionRequestDetails {
         val allEvents = events + event
 
@@ -51,5 +56,27 @@ data class ExecutionRequestDetails(
         }
 
         return reviewStatus
+    }
+
+    override fun getId() = request.id.toString()
+
+    override fun getDomainObjectType() = Resource.EXECUTION_REQUEST
+
+    override fun getRelated(resource: Resource) = when (resource) {
+        Resource.DATASOURCE_CONNECTION -> request.connection
+        Resource.DATASOURCE -> request.connection.datasource
+        else -> null
+    }
+
+    override fun auth(permission: Permission, userDetails: UserDetailsWithId): Boolean {
+        return when (permission) {
+            Permission.EXECUTION_REQUEST_EDIT -> request.author.id == userDetails.id
+            Permission.EXECUTION_REQUEST_EXECUTE -> request.author.id == userDetails.id && isExecutable()
+            else -> true
+        }
+    }
+
+    private fun isExecutable(): Boolean {
+        return resolveReviewStatus() == ReviewStatus.APPROVED
     }
 }

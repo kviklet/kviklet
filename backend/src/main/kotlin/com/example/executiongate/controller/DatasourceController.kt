@@ -12,6 +12,7 @@ import com.example.executiongate.service.dto.DatasourceType
 import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Max
+import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -33,6 +34,11 @@ data class TestDatabaseConnection(
 )
 
 data class CreateDatasourceRequest(
+    @Schema(example = "postgres-db")
+    @field:Size(max = 255, message = "Maximum length 255")
+    @field:Pattern(regexp = "^[a-zA-Z0-9-]+$", message = "Only alphanumeric and dashes (-) allowed")
+    val id: String,
+
     @Schema(example = "My Postgres Db")
     @field:Size(max = 255, message = "Maximum length 255")
     val displayName: String,
@@ -51,6 +57,11 @@ data class CreateDatasourceRequest(
 )
 
 data class CreateDatasourceConnectionRequest(
+    @Schema(example = "postgres-read-only")
+    @field:Size(max = 255, message = "Maximum length 255")
+    @field:Pattern(regexp = "^[a-zA-Z0-9-]+$", message = "Only alphanumeric and dashes (-) allowed")
+    val id: String,
+
     @Schema(example = "My Postgres Db User")
     @field:Size(max = 255, message = "Maximum length 255")
     val displayName: String,
@@ -71,19 +82,19 @@ data class CreateDatasourceConnectionRequest(
 data class UpdateDataSourceConnectionRequest(
     @Schema(example = "My Postgres Db User")
     @field:Size(max = 255, message = "Maximum length 255")
-    val displayName: String?,
+    val displayName: String? = null,
 
     @Schema(example = "root")
     @field:Size(min = 1, max = 255, message = "Maximum length 255")
-    val username: String?,
+    val username: String? = null,
 
     @Schema(example = "root")
     @field:Size(min = 1, max = 255, message = "Maximum length 255")
-    val password: String?,
+    val password: String? = null,
 
-    val description: String?,
+    val description: String? = null,
 
-    val reviewConfig: ReviewConfigRequest?,
+    val reviewConfig: ReviewConfigRequest? = null,
 )
 
 data class ReviewConfigRequest(
@@ -147,9 +158,10 @@ class DatasourceController(
     val config: MyProperties,
 ) {
 
-    @PostMapping("/")
+    @PostMapping("")
     fun createDatasource(@Valid @RequestBody datasourceConnection: CreateDatasourceRequest): DatasourceResponse {
         val datasource = datasourceService.createDatasource(
+            id = datasourceConnection.id,
             displayName = datasourceConnection.displayName,
             datasourceType = datasourceConnection.datasourceType,
             hostname = datasourceConnection.hostname,
@@ -198,7 +210,7 @@ class DatasourceController(
         datasourceService.deleteDatasource(datasourceId = datasourceId)
     }
 
-    @GetMapping("/")
+    @GetMapping("")
     fun listDatasources(): ListDatasourceResponse {
         val dbs = datasourceConnectionService.listDatasourceConnections()
 
