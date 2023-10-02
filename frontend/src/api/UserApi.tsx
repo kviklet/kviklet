@@ -1,4 +1,3 @@
-import { group } from "console";
 import { z } from "zod";
 import { roleResponseSchema } from "./RoleApi";
 
@@ -41,7 +40,7 @@ async function fetchUsers(): Promise<UserResponse[]> {
     credentials: "include",
   });
 
-  const data = await response.json();
+  const data: unknown = await response.json();
   return usersResponseSchema.parse(data).users;
 }
 
@@ -54,12 +53,12 @@ async function createUser(request: CreateUserRequest): Promise<UserResponse> {
     credentials: "include",
     body: JSON.stringify(request),
   });
-  const data = await response.json();
+  const data: unknown = await response.json();
   return userResponseSchema.parse(data);
 }
 
 async function updateUser(
-  id: String,
+  id: string,
   request: UpdateUserRequest,
 ): Promise<UserResponse> {
   const response = await fetch(`${baseUrl}/users/${id}`, {
@@ -70,7 +69,7 @@ async function updateUser(
     credentials: "include",
     body: JSON.stringify(request),
   });
-  const data = await response.json();
+  const data: unknown = await response.json();
   return userResponseSchema.parse(data);
 }
 

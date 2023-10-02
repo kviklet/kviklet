@@ -62,8 +62,7 @@ const fetchDatabases = async (): Promise<DatabaseResponse[]> => {
     method: "GET",
     credentials: "include",
   });
-  const json = await response.json();
-  console.log(json);
+  const json: unknown = await response.json();
   const parsedResponse = ApiResponse.parse(json);
   return parsedResponse.databases;
 };
@@ -127,7 +126,7 @@ const patchConnection = async (
 };
 
 const removeDatabase = async (id: string): Promise<void> => {
-  const response = await fetch(`${datasourceUrl}${id}`, {
+  await fetch(`${datasourceUrl}${id}`, {
     method: "DELETE",
     credentials: "include",
   });

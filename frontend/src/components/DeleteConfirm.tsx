@@ -1,9 +1,10 @@
+import React from "react";
 import Button from "./Button";
 
 const DeleteConfirm = (props: {
   title: string;
   message: string;
-  onConfirm: () => void;
+  onConfirm: () => Promise<void>;
   onCancel: () => void;
 }) => {
   return (
@@ -18,7 +19,11 @@ const DeleteConfirm = (props: {
           <Button className="ml-auto" onClick={props.onCancel}>
             Cancel
           </Button>
-          <Button className="ml-2" onClick={props.onConfirm} type="submit">
+          <Button
+            className="ml-2"
+            onClick={() => void props.onConfirm()}
+            type="submit"
+          >
             Confirm
           </Button>
         </div>

@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 function InputField(props: {
   id: string;
   name: string;

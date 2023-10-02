@@ -4,7 +4,7 @@ import { z } from "zod";
 import { ConnectionResponse, fetchDatabases } from "../api/DatasourceApi";
 import { useEffect, useState } from "react";
 import { addRequest } from "../api/ExecutionRequestApi";
-import { redirect, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Button from "../components/Button";
 
 const ExecutionRequestSchema = z.object({
@@ -20,7 +20,7 @@ function AddRequestForm() {
   const [connections, setConnections] = useState<ConnectionResponse[]>([]);
   const navigate = useNavigate();
 
-  const datasource = useEffect(() => {
+  useEffect(() => {
     const fetchData = async () => {
       const databases = await fetchDatabases();
       const requestedConnections = databases.flatMap((database) => {
@@ -28,7 +28,7 @@ function AddRequestForm() {
       });
       setConnections(requestedConnections);
     };
-    fetchData();
+    void fetchData();
   }, []);
 
   const {
@@ -38,12 +38,10 @@ function AddRequestForm() {
   } = useForm<ExecutionRequest>({
     resolver: zodResolver(ExecutionRequestSchema),
   });
-  console.log(errors);
 
   const onSubmit: SubmitHandler<ExecutionRequest> = async (
     data: ExecutionRequest,
   ) => {
-    console.log(data);
     await addRequest(data);
     navigate("/requests");
   };
@@ -52,7 +50,7 @@ function AddRequestForm() {
     <div className="mt-10">
       <form
         className="w-full max-w-lg mx-auto"
-        onSubmit={handleSubmit(onSubmit)}
+        onSubmit={void handleSubmit(onSubmit)}
       >
         <div className="flex flex-wrap -mx-3 mb-6">
           <div className="w-full px-3 mb-6">

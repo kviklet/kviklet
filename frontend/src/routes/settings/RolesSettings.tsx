@@ -1,16 +1,11 @@
 import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 import Button from "../../components/Button";
-import { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useState } from "react";
-import { z } from "zod";
-import { Link } from "react-router-dom";
 import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
-import { type } from "os";
 import {
   RoleResponse,
-  PermissionResponse,
   createRole,
   getRoles,
   patchRole,
@@ -20,6 +15,7 @@ import ColorfulLabel from "../../components/ColorfulLabel";
 import { useDatasources } from "./DatabaseSettings";
 import { ConnectionResponse } from "../../api/DatasourceApi";
 import DeleteConfirm from "../../components/DeleteConfirm";
+import React from "react";
 
 const Tooltip = ({
   children,
@@ -46,33 +42,17 @@ const Tooltip = ({
   );
 };
 
-//icons
-const createIcon = (icon: IconDefinition) => {
-  return <FontAwesomeIcon icon={icon} />;
-};
-const EditOutlined = createIcon(solid("edit"));
-
-const permissionsToText = (permissions: PermissionResponse[]) => {
-  return permissions
-    .map((permission) => connectionPermissionsToText(permission))
-    .join("; ");
-};
-
-const connectionPermissionsToText = (permissions: PermissionResponse) => {
-  return `${permissions.effect}:${permissions.action}:${permissions.resource}`;
-};
-
 const useRoles = (): {
   roles: RoleResponse[];
   isLoading: boolean;
   error: Error | null;
-  deleteRole: (id: string) => void;
-  addRole: (name: string, description: string) => void;
-  editRole: (id: string, role: RoleResponse) => void;
+  deleteRole: (id: string) => Promise<void>;
+  addRole: (name: string, description: string) => Promise<void>;
+  editRole: (id: string, role: RoleResponse) => Promise<void>;
 } => {
   const [roles, setRoles] = useState<RoleResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const [error] = useState<Error | null>(null);
 
   const loadRoles = async () => {
     const loadedRoles = await getRoles();
@@ -81,7 +61,7 @@ const useRoles = (): {
   };
 
   useEffect(() => {
-    loadRoles();
+    void loadRoles();
   }, []);
 
   const deleteRole = async (id: string) => {
@@ -164,7 +144,11 @@ const Table = ({
                       {role.description}
                     </td>
                     <td>
-                      <Tooltip text={permissionsToText(role.permissions)}>
+                      <Tooltip
+                        text={role.policies
+                          .map((policy) => policy.action)
+                          .join(",")}
+                      >
                         <div className="text-gray-400 hover:text-gray-900">
                           <FontAwesomeIcon icon={solid("eye")} />
                         </div>
@@ -206,7 +190,7 @@ function EditRoleForm(props: {
   role: RoleResponse;
   editRole: (role: RoleResponse) => Promise<void>;
 }) {
-  const [permissions, setPermissions] = useState(props.role.permissions);
+  const [policies, setPolicies] = useState(props.role.policies);
   const [name, setName] = useState(props.role.name);
   const [description, setDescription] = useState(props.role.description);
   const [connectionToAdd, setConnectionToAdd] = useState("");
@@ -232,21 +216,17 @@ function EditRoleForm(props: {
 
   const handleEditRole = (event: React.SyntheticEvent) => {
     event.preventDefault();
-    props.editRole({
+    void props.editRole({
       id: props.role.id,
       name,
       description,
-      permissions,
+      policies: policies,
     });
   };
 
   const removePermission = (connectionId: string, permission: string) => {
-    const newPermissions = permissions.filter((p) => p.id !== permission);
-    setPermissions(newPermissions);
-  };
-
-  const addPermission = (connectionId: string, permission: string) => {
-    //todo
+    const newPermissions = policies.filter((p) => p.id !== permission);
+    setPolicies(newPermissions);
   };
 
   return (
@@ -275,7 +255,7 @@ function EditRoleForm(props: {
         <div>
           <div className="text-gray-400 text-sm mb-2">Permissions</div>
         </div>
-        {permissions.map((permissionEntry, index) => (
+        {policies.map((permissionEntry) => (
           <div key={permissionEntry.resource} className="flex flex-col mb-3">
             <div>{permissionEntry.resource}</div>
             <div className="text-gray-400 text-sm">
@@ -314,10 +294,7 @@ function EditRoleForm(props: {
               <option value={option.value}>{option.label}</option>
             ))}
           </select>
-          <Button
-            className="ml-auto"
-            onClick={() => addPermission(connectionToAdd, permissionToAdd)}
-          >
+          <Button className="ml-auto" onClick={() => {}}>
             Add Permission
           </Button>
         </div>
@@ -332,7 +309,7 @@ function EditRoleForm(props: {
 }
 
 function RoleForm(props: {
-  handleSaveRole: (name: string, description: string) => void;
+  handleSaveRole: (name: string, description: string) => Promise<void>;
   handleCancel: () => void;
 }) {
   const [name, setName] = useState("");
@@ -340,7 +317,7 @@ function RoleForm(props: {
 
   const saveRole = (event: React.SyntheticEvent) => {
     event.preventDefault();
-    props.handleSaveRole(name, description);
+    void props.handleSaveRole(name, description);
   };
 
   return (

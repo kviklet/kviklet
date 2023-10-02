@@ -3,6 +3,7 @@ import { Link, Outlet, Route, Routes } from "react-router-dom";
 import DatabaseSettings from "./DatabaseSettings";
 import UserSettings from "./UserSettings";
 import RoleSettings from "./RolesSettings";
+import React from "react";
 
 const Tab = (props: {
   children: React.ReactNode;
@@ -48,7 +49,7 @@ function SettingsSidebar(props: { children: React.ReactNode }) {
 }
 
 const BaseSettingsLayout = (props: LayoutProps) => {
-  const [activeTab, setActiveTab] = useState<String>("databases");
+  const [activeTab, setActiveTab] = useState<string>("databases");
 
   const tabs = props.tabs.map((tab) => {
     return (
