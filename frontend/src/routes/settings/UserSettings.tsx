@@ -14,16 +14,24 @@ import ColorfulLabel from "../../components/ColorfulLabel";
 
 function UserForm(props: {
   disableModal: () => void;
-  createNewUser: (email: string, password: string, fullName: string) => void;
+  createNewUser: (
+    email: string,
+    password: string,
+    fullName: string,
+  ) => Promise<void>;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
 
-  const saveUser = async (event: React.FormEvent<HTMLFormElement>) => {
+  const saveUser = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await props.createNewUser(email, password, fullName);
-    props.disableModal();
+    props
+      .createNewUser(email, password, fullName)
+      .then(() => {
+        props.disableModal();
+      })
+      .catch((err) => console.log(err));
   };
 
   return (
@@ -77,7 +85,7 @@ const useUsers = () => {
       const apiUsers = await fetchUsers();
       setUsers(apiUsers);
     }
-    request();
+    void request();
   }, []);
 
   async function addRoleToUser(userId: string, roleId: string) {
@@ -121,8 +129,8 @@ const useUsers = () => {
 const UserRow = (props: {
   user: UserResponse;
   roles: RoleResponse[];
-  addRoleToUser: (userId: string, roleId: string) => void;
-  removeRoleFromUser: (userId: string, roleId: string) => void;
+  addRoleToUser: (userId: string, roleId: string) => Promise<void>;
+  removeRoleFromUser: (userId: string, roleId: string) => Promise<void>;
 }) => {
   const [rolesDialogVisible, setRolesDialogVisible] = useState(false);
 
@@ -140,7 +148,7 @@ const UserRow = (props: {
             return (
               <ColorfulLabel
                 onDelete={() => {
-                  props.removeRoleFromUser(props.user.id, role.id);
+                  void props.removeRoleFromUser(props.user.id, role.id);
                 }}
                 text={role.name}
               />
@@ -164,10 +172,12 @@ const UserRow = (props: {
                     {props.roles.map((role) => {
                       return (
                         <ColorfulLabel
-                          onClick={() => {
-                            props.addRoleToUser(props.user.id, role.id);
-                            setRolesDialogVisible(false);
-                          }}
+                          onClick={
+                            void (async () => {
+                              await props.addRoleToUser(props.user.id, role.id);
+                              setRolesDialogVisible(false);
+                            })
+                          }
                           text={role.name}
                         />
                       );
@@ -188,7 +198,7 @@ const UserSettings = () => {
   const { addRoleToUser, users, createNewUser, removeRoleFromUser } =
     useUsers();
 
-  const { roles, isLoading, error, deleteRole, addRole, editRole } = useRoles();
+  const { roles } = useRoles();
 
   return (
     <div>

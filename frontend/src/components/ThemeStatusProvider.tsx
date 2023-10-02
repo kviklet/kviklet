@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 
 type ThemeContext = {
   currentTheme: "dark" | "light";
@@ -15,24 +15,19 @@ type Props = {
 };
 
 export const ThemeStatusProvider: React.FC<Props> = ({ children }) => {
-  let theme = localStorage.getItem("theme");
-  if (theme === "dark") {
-    theme = "dark";
-  } else {
-    theme = "light";
-  }
-  const [currentTheme, setCurrentTheme] = useState<"light" | "dark">(
-    theme as "light" | "dark",
-  );
+  const theme = (localStorage.getItem("theme") as "light" | "dark") || "light";
+  const [currentTheme, setCurrentTheme] = useState<"light" | "dark">(theme);
+
+  const setTheme = useCallback((theme: "light" | "dark") => {
+    localStorage.setItem("theme", theme);
+    setCurrentTheme(theme);
+  }, []);
 
   return (
     <ThemeStatusContext.Provider
       value={{
         currentTheme: currentTheme,
-        setTheme: (theme) => {
-          localStorage.setItem("theme", theme);
-          setCurrentTheme(theme);
-        },
+        setTheme: setTheme,
       }}
     >
       {children}

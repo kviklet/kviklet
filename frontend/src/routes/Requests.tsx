@@ -1,10 +1,11 @@
-import { MouseEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ExecutionRequestResponse,
   getRequests,
 } from "../api/ExecutionRequestApi";
 import { Link } from "react-router-dom";
 import Button from "../components/Button";
+import React from "react";
 
 const Toggle = (props: { active: boolean; onClick: () => void }) => {
   return (
@@ -82,11 +83,9 @@ function Requests() {
       const requests = await getRequests();
       setRequests(requests);
     };
-    fetchData();
+    void fetchData();
   }, []);
   const [onlyPending, setOnlyPending] = useState(false);
-  console.log(onlyPending);
-
   const visibleRequests = onlyPending
     ? requests.filter((r) => r.reviewStatus === "AWAITING_APPROVAL")
     : requests;
@@ -141,7 +140,7 @@ function Requests() {
                       <div
                         className={`${mapStatusToLabelColor(
                           request.reviewStatus,
-                        )} font-bold border rounded-full text-sm text-center w-20 text-white py-1 px-1.5`}
+                        )} font-bold border rounded-full text-sm text-center w-20 py-1 px-1.5`}
                       >
                         {mapStatus(request?.reviewStatus)}
                       </div>
