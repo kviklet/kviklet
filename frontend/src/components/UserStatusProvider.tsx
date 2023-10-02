@@ -26,7 +26,6 @@ export const UserStatusProvider: React.FC<Props> = ({ children }) => {
   const fetchStatus = async () => {
     try {
       const status = await checklogin();
-      console.log(status);
       const statusObject = {
         userStatus: status,
         refreshState: fetchStatus,
@@ -39,7 +38,7 @@ export const UserStatusProvider: React.FC<Props> = ({ children }) => {
 
   const handleVisibilityChange = () => {
     if (document.visibilityState === "visible") {
-      fetchStatus();
+      void fetchStatus();
     }
   };
 
@@ -51,7 +50,7 @@ export const UserStatusProvider: React.FC<Props> = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    fetchStatus();
+    void fetchStatus();
   }, [location.pathname]);
 
   return (
