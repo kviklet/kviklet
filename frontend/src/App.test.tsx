@@ -35,11 +35,22 @@ const handleStatusLoggedIn = rest.get(
 );
 const handleLogin = rest.post(
   "http://localhost:8080/login",
-  (req, res, cts) => {
-    return res(cts.status(200));
+  (req, res, ctx) => {
+    return res(ctx.status(200));
   },
 );
-const server = setupServer(handleStatusNotLoggedIn, handleLogin);
+
+const handleGetExecutionRequests = rest.get(
+  "http://localhost:8080/execution-requests/",
+  (req, res, ctx) => {
+    return res(ctx.status(200), ctx.json([]));
+  },
+);
+const server = setupServer(
+  handleStatusNotLoggedIn,
+  handleLogin,
+  handleGetExecutionRequests,
+);
 
 beforeAll(() => {
   server.listen();
