@@ -7,14 +7,16 @@ import com.example.executiongate.db.RoleRepository
 import com.example.executiongate.db.User
 import com.example.executiongate.db.UserEntity
 import com.example.executiongate.db.UserRepository
+import com.example.executiongate.security.SecurityTestBase
 import com.example.executiongate.security.UserDetailsWithId
+import com.example.executiongate.security.allow
 import com.example.executiongate.service.dto.PolicyEffect
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.security.crypto.password.PasswordEncoder
 
 @Suppress("SpringJavaInjectionPointsAutowiringInspection")
-open class TestBase {
+open class TestBase : SecurityTestBase() {
 
     @Autowired lateinit var passwordEncoder: PasswordEncoder
 
@@ -29,6 +31,8 @@ open class TestBase {
 
     @BeforeEach
     fun baseSetUp() {
+        setAuthentication(listOf(allow("*", "*")))
+
         val userEntity = UserEntity(
             email = "testUser@example.com",
             fullName = "Admin User",

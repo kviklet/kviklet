@@ -5,7 +5,6 @@ import com.example.executiongate.controller.UpdateDataSourceConnectionRequest
 import com.example.executiongate.db.DatasourceAdapter
 import com.example.executiongate.db.DatasourceConnectionAdapter
 import com.example.executiongate.db.ReviewConfig
-import com.example.executiongate.security.Policy
 import com.example.executiongate.service.dto.AuthenticationType
 import com.example.executiongate.service.dto.DatasourceConnection
 import com.example.executiongate.service.dto.DatasourceConnectionId
@@ -59,7 +58,6 @@ class DatasourceConnectionService(
         )
     }
 
-    @Policy("connection:edit")
     fun deleteDatasourceConnection(connectionId: DatasourceConnectionId) {
         datasourceConnectionAdapter.deleteDatasourceConnection(connectionId)
     }

@@ -1,6 +1,5 @@
 package com.example.executiongate.db
 
-import com.example.executiongate.db.util.BaseEntity
 import com.example.executiongate.service.dto.Datasource
 import com.example.executiongate.service.dto.DatasourceId
 import com.example.executiongate.service.dto.DatasourceType
@@ -10,6 +9,7 @@ import jakarta.persistence.Entity
 import jakarta.persistence.EntityManager
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
+import jakarta.persistence.Id
 import jakarta.persistence.OneToMany
 import org.apache.commons.lang3.builder.ToStringBuilder
 import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service
 
 @Entity(name = "datasource")
 class DatasourceEntity(
+    @Id val id: String,
     val displayName: String,
     @Enumerated(EnumType.STRING)
     val type: DatasourceType,
@@ -25,7 +26,7 @@ class DatasourceEntity(
     val port: Int,
     @OneToMany(mappedBy = "datasource", cascade = [CascadeType.ALL])
     val datasourceConnections: Set<DatasourceConnectionEntity>,
-) : BaseEntity() {
+) {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
         .append("id", id)
@@ -70,6 +71,7 @@ class DatasourceAdapter(
     fun findAllDatasources(): List<Datasource> = datasourceRepository.findAll().map { it.toDto() }
 
     fun createDatasource(
+        id: String,
         displayName: String,
         datasourceType: DatasourceType,
         hostname: String,
@@ -77,6 +79,7 @@ class DatasourceAdapter(
     ): Datasource {
         return datasourceRepository.save(
             DatasourceEntity(
+                id = id,
                 displayName = displayName,
                 type = datasourceType,
                 hostname = hostname,
