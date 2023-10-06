@@ -15,10 +15,9 @@ const checklogin = async (): Promise<StatusResponse | false> => {
     credentials: "include",
   });
   if (response.status != 200) {
-    console.log("not logged in");
     return false;
   }
-  const json = await response.json();
+  const json: unknown = await response.json();
   const parsedResponse = StatusResponse.parse(json);
   return parsedResponse;
 };

@@ -13,6 +13,9 @@ export default defineConfig(() => {
       setupFiles: ["./tests/setup.ts"],
       testMatch: ["./tests/**/*.test.tsx"],
       globals: true,
+      coverage: {
+        provider: "v8",
+      },
     },
     define: {
       "process.env": process.env,

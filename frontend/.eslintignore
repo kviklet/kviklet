@@ -1,0 +1,9 @@
+vite.config.js
+tsconfig.json
+tailwind.config.js
+postcss.config.js
+sorter.js
+prettify.js
+coverage/*
+babel.config.js
+babel-plugin-macros.config.js

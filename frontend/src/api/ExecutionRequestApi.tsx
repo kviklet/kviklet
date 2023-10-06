@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { ExecutionRequest } from "../routes/AddRequestForm";
-import { type } from "os";
 import { userResponseSchema } from "./UserApi";
 import { connectionResponseSchema } from "./DatasourceApi";
 import baseUrl from "./base";
@@ -89,7 +88,7 @@ const addRequest = async (payload: ExecutionRequest): Promise<boolean> => {
     readOnly: false,
     datasourceConnectionId: payload.connection,
   };
-  const response = await fetch(requestUrl, {
+  await fetch(requestUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -104,7 +103,6 @@ const patchRequest = async (
   id: string,
   payload: ChangeExecutionRequestPayload,
 ): Promise<ExecutionRequestResponseWithComments> => {
-  console.log(payload);
   const response = await fetch(requestUrl + id, {
     method: "PATCH",
     headers: {
@@ -113,7 +111,7 @@ const patchRequest = async (
     credentials: "include",
     body: JSON.stringify(payload),
   });
-  const json = await response.json();
+  const json: unknown = await response.json();
   return ExecutionRequestResponseWithComments.parse(json);
 };
 
@@ -122,8 +120,7 @@ const getRequests = async (): Promise<ExecutionRequestsResponse> => {
     method: "GET",
     credentials: "include",
   });
-  const json = await response.json();
-  console.log(json);
+  const json: unknown = await response.json();
   const requests = ExecutionRequestsResponse.parse(json);
   return requests;
 };
@@ -138,8 +135,7 @@ const getSingleRequest = async (
   if (response.status == 404) {
     return undefined;
   }
-  const json = await response.json();
-  console.log(json);
+  const json: unknown = await response.json();
   const request = ExecutionRequestResponseWithComments.parse(json);
   return request;
 };
@@ -153,8 +149,7 @@ const addCommentToRequest = async (id: string, comment: string) => {
     credentials: "include",
     body: JSON.stringify({ comment }),
   });
-  const json = await response.json();
-  console.log(json);
+  const json: unknown = await response.json();
   const event = z.union([Comment, Review]).parse(json);
   return event;
 };
@@ -164,7 +159,7 @@ const addReviewToRequest = async (
   review: string,
   action: string,
 ) => {
-  const response = await fetch(requestUrl + id + "/reviews", {
+  await fetch(requestUrl + id + "/reviews", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -228,7 +223,7 @@ const runQuery = async (id: string): Promise<ExecuteResponse> => {
     method: "POST",
     credentials: "include",
   });
-  const json = await response.json();
+  const json: unknown = await response.json();
   const result = ExecuteResponseSchema.parse(json);
   return result;
 };

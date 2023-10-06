@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { ReactNode, useContext, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import ReactMarkdown from "react-markdown";
@@ -27,6 +27,7 @@ import {
   ThemeStatusContext,
 } from "../components/ThemeStatusProvider";
 import { colorFromText } from "../components/ColorfulLabel";
+import { CodeProps } from "react-markdown/lib/ast-to-react";
 
 interface RequestReviewParams {
   requestId: string;
@@ -51,10 +52,10 @@ const Highlighter = (props: { children: string }) => {
 };
 
 const componentMap = {
-  code: ({ node, inline, className, children, ...props }: any) => {
-    return <Highlighter>{children}</Highlighter>;
+  code: ({ children }: CodeProps) => {
+    return <Highlighter>{children as string}</Highlighter>;
   },
-  ul: ({ children }: any) => (
+  ul: ({ children }: { children: ReactNode }) => (
     <ul className="list-disc ml-4 mt-4">{children}</ul>
   ),
 };
@@ -83,7 +84,7 @@ const useRequest = (id: string) => {
       const request = await getSingleRequest(id);
       setRequest(request);
     }
-    request();
+    void request();
   }, []);
 
   const [data, setData] = useState<SelectExecuteResponse>();
@@ -94,7 +95,6 @@ const useRequest = (id: string) => {
 
   const addComment = async (comment: string) => {
     const event = await addCommentToRequest(id, comment);
-    console.log(event);
 
     // update the request with the new comment by updating the events propertiy with a new Comment
     setRequest((request) => {
@@ -234,12 +234,14 @@ function RequestBox({
   updateRequest,
 }: {
   request: ExecutionRequestResponseWithComments | undefined;
-  runQuery: () => void;
+  runQuery: () => Promise<void>;
   updateRequest: (request: { statement?: string }) => Promise<void>;
 }) {
   const [editMode, setEditMode] = useState(false);
   const [statement, setStatement] = useState(request?.statement || "");
-  const changeStatement = async (e: any) => {
+  const changeStatement = async (
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
+  ) => {
     e.preventDefault();
     await updateRequest({ statement });
     setEditMode(false);
@@ -283,7 +285,7 @@ function RequestBox({
                 >
                   Cancel
                 </Button>
-                <Button type="submit" onClick={changeStatement}>
+                <Button type="submit" onClick={(e) => void changeStatement(e)}>
                   Save
                 </Button>
               </div>
@@ -305,7 +307,7 @@ function RequestBox({
           className="mt-3"
           id="runQuery"
           type={(request?.reviewStatus == "APPROVED" && "submit") || "disabled"}
-          onClick={runQuery}
+          onClick={() => void runQuery()}
         >
           <div
             className={`play-triangle inline-block w-2 h-3 mr-2 ${
@@ -345,7 +347,7 @@ function Comment({ event, index }: { event: Event; index: number }) {
         <p className="text-slate-500 dark:text-slate-500 px-4 pt-2 text-sm flex justify-between dark:bg-slate-900 rounded-t-md">
           <div>
             {((event?.createdAt &&
-              timeSince(new Date(event.createdAt as any))) as
+              timeSince(new Date(event.createdAt as string))) as
               | string
               | undefined) || ""}
           </div>
@@ -447,14 +449,14 @@ function CommentBox({
               <Button
                 className="mr-2"
                 id="addComment"
-                onClick={handleAddComment}
+                onClick={() => void handleAddComment()}
               >
                 Add Comment
               </Button>
               <Button
                 id="approve"
                 type={`${isOwnRequest ? "disabled" : "submit"}`}
-                onClick={handleApprove}
+                onClick={() => void handleApprove()}
               >
                 Approve
               </Button>

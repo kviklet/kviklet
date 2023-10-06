@@ -18,6 +18,7 @@ import Spinner from "../../components/Spinner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 import DeleteConfirm from "../../components/DeleteConfirm";
+import React from "react";
 
 function CreateDatabaseForm(props: {
   handleCreateDatabase: (database: DatabasePayload) => Promise<void>;
@@ -38,7 +39,7 @@ function CreateDatabaseForm(props: {
   };
 
   return (
-    <form method="post" onSubmit={handleCreateDatabase}>
+    <form method="post" onSubmit={(e) => void handleCreateDatabase(e)}>
       <div className="w-2xl shadow p-3 bg-slate-50 dark:bg-slate-950 rounded">
         <InputField
           id="displayName"
@@ -94,7 +95,7 @@ const useDatasources = () => {
       setDatasources(apiDatasources);
       setLoading(false);
     }
-    request();
+    void request();
   }, []);
 
   const createDatabase = async (database: DatabasePayload) => {
@@ -188,7 +189,7 @@ function CreateConnectionForm(props: {
   };
 
   return (
-    <form method="post" onSubmit={submit}>
+    <form method="post" onSubmit={(e) => void submit(e)}>
       <div className="w-2xl shadow p-3 bg-slate-50 border border-slate-300 dark:border-none dark:bg-slate-950 rounded">
         <InputField
           id="displayName"
@@ -233,13 +234,6 @@ function SingleConnectionSettings(props: {
     connection: PatchConnectionPayload,
   ) => Promise<void>;
 }) {
-  const [displayName, setDisplayName] = useState<string>(
-    props.connection.displayName,
-  );
-  const [username, setUsername] = useState<string>(
-    props.connection.shortUsername,
-  );
-  const [password, setPassword] = useState<string>("");
   const [numTotalRequired, setNumTotalRequired] = useState<number>(
     props.connection.reviewConfig.numTotalRequired,
   );
@@ -283,7 +277,7 @@ function SingleConnectionSettings(props: {
           ></input>
         </div>
         <button
-          onClick={submit}
+          onClick={() => void submit()}
           className={`text-green-600 ml-2 hover:text-green-900 transition-colors ${
             showCheck ? "visible" : "invisible"
           }`}
@@ -375,7 +369,6 @@ const DatabaseChooser = (props: {
 };
 
 const DatabaseSettings = () => {
-  const datasourceUrl = "http://localhost:8080/datasources/";
   const [selectedIndex, setSelectedIndex] = useState<number | undefined>(
     undefined,
   );
@@ -425,7 +418,7 @@ const DatabaseSettings = () => {
     setShowAddConnectionModal(false);
   };
 
-  const deleteDatabase = async (database: DatabaseResponse) => {
+  const deleteDatabase = (database: DatabaseResponse) => {
     setSelectedDatasource(database);
     setShowDeleteDatasourceModal(true);
   };
@@ -456,7 +449,7 @@ const DatabaseSettings = () => {
               }}
               editConnectionHandler={async (connectionId, connection) => {
                 await editConnection(
-                  datasources[selectedIndex!!].id,
+                  datasources[selectedIndex!].id,
                   connectionId,
                   connection,
                 );
@@ -480,8 +473,9 @@ const DatabaseSettings = () => {
               <DeleteConfirm
                 title="Delete Datasource"
                 message="Are you sure you want to delete this datasource?"
-                onConfirm={() => {
-                  selectedDatasource && deleteDatasource(selectedDatasource.id);
+                onConfirm={async () => {
+                  selectedDatasource &&
+                    (await deleteDatasource(selectedDatasource.id));
                   setShowDeleteDatasourceModal(false);
                 }}
                 onCancel={() => setShowDeleteDatasourceModal(false)}
