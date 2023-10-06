@@ -1,7 +1,8 @@
 package com.example.executiongate.service
 
+import com.example.executiongate.controller.UpdateDatasourceRequest
 import com.example.executiongate.db.DatasourceAdapter
-import com.example.executiongate.db.DatasourceConnectionAdapter
+import com.example.executiongate.security.Permission
 import com.example.executiongate.security.Policy
 import com.example.executiongate.service.dto.Datasource
 import com.example.executiongate.service.dto.DatasourceId
@@ -16,33 +17,47 @@ class EntityNotFound(override val message: String, val detail: String) : Excepti
 @Service
 class DatasourceService(
     val datasourceAdapter: DatasourceAdapter,
-    val datasourceConnectionAdapter: DatasourceConnectionAdapter,
 ) {
     var logger: Logger = LoggerFactory.getLogger(DatasourceService::class.java)
 
-//    @Policy("datasource:get")
-//    fun listConnectionsLegacy(): List<Datasource> = datasourceRepository
-//        .findAllDatasourcesAndConnections().map { it.toDto() }
-
-    @Policy("datasource:get")
-    fun listConnections(): List<Datasource> {
-        return datasourceAdapter.findAllDatasources()
-    }
-
     @Transactional
+    @Policy(Permission.DATASOURCE_CREATE)
     fun createDatasource(
+        id: String,
         displayName: String,
         datasourceType: DatasourceType,
         hostname: String,
         port: Int,
     ): Datasource = datasourceAdapter.createDatasource(
+        id,
         displayName,
         datasourceType,
         hostname,
         port,
     )
 
+    @Transactional
+    @Policy(Permission.DATASOURCE_EDIT)
     fun deleteDatasource(datasourceId: DatasourceId) {
+        print("deleting $datasourceId")
         datasourceAdapter.deleteDatasource(datasourceId)
+    }
+
+    @Transactional
+    @Policy(Permission.DATASOURCE_GET)
+    fun getDatasource(datasourceId: DatasourceId): Datasource {
+        return datasourceAdapter.getDatasource(datasourceId)
+    }
+
+    @Transactional
+    @Policy(Permission.DATASOURCE_EDIT)
+    fun updateDatasource(datasourceId: DatasourceId, datasource: UpdateDatasourceRequest): Datasource {
+        return datasourceAdapter.updateDatasource(
+            datasourceId,
+            datasource.displayName,
+            datasource.datasourceType,
+            datasource.hostname,
+            datasource.port,
+        )
     }
 }

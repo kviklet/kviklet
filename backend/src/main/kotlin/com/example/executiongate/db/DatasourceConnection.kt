@@ -1,6 +1,5 @@
 package com.example.executiongate.db
 
-import com.example.executiongate.db.util.BaseEntity
 import com.example.executiongate.db.util.ReviewConfigConverter
 import com.example.executiongate.service.EntityNotFound
 import com.example.executiongate.service.dto.AuthenticationType
@@ -15,6 +14,7 @@ import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
+import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
@@ -31,7 +31,9 @@ data class ReviewConfig(
 
 @Entity(name = "datasource_connection")
 class DatasourceConnectionEntity(
-    @ManyToOne(cascade = [CascadeType.ALL], fetch = FetchType.EAGER)
+    @Id
+    val id: String,
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "datasource_id")
     val datasource: DatasourceEntity,
     var displayName: String,
@@ -46,7 +48,7 @@ class DatasourceConnectionEntity(
     var reviewConfig: ReviewConfig,
     @OneToMany(mappedBy = "connection", cascade = [CascadeType.ALL])
     val executionRequests: Set<ExecutionRequestEntity> = emptySet(),
-) : BaseEntity() {
+) {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
         .append("id", id)
@@ -66,7 +68,9 @@ class DatasourceConnectionEntity(
     )
 }
 
-interface DatasourceConnectionRepository : JpaRepository<DatasourceConnectionEntity, String>
+interface DatasourceConnectionRepository : JpaRepository<DatasourceConnectionEntity, String> {
+    fun findByDatasourceAndId(datasource: DatasourceEntity, id: String): DatasourceConnectionEntity?
+}
 
 @Service
 class DatasourceConnectionAdapter(
@@ -74,15 +78,34 @@ class DatasourceConnectionAdapter(
     val datasourceConnectionRepository: DatasourceConnectionRepository,
 ) {
 
-    fun getDatasourceConnection(id: DatasourceConnectionId): DatasourceConnection =
-        datasourceConnectionRepository.findByIdOrNull(id.toString())?.toDto()
-            ?: throw EntityNotFound(
-                "Datasource Connection Not Found",
-                "Datasource Connection with id $id does not exist.",
+    fun getDatasourceConnection(
+        datasourceId: DatasourceId?,
+        datasourceConnectionId: DatasourceConnectionId,
+    ): DatasourceConnection {
+        if (datasourceId != null) {
+            val datasource = datasourceRepository.findByIdOrNull(datasourceId.toString()) ?: throw EntityNotFound(
+                "Datasource Not Found",
+                "Datasource $datasourceId does not exist.",
             )
+
+            return datasourceConnectionRepository
+                .findByDatasourceAndId(datasource, datasourceConnectionId.toString())?.toDto()
+                ?: throw EntityNotFound(
+                    "Datasource Connection Not Found",
+                    "Datasource Connection $datasourceId/$datasourceConnectionId does not exist.",
+                )
+        } else {
+            return datasourceConnectionRepository.findByIdOrNull(datasourceConnectionId.toString())?.toDto()
+                ?: throw EntityNotFound(
+                    "Datasource Connection Not Found",
+                    "Datasource Connection $datasourceId/$datasourceConnectionId does not exist.",
+                )
+        }
+    }
 
     fun createDatasourceConnection(
         datasourceId: DatasourceId,
+        datasourceConnectionId: DatasourceConnectionId,
         displayName: String,
         authenticationType: AuthenticationType,
         username: String,
@@ -93,6 +116,7 @@ class DatasourceConnectionAdapter(
         return datasourceConnectionRepository.save(
             DatasourceConnectionEntity(
                 datasource = datasourceRepository.getReferenceById(datasourceId.toString()),
+                id = datasourceConnectionId.toString(),
                 displayName = displayName,
                 authenticationType = authenticationType,
                 username = username,
@@ -127,12 +151,7 @@ class DatasourceConnectionAdapter(
     }
 
     fun deleteDatasourceConnection(id: DatasourceConnectionId) {
-        val datasourceConnection = datasourceConnectionRepository.findByIdOrNull(id.toString())
-            ?: throw EntityNotFound(
-                "Datasource Connection Not Found",
-                "Datasource Connection with id $id does not exist.",
-            )
-        datasourceConnectionRepository.delete(datasourceConnection)
+        datasourceConnectionRepository.deleteById(id.toString())
     }
 
     fun listDatasourceConnections(): List<DatasourceConnection> {

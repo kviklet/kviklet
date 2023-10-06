@@ -12,12 +12,18 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import javax.naming.AuthenticationException
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 
 @RestController
 class LoginController(private val customAuthenticationProvider: CustomAuthenticationProvider) {
 
+    @OptIn(ExperimentalEncodingApi::class)
     @PostMapping("/login")
-    fun login(@RequestBody credentials: LoginCredentials, request: HttpServletRequest): ResponseEntity<Any> {
+    fun login(
+        @RequestBody credentials: LoginCredentials,
+        request: HttpServletRequest,
+    ): ResponseEntity<LoginFooResponse> {
         try {
             // Create an unauthenticated token
             val authenticationToken = UsernamePasswordAuthenticationToken(credentials.email, credentials.password)
@@ -32,7 +38,7 @@ class LoginController(private val customAuthenticationProvider: CustomAuthentica
             request.getSession(true)
 
             // Respond with OK status
-            return ResponseEntity.ok().build()
+            return ResponseEntity.ok(LoginFooResponse(Base64.encode(request.session.id.toByteArray())))
         } catch (e: AuthenticationException) {
             // Respond with Unauthorized status
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
@@ -60,4 +66,8 @@ data class LoginCredentials(
     val email: String,
     @Schema(example = "testPassword")
     val password: String,
+)
+
+data class LoginFooResponse(
+    val sessionId: String,
 )

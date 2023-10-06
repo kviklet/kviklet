@@ -1,5 +1,6 @@
 package com.example.executiongate.security
 
+import com.example.executiongate.service.IdResolver
 import org.aopalliance.aop.Advice
 import org.aopalliance.intercept.MethodInterceptor
 import org.aopalliance.intercept.MethodInvocation
@@ -23,25 +24,56 @@ import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 import java.util.function.Supplier
 
-enum class DomainObjectType {
-    DATASOURCE,
-    DATASOURCE_CONNECTION,
-    EXECUTION_REQUEST,
+enum class Resource(val resourceName: String) {
+    DATASOURCE("datasource"),
+    DATASOURCE_CONNECTION("datasource_connection"),
+    EXECUTION_REQUEST("execution_request"),
+}
+
+enum class Permission(
+    val resource: Resource,
+    // if action is null, only the parent requiredPermission is checked
+    val action: String?,
+    val requiredPermission: Permission?,
+) {
+    DATASOURCE_GET(Resource.DATASOURCE, "get", null),
+    DATASOURCE_EDIT(Resource.DATASOURCE, "edit", DATASOURCE_GET),
+    DATASOURCE_CREATE(Resource.DATASOURCE, "create", DATASOURCE_GET),
+
+    DATASOURCE_CONNECTION_GET(Resource.DATASOURCE_CONNECTION, "get", DATASOURCE_GET),
+    DATASOURCE_CONNECTION_EDIT(Resource.DATASOURCE_CONNECTION, "edit", DATASOURCE_CONNECTION_GET),
+    DATASOURCE_CONNECTION_CREATE(Resource.DATASOURCE_CONNECTION, "create", DATASOURCE_CONNECTION_GET),
+
+    EXECUTION_REQUEST_GET(Resource.EXECUTION_REQUEST, null, DATASOURCE_CONNECTION_GET),
+    EXECUTION_REQUEST_EDIT(Resource.EXECUTION_REQUEST, null, EXECUTION_REQUEST_GET),
+    EXECUTION_REQUEST_EXECUTE(Resource.EXECUTION_REQUEST, null, EXECUTION_REQUEST_GET),
+    ;
+
+    fun getPermissionString(): String {
+        return "${this.resource.resourceName}:${this.action}"
+    }
+}
+
+interface SecuredDomainId {
+    override fun toString(): String
 }
 
 interface SecuredDomainObject {
     fun getId(): String
-    fun getDomainObjectType(): DomainObjectType
-    fun getParent(): SecuredDomainObject?
+    fun getDomainObjectType(): Resource
+    fun getRelated(resource: Resource): SecuredDomainObject?
+    fun auth(permission: Permission, userDetails: UserDetailsWithId): Boolean = true
 }
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention
-annotation class Policy(val policy: String)
+annotation class Policy(val permission: Permission)
 
 @Configuration
 @EnableMethodSecurity(prePostEnabled = true)
-class MethodSecurityConfig {
+class MethodSecurityConfig(
+    private val idResolver: IdResolver,
+) {
 
     @Bean
     @Role(ROLE_INFRASTRUCTURE)
@@ -49,6 +81,7 @@ class MethodSecurityConfig {
         return AuthorizationManagerInterceptor(
             AnnotationMatchingPointcut(null, Policy::class.java, true),
             manager,
+            idResolver,
         )
     }
 }
@@ -61,22 +94,26 @@ class MyAuthorizationManager {
         returnObject: SecuredDomainObject? = null,
     ): AuthorizationDecision {
         val policyAnnotation: Policy = AnnotationUtils.findAnnotation(invocation.method, Policy::class.java)!!
+        val policies = authentication.get().authorities.filterIsInstance<PolicyGrantedAuthority>()
 
-        val votes = authentication.get().authorities.filterIsInstance<PolicyGrantedAuthority>().map {
-            it.vote(action = policyAnnotation.policy, domainObject = returnObject)
-        }
+        var p: Permission = policyAnnotation.permission
 
-        return if (votes.any { it == VoteResult.ALLOW } && votes.none { it == VoteResult.DENY }) {
-            AuthorizationDecision(true)
-        } else {
-            AuthorizationDecision(false)
-        }
+        do {
+            if (!policies.vote(p, returnObject?.getRelated(p.resource)).isAllowed()) {
+                return AuthorizationDecision(false)
+            }
+            if (returnObject?.auth(p, authentication.get().principal as UserDetailsWithId) == false) {
+                return AuthorizationDecision(false)
+            }
+        } while ((p.requiredPermission != null).also { if (it) p = p.requiredPermission!! })
+        return AuthorizationDecision(true)
     }
 }
 
 class AuthorizationManagerInterceptor(
     private val pointcut: Pointcut,
     private val authorizationManager: MyAuthorizationManager,
+    private val idResolver: IdResolver,
 ) : Ordered, MethodInterceptor, PointcutAdvisor, AopInfrastructureBean {
 
     private val authentication: Supplier<Authentication> = Supplier {
@@ -106,6 +143,8 @@ class AuthorizationManagerInterceptor(
             returnedObject
         } else if (returnedObject is Collection<*>) {
             filterCollection(invocation, returnedObject as MutableCollection<*>)
+        } else if (returnedObject == null) {
+            null
         } else {
             throw IllegalStateException("Expected SecuredDomainObject, got $returnedObject.")
         }
@@ -131,9 +170,20 @@ class AuthorizationManagerInterceptor(
     }
 
     private fun attemptPreAuthorization(mi: MethodInvocation) {
-        //        this.eventPublisher.publishAuthorizationEvent<MethodInvocation>(this.authentication, mi, decision)
-        if (!authorizationManager.check(authentication, mi).isGranted) {
-            throw AccessDeniedException("Access Denied")
+        val domainIds: List<SecuredDomainId> = mi.arguments.filterIsInstance<SecuredDomainId>()
+
+        if (domainIds.isEmpty()) {
+            if (!authorizationManager.check(authentication, mi).isGranted) {
+                throw AccessDeniedException("Access Denied")
+            }
+        } else if (domainIds.size == 1) {
+            if (!authorizationManager.check(authentication, mi, idResolver.resolve(domainIds[0])).isGranted) {
+                throw AccessDeniedException("Access Denied")
+            }
+        } else {
+            throw IllegalStateException("Only one SecuredDomainId is allowed per method.")
         }
+
+        //        this.eventPublisher.publishAuthorizationEvent<MethodInvocation>(this.authentication, mi, decision)
     }
 }

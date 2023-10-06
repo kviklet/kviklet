@@ -12,7 +12,7 @@ databaseChangeLog:
                     primaryKey: true
                     primaryKeyName: datasource_pkey
                   name: id
-                  type: CHAR(22)
+                  type: VARCHAR(255)
               - column:
                   constraints:
                     nullable: false
@@ -42,7 +42,7 @@ databaseChangeLog:
                     primaryKey: true
                     primaryKeyName: datasource_connection_pkey
                   name: id
-                  type: CHAR(22)
+                  type: VARCHAR(255)
               - column:
                   constraints:
                     nullable: false
@@ -90,7 +90,7 @@ databaseChangeLog:
                     nullable: false
               - column:
                   name: datasource_id
-                  type: CHAR(22)
+                  type: VARCHAR(255)
                   constraints:
                     nullable: false
               - column:

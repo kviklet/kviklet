@@ -19,10 +19,12 @@ import com.example.executiongate.service.dto.PolicyEffect
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Profile
 import org.springframework.security.crypto.password.PasswordEncoder
 import java.util.concurrent.ThreadLocalRandom
 
 @Configuration
+@Profile("local")
 class DataInitializer(
     private val datasourceRepository: DatasourceRepository,
     private val datasourceConnectionRepository: DatasourceConnectionRepository,
@@ -85,6 +87,8 @@ class DataInitializer(
     fun initializer(userRepository: UserRepository, passwordEncoder: PasswordEncoder): ApplicationRunner {
         return ApplicationRunner { _ ->
 
+            println("initializing data")
+
             if (userRepository.findAll().isNotEmpty()) {
                 return@ApplicationRunner
             }
@@ -99,6 +103,7 @@ class DataInitializer(
 
             // Create a datasource
             val datasource1 = DatasourceEntity(
+                id = "test-datasource",
                 displayName = "Test Datasource",
                 type = DatasourceType.POSTGRESQL,
                 hostname = "localhost",
@@ -111,6 +116,7 @@ class DataInitializer(
 
             // Create connections linked to the saved datasource
             val connection1 = DatasourceConnectionEntity(
+                id = "test-connection",
                 datasource = savedDatasource1,
                 displayName = "Test Connection",
                 authenticationType = AuthenticationType.USER_PASSWORD,

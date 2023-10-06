@@ -2,9 +2,9 @@ package com.example.executiongate.service
 
 import com.example.executiongate.controller.CreateDatasourceConnectionRequest
 import com.example.executiongate.controller.UpdateDataSourceConnectionRequest
-import com.example.executiongate.db.DatasourceAdapter
 import com.example.executiongate.db.DatasourceConnectionAdapter
 import com.example.executiongate.db.ReviewConfig
+import com.example.executiongate.security.Permission
 import com.example.executiongate.security.Policy
 import com.example.executiongate.service.dto.AuthenticationType
 import com.example.executiongate.service.dto.DatasourceConnection
@@ -15,21 +15,23 @@ import org.springframework.stereotype.Service
 
 @Service
 class DatasourceConnectionService(
-    val datasourceAdapter: DatasourceAdapter,
     val datasourceConnectionAdapter: DatasourceConnectionAdapter,
 ) {
 
     @Transactional
+    @Policy(Permission.DATASOURCE_CONNECTION_GET)
     fun listDatasourceConnections(): List<DatasourceConnection> {
         return datasourceConnectionAdapter.listDatasourceConnections()
     }
 
     @Transactional
+    @Policy(Permission.DATASOURCE_CONNECTION_EDIT)
     fun updateDatasourceConnection(
+        datasourceId: DatasourceId,
         connectionId: DatasourceConnectionId,
         request: UpdateDataSourceConnectionRequest,
     ): DatasourceConnection {
-        val datasourceConnection = datasourceConnectionAdapter.getDatasourceConnection(connectionId)
+        val datasourceConnection = datasourceConnectionAdapter.getDatasourceConnection(datasourceId, connectionId)
 
         return datasourceConnectionAdapter.updateDatasourceConnection(
             connectionId,
@@ -42,12 +44,14 @@ class DatasourceConnectionService(
     }
 
     @Transactional
+    @Policy(Permission.DATASOURCE_CONNECTION_CREATE)
     fun createDatasourceConnection(
         datasourceId: DatasourceId,
         request: CreateDatasourceConnectionRequest,
     ): DatasourceConnection {
         return datasourceConnectionAdapter.createDatasourceConnection(
             datasourceId,
+            DatasourceConnectionId(request.id),
             request.displayName,
             AuthenticationType.USER_PASSWORD,
             request.username,
@@ -59,8 +63,21 @@ class DatasourceConnectionService(
         )
     }
 
-    @Policy("connection:edit")
+    @Transactional
+    @Policy(Permission.DATASOURCE_CONNECTION_EDIT)
     fun deleteDatasourceConnection(connectionId: DatasourceConnectionId) {
         datasourceConnectionAdapter.deleteDatasourceConnection(connectionId)
+    }
+
+    @Transactional
+    @Policy(Permission.DATASOURCE_CONNECTION_GET)
+    fun getDatasourceConnection(
+        datasourceId: DatasourceId,
+        datasourceConnectionId: DatasourceConnectionId,
+    ): DatasourceConnection {
+        return datasourceConnectionAdapter.getDatasourceConnection(
+            datasourceId = datasourceId,
+            datasourceConnectionId = datasourceConnectionId,
+        )
     }
 }

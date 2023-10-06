@@ -3,16 +3,19 @@ package com.example.executiongate
 import com.example.executiongate.controller.CreateCommentRequest
 import com.example.executiongate.controller.CreateDatasourceConnectionRequest
 import com.example.executiongate.controller.CreateDatasourceRequest
-import com.example.executiongate.controller.CreateExecutionRequest
+import com.example.executiongate.controller.CreateExecutionRequestRequest
 import com.example.executiongate.controller.CreateReviewRequest
 import com.example.executiongate.controller.DatasourceController
 import com.example.executiongate.controller.ExecutionRequestController
 import com.example.executiongate.controller.ListDatasourceResponse
 import com.example.executiongate.controller.ReviewConfigRequest
+import com.example.executiongate.db.DatasourceConnectionRepository
 import com.example.executiongate.db.DatasourceRepository
 import com.example.executiongate.db.EventRepository
 import com.example.executiongate.db.ExecutionRequestRepository
+import com.example.executiongate.security.WithAdminUser
 import com.example.executiongate.service.dto.CommentEvent
+import com.example.executiongate.service.dto.DatasourceConnectionId
 import com.example.executiongate.service.dto.DatasourceType
 import com.example.executiongate.service.dto.ReviewAction
 import com.example.executiongate.service.dto.ReviewEvent
@@ -23,7 +26,6 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
@@ -32,9 +34,11 @@ import java.time.LocalDateTime
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@WithAdminUser
 class DatasourceConnectionTest(
     @Autowired val mockMvc: MockMvc,
     @Autowired val datasourceRepository: DatasourceRepository,
+    @Autowired val datasourceConnectionRepository: DatasourceConnectionRepository,
     @Autowired val executionRequestRepository: ExecutionRequestRepository,
     @Autowired val eventRepository: EventRepository,
     @Autowired val datasourceController: DatasourceController,
@@ -43,14 +47,15 @@ class DatasourceConnectionTest(
 
     @AfterEach
     fun tearDown() {
-        eventRepository.deleteAll()
-        executionRequestRepository.deleteAll()
-        datasourceRepository.deleteAll()
+        eventRepository.deleteAllInBatch()
+        executionRequestRepository.deleteAllInBatch()
+        datasourceRepository.deleteAllInBatch()
+        datasourceConnectionRepository.deleteAllInBatch()
     }
 
     @Test
     fun test1() {
-        mockMvc.perform(get("/datasources/").with(user(testUser.id)))
+        mockMvc.perform(get("/datasources"))
             .andExpect(status().isOk)
             .andExpect(content().json("{'databases':  []}"))
     }
@@ -65,6 +70,7 @@ class DatasourceConnectionTest(
     fun `test full setup`() {
         val datasource = datasourceController.createDatasource(
             CreateDatasourceRequest(
+                id = "db",
                 displayName = "test",
                 datasourceType = DatasourceType.MYSQL,
                 hostname = "localhost",
@@ -75,6 +81,7 @@ class DatasourceConnectionTest(
         val connection = datasourceController.createDatasourceConnection(
             datasource.id,
             CreateDatasourceConnectionRequest(
+                id = "db-conn",
                 displayName = "My Connection",
                 username = "root",
                 password = "root",
@@ -85,8 +92,8 @@ class DatasourceConnectionTest(
         )
 
         val request = executionRequestController.create(
-            CreateExecutionRequest(
-                datasourceConnectionId = connection.id,
+            CreateExecutionRequestRequest(
+                datasourceConnectionId = DatasourceConnectionId("db-conn"),
                 title = "My Request",
                 description = "Request description",
                 statement = "SELECT 1",

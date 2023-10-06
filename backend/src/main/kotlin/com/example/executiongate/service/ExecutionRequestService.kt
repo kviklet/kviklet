@@ -1,15 +1,18 @@
 package com.example.executiongate.service
 
 import com.example.executiongate.controller.CreateCommentRequest
-import com.example.executiongate.controller.CreateExecutionRequest
+import com.example.executiongate.controller.CreateExecutionRequestRequest
 import com.example.executiongate.controller.CreateReviewRequest
-import com.example.executiongate.controller.UpdateExecutionRequest
+import com.example.executiongate.controller.UpdateExecutionRequestRequest
 import com.example.executiongate.db.CommentPayload
 import com.example.executiongate.db.DatasourceConnectionAdapter
 import com.example.executiongate.db.ExecutionRequestAdapter
 import com.example.executiongate.db.Payload
 import com.example.executiongate.db.ReviewConfig
 import com.example.executiongate.db.ReviewPayload
+import com.example.executiongate.security.Permission
+import com.example.executiongate.security.Policy
+import com.example.executiongate.service.dto.DatasourceConnectionId
 import com.example.executiongate.service.dto.Event
 import com.example.executiongate.service.dto.EventType
 import com.example.executiongate.service.dto.ExecutionRequestDetails
@@ -28,9 +31,12 @@ class ExecutionRequestService(
 ) {
 
     @Transactional
-    fun create(request: CreateExecutionRequest, userId: String): ExecutionRequestDetails {
-        val datasourceConnection = datasourceConnectionAdapter.getDatasourceConnection(request.datasourceConnectionId)
-
+    @Policy(Permission.EXECUTION_REQUEST_GET)
+    fun create(
+        connectionId: DatasourceConnectionId,
+        request: CreateExecutionRequestRequest,
+        userId: String,
+    ): ExecutionRequestDetails {
         return executionRequestAdapter.createExecutionRequest(
             connectionId = request.datasourceConnectionId,
             title = request.title,
@@ -43,7 +49,8 @@ class ExecutionRequestService(
     }
 
     @Transactional
-    fun update(id: ExecutionRequestId, request: UpdateExecutionRequest): ExecutionRequestDetails {
+    @Policy(Permission.EXECUTION_REQUEST_EDIT)
+    fun update(id: ExecutionRequestId, request: UpdateExecutionRequestRequest): ExecutionRequestDetails {
         val executionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
 
         return executionRequestAdapter.updateExecutionRequest(
@@ -55,12 +62,16 @@ class ExecutionRequestService(
         )
     }
 
+    @Transactional
+    @Policy(Permission.EXECUTION_REQUEST_GET)
     fun list(): List<ExecutionRequestDetails> = executionRequestAdapter.listExecutionRequests()
 
     @Transactional
+    @Policy(Permission.EXECUTION_REQUEST_GET)
     fun get(id: ExecutionRequestId): ExecutionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
 
     @Transactional
+    @Policy(Permission.EXECUTION_REQUEST_GET)
     fun createReview(id: ExecutionRequestId, request: CreateReviewRequest, authorId: String) = saveEvent(
         id,
         authorId,
@@ -68,6 +79,7 @@ class ExecutionRequestService(
     )
 
     @Transactional
+    @Policy(Permission.EXECUTION_REQUEST_GET)
     fun createComment(id: ExecutionRequestId, request: CreateCommentRequest, authorId: String) = saveEvent(
         id,
         authorId,
@@ -92,6 +104,7 @@ class ExecutionRequestService(
         return reviewStatus
     }
 
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
     fun execute(id: ExecutionRequestId): QueryResult {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
         val connection = executionRequest.request.connection
