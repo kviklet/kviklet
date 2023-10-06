@@ -3,13 +3,12 @@ package com.example.executiongate.controller
 import com.example.executiongate.MyProperties
 import com.example.executiongate.service.DatasourceConnectionService
 import com.example.executiongate.service.DatasourceService
-import com.example.executiongate.service.dto.AuthenticationType
 import com.example.executiongate.service.dto.Datasource
 import com.example.executiongate.service.dto.DatasourceConnection
-import com.example.executiongate.service.dto.DatasourceConnectionId
 import com.example.executiongate.service.dto.DatasourceId
 import com.example.executiongate.service.dto.DatasourceType
 import io.swagger.v3.oas.annotations.media.Schema
+import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Pattern
@@ -56,74 +55,22 @@ data class CreateDatasourceRequest(
 
 )
 
-data class CreateDatasourceConnectionRequest(
-    @Schema(example = "postgres-read-only")
-    @field:Size(max = 255, message = "Maximum length 255")
-    @field:Pattern(regexp = "^[a-zA-Z0-9-]+$", message = "Only alphanumeric and dashes (-) allowed")
-    val id: String,
-
-    @Schema(example = "My Postgres Db User")
+data class UpdateDatasourceRequest(
+    @Schema(example = "My Postgres Db")
     @field:Size(max = 255, message = "Maximum length 255")
     val displayName: String,
 
-    @Schema(example = "root")
+    @Schema(example = "POSTGRESQL")
+    val datasourceType: DatasourceType,
+
+    @Schema(example = "localhost")
     @field:Size(min = 1, max = 255, message = "Maximum length 255")
-    val username: String,
+    val hostname: String,
 
-    @Schema(example = "root")
-    @field:Size(min = 1, max = 255, message = "Maximum length 255")
-    val password: String,
-
-    val description: String = "",
-
-    val reviewConfig: ReviewConfigRequest,
+    @Schema(example = "5432")
+    @field:Max(value = 65535)
+    val port: Int,
 )
-
-data class UpdateDataSourceConnectionRequest(
-    @Schema(example = "My Postgres Db User")
-    @field:Size(max = 255, message = "Maximum length 255")
-    val displayName: String? = null,
-
-    @Schema(example = "root")
-    @field:Size(min = 1, max = 255, message = "Maximum length 255")
-    val username: String? = null,
-
-    @Schema(example = "root")
-    @field:Size(min = 1, max = 255, message = "Maximum length 255")
-    val password: String? = null,
-
-    val description: String? = null,
-
-    val reviewConfig: ReviewConfigRequest? = null,
-)
-
-data class ReviewConfigRequest(
-    val numTotalRequired: Int = 0,
-)
-
-data class ReviewConfigResponse(
-    val numTotalRequired: Int = 0,
-)
-
-data class DatasourceConnectionResponse(
-    val id: DatasourceConnectionId,
-    val authenticationType: AuthenticationType,
-    val displayName: String,
-    val shortUsername: String,
-    val description: String,
-    val reviewConfig: ReviewConfigResponse,
-) {
-    companion object {
-        fun fromDto(datasourceConnection: DatasourceConnection) = DatasourceConnectionResponse(
-            id = datasourceConnection.id,
-            authenticationType = datasourceConnection.authenticationType,
-            displayName = datasourceConnection.displayName,
-            shortUsername = datasourceConnection.username.take(3),
-            description = datasourceConnection.description,
-            reviewConfig = ReviewConfigResponse(datasourceConnection.reviewConfig.numTotalRequired),
-        )
-    }
-}
 
 data class DatasourceResponse(
     val id: DatasourceId,
@@ -152,11 +99,32 @@ data class ListDatasourceResponse(
 @RestController()
 @Validated
 @RequestMapping("/datasources")
+@Tag(
+    name = "Datasources",
+)
 class DatasourceController(
     val datasourceService: DatasourceService,
     val datasourceConnectionService: DatasourceConnectionService,
     val config: MyProperties,
 ) {
+
+    @GetMapping("/{datasourceId}")
+    fun getDatasource(@PathVariable datasourceId: String): DatasourceResponse {
+        return datasourceService.getDatasource(
+            DatasourceId(datasourceId),
+        ).let { DatasourceResponse.fromDto(it, emptyList()) }
+    }
+
+    @GetMapping("")
+    fun listDatasources(): ListDatasourceResponse {
+        val dbs = datasourceConnectionService.listDatasourceConnections()
+
+        return ListDatasourceResponse(
+            databases = dbs.groupBy { it.datasource }.map { (datasource, datasourceConnection) ->
+                DatasourceResponse.fromDto(datasource, datasourceConnection)
+            },
+        )
+    }
 
     @PostMapping("")
     fun createDatasource(@Valid @RequestBody datasourceConnection: CreateDatasourceRequest): DatasourceResponse {
@@ -170,55 +138,19 @@ class DatasourceController(
         return DatasourceResponse.fromDto(datasource, emptyList())
     }
 
-    @PostMapping("/{datasourceId}/connections")
-    fun createDatasourceConnection(
-        @PathVariable datasourceId: DatasourceId,
-        @Valid @RequestBody datasourceConnection: CreateDatasourceConnectionRequest,
-    ): DatasourceConnectionResponse {
-        val datasource = datasourceConnectionService.createDatasourceConnection(
-            datasourceId = datasourceId,
-            request = datasourceConnection,
-        )
-        return DatasourceConnectionResponse.fromDto(datasource)
-    }
-
-    @DeleteMapping("/{datasourceId}/connections/{connectionId}")
-    fun deleteDatasourceConnection(
-        @PathVariable datasourceId: DatasourceId,
-        @PathVariable connectionId: DatasourceConnectionId,
-    ) {
-        datasourceConnectionService.deleteDatasourceConnection(
-            connectionId = connectionId,
-        )
-    }
-
-    @PatchMapping("/{datasourceId}/connections/{connectionId}")
-    fun updateDatasourceConnection(
-        @PathVariable datasourceId: DatasourceId,
-        @PathVariable connectionId: DatasourceConnectionId,
-        @Valid @RequestBody datasourceConnection: UpdateDataSourceConnectionRequest,
-    ): DatasourceConnectionResponse {
-        val datasource = datasourceConnectionService.updateDatasourceConnection(
-            connectionId = connectionId,
-            request = datasourceConnection,
-        )
-        return DatasourceConnectionResponse.fromDto(datasource)
+    @PatchMapping("/{datasourceId}")
+    fun updateDatasource(
+        @PathVariable datasourceId: String,
+        @Valid @RequestBody datasource: UpdateDatasourceRequest,
+    ): DatasourceResponse {
+        return datasourceService.updateDatasource(DatasourceId(datasourceId), datasource).let {
+            DatasourceResponse.fromDto(it, emptyList())
+        }
     }
 
     @DeleteMapping("/{datasourceId}")
-    fun deleteDatasource(@PathVariable datasourceId: DatasourceId) {
-        datasourceService.deleteDatasource(datasourceId = datasourceId)
-    }
-
-    @GetMapping("")
-    fun listDatasources(): ListDatasourceResponse {
-        val dbs = datasourceConnectionService.listDatasourceConnections()
-
-        return ListDatasourceResponse(
-            databases = dbs.groupBy { it.datasource }.map { (datasource, datasourceConnection) ->
-                DatasourceResponse.fromDto(datasource, datasourceConnection)
-            },
-        )
+    fun deleteDatasource(@PathVariable datasourceId: String) {
+        datasourceService.deleteDatasource(datasourceId = DatasourceId(datasourceId))
     }
 
     /*

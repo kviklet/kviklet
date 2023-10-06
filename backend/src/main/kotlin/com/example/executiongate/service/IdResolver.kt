@@ -16,7 +16,7 @@ class IdResolver(
     private val executionRequestAdapter: ExecutionRequestAdapter,
 ) {
     fun resolve(id: SecuredDomainId) = when (id) {
-        is DatasourceConnectionId -> datasourceConnectionAdapter.getDatasourceConnection(id)
+        is DatasourceConnectionId -> datasourceConnectionAdapter.getDatasourceConnection(null, id)
         is DatasourceId -> datasourceAdapter.getDatasource(id)
         is ExecutionRequestId -> executionRequestAdapter.getExecutionRequestDetails(id)
 

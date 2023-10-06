@@ -19,11 +19,11 @@ import org.springframework.stereotype.Service
 @Entity(name = "datasource")
 class DatasourceEntity(
     @Id val id: String,
-    val displayName: String,
+    var displayName: String,
     @Enumerated(EnumType.STRING)
-    val type: DatasourceType,
-    val hostname: String,
-    val port: Int,
+    var type: DatasourceType,
+    var hostname: String,
+    var port: Int,
     @OneToMany(mappedBy = "datasource", cascade = [CascadeType.ALL])
     val datasourceConnections: Set<DatasourceConnectionEntity>,
 ) {
@@ -94,5 +94,22 @@ class DatasourceAdapter(
 
     fun deleteDatasource(datasourceId: DatasourceId) {
         datasourceRepository.deleteById(datasourceId.toString())
+    }
+
+    fun updateDatasource(
+        datasourceId: DatasourceId,
+        displayName: String,
+        datasourceType: DatasourceType,
+        hostname: String,
+        port: Int,
+    ): Datasource {
+        val entity = datasourceRepository.getReferenceById(datasourceId.toString())
+
+        entity.displayName = displayName
+        entity.type = datasourceType
+        entity.hostname = hostname
+        entity.port = port
+
+        return datasourceRepository.save(entity).toDto()
     }
 }

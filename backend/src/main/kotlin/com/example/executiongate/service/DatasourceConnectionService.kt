@@ -27,10 +27,11 @@ class DatasourceConnectionService(
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_EDIT)
     fun updateDatasourceConnection(
+        datasourceId: DatasourceId,
         connectionId: DatasourceConnectionId,
         request: UpdateDataSourceConnectionRequest,
     ): DatasourceConnection {
-        val datasourceConnection = datasourceConnectionAdapter.getDatasourceConnection(connectionId)
+        val datasourceConnection = datasourceConnectionAdapter.getDatasourceConnection(datasourceId, connectionId)
 
         return datasourceConnectionAdapter.updateDatasourceConnection(
             connectionId,
@@ -66,5 +67,17 @@ class DatasourceConnectionService(
     @Policy(Permission.DATASOURCE_CONNECTION_EDIT)
     fun deleteDatasourceConnection(connectionId: DatasourceConnectionId) {
         datasourceConnectionAdapter.deleteDatasourceConnection(connectionId)
+    }
+
+    @Transactional
+    @Policy(Permission.DATASOURCE_CONNECTION_GET)
+    fun getDatasourceConnection(
+        datasourceId: DatasourceId,
+        datasourceConnectionId: DatasourceConnectionId,
+    ): DatasourceConnection {
+        return datasourceConnectionAdapter.getDatasourceConnection(
+            datasourceId = datasourceId,
+            datasourceConnectionId = datasourceConnectionId,
+        )
     }
 }

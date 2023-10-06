@@ -1,5 +1,6 @@
 package com.example.executiongate.service
 
+import com.example.executiongate.controller.UpdateDatasourceRequest
 import com.example.executiongate.db.DatasourceAdapter
 import com.example.executiongate.security.Permission
 import com.example.executiongate.security.Policy
@@ -38,6 +39,25 @@ class DatasourceService(
     @Transactional
     @Policy(Permission.DATASOURCE_EDIT)
     fun deleteDatasource(datasourceId: DatasourceId) {
+        print("deleting $datasourceId")
         datasourceAdapter.deleteDatasource(datasourceId)
+    }
+
+    @Transactional
+    @Policy(Permission.DATASOURCE_GET)
+    fun getDatasource(datasourceId: DatasourceId): Datasource {
+        return datasourceAdapter.getDatasource(datasourceId)
+    }
+
+    @Transactional
+    @Policy(Permission.DATASOURCE_EDIT)
+    fun updateDatasource(datasourceId: DatasourceId, datasource: UpdateDatasourceRequest): Datasource {
+        return datasourceAdapter.updateDatasource(
+            datasourceId,
+            datasource.displayName,
+            datasource.datasourceType,
+            datasource.hostname,
+            datasource.port,
+        )
     }
 }
