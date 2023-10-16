@@ -1,3 +1,4 @@
+version: "3"
 services:
   postgres:
     image: postgres:9.6
@@ -21,3 +22,15 @@ services:
       - "5433:5432"
     volumes:
       - ./opsgate-postgres-data:/var/lib/postgresql/data
+  backend:
+    build: backend
+    ports:
+      - "8080:8080"
+    environment:
+      - spring.profiles.active=e2e
+    depends_on:
+      - opsgate-postgres
+  frontend:
+    build: frontend
+    ports:
+      - "80:80"

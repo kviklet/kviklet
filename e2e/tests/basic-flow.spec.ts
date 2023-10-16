@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test.beforeEach("visit page and login", async ({ page }) => {
-  await page.goto("http://localhost:5173/");
+  await page.goto("http://localhost/");
   await page.getByLabel("Email").click();
   await page.getByLabel("Email").fill("testUser@example.com");
   await page.getByLabel("Email").press("Tab");
