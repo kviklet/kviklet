@@ -28,6 +28,7 @@ import {
 } from "../components/ThemeStatusProvider";
 import { colorFromText } from "../components/ColorfulLabel";
 import { CodeProps } from "react-markdown/lib/ast-to-react";
+import Spinner from "../components/Spinner";
 
 interface RequestReviewParams {
   requestId: string;
@@ -89,6 +90,7 @@ const useRequest = (id: string) => {
 
   const [data, setData] = useState<SelectExecuteResponse>();
   const [updatedRows, setUpdatedRows] = useState<number | undefined>(undefined);
+  const [dataLoading, setDataLoading] = useState<boolean>(false);
   const [executionError, setExecutionError] = useState<
     ErrorResponse | undefined
   >(undefined);
@@ -120,6 +122,7 @@ const useRequest = (id: string) => {
   };
 
   const execute = async () => {
+    setDataLoading(true);
     const result = await runQuery(id);
     switch (result._type) {
       case "select":
@@ -132,6 +135,7 @@ const useRequest = (id: string) => {
         setExecutionError(result);
         break;
     }
+    setDataLoading(false);
   };
 
   return {
@@ -141,6 +145,7 @@ const useRequest = (id: string) => {
     execute,
     updateRequest,
     data,
+    dataLoading,
     updatedRows,
     executionError,
   };
@@ -155,6 +160,7 @@ function RequestReview() {
     execute,
     updateRequest,
     data,
+    dataLoading,
     updatedRows,
     executionError,
   } = useRequest(params.requestId);
@@ -180,7 +186,8 @@ function RequestReview() {
               updateRequest={updateRequest}
             ></RequestBox>
             <div className="flex justify-center">
-              {data && <Table data={data}></Table>}
+              {(dataLoading && <Spinner></Spinner>) ||
+                (data && <Table data={data}></Table>)}
             </div>
             {updatedRows && (
               <div className="text-slate-500">{updatedRows} rows updated</div>

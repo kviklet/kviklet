@@ -24,7 +24,7 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import java.util.concurrent.ThreadLocalRandom
 
 @Configuration
-@Profile("local")
+@Profile("local", "e2e")
 class DataInitializer(
     private val datasourceRepository: DatasourceRepository,
     private val datasourceConnectionRepository: DatasourceConnectionRepository,
