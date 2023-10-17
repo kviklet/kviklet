@@ -33,12 +33,12 @@ const ApiResponse = z.object({
 });
 
 const databasePayloadSchema = databaseResponseSchema.omit({
-  id: true,
   datasourceConnections: true,
 });
 
 const connectionPayloadSchema = z.object({
   displayName: z.coerce.string(),
+  id: z.string(),
   username: z.string(),
   password: z.string(),
   reviewConfig: z.object({
