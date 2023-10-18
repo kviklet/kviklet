@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test.beforeEach("visit page and login", async ({ page }) => {
-  await page.goto("http://localhost/");
+  await page.goto("http://localhost:80/");
   await page.getByLabel("Email").click();
   await page.getByLabel("Email").fill("testUser@example.com");
   await page.getByLabel("Email").press("Tab");
@@ -19,14 +19,14 @@ test("Create Connection", async ({ page }) => {
   await page.getByPlaceholder("POSTGRESQL").click();
   await page.getByPlaceholder("POSTGRESQL").fill("POSTGRESQL");
   await page.getByPlaceholder("POSTGRESQL").press("Tab");
-  await page.getByPlaceholder("localhost").fill("localhost");
-  await page.getByPlaceholder("localhost").press("Tab");
+  await page.getByPlaceholder("localhost").fill("postgres");
+  await page.getByPlaceholder("postgres").press("Tab");
   await page.getByPlaceholder("5432").fill("5432");
   await page.getByRole("button", { name: "Add", exact: true }).click();
-  await page.getByText("My Test Datasourcelocalhost").click();
+  await page.getByText("My Test Datasourcepostgres").click();
   await page.getByRole("button", { name: "Add Connection" }).click();
   await page.getByPlaceholder("Database Name").click();
-  await page.getByPlaceholder("Database Name").fill("test connection");
+  await page.getByPlaceholder("Database Name").fill("my test connection");
   await page.getByPlaceholder("Database Name").press("Tab");
   await page.getByPlaceholder("readonly").fill("postgres");
   await page.getByPlaceholder("readonly").press("Tab");
@@ -36,13 +36,13 @@ test("Create Connection", async ({ page }) => {
   await page.getByRole("spinbutton").fill("0");
   await page.getByRole("button").nth(4).click();
   await expect(page.getByText("My Test Datasource")).toBeVisible();
-  await expect(page.getByText("test connection")).toBeVisible();
+  await expect(page.getByText("my test connection")).toBeVisible();
   await expect(page.getByRole("spinbutton")).toHaveValue("0");
 });
 
 test("Create Request", async ({ page }) => {
   await page.getByRole("button", { name: "Create new Request" }).click();
-  await page.getByPlaceholder("My query").click();
+  await page.getByLabel("Connection").selectOption("my-test-connection");
   await page.getByPlaceholder("My query").fill("Test Query");
   await page.getByPlaceholder("My query").press("Tab");
   await page.getByPlaceholder("Description").fill("This is a test query");
