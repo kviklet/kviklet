@@ -115,18 +115,21 @@ class DatasourceController(
         ).let { DatasourceResponse.fromDto(it, emptyList()) }
     }
 
-    @GetMapping("")
+    @GetMapping("/")
     fun listDatasources(): ListDatasourceResponse {
-        val dbs = datasourceConnectionService.listDatasourceConnections()
+        val connections = datasourceConnectionService.listDatasourceConnections()
+        val datasources = datasourceService.listDatasources()
+        val datasourceToConnection = connections.groupBy { it.datasource }
 
         return ListDatasourceResponse(
-            databases = dbs.groupBy { it.datasource }.map { (datasource, datasourceConnection) ->
-                DatasourceResponse.fromDto(datasource, datasourceConnection)
+            databases = datasources.map { datasource ->
+                val datasourceConnections = datasourceToConnection[datasource]
+                DatasourceResponse.fromDto(datasource, datasourceConnections ?: emptyList())
             },
         )
     }
 
-    @PostMapping("")
+    @PostMapping("/")
     fun createDatasource(@Valid @RequestBody datasourceConnection: CreateDatasourceRequest): DatasourceResponse {
         val datasource = datasourceService.createDatasource(
             id = datasourceConnection.id,

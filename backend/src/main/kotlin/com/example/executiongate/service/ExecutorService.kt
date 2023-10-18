@@ -1,5 +1,10 @@
 package com.example.executiongate.service
 
+import com.example.executiongate.security.Permission
+import com.example.executiongate.security.Resource
+import com.example.executiongate.security.SecuredDomainObject
+import com.example.executiongate.security.UserDetailsWithId
+import com.example.executiongate.service.dto.ExecutionRequestId
 import com.zaxxer.hikari.HikariDataSource
 import org.springframework.boot.jdbc.DataSourceBuilder
 import org.springframework.stereotype.Service
@@ -7,21 +12,29 @@ import java.sql.SQLException
 import java.sql.Statement
 import java.util.HexFormat
 
-sealed class QueryResult
+sealed class QueryResult(open val executionRequestId: ExecutionRequestId) : SecuredDomainObject {
+    override fun getId() = executionRequestId.toString()
+    override fun getDomainObjectType() = Resource.EXECUTION_REQUEST
+    override fun getRelated(resource: Resource) = null
+    override fun auth(permission: Permission, userDetails: UserDetailsWithId): Boolean = true
+}
 
 data class RecordsQueryResult(
     val columns: List<ColumnInfo>,
     val data: List<Map<String, String>>,
-) : QueryResult()
+    override val executionRequestId: ExecutionRequestId,
+) : QueryResult(executionRequestId)
 
 data class UpdateQueryResult(
     val rowsUpdated: Int,
-) : QueryResult()
+    override val executionRequestId: ExecutionRequestId,
+) : QueryResult(executionRequestId)
 
 data class ErrorQueryResult(
     val errorCode: Int,
     val message: String?,
-) : QueryResult()
+    override val executionRequestId: ExecutionRequestId,
+) : QueryResult(executionRequestId)
 
 data class ColumnInfo(
     val label: String,
@@ -34,26 +47,32 @@ data class ColumnInfo(
 @Service
 class ExecutorService {
 
-    fun execute(connectionString: String, username: String, password: String, query: String): QueryResult {
+    fun execute(
+        executionRequestId: ExecutionRequestId,
+        connectionString: String,
+        username: String,
+        password: String,
+        query: String,
+    ): QueryResult {
         createConnection(connectionString, username, password).use { dataSource: HikariDataSource ->
             try {
                 dataSource.connection.createStatement().use { statement ->
                     val execute = statement.execute(query)
                     if (execute) {
                         // Execution returned a ResultSet
-                        return handleResultSet(statement)
+                        return handleResultSet(statement, executionRequestId)
                     } else {
                         // Execution returned an update count or empty result
-                        return UpdateQueryResult(statement.updateCount)
+                        return UpdateQueryResult(statement.updateCount, executionRequestId)
                     }
                 }
             } catch (e: SQLException) {
-                return ErrorQueryResult(e.errorCode, e.message)
+                return ErrorQueryResult(e.errorCode, e.message, executionRequestId)
             }
         }
     }
 
-    private fun handleResultSet(statement: Statement): QueryResult {
+    private fun handleResultSet(statement: Statement, executionRequestId: ExecutionRequestId): QueryResult {
         val resultSet = statement.resultSet
         val metadata = resultSet.metaData
         val columns = (1..metadata.columnCount).map { i ->
@@ -79,6 +98,7 @@ class ExecutorService {
         return RecordsQueryResult(
             columns = columns,
             data = results,
+            executionRequestId,
         )
     }
 

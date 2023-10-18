@@ -20,18 +20,44 @@ import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 import DeleteConfirm from "../../components/DeleteConfirm";
 import React from "react";
 
+const useIdNamePair = () => {
+  const [displayName, setDisplayName] = useState<string>("");
+  const [id, setId] = useState<string>("");
+  const [idManuallyChanged, setIdManuallyChanged] = useState<boolean>(false);
+
+  const changeId = (id: string) => {
+    setId(id);
+    setIdManuallyChanged(true);
+  };
+
+  function formatId(input: string): string {
+    const lowerCasedString = input.toLowerCase();
+    return lowerCasedString.replace(/\s+/g, "-");
+  }
+
+  const changeDisplayName = (name: string) => {
+    setDisplayName(name);
+    if (!idManuallyChanged) {
+      setId(formatId(name));
+    }
+  };
+
+  return { displayName, id, changeId, changeDisplayName };
+};
+
 function CreateDatabaseForm(props: {
   handleCreateDatabase: (database: DatabasePayload) => Promise<void>;
 }) {
-  const [displayName, setDisplayName] = useState<string>("");
   const [datasourceType, setDatasourceType] = useState<string>("");
   const [hostname, setHostname] = useState<string>("");
   const [port, setPort] = useState<number>(0);
+  const { displayName, id, changeId, changeDisplayName } = useIdNamePair();
 
   const handleCreateDatabase = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     await props.handleCreateDatabase({
       displayName,
+      id,
       datasourceType,
       hostname,
       port,
@@ -47,7 +73,16 @@ function CreateDatabaseForm(props: {
           placeholder="Database Name"
           value={displayName}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setDisplayName(e.target.value)
+            changeDisplayName(e.target.value)
+          }
+        />
+        <InputField
+          id="id"
+          name="Id"
+          placeholder="database-id"
+          value={id}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            changeId(e.target.value)
           }
         />
         <InputField
@@ -173,13 +208,15 @@ const useDatasources = () => {
 function CreateConnectionForm(props: {
   handleCreateConnection: (connection: ConnectionPayload) => Promise<void>;
 }) {
-  const [displayName, setDisplayName] = useState<string>("");
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const { displayName, id, changeId, changeDisplayName } = useIdNamePair();
+
   const submit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     await props.handleCreateConnection({
       displayName,
+      id,
       username,
       password,
       reviewConfig: {
@@ -197,9 +234,18 @@ function CreateConnectionForm(props: {
           placeholder="Database Name"
           value={displayName}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setDisplayName(e.target.value)
+            changeDisplayName(e.target.value)
           }
         />
+        <InputField
+          id="id"
+          name="Id"
+          placeholder="datasource-id"
+          value={id}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            changeId(e.target.value);
+          }}
+        ></InputField>
         <InputField
           id="username"
           name="username"
@@ -237,6 +283,9 @@ function SingleConnectionSettings(props: {
   const [numTotalRequired, setNumTotalRequired] = useState<number>(
     props.connection.reviewConfig.numTotalRequired,
   );
+  useEffect(() => {
+    setNumTotalRequired(props.connection.reviewConfig.numTotalRequired);
+  }, [props.connection.reviewConfig.numTotalRequired]);
   const [showCheck, setShowCheck] = useState<boolean>(false);
 
   const submit = async () => {
@@ -270,6 +319,7 @@ function SingleConnectionSettings(props: {
             type="number"
             value={numTotalRequired}
             onChange={(e) => {
+              console.log("onchange called");
               setNumTotalRequired(parseInt(e.target.value));
               setShowCheck(true);
             }}
@@ -298,6 +348,8 @@ function ConnectionSettings(props: {
     connection: PatchConnectionPayload,
   ) => Promise<void>;
 }) {
+  console.log("Selected Index" + props.selectedIndex);
+  console.log(props.connections);
   return (
     <div className=" border-l dark:border-slate-700  dark:bg-slate-950 flex flex-col min-h-full w-full">
       <div className="pl-8 text-lg">Connections</div>

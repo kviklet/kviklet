@@ -110,6 +110,7 @@ class ExecutionRequestService(
         val connection = executionRequest.request.connection
 
         return executorService.execute(
+            executionRequestId = id,
             connectionString = connection.getConnectionString(),
             username = connection.username,
             password = connection.password,
