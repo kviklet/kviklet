@@ -283,6 +283,9 @@ function SingleConnectionSettings(props: {
   const [numTotalRequired, setNumTotalRequired] = useState<number>(
     props.connection.reviewConfig.numTotalRequired,
   );
+  useEffect(() => {
+    setNumTotalRequired(props.connection.reviewConfig.numTotalRequired);
+  }, [props.connection.reviewConfig.numTotalRequired]);
   const [showCheck, setShowCheck] = useState<boolean>(false);
 
   const submit = async () => {
@@ -316,6 +319,7 @@ function SingleConnectionSettings(props: {
             type="number"
             value={numTotalRequired}
             onChange={(e) => {
+              console.log("onchange called");
               setNumTotalRequired(parseInt(e.target.value));
               setShowCheck(true);
             }}
@@ -344,6 +348,8 @@ function ConnectionSettings(props: {
     connection: PatchConnectionPayload,
   ) => Promise<void>;
 }) {
+  console.log("Selected Index" + props.selectedIndex);
+  console.log(props.connections);
   return (
     <div className=" border-l dark:border-slate-700  dark:bg-slate-950 flex flex-col min-h-full w-full">
       <div className="pl-8 text-lg">Connections</div>
