@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test.beforeEach("visit page and login", async ({ page }) => {
-  await page.goto("http://localhost:80/");
+  await page.goto("/");
   await page.getByLabel("Email").click();
   await page.getByLabel("Email").fill("testUser@example.com");
   await page.getByLabel("Email").press("Tab");
@@ -16,11 +16,8 @@ test("Create Connection", async ({ page }) => {
   await page.getByRole("button", { name: "Add Datasource" }).click();
   await page.getByPlaceholder("Database Name").click();
   await page.getByPlaceholder("Database Name").fill("My Test Datasource");
-  await page.getByPlaceholder("POSTGRESQL").click();
-  await page.getByPlaceholder("POSTGRESQL").fill("POSTGRESQL");
-  await page.getByPlaceholder("POSTGRESQL").press("Tab");
+  await page.getByLabel("Database Engine").selectOption("POSTGRESQL");
   await page.getByPlaceholder("localhost").fill("postgres");
-  await page.getByPlaceholder("postgres").press("Tab");
   await page.getByPlaceholder("5432").fill("5432");
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await page.getByText("My Test Datasourcepostgres").click();
