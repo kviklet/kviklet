@@ -85,15 +85,33 @@ function CreateDatabaseForm(props: {
             changeId(e.target.value)
           }
         />
-        <InputField
-          id="datasourceType"
-          name="Database Engine"
-          placeholder="POSTGRESQL"
-          value={datasourceType}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setDatasourceType(e.target.value)
-          }
-        />
+        <div className="flex m-2">
+          <label
+            htmlFor="datasourceType"
+            className="my-auto text-sm font-medium text-slate-700 dark:text-slate-200 ml-2 pl-1.5 mr-auto"
+          >
+            Database Engine
+          </label>
+          <select
+            className="basis-2/3 px-2 py-2 rounded-md border 
+              border-slate-300 dark:bg-slate-900 hover:border-slate-400 focus:border-indigo-600 focus:hover:border-indigo-600
+        focus:outline-none dark:hover:border-slate-600 dark:hover:focus:border-gray-500 dark:border-slate-700
+         dark:focus:border-gray-500 text-xs transition-colors indent-0"
+            id="datasourceType"
+            defaultValue="POSTGRESQL"
+            value={datasourceType}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+              setDatasourceType(e.target.value)
+            }
+          >
+            <option className="bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+              POSTGRESQL
+            </option>
+            <option className="bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+              MYSQL
+            </option>
+          </select>
+        </div>
         <InputField
           id="hostname"
           name="Hostname"
