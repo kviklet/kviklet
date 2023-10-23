@@ -11,6 +11,7 @@ import {
   UserStatusProvider,
 } from "./components/UserStatusProvider";
 import { ThemeStatusProvider } from "./components/ThemeStatusProvider";
+import LiveSession from "./routes/LiveSession";
 
 export interface ProtectedRouteProps {
   children: JSX.Element;
@@ -52,6 +53,14 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="live-session"
+                element={
+                  <ProtectedRoute>
+                    <LiveSession></LiveSession>
+                  </ProtectedRoute>
+                }
+              ></Route>
               <Route
                 path="requests"
                 element={
