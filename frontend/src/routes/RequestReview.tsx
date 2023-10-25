@@ -182,9 +182,9 @@ function RequestReview() {
         <h1 className="text-3xl my-2 w-full flex">
           <div className="mr-auto">{request?.title}</div>
           <div
-            className={`border ${mapStatusToLabelColor(
+            className={` ${mapStatusToLabelColor(
               request?.reviewStatus,
-            )} rounded-full text-base ml-auto py-1 px-1.5 transition-colors`}
+            )} w-min rounded-md px-2 py-1 mt-2 text-base font-medium ring-1 ring-inset`}
           >
             {mapStatus(request?.reviewStatus)}
           </div>
@@ -268,13 +268,18 @@ function RequestBox({
     setStatement(request?.statement || "");
   }, [request?.statement]);
 
+  const questionText =
+    request?.type == "SingleQuery"
+      ? " wants to execute a statement on "
+      : " wants to have access to ";
+
   return (
     <div>
       <div className="relative border-slate-500 dark:bg-slate-950 dark:border dark:border-slate-950">
         <InitialBubble name={request?.author.fullName} />
         <p className="text-slate-800 py-2 text-sm flex bg-slate-50 dark:bg-slate-950 dark:text-slate-50 dark:border-none">
           <div>
-            {request?.author?.fullName} wants to execute on:{" "}
+            {request?.author?.fullName + questionText}
             <span className="italic">{request?.connection.displayName}</span>
           </div>
           <div className="ml-auto dark:text-slate-500">

@@ -64,23 +64,15 @@ function mapStatus(status?: string) {
 function mapStatusToLabelColor(status?: string) {
   switch (status) {
     case "APPROVED":
-      return "dark:border-lime-400 dark:text-lime-400 border-lime-600 text-lime-600";
+      return "dark:ring-lime-400/10 dark:text-lime-500 ring-lime-500/10 text-lime-600 bg-lime-50 dark:bg-lime-400/10";
     case "AWAITING_APPROVAL":
-      return "dark:border-sky-400 dark:text-sky-400 border-sky-600 text-sky-600";
+      return "dark:ring-sky-400/10 dark:text-sky-500 ring-sky-500/10 text-sky-600 bg-sky-50 dark:bg-sky-400/10";
     case "PENDING":
-      return "dark:border-yellow-400 dark:text-yellow-400 border-yellow-600 text-yellow-600";
+      return "dark:ring-yellow-400/10 dark:text-yellow-500 ring-yellow-500/10 text-yellow-600 bg-yellow-50 dark:bg-yellow-400/10";
     case "SUCCESS":
-      return "dark:border-lime-400 dark:text-lime-400 border-lime-600 text-lime-600";
+      return "dark:ring-lime-400/10 dark:text-lime-500 ring-lime-500/10 text-lime-600 bg-lime-50 dark:bg-lime-400/10";
     default:
-      return "dark:border-gray-400 dark:text-gray-400 border-gray-600 text-gray-600";
-  }
-}
-
-function mapTypeToLabelColor(type: string) {
-  if (type == "TemporaryAccess") {
-    return "bg-yellow-50 text-yellow-600 ring-yellow-500/10 dark:bg-yellow-400/10 dark:text-yellow-500 dark:ring-yellow-400/20";
-  } else {
-    return "bg-indigo-50 text-indigo-600 ring-indigo-500/10 dark:bg-indigo-400/10 dark:text-indigo-500 dark:ring-indigo-400/20";
+      return "dark:ring-gray-400/10 dark:text-gray-500 ring-gray-500/10 text-gray-600 bg-gray-50 dark:bg-gray-400/10";
   }
 }
 
@@ -131,7 +123,7 @@ function Requests() {
             return (
               <Link to={`/requests/${request.id}`}>
                 <div
-                  className="shadow-md border border-slate-200 bg-slate-50 my-4 mx-2 px-4 py-4 dark:bg-slate-900 dark:border dark:border-slate-700 dark:hover:bg-slate-800 hover:bg-slate-100 rounded-md transition-colors"
+                  className="shadow-md border border-slate-200 bg-white my-4 mx-2 px-4 py-4 dark:bg-slate-900 dark:border dark:border-slate-700 dark:hover:bg-slate-800 hover:bg-slate-50 rounded-md transition-colors"
                   key={request.id}
                 >
                   <div className="flex">
@@ -145,17 +137,15 @@ function Requests() {
                       <div className="mb-2 text-sm dark:text-slate-400 text-slate-600">
                         {timeSince(new Date(request.createdAt))}
                       </div>
-                      <div
+                      <span
                         className={`${mapStatusToLabelColor(
                           request.reviewStatus,
-                        )} font-bold border rounded-full text-sm text-center w-20 py-1 px-1.5`}
+                        )} w-min rounded-md px-2 py-1 mt-2 text-xs font-medium ring-1 ring-inset`}
                       >
                         {mapStatus(request?.reviewStatus)}
-                      </div>
+                      </span>
                       <span
-                        className={`w-min rounded-md px-2 py-1 mt-2 text-xs font-medium  ring-1 ring-inset ${mapTypeToLabelColor(
-                          request.type,
-                        )}`}
+                        className={`w-min rounded-md px-2 py-1 mt-2 text-xs font-medium  ring-1 ring-inset bg-yellow-50 text-yellow-600 ring-yellow-500/10 dark:bg-yellow-400/10 dark:text-yellow-500 dark:ring-yellow-400/20`}
                       >
                         {request.type}
                       </span>
@@ -174,10 +164,4 @@ function Requests() {
   );
 }
 
-export {
-  Requests,
-  mapStatusToLabelColor,
-  mapStatus,
-  timeSince,
-  mapTypeToLabelColor,
-};
+export { Requests, mapStatusToLabelColor, mapStatus, timeSince };
