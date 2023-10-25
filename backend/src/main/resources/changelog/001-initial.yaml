@@ -104,6 +104,11 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: type
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
                   name: description
                   type: varchar(255)
                   constraints:
@@ -112,7 +117,7 @@ databaseChangeLog:
                   name: statement
                   type: text
                   constraints:
-                    nullable: false
+                    nullable: true
               - column:
                   name: read_only
                   type: boolean

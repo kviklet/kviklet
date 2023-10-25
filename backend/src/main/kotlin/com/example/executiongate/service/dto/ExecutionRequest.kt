@@ -19,6 +19,11 @@ enum class ReviewStatus {
     APPROVED,
 }
 
+enum class RequestType {
+    SingleQuery,
+    TemporaryAccess,
+}
+
 /**
  * A DTO for the {@link com.example.executiongate.db.ExecutionRequestEntity} entity
  */
@@ -26,8 +31,9 @@ data class ExecutionRequest(
     val id: ExecutionRequestId,
     val connection: DatasourceConnection,
     val title: String,
+    val type: RequestType,
     val description: String?,
-    val statement: String,
+    val statement: String?,
     val readOnly: Boolean,
     val executionStatus: String,
     val createdAt: LocalDateTime = LocalDateTime.now(),

@@ -11,6 +11,7 @@ import com.example.executiongate.service.dto.DatasourceConnectionId
 import com.example.executiongate.service.dto.Event
 import com.example.executiongate.service.dto.ExecutionRequestDetails
 import com.example.executiongate.service.dto.ExecutionRequestId
+import com.example.executiongate.service.dto.RequestType
 import com.example.executiongate.service.dto.ReviewAction
 import com.example.executiongate.service.dto.ReviewStatus
 import io.swagger.v3.oas.annotations.Operation
@@ -32,8 +33,9 @@ import java.time.LocalDateTime
 data class CreateExecutionRequestRequest(
     val datasourceConnectionId: DatasourceConnectionId,
     val title: String,
+    val type: RequestType,
     val description: String?,
-    val statement: String,
+    val statement: String?,
     val readOnly: Boolean,
 )
 
@@ -42,6 +44,10 @@ data class UpdateExecutionRequestRequest(
     val description: String?,
     val statement: String?,
     val readOnly: Boolean?,
+)
+
+data class ExecuteExecutionRequestRequest(
+    val query: String,
 )
 
 data class CreateReviewRequest(
@@ -59,10 +65,11 @@ data class CreateCommentRequest(
 data class ExecutionRequestResponse(
     val id: ExecutionRequestId,
     val title: String,
+    val type: RequestType,
     val author: UserResponse,
     val connection: DatasourceConnectionResponse,
     val description: String?,
-    val statement: String,
+    val statement: String?,
     val readOnly: Boolean,
     val reviewStatus: ReviewStatus,
     val executionStatus: String,
@@ -75,6 +82,7 @@ data class ExecutionRequestResponse(
             return ExecutionRequestResponse(
                 id = dto.request.id,
                 author = userResponse,
+                type = dto.request.type,
                 title = dto.request.title,
                 description = dto.request.description,
                 statement = dto.request.statement,
@@ -93,11 +101,12 @@ data class ExecutionRequestResponse(
  */
 data class ExecutionRequestDetailResponse(
     val id: ExecutionRequestId,
+    val type: RequestType,
     val author: UserResponse,
     val connection: DatasourceConnectionResponse,
     val title: String,
     val description: String?,
-    val statement: String,
+    val statement: String?,
     val readOnly: Boolean,
     val reviewStatus: ReviewStatus,
     val executionStatus: String,
@@ -109,6 +118,7 @@ data class ExecutionRequestDetailResponse(
         fun fromDto(dto: ExecutionRequestDetails) = ExecutionRequestDetailResponse(
             id = dto.request.id,
             author = UserResponse(dto.request.author),
+            type = dto.request.type,
             title = dto.request.title,
             description = dto.request.description,
             statement = dto.request.statement,
@@ -146,6 +156,18 @@ sealed class ExecutionResultResponse(
                 is UpdateQueryResult -> UpdateQueryResultResponse.fromDto(dto)
                 is ErrorQueryResult -> ErrorQueryResultResponse.fromDto(dto)
             }
+        }
+    }
+}
+
+data class ExecutionResponse(
+    val results: List<ExecutionResultResponse>,
+) {
+    companion object {
+        fun fromDto(results: List<QueryResult>): ExecutionResponse {
+            return ExecutionResponse(
+                results.map { it -> ExecutionResultResponse.fromDto(it) },
+            )
         }
     }
 }
@@ -211,7 +233,8 @@ class ExecutionRequestController(
     @Operation(summary = "Create Execution Request")
     @PostMapping("/")
     fun create(
-        @Valid @RequestBody request: CreateExecutionRequestRequest,
+        @Valid @RequestBody
+        request: CreateExecutionRequestRequest,
         @AuthenticationPrincipal userDetails: UserDetailsWithId,
     ): ExecutionRequestResponse {
         val executionRequest = executionRequestService.create(request.datasourceConnectionId, request, userDetails.id)
@@ -234,7 +257,8 @@ class ExecutionRequestController(
     @PostMapping("/{executionRequestId}/reviews")
     fun createReview(
         @PathVariable executionRequestId: ExecutionRequestId,
-        @Valid @RequestBody request: CreateReviewRequest,
+        @Valid @RequestBody
+        request: CreateReviewRequest,
         @AuthenticationPrincipal userDetails: UserDetailsWithId,
     ): Event {
         return executionRequestService.createReview(executionRequestId, request, userDetails.id)
@@ -243,7 +267,8 @@ class ExecutionRequestController(
     @PatchMapping("/{id}")
     fun update(
         @PathVariable id: ExecutionRequestId,
-        @Valid @RequestBody request: UpdateExecutionRequestRequest,
+        @Valid @RequestBody
+        request: UpdateExecutionRequestRequest,
     ): ExecutionRequestDetailResponse {
         val newRequest = executionRequestService.update(id, request)
         return ExecutionRequestDetailResponse.fromDto(newRequest)
@@ -253,7 +278,8 @@ class ExecutionRequestController(
     @PostMapping("/{executionRequestId}/comments")
     fun createComment(
         @PathVariable executionRequestId: ExecutionRequestId,
-        @Valid @RequestBody request: CreateCommentRequest,
+        @Valid @RequestBody
+        request: CreateCommentRequest,
         @AuthenticationPrincipal userDetails: UserDetailsWithId,
     ): Event {
         return executionRequestService.createComment(executionRequestId, request, userDetails.id)
@@ -264,7 +290,10 @@ class ExecutionRequestController(
         description = "Run the query after the Execution Request has been approved.",
     )
     @PostMapping("/{executionRequestId}/execute")
-    fun execute(@PathVariable executionRequestId: ExecutionRequestId): ExecutionResultResponse {
-        return ExecutionResultResponse.fromDto(executionRequestService.execute(executionRequestId))
+    fun execute(
+        @PathVariable executionRequestId: ExecutionRequestId,
+        @RequestBody(required = false) request: ExecuteExecutionRequestRequest?,
+    ): ExecutionResponse {
+        return ExecutionResponse.fromDto(executionRequestService.execute(executionRequestId, request?.query))
     }
 }

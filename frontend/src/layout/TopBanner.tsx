@@ -40,6 +40,14 @@ function TopBanner() {
                 <ul className="flex space-x-8">
                   <li>
                     <Link
+                      to={"/new"}
+                      className="hover:text-sky-500 dark:hover:text-sky-400"
+                    >
+                      New
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
                       to={"/requests"}
                       className="hover:text-sky-500 dark:hover:text-sky-400"
                     >

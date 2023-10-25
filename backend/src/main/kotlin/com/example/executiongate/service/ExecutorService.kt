@@ -8,8 +8,8 @@ import com.example.executiongate.service.dto.ExecutionRequestId
 import com.zaxxer.hikari.HikariDataSource
 import org.springframework.boot.jdbc.DataSourceBuilder
 import org.springframework.stereotype.Service
+import java.sql.ResultSet
 import java.sql.SQLException
-import java.sql.Statement
 import java.util.HexFormat
 
 sealed class QueryResult(open val executionRequestId: ExecutionRequestId) : SecuredDomainObject {
@@ -53,27 +53,29 @@ class ExecutorService {
         username: String,
         password: String,
         query: String,
-    ): QueryResult {
+    ): List<QueryResult> {
         createConnection(connectionString, username, password).use { dataSource: HikariDataSource ->
             try {
                 dataSource.connection.createStatement().use { statement ->
-                    val execute = statement.execute(query)
-                    if (execute) {
-                        // Execution returned a ResultSet
-                        return handleResultSet(statement, executionRequestId)
-                    } else {
-                        // Execution returned an update count or empty result
-                        return UpdateQueryResult(statement.updateCount, executionRequestId)
+                    var hasResults = statement.execute(query)
+                    val queryResults = mutableListOf<QueryResult>()
+
+                    while (hasResults || statement.updateCount != -1) {
+                        statement.resultSet?.use { resultSet ->
+                            queryResults.add(handleResultSet(resultSet, executionRequestId))
+                        } ?: queryResults.add(UpdateQueryResult(statement.updateCount, executionRequestId))
+
+                        hasResults = statement.moreResults
                     }
+                    return queryResults
                 }
             } catch (e: SQLException) {
-                return ErrorQueryResult(e.errorCode, e.message, executionRequestId)
+                return listOf(ErrorQueryResult(e.errorCode, e.message, executionRequestId))
             }
         }
     }
 
-    private fun handleResultSet(statement: Statement, executionRequestId: ExecutionRequestId): QueryResult {
-        val resultSet = statement.resultSet
+    private fun handleResultSet(resultSet: ResultSet, executionRequestId: ExecutionRequestId): QueryResult {
         val metadata = resultSet.metaData
         val columns = (1..metadata.columnCount).map { i ->
             ColumnInfo(

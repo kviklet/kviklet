@@ -38,19 +38,26 @@ test("Create Connection", async ({ page }) => {
 });
 
 test("Create Request", async ({ page }) => {
-  await page.getByRole("button", { name: "Create new Request" }).click();
-  await page.getByLabel("Connection").selectOption("my-test-connection");
-  await page.getByPlaceholder("My query").fill("Test Query");
-  await page.getByPlaceholder("My query").press("Tab");
-  await page.getByPlaceholder("Description").fill("This is a test query");
-  await page.getByPlaceholder("Select id from some_table;").click();
+  await page.getByRole("link", { name: "New", exact: true }).click();
+  await page.getByRole("button", { name: "Query" }).nth(1).click();
+  await page.getByPlaceholder("My query").click();
+  await page.getByPlaceholder("My query").fill("my test query");
+  await page
+    .getByPlaceholder("What are you trying to accomplish with this Query?")
+    .click();
+  await page
+    .getByPlaceholder("What are you trying to accomplish with this Query?")
+    .fill("Testing if everything works");
+  await page
+    .getByPlaceholder("What are you trying to accomplish with this Query?")
+    .press("Tab");
   await page
     .getByPlaceholder("Select id from some_table;")
     .fill("Select * from test;");
   await page.getByRole("button", { name: "Submit" }).click();
   await page.waitForURL("**/requests");
   await expect(
-    page.getByRole("link").filter({ hasText: "Test Query" })
+    page.getByRole("link").filter({ hasText: "Testing if everything works" })
   ).toBeVisible();
 });
 

@@ -1,7 +1,6 @@
 import { Route, Navigate, Routes } from "react-router-dom";
 import Settings from "./routes/settings/Settings";
 import DefaultLayout from "./layout/DefaultLayout";
-import { AddRequestForm } from "./routes/AddRequestForm";
 import { Requests } from "./routes/Requests";
 import RequestReview from "./routes/RequestReview";
 import Login from "./routes/Login";
@@ -11,6 +10,8 @@ import {
   UserStatusProvider,
 } from "./components/UserStatusProvider";
 import { ThemeStatusProvider } from "./components/ThemeStatusProvider";
+import LiveSession from "./routes/LiveSession";
+import ConnectionChooser from "./routes/NewRequest";
 
 export interface ProtectedRouteProps {
   children: JSX.Element;
@@ -31,7 +32,7 @@ export const ProtectedRoute = ({
 };
 function App() {
   return (
-    <div className="dark:text-slate-50 dark:bg-slate-950 text-slate-900 bg-slate-50">
+    <div className="dark:text-slate-50 dark:bg-slate-950 text-slate-900 bg-slate-50 min-h-screen">
       <UserStatusProvider>
         <ThemeStatusProvider>
           <Routes>
@@ -53,6 +54,14 @@ function App() {
                 }
               />
               <Route
+                path="new"
+                element={
+                  <ProtectedRoute>
+                    <ConnectionChooser></ConnectionChooser>
+                  </ProtectedRoute>
+                }
+              ></Route>
+              <Route
                 path="requests"
                 element={
                   <ProtectedRoute>
@@ -61,18 +70,18 @@ function App() {
                 }
               />
               <Route
-                path="requests/new"
-                element={
-                  <ProtectedRoute>
-                    <AddRequestForm />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
                 path="requests/:requestId"
                 element={
                   <ProtectedRoute>
                     <RequestReview />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="requests/:requestId/session"
+                element={
+                  <ProtectedRoute>
+                    <LiveSession />
                   </ProtectedRoute>
                 }
               />
