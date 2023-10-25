@@ -20,7 +20,7 @@ abstract class AbstractExecutorTest(
     @Autowired val executorService: ExecutorService,
 ) {
 
-    val EXECUTION_REQUEST_ID = ExecutionRequestId("5Wb9WJxCxej5W1Rt6cTBV4")
+    val executionRequestId = ExecutionRequestId("5Wb9WJxCxej5W1Rt6cTBV4")
 
     abstract val initScript: String
 
@@ -31,7 +31,7 @@ abstract class AbstractExecutorTest(
         url: String = getDb().jdbcUrl,
         username: String = getDb().username,
         password: String = getDb().password,
-    ) = executorService.execute(EXECUTION_REQUEST_ID, url, username, password, query).get(0)
+    ) = executorService.execute(executionRequestId, url, username, password, query).get(0)
 
     @BeforeEach
     fun setup() {
@@ -42,39 +42,52 @@ abstract class AbstractExecutorTest(
     @Test
     fun testDatabaseError() {
         executeQuery("SELECT * FROM foo.non_existent_table;") shouldBe
-            ErrorQueryResult(1146, "Table 'foo.non_existent_table' doesn't exist", EXECUTION_REQUEST_ID)
+            ErrorQueryResult(1146, "Table 'foo.non_existent_table' doesn't exist", executionRequestId)
 
         executeQuery("FOOBAR") shouldBe
             ErrorQueryResult(
                 1064,
                 "You have an error in your SQL syntax; check the manual that " +
                     "corresponds to your MySQL server version for the right syntax to use near 'FOOBAR' at line 1",
-                    EXECUTION_REQUEST_ID
+                executionRequestId,
             )
     }
 
     @Test
     fun testConnectionError() {
         executeQuery("SELECT 1;", username = "root", password = "foo") shouldBe
-            ErrorQueryResult(1045, "Access denied for user 'root'@'172.17.0.1' (using password: YES)", EXECUTION_REQUEST_ID)
+            ErrorQueryResult(
+                1045,
+                "Access denied for user 'root'@'172.17.0.1' (using password: YES)",
+                executionRequestId,
+            )
     }
 
     @Test
     fun testDdlQuery() {
-        executeQuery("CREATE TABLE foo.temp (col INT);") shouldBe UpdateQueryResult(0, EXECUTION_REQUEST_ID)
+        executeQuery("CREATE TABLE foo.temp (col INT);") shouldBe UpdateQueryResult(0, executionRequestId)
     }
 
     @Test
     fun testInsert() {
-        executeQuery("INSERT INTO foo.simple_table VALUES (1, 'foo');") shouldBe UpdateQueryResult(1, EXECUTION_REQUEST_ID)
+        executeQuery("INSERT INTO foo.simple_table VALUES (1, 'foo');") shouldBe UpdateQueryResult(
+            1,
+            executionRequestId,
+        )
     }
 
     @Test
     fun testUpdate() {
         // col1=1 exists, 1 row is updated
-        executeQuery("UPDATE foo.simple_table SET col2='foobar' WHERE col1 = 1;") shouldBe UpdateQueryResult(1, EXECUTION_REQUEST_ID)
+        executeQuery("UPDATE foo.simple_table SET col2='foobar' WHERE col1 = 1;") shouldBe UpdateQueryResult(
+            1,
+            executionRequestId,
+        )
         // col1=3 does not exist, so nothing is updated:
-        executeQuery("UPDATE foo.simple_table SET col2='foobar' WHERE col1 = 3;") shouldBe UpdateQueryResult(0, EXECUTION_REQUEST_ID)
+        executeQuery("UPDATE foo.simple_table SET col2='foobar' WHERE col1 = 3;") shouldBe UpdateQueryResult(
+            0,
+            executionRequestId,
+        )
     }
 
     @Test
@@ -85,7 +98,7 @@ abstract class AbstractExecutorTest(
                 ColumnInfo("col2", "VARCHAR", "java.lang.String"),
             ),
             data = listOf(mapOf("col1" to "1", "col2" to "2")),
-                EXECUTION_REQUEST_ID
+            executionRequestId,
         )
     }
 
@@ -159,7 +172,7 @@ abstract class AbstractExecutorTest(
                     "json_column" to "{\"key\": \"value\"}",
                 ),
             ),
-            EXECUTION_REQUEST_ID
+            executionRequestId,
         )
     }
 }

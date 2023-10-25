@@ -7,7 +7,13 @@ import com.example.executiongate.service.ExecutionRequestService
 import com.example.executiongate.service.QueryResult
 import com.example.executiongate.service.RecordsQueryResult
 import com.example.executiongate.service.UpdateQueryResult
-import com.example.executiongate.service.dto.*
+import com.example.executiongate.service.dto.DatasourceConnectionId
+import com.example.executiongate.service.dto.Event
+import com.example.executiongate.service.dto.ExecutionRequestDetails
+import com.example.executiongate.service.dto.ExecutionRequestId
+import com.example.executiongate.service.dto.RequestType
+import com.example.executiongate.service.dto.ReviewAction
+import com.example.executiongate.service.dto.ReviewStatus
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.DiscriminatorMapping
 import io.swagger.v3.oas.annotations.media.Schema
