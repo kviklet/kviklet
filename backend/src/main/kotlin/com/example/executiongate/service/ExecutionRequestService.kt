@@ -12,16 +12,10 @@ import com.example.executiongate.db.ReviewConfig
 import com.example.executiongate.db.ReviewPayload
 import com.example.executiongate.security.Permission
 import com.example.executiongate.security.Policy
-import com.example.executiongate.service.dto.DatasourceConnectionId
-import com.example.executiongate.service.dto.Event
-import com.example.executiongate.service.dto.EventType
-import com.example.executiongate.service.dto.ExecutionRequestDetails
-import com.example.executiongate.service.dto.ExecutionRequestId
-import com.example.executiongate.service.dto.ReviewAction
-import com.example.executiongate.service.dto.ReviewEvent
-import com.example.executiongate.service.dto.ReviewStatus
+import com.example.executiongate.service.dto.*
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
+import java.lang.RuntimeException
 
 @Service
 class ExecutionRequestService(
@@ -40,6 +34,7 @@ class ExecutionRequestService(
         return executionRequestAdapter.createExecutionRequest(
             connectionId = request.datasourceConnectionId,
             title = request.title,
+            type = request.type,
             description = request.description,
             statement = request.statement,
             readOnly = request.readOnly,
@@ -105,7 +100,7 @@ class ExecutionRequestService(
     }
 
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
-    fun execute(id: ExecutionRequestId): QueryResult {
+    fun execute(id: ExecutionRequestId, query: String?): List<QueryResult> {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
         val connection = executionRequest.request.connection
 
@@ -114,7 +109,14 @@ class ExecutionRequestService(
             connectionString = connection.getConnectionString(),
             username = connection.username,
             password = connection.password,
-            executionRequest.request.statement,
+            query = when (executionRequest.request.type) {
+                RequestType.SingleQuery -> executionRequest.request.statement!!
+                RequestType.TemporaryAccess -> query ?: throw MissingQueryException(
+                    "For temporary access requests the query param is required",
+                )
+            },
         )
     }
 }
+
+class MissingQueryException(message: String) : RuntimeException(message)

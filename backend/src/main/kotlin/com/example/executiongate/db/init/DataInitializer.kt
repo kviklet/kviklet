@@ -16,6 +16,7 @@ import com.example.executiongate.db.UserRepository
 import com.example.executiongate.service.dto.AuthenticationType
 import com.example.executiongate.service.dto.DatasourceType
 import com.example.executiongate.service.dto.PolicyEffect
+import com.example.executiongate.service.dto.RequestType
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -56,6 +57,7 @@ class DataInitializer(
         return ExecutionRequestEntity(
             connection = connection,
             title = title,
+            type = RequestType.SingleQuery,
             description = description,
             statement = statement,
             readOnly = readOnly,

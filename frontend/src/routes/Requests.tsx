@@ -76,6 +76,14 @@ function mapStatusToLabelColor(status?: string) {
   }
 }
 
+function mapTypeToLabelColor(type: string) {
+  if (type == "TemporaryAccess") {
+    return "bg-yellow-50 text-yellow-600 ring-yellow-500/10 dark:bg-yellow-400/10 dark:text-yellow-500 dark:ring-yellow-400/20";
+  } else {
+    return "bg-indigo-50 text-indigo-600 ring-indigo-500/10 dark:bg-indigo-400/10 dark:text-indigo-500 dark:ring-indigo-400/20";
+  }
+}
+
 function Requests() {
   const [requests, setRequests] = useState<ExecutionRequestResponse[]>([]);
   useEffect(() => {
@@ -144,6 +152,13 @@ function Requests() {
                       >
                         {mapStatus(request?.reviewStatus)}
                       </div>
+                      <span
+                        className={`w-min rounded-md px-2 py-1 mt-2 text-xs font-medium  ring-1 ring-inset ${mapTypeToLabelColor(
+                          request.type,
+                        )}`}
+                      >
+                        {request.type}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -159,4 +174,10 @@ function Requests() {
   );
 }
 
-export { Requests, mapStatusToLabelColor, mapStatus, timeSince };
+export {
+  Requests,
+  mapStatusToLabelColor,
+  mapStatus,
+  timeSince,
+  mapTypeToLabelColor,
+};

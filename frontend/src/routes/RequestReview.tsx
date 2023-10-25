@@ -1,5 +1,5 @@
 import { ReactNode, useContext, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import ReactMarkdown from "react-markdown";
 import {
@@ -37,6 +37,7 @@ interface RequestReviewParams {
 const Highlighter = (props: { children: string }) => {
   const { currentTheme } = useContext<ThemeContext>(ThemeStatusContext);
   const style = currentTheme === "dark" ? a11yDark : a11yLight;
+  console.log("Switching theme because" + currentTheme);
 
   return (
     <SyntaxHighlighter
@@ -165,6 +166,16 @@ function RequestReview() {
     executionError,
   } = useRequest(params.requestId);
 
+  const navigate = useNavigate();
+
+  const run = async () => {
+    if (request?.type === "SingleQuery") {
+      await execute();
+    } else {
+      navigate(`/requests/${request?.id}/session`);
+    }
+  };
+
   return (
     <div>
       <div className="max-w-3xl m-auto mt-10">
@@ -182,7 +193,7 @@ function RequestReview() {
           <div className="">
             <RequestBox
               request={request}
-              runQuery={execute}
+              runQuery={run}
               updateRequest={updateRequest}
             ></RequestBox>
             <div className="flex justify-center">
@@ -272,40 +283,47 @@ function RequestBox({
         </p>
         <div className="py-3">
           <p className="text-slate-500 pb-6">{request?.description}</p>
-          {editMode ? (
-            <div>
-              <textarea
-                className="appearance-none block w-full text-gray-700 border border-gray-200 bg-slate-100 focus:bg-white dark:bg-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors dark:text-slate-50 p-1 rounded-md leading-normal mb-2 focus:outline-none focus:border-gray-500"
-                id="statement"
-                name="statement"
-                rows={4}
-                onChange={(event) => setStatement(event.target.value)}
-                value={statement}
-              ></textarea>
-              <div className="flex justify-end">
-                <Button
-                  className="mr-2"
-                  type="reset"
-                  onClick={() => {
-                    setEditMode(false);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" onClick={(e) => void changeStatement(e)}>
-                  Save
-                </Button>
+          {request?.type == "SingleQuery" ? (
+            editMode ? (
+              <div>
+                <textarea
+                  className="appearance-none block w-full text-gray-700 border border-gray-200 bg-slate-100 focus:bg-white dark:bg-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors dark:text-slate-50 p-1 rounded-md leading-normal mb-2 focus:outline-none focus:border-gray-500"
+                  id="statement"
+                  name="statement"
+                  rows={4}
+                  onChange={(event) => setStatement(event.target.value)}
+                  value={statement}
+                ></textarea>
+                <div className="flex justify-end">
+                  <Button
+                    className="mr-2"
+                    type="reset"
+                    onClick={() => {
+                      setEditMode(false);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    onClick={(e) => void changeStatement(e)}
+                  >
+                    Save
+                  </Button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div
+                className="dark:bg-slate-950 border dark:border-slate-700 rounded border-slate-300 dark:hover:border-slate-500 transition-colors"
+                onClick={() => setEditMode(true)}
+              >
+                <Highlighter>
+                  {request === undefined ? "404" : request.statement || ""}
+                </Highlighter>
+              </div>
+            )
           ) : (
-            <div
-              className="dark:bg-slate-950 border dark:border-slate-700 rounded border-slate-300 dark:hover:border-slate-500 transition-colors"
-              onClick={() => setEditMode(true)}
-            >
-              <Highlighter>
-                {request === undefined ? "404" : request.statement}
-              </Highlighter>
-            </div>
+            ""
           )}
         </div>
       </div>
@@ -322,7 +340,7 @@ function RequestBox({
               "bg-slate-500"
             }`}
           ></div>
-          Run Query
+          {request?.type == "SingleQuery" ? "Run Query" : "Start Session"}
         </Button>
       </div>
     </div>

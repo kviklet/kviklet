@@ -12,6 +12,7 @@ import {
 } from "./components/UserStatusProvider";
 import { ThemeStatusProvider } from "./components/ThemeStatusProvider";
 import LiveSession from "./routes/LiveSession";
+import ConnectionChooser from "./routes/NewRequest";
 
 export interface ProtectedRouteProps {
   children: JSX.Element;
@@ -32,7 +33,7 @@ export const ProtectedRoute = ({
 };
 function App() {
   return (
-    <div className="dark:text-slate-50 dark:bg-slate-950 text-slate-900 bg-slate-50">
+    <div className="dark:text-slate-50 dark:bg-slate-950 text-slate-900 bg-slate-50 min-h-screen">
       <UserStatusProvider>
         <ThemeStatusProvider>
           <Routes>
@@ -54,10 +55,10 @@ function App() {
                 }
               />
               <Route
-                path="live-session"
+                path="new"
                 element={
                   <ProtectedRoute>
-                    <LiveSession></LiveSession>
+                    <ConnectionChooser></ConnectionChooser>
                   </ProtectedRoute>
                 }
               ></Route>
@@ -70,18 +71,18 @@ function App() {
                 }
               />
               <Route
-                path="requests/new"
-                element={
-                  <ProtectedRoute>
-                    <AddRequestForm />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
                 path="requests/:requestId"
                 element={
                   <ProtectedRoute>
                     <RequestReview />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="requests/:requestId/session"
+                element={
+                  <ProtectedRoute>
+                    <LiveSession />
                   </ProtectedRoute>
                 }
               />

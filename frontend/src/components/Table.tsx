@@ -36,7 +36,7 @@ const Table: React.FC<{ data: SelectExecuteResponse }> = ({ data }) => {
 
   return (
     <div
-      className={`px-2 max-h-[calc(100vh-theme(spacing.16))] overflow-y-scroll block font-thin ${
+      className={`px-2 max-h-[calc(100vh-theme(spacing.32))] overflow-y-scroll block font-thin ${
         selected ? "w-screen" : "w-full"
       } transition-width border shrink-0 rounded border-slate-300 shadow-md dark:shadow-none dark:border-slate-700 my-4`}
     >
