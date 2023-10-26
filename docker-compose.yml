@@ -23,15 +23,11 @@ services:
       - "5433:5432"
     volumes:
       - ./opsgate-postgres-data:/var/lib/postgresql/data
-  backend:
-    build: backend
+  opsgate:
+    build: .
     ports:
-      - "8080:8080"
+      - "80:80"
     environment:
       - spring.profiles.active=e2e
     depends_on:
       - opsgate-postgres
-  frontend:
-    build: frontend
-    ports:
-      - "80:80"
