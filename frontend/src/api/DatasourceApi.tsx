@@ -1,6 +1,5 @@
 import { z } from "zod";
-
-const baseUrl = `${window.location.protocol}//${window.location.hostname}:8080`;
+import baseUrl from "./base";
 
 const datasourceUrl = `${baseUrl}/datasources/`;
 

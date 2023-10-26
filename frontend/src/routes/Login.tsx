@@ -4,6 +4,7 @@ import GoogleButton from "react-google-button";
 import { useNavigate } from "react-router-dom";
 import { UserStatusContext } from "../components/UserStatusProvider";
 import image from "../logo.png";
+import baseUrl from "../api/base";
 
 const StyledInput = (props: {
   name: string;
@@ -34,7 +35,7 @@ const Login = () => {
 
   const login = async (event: FormEvent) => {
     event.preventDefault();
-    await fetch("http://localhost:8080/login", {
+    await fetch(baseUrl + "/login", {
       method: "POST",
       credentials: "include",
       headers: {
@@ -82,7 +83,7 @@ const Login = () => {
                 Sign in
               </Button>
               <a
-                href="http://localhost:8080/oauth2/authorization/google"
+                href={`${baseUrl}/oauth2/authorization/google`}
                 className="w-full block mt-8"
               >
                 <GoogleButton type="light" className="m-auto"></GoogleButton>

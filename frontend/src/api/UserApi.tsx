@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { roleResponseSchema } from "./RoleApi";
-
-const baseUrl = `${window.location.protocol}//${window.location.hostname}:8080`;
+import baseUrl from "./base";
 
 // Define the schema for the user response
 const userResponseSchema = z.object({

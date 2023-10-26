@@ -1,4 +1,5 @@
 import { z } from "zod";
+import baseUrl from "./base";
 
 const StatusResponse = z.object({
   email: z.string(),
@@ -10,7 +11,7 @@ const StatusResponse = z.object({
 type StatusResponse = z.infer<typeof StatusResponse>;
 
 const checklogin = async (): Promise<StatusResponse | false> => {
-  const response = await fetch("http://localhost:8080/status", {
+  const response = await fetch(baseUrl + "/status", {
     method: "GET",
     credentials: "include",
   });
