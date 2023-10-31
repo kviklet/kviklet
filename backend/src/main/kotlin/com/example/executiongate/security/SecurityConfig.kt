@@ -50,8 +50,8 @@ class SecurityConfig(
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http.invoke {
-            cors {
-            }
+            cors { }
+
             authenticationManager = ProviderManager(customAuthenticationProvider)
 
             oauth2Login { authenticationSuccessHandler = oauth2LoginSuccessHandler }
@@ -104,6 +104,7 @@ class SecurityConfig(
 
         return http.build()
     }
+
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
         val configuration = CorsConfiguration()
