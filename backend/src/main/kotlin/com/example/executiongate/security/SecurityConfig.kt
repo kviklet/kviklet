@@ -50,8 +50,9 @@ class SecurityConfig(
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http.invoke {
-            cors { }
-
+            cors {
+                disable()
+            }
             authenticationManager = ProviderManager(customAuthenticationProvider)
 
             oauth2Login { authenticationSuccessHandler = oauth2LoginSuccessHandler }
@@ -103,20 +104,6 @@ class SecurityConfig(
         }
 
         return http.build()
-    }
-
-    @Bean
-    fun corsConfigurationSource(): CorsConfigurationSource {
-        val configuration = CorsConfiguration()
-        configuration.allowedOrigins = listOf("http://localhost:5173", "http://localhost:80", "http://localhost")
-        configuration.allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
-        configuration.allowCredentials = true
-        configuration.allowedHeaders = listOf("*")
-
-        val source = UrlBasedCorsConfigurationSource()
-        source.registerCorsConfiguration("/**", configuration)
-
-        return source
     }
 }
 

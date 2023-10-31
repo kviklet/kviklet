@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - test-deploy
 jobs:
   build-and-push:
     environment: dockerhub
