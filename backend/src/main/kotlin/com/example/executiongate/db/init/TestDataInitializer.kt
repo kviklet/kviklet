@@ -26,21 +26,13 @@ import java.util.concurrent.ThreadLocalRandom
 
 @Configuration
 @Profile("local", "e2e")
-class DataInitializer(
+class TestDataInitializer(
     private val datasourceRepository: DatasourceRepository,
     private val datasourceConnectionRepository: DatasourceConnectionRepository,
     private val executionRequestRepository: ExecutionRequestRepository,
     private val roleRepository: RoleRepository,
     private val policyRepository: PolicyRepository,
 ) {
-
-    // Helper function to generate a random SQL statement
-    fun randomSQL(): String {
-        val tables = listOf("users", "orders", "products")
-        val table = tables[ThreadLocalRandom.current().nextInt(tables.size)]
-        // return "SELECT * FROM $table;"
-        return "SELECT 1;"
-    }
 
     // Helper function to generate an ExecutionRequestEntity
     fun generateExecutionRequest(
@@ -80,7 +72,7 @@ class DataInitializer(
             effect = PolicyEffect.ALLOW,
             resource = "*",
         )
-        val savedPolicy = policyRepository.saveAndFlush(policyEntity)
+        policyRepository.saveAndFlush(policyEntity)
 
         savedUser.roles += savedRole
     }

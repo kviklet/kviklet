@@ -15,3 +15,8 @@ Utilizing the Four-Eyes Principle and a high level of configurability, OpsGate a
 OpsGate is a self hosted solution, this is a deliberate design decision as you shouldn't have to expose your databases to any external party. However we try to make it a simple as possible to get set up.
 
 Initially we will focus on PostgreSQL and MySQL support.
+
+## Config
+
+For the initial run of the container set the the env variables:
+`INITIAL_USER_EMAIL` and `INITIAL_USER_PASSWORD` so that you can login into the web interface. You can change the password afterwards via the UI.

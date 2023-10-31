@@ -27,6 +27,7 @@ const UpdateUserRequestSchema = z.object({
   email: z.string().min(3).max(50).optional(),
   fullName: z.string().min(1).max(50).optional(),
   roles: z.array(z.string()).optional(),
+  password: z.string().optional(),
 });
 
 type UpdateUserRequest = z.infer<typeof UpdateUserRequestSchema>;
