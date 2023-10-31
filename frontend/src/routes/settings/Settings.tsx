@@ -2,6 +2,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 import BaseSettingsLayout from "./BaseSettingsLayout";
 import React from "react";
+import { UserCircleIcon } from "@heroicons/react/20/solid";
 
 export const Settings = () => {
   const tabStyles =
@@ -42,6 +43,18 @@ export const Settings = () => {
         </div>
       ),
       link: "/settings/roles",
+    },
+    {
+      name: "profile",
+      tabContent: (
+        <div className="flex flex-col">
+          <div className={tabStyles}>
+            <UserCircleIcon className="mr-2 h-6"></UserCircleIcon>
+            Profile
+          </div>
+        </div>
+      ),
+      link: "/settings/profile",
     },
   ];
   return <BaseSettingsLayout tabs={tabs}></BaseSettingsLayout>;

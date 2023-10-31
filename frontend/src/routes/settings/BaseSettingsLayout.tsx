@@ -4,6 +4,7 @@ import DatabaseSettings from "./DatabaseSettings";
 import UserSettings from "./UserSettings";
 import RoleSettings from "./RolesSettings";
 import React from "react";
+import ProfileSettings from "./ProfileSettings";
 
 const Tab = (props: {
   children: React.ReactNode;
@@ -77,6 +78,7 @@ const BaseSettingsLayout = (props: LayoutProps) => {
               <Route path="databases" element={<DatabaseSettings />} />
               <Route path="users" element={<UserSettings />} />
               <Route path="roles" element={<RoleSettings />} />
+              <Route path="profile" element={<ProfileSettings />} />
             </Routes>
             <Outlet></Outlet>
           </div>
