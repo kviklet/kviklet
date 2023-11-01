@@ -45,3 +45,16 @@ INITIAL_USER_PASSWORD=someverysecurepassword
 ```
 
 With all this set you can run `jaschaopsgate/opsgate:latest` don't forget to expose port 80.
+
+An example docker run could looks like this:
+
+```
+docker run \
+-e SPRING_DATASOURCE_PASSWORD=postgres \
+-e SPRING_DATASOURCE_USERNAME=postgres \
+-e SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/opsgate \
+-e INITIAL_USER_EMAIL=admin@example.com \
+-e INITIAL_USER_PASSWORD=someverysecurepassword \
+--network host \
+jaschaopsgate/opsgate:latest
+```
