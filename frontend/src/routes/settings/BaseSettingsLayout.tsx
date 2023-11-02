@@ -41,7 +41,7 @@ interface LayoutProps {
 
 function SettingsSidebar(props: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col bg-slate-50 dark:bg-slate-950 mx-2">
+    <div className="flex flex-col mx-2">
       <div className="flex flex-col divide-y-8 divide-slate-50 dark:divide-slate-950">
         {props.children}
       </div>
@@ -65,12 +65,12 @@ const BaseSettingsLayout = (props: LayoutProps) => {
   });
 
   return (
-    <div className="w-screen h-screen">
+    <div className="w-screen h-full dark:bg-slate-950">
       <div className="border-b border-slate-300 mb-3 dark:border-slate-700">
         <h1 className="text-xl pl-1.5 w-3/4 m-5 mx-auto">Settings</h1>
       </div>
-      <div className="mx-auto w-3/4">
-        <div className="flex w-full pt-4">
+      <div className="mx-auto w-3/4 h-full">
+        <div className="flex w-full pt-4 h-full">
           <SettingsSidebar>{tabs}</SettingsSidebar>
           <div className="w-full ml-2 h-full">
             <Routes>
