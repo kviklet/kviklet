@@ -13,6 +13,7 @@ const connectionResponseSchema = z.object({
   authenticationType: z.nativeEnum(AuthenticationType),
   shortUsername: z.coerce.string(),
   description: z.coerce.string(),
+  databaseName: z.string().nullable(),
   reviewConfig: z.object({
     numTotalRequired: z.number(),
   }),
@@ -40,6 +41,8 @@ const connectionPayloadSchema = z.object({
   id: z.string(),
   username: z.string(),
   password: z.string(),
+  description: z.string(),
+  databaseName: z.string(),
   reviewConfig: z.object({
     numTotalRequired: z.number(),
   }),
@@ -49,6 +52,8 @@ const patchConnectionPayloadSchema = z.object({
   displayName: z.coerce.string().optional(),
   username: z.string().optional(),
   password: z.string().optional(),
+  description: z.string().optional(),
+  databaseName: z.string().optional(),
   reviewConfig: z
     .object({
       numTotalRequired: z.number(),

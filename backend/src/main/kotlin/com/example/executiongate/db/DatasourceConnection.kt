@@ -39,6 +39,7 @@ class DatasourceConnectionEntity(
     var displayName: String,
     @Enumerated(EnumType.STRING)
     var authenticationType: AuthenticationType,
+    var databaseName: String?,
     var username: String,
     var password: String,
     var description: String,
@@ -60,6 +61,7 @@ class DatasourceConnectionEntity(
         datasource = datasourceDto ?: datasource.toDto(),
         displayName = displayName,
         authenticationType = authenticationType,
+        databaseName = databaseName,
         username = username,
         password = password,
         description = description,
@@ -108,6 +110,7 @@ class DatasourceConnectionAdapter(
         datasourceConnectionId: DatasourceConnectionId,
         displayName: String,
         authenticationType: AuthenticationType,
+        databaseName: String?,
         username: String,
         password: String,
         description: String,
@@ -119,6 +122,7 @@ class DatasourceConnectionAdapter(
                 id = datasourceConnectionId.toString(),
                 displayName = displayName,
                 authenticationType = authenticationType,
+                databaseName = databaseName,
                 username = username,
                 password = password,
                 description = description,
@@ -131,6 +135,7 @@ class DatasourceConnectionAdapter(
     fun updateDatasourceConnection(
         id: DatasourceConnectionId,
         displayName: String,
+        databaseName: String?,
         username: String,
         password: String,
         description: String,
@@ -146,6 +151,7 @@ class DatasourceConnectionAdapter(
         datasourceConnection.password = password
         datasourceConnection.description = description
         datasourceConnection.reviewConfig = reviewConfig
+        datasourceConnection.databaseName = databaseName
 
         return datasourceConnectionRepository.save(datasourceConnection).toDto()
     }

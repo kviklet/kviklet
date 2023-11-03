@@ -130,7 +130,10 @@ class DatasourceController(
     }
 
     @PostMapping("/")
-    fun createDatasource(@Valid @RequestBody datasourceConnection: CreateDatasourceRequest): DatasourceResponse {
+    fun createDatasource(
+        @Valid @RequestBody
+        datasourceConnection: CreateDatasourceRequest,
+    ): DatasourceResponse {
         val datasource = datasourceService.createDatasource(
             id = datasourceConnection.id,
             displayName = datasourceConnection.displayName,
@@ -144,7 +147,8 @@ class DatasourceController(
     @PatchMapping("/{datasourceId}")
     fun updateDatasource(
         @PathVariable datasourceId: String,
-        @Valid @RequestBody datasource: UpdateDatasourceRequest,
+        @Valid @RequestBody
+        datasource: UpdateDatasourceRequest,
     ): DatasourceResponse {
         return datasourceService.updateDatasource(DatasourceId(datasourceId), datasource).let {
             DatasourceResponse.fromDto(it, emptyList())

@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-add-database-name
+      author: nils
+      changes:
+        - addColumn:
+            tableName: datasource_connection
+            columns:
+              - column:
+                  name: database_name
+                  type: varchar(255)
+                  constraints:
+                    nullable: true

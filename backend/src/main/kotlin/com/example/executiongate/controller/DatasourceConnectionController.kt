@@ -30,6 +30,9 @@ data class CreateDatasourceConnectionRequest(
     @field:Size(max = 255, message = "Maximum length 255")
     val displayName: String,
 
+    @Schema(example = "postgres")
+    val databaseName: String? = null,
+
     @Schema(example = "root")
     @field:Size(min = 1, max = 255, message = "Maximum length 255")
     val username: String,
@@ -47,6 +50,9 @@ data class UpdateDataSourceConnectionRequest(
     @Schema(example = "My Postgres Db User")
     @field:Size(max = 255, message = "Maximum length 255")
     val displayName: String? = null,
+
+    @Schema(example = "postgres")
+    val databaseName: String? = null,
 
     @Schema(example = "root")
     @field:Size(min = 1, max = 255, message = "Maximum length 255")
@@ -73,6 +79,7 @@ data class DatasourceConnectionResponse(
     val id: DatasourceConnectionId,
     val authenticationType: AuthenticationType,
     val displayName: String,
+    val databaseName: String?,
     val username: String,
     val description: String,
     val reviewConfig: ReviewConfigResponse,
@@ -82,6 +89,7 @@ data class DatasourceConnectionResponse(
             id = datasourceConnection.id,
             authenticationType = datasourceConnection.authenticationType,
             displayName = datasourceConnection.displayName,
+            databaseName = datasourceConnection.databaseName,
             username = datasourceConnection.username,
             description = datasourceConnection.description,
             reviewConfig = ReviewConfigResponse(datasourceConnection.reviewConfig.numTotalRequired),
@@ -114,7 +122,8 @@ class DatasourceConnectionController(
     @PostMapping("/{datasourceId}/connections")
     fun createDatasourceConnection(
         @PathVariable datasourceId: String,
-        @Valid @RequestBody datasourceConnection: CreateDatasourceConnectionRequest,
+        @Valid @RequestBody
+        datasourceConnection: CreateDatasourceConnectionRequest,
     ): DatasourceConnectionResponse {
         val datasource = datasourceConnectionService.createDatasourceConnection(
             datasourceId = DatasourceId(datasourceId),
@@ -134,7 +143,8 @@ class DatasourceConnectionController(
     fun updateDatasourceConnection(
         @PathVariable datasourceId: String,
         @PathVariable connectionId: String,
-        @Valid @RequestBody datasourceConnection: UpdateDataSourceConnectionRequest,
+        @Valid @RequestBody
+        datasourceConnection: UpdateDataSourceConnectionRequest,
     ): DatasourceConnectionResponse {
         val datasource = datasourceConnectionService.updateDatasourceConnection(
             datasourceId = DatasourceId(datasourceId),
