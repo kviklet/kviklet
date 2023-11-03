@@ -369,20 +369,23 @@ function ConnectionSettings(props: {
   console.log("Selected Index" + props.selectedIndex);
   console.log(props.connections);
   return (
-    <div className=" border-l dark:border-slate-700  dark:bg-slate-950 flex flex-col min-h-full w-full">
+    <div className="flex flex-col max-h-[calc(100vh-theme(spacing.52))] w-full border-l dark:border-slate-700  dark:bg-slate-950">
       <div className="pl-8 text-lg">Connections</div>
-      <div className="pl-8 flex flex-col h-96 justify-between">
-        <div className="">
-          {props.connections.map((connection) => (
-            <SingleConnectionSettings
-              connection={connection}
-              editConnectionHandler={props.editConnectionHandler}
-            />
-          ))}
+      <div className="flex-grow overflow-hidden">
+        <div className="pl-8 h-full flex flex-col justify-between">
+          <div className="overflow-y-auto flex-grow">
+            {props.connections.map((connection) => (
+              <SingleConnectionSettings
+                key={connection.id} // Assuming each connection has a unique 'id'
+                connection={connection}
+                editConnectionHandler={props.editConnectionHandler}
+              />
+            ))}
+          </div>
+          <Button className="ml-auto my-2" onClick={props.addConnectionHandler}>
+            Add Connection
+          </Button>
         </div>
-        <Button className="ml-auto" onClick={props.addConnectionHandler}>
-          Add Connection
-        </Button>
       </div>
     </div>
   );
@@ -401,7 +404,7 @@ const DatabaseChooser = (props: {
         <div className="text-center max-h-96 w-72 overflow-y-scroll pr-4">
           {props.databases.map((database, index) => (
             <div
-              className={`flex items-center rounded-md mb-3 transition-colors px-3 cursor-pointer ${
+              className={`flex items-center rounded-md mb-3 transition-colors px-3 cursor-pointer max-h-12 ${
                 index === props.selectedIndex
                   ? "bg-slate-200 dark:bg-slate-900"
                   : "hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-900"
@@ -411,7 +414,7 @@ const DatabaseChooser = (props: {
               <div className="basis-1/2 my-auto text-left truncate">
                 {database.displayName}
               </div>
-              <div className="basis-1/2 self-end my-2 text-righttext-slate-500 dark:text-slate-400">
+              <div className="basis-1/2 ml-2 mr-3 text-sm self-end my-2 text-right text-slate-500 dark:text-slate-400 text-clip grow-0 overflow-hidden whitespace-nowrap">
                 {database.hostname}
               </div>
               <button
@@ -498,7 +501,7 @@ const DatabaseSettings = () => {
       {loading ? (
         <Spinner />
       ) : (
-        <div>
+        <div className="">
           <div className="flex w-full dark:bg-slate-950 h-full">
             <DatabaseChooser
               databases={datasources}
