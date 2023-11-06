@@ -1,6 +1,5 @@
 import { z } from "zod";
-
-const baseUrl = `${window.location.protocol}//${window.location.hostname}:8080`;
+import baseUrl from "./base";
 
 const datasourceUrl = `${baseUrl}/datasources/`;
 
@@ -14,6 +13,7 @@ const connectionResponseSchema = z.object({
   authenticationType: z.nativeEnum(AuthenticationType),
   shortUsername: z.coerce.string(),
   description: z.coerce.string(),
+  databaseName: z.string().nullable(),
   reviewConfig: z.object({
     numTotalRequired: z.number(),
   }),
@@ -33,14 +33,16 @@ const ApiResponse = z.object({
 });
 
 const databasePayloadSchema = databaseResponseSchema.omit({
-  id: true,
   datasourceConnections: true,
 });
 
 const connectionPayloadSchema = z.object({
   displayName: z.coerce.string(),
+  id: z.string(),
   username: z.string(),
   password: z.string(),
+  description: z.string(),
+  databaseName: z.string(),
   reviewConfig: z.object({
     numTotalRequired: z.number(),
   }),
@@ -50,6 +52,8 @@ const patchConnectionPayloadSchema = z.object({
   displayName: z.coerce.string().optional(),
   username: z.string().optional(),
   password: z.string().optional(),
+  description: z.string().optional(),
+  databaseName: z.string().optional(),
   reviewConfig: z
     .object({
       numTotalRequired: z.number(),
@@ -62,8 +66,7 @@ const fetchDatabases = async (): Promise<DatabaseResponse[]> => {
     method: "GET",
     credentials: "include",
   });
-  const json = await response.json();
-  console.log(json);
+  const json: unknown = await response.json();
   const parsedResponse = ApiResponse.parse(json);
   return parsedResponse.databases;
 };
@@ -127,7 +130,7 @@ const patchConnection = async (
 };
 
 const removeDatabase = async (id: string): Promise<void> => {
-  const response = await fetch(`${datasourceUrl}${id}`, {
+  await fetch(`${datasourceUrl}${id}`, {
     method: "DELETE",
     credentials: "include",
   });

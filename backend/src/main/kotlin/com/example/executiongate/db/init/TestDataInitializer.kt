@@ -16,6 +16,7 @@ import com.example.executiongate.db.UserRepository
 import com.example.executiongate.service.dto.AuthenticationType
 import com.example.executiongate.service.dto.DatasourceType
 import com.example.executiongate.service.dto.PolicyEffect
+import com.example.executiongate.service.dto.RequestType
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -24,22 +25,14 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import java.util.concurrent.ThreadLocalRandom
 
 @Configuration
-@Profile("local")
-class DataInitializer(
+@Profile("local", "e2e")
+class TestDataInitializer(
     private val datasourceRepository: DatasourceRepository,
     private val datasourceConnectionRepository: DatasourceConnectionRepository,
     private val executionRequestRepository: ExecutionRequestRepository,
     private val roleRepository: RoleRepository,
     private val policyRepository: PolicyRepository,
 ) {
-
-    // Helper function to generate a random SQL statement
-    fun randomSQL(): String {
-        val tables = listOf("users", "orders", "products")
-        val table = tables[ThreadLocalRandom.current().nextInt(tables.size)]
-        // return "SELECT * FROM $table;"
-        return "SELECT 1;"
-    }
 
     // Helper function to generate an ExecutionRequestEntity
     fun generateExecutionRequest(
@@ -56,6 +49,7 @@ class DataInitializer(
         return ExecutionRequestEntity(
             connection = connection,
             title = title,
+            type = RequestType.SingleQuery,
             description = description,
             statement = statement,
             readOnly = readOnly,
@@ -78,7 +72,7 @@ class DataInitializer(
             effect = PolicyEffect.ALLOW,
             resource = "*",
         )
-        val savedPolicy = policyRepository.saveAndFlush(policyEntity)
+        policyRepository.saveAndFlush(policyEntity)
 
         savedUser.roles += savedRole
     }
@@ -86,8 +80,6 @@ class DataInitializer(
     @Bean
     fun initializer(userRepository: UserRepository, passwordEncoder: PasswordEncoder): ApplicationRunner {
         return ApplicationRunner { _ ->
-
-            println("initializing data")
 
             if (userRepository.findAll().isNotEmpty()) {
                 return@ApplicationRunner
@@ -119,6 +111,7 @@ class DataInitializer(
                 id = "test-connection",
                 datasource = savedDatasource1,
                 displayName = "Test Connection",
+                databaseName = null,
                 authenticationType = AuthenticationType.USER_PASSWORD,
                 description = "This is a localhost connection",
                 username = "postgres",

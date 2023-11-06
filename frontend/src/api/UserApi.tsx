@@ -1,8 +1,6 @@
-import { group } from "console";
 import { z } from "zod";
 import { roleResponseSchema } from "./RoleApi";
-
-const baseUrl = `${window.location.protocol}//${window.location.hostname}:8080`;
+import baseUrl from "./base";
 
 // Define the schema for the user response
 const userResponseSchema = z.object({
@@ -29,6 +27,7 @@ const UpdateUserRequestSchema = z.object({
   email: z.string().min(3).max(50).optional(),
   fullName: z.string().min(1).max(50).optional(),
   roles: z.array(z.string()).optional(),
+  password: z.string().optional(),
 });
 
 type UpdateUserRequest = z.infer<typeof UpdateUserRequestSchema>;
@@ -41,7 +40,7 @@ async function fetchUsers(): Promise<UserResponse[]> {
     credentials: "include",
   });
 
-  const data = await response.json();
+  const data: unknown = await response.json();
   return usersResponseSchema.parse(data).users;
 }
 
@@ -54,12 +53,12 @@ async function createUser(request: CreateUserRequest): Promise<UserResponse> {
     credentials: "include",
     body: JSON.stringify(request),
   });
-  const data = await response.json();
+  const data: unknown = await response.json();
   return userResponseSchema.parse(data);
 }
 
 async function updateUser(
-  id: String,
+  id: string,
   request: UpdateUserRequest,
 ): Promise<UserResponse> {
   const response = await fetch(`${baseUrl}/users/${id}`, {
@@ -70,7 +69,7 @@ async function updateUser(
     credentials: "include",
     body: JSON.stringify(request),
   });
-  const data = await response.json();
+  const data: unknown = await response.json();
   return userResponseSchema.parse(data);
 }
 

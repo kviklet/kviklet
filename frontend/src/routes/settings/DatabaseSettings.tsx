@@ -18,19 +18,46 @@ import Spinner from "../../components/Spinner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 import DeleteConfirm from "../../components/DeleteConfirm";
+import React from "react";
+
+const useIdNamePair = () => {
+  const [displayName, setDisplayName] = useState<string>("");
+  const [id, setId] = useState<string>("");
+  const [idManuallyChanged, setIdManuallyChanged] = useState<boolean>(false);
+
+  const changeId = (id: string) => {
+    setId(id);
+    setIdManuallyChanged(true);
+  };
+
+  function formatId(input: string): string {
+    const lowerCasedString = input.toLowerCase();
+    return lowerCasedString.replace(/\s+/g, "-");
+  }
+
+  const changeDisplayName = (name: string) => {
+    setDisplayName(name);
+    if (!idManuallyChanged) {
+      setId(formatId(name));
+    }
+  };
+
+  return { displayName, id, changeId, changeDisplayName };
+};
 
 function CreateDatabaseForm(props: {
   handleCreateDatabase: (database: DatabasePayload) => Promise<void>;
 }) {
-  const [displayName, setDisplayName] = useState<string>("");
   const [datasourceType, setDatasourceType] = useState<string>("");
   const [hostname, setHostname] = useState<string>("");
   const [port, setPort] = useState<number>(0);
+  const { displayName, id, changeId, changeDisplayName } = useIdNamePair();
 
   const handleCreateDatabase = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     await props.handleCreateDatabase({
       displayName,
+      id,
       datasourceType,
       hostname,
       port,
@@ -38,7 +65,7 @@ function CreateDatabaseForm(props: {
   };
 
   return (
-    <form method="post" onSubmit={handleCreateDatabase}>
+    <form method="post" onSubmit={(e) => void handleCreateDatabase(e)}>
       <div className="w-2xl shadow p-3 bg-slate-50 dark:bg-slate-950 rounded">
         <InputField
           id="displayName"
@@ -46,18 +73,45 @@ function CreateDatabaseForm(props: {
           placeholder="Database Name"
           value={displayName}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setDisplayName(e.target.value)
+            changeDisplayName(e.target.value)
           }
         />
         <InputField
-          id="datasourceType"
-          name="Database Engine"
-          placeholder="POSTGRESQL"
-          value={datasourceType}
+          id="id"
+          name="Id"
+          placeholder="database-id"
+          value={id}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setDatasourceType(e.target.value)
+            changeId(e.target.value)
           }
         />
+        <div className="flex m-2">
+          <label
+            htmlFor="datasourceType"
+            className="my-auto text-sm font-medium text-slate-700 dark:text-slate-200 ml-2 pl-1.5 mr-auto"
+          >
+            Database Engine
+          </label>
+          <select
+            className="basis-2/3 px-2 py-2 rounded-md border 
+              border-slate-300 dark:bg-slate-900 hover:border-slate-400 focus:border-indigo-600 focus:hover:border-indigo-600
+        focus:outline-none dark:hover:border-slate-600 dark:hover:focus:border-gray-500 dark:border-slate-700
+         dark:focus:border-gray-500 text-xs transition-colors indent-0"
+            id="datasourceType"
+            defaultValue="POSTGRESQL"
+            value={datasourceType}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+              setDatasourceType(e.target.value)
+            }
+          >
+            <option className="bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+              POSTGRESQL
+            </option>
+            <option className="bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+              MYSQL
+            </option>
+          </select>
+        </div>
         <InputField
           id="hostname"
           name="Hostname"
@@ -94,7 +148,7 @@ const useDatasources = () => {
       setDatasources(apiDatasources);
       setLoading(false);
     }
-    request();
+    void request();
   }, []);
 
   const createDatabase = async (database: DatabasePayload) => {
@@ -172,15 +226,21 @@ const useDatasources = () => {
 function CreateConnectionForm(props: {
   handleCreateConnection: (connection: ConnectionPayload) => Promise<void>;
 }) {
-  const [displayName, setDisplayName] = useState<string>("");
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const { displayName, id, changeId, changeDisplayName } = useIdNamePair();
+  const [description, setDescription] = useState<string>("");
+  const [databaseName, setDatabaseName] = useState<string>("");
+
   const submit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     await props.handleCreateConnection({
       displayName,
+      id,
       username,
       password,
+      description,
+      databaseName,
       reviewConfig: {
         numTotalRequired: 1,
       },
@@ -188,17 +248,44 @@ function CreateConnectionForm(props: {
   };
 
   return (
-    <form method="post" onSubmit={submit}>
+    <form method="post" onSubmit={(e) => void submit(e)}>
       <div className="w-2xl shadow p-3 bg-slate-50 border border-slate-300 dark:border-none dark:bg-slate-950 rounded">
         <InputField
           id="displayName"
           name="Name"
-          placeholder="Database Name"
+          placeholder="Connection Name"
           value={displayName}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setDisplayName(e.target.value)
+            changeDisplayName(e.target.value)
           }
         />
+        <InputField
+          id="description"
+          name="Description"
+          placeholder="Provides prod read access with no required reviews"
+          value={description}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setDescription(e.target.value)
+          }
+        />
+        <InputField
+          id="databaseName"
+          name="database"
+          placeholder="postgres"
+          value={databaseName}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setDatabaseName(e.target.value)
+          }
+        />
+        <InputField
+          id="id"
+          name="Id"
+          placeholder="datasource-id"
+          value={id}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            changeId(e.target.value);
+          }}
+        ></InputField>
         <InputField
           id="username"
           name="username"
@@ -233,20 +320,20 @@ function SingleConnectionSettings(props: {
     connection: PatchConnectionPayload,
   ) => Promise<void>;
 }) {
-  const [displayName, setDisplayName] = useState<string>(
-    props.connection.displayName,
-  );
-  const [username, setUsername] = useState<string>(
-    props.connection.shortUsername,
-  );
-  const [password, setPassword] = useState<string>("");
   const [numTotalRequired, setNumTotalRequired] = useState<number>(
     props.connection.reviewConfig.numTotalRequired,
   );
+  const [databaseName, setDatabaseName] = useState<string>(
+    props.connection.databaseName || "",
+  );
+  //useEffect(() => {
+  //  setNumTotalRequired(props.connection.reviewConfig.numTotalRequired);
+  //}, [props.connection.reviewConfig.numTotalRequired]);
   const [showCheck, setShowCheck] = useState<boolean>(false);
 
   const submit = async () => {
     await props.editConnectionHandler(props.connection.id, {
+      databaseName,
       reviewConfig: {
         numTotalRequired,
       },
@@ -269,6 +356,23 @@ function SingleConnectionSettings(props: {
           {props.connection.description}
         </div>
         <div className="flex justify-between text-sm">
+          <label
+            htmlFor="database-name"
+            className="mr-auto dark:text-slate-400"
+          >
+            Database Name:
+          </label>
+          <input
+            type="database-name"
+            value={databaseName}
+            onChange={(e) => {
+              setDatabaseName(e.target.value);
+              setShowCheck(true);
+            }}
+            className="focus:border-slate-500 focus:hover:border-slate-500 my-auto appearance-none border border-slate-200 hover:border-slate-300 rounded mx-1 py-2 px-3 text-slate-600 leading-tight focus:outline-none focus:shadow-outline dark:bg-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors dark:text-slate-50"
+          ></input>
+        </div>
+        <div className="flex justify-between text-sm">
           <label htmlFor="number" className="mr-auto dark:text-slate-400">
             Number of required reviews:
           </label>
@@ -283,7 +387,7 @@ function SingleConnectionSettings(props: {
           ></input>
         </div>
         <button
-          onClick={submit}
+          onClick={() => void submit()}
           className={`text-green-600 ml-2 hover:text-green-900 transition-colors ${
             showCheck ? "visible" : "invisible"
           }`}
@@ -304,21 +408,26 @@ function ConnectionSettings(props: {
     connection: PatchConnectionPayload,
   ) => Promise<void>;
 }) {
+  console.log("Selected Index" + props.selectedIndex);
+  console.log(props.connections);
   return (
-    <div className=" border-l dark:border-slate-700  dark:bg-slate-950 flex flex-col min-h-full w-full">
+    <div className="flex flex-col max-h-[calc(100vh-theme(spacing.52))] w-full border-l dark:border-slate-700  dark:bg-slate-950">
       <div className="pl-8 text-lg">Connections</div>
-      <div className="pl-8 flex flex-col h-96 justify-between">
-        <div className="">
-          {props.connections.map((connection) => (
-            <SingleConnectionSettings
-              connection={connection}
-              editConnectionHandler={props.editConnectionHandler}
-            />
-          ))}
+      <div className="flex-grow overflow-hidden">
+        <div className="pl-8 h-full flex flex-col justify-between">
+          <div className="overflow-y-auto flex-grow">
+            {props.connections.map((connection) => (
+              <SingleConnectionSettings
+                key={connection.id} // Assuming each connection has a unique 'id'
+                connection={connection}
+                editConnectionHandler={props.editConnectionHandler}
+              />
+            ))}
+          </div>
+          <Button className="ml-auto my-2" onClick={props.addConnectionHandler}>
+            Add Connection
+          </Button>
         </div>
-        <Button className="ml-auto" onClick={props.addConnectionHandler}>
-          Add Connection
-        </Button>
       </div>
     </div>
   );
@@ -337,7 +446,7 @@ const DatabaseChooser = (props: {
         <div className="text-center max-h-96 w-72 overflow-y-scroll pr-4">
           {props.databases.map((database, index) => (
             <div
-              className={`flex items-center rounded-md mb-3 transition-colors px-3 cursor-pointer ${
+              className={`flex items-center rounded-md mb-3 transition-colors px-3 cursor-pointer max-h-12 ${
                 index === props.selectedIndex
                   ? "bg-slate-200 dark:bg-slate-900"
                   : "hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-900"
@@ -347,7 +456,7 @@ const DatabaseChooser = (props: {
               <div className="basis-1/2 my-auto text-left truncate">
                 {database.displayName}
               </div>
-              <div className="basis-1/2 self-end my-2 text-righttext-slate-500 dark:text-slate-400">
+              <div className="basis-1/2 ml-2 mr-3 text-sm self-end my-2 text-right text-slate-500 dark:text-slate-400 text-clip grow-0 overflow-hidden whitespace-nowrap">
                 {database.hostname}
               </div>
               <button
@@ -375,7 +484,6 @@ const DatabaseChooser = (props: {
 };
 
 const DatabaseSettings = () => {
-  const datasourceUrl = "http://localhost:8080/datasources/";
   const [selectedIndex, setSelectedIndex] = useState<number | undefined>(
     undefined,
   );
@@ -425,7 +533,7 @@ const DatabaseSettings = () => {
     setShowAddConnectionModal(false);
   };
 
-  const deleteDatabase = async (database: DatabaseResponse) => {
+  const deleteDatabase = (database: DatabaseResponse) => {
     setSelectedDatasource(database);
     setShowDeleteDatasourceModal(true);
   };
@@ -435,7 +543,7 @@ const DatabaseSettings = () => {
       {loading ? (
         <Spinner />
       ) : (
-        <div>
+        <div className="">
           <div className="flex w-full dark:bg-slate-950 h-full">
             <DatabaseChooser
               databases={datasources}
@@ -456,7 +564,7 @@ const DatabaseSettings = () => {
               }}
               editConnectionHandler={async (connectionId, connection) => {
                 await editConnection(
-                  datasources[selectedIndex!!].id,
+                  datasources[selectedIndex!].id,
                   connectionId,
                   connection,
                 );
@@ -480,8 +588,9 @@ const DatabaseSettings = () => {
               <DeleteConfirm
                 title="Delete Datasource"
                 message="Are you sure you want to delete this datasource?"
-                onConfirm={() => {
-                  selectedDatasource && deleteDatasource(selectedDatasource.id);
+                onConfirm={async () => {
+                  selectedDatasource &&
+                    (await deleteDatasource(selectedDatasource.id));
                   setShowDeleteDatasourceModal(false);
                 }}
                 onCancel={() => setShowDeleteDatasourceModal(false)}

@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { ExecutionRequest } from "../routes/AddRequestForm";
-import { type } from "os";
+import { ExecutionRequest } from "../routes/NewRequest";
 import { userResponseSchema } from "./UserApi";
 import { connectionResponseSchema } from "./DatasourceApi";
 import baseUrl from "./base";
@@ -12,15 +11,25 @@ const DateTime = z.preprocess(
   z.string().datetime(),
 );
 
-const ExecutionRequestPayload = z.object({
-  //issueLink: z.string().url(),
-  title: z.string().min(1),
-  description: z.string(),
-  statement: z.string().min(1),
-  readOnly: z.boolean(),
-  datasourceConnectionId: z.string().min(1),
-  //confidential: z.boolean(),
-});
+const ExecutionRequestPayload = z
+  .object({
+    //issueLink: z.string().url(),
+    title: z.string().min(1),
+    description: z.string(),
+    type: z.enum(["TemporaryAccess", "SingleQuery"]),
+    statement: z.coerce.string().nullable().optional(),
+    readOnly: z.boolean(),
+    datasourceConnectionId: z.string().min(1),
+    //confidential: z.boolean(),
+  })
+  .refine(
+    (data) =>
+      data.type === "TemporaryAccess" ||
+      (!!data.statement && data.type === "SingleQuery"),
+    {
+      message: "If you create a query request an SQL statement is rquired",
+    },
+  );
 
 const Comment = withType(
   z.object({
@@ -45,10 +54,11 @@ const Review = withType(
 
 const ExecutionRequestResponse = z.object({
   id: z.string(),
+  type: z.enum(["TemporaryAccess", "SingleQuery"]),
   author: userResponseSchema,
   title: z.string().min(1),
   description: z.string(),
-  statement: z.string().min(1),
+  statement: z.string().nullable().optional(),
   readOnly: z.boolean(),
   connection: connectionResponseSchema,
   executionStatus: z.string(),
@@ -60,7 +70,7 @@ const ExecutionRequestResponse = z.object({
 const ChangeExecutionRequestPayload = z.object({
   title: z.string().min(1).optional(),
   description: z.string().optional(),
-  statement: z.string().min(1).optional(),
+  statement: z.string().optional(),
   readOnly: z.boolean().optional(),
 });
 
@@ -86,10 +96,11 @@ const addRequest = async (payload: ExecutionRequest): Promise<boolean> => {
     title: payload.title,
     description: payload.description,
     statement: payload.statement,
+    type: payload.type,
     readOnly: false,
     datasourceConnectionId: payload.connection,
   };
-  const response = await fetch(requestUrl, {
+  await fetch(requestUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -104,7 +115,6 @@ const patchRequest = async (
   id: string,
   payload: ChangeExecutionRequestPayload,
 ): Promise<ExecutionRequestResponseWithComments> => {
-  console.log(payload);
   const response = await fetch(requestUrl + id, {
     method: "PATCH",
     headers: {
@@ -113,7 +123,7 @@ const patchRequest = async (
     credentials: "include",
     body: JSON.stringify(payload),
   });
-  const json = await response.json();
+  const json: unknown = await response.json();
   return ExecutionRequestResponseWithComments.parse(json);
 };
 
@@ -122,8 +132,7 @@ const getRequests = async (): Promise<ExecutionRequestsResponse> => {
     method: "GET",
     credentials: "include",
   });
-  const json = await response.json();
-  console.log(json);
+  const json: unknown = await response.json();
   const requests = ExecutionRequestsResponse.parse(json);
   return requests;
 };
@@ -138,8 +147,7 @@ const getSingleRequest = async (
   if (response.status == 404) {
     return undefined;
   }
-  const json = await response.json();
-  console.log(json);
+  const json: unknown = await response.json();
   const request = ExecutionRequestResponseWithComments.parse(json);
   return request;
 };
@@ -153,8 +161,7 @@ const addCommentToRequest = async (id: string, comment: string) => {
     credentials: "include",
     body: JSON.stringify({ comment }),
   });
-  const json = await response.json();
-  console.log(json);
+  const json: unknown = await response.json();
   const event = z.union([Comment, Review]).parse(json);
   return event;
 };
@@ -164,7 +171,7 @@ const addReviewToRequest = async (
   review: string,
   action: string,
 ) => {
-  const response = await fetch(requestUrl + id + "/reviews", {
+  await fetch(requestUrl + id + "/reviews", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -211,26 +218,38 @@ const ErrorResponseSchema = withType(
   "error",
 );
 
-const ExecuteResponseSchema = z.union([
+const ExecuteResponseResultSchema = z.union([
   UpdateExecuteResponseSchema,
   SelectExecuteResponseSchema,
   ErrorResponseSchema,
 ]);
 
+const ExecuteResponseSchema = z.object({
+  results: z.array(ExecuteResponseResultSchema),
+});
+
+type ExecuteResponseResult = z.infer<typeof ExecuteResponseResultSchema>;
 type ExecuteResponse = z.infer<typeof ExecuteResponseSchema>;
 type UpdateExecuteResponse = z.infer<typeof UpdateExecuteResponseSchema>;
 type SelectExecuteResponse = z.infer<typeof SelectExecuteResponseSchema>;
 type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 type Column = z.infer<typeof ColumnSchema>;
 
-const runQuery = async (id: string): Promise<ExecuteResponse> => {
+const runQuery = async (
+  id: string,
+  query?: string,
+): Promise<ExecuteResponseResult> => {
   const response = await fetch(requestUrl + id + "/execute", {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
     credentials: "include",
+    ...(query && { body: JSON.stringify({ query }) }),
   });
-  const json = await response.json();
+  const json: unknown = await response.json();
   const result = ExecuteResponseSchema.parse(json);
-  return result;
+  return result.results[result.results.length - 1];
 };
 
 export {

@@ -1,18 +1,20 @@
-import { FormEvent, MouseEvent, useContext, useEffect, useState } from "react";
+import { ChangeEvent, FormEvent, useContext, useState } from "react";
 import Button from "../components/Button";
 import GoogleButton from "react-google-button";
 import { useNavigate } from "react-router-dom";
 import { UserStatusContext } from "../components/UserStatusProvider";
 import image from "../logo.png";
+import baseUrl from "../api/base";
 
 const StyledInput = (props: {
   name: string;
   type: string;
   value: string;
-  onChange: (event: any) => void;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
 }) => {
   return (
     <input
+      id={props.name}
       name={props.name}
       value={props.value}
       onChange={props.onChange}
@@ -33,8 +35,7 @@ const Login = () => {
 
   const login = async (event: FormEvent) => {
     event.preventDefault();
-    console.log("login");
-    const response = await fetch("http://localhost:8080/login", {
+    await fetch(baseUrl + "/login", {
       method: "POST",
       credentials: "include",
       headers: {
@@ -58,7 +59,7 @@ const Login = () => {
         </div>
         <div className="text-2xl text-center mb-6">Sign in to OpsGate</div>
         <div className=" dark:bg-slate-900 p-6 rounded-md shadow-xl">
-          <form onSubmit={login}>
+          <form onSubmit={(e) => void login(e)}>
             <div className="flex flex-col">
               <label className="py-2 text-sm" htmlFor="email">
                 Email
@@ -67,7 +68,7 @@ const Login = () => {
                 name="email"
                 type="text"
                 value={email}
-                onChange={(event) => setEmail(event?.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
               ></StyledInput>
               <label className="py-2 text-sm" htmlFor="password">
                 Password
@@ -82,7 +83,7 @@ const Login = () => {
                 Sign in
               </Button>
               <a
-                href="http://localhost:8080/oauth2/authorization/google"
+                href={`${baseUrl}/oauth2/authorization/google`}
                 className="w-full block mt-8"
               >
                 <GoogleButton type="light" className="m-auto"></GoogleButton>

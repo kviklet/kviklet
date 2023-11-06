@@ -7,10 +7,13 @@ import com.example.executiongate.service.dto.Event
 import com.example.executiongate.service.dto.ExecutionRequest
 import com.example.executiongate.service.dto.ExecutionRequestDetails
 import com.example.executiongate.service.dto.ExecutionRequestId
+import com.example.executiongate.service.dto.RequestType
 import com.querydsl.jpa.impl.JPAQuery
 import jakarta.persistence.CascadeType
 import jakarta.persistence.Entity
 import jakarta.persistence.EntityManager
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
@@ -31,8 +34,11 @@ class ExecutionRequestEntity(
     val connection: DatasourceConnectionEntity,
 
     var title: String,
+
+    @Enumerated(EnumType.STRING)
+    var type: RequestType,
     var description: String?,
-    var statement: String,
+    var statement: String?,
     var readOnly: Boolean,
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -58,6 +64,7 @@ class ExecutionRequestEntity(
         id = ExecutionRequestId(id),
         connection = connection.toDto(),
         title = title,
+        type = type,
         description = description,
         statement = statement,
         readOnly = readOnly,
@@ -122,8 +129,9 @@ class ExecutionRequestAdapter(
     fun createExecutionRequest(
         connectionId: DatasourceConnectionId,
         title: String,
+        type: RequestType,
         description: String?,
-        statement: String,
+        statement: String?,
         readOnly: Boolean,
         executionStatus: String,
         authorId: String,
@@ -137,6 +145,7 @@ class ExecutionRequestAdapter(
             ExecutionRequestEntity(
                 connection = connection,
                 title = title,
+                type = type,
                 description = description,
                 statement = statement,
                 readOnly = readOnly,
@@ -151,7 +160,7 @@ class ExecutionRequestAdapter(
         id: ExecutionRequestId,
         title: String,
         description: String?,
-        statement: String,
+        statement: String?,
         readOnly: Boolean,
     ): ExecutionRequestDetails {
         val executionRequestEntity = getExecutionRequestDetailsEntity(id)
@@ -169,7 +178,10 @@ class ExecutionRequestAdapter(
 
     private fun getExecutionRequestDetailsEntity(id: ExecutionRequestId): ExecutionRequestEntity =
         executionRequestRepository.findByIdWithDetails(id)
-            ?: throw EntityNotFound("Execution Request Not Found", "Execution Request with id $id does not exist.")
+            ?: throw EntityNotFound(
+                "Execution Request Not Found",
+                "Execution Request with id $id does not exist.",
+            )
 
     private fun getUserEntity(id: String): UserEntity = userRepository.findByIdOrNull(id)
         ?: throw EntityNotFound("User Not Found", "User with id $id does not exist.")

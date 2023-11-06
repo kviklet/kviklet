@@ -42,6 +42,9 @@ data class EditUserRequest(
     val permissionString: String? = null,
 
     val roles: List<String>? = null,
+
+    @field:Size(min = 6, max = 50)
+    val password: String?,
 )
 
 data class UserResponse(
@@ -80,7 +83,10 @@ class UserController(
 ) {
 
     @PostMapping("/")
-    fun createUser(@RequestBody @Valid userRequest: CreateUserRequest): UserResponse {
+    fun createUser(
+        @RequestBody @Valid
+        userRequest: CreateUserRequest,
+    ): UserResponse {
         val user = User(
             email = userRequest.email,
             fullName = userRequest.fullName,
@@ -95,13 +101,18 @@ class UserController(
     }
 
     @PatchMapping("/{id}")
-    fun patchUser(@PathVariable id: String, @RequestBody @Valid userRequest: EditUserRequest): UserResponse {
+    fun patchUser(
+        @PathVariable id: String,
+        @RequestBody @Valid
+        userRequest: EditUserRequest,
+    ): UserResponse {
         val user = userAdapter.findById(id)
         // Update user details if present in the request
         val updatedUser = user.copy(
             email = userRequest.email ?: user.email,
             fullName = userRequest.fullName ?: user.fullName,
-            roles = (userRequest.roles?.let { roleAdapter.findByIds(it) })?.toSet() ?: emptySet(),
+            roles = (userRequest.roles?.let { roleAdapter.findByIds(it) })?.toSet() ?: user.roles,
+            password = userRequest.password?.let { passwordEncoder.encode(it) } ?: user.password,
         )
         val savedUser = userAdapter.updateUser(updatedUser)
         return UserResponse(savedUser)

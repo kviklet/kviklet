@@ -3,6 +3,8 @@ import { Link, Outlet, Route, Routes } from "react-router-dom";
 import DatabaseSettings from "./DatabaseSettings";
 import UserSettings from "./UserSettings";
 import RoleSettings from "./RolesSettings";
+import React from "react";
+import ProfileSettings from "./ProfileSettings";
 
 const Tab = (props: {
   children: React.ReactNode;
@@ -39,7 +41,7 @@ interface LayoutProps {
 
 function SettingsSidebar(props: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col bg-slate-50 dark:bg-slate-950 mx-2">
+    <div className="flex flex-col mx-2">
       <div className="flex flex-col divide-y-8 divide-slate-50 dark:divide-slate-950">
         {props.children}
       </div>
@@ -48,7 +50,7 @@ function SettingsSidebar(props: { children: React.ReactNode }) {
 }
 
 const BaseSettingsLayout = (props: LayoutProps) => {
-  const [activeTab, setActiveTab] = useState<String>("databases");
+  const [activeTab, setActiveTab] = useState<string>("databases");
 
   const tabs = props.tabs.map((tab) => {
     return (
@@ -63,12 +65,12 @@ const BaseSettingsLayout = (props: LayoutProps) => {
   });
 
   return (
-    <div className="w-screen h-screen">
+    <div className="w-screen h-full dark:bg-slate-950">
       <div className="border-b border-slate-300 mb-3 dark:border-slate-700">
         <h1 className="text-xl pl-1.5 w-3/4 m-5 mx-auto">Settings</h1>
       </div>
-      <div className="mx-auto w-3/4">
-        <div className="flex w-full pt-4">
+      <div className="mx-auto w-3/4 h-full">
+        <div className="flex w-full pt-4 h-full">
           <SettingsSidebar>{tabs}</SettingsSidebar>
           <div className="w-full ml-2 h-full">
             <Routes>
@@ -76,6 +78,7 @@ const BaseSettingsLayout = (props: LayoutProps) => {
               <Route path="databases" element={<DatabaseSettings />} />
               <Route path="users" element={<UserSettings />} />
               <Route path="roles" element={<RoleSettings />} />
+              <Route path="profile" element={<ProfileSettings />} />
             </Routes>
             <Outlet></Outlet>
           </div>

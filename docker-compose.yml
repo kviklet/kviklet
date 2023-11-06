@@ -1,3 +1,4 @@
+version: "3"
 services:
   postgres:
     image: postgres:9.6
@@ -10,6 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
+      - ./e2e/init.sql:/docker-entrypoint-initdb.d/init.sql
   opsgate-postgres:
     image: postgres:9.6
     restart: always
@@ -21,3 +23,11 @@ services:
       - "5433:5432"
     volumes:
       - ./opsgate-postgres-data:/var/lib/postgresql/data
+  opsgate:
+    build: .
+    ports:
+      - "80:80"
+    environment:
+      - spring.profiles.active=e2e
+    depends_on:
+      - opsgate-postgres

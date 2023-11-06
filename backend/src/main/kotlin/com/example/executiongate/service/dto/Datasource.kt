@@ -76,13 +76,14 @@ data class DatasourceConnection(
     val id: DatasourceConnectionId,
     val datasource: Datasource,
     val displayName: String,
+    val databaseName: String?,
     val authenticationType: AuthenticationType,
     val username: String,
     val password: String,
     val description: String,
     val reviewConfig: ReviewConfig,
 ) : SecuredDomainObject {
-    fun getConnectionString() = datasource.getConnectionString()
+    fun getConnectionString() = datasource.getConnectionString() + (databaseName ?: "")
     override fun getId() = id.toString()
     override fun getDomainObjectType() = Resource.DATASOURCE_CONNECTION
 

@@ -1,5 +1,5 @@
-import { useContext, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { ReactNode, useContext, useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import ReactMarkdown from "react-markdown";
 import {
@@ -27,6 +27,8 @@ import {
   ThemeStatusContext,
 } from "../components/ThemeStatusProvider";
 import { colorFromText } from "../components/ColorfulLabel";
+import { CodeProps } from "react-markdown/lib/ast-to-react";
+import Spinner from "../components/Spinner";
 
 interface RequestReviewParams {
   requestId: string;
@@ -35,6 +37,7 @@ interface RequestReviewParams {
 const Highlighter = (props: { children: string }) => {
   const { currentTheme } = useContext<ThemeContext>(ThemeStatusContext);
   const style = currentTheme === "dark" ? a11yDark : a11yLight;
+  console.log("Switching theme because" + currentTheme);
 
   return (
     <SyntaxHighlighter
@@ -51,10 +54,10 @@ const Highlighter = (props: { children: string }) => {
 };
 
 const componentMap = {
-  code: ({ node, inline, className, children, ...props }: any) => {
-    return <Highlighter>{children}</Highlighter>;
+  code: ({ children }: CodeProps) => {
+    return <Highlighter>{children as string}</Highlighter>;
   },
-  ul: ({ children }: any) => (
+  ul: ({ children }: { children: ReactNode }) => (
     <ul className="list-disc ml-4 mt-4">{children}</ul>
   ),
 };
@@ -83,18 +86,18 @@ const useRequest = (id: string) => {
       const request = await getSingleRequest(id);
       setRequest(request);
     }
-    request();
+    void request();
   }, []);
 
   const [data, setData] = useState<SelectExecuteResponse>();
   const [updatedRows, setUpdatedRows] = useState<number | undefined>(undefined);
+  const [dataLoading, setDataLoading] = useState<boolean>(false);
   const [executionError, setExecutionError] = useState<
     ErrorResponse | undefined
   >(undefined);
 
   const addComment = async (comment: string) => {
     const event = await addCommentToRequest(id, comment);
-    console.log(event);
 
     // update the request with the new comment by updating the events propertiy with a new Comment
     setRequest((request) => {
@@ -120,6 +123,7 @@ const useRequest = (id: string) => {
   };
 
   const execute = async () => {
+    setDataLoading(true);
     const result = await runQuery(id);
     switch (result._type) {
       case "select":
@@ -132,6 +136,7 @@ const useRequest = (id: string) => {
         setExecutionError(result);
         break;
     }
+    setDataLoading(false);
   };
 
   return {
@@ -141,6 +146,7 @@ const useRequest = (id: string) => {
     execute,
     updateRequest,
     data,
+    dataLoading,
     updatedRows,
     executionError,
   };
@@ -155,9 +161,20 @@ function RequestReview() {
     execute,
     updateRequest,
     data,
+    dataLoading,
     updatedRows,
     executionError,
   } = useRequest(params.requestId);
+
+  const navigate = useNavigate();
+
+  const run = async () => {
+    if (request?.type === "SingleQuery") {
+      await execute();
+    } else {
+      navigate(`/requests/${request?.id}/session`);
+    }
+  };
 
   return (
     <div>
@@ -165,9 +182,9 @@ function RequestReview() {
         <h1 className="text-3xl my-2 w-full flex">
           <div className="mr-auto">{request?.title}</div>
           <div
-            className={`border ${mapStatusToLabelColor(
+            className={` ${mapStatusToLabelColor(
               request?.reviewStatus,
-            )} rounded-full text-base ml-auto py-1 px-1.5 transition-colors`}
+            )} w-min rounded-md px-2 py-1 mt-2 text-base font-medium ring-1 ring-inset`}
           >
             {mapStatus(request?.reviewStatus)}
           </div>
@@ -176,11 +193,12 @@ function RequestReview() {
           <div className="">
             <RequestBox
               request={request}
-              runQuery={execute}
+              runQuery={run}
               updateRequest={updateRequest}
             ></RequestBox>
             <div className="flex justify-center">
-              {data && <Table data={data}></Table>}
+              {(dataLoading && <Spinner></Spinner>) ||
+                (data && <Table data={data}></Table>)}
             </div>
             {updatedRows && (
               <div className="text-slate-500">{updatedRows} rows updated</div>
@@ -234,12 +252,14 @@ function RequestBox({
   updateRequest,
 }: {
   request: ExecutionRequestResponseWithComments | undefined;
-  runQuery: () => void;
+  runQuery: () => Promise<void>;
   updateRequest: (request: { statement?: string }) => Promise<void>;
 }) {
   const [editMode, setEditMode] = useState(false);
   const [statement, setStatement] = useState(request?.statement || "");
-  const changeStatement = async (e: any) => {
+  const changeStatement = async (
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
+  ) => {
     e.preventDefault();
     await updateRequest({ statement });
     setEditMode(false);
@@ -248,13 +268,18 @@ function RequestBox({
     setStatement(request?.statement || "");
   }, [request?.statement]);
 
+  const questionText =
+    request?.type == "SingleQuery"
+      ? " wants to execute a statement on "
+      : " wants to have access to ";
+
   return (
     <div>
       <div className="relative border-slate-500 dark:bg-slate-950 dark:border dark:border-slate-950">
         <InitialBubble name={request?.author.fullName} />
         <p className="text-slate-800 py-2 text-sm flex bg-slate-50 dark:bg-slate-950 dark:text-slate-50 dark:border-none">
           <div>
-            {request?.author?.fullName} wants to execute on:{" "}
+            {request?.author?.fullName + questionText}
             <span className="italic">{request?.connection.displayName}</span>
           </div>
           <div className="ml-auto dark:text-slate-500">
@@ -263,40 +288,47 @@ function RequestBox({
         </p>
         <div className="py-3">
           <p className="text-slate-500 pb-6">{request?.description}</p>
-          {editMode ? (
-            <div>
-              <textarea
-                className="appearance-none block w-full text-gray-700 border border-gray-200 bg-slate-100 focus:bg-white dark:bg-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors dark:text-slate-50 p-1 rounded-md leading-normal mb-2 focus:outline-none focus:border-gray-500"
-                id="statement"
-                name="statement"
-                rows={4}
-                onChange={(event) => setStatement(event.target.value)}
-                value={statement}
-              ></textarea>
-              <div className="flex justify-end">
-                <Button
-                  className="mr-2"
-                  type="reset"
-                  onClick={() => {
-                    setEditMode(false);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" onClick={changeStatement}>
-                  Save
-                </Button>
+          {request?.type == "SingleQuery" ? (
+            editMode ? (
+              <div>
+                <textarea
+                  className="appearance-none block w-full text-gray-700 border border-gray-200 bg-slate-100 focus:bg-white dark:bg-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors dark:text-slate-50 p-1 rounded-md leading-normal mb-2 focus:outline-none focus:border-gray-500"
+                  id="statement"
+                  name="statement"
+                  rows={4}
+                  onChange={(event) => setStatement(event.target.value)}
+                  value={statement}
+                ></textarea>
+                <div className="flex justify-end">
+                  <Button
+                    className="mr-2"
+                    type="reset"
+                    onClick={() => {
+                      setEditMode(false);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    onClick={(e) => void changeStatement(e)}
+                  >
+                    Save
+                  </Button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div
+                className="dark:bg-slate-950 border dark:border-slate-700 rounded border-slate-300 dark:hover:border-slate-500 transition-colors"
+                onClick={() => setEditMode(true)}
+              >
+                <Highlighter>
+                  {request === undefined ? "404" : request.statement || ""}
+                </Highlighter>
+              </div>
+            )
           ) : (
-            <div
-              className="dark:bg-slate-950 border dark:border-slate-700 rounded border-slate-300 dark:hover:border-slate-500 transition-colors"
-              onClick={() => setEditMode(true)}
-            >
-              <Highlighter>
-                {request === undefined ? "404" : request.statement}
-              </Highlighter>
-            </div>
+            ""
           )}
         </div>
       </div>
@@ -305,7 +337,7 @@ function RequestBox({
           className="mt-3"
           id="runQuery"
           type={(request?.reviewStatus == "APPROVED" && "submit") || "disabled"}
-          onClick={runQuery}
+          onClick={() => void runQuery()}
         >
           <div
             className={`play-triangle inline-block w-2 h-3 mr-2 ${
@@ -313,7 +345,7 @@ function RequestBox({
               "bg-slate-500"
             }`}
           ></div>
-          Run Query
+          {request?.type == "SingleQuery" ? "Run Query" : "Start Session"}
         </Button>
       </div>
     </div>
@@ -345,7 +377,7 @@ function Comment({ event, index }: { event: Event; index: number }) {
         <p className="text-slate-500 dark:text-slate-500 px-4 pt-2 text-sm flex justify-between dark:bg-slate-900 rounded-t-md">
           <div>
             {((event?.createdAt &&
-              timeSince(new Date(event.createdAt as any))) as
+              timeSince(new Date(event.createdAt as string))) as
               | string
               | undefined) || ""}
           </div>
@@ -447,14 +479,14 @@ function CommentBox({
               <Button
                 className="mr-2"
                 id="addComment"
-                onClick={handleAddComment}
+                onClick={() => void handleAddComment()}
               >
                 Add Comment
               </Button>
               <Button
                 id="approve"
                 type={`${isOwnRequest ? "disabled" : "submit"}`}
-                onClick={handleApprove}
+                onClick={() => void handleApprove()}
               >
                 Approve
               </Button>

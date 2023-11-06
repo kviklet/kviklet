@@ -1,7 +1,7 @@
 import { z } from "zod";
 import baseUrl from "./base";
 
-const permissionResponseSchema = z.object({
+const policyResponseSchema = z.object({
   id: z.string(),
   action: z.string(),
   effect: z.string(),
@@ -13,7 +13,7 @@ const roleResponseSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string().nullable(),
-  permissions: z.array(permissionResponseSchema),
+  policies: z.array(policyResponseSchema),
 });
 
 const editRoleRequestSchema = roleResponseSchema.omit({
@@ -32,7 +32,7 @@ const rolesResponseSchema = z.object({
 });
 
 type RoleResponse = z.infer<typeof roleResponseSchema>;
-type PermissionResponse = z.infer<typeof permissionResponseSchema>;
+type PolicyResponse = z.infer<typeof policyResponseSchema>;
 type CreateRoleRequest = z.infer<typeof createRoleRequestSchema>;
 
 const getRoles = async (): Promise<RoleResponse[]> => {
@@ -41,7 +41,7 @@ const getRoles = async (): Promise<RoleResponse[]> => {
     credentials: "include",
   });
 
-  const data = await response.json();
+  const data: unknown = await response.json();
   return rolesResponseSchema.parse(data).roles;
 };
 
@@ -54,12 +54,12 @@ const createRole = async (role: CreateRoleRequest): Promise<RoleResponse> => {
     credentials: "include",
     body: JSON.stringify(role),
   });
-  const data = await response.json();
+  const data: unknown = await response.json();
   return roleResponseSchema.parse(data);
 };
 
 const removeRole = async (id: string): Promise<void> => {
-  const response = await fetch(`${baseUrl}/roles/${id}`, {
+  await fetch(`${baseUrl}/roles/${id}`, {
     method: "DELETE",
     credentials: "include",
   });
@@ -78,9 +78,9 @@ const patchRole = async (
     credentials: "include",
     body: JSON.stringify(role),
   });
-  const data = await response.json();
+  const data: unknown = await response.json();
   return roleResponseSchema.parse(data);
 };
 
 export { roleResponseSchema, getRoles, createRole, patchRole, removeRole };
-export type { RoleResponse, PermissionResponse, CreateRoleRequest };
+export type { RoleResponse, PolicyResponse, CreateRoleRequest };

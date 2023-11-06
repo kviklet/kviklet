@@ -50,6 +50,12 @@ class DatasourceService(
     }
 
     @Transactional
+    @Policy(Permission.DATASOURCE_GET)
+    fun listDatasources(): List<Datasource> {
+        return datasourceAdapter.findAllDatasources()
+    }
+
+    @Transactional
     @Policy(Permission.DATASOURCE_EDIT)
     fun updateDatasource(datasourceId: DatasourceId, datasource: UpdateDatasourceRequest): Datasource {
         return datasourceAdapter.updateDatasource(

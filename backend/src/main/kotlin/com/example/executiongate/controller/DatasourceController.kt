@@ -115,19 +115,25 @@ class DatasourceController(
         ).let { DatasourceResponse.fromDto(it, emptyList()) }
     }
 
-    @GetMapping("")
+    @GetMapping("/")
     fun listDatasources(): ListDatasourceResponse {
-        val dbs = datasourceConnectionService.listDatasourceConnections()
+        val connections = datasourceConnectionService.listDatasourceConnections()
+        val datasources = datasourceService.listDatasources()
+        val datasourceToConnection = connections.groupBy { it.datasource }
 
         return ListDatasourceResponse(
-            databases = dbs.groupBy { it.datasource }.map { (datasource, datasourceConnection) ->
-                DatasourceResponse.fromDto(datasource, datasourceConnection)
+            databases = datasources.map { datasource ->
+                val datasourceConnections = datasourceToConnection[datasource]
+                DatasourceResponse.fromDto(datasource, datasourceConnections ?: emptyList())
             },
         )
     }
 
-    @PostMapping("")
-    fun createDatasource(@Valid @RequestBody datasourceConnection: CreateDatasourceRequest): DatasourceResponse {
+    @PostMapping("/")
+    fun createDatasource(
+        @Valid @RequestBody
+        datasourceConnection: CreateDatasourceRequest,
+    ): DatasourceResponse {
         val datasource = datasourceService.createDatasource(
             id = datasourceConnection.id,
             displayName = datasourceConnection.displayName,
@@ -141,7 +147,8 @@ class DatasourceController(
     @PatchMapping("/{datasourceId}")
     fun updateDatasource(
         @PathVariable datasourceId: String,
-        @Valid @RequestBody datasource: UpdateDatasourceRequest,
+        @Valid @RequestBody
+        datasource: UpdateDatasourceRequest,
     ): DatasourceResponse {
         return datasourceService.updateDatasource(DatasourceId(datasourceId), datasource).let {
             DatasourceResponse.fromDto(it, emptyList())

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import baseUrl from "./base";
 
 const StatusResponse = z.object({
   email: z.string(),
@@ -10,15 +11,14 @@ const StatusResponse = z.object({
 type StatusResponse = z.infer<typeof StatusResponse>;
 
 const checklogin = async (): Promise<StatusResponse | false> => {
-  const response = await fetch("http://localhost:8080/status", {
+  const response = await fetch(baseUrl + "/status", {
     method: "GET",
     credentials: "include",
   });
   if (response.status != 200) {
-    console.log("not logged in");
     return false;
   }
-  const json = await response.json();
+  const json: unknown = await response.json();
   const parsedResponse = StatusResponse.parse(json);
   return parsedResponse;
 };

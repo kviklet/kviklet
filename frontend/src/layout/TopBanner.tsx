@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext } from "react";
 import { Link } from "react-router-dom";
 import {
   ThemeContext,
@@ -7,17 +7,16 @@ import {
 import image from "../logo.png";
 
 function TopBanner() {
-  const { currentTheme, setTheme } =
-    useContext<ThemeContext>(ThemeStatusContext);
+  const themeContext = useContext<ThemeContext>(ThemeStatusContext);
 
   localStorage.theme = "dark";
   const switchTheme = () => {
-    if (currentTheme === "light") {
-      setTheme("dark");
+    if (themeContext.currentTheme === "light") {
+      themeContext.setTheme("dark");
       localStorage.theme = "dark";
       document.documentElement.classList.add("dark");
     } else {
-      setTheme("light");
+      themeContext.setTheme("light");
       localStorage.theme = "light";
       document.documentElement.classList.remove("dark");
     }
@@ -39,6 +38,14 @@ function TopBanner() {
             <div className="relative flex items-center ml-auto">
               <nav className="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200">
                 <ul className="flex space-x-8">
+                  <li>
+                    <Link
+                      to={"/new"}
+                      className="hover:text-sky-500 dark:hover:text-sky-400"
+                    >
+                      New
+                    </Link>
+                  </li>
                   <li>
                     <Link
                       to={"/requests"}
