@@ -22,9 +22,9 @@ test("Create Connection", async ({ page }) => {
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await page.getByText("My Test Datasourcepostgres").click();
   await page.getByRole("button", { name: "Add Connection" }).click();
-  await page.getByPlaceholder("Database Name").click();
-  await page.getByPlaceholder("Database Name").fill("my test connection");
-  await page.getByPlaceholder("Database Name").press("Tab");
+  await page.getByPlaceholder("Connection Name").click();
+  await page.getByPlaceholder("Connection Name").fill("my test connection");
+  await page.getByPlaceholder("Connection Name").press("Tab");
   await page.getByPlaceholder("readonly").fill("postgres");
   await page.getByPlaceholder("readonly").press("Tab");
   await page.getByPlaceholder("password").fill("postgres");
