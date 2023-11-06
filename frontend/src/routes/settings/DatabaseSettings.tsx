@@ -229,6 +229,8 @@ function CreateConnectionForm(props: {
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const { displayName, id, changeId, changeDisplayName } = useIdNamePair();
+  const [description, setDescription] = useState<string>("");
+  const [databaseName, setDatabaseName] = useState<string>("");
 
   const submit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -237,6 +239,8 @@ function CreateConnectionForm(props: {
       id,
       username,
       password,
+      description,
+      databaseName,
       reviewConfig: {
         numTotalRequired: 1,
       },
@@ -249,10 +253,28 @@ function CreateConnectionForm(props: {
         <InputField
           id="displayName"
           name="Name"
-          placeholder="Database Name"
+          placeholder="Connection Name"
           value={displayName}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
             changeDisplayName(e.target.value)
+          }
+        />
+        <InputField
+          id="description"
+          name="Description"
+          placeholder="Provides prod read access with no required reviews"
+          value={description}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setDescription(e.target.value)
+          }
+        />
+        <InputField
+          id="databaseName"
+          name="database"
+          placeholder="postgres"
+          value={databaseName}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setDatabaseName(e.target.value)
           }
         />
         <InputField
@@ -301,13 +323,17 @@ function SingleConnectionSettings(props: {
   const [numTotalRequired, setNumTotalRequired] = useState<number>(
     props.connection.reviewConfig.numTotalRequired,
   );
-  useEffect(() => {
-    setNumTotalRequired(props.connection.reviewConfig.numTotalRequired);
-  }, [props.connection.reviewConfig.numTotalRequired]);
+  const [databaseName, setDatabaseName] = useState<string>(
+    props.connection.databaseName || "",
+  );
+  //useEffect(() => {
+  //  setNumTotalRequired(props.connection.reviewConfig.numTotalRequired);
+  //}, [props.connection.reviewConfig.numTotalRequired]);
   const [showCheck, setShowCheck] = useState<boolean>(false);
 
   const submit = async () => {
     await props.editConnectionHandler(props.connection.id, {
+      databaseName,
       reviewConfig: {
         numTotalRequired,
       },
@@ -330,6 +356,23 @@ function SingleConnectionSettings(props: {
           {props.connection.description}
         </div>
         <div className="flex justify-between text-sm">
+          <label
+            htmlFor="database-name"
+            className="mr-auto dark:text-slate-400"
+          >
+            Database Name:
+          </label>
+          <input
+            type="database-name"
+            value={databaseName}
+            onChange={(e) => {
+              setDatabaseName(e.target.value);
+              setShowCheck(true);
+            }}
+            className="focus:border-slate-500 focus:hover:border-slate-500 my-auto appearance-none border border-slate-200 hover:border-slate-300 rounded mx-1 py-2 px-3 text-slate-600 leading-tight focus:outline-none focus:shadow-outline dark:bg-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors dark:text-slate-50"
+          ></input>
+        </div>
+        <div className="flex justify-between text-sm">
           <label htmlFor="number" className="mr-auto dark:text-slate-400">
             Number of required reviews:
           </label>
@@ -337,7 +380,6 @@ function SingleConnectionSettings(props: {
             type="number"
             value={numTotalRequired}
             onChange={(e) => {
-              console.log("onchange called");
               setNumTotalRequired(parseInt(e.target.value));
               setShowCheck(true);
             }}

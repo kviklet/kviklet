@@ -113,6 +113,7 @@ class TestDataInitializer(
                 id = "test-connection",
                 datasource = savedDatasource1,
                 displayName = "Test Connection",
+                databaseName = null,
                 authenticationType = AuthenticationType.USER_PASSWORD,
                 description = "This is a localhost connection",
                 username = "postgres",

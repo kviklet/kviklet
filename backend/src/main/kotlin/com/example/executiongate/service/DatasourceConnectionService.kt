@@ -36,6 +36,7 @@ class DatasourceConnectionService(
         return datasourceConnectionAdapter.updateDatasourceConnection(
             connectionId,
             request.displayName ?: datasourceConnection.displayName,
+            request.databaseName ?: datasourceConnection.databaseName,
             request.username ?: datasourceConnection.username,
             request.password ?: datasourceConnection.password,
             request.description ?: datasourceConnection.description,
@@ -54,6 +55,7 @@ class DatasourceConnectionService(
             DatasourceConnectionId(request.id),
             request.displayName,
             AuthenticationType.USER_PASSWORD,
+            request.databaseName,
             request.username,
             request.password,
             request.description,
