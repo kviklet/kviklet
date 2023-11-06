@@ -20,13 +20,16 @@ class UserDetailsServiceImpl(
 
         val authorities = listOf(SimpleGrantedAuthority("USERS"))
 
-        return UserDetailsWithId(user.id, user.email, user.password, authorities)
+        return UserDetailsWithId(user.id, user.email, authorities)
     }
 }
 
 class UserDetailsWithId(
     val id: String,
     email: String,
-    password: String?,
     authorities: Collection<out GrantedAuthority>,
-) : User(email, password, authorities)
+) : User(email, "", authorities) {
+    init {
+        this.eraseCredentials()
+    }
+}

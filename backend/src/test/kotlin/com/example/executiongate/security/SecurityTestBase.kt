@@ -121,7 +121,7 @@ private fun getAuth(
     policies: List<Policy>,
     userDetails: UserDetailsWithId? = null,
 ): UsernamePasswordAuthenticationToken {
-    val authorities = policies.map { PolicyGrantedAuthority(it) }
+    val authorities = policies.map { PolicyGrantedAuthority("role", it) }
 
     val userDetailsWithPolicies = UserDetailsWithId(
         id = userDetails?.id ?: "id",

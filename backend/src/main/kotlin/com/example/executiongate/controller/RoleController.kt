@@ -36,17 +36,15 @@ data class PolicyResponse(
 
 data class RoleResponse(
     val id: String,
-    val name: String,
     val description: String,
-    val permissions: List<PolicyResponse>,
+    val policies: List<PolicyResponse>,
 ) {
     companion object {
         fun fromDto(dto: Role): RoleResponse {
             return RoleResponse(
                 id = dto.id,
-                name = dto.name,
                 description = dto.description,
-                permissions = dto.policies.map { PolicyResponse.fromDto(it) },
+                policies = dto.policies.map { PolicyResponse.fromDto(it) },
             )
         }
     }
@@ -62,10 +60,6 @@ data class RolesResponse(
             )
         }
     }
-}
-
-fun permissionsToPermissionString(policies: Set<Policy>): String {
-    return policies.map { "${it.effect}:${it.action} on ${it.resource}" }.joinToString { ";" }
 }
 
 @RestController()
@@ -89,7 +83,7 @@ class RoleController(private val roleAdapter: RoleAdapter) {
     fun createRole(@Valid @RequestBody createRoleRequest: CreateRoleRequest): RoleResponse {
         val savedRole = roleAdapter.create(
             Role(
-                name = createRoleRequest.name,
+                id = createRoleRequest.name,
                 description = createRoleRequest.description,
             ),
         )

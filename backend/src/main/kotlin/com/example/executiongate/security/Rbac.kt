@@ -6,6 +6,7 @@ import org.springframework.security.core.GrantedAuthority
 import org.springframework.util.AntPathMatcher
 
 class PolicyGrantedAuthority(
+    private val name: String,
     private val policy: Policy,
 ) : GrantedAuthority {
 

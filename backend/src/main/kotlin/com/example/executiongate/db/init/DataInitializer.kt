@@ -67,7 +67,7 @@ class DataInitializer(
 
     fun generateRole(savedUser: UserEntity) {
         val role = RoleEntity(
-            name = "Test Role",
+            id = "r1",
             description = "This is a test role",
             policies = emptySet(),
         )
@@ -94,7 +94,7 @@ class DataInitializer(
             }
 
             val user = UserEntity(
-                email = "testUser@example.com",
+                email = "nils@opsgate.dev",
                 fullName = "Admin User",
                 password = passwordEncoder.encode("testPassword"),
             )

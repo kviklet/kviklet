@@ -55,7 +55,7 @@ data class UserResponse(
         id = user.id,
         email = user.email,
         fullName = user.fullName,
-        permissionString = permissionsToPermissionString(user.policies),
+        permissionString = "permissionsToPermissionString(user.policies)",
         roles = user.roles.map { RoleResponse.fromDto(it) },
     )
 }

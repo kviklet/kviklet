@@ -98,6 +98,8 @@ class MyAuthorizationManager {
 
         var p: Permission = policyAnnotation.permission
 
+        println(authentication.get().authorities)
+
         do {
             if (!policies.vote(p, returnObject?.getRelated(p.resource)).isAllowed()) {
                 return AuthorizationDecision(false)
