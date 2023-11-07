@@ -4,6 +4,7 @@ import com.example.executiongate.db.util.BaseEntity
 import com.example.executiongate.db.util.EventPayloadConverter
 import com.example.executiongate.service.dto.Event
 import com.example.executiongate.service.dto.EventType
+import com.example.executiongate.service.dto.ExecutionRequestDetails
 import com.example.executiongate.service.dto.ReviewAction
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonTypeInfo
@@ -62,12 +63,13 @@ class EventEntity(
             .toString()
     }
 
-    fun toDto(): Event {
+    fun toDto(request: ExecutionRequestDetails): Event {
         return Event.create(
             id = id,
             createdAt = createdAt,
             payload = payload,
             author = author.toDto(),
+            request = request,
         )
     }
 }

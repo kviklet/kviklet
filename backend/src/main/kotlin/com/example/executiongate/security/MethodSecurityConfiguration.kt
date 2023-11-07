@@ -28,6 +28,7 @@ enum class Resource(val resourceName: String) {
     DATASOURCE("datasource"),
     DATASOURCE_CONNECTION("datasource_connection"),
     EXECUTION_REQUEST("execution_request"),
+    EVENT("event"),
 }
 
 enum class Permission(

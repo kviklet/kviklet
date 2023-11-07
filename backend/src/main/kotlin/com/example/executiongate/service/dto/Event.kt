@@ -4,8 +4,11 @@ import com.example.executiongate.db.CommentPayload
 import com.example.executiongate.db.Payload
 import com.example.executiongate.db.ReviewPayload
 import com.example.executiongate.db.User
+import com.example.executiongate.security.Resource
+import com.example.executiongate.security.SecuredDomainObject
 import java.io.Serializable
 import java.time.LocalDateTime
+import java.util.*
 
 @JvmInline
 value class EventId(private val id: String) : Serializable {
@@ -29,30 +32,49 @@ enum class ReviewAction {
 abstract class Event(
     val type: EventType,
     open val createdAt: LocalDateTime = LocalDateTime.now(),
-) {
-    abstract val id: String
+    open val request: ExecutionRequestDetails,
+) : SecuredDomainObject {
+    abstract val eventId: String
     abstract val author: User
 
+    override fun getId(): String = eventId
+
+    override fun getDomainObjectType(): Resource = Resource.EVENT
+
+    override fun getRelated(resource: Resource): SecuredDomainObject? = request
+    override fun hashCode() = Objects.hash(eventId)
+
     companion object {
-        fun create(id: String, author: User, createdAt: LocalDateTime, payload: Payload): Event = when (payload) {
-            is CommentPayload -> CommentEvent(id, author, createdAt, payload.comment)
-            is ReviewPayload -> ReviewEvent(id, author, createdAt, payload.comment, payload.action)
-            else -> throw IllegalArgumentException("Unknown payload type: ${payload::class}")
+        fun create(
+            id: String,
+            request: ExecutionRequestDetails,
+            author: User,
+            createdAt: LocalDateTime,
+            payload: Payload,
+        ): Event = when (payload) {
+            is CommentPayload -> CommentEvent(id, request, author, createdAt, payload.comment)
+            is ReviewPayload -> ReviewEvent(id, request, author, createdAt, payload.comment, payload.action)
         }
     }
 }
 
 data class CommentEvent(
-    override val id: String,
+    override val eventId: String,
+    override val request: ExecutionRequestDetails,
     override val author: User,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
     val comment: String,
-) : Event(EventType.COMMENT, createdAt)
+) : Event(EventType.COMMENT, createdAt, request) {
+    override fun hashCode() = Objects.hash(eventId)
+}
 
 data class ReviewEvent(
-    override val id: String,
+    override val eventId: String,
+    override val request: ExecutionRequestDetails,
     override val author: User,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
     val comment: String,
     val action: ReviewAction,
-) : Event(EventType.REVIEW, createdAt)
+) : Event(EventType.REVIEW, createdAt, request) {
+    override fun hashCode() = Objects.hash(eventId)
+}

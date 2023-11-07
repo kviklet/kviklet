@@ -73,10 +73,14 @@ class ExecutionRequestEntity(
         author = author.toDto(),
     )
 
-    fun toDetailDto() = ExecutionRequestDetails(
-        request = toDto(),
-        events = events.map { it.toDto() }.toSet(),
-    )
+    fun toDetailDto(): ExecutionRequestDetails {
+        val details = ExecutionRequestDetails(
+            request = toDto(),
+            events = mutableSetOf<Event>(),
+        )
+        details.events.addAll(events.map { it.toDto(details) }.toSet())
+        return details
+    }
 }
 
 interface ExecutionRequestRepository : JpaRepository<ExecutionRequestEntity, String>, CustomExecutionRequestRepository
@@ -122,8 +126,9 @@ class ExecutionRequestAdapter(
 
         executionRequestEntity.events.add(eventEntity)
         executionRequestRepository.saveAndFlush(executionRequestEntity)
+        val details = executionRequestEntity.toDetailDto()
 
-        return Pair(executionRequestEntity.toDetailDto(), eventEntity.toDto())
+        return Pair(details, eventEntity.toDto(details))
     }
 
     fun createExecutionRequest(
