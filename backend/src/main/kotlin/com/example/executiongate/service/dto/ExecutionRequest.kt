@@ -42,12 +42,11 @@ data class ExecutionRequest(
 
 data class ExecutionRequestDetails(
     val request: ExecutionRequest,
-    val events: Set<Event>,
+    val events: MutableSet<Event>,
 ) : SecuredDomainObject {
     fun addEvent(event: Event): ExecutionRequestDetails {
-        val allEvents = events + event
-
-        return copy(events = allEvents)
+        events.add(event)
+        return this
     }
 
     fun resolveReviewStatus(): ReviewStatus {

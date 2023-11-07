@@ -1,5 +1,6 @@
 package com.example.executiongate.controller
 
+import com.example.executiongate.db.User
 import com.example.executiongate.security.UserDetailsWithId
 import com.example.executiongate.service.ColumnInfo
 import com.example.executiongate.service.ErrorQueryResult
@@ -7,12 +8,15 @@ import com.example.executiongate.service.ExecutionRequestService
 import com.example.executiongate.service.QueryResult
 import com.example.executiongate.service.RecordsQueryResult
 import com.example.executiongate.service.UpdateQueryResult
+import com.example.executiongate.service.dto.CommentEvent
 import com.example.executiongate.service.dto.DatasourceConnectionId
 import com.example.executiongate.service.dto.Event
+import com.example.executiongate.service.dto.EventType
 import com.example.executiongate.service.dto.ExecutionRequestDetails
 import com.example.executiongate.service.dto.ExecutionRequestId
 import com.example.executiongate.service.dto.RequestType
 import com.example.executiongate.service.dto.ReviewAction
+import com.example.executiongate.service.dto.ReviewEvent
 import com.example.executiongate.service.dto.ReviewStatus
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.DiscriminatorMapping
@@ -110,7 +114,7 @@ data class ExecutionRequestDetailResponse(
     val readOnly: Boolean,
     val reviewStatus: ReviewStatus,
     val executionStatus: String,
-    val events: List<Event>,
+    val events: List<EventResponse>,
     val createdAt: LocalDateTime = LocalDateTime.now(),
 ) {
 
@@ -126,7 +130,7 @@ data class ExecutionRequestDetailResponse(
             reviewStatus = dto.resolveReviewStatus(),
             executionStatus = dto.request.executionStatus,
             createdAt = dto.request.createdAt,
-            events = dto.events.sortedBy { it.createdAt },
+            events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
             connection = DatasourceConnectionResponse.fromDto(dto.request.connection),
         )
     }
@@ -218,6 +222,43 @@ data class ErrorQueryResultResponse(
         )
     }
 }
+abstract class EventResponse(
+    val type: EventType,
+    open val createdAt: LocalDateTime = LocalDateTime.now(),
+) {
+    abstract val id: String
+    abstract val author: User
+
+    companion object {
+        fun fromEvent(event: Event): EventResponse = when (event) {
+            is CommentEvent -> CommentEventResponse(event.eventId, event.author, event.createdAt, event.comment)
+            is ReviewEvent -> ReviewEventResponse(
+                event.eventId,
+                event.author,
+                event.createdAt,
+                event.comment,
+                event.action,
+            )
+            else -> {
+                throw IllegalStateException("Somehow found event of type ${event.type}")
+            }
+        }
+    }
+}
+data class CommentEventResponse(
+    override val id: String,
+    override val author: User,
+    override val createdAt: LocalDateTime = LocalDateTime.now(),
+    val comment: String,
+) : EventResponse(EventType.COMMENT, createdAt)
+
+data class ReviewEventResponse(
+    override val id: String,
+    override val author: User,
+    override val createdAt: LocalDateTime = LocalDateTime.now(),
+    val comment: String,
+    val action: ReviewAction,
+) : EventResponse(EventType.REVIEW, createdAt)
 
 @RestController()
 @Validated
@@ -281,8 +322,9 @@ class ExecutionRequestController(
         @Valid @RequestBody
         request: CreateCommentRequest,
         @AuthenticationPrincipal userDetails: UserDetailsWithId,
-    ): Event {
-        return executionRequestService.createComment(executionRequestId, request, userDetails.id)
+    ): EventResponse {
+        return EventResponse
+            .fromEvent(executionRequestService.createComment(executionRequestId, request, userDetails.id))
     }
 
     @Operation(
