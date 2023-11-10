@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-change-role-id
+      author: nils
+      changes:
+        - addColumn:
+            tableName: role
+            columns:
+              - column:
+                  name: managed_by_idp
+                  type: boolean
+        - dropColumn:
+            tableName: role
+            columns:
+              - column:
+                  name: name
+                  type: varchar(255)

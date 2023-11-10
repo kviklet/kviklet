@@ -15,3 +15,13 @@ spring:
     console.enabled: true
 app:
   name: "Execution Gate"
+opsgate:
+  identity-provider:
+#    type: keycloak
+#    client-id: opsgate
+#    client-secret: exMh3IXKAmxypZ5DxctBrVHsm4Gi6b5y
+#    issuer-uri: http://localhost:8081/realms/test
+    type: google
+    client-id: 744777589278-g2vmtckef0bck56ns0slqerf0evppldj.apps.googleusercontent.com
+    client-secret: CHANGEME
+    issuer-uri: https://accounts.google.com

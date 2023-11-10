@@ -4,14 +4,18 @@ import com.example.executiongate.db.User
 import com.example.executiongate.db.UserAdapter
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression
+import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.annotation.Order
 import org.springframework.http.HttpStatus
 import org.springframework.security.access.AccessDeniedException
+import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.AuthenticationProvider
 import org.springframework.security.authentication.BadCredentialsException
-import org.springframework.security.authentication.ProviderManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.annotation.web.invoke
@@ -21,6 +25,17 @@ import org.springframework.security.core.AuthenticationException
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository
+import org.springframework.security.oauth2.client.registration.ClientRegistrations
+import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository
+import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserService
+import org.springframework.security.oauth2.core.AuthorizationGrantType
+import org.springframework.security.oauth2.core.user.OAuth2User
+import org.springframework.security.oauth2.jwt.JwtDecoder
+import org.springframework.security.oauth2.jwt.JwtDecoders
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter
 import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
@@ -31,6 +46,50 @@ import org.springframework.stereotype.Service
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
+
+@Component
+@ConfigurationProperties(prefix = "opsgate.identity-provider")
+@EnableWebSecurity
+data class IdentityProviderConfig(
+    var type: String? = null,
+    var clientId: String? = null,
+    var clientSecret: String? = null,
+    var issuerUri: String? = null,
+) {
+
+    @Bean
+    fun oauth2Enabled(): Boolean {
+        return type != null && clientId != null && clientSecret != null && issuerUri != null
+    }
+
+    @Bean
+    @ConditionalOnExpression(value = "\${opsgate.identity-provider.oauth2-enabled:true}")
+    fun clientRegistrationRepository(): ClientRegistrationRepository {
+        val clientRegistration = ClientRegistrations
+            .fromIssuerLocation(issuerUri)
+            .registrationId(type)
+            .clientId(clientId)
+            .clientSecret(clientSecret)
+            .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+            .scope("openid", "email")
+            .userNameAttributeName("email")
+            .build()
+
+        return InMemoryClientRegistrationRepository(clientRegistration)
+    }
+
+    @Bean
+    @ConditionalOnExpression(value = "\${opsgate.identity-provider.oauth2-enabled:true}")
+    fun jwtDecoder(): JwtDecoder {
+        return JwtDecoders.fromIssuerLocation(this.issuerUri)
+    }
+
+    @Bean
+    @ConditionalOnExpression(value = "\${opsgate.identity-provider.oauth2-enabled:true}")
+    fun oauth2UserService(): OAuth2UserService<OAuth2UserRequest, OAuth2User> {
+        return DefaultOAuth2UserService()
+    }
+}
 
 @Configuration
 class PasswordEncoderConfig {
@@ -44,17 +103,33 @@ class PasswordEncoderConfig {
 @EnableWebSecurity
 class SecurityConfig(
     private val customAuthenticationProvider: CustomAuthenticationProvider,
+    private val oauth2Enabled: Boolean,
+    private val filter: Oauth2Filter,
     private val oauth2LoginSuccessHandler: OAuth2LoginSuccessHandler,
 ) {
 
     @Bean
+    fun authManager(http: HttpSecurity): AuthenticationManager {
+        val authenticationManagerBuilder = http.getSharedObject(AuthenticationManagerBuilder::class.java)
+        authenticationManagerBuilder.authenticationProvider(customAuthenticationProvider)
+        return authenticationManagerBuilder.build()
+    }
+
+    @Bean
+    @Order(2)
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http.invoke {
             cors { }
 
-            authenticationManager = ProviderManager(customAuthenticationProvider)
+            authenticationManager = authManager(http)
 
-            oauth2Login { authenticationSuccessHandler = oauth2LoginSuccessHandler }
+            if (oauth2Enabled) {
+                addFilterBefore<BearerTokenAuthenticationFilter>(filter)
+
+                oauth2Login {
+                    authenticationSuccessHandler = oauth2LoginSuccessHandler
+                }
+            }
 
             exceptionHandling {
                 authenticationEntryPoint = CustomAuthenticationEntryPoint()
@@ -62,6 +137,7 @@ class SecurityConfig(
             }
 
             authorizeHttpRequests {
+                authorize("/login", permitAll)
                 authorize("/login**", permitAll)
                 authorize("/oauth2**", permitAll)
                 authorize("/v3/api-docs/**", permitAll)
@@ -77,10 +153,10 @@ class SecurityConfig(
             }
 
             securityContext {
-                requireExplicitSave = false // TODO: This is discouraged (see spring security 6 migration guide)
+                requireExplicitSave = true
             }
             sessionManagement {
-                sessionCreationPolicy = SessionCreationPolicy.IF_REQUIRED
+                sessionCreationPolicy = SessionCreationPolicy.ALWAYS
             }
 
             logout {
@@ -130,6 +206,7 @@ class CustomAccessDeniedHandler : AccessDeniedHandler {
     }
 }
 
+@Component
 class CustomAuthenticationEntryPoint : AuthenticationEntryPoint {
     override fun commence(
         request: HttpServletRequest,
@@ -157,9 +234,9 @@ class CustomAuthenticationProvider(
         }
 
         // Create a CustomUserDetails object
-        val userDetails = UserDetailsWithId(user.id, email, user.password, emptyList())
+        val userDetails = UserDetailsWithId(user.id, email, emptyList())
 
-        val policies = user.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
+        val policies = user.roles.flatMap { it.policies.map { policy -> PolicyGrantedAuthority(it.id, policy) } }
 
         return UsernamePasswordAuthenticationToken(
             userDetails,
@@ -189,7 +266,7 @@ class OAuth2LoginSuccessHandler(
             val email = oauth2User.getAttribute<String>("email")!!
             val name = oauth2User.getAttribute<String>("name")
 
-            var user = userAdapter.findByGoogleId(googleId)
+            var user = userAdapter.findByEmail(email)
 
             if (user == null) {
                 // If the user is signing in for the first time, create a new user
@@ -201,7 +278,7 @@ class OAuth2LoginSuccessHandler(
                 )
             } else {
                 // If the user has already signed in before, update the user's information
-                user = User(
+                user = user.copy(
                     id = user.id,
                     email = email,
                     fullName = name,
@@ -213,6 +290,6 @@ class OAuth2LoginSuccessHandler(
             userAdapter.createOrUpdateUser(user)
         }
 
-        redirectStrategy.sendRedirect(request, response, "http://localhost:3000/requests")
+        redirectStrategy.sendRedirect(request, response, "http://localhost:3000")
     }
 }

@@ -122,8 +122,7 @@ class DatasourceConnectionController(
     @PostMapping("/{datasourceId}/connections")
     fun createDatasourceConnection(
         @PathVariable datasourceId: String,
-        @Valid @RequestBody
-        datasourceConnection: CreateDatasourceConnectionRequest,
+        @Valid @RequestBody datasourceConnection: CreateDatasourceConnectionRequest,
     ): DatasourceConnectionResponse {
         val datasource = datasourceConnectionService.createDatasourceConnection(
             datasourceId = DatasourceId(datasourceId),
@@ -143,8 +142,7 @@ class DatasourceConnectionController(
     fun updateDatasourceConnection(
         @PathVariable datasourceId: String,
         @PathVariable connectionId: String,
-        @Valid @RequestBody
-        datasourceConnection: UpdateDataSourceConnectionRequest,
+        @Valid @RequestBody datasourceConnection: UpdateDataSourceConnectionRequest,
     ): DatasourceConnectionResponse {
         val datasource = datasourceConnectionService.updateDatasourceConnection(
             datasourceId = DatasourceId(datasourceId),

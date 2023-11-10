@@ -23,7 +23,7 @@ class InitialUserInitializer(
 
     fun createAdminRole(savedUser: UserEntity) {
         val role = RoleEntity(
-            name = "Admin role",
+            id = "Admin role",
             description = "This role gives admin permissions on everything",
             policies = emptySet(),
         )

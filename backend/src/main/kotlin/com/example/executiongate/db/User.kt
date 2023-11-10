@@ -78,16 +78,19 @@ class UserAdapter(
     private val userRepository: UserRepository,
     private val roleRepository: RoleRepository,
 ) {
+    @Transactional
     fun findByEmail(email: String): User? {
         val userEntity = userRepository.findByEmail(email) ?: return null
         return userEntity.toDto()
     }
 
+    @Transactional
     fun findByGoogleId(googleId: String): User? {
         val userEntity = userRepository.findByGoogleId(googleId) ?: return null
         return userEntity.toDto()
     }
 
+    @Transactional
     fun findById(id: String): User {
         val userEntity = userRepository.findByIdOrNull(id) ?: throw EntityNotFound(
             "User not found",
@@ -107,6 +110,7 @@ class UserAdapter(
         return savedUserEntity.toDto()
     }
 
+    @Transactional
     fun createOrUpdateUser(user: User): User {
         val userEntity = userRepository.findByIdOrNull(user.id)
 
@@ -146,6 +150,7 @@ class UserAdapter(
         userRepository.deleteById(id)
     }
 
+    @Transactional
     fun listUsers(): List<User> {
         val userEntities = userRepository.findAll()
         return userEntities.map { it.toDto() }

@@ -5,6 +5,7 @@ import com.example.executiongate.controller.CreateDatasourceConnectionRequest
 import com.example.executiongate.controller.CreateDatasourceRequest
 import com.example.executiongate.controller.CreateExecutionRequestRequest
 import com.example.executiongate.controller.CreateReviewRequest
+import com.example.executiongate.controller.DatasourceConnectionController
 import com.example.executiongate.controller.DatasourceController
 import com.example.executiongate.controller.ExecutionRequestController
 import com.example.executiongate.controller.ListDatasourceResponse
@@ -17,6 +18,7 @@ import com.example.executiongate.security.WithAdminUser
 import com.example.executiongate.service.dto.CommentEvent
 import com.example.executiongate.service.dto.DatasourceConnectionId
 import com.example.executiongate.service.dto.DatasourceType
+import com.example.executiongate.service.dto.RequestType
 import com.example.executiongate.service.dto.ReviewAction
 import com.example.executiongate.service.dto.ReviewEvent
 import io.kotest.matchers.equality.shouldBeEqualToIgnoringFields
@@ -42,6 +44,7 @@ class DatasourceConnectionTest(
     @Autowired val executionRequestRepository: ExecutionRequestRepository,
     @Autowired val eventRepository: EventRepository,
     @Autowired val datasourceController: DatasourceController,
+    @Autowired val datasourceConnectionController: DatasourceConnectionController,
     @Autowired val executionRequestController: ExecutionRequestController,
 ) : TestBase() {
 
@@ -78,8 +81,8 @@ class DatasourceConnectionTest(
             ),
         )
 
-        val connection = datasourceController.createDatasourceConnection(
-            datasource.id,
+        val connection = datasourceConnectionController.createDatasourceConnection(
+            datasource.id.toString(),
             CreateDatasourceConnectionRequest(
                 id = "db-conn",
                 displayName = "My Connection",
@@ -98,6 +101,7 @@ class DatasourceConnectionTest(
                 description = "Request description",
                 statement = "SELECT 1",
                 readOnly = false,
+                type = RequestType.SingleQuery,
             ),
             testUserDetails,
         )

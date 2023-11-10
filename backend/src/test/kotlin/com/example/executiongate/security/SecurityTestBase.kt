@@ -72,7 +72,6 @@ class SecurityTestBase {
         testUserDetails = UserDetailsWithId(
             id = testUser.id,
             email = testUser.email,
-            password = testUser.password,
             authorities = emptyList(),
         )
     }
@@ -121,13 +120,12 @@ private fun getAuth(
     policies: List<Policy>,
     userDetails: UserDetailsWithId? = null,
 ): UsernamePasswordAuthenticationToken {
-    val authorities = policies.map { PolicyGrantedAuthority(it) }
+    val authorities = policies.map { PolicyGrantedAuthority("role", it) }
 
     val userDetailsWithPolicies = UserDetailsWithId(
         id = userDetails?.id ?: "id",
         authorities = authorities,
         email = userDetails?.username ?: "username@example.com",
-        password = userDetails?.password ?: "password",
     )
     return UsernamePasswordAuthenticationToken(userDetailsWithPolicies, "password", authorities)
 }

@@ -37,7 +37,7 @@ open class TestBase {
 
         val savedUser = userRepository.saveAndFlush(userEntity)
         val role = RoleEntity(
-            name = "Test Role",
+            id = "Test Role",
             description = "This is a test role",
             policies = emptySet(),
         )
@@ -54,7 +54,6 @@ open class TestBase {
         testUserDetails = UserDetailsWithId(
             id = testUser.id,
             email = testUser.email,
-            password = testUser.password,
             authorities = emptyList(),
         )
     }
