@@ -72,7 +72,6 @@ class SecurityTestBase {
         testUserDetails = UserDetailsWithId(
             id = testUser.id,
             email = testUser.email,
-            password = testUser.password,
             authorities = emptyList(),
         )
     }
@@ -127,7 +126,6 @@ private fun getAuth(
         id = userDetails?.id ?: "id",
         authorities = authorities,
         email = userDetails?.username ?: "username@example.com",
-        password = userDetails?.password ?: "password",
     )
     return UsernamePasswordAuthenticationToken(userDetailsWithPolicies, "password", authorities)
 }

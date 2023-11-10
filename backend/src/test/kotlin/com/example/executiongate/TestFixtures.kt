@@ -7,6 +7,7 @@ import com.example.executiongate.controller.ReviewConfigRequest
 import com.example.executiongate.controller.UpdateExecutionRequestRequest
 import com.example.executiongate.service.dto.DatasourceConnectionId
 import com.example.executiongate.service.dto.DatasourceType
+import com.example.executiongate.service.dto.RequestType
 
 object TestFixtures {
     fun createDatasourceRequest(id: String) = CreateDatasourceRequest(
@@ -40,5 +41,6 @@ object TestFixtures {
         description = "description",
         statement = "select 1",
         readOnly = false,
+        type = RequestType.SingleQuery,
     )
 }

@@ -2,6 +2,7 @@ package com.example.executiongate.security
 
 import com.example.executiongate.TestFixtures.createDatasourceConnectionRequest
 import com.example.executiongate.TestFixtures.createDatasourceRequest
+import com.example.executiongate.controller.DatasourceConnectionController
 import com.example.executiongate.controller.DatasourceConnectionResponse
 import com.example.executiongate.controller.DatasourceController
 import com.example.executiongate.controller.ListDatasourceResponse
@@ -28,6 +29,7 @@ import java.util.stream.Stream
 
 class DatasourceConnectionSecurityTest(
     @Autowired val datasourceController: DatasourceController,
+    @Autowired val datasourceConnectionController: DatasourceConnectionController,
     @Autowired val datasourceRepository: DatasourceRepository,
     @Autowired val datasourceConnectionRepository: DatasourceConnectionRepository,
 ) : SecurityTestBase() {
@@ -36,21 +38,21 @@ class DatasourceConnectionSecurityTest(
     fun setUp() {
         asAdmin {
             datasourceController.createDatasource(createDatasourceRequest("db1"))
-            datasourceController.createDatasourceConnection(
-                DatasourceId("db1"),
+            datasourceConnectionController.createDatasourceConnection(
+                DatasourceId("db1").toString(),
                 createDatasourceConnectionRequest("db1-conn1"),
             )
-            datasourceController.createDatasourceConnection(
-                DatasourceId("db1"),
+            datasourceConnectionController.createDatasourceConnection(
+                DatasourceId("db1").toString(),
                 createDatasourceConnectionRequest("db1-conn2"),
             )
             datasourceController.createDatasource(createDatasourceRequest("db2"))
-            datasourceController.createDatasourceConnection(
-                DatasourceId("db2"),
+            datasourceConnectionController.createDatasourceConnection(
+                DatasourceId("db2").toString(),
                 createDatasourceConnectionRequest("db2-conn1"),
             )
-            datasourceController.createDatasourceConnection(
-                DatasourceId("db2"),
+            datasourceConnectionController.createDatasourceConnection(
+                DatasourceId("db2").toString(),
                 createDatasourceConnectionRequest("db2-conn2"),
             )
         }
