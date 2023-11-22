@@ -44,7 +44,7 @@ INITIAL_USER_EMAIL=admin@example.com
 INITIAL_USER_PASSWORD=someverysecurepassword
 ```
 
-With all this set you can run `jaschaKviklet/Kviklet:latest` don't forget to expose port 80.
+We publish our containers do the github packages for now, so with all this set you can run `ghcr.io/kviklet/kviklet:main` don't forget to expose port 80.
 
 An example docker run could looks like this:
 
@@ -56,5 +56,5 @@ docker run \
 -e INITIAL_USER_EMAIL=admin@example.com \
 -e INITIAL_USER_PASSWORD=someverysecurepassword \
 --network host \
-jaschaKviklet/Kviklet:latest
+ghcr.io/kviklet/kviklet:main
 ```
