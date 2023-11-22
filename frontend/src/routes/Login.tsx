@@ -57,7 +57,7 @@ const Login = () => {
         <div className="text-center">
           <img src={image} className="mx-auto h-24 w-auto" />
         </div>
-        <div className="text-2xl text-center mb-6">Sign in to OpsGate</div>
+        <div className="text-2xl text-center mb-6">Sign in to Kviklet</div>
         <div className=" dark:bg-slate-900 p-6 rounded-md shadow-xl">
           <form onSubmit={(e) => void login(e)}>
             <div className="flex flex-col">

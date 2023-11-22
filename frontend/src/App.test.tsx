@@ -65,7 +65,7 @@ describe("App not logged in", () => {
         <App />
       </MemoryRouter>,
     );
-    const element = await screen.findByText("Sign in to OpsGate");
+    const element = await screen.findByText("Sign in to Kviklet");
     expect(element).toBeInTheDocument();
   });
 
@@ -75,7 +75,7 @@ describe("App not logged in", () => {
         <App></App>
       </MemoryRouter>,
     );
-    const element = await screen.findByText("Sign in to OpsGate");
+    const element = await screen.findByText("Sign in to Kviklet");
     expect(element).toBeInTheDocument();
   });
 
@@ -85,7 +85,7 @@ describe("App not logged in", () => {
         <App />
       </MemoryRouter>,
     );
-    expect(screen.queryByText("Sign in to OpsGate")).toBeInTheDocument();
+    expect(screen.queryByText("Sign in to Kviklet")).toBeInTheDocument();
     server.use(handleStatusLoggedIn);
     const emailInput = screen.getByLabelText("Email");
     userEvent.type(emailInput, "some@email.com");
@@ -97,7 +97,7 @@ describe("App not logged in", () => {
     });
 
     await waitFor(() => {
-      const element = screen.queryByText("Sign in to OpsGate");
+      const element = screen.queryByText("Sign in to Kviklet");
       expect(element).not.toBeInTheDocument();
     });
   });
@@ -118,7 +118,7 @@ describe("App logged in", () => {
         <App />
       </MemoryRouter>,
     );
-    const element = screen.queryByText("Sign in to OpsGate");
+    const element = screen.queryByText("Sign in to Kviklet");
     expect(element).not.toBeInTheDocument();
   });
 
@@ -128,7 +128,7 @@ describe("App logged in", () => {
         <App></App>
       </MemoryRouter>,
     );
-    const element = screen.queryByText("Sign in to OpsGate");
+    const element = screen.queryByText("Sign in to Kviklet");
     expect(element).not.toBeInTheDocument();
   });
 });

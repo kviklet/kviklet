@@ -17,4 +17,4 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
-          tags: jaschaopsgate/opsgate:latest,jaschaopsgate/opsgate:${{ github.sha }}
+          tags: jaschaKviklet/kviklet:latest,jaschakviklet/kviklet:${{ github.sha }}
