@@ -1,4 +1,4 @@
-# OpsGate
+# Kviklet
 
 # Under Construction!
 
@@ -8,11 +8,11 @@ Read further to understand what we are trying to accomplish.
 
 ## 🔐 The developer-centric DevSecOps solution for production data access
 
-OpsGate aims to provide secure access to production databases without impairing developer productivity.
+Kviklet aims to provide secure access to production databases without impairing developer productivity.
 
-Utilizing the Four-Eyes Principle and a high level of configurability, OpsGate allows a Pull Request-like Review and Approval flow for individual Database statements or full Database sessions.
+Utilizing the Four-Eyes Principle and a high level of configurability, Kviklet allows a Pull Request-like Review and Approval flow for individual Database statements or full Database sessions.
 
-OpsGate is a self hosted solution, this is a deliberate design decision as you shouldn't have to expose your databases to any external party. However we try to make it a simple as possible to get set up.
+Kviklet is a self hosted solution, this is a deliberate design decision as you shouldn't have to expose your databases to any external party. However we try to make it a simple as possible to get set up.
 
 Initially we will focus on PostgreSQL and MySQL support.
 
@@ -22,7 +22,7 @@ We currently publish only a latest tag of the container on every commit. Use thi
 
 ### DB Setup
 
-Opsgate needs it's own database (or at least schema) to save metadata about queries, connections, approvals, etc.
+Kviklet needs it's own database (or at least schema) to save metadata about queries, connections, approvals, etc.
 In theory you can setup a MySQL or Postgres DB for this purpose, we internally only use postgres though, so this is the recommended path.
 
 When starting the container you then need to set these three environment variables:
@@ -44,7 +44,7 @@ INITIAL_USER_EMAIL=admin@example.com
 INITIAL_USER_PASSWORD=someverysecurepassword
 ```
 
-With all this set you can run `jaschaopsgate/opsgate:latest` don't forget to expose port 80.
+With all this set you can run `jaschaKviklet/Kviklet:latest` don't forget to expose port 80.
 
 An example docker run could looks like this:
 
@@ -52,9 +52,9 @@ An example docker run could looks like this:
 docker run \
 -e SPRING_DATASOURCE_PASSWORD=postgres \
 -e SPRING_DATASOURCE_USERNAME=postgres \
--e SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/opsgate \
+-e SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/Kviklet \
 -e INITIAL_USER_EMAIL=admin@example.com \
 -e INITIAL_USER_PASSWORD=someverysecurepassword \
 --network host \
-jaschaopsgate/opsgate:latest
+jaschaKviklet/Kviklet:latest
 ```
