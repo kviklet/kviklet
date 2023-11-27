@@ -171,7 +171,7 @@ const addReviewToRequest = async (
   review: string,
   action: string,
 ) => {
-  await fetch(requestUrl + id + "/reviews", {
+  const response = await fetch(requestUrl + id + "/reviews", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -179,6 +179,8 @@ const addReviewToRequest = async (
     credentials: "include",
     body: JSON.stringify({ comment: review, action }),
   });
+  await response.json();
+
   return;
 };
 
