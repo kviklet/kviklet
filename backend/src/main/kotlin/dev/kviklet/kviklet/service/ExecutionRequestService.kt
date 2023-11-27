@@ -75,11 +75,17 @@ class ExecutionRequestService(
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
-    fun createReview(id: ExecutionRequestId, request: CreateReviewRequest, authorId: String) = saveEvent(
-        id,
-        authorId,
-        ReviewPayload(comment = request.comment, action = request.action),
-    )
+    fun createReview(id: ExecutionRequestId, request: CreateReviewRequest, authorId: String): Event {
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
+        if (executionRequest.request.author.id == authorId && request.action == ReviewAction.APPROVE) {
+            throw InvalidReviewException("A user can't approve their own request!")
+        }
+        return saveEvent(
+            id,
+            authorId,
+            ReviewPayload(comment = request.comment, action = request.action),
+        )
+    }
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
@@ -91,7 +97,6 @@ class ExecutionRequestService(
 
     private fun saveEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Event {
         val (executionRequest, event) = executionRequestAdapter.addEvent(id, authorId, payload)
-
         return event
     }
 
@@ -126,5 +131,7 @@ class ExecutionRequestService(
         )
     }
 }
+
+class InvalidReviewException(message: String) : RuntimeException(message)
 
 class MissingQueryException(message: String) : RuntimeException(message)
