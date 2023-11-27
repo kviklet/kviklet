@@ -25,12 +25,14 @@ import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler
+import org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
+import org.springframework.web.filter.ForwardedHeaderFilter
 
 @Configuration
 class PasswordEncoderConfig {
@@ -50,6 +52,7 @@ class SecurityConfig(
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http.invoke {
+            addFilterBefore<WebAsyncManagerIntegrationFilter>(ForwardedHeaderFilter())
             cors { }
 
             authenticationManager = ProviderManager(customAuthenticationProvider)
