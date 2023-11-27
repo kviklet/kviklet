@@ -1,20 +1,18 @@
 # Kviklet
 
-# Under Construction!
+Secure access to production databases without impairing developer productivity.
 
-This project is not yet functional and is currently being built!
+Kviklet utilizes the Four-Eyes Principle and a high level of configurability, to allow a Pull Request-like Review and Approval flow for individual SQL statements or Database sessions. This allows engineering teams to self regulate on who gets access to what data and when.
 
-Read further to understand what we are trying to accomplish.
+Kviklet is a self hosted docker container, that provides you with a Single Page Web app that you can login to to create your SQL requests or approve the ones of others.
 
-## 🔐 The developer-centric DevSecOps solution for production data access
+We currently only support Postgres but more is coming.
 
-Kviklet aims to provide secure access to production databases without impairing developer productivity.
+### Under Construction!
 
-Utilizing the Four-Eyes Principle and a high level of configurability, Kviklet allows a Pull Request-like Review and Approval flow for individual Database statements or full Database sessions.
+This project is not yet fully functional and is currently being built! If you are interested in the featureset feel free to reach out we are happy to cooperate and prioritize your feature requests.
 
-Kviklet is a self hosted solution, this is a deliberate design decision as you shouldn't have to expose your databases to any external party. However we try to make it a simple as possible to get set up.
-
-Initially we will focus on PostgreSQL and MySQL support.
+See our website for more details on who is behind this project: https://kviklet.dev
 
 ## Setup
 
