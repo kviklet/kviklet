@@ -37,6 +37,11 @@ data class ReviewPayload(
     val action: ReviewAction,
 ) : Payload(EventType.REVIEW)
 
+@JsonTypeName("EDIT")
+data class EditPayload(
+    val previousQuery: String,
+) : Payload(EventType.EDIT)
+
 @Entity(name = "event")
 class EventEntity(
 

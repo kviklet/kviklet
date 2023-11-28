@@ -52,6 +52,16 @@ const Review = withType(
   "REVIEW",
 );
 
+const Edit = withType(
+  z.object({
+    author: userResponseSchema.optional(),
+    previousQuery: z.string(),
+    createdAt: DateTime,
+    id: z.string(),
+  }),
+  "EDIT",
+);
+
 const ExecutionRequestResponse = z.object({
   id: z.string(),
   type: z.enum(["TemporaryAccess", "SingleQuery"]),
@@ -75,7 +85,7 @@ const ChangeExecutionRequestPayload = z.object({
 });
 
 const ExecutionRequestResponseWithComments = ExecutionRequestResponse.extend({
-  events: z.array(z.union([Comment, Review])),
+  events: z.array(z.union([Comment, Review, Edit])),
 });
 
 const ExecutionRequestsResponse = z.array(ExecutionRequestResponse);

@@ -6,6 +6,7 @@ import dev.kviklet.kviklet.controller.CreateReviewRequest
 import dev.kviklet.kviklet.controller.UpdateExecutionRequestRequest
 import dev.kviklet.kviklet.db.CommentPayload
 import dev.kviklet.kviklet.db.DatasourceConnectionAdapter
+import dev.kviklet.kviklet.db.EditPayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.Payload
 import dev.kviklet.kviklet.db.ReviewConfig
@@ -53,8 +54,20 @@ class ExecutionRequestService(
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_EDIT)
-    fun update(id: ExecutionRequestId, request: UpdateExecutionRequestRequest): ExecutionRequestDetails {
+    fun update(
+        id: ExecutionRequestId,
+        request: UpdateExecutionRequestRequest,
+        userId: String,
+    ): ExecutionRequestDetails {
         val executionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
+
+        if (request.statement != executionRequestDetails.request.statement) {
+            saveEvent(
+                id,
+                userId,
+                EditPayload(previousQuery = executionRequestDetails.request.statement ?: ""),
+            )
+        }
 
         return executionRequestAdapter.updateExecutionRequest(
             id = executionRequestDetails.request.id,
