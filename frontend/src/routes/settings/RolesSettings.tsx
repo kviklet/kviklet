@@ -34,7 +34,7 @@ const Tooltip = ({
     >
       {children}
       {hovered && (
-        <div className="absolute bottom-0 left-0 bg-gray-800 text-white text-xs rounded p-1">
+        <div className="absolute bottom-0 left-0 bg-slate-800 text-white text-xs rounded p-1">
           {text}
         </div>
       )}
@@ -107,25 +107,25 @@ const Table = ({
     <div className="flex flex-col w-full">
       <div className="overflow-x-auto">
         <div className="align-middle inline-block min-w-full">
-          <div className="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50 text-left">
+          <div className="shadow overflow-hidden border-b border-slate-200 sm:rounded-lg">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50 dark:bg-slate-900 dark:text-slate-200 text-slate-700 text-left">
                 <tr>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-xs font-medium uppercase tracking-wider"
                   >
                     Role Name
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-xs font-medium uppercase tracking-wider"
                   >
                     Description
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-xs font-medium uppercase tracking-wider"
                   >
                     Permissions
                   </th>
@@ -137,10 +137,10 @@ const Table = ({
               <tbody>
                 {roles.map((role) => (
                   <tr key={role.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-50">
                       {role.name}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-200">
                       {role.description}
                     </td>
                     <td>
@@ -149,7 +149,7 @@ const Table = ({
                           .map((policy) => policy.action)
                           .join(",")}
                       >
-                        <div className="text-gray-400 hover:text-gray-900">
+                        <div className="text-slate-400 hover:text-slate-900">
                           <FontAwesomeIcon icon={solid("eye")} />
                         </div>
                       </Tooltip>
@@ -158,13 +158,13 @@ const Table = ({
                       <div className="flex flex-row">
                         <button
                           onClick={() => handleEditRole(role)}
-                          className="text-gray-400 hover:text-gray-900 mr-2"
+                          className="text-slate-400 hover:text-slate-900 mr-2"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => handleDeleteRole(role)}
-                          className="text-gray-400 hover:text-gray-900"
+                          className="text-slate-400 hover:text-slate-900"
                         >
                           <FontAwesomeIcon icon={solid("trash")} />
                         </button>
@@ -177,7 +177,7 @@ const Table = ({
           </div>
           {roles.length === 0 && (
             <div className="flex flex-row justify-center items-center p-5">
-              <div className="text-gray-400">No roles found</div>
+              <div className="text-slate-400">No roles found</div>
             </div>
           )}
         </div>
@@ -204,7 +204,7 @@ function EditRoleForm(props: {
       case "EXECUTE":
         return "bg-yellow-200 text-yellow-800";
       default:
-        return "bg-gray-200 text-gray-800";
+        return "bg-slate-200 text-slate-800";
     }
   };
 
@@ -231,7 +231,7 @@ function EditRoleForm(props: {
 
   return (
     <form method="post" onSubmit={handleEditRole}>
-      <div className="w-2xl shadow p-3 bg-white rounded">
+      <div className="w-2xl shadow p-3 bg-white dark:bg-slate-950 rounded">
         <div className="flex flex-col mb-3">
           <InputField
             id="name"
@@ -253,12 +253,12 @@ function EditRoleForm(props: {
           />
         </div>
         <div>
-          <div className="text-gray-400 text-sm mb-2">Permissions</div>
+          <div className="text-slate-400 text-sm mb-2">Permissions</div>
         </div>
         {policies.map((permissionEntry) => (
           <div key={permissionEntry.resource} className="flex flex-col mb-3">
             <div>{permissionEntry.resource}</div>
-            <div className="text-gray-400 text-sm">
+            <div className="text-slate-400 text-sm">
               <ColorfulLabel
                 text={permissionEntry.action}
                 color={mapActionToColor(permissionEntry.action)}
@@ -272,7 +272,7 @@ function EditRoleForm(props: {
         <div className="flex mb-3 border-t">
           <select
             name="connection"
-            className="py-1 px-4 m-2  border-gray-200 border rounded-md text-sm focus:border-blue-500 focus:ring-blue-50"
+            className="py-1 px-4 m-2  border-slate-200 border rounded-md text-sm focus:border-blue-500 focus:ring-blue-50"
             value={connectionToAdd}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
               setConnectionToAdd(e.target.value)
@@ -284,7 +284,7 @@ function EditRoleForm(props: {
           </select>
           <select
             name="permission"
-            className="py-1 px-4 m-2 border border-gray-200 rounded-md text-sm focus:border-blue-500 focus:ring-blue-50"
+            className="py-1 px-4 m-2 border border-slate-200 rounded-md text-sm focus:border-blue-500 focus:ring-blue-50"
             value={permissionToAdd}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
               setPermissionToAdd(e.target.value)

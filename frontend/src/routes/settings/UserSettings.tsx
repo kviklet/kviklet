@@ -36,7 +36,7 @@ function UserForm(props: {
 
   return (
     <form method="post" onSubmit={saveUser}>
-      <div className="w-2xl shadow p-3 bg-white rounded">
+      <div className="w-2xl shadow p-3 bg-white dark:bg-slate-950 rounded">
         <div className="flex flex-col mb-3">
           <InputField
             id="email"
@@ -159,11 +159,11 @@ const UserRow = (props: {
             onClick={() => {
               setRolesDialogVisible(true);
             }}
-            color="bg-white text-slate-700 border border-slate-400"
+            color="dark:bg-slate-700 border border-slate-400"
           />
           {rolesDialogVisible && (
             <Modal setVisible={setRolesDialogVisible}>
-              <div className="w-2xl shadow p-3 bg-white rounded">
+              <div className="w-2xl shadow p-3 bg-white dark:bg-slate-950 rounded">
                 <div className="flex flex-col mb-3">
                   <div className="font-bold">Add Role</div>
                 </div>
@@ -172,11 +172,11 @@ const UserRow = (props: {
                     {props.roles.map((role) => {
                       return (
                         <ColorfulLabel
-                          onClick={
+                          onClick={() =>
                             void (async () => {
                               await props.addRoleToUser(props.user.id, role.id);
                               setRolesDialogVisible(false);
-                            })
+                            })()
                           }
                           text={role.name}
                         />
