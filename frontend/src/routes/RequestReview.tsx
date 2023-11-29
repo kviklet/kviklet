@@ -13,6 +13,9 @@ import {
   SelectExecuteResponse,
   ErrorResponse,
   Event,
+  Edit,
+  Review,
+  Comment as CommentEvent,
 } from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
 import { mapStatus, mapStatusToLabelColor, timeSince } from "./Requests";
@@ -29,6 +32,8 @@ import {
 import { colorFromText } from "../components/ColorfulLabel";
 import { CodeProps } from "react-markdown/lib/ast-to-react";
 import Spinner from "../components/Spinner";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 
 interface RequestReviewParams {
   requestId: string;
@@ -216,9 +221,13 @@ function RequestReview() {
             <div>
               {request === undefined
                 ? ""
-                : request?.events?.map((event, index) => (
-                    <Comment event={event} index={index}></Comment>
-                  ))}
+                : request?.events?.map((event, index) =>
+                    event?._type === "EDIT" ? (
+                      <EditEvent event={event} index={index}></EditEvent>
+                    ) : (
+                      <Comment event={event} index={index}></Comment>
+                    ),
+                  )}
               <CommentBox
                 addComment={addComment}
                 approve={approve}
@@ -352,7 +361,7 @@ function RequestBox({
   );
 }
 
-function Comment({ event, index }: { event: Event; index: number }) {
+function EditEvent({ event, index }: { event: Edit; index: number }) {
   return (
     <div>
       <div className="relative py-4 ml-4 flex">
@@ -365,11 +374,73 @@ function Comment({ event, index }: { event: Event; index: number }) {
             {" "}
           </div>
         )}
-        <svg className="h-4 w-4 -ml-2 mr-2 mt-0.5 inline-block align-text-bottom items-center dark:bg-slate-950 bg-slate-50 fill-slate-950 dark:fill-slate-50 z-0">
-          <path d="M11.93 8.5a4.002 4.002 0 0 1-7.86 0H.75a.75.75 0 0 1 0-1.5h3.32a4.002 4.002 0 0 1 7.86 0h3.32a.75.75 0 0 1 0 1.5Zm-1.43-.75a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"></path>
-        </svg>
+        <div className="h-4 w-4 -ml-1 mr-2 inline-block align-text-bottom items-center dark:bg-slate-950 bg-slate-50 fill-slate-950 dark:fill-slate-50 z-0">
+          <div className="inline pr-2 text-slate-500 text-xs">
+            <FontAwesomeIcon icon={solid("pen")} />
+          </div>
+        </div>
         <div className="text-slate-500 text-sm">
-          {event?.author?.fullName} commented:
+          {event?.author?.fullName} edited:
+        </div>
+      </div>
+      <div className="relative shadow-md dark:shadow-none dark:border-slate-700 rounded-md border">
+        <InitialBubble name={event?.author?.fullName} />
+        <p className="text-slate-500 dark:text-slate-500 px-4 pt-2 text-sm flex justify-between dark:bg-slate-900 rounded-t-md">
+          <div className="mr-4">
+            {((event?.createdAt &&
+              timeSince(new Date(event.createdAt as string))) as
+              | string
+              | undefined) || ""}
+          </div>
+          <div>
+            <p>Previous Statement</p>
+          </div>
+        </p>
+        <div className="py-3 px-4 dark:bg-slate-900 rounded-b-md">
+          <Highlighter>{event.previousQuery}</Highlighter>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Comment({
+  event,
+  index,
+}: {
+  event: Review | CommentEvent;
+  index: number;
+}) {
+  console.log(event);
+  return (
+    <div>
+      <div className="relative py-4 ml-4 flex">
+        {(!(index === 0) && (
+          <div className="bg-slate-700 w-0.5 absolute block whitespace-pre left-0 top-0 bottom-0">
+            {" "}
+          </div>
+        )) || (
+          <div className="bg-slate-700 w-0.5 absolute block whitespace-pre left-0 top-5 bottom-0">
+            {" "}
+          </div>
+        )}
+        {event?._type === "COMMENT" ? (
+          <svg className="h-4 w-4 -ml-2 mr-2 mt-0.5 inline-block align-text-bottom items-center dark:bg-slate-950 bg-slate-50 fill-slate-950 dark:fill-slate-50 z-0">
+            <path d="M11.93 8.5a4.002 4.002 0 0 1-7.86 0H.75a.75.75 0 0 1 0-1.5h3.32a4.002 4.002 0 0 1 7.86 0h3.32a.75.75 0 0 1 0 1.5Zm-1.43-.75a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"></path>
+          </svg>
+        ) : (
+          <div className="h-4 w-4 -ml-2 mr-2 mt-0.5 inline-block align-text-bottom items-center dark:bg-slate-950 bg-slate-50 fill-slate-950 dark:fill-slate-50 z-0">
+            <div className="text-green-600 inline pr-2">
+              <FontAwesomeIcon icon={solid("check")} />
+            </div>
+          </div>
+        )}
+        <div className="text-slate-500 text-sm">
+          {event?._type === "COMMENT" ? (
+            <div>{`${event?.author?.fullName} commented:`}</div>
+          ) : (
+            <div>{`${event?.author?.fullName} approved`} </div>
+          )}
         </div>
       </div>
       <div className="relative shadow-md dark:shadow-none dark:border-slate-700 rounded-md border">
