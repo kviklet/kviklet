@@ -10,6 +10,7 @@ import dev.kviklet.kviklet.service.RecordsQueryResult
 import dev.kviklet.kviklet.service.UpdateQueryResult
 import dev.kviklet.kviklet.service.dto.CommentEvent
 import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
+import dev.kviklet.kviklet.service.dto.EditEvent
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventType
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
@@ -241,6 +242,12 @@ abstract class EventResponse(
                 event.comment,
                 event.action,
             )
+            is EditEvent -> EditEventResponse(
+                event.eventId,
+                event.author,
+                event.createdAt,
+                event.previousQuery,
+            )
             else -> {
                 throw IllegalStateException("Somehow found event of type ${event.type}")
             }
@@ -261,6 +268,13 @@ data class ReviewEventResponse(
     val comment: String,
     val action: ReviewAction,
 ) : EventResponse(EventType.REVIEW, createdAt)
+
+data class EditEventResponse(
+    override val id: String,
+    override val author: User,
+    override val createdAt: LocalDateTime = LocalDateTime.now(),
+    val previousQuery: String,
+) : EventResponse(EventType.EDIT, createdAt)
 
 @RestController()
 @Validated
@@ -312,8 +326,9 @@ class ExecutionRequestController(
         @PathVariable id: ExecutionRequestId,
         @Valid @RequestBody
         request: UpdateExecutionRequestRequest,
+        @AuthenticationPrincipal userDetails: UserDetailsWithId,
     ): ExecutionRequestDetailResponse {
-        val newRequest = executionRequestService.update(id, request)
+        val newRequest = executionRequestService.update(id, request, userDetails.id)
         return ExecutionRequestDetailResponse.fromDto(newRequest)
     }
 

@@ -31,7 +31,7 @@ const ExecutionRequestPayload = z
     },
   );
 
-const Comment = withType(
+const CommentEvent = withType(
   z.object({
     author: userResponseSchema.optional(),
     comment: z.string(),
@@ -41,7 +41,7 @@ const Comment = withType(
   "COMMENT",
 );
 
-const Review = withType(
+const ReviewEvent = withType(
   z.object({
     author: userResponseSchema.optional(),
     comment: z.string(),
@@ -50,6 +50,16 @@ const Review = withType(
     id: z.string(),
   }),
   "REVIEW",
+);
+
+const EditEvent = withType(
+  z.object({
+    author: userResponseSchema.optional(),
+    previousQuery: z.string(),
+    createdAt: DateTime,
+    id: z.string(),
+  }),
+  "EDIT",
 );
 
 const ExecutionRequestResponse = z.object({
@@ -75,7 +85,7 @@ const ChangeExecutionRequestPayload = z.object({
 });
 
 const ExecutionRequestResponseWithComments = ExecutionRequestResponse.extend({
-  events: z.array(z.union([Comment, Review])),
+  events: z.array(z.union([ReviewEvent, CommentEvent, EditEvent])),
 });
 
 const ExecutionRequestsResponse = z.array(ExecutionRequestResponse);
@@ -89,7 +99,10 @@ type ExecutionRequestPayload = z.infer<typeof ExecutionRequestPayload>;
 type ChangeExecutionRequestPayload = z.infer<
   typeof ChangeExecutionRequestPayload
 >;
-type Event = z.infer<typeof Comment> | z.infer<typeof Review>;
+type Edit = z.infer<typeof EditEvent>;
+type Review = z.infer<typeof ReviewEvent>;
+type Comment = z.infer<typeof CommentEvent>;
+type Event = Edit | Review | Comment;
 
 const addRequest = async (payload: ExecutionRequest): Promise<boolean> => {
   const mappedPayload: ExecutionRequestPayload = {
@@ -162,7 +175,7 @@ const addCommentToRequest = async (id: string, comment: string) => {
     body: JSON.stringify({ comment }),
   });
   const json: unknown = await response.json();
-  const event = z.union([Comment, Review]).parse(json);
+  const event = z.union([CommentEvent, ReviewEvent]).parse(json);
   return event;
 };
 
@@ -272,6 +285,9 @@ export type {
   UpdateExecuteResponse,
   SelectExecuteResponse,
   ErrorResponse,
+  Edit,
+  Review,
+  Comment,
   Event,
   Column,
 };
