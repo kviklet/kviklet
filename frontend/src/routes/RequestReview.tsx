@@ -12,7 +12,6 @@ import {
   patchRequest,
   SelectExecuteResponse,
   ErrorResponse,
-  Event,
   Edit,
   Review,
   Comment as CommentEvent,
@@ -374,8 +373,8 @@ function EditEvent({ event, index }: { event: Edit; index: number }) {
             {" "}
           </div>
         )}
-        <div className="h-4 w-4 -ml-1 mr-2 inline-block align-text-bottom items-center dark:bg-slate-950 bg-slate-50 fill-slate-950 dark:fill-slate-50 z-0">
-          <div className="inline pr-2 text-slate-500 text-xs">
+        <div className="h-4 w-4 -ml-1 pb-6 mr-2 inline-block align-text-bottom items-center dark:bg-slate-950 bg-slate-50 fill-slate-950 dark:fill-slate-50 z-0">
+          <div className="inline pr-2 dark:text-slate-500 text-slate-900 text-xs">
             <FontAwesomeIcon icon={solid("pen")} />
           </div>
         </div>
@@ -429,7 +428,7 @@ function Comment({
             <path d="M11.93 8.5a4.002 4.002 0 0 1-7.86 0H.75a.75.75 0 0 1 0-1.5h3.32a4.002 4.002 0 0 1 7.86 0h3.32a.75.75 0 0 1 0 1.5Zm-1.43-.75a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"></path>
           </svg>
         ) : (
-          <div className="h-4 w-4 -ml-2 mr-2 mt-0.5 inline-block align-text-bottom items-center dark:bg-slate-950 bg-slate-50 fill-slate-950 dark:fill-slate-50 z-0">
+          <div className="h-4 w-4 -ml-1 pb-6 mr-2 mt-0.5 inline-block align-text-bottom items-center dark:bg-slate-950 bg-slate-50 fill-slate-950 dark:fill-slate-50 z-0">
             <div className="text-green-600 inline pr-2">
               <FontAwesomeIcon icon={solid("check")} />
             </div>
