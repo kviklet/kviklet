@@ -12,7 +12,6 @@ import {
   patchRequest,
   SelectExecuteResponse,
   ErrorResponse,
-  Event,
   Edit,
   Review,
   Comment as CommentEvent,
