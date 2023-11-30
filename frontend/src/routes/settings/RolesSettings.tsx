@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
 import {
+  PolicyResponse,
   RoleResponse,
   createRole,
   getRoles,
@@ -16,6 +17,8 @@ import { useDatasources } from "./DatabaseSettings";
 import { ConnectionResponse } from "../../api/DatasourceApi";
 import DeleteConfirm from "../../components/DeleteConfirm";
 import React from "react";
+import ComboBox from "../../components/ComboBox";
+import Select from "../../components/Select";
 
 const Tooltip = ({
   children,
@@ -193,20 +196,20 @@ function EditRoleForm(props: {
   const [policies, setPolicies] = useState(props.role.policies);
   const [name, setName] = useState(props.role.name);
   const [description, setDescription] = useState(props.role.description);
-  const [connectionToAdd, setConnectionToAdd] = useState("");
   const [permissionToAdd, setPermissionToAdd] = useState("");
-  const mapActionToColor = (action: string) => {
-    switch (action) {
-      case "READ":
-        return "bg-green-200 text-green-800";
-      case "WRITE":
-        return "bg-blue-200 text-blue-800";
-      case "EXECUTE":
-        return "bg-yellow-200 text-yellow-800";
-      default:
-        return "bg-slate-200 text-slate-800";
-    }
-  };
+  const [resourceToAdd, setResourceToAdd] = useState("");
+
+  const permissions = [
+    "DATASOURCE_GET",
+    "DATASOURCE_EDIT",
+    "DATASOURCE_CREATE",
+    "DATASOURCE_CONNECTION_GET",
+    "DATASOURCE_CONNECTION_EDIT",
+    "DATASOURCE_CONNECTION_CREATE",
+    "EXECUTION_REQUEST_GET",
+    "EXECUTION_REQUEST_EDIT",
+    "EXECUTION_REQUEST_EXECUTE",
+  ];
 
   const permissionOptions = [
     { value: "READ", label: "Read" },
@@ -227,6 +230,10 @@ function EditRoleForm(props: {
   const removePermission = (connectionId: string, permission: string) => {
     const newPermissions = policies.filter((p) => p.id !== permission);
     setPolicies(newPermissions);
+  };
+
+  const permissionText = (policy: PolicyResponse): string => {
+    return `${policy.action} on ${policy.resource}`;
   };
 
   return (
@@ -256,12 +263,10 @@ function EditRoleForm(props: {
           <div className="text-slate-400 text-sm mb-2">Permissions</div>
         </div>
         {policies.map((permissionEntry) => (
-          <div key={permissionEntry.resource} className="flex flex-col mb-3">
-            <div>{permissionEntry.resource}</div>
+          <div key={permissionEntry.id} className="flex mb-3">
             <div className="text-slate-400 text-sm">
               <ColorfulLabel
-                text={permissionEntry.action}
-                color={mapActionToColor(permissionEntry.action)}
+                text={permissionText(permissionEntry)}
                 onDelete={() =>
                   removePermission(permissionEntry.resource, permissionEntry.id)
                 }
@@ -271,29 +276,19 @@ function EditRoleForm(props: {
         ))}
         <div className="flex mb-3 border-t">
           <select
-            name="connection"
+            name="permissions"
             className="py-1 px-4 m-2  border-slate-200 border rounded-md text-sm focus:border-blue-500 focus:ring-blue-50"
-            value={connectionToAdd}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-              setConnectionToAdd(e.target.value)
-            }
-          >
-            {props.connections.map((connection) => (
-              <option value={connection.id}>{connection.displayName}</option>
-            ))}
-          </select>
-          <select
-            name="permission"
-            className="py-1 px-4 m-2 border border-slate-200 rounded-md text-sm focus:border-blue-500 focus:ring-blue-50"
             value={permissionToAdd}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
               setPermissionToAdd(e.target.value)
             }
           >
-            {permissionOptions.map((option) => (
-              <option value={option.value}>{option.label}</option>
+            {permissions.map((permission) => (
+              <option value={permissions}>{permission}</option>
             ))}
           </select>
+          <Select options={permissions}></Select>
+          <ComboBox></ComboBox>
           <Button className="ml-auto" onClick={() => {}}>
             Add Permission
           </Button>
@@ -322,7 +317,7 @@ function RoleForm(props: {
 
   return (
     <form method="post" onSubmit={saveRole}>
-      <div className="w-2xl shadow p-3 bg-white rounded">
+      <div className="w-2xl shadow p-3 bg-white dark:bg-slate-950 rounded">
         <div className="flex flex-col mb-3">
           <InputField
             id="name"
