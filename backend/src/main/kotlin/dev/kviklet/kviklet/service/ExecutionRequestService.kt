@@ -75,6 +75,7 @@ class ExecutionRequestService(
             description = request.description ?: executionRequestDetails.request.description,
             statement = request.statement ?: executionRequestDetails.request.statement,
             readOnly = request.readOnly ?: executionRequestDetails.request.readOnly,
+            executionStatus = executionRequestDetails.request.executionStatus,
         )
     }
 
@@ -130,7 +131,11 @@ class ExecutionRequestService(
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
         val connection = executionRequest.request.connection
 
-        return executorService.execute(
+        if (executionRequest.request.executionStatus == "EXECUTED") {
+            throw AlreadyExecutedException("This request has already been executed, can only execute once!")
+        }
+
+        val result = executorService.execute(
             executionRequestId = id,
             connectionString = connection.getConnectionString(),
             username = connection.username,
@@ -142,9 +147,23 @@ class ExecutionRequestService(
                 )
             },
         )
+        if (executionRequest.request.type == RequestType.SingleQuery) {
+            executionRequestAdapter.updateExecutionRequest(
+                id,
+                title = executionRequest.request.title,
+                description = executionRequest.request.description,
+                statement = executionRequest.request.statement,
+                readOnly = executionRequest.request.readOnly,
+                executionStatus = "EXECUTED",
+            )
+        }
+
+        return result
     }
 }
 
 class InvalidReviewException(message: String) : RuntimeException(message)
 
 class MissingQueryException(message: String) : RuntimeException(message)
+
+class AlreadyExecutedException(message: String) : RuntimeException(message)

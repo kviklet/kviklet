@@ -167,12 +167,14 @@ class ExecutionRequestAdapter(
         description: String?,
         statement: String?,
         readOnly: Boolean,
+        executionStatus: String,
     ): ExecutionRequestDetails {
         val executionRequestEntity = getExecutionRequestDetailsEntity(id)
         executionRequestEntity.title = title
         executionRequestEntity.description = description
         executionRequestEntity.statement = statement
         executionRequestEntity.readOnly = readOnly
+        executionRequestEntity.executionStatus = executionStatus
 
         executionRequestRepository.save(executionRequestEntity)
         return executionRequestEntity.toDetailDto()
