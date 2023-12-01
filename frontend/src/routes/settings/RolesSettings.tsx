@@ -18,7 +18,6 @@ import { ConnectionResponse } from "../../api/DatasourceApi";
 import DeleteConfirm from "../../components/DeleteConfirm";
 import React from "react";
 import ComboBox from "../../components/ComboBox";
-import Select from "../../components/Select";
 
 const Tooltip = ({
   children,
