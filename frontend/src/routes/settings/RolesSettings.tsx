@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
 import {
+  PolicyResponse,
   RoleResponse,
   createRole,
   getRoles,
@@ -16,6 +17,7 @@ import { useDatasources } from "./DatabaseSettings";
 import { ConnectionResponse } from "../../api/DatasourceApi";
 import DeleteConfirm from "../../components/DeleteConfirm";
 import React from "react";
+import ComboBox from "../../components/ComboBox";
 
 const Tooltip = ({
   children,
@@ -34,7 +36,7 @@ const Tooltip = ({
     >
       {children}
       {hovered && (
-        <div className="absolute bottom-0 left-0 bg-gray-800 text-white text-xs rounded p-1">
+        <div className="absolute bottom-0 left-0 bg-slate-800 text-white text-xs rounded p-1">
           {text}
         </div>
       )}
@@ -107,25 +109,25 @@ const Table = ({
     <div className="flex flex-col w-full">
       <div className="overflow-x-auto">
         <div className="align-middle inline-block min-w-full">
-          <div className="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50 text-left">
+          <div className="shadow overflow-hidden border-b border-slate-200 sm:rounded-lg">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50 dark:bg-slate-900 dark:text-slate-200 text-slate-700 text-left">
                 <tr>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-xs font-medium uppercase tracking-wider"
                   >
                     Role Name
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-xs font-medium uppercase tracking-wider"
                   >
                     Description
                   </th>
                   <th
                     scope="col"
-                    className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-6 py-3 text-xs font-medium uppercase tracking-wider"
                   >
                     Permissions
                   </th>
@@ -137,10 +139,10 @@ const Table = ({
               <tbody>
                 {roles.map((role) => (
                   <tr key={role.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-50">
                       {role.name}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-200">
                       {role.description}
                     </td>
                     <td>
@@ -149,7 +151,7 @@ const Table = ({
                           .map((policy) => policy.action)
                           .join(",")}
                       >
-                        <div className="text-gray-400 hover:text-gray-900">
+                        <div className="text-slate-400 hover:text-slate-900">
                           <FontAwesomeIcon icon={solid("eye")} />
                         </div>
                       </Tooltip>
@@ -158,13 +160,13 @@ const Table = ({
                       <div className="flex flex-row">
                         <button
                           onClick={() => handleEditRole(role)}
-                          className="text-gray-400 hover:text-gray-900 mr-2"
+                          className="text-slate-400 hover:text-slate-900 mr-2"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => handleDeleteRole(role)}
-                          className="text-gray-400 hover:text-gray-900"
+                          className="text-slate-400 hover:text-slate-900"
                         >
                           <FontAwesomeIcon icon={solid("trash")} />
                         </button>
@@ -177,7 +179,7 @@ const Table = ({
           </div>
           {roles.length === 0 && (
             <div className="flex flex-row justify-center items-center p-5">
-              <div className="text-gray-400">No roles found</div>
+              <div className="text-slate-400">No roles found</div>
             </div>
           )}
         </div>
@@ -193,26 +195,25 @@ function EditRoleForm(props: {
   const [policies, setPolicies] = useState(props.role.policies);
   const [name, setName] = useState(props.role.name);
   const [description, setDescription] = useState(props.role.description);
-  const [connectionToAdd, setConnectionToAdd] = useState("");
-  const [permissionToAdd, setPermissionToAdd] = useState("");
-  const mapActionToColor = (action: string) => {
-    switch (action) {
-      case "READ":
-        return "bg-green-200 text-green-800";
-      case "WRITE":
-        return "bg-blue-200 text-blue-800";
-      case "EXECUTE":
-        return "bg-yellow-200 text-yellow-800";
-      default:
-        return "bg-gray-200 text-gray-800";
-    }
-  };
+  const [selectedPermissions, setSelectedPermission] =
+    useState("DATASOURCE_GET");
 
-  const permissionOptions = [
-    { value: "READ", label: "Read" },
-    { value: "WRITE", label: "Write" },
-    { value: "EXECUTE", label: "Execute" },
+  const permissions = [
+    "DATASOURCE_GET",
+    "DATASOURCE_EDIT",
+    "DATASOURCE_CREATE",
+    "DATASOURCE_CONNECTION_GET",
+    "DATASOURCE_CONNECTION_EDIT",
+    "DATASOURCE_CONNECTION_CREATE",
+    "EXECUTION_REQUEST_GET",
+    "EXECUTION_REQUEST_EDIT",
+    "EXECUTION_REQUEST_EXECUTE",
   ];
+
+  const [selectedOption, setSelectedOption] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const handleEditRole = (event: React.SyntheticEvent) => {
     event.preventDefault();
@@ -229,9 +230,13 @@ function EditRoleForm(props: {
     setPolicies(newPermissions);
   };
 
+  const permissionText = (policy: PolicyResponse): string => {
+    return `${policy.action} on ${policy.resource}`;
+  };
+
   return (
     <form method="post" onSubmit={handleEditRole}>
-      <div className="w-2xl shadow p-3 bg-white rounded">
+      <div className="w-2xl shadow p-3 bg-white dark:bg-slate-950 rounded">
         <div className="flex flex-col mb-3">
           <InputField
             id="name"
@@ -253,15 +258,13 @@ function EditRoleForm(props: {
           />
         </div>
         <div>
-          <div className="text-gray-400 text-sm mb-2">Permissions</div>
+          <div className="text-slate-400 text-sm mb-2">Permissions</div>
         </div>
         {policies.map((permissionEntry) => (
-          <div key={permissionEntry.resource} className="flex flex-col mb-3">
-            <div>{permissionEntry.resource}</div>
-            <div className="text-gray-400 text-sm">
+          <div key={permissionEntry.id} className="flex mb-3">
+            <div className="text-slate-400 text-sm">
               <ColorfulLabel
-                text={permissionEntry.action}
-                color={mapActionToColor(permissionEntry.action)}
+                text={permissionText(permissionEntry)}
                 onDelete={() =>
                   removePermission(permissionEntry.resource, permissionEntry.id)
                 }
@@ -270,30 +273,34 @@ function EditRoleForm(props: {
           </div>
         ))}
         <div className="flex mb-3 border-t">
-          <select
-            name="connection"
-            className="py-1 px-4 m-2  border-gray-200 border rounded-md text-sm focus:border-blue-500 focus:ring-blue-50"
-            value={connectionToAdd}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-              setConnectionToAdd(e.target.value)
-            }
-          >
-            {props.connections.map((connection) => (
-              <option value={connection.id}>{connection.displayName}</option>
-            ))}
-          </select>
-          <select
-            name="permission"
-            className="py-1 px-4 m-2 border border-gray-200 rounded-md text-sm focus:border-blue-500 focus:ring-blue-50"
-            value={permissionToAdd}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-              setPermissionToAdd(e.target.value)
-            }
-          >
-            {permissionOptions.map((option) => (
-              <option value={option.value}>{option.label}</option>
-            ))}
-          </select>
+          <div>
+            <label
+              htmlFor="permissions"
+              className="block text-sm font-medium leading-6 text-slate-900 dark:text-slate-50"
+            >
+              Permission
+            </label>
+            <select
+              id="permission"
+              name="permission"
+              className="mt-2 block w-full dark:bg-slate-900 rounded-md border-0 py-1.5 pl-3 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6 dark:text-slate-50"
+              defaultValue={permissions[0]}
+              value={selectedPermissions}
+              onChange={(e) => setSelectedPermission(e.target.value)}
+            >
+              {permissions.map((permission) => (
+                <option>{permission}</option>
+              ))}
+            </select>
+          </div>
+          <ComboBox
+            label="Resource"
+            options={props.connections.map((connection) => {
+              return { name: connection.displayName, id: connection.id };
+            })}
+            selectedOption={selectedOption}
+            setSelectedOption={setSelectedOption}
+          ></ComboBox>
           <Button className="ml-auto" onClick={() => {}}>
             Add Permission
           </Button>
@@ -322,7 +329,7 @@ function RoleForm(props: {
 
   return (
     <form method="post" onSubmit={saveRole}>
-      <div className="w-2xl shadow p-3 bg-white rounded">
+      <div className="w-2xl shadow p-3 bg-white dark:bg-slate-950 rounded">
         <div className="flex flex-col mb-3">
           <InputField
             id="name"

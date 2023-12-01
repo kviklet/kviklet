@@ -17,16 +17,16 @@ const colorFromText = (text: string) => {
     return hash;
   };
   const colors = [
-    "bg-blue-600",
-    "bg-green-600",
-    "bg-yellow-600",
-    "bg-red-600",
-    "bg-indigo-600",
-    "bg-purple-600",
-    "bg-pink-600",
-    "bg-cyan-600",
-    "bg-lime-600",
-    "bg-emerald-600",
+    "darK:bg-blue-600 dark:text-white bg-white border-blue-600 text-blue-800",
+    "dark:bg-green-600 dark:text-white bg-white border-green-600 text-green-800",
+    "dark:bg-yellow-600 dark:text-white bg-white border-yellow-600 text-yellow-800",
+    "dark:bg-red-600 dark:text-white bg-white border-red-600 text-red-800",
+    "dark:bg-indigo-600 dark:text-white bg-white border-indigo-600 text-indigo-800",
+    "dark:bg-purple-600 dark:text-white bg-white border-purple-600 text-purple-800",
+    "dark:bg-pink-600 dark:text-white bg-white border-ping-600 text-pink-800",
+    "dark:bg-cyan-600 dark:text-white bg-white border-cyan-600 text-cyan-800",
+    "dark:bg-lime-600 dark:text-white bg-white border-lime-600 text-lime-800",
+    "dark:bg-emerald-600 dark:text-white bg-white border-emerald-600 text-emerald-800",
   ];
 
   return colors[Math.abs(djb2(text)) % colors.length];
@@ -45,7 +45,7 @@ const ColorfulLabel = (props: {
       onClick={props.onClick}
       className={`${color} ${
         props.onClick && "cursor-pointer"
-      } text-white text-sm rounded-full px-2 py-1 m-1`}
+      }  text-sm rounded-full px-2 py-1 m-1 border dark:border-none`}
     >
       {capitalizeFirstLetter(props.text)}
 
