@@ -196,8 +196,8 @@ function EditRoleForm(props: {
   const [policies, setPolicies] = useState(props.role.policies);
   const [name, setName] = useState(props.role.name);
   const [description, setDescription] = useState(props.role.description);
-  const [permissionToAdd, setPermissionToAdd] = useState("");
-  const [resourceToAdd, setResourceToAdd] = useState("");
+  const [selectedPermissions, setSelectedPermission] =
+    useState("DATASOURCE_GET");
 
   const permissions = [
     "DATASOURCE_GET",
@@ -211,11 +211,10 @@ function EditRoleForm(props: {
     "EXECUTION_REQUEST_EXECUTE",
   ];
 
-  const permissionOptions = [
-    { value: "READ", label: "Read" },
-    { value: "WRITE", label: "Write" },
-    { value: "EXECUTE", label: "Execute" },
-  ];
+  const [selectedOption, setSelectedOption] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const handleEditRole = (event: React.SyntheticEvent) => {
     event.preventDefault();
@@ -275,20 +274,34 @@ function EditRoleForm(props: {
           </div>
         ))}
         <div className="flex mb-3 border-t">
-          <select
-            name="permissions"
-            className="py-1 px-4 m-2  border-slate-200 border rounded-md text-sm focus:border-blue-500 focus:ring-blue-50"
-            value={permissionToAdd}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-              setPermissionToAdd(e.target.value)
-            }
-          >
-            {permissions.map((permission) => (
-              <option value={permissions}>{permission}</option>
-            ))}
-          </select>
-          <Select options={permissions}></Select>
-          <ComboBox></ComboBox>
+          <div>
+            <label
+              htmlFor="permissions"
+              className="block text-sm font-medium leading-6 text-slate-900 dark:text-slate-50"
+            >
+              Permission
+            </label>
+            <select
+              id="permission"
+              name="permission"
+              className="mt-2 block w-full dark:bg-slate-900 rounded-md border-0 py-1.5 pl-3 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6 dark:text-slate-50"
+              defaultValue={permissions[0]}
+              value={selectedPermissions}
+              onChange={(e) => setSelectedPermission(e.target.value)}
+            >
+              {permissions.map((permission) => (
+                <option>{permission}</option>
+              ))}
+            </select>
+          </div>
+          <ComboBox
+            label="Resource"
+            options={props.connections.map((connection) => {
+              return { name: connection.displayName, id: connection.id };
+            })}
+            selectedOption={selectedOption}
+            setSelectedOption={setSelectedOption}
+          ></ComboBox>
           <Button className="ml-auto" onClick={() => {}}>
             Add Permission
           </Button>
