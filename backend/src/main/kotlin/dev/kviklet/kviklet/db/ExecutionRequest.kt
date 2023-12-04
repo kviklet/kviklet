@@ -61,7 +61,7 @@ class ExecutionRequestEntity(
     }
 
     fun toDto(): ExecutionRequest = ExecutionRequest(
-        id = ExecutionRequestId(id),
+        id = ExecutionRequestId(id!!),
         connection = connection.toDto(),
         title = title,
         type = type,

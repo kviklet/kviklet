@@ -1,7 +1,7 @@
 package dev.kviklet.kviklet.service.dto
 
 data class Role(
-    val id: String = "",
+    val id: String? = null,
     val name: String,
     val description: String,
     val policies: Set<Policy> = HashSet(),

@@ -63,16 +63,15 @@ class TestDataInitializer(
         val role = RoleEntity(
             name = "Test Role",
             description = "This is a test role",
-            policies = emptySet(),
+            policies = setOf(
+                PolicyEntity(
+                    action = "*",
+                    effect = PolicyEffect.ALLOW,
+                    resource = "*",
+                ),
+            ),
         )
         val savedRole = roleRepository.saveAndFlush(role)
-        val policyEntity = PolicyEntity(
-            role = savedRole,
-            action = "*",
-            effect = PolicyEffect.ALLOW,
-            resource = "*",
-        )
-        policyRepository.saveAndFlush(policyEntity)
 
         savedUser.roles += savedRole
     }

@@ -70,7 +70,7 @@ class ExecutionRequestService(
         }
 
         return executionRequestAdapter.updateExecutionRequest(
-            id = executionRequestDetails.request.id,
+            id = executionRequestDetails.request.id!!,
             title = request.title ?: executionRequestDetails.request.title,
             description = request.description ?: executionRequestDetails.request.description,
             statement = request.statement ?: executionRequestDetails.request.statement,
