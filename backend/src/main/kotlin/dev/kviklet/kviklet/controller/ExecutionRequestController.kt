@@ -85,7 +85,7 @@ data class ExecutionRequestResponse(
         fun fromDto(dto: ExecutionRequestDetails): ExecutionRequestResponse {
             val userResponse = UserResponse(dto.request.author)
             return ExecutionRequestResponse(
-                id = dto.request.id,
+                id = dto.request.id!!,
                 author = userResponse,
                 type = dto.request.type,
                 title = dto.request.title,
@@ -123,7 +123,7 @@ data class ExecutionRequestDetailResponse(
 
     companion object {
         fun fromDto(dto: ExecutionRequestDetails) = ExecutionRequestDetailResponse(
-            id = dto.request.id,
+            id = dto.request.id!!,
             author = UserResponse(dto.request.author),
             type = dto.request.type,
             title = dto.request.title,
@@ -234,16 +234,16 @@ abstract class EventResponse(
 
     companion object {
         fun fromEvent(event: Event): EventResponse = when (event) {
-            is CommentEvent -> CommentEventResponse(event.eventId, event.author, event.createdAt, event.comment)
+            is CommentEvent -> CommentEventResponse(event.eventId!!, event.author, event.createdAt, event.comment)
             is ReviewEvent -> ReviewEventResponse(
-                event.eventId,
+                event.eventId!!,
                 event.author,
                 event.createdAt,
                 event.comment,
                 event.action,
             )
             is EditEvent -> EditEventResponse(
-                event.eventId,
+                event.eventId!!,
                 event.author,
                 event.createdAt,
                 event.previousQuery,

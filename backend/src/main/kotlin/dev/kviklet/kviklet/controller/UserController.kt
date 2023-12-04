@@ -55,7 +55,7 @@ data class UserResponse(
     val roles: List<RoleResponse>,
 ) {
     constructor(user: User) : this(
-        id = user.id,
+        id = user.id!!,
         email = user.email,
         fullName = user.fullName,
         permissionString = permissionsToPermissionString(user.policies),

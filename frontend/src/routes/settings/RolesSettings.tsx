@@ -5,7 +5,9 @@ import { useEffect, useState } from "react";
 import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
 import {
+  PolicyPatch,
   PolicyResponse,
+  RolePatch,
   RoleResponse,
   createRole,
   getRoles,
@@ -50,7 +52,7 @@ const useRoles = (): {
   error: Error | null;
   deleteRole: (id: string) => Promise<void>;
   addRole: (name: string, description: string) => Promise<void>;
-  editRole: (id: string, role: RoleResponse) => Promise<void>;
+  editRole: (id: string, role: RolePatch) => Promise<void>;
 } => {
   const [roles, setRoles] = useState<RoleResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,7 +84,7 @@ const useRoles = (): {
     setRoles(newRoles);
   };
 
-  const editRole = async (id: string, role: RoleResponse) => {
+  const editRole = async (id: string, role: RolePatch) => {
     const newRole = await patchRole(id, role);
     const newRoles = roles.map((role) => {
       if (role.id === id) {
@@ -190,9 +192,11 @@ const Table = ({
 function EditRoleForm(props: {
   connections: ConnectionResponse[];
   role: RoleResponse;
-  editRole: (role: RoleResponse) => Promise<void>;
+  editRole: (role: RolePatch) => Promise<void>;
 }) {
-  const [policies, setPolicies] = useState(props.role.policies);
+  const [policies, setPolicies] = useState<(PolicyPatch | PolicyResponse)[]>(
+    props.role.policies,
+  );
   const [name, setName] = useState(props.role.name);
   const [description, setDescription] = useState(props.role.description);
   const [selectedPermissions, setSelectedPermission] =
@@ -225,12 +229,35 @@ function EditRoleForm(props: {
     });
   };
 
-  const removePermission = (connectionId: string, permission: string) => {
-    const newPermissions = policies.filter((p) => p.id !== permission);
+  const addPolicy = (event: React.SyntheticEvent) => {
+    event.preventDefault();
+    if (!selectedOption) {
+      return;
+    }
+    const newPolicy: PolicyPatch = {
+      effect: "ALLOW",
+      action: selectedPermissions,
+      resource: selectedOption.id,
+    };
+    setPolicies([...policies, newPolicy]);
+  };
+
+  const removePermission = (
+    connectionId: string,
+    permission: string,
+    effect: string,
+    resource: string,
+  ) => {
+    const newPermissions = policies.filter(
+      (p) =>
+        p.resource !== resource ||
+        p.action !== permission ||
+        p.effect !== effect,
+    );
     setPolicies(newPermissions);
   };
 
-  const permissionText = (policy: PolicyResponse): string => {
+  const permissionText = (policy: PolicyResponse | PolicyPatch): string => {
     return `${policy.action} on ${policy.resource}`;
   };
 
@@ -261,12 +288,20 @@ function EditRoleForm(props: {
           <div className="text-slate-400 text-sm mb-2">Permissions</div>
         </div>
         {policies.map((permissionEntry) => (
-          <div key={permissionEntry.id} className="flex mb-3">
+          <div
+            key={permissionEntry.action + permissionEntry.resource}
+            className="flex mb-3"
+          >
             <div className="text-slate-400 text-sm">
               <ColorfulLabel
                 text={permissionText(permissionEntry)}
                 onDelete={() =>
-                  removePermission(permissionEntry.resource, permissionEntry.id)
+                  removePermission(
+                    permissionEntry.resource,
+                    permissionEntry.action,
+                    permissionEntry.effect,
+                    permissionEntry.resource,
+                  )
                 }
               ></ColorfulLabel>
             </div>
@@ -301,7 +336,7 @@ function EditRoleForm(props: {
             selectedOption={selectedOption}
             setSelectedOption={setSelectedOption}
           ></ComboBox>
-          <Button className="ml-auto" onClick={() => {}}>
+          <Button className="ml-auto" onClick={addPolicy}>
             Add Permission
           </Button>
         </div>
@@ -381,7 +416,7 @@ const RoleSettings = () => {
     setShowEditModal(true);
   };
 
-  const handleEditRoleConfirm = async (role: RoleResponse) => {
+  const handleEditRoleConfirm = async (role: RolePatch) => {
     await editRole(role.id, role);
     setShowEditModal(false);
   };

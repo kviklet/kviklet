@@ -20,7 +20,7 @@ class UserDetailsServiceImpl(
 
         val authorities = listOf(SimpleGrantedAuthority("USERS"))
 
-        return UserDetailsWithId(user.id, user.email, user.password, authorities)
+        return UserDetailsWithId(user.id!!, user.email, user.password, authorities)
     }
 }
 

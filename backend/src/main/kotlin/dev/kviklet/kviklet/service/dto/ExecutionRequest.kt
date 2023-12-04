@@ -28,7 +28,7 @@ enum class RequestType {
  * A DTO for the {@link dev.kviklet.kviklet.db.ExecutionRequestEntity} entity
  */
 data class ExecutionRequest(
-    val id: ExecutionRequestId,
+    val id: ExecutionRequestId?,
     val connection: DatasourceConnection,
     val title: String,
     val type: RequestType,

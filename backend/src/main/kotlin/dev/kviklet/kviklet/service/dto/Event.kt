@@ -36,10 +36,10 @@ abstract class Event(
     open val createdAt: LocalDateTime = LocalDateTime.now(),
     open val request: ExecutionRequestDetails,
 ) : SecuredDomainObject {
-    abstract val eventId: String
+    abstract val eventId: String?
     abstract val author: User
 
-    override fun getId(): String = eventId
+    override fun getId(): String? = eventId
 
     override fun getDomainObjectType(): Resource = Resource.EVENT
 
@@ -48,7 +48,7 @@ abstract class Event(
 
     companion object {
         fun create(
-            id: String,
+            id: String?,
             request: ExecutionRequestDetails,
             author: User,
             createdAt: LocalDateTime,
@@ -62,7 +62,7 @@ abstract class Event(
 }
 
 data class CommentEvent(
-    override val eventId: String,
+    override val eventId: String?,
     override val request: ExecutionRequestDetails,
     override val author: User,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
@@ -72,7 +72,7 @@ data class CommentEvent(
 }
 
 data class ReviewEvent(
-    override val eventId: String,
+    override val eventId: String?,
     override val request: ExecutionRequestDetails,
     override val author: User,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
@@ -83,7 +83,7 @@ data class ReviewEvent(
 }
 
 data class EditEvent(
-    override val eventId: String,
+    override val eventId: String?,
     override val request: ExecutionRequestDetails,
     override val author: User,
     override val createdAt: LocalDateTime = LocalDateTime.now(),

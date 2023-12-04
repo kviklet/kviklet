@@ -52,7 +52,7 @@ data class UserEntity(
 
 // A dto for the UserEntity
 data class User(
-    val id: String = "",
+    val id: String? = "",
     val fullName: String? = null,
     val password: String? = null,
     val googleId: String? = null,

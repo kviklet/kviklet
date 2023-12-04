@@ -8,6 +8,10 @@ const policyResponseSchema = z.object({
   resource: z.string(),
 });
 
+const policyPatchSchema = policyResponseSchema.omit({
+  id: true,
+});
+
 // Define the schema for the user response
 const roleResponseSchema = z.object({
   id: z.string(),
@@ -16,11 +20,7 @@ const roleResponseSchema = z.object({
   policies: z.array(policyResponseSchema),
 });
 
-const editRoleRequestSchema = roleResponseSchema.omit({
-  id: true,
-});
-
-type EditRoleRequest = z.infer<typeof editRoleRequestSchema>;
+type PolicyPatch = z.infer<typeof policyPatchSchema>;
 
 const createRoleRequestSchema = z.object({
   name: z.string(),
@@ -31,7 +31,15 @@ const rolesResponseSchema = z.object({
   roles: roleResponseSchema.array(),
 });
 
+const rolePatchSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().nullable(),
+  policies: z.array(policyPatchSchema),
+});
+
 type RoleResponse = z.infer<typeof roleResponseSchema>;
+type RolePatch = z.infer<typeof rolePatchSchema>;
 type PolicyResponse = z.infer<typeof policyResponseSchema>;
 type CreateRoleRequest = z.infer<typeof createRoleRequestSchema>;
 
@@ -68,7 +76,7 @@ const removeRole = async (id: string): Promise<void> => {
 
 const patchRole = async (
   id: string,
-  role: EditRoleRequest,
+  role: RolePatch,
 ): Promise<RoleResponse> => {
   const response = await fetch(`${baseUrl}/roles/${id}`, {
     method: "PATCH",
@@ -83,4 +91,10 @@ const patchRole = async (
 };
 
 export { roleResponseSchema, getRoles, createRole, patchRole, removeRole };
-export type { RoleResponse, PolicyResponse, CreateRoleRequest };
+export type {
+  RoleResponse,
+  PolicyResponse,
+  CreateRoleRequest,
+  PolicyPatch,
+  RolePatch,
+};

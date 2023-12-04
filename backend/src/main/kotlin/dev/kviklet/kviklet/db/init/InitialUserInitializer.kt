@@ -25,16 +25,15 @@ class InitialUserInitializer(
         val role = RoleEntity(
             name = "Admin role",
             description = "This role gives admin permissions on everything",
-            policies = emptySet(),
+            policies = setOf(
+                PolicyEntity(
+                    action = "*",
+                    effect = PolicyEffect.ALLOW,
+                    resource = "*",
+                ),
+            ),
         )
         val savedRole = roleRepository.saveAndFlush(role)
-        val policyEntity = PolicyEntity(
-            role = savedRole,
-            action = "*",
-            effect = PolicyEffect.ALLOW,
-            resource = "*",
-        )
-        policyRepository.saveAndFlush(policyEntity)
 
         savedUser.roles += savedRole
     }

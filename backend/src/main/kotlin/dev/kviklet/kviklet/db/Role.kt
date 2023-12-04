@@ -16,16 +16,32 @@ import org.springframework.stereotype.Service
 
 @Entity
 @Table(name = "role")
-data class RoleEntity(
+class RoleEntity : BaseEntity {
+
     @Column(nullable = false)
-    val name: String = "",
+    lateinit var name: String
+
     @Column(nullable = false)
-    val description: String = "",
+    lateinit var description: String
 
     @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id")
-    var policies: Set<PolicyEntity> = HashSet(),
-) : BaseEntity() {
+    var policies: Set<PolicyEntity> = HashSet()
+
+    constructor(
+        id: String? = null,
+        name: String,
+        description: String,
+        policies: Set<PolicyEntity> = emptySet(),
+    ) : this() {
+        this.id = id
+        this.name = name
+        this.description = description
+        this.policies = policies
+    }
+
+    constructor()
+
     fun toDto() = Role(
         id = id,
         name = name,
@@ -66,5 +82,24 @@ class RoleAdapter(
 
     fun delete(id: String) {
         roleRepository.deleteById(id)
+    }
+
+    fun update(role: Role): Role {
+        val savedRole = roleRepository.save(
+            RoleEntity(
+                id = role.id,
+                name = role.name,
+                description = role.description,
+                policies = role.policies.map {
+                    PolicyEntity(
+                        id = it.id,
+                        action = it.action,
+                        effect = it.effect,
+                        resource = it.resource,
+                    )
+                }.toSet(),
+            ),
+        )
+        return savedRole.toDto()
     }
 }

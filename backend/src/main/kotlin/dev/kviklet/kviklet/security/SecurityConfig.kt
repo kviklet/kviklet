@@ -160,7 +160,7 @@ class CustomAuthenticationProvider(
         }
 
         // Create a CustomUserDetails object
-        val userDetails = UserDetailsWithId(user.id, email, user.password, emptyList())
+        val userDetails = UserDetailsWithId(user.id!!, email, user.password, emptyList())
 
         val policies = user.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
 

@@ -11,7 +11,7 @@ class StatusController(private val userAdapter: UserAdapter) {
     @GetMapping("/status")
     fun status(@AuthenticationPrincipal userDetails: UserDetailsWithId): ResponseEntity<Any> {
         val user = userAdapter.findById(userDetails.id)
-        return ResponseEntity.ok().body(UserStatus(user.email, user.fullName, user.id, "User is authenticated"))
+        return ResponseEntity.ok().body(UserStatus(user.email, user.fullName, user.id!!, "User is authenticated"))
     }
 }
 

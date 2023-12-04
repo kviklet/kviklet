@@ -3,30 +3,32 @@ package dev.kviklet.kviklet.db
 import dev.kviklet.kviklet.db.util.BaseEntity
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.PolicyEffect
-import jakarta.persistence.CascadeType
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
-import jakarta.persistence.FetchType
-import jakarta.persistence.JoinColumn
-import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import org.springframework.data.jpa.repository.JpaRepository
 
 @Entity
 @Table(name = "policy")
-class PolicyEntity(
-    @ManyToOne(cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
-    @JoinColumn(name = "role_id", nullable = false)
-    val role: RoleEntity,
-    // "connection:read", "connection:*", ...
-    val action: String,
+class PolicyEntity() : BaseEntity() {
+    lateinit var action: String
+
     @Enumerated(EnumType.STRING)
-    val effect: PolicyEffect,
-    // ids: *   ids: 1,2,3
-    val resource: String,
-    // TODO: conditions
-) : BaseEntity() {
+    lateinit var effect: PolicyEffect
+    lateinit var resource: String
+
+    constructor(
+        id: String? = null,
+        action: String,
+        effect: PolicyEffect,
+        resource: String,
+    ) : this() {
+        this.id = id
+        this.action = action
+        this.effect = effect
+        this.resource = resource
+    }
     fun toDto() = Policy(
         id = id,
         action = action,
