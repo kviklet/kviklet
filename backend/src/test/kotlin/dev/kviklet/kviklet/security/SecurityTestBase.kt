@@ -1,11 +1,11 @@
 package dev.kviklet.kviklet.security
 
-import com.example.executiongate.db.User
-import com.example.executiongate.db.UserEntity
-import com.example.executiongate.db.UserRepository
-import com.example.executiongate.service.dto.Policy
-import com.example.executiongate.service.dto.PolicyEffect
 import com.fasterxml.jackson.databind.ObjectMapper
+import dev.kviklet.kviklet.db.User
+import dev.kviklet.kviklet.db.UserEntity
+import dev.kviklet.kviklet.db.UserRepository
+import dev.kviklet.kviklet.service.dto.Policy
+import dev.kviklet.kviklet.service.dto.PolicyEffect
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
@@ -70,7 +70,7 @@ class SecurityTestBase {
 
         testUser = savedUser.toDto()
         testUserDetails = UserDetailsWithId(
-            id = testUser.id,
+            id = testUser.id!!,
             email = testUser.email,
             password = testUser.password,
             authorities = emptyList(),

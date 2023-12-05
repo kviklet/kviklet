@@ -1,11 +1,11 @@
 package dev.kviklet.kviklet.executor
 
-import com.example.executiongate.service.ColumnInfo
-import com.example.executiongate.service.ErrorQueryResult
-import com.example.executiongate.service.ExecutorService
-import com.example.executiongate.service.RecordsQueryResult
-import com.example.executiongate.service.UpdateQueryResult
-import com.example.executiongate.service.dto.ExecutionRequestId
+import dev.kviklet.kviklet.service.ColumnInfo
+import dev.kviklet.kviklet.service.ErrorQueryResult
+import dev.kviklet.kviklet.service.ExecutorService
+import dev.kviklet.kviklet.service.RecordsQueryResult
+import dev.kviklet.kviklet.service.UpdateQueryResult
+import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

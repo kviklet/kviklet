@@ -1,18 +1,19 @@
 package dev.kviklet.kviklet.security
 
-import com.example.executiongate.TestFixtures.createDatasourceConnectionRequest
-import com.example.executiongate.TestFixtures.createDatasourceRequest
-import com.example.executiongate.TestFixtures.createExecutionRequestRequest
-import com.example.executiongate.TestFixtures.updateExecutionRequestRequest
-import com.example.executiongate.controller.ExecutionRequestController
-import com.example.executiongate.controller.ExecutionRequestDetailResponse
-import com.example.executiongate.controller.ExecutionRequestResponse
-import com.example.executiongate.db.DatasourceConnectionRepository
-import com.example.executiongate.db.DatasourceRepository
-import com.example.executiongate.db.ExecutionRequestRepository
-import com.example.executiongate.service.dto.DatasourceId
-import com.example.executiongate.service.dto.Policy
+import dev.kviklet.kviklet.TestFixtures.createDatasourceConnectionRequest
+import dev.kviklet.kviklet.TestFixtures.createDatasourceRequest
+import dev.kviklet.kviklet.TestFixtures.createExecutionRequestRequest
+import dev.kviklet.kviklet.TestFixtures.updateExecutionRequestRequest
+import dev.kviklet.kviklet.controller.DatasourceConnectionController
 import dev.kviklet.kviklet.controller.DatasourceController
+import dev.kviklet.kviklet.controller.ExecutionRequestController
+import dev.kviklet.kviklet.controller.ExecutionRequestDetailResponse
+import dev.kviklet.kviklet.controller.ExecutionRequestResponse
+import dev.kviklet.kviklet.db.DatasourceConnectionRepository
+import dev.kviklet.kviklet.db.DatasourceRepository
+import dev.kviklet.kviklet.db.ExecutionRequestRepository
+import dev.kviklet.kviklet.service.dto.DatasourceId
+import dev.kviklet.kviklet.service.dto.Policy
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -25,7 +26,8 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.util.stream.Stream
 
 class ExecutionRequestSecurityTest(
-    @Autowired val datasourceController: dev.kviklet.kviklet.controller.DatasourceController,
+    @Autowired val datasourceController: DatasourceController,
+    @Autowired val datasourceConnectionController: DatasourceConnectionController,
     @Autowired val executionRequestController: ExecutionRequestController,
     @Autowired val executionRequestRepository: ExecutionRequestRepository,
     @Autowired val datasourceRepository: DatasourceRepository,
@@ -38,8 +40,8 @@ class ExecutionRequestSecurityTest(
     fun setUp() {
         asAdmin {
             datasourceController.createDatasource(createDatasourceRequest("db1"))
-            datasourceController.createDatasourceConnection(
-                DatasourceId("db1"),
+            datasourceConnectionController.createDatasourceConnection(
+                DatasourceId("db1").toString(),
                 createDatasourceConnectionRequest("db1-conn1"),
             )
             executionRequest = executionRequestController

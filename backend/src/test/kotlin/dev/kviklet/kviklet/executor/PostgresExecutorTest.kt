@@ -1,9 +1,10 @@
 package dev.kviklet.kviklet.executor
 
-import com.example.executiongate.service.ColumnInfo
-import com.example.executiongate.service.ErrorQueryResult
-import com.example.executiongate.service.ExecutorService
-import com.example.executiongate.service.RecordsQueryResult
+import dev.kviklet.kviklet.service.ColumnInfo
+import dev.kviklet.kviklet.service.ErrorQueryResult
+import dev.kviklet.kviklet.service.ExecutorService
+import dev.kviklet.kviklet.service.RecordsQueryResult
+import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -43,21 +44,34 @@ class PostgresExecutorTest(
                 ColumnInfo("col2", "text", "java.lang.String"),
             ),
             data = listOf(mapOf("col1" to "1", "col2" to "2")),
+            executionRequestId = ExecutionRequestId("test"),
         )
     }
 
     @Test
     override fun testDatabaseError() {
         executeQuery("SELECT * FROM foo.non_existent_table;") shouldBe
-            ErrorQueryResult(0, "ERROR: relation \"foo.non_existent_table\" does not exist\n  Position: 15")
+            ErrorQueryResult(
+                0,
+                "ERROR: relation \"foo.non_existent_table\" does not exist\n  Position: 15",
+                ExecutionRequestId("test"),
+            )
 
         executeQuery("FOOBAR") shouldBe
-            ErrorQueryResult(0, "ERROR: syntax error at or near \"FOOBAR\"\n  Position: 1")
+            ErrorQueryResult(
+                0,
+                "ERROR: syntax error at or near \"FOOBAR\"\n  Position: 1",
+                ExecutionRequestId("test"),
+            )
     }
 
     @Test
     override fun testConnectionError() {
         executeQuery("SELECT 1;", username = "root", password = "foo") shouldBe
-            ErrorQueryResult(0, "FATAL: password authentication failed for user \"root\"")
+            ErrorQueryResult(
+                0,
+                "FATAL: password authentication failed for user \"root\"",
+                ExecutionRequestId("test"),
+            )
     }
 }

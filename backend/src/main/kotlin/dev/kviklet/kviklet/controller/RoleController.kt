@@ -1,9 +1,11 @@
 package dev.kviklet.kviklet.controller
 
 import dev.kviklet.kviklet.db.RoleAdapter
+import dev.kviklet.kviklet.service.RoleService
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.Role
+import dev.kviklet.kviklet.service.dto.RoleId
 import jakarta.validation.Valid
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -59,7 +61,7 @@ data class RoleResponse(
     companion object {
         fun fromDto(dto: Role): RoleResponse {
             return RoleResponse(
-                id = dto.id!!,
+                id = dto.id.toString(),
                 name = dto.name,
                 description = dto.description,
                 policies = dto.policies.map { PolicyResponse.fromDto(it) },
@@ -87,11 +89,11 @@ fun permissionsToPermissionString(policies: Set<Policy>): String {
 @RestController()
 @Validated
 @RequestMapping("/roles")
-class RoleController(private val roleAdapter: RoleAdapter) {
+class RoleController(private val roleAdapter: RoleAdapter, private val roleService: RoleService) {
 
     @GetMapping("/:id")
     fun getRole(id: String): RoleResponse {
-        val role = roleAdapter.findById(id)
+        val role = roleAdapter.findById(RoleId(id))
         return RoleResponse.fromDto(role)
     }
 
@@ -116,25 +118,25 @@ class RoleController(private val roleAdapter: RoleAdapter) {
     }
 
     @PatchMapping("/{id}")
-    fun updateRole(@PathVariable id: String, @Valid @RequestBody updateRoleRequest: UpdateRoleRequest): RoleResponse {
-        val role = roleAdapter.findById(id)
-
-        val savedRole = roleAdapter.update(
-            Role(
-                id = id,
-                name = updateRoleRequest.name ?: role.name,
-                description = updateRoleRequest.description ?: role.description,
-                policies = updateRoleRequest.policies?.map {
-                    Policy(
-                        id = it.id,
-                        action = it.action,
-                        effect = it.effect,
-                        resource = it.resource,
-                    )
-                }?.toSet() ?: role.policies,
-            ),
+    fun updateRole(
+        @PathVariable id: String,
+        @Valid @RequestBody
+        updateRoleRequest: UpdateRoleRequest,
+    ): RoleResponse {
+        val updatedRole = roleService.updateRole(
+            RoleId(id),
+            updateRoleRequest.name,
+            updateRoleRequest.description,
+            updateRoleRequest.policies?.map {
+                Policy(
+                    id = it.id,
+                    action = it.action,
+                    effect = it.effect,
+                    resource = it.resource,
+                )
+            }?.toSet(),
         )
-        return RoleResponse.fromDto(savedRole)
+        return RoleResponse.fromDto(updatedRole)
     }
 
     @DeleteMapping("/:id")

@@ -6,7 +6,7 @@ import com.tngtech.archunit.junit.ArchTest
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes
 import jakarta.persistence.Entity
 
-@AnalyzeClasses(packages = ["com.example.executiongate"], importOptions = [DoNotIncludeTests::class])
+@AnalyzeClasses(packages = ["dev.kviklet.kviklet"], importOptions = [DoNotIncludeTests::class])
 class ArchitectureTest {
 
     @ArchTest

@@ -78,25 +78,24 @@ data class DatasourceResponse(
     val datasourceType: DatasourceType,
     val hostname: String,
     val port: Int,
-    val datasourceConnections: List<dev.kviklet.kviklet.controller.DatasourceConnectionResponse>,
+    val datasourceConnections: List<DatasourceConnectionResponse>,
 ) {
     companion object {
-        fun fromDto(datasource: Datasource, connections: List<DatasourceConnection>) =
-            dev.kviklet.kviklet.controller.DatasourceResponse(
-                id = datasource.id,
-                displayName = datasource.displayName,
-                datasourceType = datasource.type,
-                hostname = datasource.hostname,
-                port = datasource.port,
-                datasourceConnections = connections.map {
-                    dev.kviklet.kviklet.controller.DatasourceConnectionResponse.Companion.fromDto(it)
-                },
-            )
+        fun fromDto(datasource: Datasource, connections: List<DatasourceConnection>) = DatasourceResponse(
+            id = datasource.id,
+            displayName = datasource.displayName,
+            datasourceType = datasource.type,
+            hostname = datasource.hostname,
+            port = datasource.port,
+            datasourceConnections = connections.map {
+                DatasourceConnectionResponse.fromDto(it)
+            },
+        )
     }
 }
 
 data class ListDatasourceResponse(
-    val databases: List<dev.kviklet.kviklet.controller.DatasourceResponse>,
+    val databases: List<DatasourceResponse>,
 )
 
 @RestController()
@@ -108,26 +107,26 @@ data class ListDatasourceResponse(
 class DatasourceController(
     val datasourceService: DatasourceService,
     val datasourceConnectionService: DatasourceConnectionService,
-    val config: dev.kviklet.kviklet.MyProperties,
+    val config: MyProperties,
 ) {
 
     @GetMapping("/{datasourceId}")
-    fun getDatasource(@PathVariable datasourceId: String): dev.kviklet.kviklet.controller.DatasourceResponse {
+    fun getDatasource(@PathVariable datasourceId: String): DatasourceResponse {
         return datasourceService.getDatasource(
             DatasourceId(datasourceId),
-        ).let { dev.kviklet.kviklet.controller.DatasourceResponse.Companion.fromDto(it, emptyList()) }
+        ).let { DatasourceResponse.fromDto(it, emptyList()) }
     }
 
     @GetMapping("/")
-    fun listDatasources(): dev.kviklet.kviklet.controller.ListDatasourceResponse {
+    fun listDatasources(): ListDatasourceResponse {
         val connections = datasourceConnectionService.listDatasourceConnections()
         val datasources = datasourceService.listDatasources()
         val datasourceToConnection = connections.groupBy { it.datasource }
 
-        return dev.kviklet.kviklet.controller.ListDatasourceResponse(
+        return ListDatasourceResponse(
             databases = datasources.map { datasource ->
                 val datasourceConnections = datasourceToConnection[datasource]
-                dev.kviklet.kviklet.controller.DatasourceResponse.Companion.fromDto(
+                DatasourceResponse.fromDto(
                     datasource,
                     datasourceConnections
                         ?: emptyList(),
@@ -139,8 +138,8 @@ class DatasourceController(
     @PostMapping("/")
     fun createDatasource(
         @Valid @RequestBody
-        datasourceConnection: dev.kviklet.kviklet.controller.CreateDatasourceRequest,
-    ): dev.kviklet.kviklet.controller.DatasourceResponse {
+        datasourceConnection: CreateDatasourceRequest,
+    ): DatasourceResponse {
         val datasource = datasourceService.createDatasource(
             id = datasourceConnection.id,
             displayName = datasourceConnection.displayName,
@@ -148,17 +147,17 @@ class DatasourceController(
             hostname = datasourceConnection.hostname,
             port = datasourceConnection.port,
         )
-        return dev.kviklet.kviklet.controller.DatasourceResponse.Companion.fromDto(datasource, emptyList())
+        return DatasourceResponse.fromDto(datasource, emptyList())
     }
 
     @PatchMapping("/{datasourceId}")
     fun updateDatasource(
         @PathVariable datasourceId: String,
         @Valid @RequestBody
-        datasource: dev.kviklet.kviklet.controller.UpdateDatasourceRequest,
-    ): dev.kviklet.kviklet.controller.DatasourceResponse {
+        datasource: UpdateDatasourceRequest,
+    ): DatasourceResponse {
         return datasourceService.updateDatasource(DatasourceId(datasourceId), datasource).let {
-            dev.kviklet.kviklet.controller.DatasourceResponse.Companion.fromDto(it, emptyList())
+            DatasourceResponse.fromDto(it, emptyList())
         }
     }
 

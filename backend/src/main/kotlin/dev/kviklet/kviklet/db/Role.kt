@@ -3,6 +3,7 @@ package dev.kviklet.kviklet.db
 import dev.kviklet.kviklet.db.util.BaseEntity
 import dev.kviklet.kviklet.service.EntityNotFound
 import dev.kviklet.kviklet.service.dto.Role
+import dev.kviklet.kviklet.service.dto.RoleId
 import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -43,7 +44,7 @@ class RoleEntity : BaseEntity {
     constructor()
 
     fun toDto() = Role(
-        id = id,
+        id = id?.let { RoleId(it) },
         name = name,
         description = description,
         policies = policies.map { it.toDto() }.toSet(),
@@ -56,8 +57,8 @@ interface RoleRepository : JpaRepository<RoleEntity, String>
 class RoleAdapter(
     private val roleRepository: RoleRepository,
 ) {
-    fun findById(id: String): Role {
-        return roleRepository.findByIdOrNull(id)?.toDto() ?: throw EntityNotFound(
+    fun findById(id: RoleId): Role {
+        return roleRepository.findByIdOrNull(id.toString())?.toDto() ?: throw EntityNotFound(
             "Role not found",
             "Role with id $id does not exist",
         )
@@ -87,7 +88,7 @@ class RoleAdapter(
     fun update(role: Role): Role {
         val savedRole = roleRepository.save(
             RoleEntity(
-                id = role.id,
+                id = role.id.toString(),
                 name = role.name,
                 description = role.description,
                 policies = role.policies.map {

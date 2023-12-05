@@ -1,12 +1,12 @@
 package dev.kviklet.kviklet
 
-import com.example.executiongate.controller.CreateExecutionRequestRequest
-import com.example.executiongate.controller.UpdateExecutionRequestRequest
-import com.example.executiongate.service.dto.DatasourceConnectionId
-import com.example.executiongate.service.dto.DatasourceType
 import dev.kviklet.kviklet.controller.CreateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.CreateDatasourceRequest
+import dev.kviklet.kviklet.controller.CreateExecutionRequestRequest
 import dev.kviklet.kviklet.controller.ReviewConfigRequest
+import dev.kviklet.kviklet.controller.UpdateExecutionRequestRequest
+import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
+import dev.kviklet.kviklet.service.dto.DatasourceType
 
 object TestFixtures {
     fun createDatasourceRequest(id: String) = dev.kviklet.kviklet.controller.CreateDatasourceRequest(
