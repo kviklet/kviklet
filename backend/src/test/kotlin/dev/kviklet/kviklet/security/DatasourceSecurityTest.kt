@@ -1,9 +1,9 @@
 package dev.kviklet.kviklet.security
 
-import com.example.executiongate.TestFixtures.createDatasourceRequest
-import com.example.executiongate.db.DatasourceRepository
-import com.example.executiongate.service.dto.Policy
+import dev.kviklet.kviklet.TestFixtures.createDatasourceRequest
 import dev.kviklet.kviklet.controller.DatasourceController
+import dev.kviklet.kviklet.db.DatasourceRepository
+import dev.kviklet.kviklet.service.dto.Policy
 import io.kotest.matchers.collections.shouldHaveSize
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach

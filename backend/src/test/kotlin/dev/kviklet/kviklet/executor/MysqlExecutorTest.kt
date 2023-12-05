@@ -1,6 +1,6 @@
 package dev.kviklet.kviklet.executor
 
-import com.example.executiongate.service.ExecutorService
+import dev.kviklet.kviklet.service.ExecutorService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.testcontainers.containers.JdbcDatabaseContainer

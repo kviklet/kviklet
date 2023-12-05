@@ -1,24 +1,22 @@
 package dev.kviklet.kviklet
 
-import com.example.executiongate.controller.CreateCommentRequest
-import com.example.executiongate.controller.CreateExecutionRequestRequest
-import com.example.executiongate.controller.CreateReviewRequest
-import com.example.executiongate.controller.ExecutionRequestController
-import com.example.executiongate.db.DatasourceConnectionRepository
-import com.example.executiongate.db.DatasourceRepository
-import com.example.executiongate.db.EventRepository
-import com.example.executiongate.db.ExecutionRequestRepository
-import com.example.executiongate.security.WithAdminUser
-import com.example.executiongate.service.dto.CommentEvent
-import com.example.executiongate.service.dto.DatasourceConnectionId
-import com.example.executiongate.service.dto.DatasourceType
-import com.example.executiongate.service.dto.ReviewAction
-import com.example.executiongate.service.dto.ReviewEvent
-import dev.kviklet.kviklet.controller.CreateDatasourceConnectionRequest
-import dev.kviklet.kviklet.controller.CreateDatasourceRequest
-import dev.kviklet.kviklet.controller.DatasourceController
-import dev.kviklet.kviklet.controller.ListDatasourceResponse
-import dev.kviklet.kviklet.controller.ReviewConfigRequest
+import dev.kviklet.kviklet.controller.CommentEventResponse
+import dev.kviklet.kviklet.controller.CreateCommentRequest
+import dev.kviklet.kviklet.controller.CreateExecutionRequestRequest
+import dev.kviklet.kviklet.controller.CreateReviewRequest
+import dev.kviklet.kviklet.controller.DatasourceConnectionController
+import dev.kviklet.kviklet.controller.ExecutionRequestController
+import dev.kviklet.kviklet.controller.ReviewEventResponse
+import dev.kviklet.kviklet.db.DatasourceConnectionRepository
+import dev.kviklet.kviklet.db.DatasourceRepository
+import dev.kviklet.kviklet.db.EventRepository
+import dev.kviklet.kviklet.db.ExecutionRequestRepository
+import dev.kviklet.kviklet.security.WithAdminUser
+import dev.kviklet.kviklet.service.ExecutionRequestService
+import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
+import dev.kviklet.kviklet.service.dto.DatasourceType
+import dev.kviklet.kviklet.service.dto.RequestType
+import dev.kviklet.kviklet.service.dto.ReviewAction
 import io.kotest.matchers.equality.shouldBeEqualToIgnoringFields
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -43,6 +41,8 @@ class DatasourceConnectionTest(
     @Autowired val eventRepository: EventRepository,
     @Autowired val datasourceController: dev.kviklet.kviklet.controller.DatasourceController,
     @Autowired val executionRequestController: ExecutionRequestController,
+    @Autowired val datasourceConnectionController: DatasourceConnectionController,
+    @Autowired val executionRequestService: ExecutionRequestService,
 ) : TestBase() {
 
     @AfterEach
@@ -78,8 +78,8 @@ class DatasourceConnectionTest(
             ),
         )
 
-        val connection = datasourceController.createDatasourceConnection(
-            datasource.id,
+        val connection = datasourceConnectionController.createDatasourceConnection(
+            datasource.id.toString(),
             dev.kviklet.kviklet.controller.CreateDatasourceConnectionRequest(
                 id = "db-conn",
                 displayName = "My Connection",
@@ -98,6 +98,7 @@ class DatasourceConnectionTest(
                 description = "Request description",
                 statement = "SELECT 1",
                 readOnly = false,
+                type = RequestType.SingleQuery,
             ),
             testUserDetails,
         )
@@ -120,28 +121,30 @@ class DatasourceConnectionTest(
         )
 
         val requestDetails = executionRequestController.get(request.id)
+        val executionRequest = executionRequestService.get(request.id)
 
         requestDetails.events[0].shouldBeEqualToIgnoringFields(
-            ReviewEvent(
+            ReviewEventResponse(
                 id = "id",
+                author = testUser,
                 createdAt = LocalDateTime.now(),
                 comment = "Comment",
                 action = ReviewAction.APPROVE,
-                author = testUser,
             ),
-            ReviewEvent::createdAt,
-            ReviewEvent::id,
+            ReviewEventResponse::createdAt,
+            ReviewEventResponse::id,
         )
 
         requestDetails.events[1].shouldBeEqualToIgnoringFields(
-            CommentEvent(
+            CommentEventResponse(
                 id = "id",
                 createdAt = LocalDateTime.now(),
                 comment = "Comment with a \"quote\"!",
                 author = testUser,
             ),
-            ReviewEvent::createdAt,
-            ReviewEvent::id,
+            false,
+            CommentEventResponse::createdAt,
+            CommentEventResponse::id,
         )
     }
 }

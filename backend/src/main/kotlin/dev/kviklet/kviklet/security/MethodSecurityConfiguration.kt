@@ -29,6 +29,7 @@ enum class Resource(val resourceName: String) {
     DATASOURCE_CONNECTION("datasource_connection"),
     EXECUTION_REQUEST("execution_request"),
     EVENT("event"),
+    ROLE("role"),
 }
 
 enum class Permission(
@@ -45,10 +46,12 @@ enum class Permission(
     DATASOURCE_CONNECTION_EDIT(Resource.DATASOURCE_CONNECTION, "edit", DATASOURCE_CONNECTION_GET),
     DATASOURCE_CONNECTION_CREATE(Resource.DATASOURCE_CONNECTION, "create", DATASOURCE_CONNECTION_GET),
 
-    EXECUTION_REQUEST_GET(Resource.EXECUTION_REQUEST, null, DATASOURCE_CONNECTION_GET),
-    EXECUTION_REQUEST_EDIT(Resource.EXECUTION_REQUEST, null, EXECUTION_REQUEST_GET),
-    EXECUTION_REQUEST_EXECUTE(Resource.EXECUTION_REQUEST, null, EXECUTION_REQUEST_GET),
-    ;
+    EXECUTION_REQUEST_GET(Resource.EXECUTION_REQUEST, "get", DATASOURCE_CONNECTION_GET),
+    EXECUTION_REQUEST_EDIT(Resource.EXECUTION_REQUEST, "edit", EXECUTION_REQUEST_GET),
+    EXECUTION_REQUEST_EXECUTE(Resource.EXECUTION_REQUEST, "execute", EXECUTION_REQUEST_GET),
+
+    ROLE_GET(Resource.ROLE, "get", null),
+    ROLE_EDIT(Resource.ROLE, "edit", ROLE_GET), ;
 
     fun getPermissionString(): String {
         return "${this.resource.resourceName}:${this.action}"

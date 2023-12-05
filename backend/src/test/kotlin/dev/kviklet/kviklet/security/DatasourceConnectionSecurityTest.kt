@@ -1,16 +1,16 @@
 package dev.kviklet.kviklet.security
 
-import com.example.executiongate.TestFixtures.createDatasourceConnectionRequest
-import com.example.executiongate.TestFixtures.createDatasourceRequest
-import com.example.executiongate.db.DatasourceConnectionRepository
-import com.example.executiongate.db.DatasourceRepository
-import com.example.executiongate.service.dto.DatasourceConnectionId
-import com.example.executiongate.service.dto.DatasourceId
-import com.example.executiongate.service.dto.Policy
+import dev.kviklet.kviklet.TestFixtures.createDatasourceConnectionRequest
+import dev.kviklet.kviklet.TestFixtures.createDatasourceRequest
 import dev.kviklet.kviklet.controller.DatasourceConnectionResponse
 import dev.kviklet.kviklet.controller.DatasourceController
 import dev.kviklet.kviklet.controller.ListDatasourceResponse
 import dev.kviklet.kviklet.controller.UpdateDataSourceConnectionRequest
+import dev.kviklet.kviklet.db.DatasourceConnectionRepository
+import dev.kviklet.kviklet.db.DatasourceRepository
+import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
+import dev.kviklet.kviklet.service.dto.DatasourceId
+import dev.kviklet.kviklet.service.dto.Policy
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.AfterEach

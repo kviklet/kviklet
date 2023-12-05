@@ -43,7 +43,7 @@ data class CreateDatasourceConnectionRequest(
 
     val description: String = "",
 
-    val reviewConfig: dev.kviklet.kviklet.controller.ReviewConfigRequest,
+    val reviewConfig: ReviewConfigRequest,
 )
 
 data class UpdateDataSourceConnectionRequest(
@@ -64,7 +64,7 @@ data class UpdateDataSourceConnectionRequest(
 
     val description: String? = null,
 
-    val reviewConfig: dev.kviklet.kviklet.controller.ReviewConfigRequest? = null,
+    val reviewConfig: ReviewConfigRequest? = null,
 )
 
 data class ReviewConfigRequest(
@@ -82,21 +82,20 @@ data class DatasourceConnectionResponse(
     val databaseName: String?,
     val username: String,
     val description: String,
-    val reviewConfig: dev.kviklet.kviklet.controller.ReviewConfigResponse,
+    val reviewConfig: ReviewConfigResponse,
 ) {
     companion object {
-        fun fromDto(datasourceConnection: DatasourceConnection) =
-            dev.kviklet.kviklet.controller.DatasourceConnectionResponse(
-                id = datasourceConnection.id,
-                authenticationType = datasourceConnection.authenticationType,
-                displayName = datasourceConnection.displayName,
-                databaseName = datasourceConnection.databaseName,
-                username = datasourceConnection.username,
-                description = datasourceConnection.description,
-                reviewConfig = dev.kviklet.kviklet.controller.ReviewConfigResponse(
-                    datasourceConnection.reviewConfig.numTotalRequired,
-                ),
-            )
+        fun fromDto(datasourceConnection: DatasourceConnection) = DatasourceConnectionResponse(
+            id = datasourceConnection.id,
+            authenticationType = datasourceConnection.authenticationType,
+            displayName = datasourceConnection.displayName,
+            databaseName = datasourceConnection.databaseName,
+            username = datasourceConnection.username,
+            description = datasourceConnection.description,
+            reviewConfig = ReviewConfigResponse(
+                datasourceConnection.reviewConfig.numTotalRequired,
+            ),
+        )
     }
 }
 
@@ -114,25 +113,25 @@ class DatasourceConnectionController(
     fun getDatasourceConnection(
         @PathVariable datasourceId: String,
         @PathVariable connectionId: String,
-    ): dev.kviklet.kviklet.controller.DatasourceConnectionResponse {
+    ): DatasourceConnectionResponse {
         val datasourceConnection = datasourceConnectionService.getDatasourceConnection(
             datasourceId = DatasourceId(datasourceId),
             datasourceConnectionId = DatasourceConnectionId(connectionId),
         )
-        return dev.kviklet.kviklet.controller.DatasourceConnectionResponse.Companion.fromDto(datasourceConnection)
+        return DatasourceConnectionResponse.fromDto(datasourceConnection)
     }
 
     @PostMapping("/{datasourceId}/connections")
     fun createDatasourceConnection(
         @PathVariable datasourceId: String,
         @Valid @RequestBody
-        datasourceConnection: dev.kviklet.kviklet.controller.CreateDatasourceConnectionRequest,
-    ): dev.kviklet.kviklet.controller.DatasourceConnectionResponse {
+        datasourceConnection: CreateDatasourceConnectionRequest,
+    ): DatasourceConnectionResponse {
         val datasource = datasourceConnectionService.createDatasourceConnection(
             datasourceId = DatasourceId(datasourceId),
             request = datasourceConnection,
         )
-        return dev.kviklet.kviklet.controller.DatasourceConnectionResponse.Companion.fromDto(datasource)
+        return DatasourceConnectionResponse.fromDto(datasource)
     }
 
     @DeleteMapping("/{datasourceId}/connections/{connectionId}")
@@ -147,13 +146,13 @@ class DatasourceConnectionController(
         @PathVariable datasourceId: String,
         @PathVariable connectionId: String,
         @Valid @RequestBody
-        datasourceConnection: dev.kviklet.kviklet.controller.UpdateDataSourceConnectionRequest,
-    ): dev.kviklet.kviklet.controller.DatasourceConnectionResponse {
+        datasourceConnection: UpdateDataSourceConnectionRequest,
+    ): DatasourceConnectionResponse {
         val datasource = datasourceConnectionService.updateDatasourceConnection(
             datasourceId = DatasourceId(datasourceId),
             connectionId = DatasourceConnectionId(connectionId),
             request = datasourceConnection,
         )
-        return dev.kviklet.kviklet.controller.DatasourceConnectionResponse.Companion.fromDto(datasource)
+        return DatasourceConnectionResponse.fromDto(datasource)
     }
 }

@@ -1,14 +1,14 @@
 package dev.kviklet.kviklet
 
-import com.example.executiongate.db.PolicyEntity
-import com.example.executiongate.db.PolicyRepository
-import com.example.executiongate.db.RoleEntity
-import com.example.executiongate.db.RoleRepository
-import com.example.executiongate.db.User
-import com.example.executiongate.db.UserEntity
-import com.example.executiongate.db.UserRepository
-import com.example.executiongate.security.UserDetailsWithId
-import com.example.executiongate.service.dto.PolicyEffect
+import dev.kviklet.kviklet.db.PolicyEntity
+import dev.kviklet.kviklet.db.PolicyRepository
+import dev.kviklet.kviklet.db.RoleEntity
+import dev.kviklet.kviklet.db.RoleRepository
+import dev.kviklet.kviklet.db.User
+import dev.kviklet.kviklet.db.UserEntity
+import dev.kviklet.kviklet.db.UserRepository
+import dev.kviklet.kviklet.security.UserDetailsWithId
+import dev.kviklet.kviklet.service.dto.PolicyEffect
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.security.crypto.password.PasswordEncoder
