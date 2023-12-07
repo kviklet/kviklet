@@ -18,9 +18,7 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
       - name: Build with Gradle
-        run: ./gradlew build
-      - name: Test with Gradle
-        run: ./gradlew test
+        run: ./gradlew build --stacktrace --info
   ktlint:
     name: Ktlint
     runs-on: ubuntu-latest
