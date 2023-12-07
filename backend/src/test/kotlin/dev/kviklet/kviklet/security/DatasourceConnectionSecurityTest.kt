@@ -2,10 +2,7 @@ package dev.kviklet.kviklet.security
 
 import dev.kviklet.kviklet.TestFixtures.createDatasourceConnectionRequest
 import dev.kviklet.kviklet.TestFixtures.createDatasourceRequest
-import dev.kviklet.kviklet.controller.DatasourceConnectionResponse
-import dev.kviklet.kviklet.controller.DatasourceController
-import dev.kviklet.kviklet.controller.ListDatasourceResponse
-import dev.kviklet.kviklet.controller.UpdateDataSourceConnectionRequest
+import dev.kviklet.kviklet.controller.DatasourceConnectionController
 import dev.kviklet.kviklet.db.DatasourceConnectionRepository
 import dev.kviklet.kviklet.db.DatasourceRepository
 import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
@@ -19,6 +16,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
@@ -26,31 +24,33 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.util.Optional
 import java.util.stream.Stream
 
+@ActiveProfiles("test")
 class DatasourceConnectionSecurityTest(
     @Autowired val datasourceController: dev.kviklet.kviklet.controller.DatasourceController,
     @Autowired val datasourceRepository: DatasourceRepository,
     @Autowired val datasourceConnectionRepository: DatasourceConnectionRepository,
+    @Autowired val datasourceConnectionController: DatasourceConnectionController,
 ) : SecurityTestBase() {
 
     @BeforeEach
     fun setUp() {
         asAdmin {
             datasourceController.createDatasource(createDatasourceRequest("db1"))
-            datasourceController.createDatasourceConnection(
-                DatasourceId("db1"),
+            datasourceConnectionController.createDatasourceConnection(
+                DatasourceId("db1").toString(),
                 createDatasourceConnectionRequest("db1-conn1"),
             )
-            datasourceController.createDatasourceConnection(
-                DatasourceId("db1"),
+            datasourceConnectionController.createDatasourceConnection(
+                DatasourceId("db1").toString(),
                 createDatasourceConnectionRequest("db1-conn2"),
             )
             datasourceController.createDatasource(createDatasourceRequest("db2"))
-            datasourceController.createDatasourceConnection(
-                DatasourceId("db2"),
+            datasourceConnectionController.createDatasourceConnection(
+                DatasourceId("db2").toString(),
                 createDatasourceConnectionRequest("db2-conn1"),
             )
-            datasourceController.createDatasourceConnection(
-                DatasourceId("db2"),
+            datasourceConnectionController.createDatasourceConnection(
+                DatasourceId("db2").toString(),
                 createDatasourceConnectionRequest("db2-conn2"),
             )
         }
@@ -65,7 +65,7 @@ class DatasourceConnectionSecurityTest(
     @ParameterizedTest
     @MethodSource
     fun testGetSuccessful(policies: List<Policy>, length: Int) {
-        val response = mockMvc.perform(get("/datasources").withContext(policies)).andExpect(status().isOk)
+        val response = mockMvc.perform(get("/datasources/").withContext(policies)).andExpect(status().isOk)
             .andReturn().parse<dev.kviklet.kviklet.controller.ListDatasourceResponse>()
 
         response.databases.flatMap { it.datasourceConnections } shouldHaveSize length
@@ -74,7 +74,7 @@ class DatasourceConnectionSecurityTest(
     @ParameterizedTest
     @MethodSource
     fun testGetForbidden(policies: List<Policy>) {
-        mockMvc.perform(get("/datasources").withContext(policies)).andExpect(status().isForbidden)
+        mockMvc.perform(get("/datasources/").withContext(policies)).andExpect(status().isForbidden)
     }
 
     @ParameterizedTest

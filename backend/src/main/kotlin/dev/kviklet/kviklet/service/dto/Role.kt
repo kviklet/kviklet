@@ -6,7 +6,7 @@ import dev.kviklet.kviklet.security.SecuredDomainObject
 import java.io.Serializable
 
 data class Role(
-    val id: RoleId? = null,
+    private val id: RoleId? = null,
     val name: String,
     val description: String,
     val policies: Set<Policy> = HashSet(),

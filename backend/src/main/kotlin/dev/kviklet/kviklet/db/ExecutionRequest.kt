@@ -20,6 +20,7 @@ import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import org.apache.commons.lang3.builder.ToStringBuilder
 import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
@@ -49,8 +50,7 @@ class ExecutionRequestEntity(
 
     private val createdAt: LocalDateTime = Instant.now().atZone(ZoneOffset.UTC).toLocalDateTime(),
 
-    @OneToMany(cascade = [CascadeType.ALL])
-    @JoinColumn(name = "execution_request_id")
+    @OneToMany(mappedBy = "executionRequest", cascade = [CascadeType.ALL])
     val events: MutableSet<EventEntity>,
 ) : BaseEntity() {
 
@@ -111,8 +111,10 @@ class ExecutionRequestAdapter(
     val executionRequestRepository: ExecutionRequestRepository,
     val connectionRepository: DatasourceConnectionRepository,
     val userRepository: UserRepository,
-
 ) {
+
+    @Autowired
+    private lateinit var entityManager: EntityManager
 
     fun addEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Pair<ExecutionRequestDetails, Event> {
         val executionRequestEntity = getExecutionRequestDetailsEntity(id)
@@ -124,11 +126,14 @@ class ExecutionRequestAdapter(
             payload = payload,
         )
 
+        val event = entityManager.merge(eventEntity)
+
         executionRequestEntity.events.add(eventEntity)
         executionRequestRepository.saveAndFlush(executionRequestEntity)
         val details = executionRequestEntity.toDetailDto()
+        entityManager.refresh(event)
 
-        return Pair(details, eventEntity.toDto(details))
+        return Pair(details, event.toDto(details))
     }
 
     fun createExecutionRequest(

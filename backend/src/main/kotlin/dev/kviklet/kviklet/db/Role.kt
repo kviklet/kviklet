@@ -88,7 +88,7 @@ class RoleAdapter(
     fun update(role: Role): Role {
         val savedRole = roleRepository.save(
             RoleEntity(
-                id = role.id.toString(),
+                id = role.getId(),
                 name = role.name,
                 description = role.description,
                 policies = role.policies.map {

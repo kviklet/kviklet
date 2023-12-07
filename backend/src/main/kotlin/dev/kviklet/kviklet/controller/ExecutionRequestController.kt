@@ -1,5 +1,8 @@
 package dev.kviklet.kviklet.controller
 
+import com.fasterxml.jackson.annotation.JsonSubTypes
+import com.fasterxml.jackson.annotation.JsonTypeInfo
+import com.fasterxml.jackson.annotation.JsonTypeName
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.ColumnInfo
@@ -225,6 +228,13 @@ data class ErrorQueryResultResponse(
         )
     }
 }
+
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
+@JsonSubTypes(
+    JsonSubTypes.Type(value = CommentEventResponse::class, name = "COMMENT"),
+    JsonSubTypes.Type(value = ReviewEventResponse::class, name = "REVIEW"),
+    JsonSubTypes.Type(value = EditEventResponse::class, name = "EDIT"),
+)
 abstract class EventResponse(
     val type: EventType,
     open val createdAt: LocalDateTime = LocalDateTime.now(),
@@ -254,6 +264,8 @@ abstract class EventResponse(
         }
     }
 }
+
+@JsonTypeName("COMMENT")
 data class CommentEventResponse(
     override val id: String,
     override val author: User,
@@ -261,6 +273,7 @@ data class CommentEventResponse(
     val comment: String,
 ) : EventResponse(EventType.COMMENT, createdAt)
 
+@JsonTypeName("REVIEW")
 data class ReviewEventResponse(
     override val id: String,
     override val author: User,
@@ -269,6 +282,7 @@ data class ReviewEventResponse(
     val action: ReviewAction,
 ) : EventResponse(EventType.REVIEW, createdAt)
 
+@JsonTypeName("EDIT")
 data class EditEventResponse(
     override val id: String,
     override val author: User,

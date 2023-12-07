@@ -61,7 +61,7 @@ data class RoleResponse(
     companion object {
         fun fromDto(dto: Role): RoleResponse {
             return RoleResponse(
-                id = dto.id.toString(),
+                id = dto.getId()!!,
                 name = dto.name,
                 description = dto.description,
                 policies = dto.policies.map { PolicyResponse.fromDto(it) },

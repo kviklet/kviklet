@@ -7,6 +7,7 @@ import dev.kviklet.kviklet.controller.ReviewConfigRequest
 import dev.kviklet.kviklet.controller.UpdateExecutionRequestRequest
 import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
 import dev.kviklet.kviklet.service.dto.DatasourceType
+import dev.kviklet.kviklet.service.dto.RequestType
 
 object TestFixtures {
     fun createDatasourceRequest(id: String) = dev.kviklet.kviklet.controller.CreateDatasourceRequest(
@@ -40,5 +41,6 @@ object TestFixtures {
         description = "description",
         statement = "select 1",
         readOnly = false,
+        type = RequestType.SingleQuery,
     )
 }
