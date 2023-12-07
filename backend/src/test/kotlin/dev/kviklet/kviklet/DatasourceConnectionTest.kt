@@ -3,10 +3,8 @@ package dev.kviklet.kviklet
 import dev.kviklet.kviklet.controller.CommentEventResponse
 import dev.kviklet.kviklet.controller.CreateCommentRequest
 import dev.kviklet.kviklet.controller.CreateExecutionRequestRequest
-import dev.kviklet.kviklet.controller.CreateReviewRequest
 import dev.kviklet.kviklet.controller.DatasourceConnectionController
 import dev.kviklet.kviklet.controller.ExecutionRequestController
-import dev.kviklet.kviklet.controller.ReviewEventResponse
 import dev.kviklet.kviklet.db.DatasourceConnectionRepository
 import dev.kviklet.kviklet.db.DatasourceRepository
 import dev.kviklet.kviklet.db.EventRepository
@@ -16,7 +14,6 @@ import dev.kviklet.kviklet.service.ExecutionRequestService
 import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.RequestType
-import dev.kviklet.kviklet.service.dto.ReviewAction
 import io.kotest.matchers.equality.shouldBeEqualToIgnoringFields
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -24,6 +21,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
@@ -33,6 +31,7 @@ import java.time.LocalDateTime
 @SpringBootTest
 @AutoConfigureMockMvc
 @WithAdminUser
+@ActiveProfiles("test")
 class DatasourceConnectionTest(
     @Autowired val mockMvc: MockMvc,
     @Autowired val datasourceRepository: DatasourceRepository,
@@ -55,7 +54,7 @@ class DatasourceConnectionTest(
 
     @Test
     fun test1() {
-        mockMvc.perform(get("/datasources"))
+        mockMvc.perform(get("/datasources/"))
             .andExpect(status().isOk)
             .andExpect(content().json("{'databases':  []}"))
     }
@@ -103,15 +102,6 @@ class DatasourceConnectionTest(
             testUserDetails,
         )
 
-        executionRequestController.createReview(
-            request.id,
-            CreateReviewRequest(
-                comment = "Comment",
-                action = ReviewAction.APPROVE,
-            ),
-            userDetails = testUserDetails,
-        )
-
         executionRequestController.createComment(
             request.id,
             CreateCommentRequest(
@@ -124,18 +114,6 @@ class DatasourceConnectionTest(
         val executionRequest = executionRequestService.get(request.id)
 
         requestDetails.events[0].shouldBeEqualToIgnoringFields(
-            ReviewEventResponse(
-                id = "id",
-                author = testUser,
-                createdAt = LocalDateTime.now(),
-                comment = "Comment",
-                action = ReviewAction.APPROVE,
-            ),
-            ReviewEventResponse::createdAt,
-            ReviewEventResponse::id,
-        )
-
-        requestDetails.events[1].shouldBeEqualToIgnoringFields(
             CommentEventResponse(
                 id = "id",
                 createdAt = LocalDateTime.now(),

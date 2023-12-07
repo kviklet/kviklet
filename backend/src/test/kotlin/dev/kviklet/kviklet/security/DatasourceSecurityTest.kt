@@ -10,12 +10,14 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.util.stream.Stream
 
+@ActiveProfiles("test")
 class DatasourceSecurityTest(
     @Autowired val datasourceController: dev.kviklet.kviklet.controller.DatasourceController,
     @Autowired val datasourceRepository: DatasourceRepository,
@@ -38,7 +40,7 @@ class DatasourceSecurityTest(
     @ParameterizedTest
     @MethodSource
     fun testGetForbidden(policies: List<Policy>) {
-        mockMvc.perform(get("/datasources").withContext(policies)).andExpect(status().isForbidden)
+        mockMvc.perform(get("/datasources/").withContext(policies)).andExpect(status().isForbidden)
     }
 
     @ParameterizedTest
@@ -59,7 +61,7 @@ class DatasourceSecurityTest(
     @MethodSource
     fun testCreateSuccessful(policies: List<Policy>) {
         val request = createDatasourceRequest("dev-db2")
-        mockMvc.perform(post("/datasources").content(request).withContext(policies)).andExpect(status().isOk)
+        mockMvc.perform(post("/datasources/").content(request).withContext(policies)).andExpect(status().isOk)
         datasourceRepository.findAll() shouldHaveSize 4
     }
 
@@ -67,7 +69,7 @@ class DatasourceSecurityTest(
     @MethodSource
     fun testCreateForbidden(policies: List<Policy>) {
         val request = createDatasourceRequest("dev-db2")
-        mockMvc.perform(post("/datasources").content(request).withContext(policies)).andExpect(status().isForbidden)
+        mockMvc.perform(post("/datasources/").content(request).withContext(policies)).andExpect(status().isForbidden)
         datasourceRepository.findAll() shouldHaveSize 3
     }
 

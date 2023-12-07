@@ -134,7 +134,7 @@ class UserAdapter(
         userEntity.email = user.email
         // update Roles
         user.roles.let { newRoleIds ->
-            val newRoles = roleRepository.findAllById(newRoleIds.map { it.id.toString() }.toSet())
+            val newRoles = roleRepository.findAllById(newRoleIds.map { it.getId() }.toSet())
             userEntity.roles = newRoles.toMutableSet()
         }
         val savedUserEntity = userRepository.save(userEntity)

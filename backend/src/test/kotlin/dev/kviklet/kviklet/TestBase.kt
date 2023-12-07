@@ -36,23 +36,23 @@ open class TestBase {
         )
 
         val savedUser = userRepository.saveAndFlush(userEntity)
-        val role = RoleEntity(
-            name = "Test Role",
-            description = "This is a test role",
-            policies = emptySet(),
-        )
-        val savedRole = roleRepository.saveAndFlush(role)
         val policyEntity = PolicyEntity(
-            role = savedRole,
             action = "*",
             effect = PolicyEffect.ALLOW,
             resource = "*",
         )
+        val role = RoleEntity(
+            name = "Test Role",
+            description = "This is a test role",
+            policies = setOf(policyEntity),
+        )
+        roleRepository.saveAndFlush(role)
+
         policyRepository.saveAndFlush(policyEntity)
 
         testUser = savedUser.toDto()
         testUserDetails = UserDetailsWithId(
-            id = testUser.id,
+            id = testUser.id!!,
             email = testUser.email,
             password = testUser.password,
             authorities = emptyList(),
