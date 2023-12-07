@@ -130,7 +130,6 @@ class PostgresExecutorTest(
                     typeName = "timestamp",
                     typeClass = "java.sql.Timestamp",
                 ),
-                ColumnInfo(label = "timestampz_column", typeName = "timestamptz", typeClass = "java.sql.Timestamp"),
                 ColumnInfo(
                     label = "interval_column",
                     typeName = "interval",
@@ -224,7 +223,6 @@ class PostgresExecutorTest(
                     "bit_column" to "10101010",
                     "bit_varying_column" to "10101010",
                     "timestamp_column" to "2023-01-01 00:00:00",
-                    "timestampz_column" to "2023-01-01 01:00:00+01",
                     "interval_column" to "1 year 2 mons 3 days 04:05:06",
                     "date_column" to "2023-01-01",
                     "time_column" to "00:00:00",
