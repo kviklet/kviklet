@@ -81,8 +81,8 @@ class RoleAdapter(
         ).toDto()
     }
 
-    fun delete(id: String) {
-        roleRepository.deleteById(id)
+    fun delete(id: RoleId) {
+        roleRepository.deleteById(id.toString())
     }
 
     fun update(role: Role): Role {
@@ -102,5 +102,9 @@ class RoleAdapter(
             ),
         )
         return savedRole.toDto()
+    }
+
+    fun deleteAll() {
+        roleRepository.deleteAll()
     }
 }

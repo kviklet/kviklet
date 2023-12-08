@@ -3,6 +3,7 @@ package dev.kviklet.kviklet.controller
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.security.UserService
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
@@ -80,6 +81,7 @@ class UserController(
     private val userAdapter: UserAdapter,
     private val passwordEncoder: PasswordEncoder,
     private val roleAdapter: RoleAdapter,
+    private val userService: UserService,
 ) {
 
     @PostMapping("/")
@@ -87,12 +89,13 @@ class UserController(
         @RequestBody @Valid
         userRequest: CreateUserRequest,
     ): UserResponse {
-        val user = User(
-            email = userRequest.email,
-            fullName = userRequest.fullName,
-            password = passwordEncoder.encode(userRequest.password),
+        return UserResponse(
+            userService.createUser(
+                email = userRequest.email,
+                password = userRequest.password,
+                fullName = userRequest.fullName,
+            ),
         )
-        return UserResponse(userAdapter.createUser(user))
     }
 
     @GetMapping("/")
@@ -106,15 +109,13 @@ class UserController(
         @RequestBody @Valid
         userRequest: EditUserRequest,
     ): UserResponse {
-        val user = userAdapter.findById(id)
-        // Update user details if present in the request
-        val updatedUser = user.copy(
-            email = userRequest.email ?: user.email,
-            fullName = userRequest.fullName ?: user.fullName,
-            roles = (userRequest.roles?.let { roleAdapter.findByIds(it) })?.toSet() ?: user.roles,
-            password = userRequest.password?.let { passwordEncoder.encode(it) } ?: user.password,
+        val savedUser = userService.updateUser(
+            id = id,
+            email = userRequest.email,
+            fullName = userRequest.fullName,
+            roles = userRequest.roles,
+            password = userRequest.password,
         )
-        val savedUser = userAdapter.updateUser(updatedUser)
         return UserResponse(savedUser)
     }
 

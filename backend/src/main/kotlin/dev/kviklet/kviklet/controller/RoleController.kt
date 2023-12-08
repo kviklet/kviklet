@@ -1,6 +1,5 @@
 package dev.kviklet.kviklet.controller
 
-import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.service.RoleService
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.PolicyEffect
@@ -89,17 +88,17 @@ fun permissionsToPermissionString(policies: Set<Policy>): String {
 @RestController()
 @Validated
 @RequestMapping("/roles")
-class RoleController(private val roleAdapter: RoleAdapter, private val roleService: RoleService) {
+class RoleController(private val roleService: RoleService) {
 
     @GetMapping("/:id")
     fun getRole(id: String): RoleResponse {
-        val role = roleAdapter.findById(RoleId(id))
+        val role = roleService.getRole(RoleId(id))
         return RoleResponse.fromDto(role)
     }
 
     @GetMapping("/")
     fun getAllRoles(): RolesResponse {
-        val roles = roleAdapter.findAll()
+        val roles = roleService.getAllRoles()
         return RolesResponse.fromRoles(roles)
     }
 
@@ -108,11 +107,9 @@ class RoleController(private val roleAdapter: RoleAdapter, private val roleServi
         @Valid @RequestBody
         createRoleRequest: CreateRoleRequest,
     ): RoleResponse {
-        val savedRole = roleAdapter.create(
-            Role(
-                name = createRoleRequest.name,
-                description = createRoleRequest.description,
-            ),
+        val savedRole = roleService.createRole(
+            name = createRoleRequest.name,
+            description = createRoleRequest.description,
         )
         return RoleResponse.fromDto(savedRole)
     }
@@ -141,6 +138,6 @@ class RoleController(private val roleAdapter: RoleAdapter, private val roleServi
 
     @DeleteMapping("/:id")
     fun deleteRole(id: String) {
-        roleAdapter.delete(id)
+        roleService.deleteRole(RoleId(id))
     }
 }

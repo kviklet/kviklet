@@ -8,7 +8,7 @@ enum class PolicyEffect {
 }
 
 data class Policy(
-    val id: String?,
+    val id: String? = null,
     val action: String,
     val effect: PolicyEffect,
     val resource: String,
