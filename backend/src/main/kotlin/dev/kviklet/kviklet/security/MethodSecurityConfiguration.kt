@@ -16,7 +16,6 @@ import org.springframework.context.annotation.Role
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.AnnotationUtils
 import org.springframework.security.access.AccessDeniedException
-import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException
 import org.springframework.security.authorization.AuthorizationDecision
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.core.Authentication
@@ -93,23 +92,33 @@ class MethodSecurityConfig(
 @Component
 class MyAuthorizationManager {
     fun check(
-        authentication: Supplier<Authentication>,
+        authentication: Supplier<Authentication?>,
         invocation: MethodInvocation,
         returnObject: SecuredDomainObject? = null,
     ): AuthorizationDecision {
         val policyAnnotation: Policy = AnnotationUtils.findAnnotation(invocation.method, Policy::class.java)!!
-        val policies = authentication.get().authorities.filterIsInstance<PolicyGrantedAuthority>()
+        // If there is no SecurityContext the method has been called from within the application
+        // or from tests without a request, therefore we allow it
+        val auth = authentication.get() ?: return AuthorizationDecision(true)
+        val policies = auth.authorities.filterIsInstance<PolicyGrantedAuthority>()
 
-        var p: Permission = policyAnnotation.permission
+        var permissionToCheck: Permission = policyAnnotation.permission
+        var securedObject = returnObject
 
         do {
-            if (!policies.vote(p, returnObject?.getRelated(p.resource)).isAllowed()) {
+            if (!policies.vote(permissionToCheck, securedObject).isAllowed()) {
                 return AuthorizationDecision(false)
             }
-            if (returnObject?.auth(p, authentication.get().principal as UserDetailsWithId) == false) {
+            if (returnObject?.auth(permissionToCheck, auth.principal as UserDetailsWithId) == false) {
                 return AuthorizationDecision(false)
             }
-        } while ((p.requiredPermission != null).also { if (it) p = p.requiredPermission!! })
+        } while ((permissionToCheck.requiredPermission != null).also {
+                if (it) {
+                    permissionToCheck = permissionToCheck.requiredPermission!!
+                    securedObject = securedObject?.getRelated(permissionToCheck.resource)
+                }
+            }
+        )
         return AuthorizationDecision(true)
     }
 }
@@ -120,11 +129,11 @@ class AuthorizationManagerInterceptor(
     private val idResolver: IdResolver,
 ) : Ordered, MethodInterceptor, PointcutAdvisor, AopInfrastructureBean {
 
-    private val authentication: Supplier<Authentication> = Supplier {
+    private val authentication: Supplier<Authentication?> = Supplier {
         SecurityContextHolder.getContextHolderStrategy().context.authentication
-            ?: throw AuthenticationCredentialsNotFoundException(
-                "An Authentication object was not found in the SecurityContext",
-            )
+        // ?: throw AuthenticationCredentialsNotFoundException(
+        //    "An Authentication object was not found in the SecurityContext",
+        // )
     }
 
     override fun getOrder(): Int = 500

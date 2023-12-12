@@ -135,14 +135,16 @@ class DatasourceConnectionSecurityTest(
                 allow("*", "*"),
             ),
             listOf(
+                allow("datasource:get", "db1"),
+                allow("datasource:edit", "db1"),
                 allow("datasource_connection:create", "db1-conn3"),
                 allow("datasource_connection:get", "db1-conn3"),
-                allow("datasource:get", "db1"),
             ),
             listOf(
+                allow("datasource:get", "db1"),
+                allow("datasource:edit", "db*"),
                 allow("datasource_connection:create", "db1-*"),
                 allow("datasource_connection:get", "db1-*"),
-                allow("datasource:get", "db1"),
             ),
         )
 

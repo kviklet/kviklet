@@ -25,8 +25,8 @@ enum class AuthenticationType {
     // other: aws iam, gpc, env var
 }
 
-@JsonDeserialize(using = IdDeserializer::class)
-@JsonSerialize(using = IdSerializer::class)
+@JsonDeserialize(using = DatasourceIdDeserializer::class)
+@JsonSerialize(using = DatasourceIdSerializer::class)
 data class DatasourceId
 @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
 constructor(
@@ -35,13 +35,24 @@ constructor(
     override fun toString() = id
 }
 
-class IdDeserializer : JsonDeserializer<DatasourceId>() {
+class DatasourceIdDeserializer : JsonDeserializer<DatasourceId>() {
     override fun deserialize(p: JsonParser, ctxt: DeserializationContext): DatasourceId {
         return DatasourceId(ctxt.readValue(p, String::class.java))
     }
 }
-class IdSerializer : JsonSerializer<DatasourceId>() {
+class DatasourceIdSerializer : JsonSerializer<DatasourceId>() {
     override fun serialize(value: DatasourceId?, gen: JsonGenerator?, serializers: SerializerProvider?) {
+        gen?.writeString(value.toString())
+    }
+}
+
+class DatasourceConnectionIdDeserializer : JsonDeserializer<DatasourceConnectionId>() {
+    override fun deserialize(p: JsonParser, ctxt: DeserializationContext): DatasourceConnectionId {
+        return DatasourceConnectionId(ctxt.readValue(p, String::class.java))
+    }
+}
+class DatasourceConnectionIdSerializer : JsonSerializer<DatasourceConnectionId>() {
+    override fun serialize(value: DatasourceConnectionId?, gen: JsonGenerator?, serializers: SerializerProvider?) {
         gen?.writeString(value.toString())
     }
 }
@@ -67,8 +78,9 @@ data class Datasource(
     }
 }
 
-@JvmInline
-value class DatasourceConnectionId(private val id: String) : Serializable, SecuredDomainId {
+@JsonDeserialize(using = DatasourceConnectionIdDeserializer::class)
+@JsonSerialize(using = DatasourceConnectionIdSerializer::class)
+data class DatasourceConnectionId(private val id: String) : Serializable, SecuredDomainId {
     override fun toString() = id
 }
 

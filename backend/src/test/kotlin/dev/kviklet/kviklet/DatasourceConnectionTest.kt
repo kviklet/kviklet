@@ -45,7 +45,7 @@ class DatasourceConnectionTest(
 ) : TestBase() {
 
     @AfterEach
-    fun tearDown() {
+    fun tearDownRequests() {
         eventRepository.deleteAllInBatch()
         executionRequestRepository.deleteAllInBatch()
         datasourceRepository.deleteAllInBatch()

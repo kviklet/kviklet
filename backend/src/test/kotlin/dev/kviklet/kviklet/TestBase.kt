@@ -9,6 +9,7 @@ import dev.kviklet.kviklet.db.UserEntity
 import dev.kviklet.kviklet.db.UserRepository
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.dto.PolicyEffect
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -26,6 +27,13 @@ open class TestBase {
 
     lateinit var testUser: User
     lateinit var testUserDetails: UserDetailsWithId
+
+    @AfterEach
+    fun tearDown() {
+        userRepository.deleteAll()
+        roleRepository.deleteAll()
+        policyRepository.deleteAll()
+    }
 
     @BeforeEach
     fun baseSetUp() {

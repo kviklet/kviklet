@@ -1,6 +1,5 @@
 package dev.kviklet.kviklet.service
 
-import dev.kviklet.kviklet.controller.CreateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.UpdateDataSourceConnectionRequest
 import dev.kviklet.kviklet.db.DatasourceConnectionAdapter
 import dev.kviklet.kviklet.db.ReviewConfig
@@ -27,11 +26,14 @@ class DatasourceConnectionService(
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_EDIT)
     fun updateDatasourceConnection(
-        datasourceId: DatasourceId,
+        datasourceId: String,
         connectionId: DatasourceConnectionId,
-        request: dev.kviklet.kviklet.controller.UpdateDataSourceConnectionRequest,
+        request: UpdateDataSourceConnectionRequest,
     ): DatasourceConnection {
-        val datasourceConnection = datasourceConnectionAdapter.getDatasourceConnection(datasourceId, connectionId)
+        val datasourceConnection = datasourceConnectionAdapter.getDatasourceConnection(
+            DatasourceId(datasourceId),
+            connectionId,
+        )
 
         return datasourceConnectionAdapter.updateDatasourceConnection(
             connectionId,
@@ -47,20 +49,26 @@ class DatasourceConnectionService(
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_CREATE)
     fun createDatasourceConnection(
-        datasourceId: DatasourceId,
-        request: dev.kviklet.kviklet.controller.CreateDatasourceConnectionRequest,
+        datasourceId: String,
+        datasourceConnectionId: DatasourceConnectionId,
+        displayName: String,
+        databaseName: String?,
+        username: String,
+        password: String,
+        description: String,
+        reviewsRequired: Int,
     ): DatasourceConnection {
         return datasourceConnectionAdapter.createDatasourceConnection(
-            datasourceId,
-            DatasourceConnectionId(request.id),
-            request.displayName,
+            DatasourceId(datasourceId),
+            datasourceConnectionId,
+            displayName,
             AuthenticationType.USER_PASSWORD,
-            request.databaseName,
-            request.username,
-            request.password,
-            request.description,
+            databaseName,
+            username,
+            password,
+            description,
             ReviewConfig(
-                numTotalRequired = request.reviewConfig.numTotalRequired,
+                numTotalRequired = reviewsRequired,
             ),
         )
     }

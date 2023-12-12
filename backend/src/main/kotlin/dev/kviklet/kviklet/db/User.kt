@@ -146,6 +146,10 @@ class UserAdapter(
         userRepository.deleteById(id)
     }
 
+    fun deleteAll() {
+        userRepository.deleteAll()
+    }
+
     fun listUsers(): List<User> {
         val userEntities = userRepository.findAll()
         return userEntities.map { it.toDto() }

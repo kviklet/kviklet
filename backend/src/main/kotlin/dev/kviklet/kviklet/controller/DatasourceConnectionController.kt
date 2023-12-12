@@ -128,8 +128,14 @@ class DatasourceConnectionController(
         datasourceConnection: CreateDatasourceConnectionRequest,
     ): DatasourceConnectionResponse {
         val datasource = datasourceConnectionService.createDatasourceConnection(
-            datasourceId = DatasourceId(datasourceId),
-            request = datasourceConnection,
+            datasourceId = datasourceId,
+            datasourceConnectionId = DatasourceConnectionId(datasourceConnection.id),
+            displayName = datasourceConnection.displayName,
+            databaseName = datasourceConnection.databaseName,
+            username = datasourceConnection.username,
+            password = datasourceConnection.password,
+            description = datasourceConnection.description,
+            reviewsRequired = datasourceConnection.reviewConfig.numTotalRequired,
         )
         return DatasourceConnectionResponse.fromDto(datasource)
     }
@@ -149,7 +155,7 @@ class DatasourceConnectionController(
         datasourceConnection: UpdateDataSourceConnectionRequest,
     ): DatasourceConnectionResponse {
         val datasource = datasourceConnectionService.updateDatasourceConnection(
-            datasourceId = DatasourceId(datasourceId),
+            datasourceId = datasourceId,
             connectionId = DatasourceConnectionId(connectionId),
             request = datasourceConnection,
         )
