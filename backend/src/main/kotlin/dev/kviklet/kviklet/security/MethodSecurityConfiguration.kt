@@ -102,20 +102,20 @@ class MyAuthorizationManager {
         val auth = authentication.get() ?: return AuthorizationDecision(true)
         val policies = auth.authorities.filterIsInstance<PolicyGrantedAuthority>()
 
-        var p: Permission = policyAnnotation.permission
+        var permissionToCheck: Permission = policyAnnotation.permission
         var securedObject = returnObject
 
         do {
-            if (!policies.vote(p, securedObject).isAllowed()) {
+            if (!policies.vote(permissionToCheck, securedObject).isAllowed()) {
                 return AuthorizationDecision(false)
             }
-            if (returnObject?.auth(p, auth.principal as UserDetailsWithId) == false) {
+            if (returnObject?.auth(permissionToCheck, auth.principal as UserDetailsWithId) == false) {
                 return AuthorizationDecision(false)
             }
-        } while ((p.requiredPermission != null).also {
+        } while ((permissionToCheck.requiredPermission != null).also {
                 if (it) {
-                    p = p.requiredPermission!!
-                    securedObject = securedObject?.getRelated(p.resource)
+                    permissionToCheck = permissionToCheck.requiredPermission!!
+                    securedObject = securedObject?.getRelated(permissionToCheck.resource)
                 }
             }
         )

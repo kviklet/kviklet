@@ -4,6 +4,7 @@ import dev.kviklet.kviklet.db.DatasourceAdapter
 import dev.kviklet.kviklet.db.DatasourceConnectionAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.security.SecuredDomainId
+import dev.kviklet.kviklet.security.SecuredDomainObject
 import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
 import dev.kviklet.kviklet.service.dto.DatasourceId
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
@@ -15,11 +16,17 @@ class IdResolver(
     private val datasourceAdapter: DatasourceAdapter,
     private val executionRequestAdapter: ExecutionRequestAdapter,
 ) {
-    fun resolve(id: SecuredDomainId) = when (id) {
-        is DatasourceConnectionId -> datasourceConnectionAdapter.getDatasourceConnection(null, id)
-        is DatasourceId -> datasourceAdapter.getDatasource(id)
-        is ExecutionRequestId -> executionRequestAdapter.getExecutionRequestDetails(id)
+    fun resolve(id: SecuredDomainId): SecuredDomainObject? {
+        return try {
+            when (id) {
+                is DatasourceConnectionId -> datasourceConnectionAdapter.getDatasourceConnection(null, id)
+                is DatasourceId -> datasourceAdapter.getDatasource(id)
+                is ExecutionRequestId -> executionRequestAdapter.getExecutionRequestDetails(id)
 
-        else -> throw IllegalArgumentException("Unknown id type: ${id::class}")
+                else -> throw IllegalArgumentException("Unknown id type: ${id::class}")
+            }
+        } catch (e: EntityNotFound) {
+            null
+        }
     }
 }
