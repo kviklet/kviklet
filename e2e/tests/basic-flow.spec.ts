@@ -13,14 +13,6 @@ test.beforeEach("visit page and login", async ({ page }) => {
 test("Create Connection", async ({ page }) => {
   await page.getByRole("link", { name: "Settings" }).click({ force: true });
   await page.waitForURL("**/settings");
-  await page.getByRole("button", { name: "Add Datasource" }).click();
-  await page.getByPlaceholder("Database Name").click();
-  await page.getByPlaceholder("Database Name").fill("My Test Datasource");
-  await page.getByLabel("Database Engine").selectOption("POSTGRESQL");
-  await page.getByPlaceholder("localhost").fill("postgres");
-  await page.getByPlaceholder("5432").fill("5432");
-  await page.getByRole("button", { name: "Add", exact: true }).click();
-  await page.getByText("My Test Datasourcepostgres").click();
   await page.getByRole("button", { name: "Add Connection" }).click();
   await page.getByPlaceholder("Connection Name").click();
   await page.getByPlaceholder("Connection Name").fill("my test connection");
@@ -28,13 +20,28 @@ test("Create Connection", async ({ page }) => {
   await page.getByPlaceholder("readonly").fill("postgres");
   await page.getByPlaceholder("readonly").press("Tab");
   await page.getByPlaceholder("password").fill("postgres");
+  await page.getByPlaceholder("localhost").fill("postgres");
+  await page.getByPlaceholder("5432").fill("5432");
+  const select = await page.getByLabel("Database Type");
+  await select.selectOption("POSTGRESQL");
   await page.getByRole("button", { name: "Add", exact: true }).click();
-  await page.getByRole("spinbutton").click();
-  await page.getByRole("spinbutton").fill("0");
-  await page.getByRole("button").nth(4).click();
-  await expect(page.getByText("My Test Datasource")).toBeVisible();
+  await page
+    .locator("div")
+    .filter({ hasText: /^Database Name:Number of required reviews:$/ })
+    .getByRole("spinbutton")
+    .click();
+  await page
+    .locator("div")
+    .filter({ hasText: /^Database Name:Number of required reviews:$/ })
+    .getByRole("spinbutton")
+    .fill("0");
+  await page
+    .locator("div")
+    .filter({ hasText: /^Database Name:Number of required reviews:$/ })
+    .getByRole("button")
+    .click();
   await expect(page.getByText("my test connection")).toBeVisible();
-  await expect(page.getByRole("spinbutton")).toHaveValue("0");
+  await expect(page.getByRole("spinbutton").nth(1)).toHaveValue("0");
 });
 
 test("Create Request", async ({ page }) => {

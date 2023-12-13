@@ -6,7 +6,7 @@ enum AuthenticationType {
 }
 
 enum DatabaseType {
-  POSTGRES = "POSTGRES",
+  POSTGRES = "POSTGRESQL",
   MYSQL = "MYSQL",
 }
 
