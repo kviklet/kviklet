@@ -4,7 +4,6 @@ import dev.kviklet.kviklet.service.DatasourceConnectionService
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
-import dev.kviklet.kviklet.service.dto.DatasourceId
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -115,15 +114,17 @@ class DatasourceConnectionController(
 ) {
 
     @GetMapping("/{connectionId}")
-    fun getDatasourceConnection(
-        @PathVariable datasourceId: String,
-        @PathVariable connectionId: String,
-    ): DatasourceConnectionResponse {
+    fun getDatasourceConnection(@PathVariable connectionId: String): DatasourceConnectionResponse {
         val datasourceConnection = datasourceConnectionService.getDatasourceConnection(
-            datasourceId = DatasourceId(datasourceId),
             datasourceConnectionId = DatasourceConnectionId(connectionId),
         )
         return DatasourceConnectionResponse.fromDto(datasourceConnection)
+    }
+
+    @GetMapping("/")
+    fun getDatasourceConnections(): List<DatasourceConnectionResponse> {
+        val datasourceConnections = datasourceConnectionService.listDatasourceConnections()
+        return datasourceConnections.map { DatasourceConnectionResponse.fromDto(it) }
     }
 
     @PostMapping("/")
@@ -147,7 +148,7 @@ class DatasourceConnectionController(
     }
 
     @DeleteMapping("/{connectionId}")
-    fun deleteDatasourceConnection(@PathVariable datasourceId: String, @PathVariable connectionId: String) {
+    fun deleteDatasourceConnection(@PathVariable connectionId: String) {
         datasourceConnectionService.deleteDatasourceConnection(
             connectionId = DatasourceConnectionId(connectionId),
         )

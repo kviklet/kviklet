@@ -8,7 +8,6 @@ import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
-import dev.kviklet.kviklet.service.dto.DatasourceId
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
@@ -86,10 +85,7 @@ class DatasourceConnectionService(
 
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_GET)
-    fun getDatasourceConnection(
-        datasourceId: DatasourceId,
-        datasourceConnectionId: DatasourceConnectionId,
-    ): DatasourceConnection {
+    fun getDatasourceConnection(datasourceConnectionId: DatasourceConnectionId): DatasourceConnection {
         return datasourceConnectionAdapter.getDatasourceConnection(
             datasourceConnectionId = datasourceConnectionId,
         )

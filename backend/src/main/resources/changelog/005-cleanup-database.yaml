@@ -3,18 +3,18 @@ databaseChangeLog:
       id: 005-make-columns-non-nullable
       author: jascha
       changes:
-        - modifyDataType:
+        - addNotNullConstraint:
             tableName: datasource_connection
             columnName: port
-            newDataType: VARCHAR(255) NOT NULL
-        - modifyDataType:
+            columnDataType: VARCHAR(255)
+        - addNotNullConstraint:
             tableName: datasource_connection
             columnName: hostname
-            newDataType: VARCHAR(255) NOT NULL
-        - modifyDataType:
+            columnDataType: VARCHAR(255)
+        - addNotNullConstraint:
             tableName: datasource_connection
             columnName: type
-            newDataType: VARCHAR(255) NOT NULL
+            columnDataType: VARCHAR(255)
         - dropColumn:
             tableName: datasource_connection
             columnName: datasource_id
