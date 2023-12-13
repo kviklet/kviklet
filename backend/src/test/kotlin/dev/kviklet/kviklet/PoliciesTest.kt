@@ -3,6 +3,7 @@ package dev.kviklet.kviklet
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.UserService
 import dev.kviklet.kviklet.service.RoleService
@@ -26,6 +27,9 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class PoliciesTest {
+    @Autowired
+    private lateinit var userHelper: UserHelper
+
     @Autowired
     private lateinit var roleAdapter: RoleAdapter
 
@@ -89,7 +93,7 @@ class PoliciesTest {
 
     @Test
     fun getRolePolicies() {
-        val user = createUser(permissions = listOf("*"))
+        val user = userHelper.createUser(permissions = listOf("*"))
         val cookie = login()
 
         mockMvc.perform(get("/roles/").cookie(cookie))
@@ -122,7 +126,7 @@ class PoliciesTest {
     @Test
     fun canOnlyGetRoleWithCorrectPermissions() {
         val role = roleService.createRole("Some-Role", "the users role")
-        val user = createUser(
+        val user = userHelper.createUser(
             permissions = listOf(Permission.ROLE_GET.getPermissionString()),
             resources = listOf(role.getId()!!),
         )
@@ -150,7 +154,7 @@ class PoliciesTest {
 
     @Test
     fun getRolePoliciesSpecificPermissions() {
-        val user = createUser(permissions = listOf(Permission.ROLE_GET.getPermissionString()))
+        val user = userHelper.createUser(permissions = listOf(Permission.ROLE_GET.getPermissionString()))
         val cookie = login()
 
         mockMvc.perform(get("/roles/").cookie(cookie))
@@ -182,7 +186,7 @@ class PoliciesTest {
 
     @Test
     fun getRolesWrongPermissions() {
-        createUser(permissions = listOf(Permission.EXECUTION_REQUEST_GET.getPermissionString()))
+        userHelper.createUser(permissions = listOf(Permission.EXECUTION_REQUEST_GET.getPermissionString()))
         val cookie = login()
 
         mockMvc.perform(get("/roles/").cookie(cookie))
@@ -191,7 +195,7 @@ class PoliciesTest {
 
     @Test
     fun getRolesNoLogin() {
-        val user = createUser(permissions = listOf(Permission.EXECUTION_REQUEST_GET.getPermissionString()))
+        val user = userHelper.createUser(permissions = listOf(Permission.EXECUTION_REQUEST_GET.getPermissionString()))
 
         mockMvc.perform(get("/roles/"))
             .andExpect(status().isUnauthorized)

@@ -15,7 +15,7 @@ import {
   removeRole,
 } from "../../api/RoleApi";
 import ColorfulLabel from "../../components/ColorfulLabel";
-import { useDatasources } from "./DatabaseSettings";
+import { useConnections } from "./DatabaseSettings";
 import { ConnectionResponse } from "../../api/DatasourceApi";
 import DeleteConfirm from "../../components/DeleteConfirm";
 import React from "react";
@@ -399,13 +399,9 @@ const RoleSettings = () => {
   const { roles, isLoading, error, deleteRole, addRole, editRole } = useRoles();
   const [selectedRole, setSelectedRole] = useState<RoleResponse | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const { datasources } = useDatasources();
+  const { connections } = useConnections();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-
-  const connections = datasources.flatMap((datasource) =>
-    datasource.datasourceConnections.map((connection) => connection),
-  );
 
   const handleAddRole = () => {
     setShowAddModal(true);

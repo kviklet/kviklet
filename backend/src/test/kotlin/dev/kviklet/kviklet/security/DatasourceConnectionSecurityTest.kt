@@ -1,14 +1,10 @@
 package dev.kviklet.kviklet.security
 
 import dev.kviklet.kviklet.TestFixtures.createDatasourceConnectionRequest
-import dev.kviklet.kviklet.TestFixtures.createDatasourceRequest
 import dev.kviklet.kviklet.controller.DatasourceConnectionController
 import dev.kviklet.kviklet.db.DatasourceConnectionRepository
-import dev.kviklet.kviklet.db.DatasourceRepository
 import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
-import dev.kviklet.kviklet.service.dto.DatasourceId
 import dev.kviklet.kviklet.service.dto.Policy
-import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -17,7 +13,6 @@ import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.test.context.ActiveProfiles
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -26,8 +21,6 @@ import java.util.stream.Stream
 
 @ActiveProfiles("test")
 class DatasourceConnectionSecurityTest(
-    @Autowired val datasourceController: dev.kviklet.kviklet.controller.DatasourceController,
-    @Autowired val datasourceRepository: DatasourceRepository,
     @Autowired val datasourceConnectionRepository: DatasourceConnectionRepository,
     @Autowired val datasourceConnectionController: DatasourceConnectionController,
 ) : SecurityTestBase() {
@@ -35,22 +28,16 @@ class DatasourceConnectionSecurityTest(
     @BeforeEach
     fun setUp() {
         asAdmin {
-            datasourceController.createDatasource(createDatasourceRequest("db1"))
             datasourceConnectionController.createDatasourceConnection(
-                DatasourceId("db1").toString(),
                 createDatasourceConnectionRequest("db1-conn1"),
             )
             datasourceConnectionController.createDatasourceConnection(
-                DatasourceId("db1").toString(),
                 createDatasourceConnectionRequest("db1-conn2"),
             )
-            datasourceController.createDatasource(createDatasourceRequest("db2"))
             datasourceConnectionController.createDatasourceConnection(
-                DatasourceId("db2").toString(),
                 createDatasourceConnectionRequest("db2-conn1"),
             )
             datasourceConnectionController.createDatasourceConnection(
-                DatasourceId("db2").toString(),
                 createDatasourceConnectionRequest("db2-conn2"),
             )
         }
@@ -58,23 +45,7 @@ class DatasourceConnectionSecurityTest(
 
     @AfterEach
     fun tearDown() {
-        datasourceRepository.deleteAll()
-        datasourceConnectionRepository.deleteAll()
-    }
-
-    @ParameterizedTest
-    @MethodSource
-    fun testGetSuccessful(policies: List<Policy>, length: Int) {
-        val response = mockMvc.perform(get("/datasources/").withContext(policies)).andExpect(status().isOk)
-            .andReturn().parse<dev.kviklet.kviklet.controller.ListDatasourceResponse>()
-
-        response.databases.flatMap { it.datasourceConnections } shouldHaveSize length
-    }
-
-    @ParameterizedTest
-    @MethodSource
-    fun testGetForbidden(policies: List<Policy>) {
-        mockMvc.perform(get("/datasources/").withContext(policies)).andExpect(status().isForbidden)
+        datasourceConnectionRepository.deleteAllInBatch()
     }
 
     @ParameterizedTest
@@ -85,7 +56,7 @@ class DatasourceConnectionSecurityTest(
         )
 
         val response = mockMvc.perform(
-            patch("/datasources/db1/connections/db1-conn1").content(request).withContext(policies),
+            patch("/connections/db1-conn1").content(request).withContext(policies),
         )
             .andExpect(status().isOk).andReturn().parse<dev.kviklet.kviklet.controller.DatasourceConnectionResponse>()
 
@@ -102,7 +73,7 @@ class DatasourceConnectionSecurityTest(
             displayName = "new name",
         )
 
-        mockMvc.perform(patch("/datasources/db1/connections/db1-conn1").content(request).withContext(policies))
+        mockMvc.perform(patch("/connections/db1-conn1").content(request).withContext(policies))
             .andExpect(status().isForbidden)
 
         datasourceConnectionRepository.findById("db1-conn1").get().displayName shouldBe "display name"
@@ -112,7 +83,7 @@ class DatasourceConnectionSecurityTest(
     @MethodSource
     fun testCreateDatasourceConnectionSuccessful(policies: List<Policy>) {
         val request = createDatasourceConnectionRequest("db1-conn3", displayName = "new name")
-        mockMvc.perform(post("/datasources/db1/connections").content(request).withContext(policies))
+        mockMvc.perform(post("/connections/").content(request).withContext(policies))
             .andExpect(status().isOk)
 
         datasourceConnectionRepository.findById("db1-conn3").get().displayName shouldBe "new name"
@@ -122,7 +93,7 @@ class DatasourceConnectionSecurityTest(
     @MethodSource
     fun testCreateDatasourceConnectionForbidden(policies: List<Policy>) {
         val request = createDatasourceConnectionRequest("db1-conn3")
-        mockMvc.perform(post("/datasources/db1/connections").content(request).withContext(policies))
+        mockMvc.perform(post("/connections/").content(request).withContext(policies))
             .andExpect(status().isForbidden)
 
         datasourceConnectionRepository.findById("db1-conn3") shouldBe Optional.empty()
@@ -135,14 +106,10 @@ class DatasourceConnectionSecurityTest(
                 allow("*", "*"),
             ),
             listOf(
-                allow("datasource:get", "db1"),
-                allow("datasource:edit", "db1"),
                 allow("datasource_connection:create", "db1-conn3"),
                 allow("datasource_connection:get", "db1-conn3"),
             ),
             listOf(
-                allow("datasource:get", "db1"),
-                allow("datasource:edit", "db*"),
                 allow("datasource_connection:create", "db1-*"),
                 allow("datasource_connection:get", "db1-*"),
             ),
@@ -152,11 +119,6 @@ class DatasourceConnectionSecurityTest(
         fun testCreateDatasourceConnectionForbidden(): Stream<List<Policy>> = Stream.of(
             listOf(
                 allow("datasource_connection:create", "db1-conn3"),
-                allow("datasource:get", "db1"),
-            ),
-            listOf(
-                allow("datasource_connection:create", "db1-conn3"),
-                allow("datasource_connection:get", "db1-conn3"),
             ),
             listOf(
                 allow("datasource_connection:get", "db1-conn3"),
@@ -178,30 +140,17 @@ class DatasourceConnectionSecurityTest(
         fun testUpdateForbidden(): Stream<List<Policy>> = Stream.of(
             listOf(
                 allow("datasource_connection:get", "db1-conn1"),
-                allow("datasource:get", "db1"),
             ),
             listOf(
                 allow("datasource_connection:edit", "db1-conn1"),
-                allow("datasource:get", "db1"),
-            ),
-            listOf(
-                allow("datasource_connection:edit", "db1-conn1"),
-                allow("datasource_connection:get", "db1-conn1"),
             ),
             listOf(
                 allow("datasource_connection:edit", "db1-conn2"),
                 allow("datasource_connection:get", "db1-conn1"),
-                allow("datasource:get", "db1"),
             ),
             listOf(
                 allow("datasource_connection:edit", "db1-conn1"),
                 allow("datasource_connection:get", "db1-conn2"),
-                allow("datasource:get", "db1"),
-            ),
-            listOf(
-                allow("datasource_connection:edit", "db1-conn1"),
-                allow("datasource_connection:get", "db1-conn1"),
-                allow("datasource:get", "db2"),
             ),
         )
 

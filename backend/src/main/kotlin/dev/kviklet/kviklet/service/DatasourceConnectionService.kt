@@ -8,9 +8,11 @@ import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
-import dev.kviklet.kviklet.service.dto.DatasourceId
+import dev.kviklet.kviklet.service.dto.DatasourceType
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
+
+class EntityNotFound(override val message: String, val detail: String) : Exception(message)
 
 @Service
 class DatasourceConnectionService(
@@ -26,12 +28,10 @@ class DatasourceConnectionService(
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_EDIT)
     fun updateDatasourceConnection(
-        datasourceId: String,
         connectionId: DatasourceConnectionId,
         request: UpdateDataSourceConnectionRequest,
     ): DatasourceConnection {
         val datasourceConnection = datasourceConnectionAdapter.getDatasourceConnection(
-            DatasourceId(datasourceId),
             connectionId,
         )
 
@@ -49,7 +49,6 @@ class DatasourceConnectionService(
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_CREATE)
     fun createDatasourceConnection(
-        datasourceId: String,
         datasourceConnectionId: DatasourceConnectionId,
         displayName: String,
         databaseName: String?,
@@ -57,9 +56,11 @@ class DatasourceConnectionService(
         password: String,
         description: String,
         reviewsRequired: Int,
+        port: Int,
+        hostname: String,
+        type: DatasourceType,
     ): DatasourceConnection {
         return datasourceConnectionAdapter.createDatasourceConnection(
-            DatasourceId(datasourceId),
             datasourceConnectionId,
             displayName,
             AuthenticationType.USER_PASSWORD,
@@ -70,6 +71,9 @@ class DatasourceConnectionService(
             ReviewConfig(
                 numTotalRequired = reviewsRequired,
             ),
+            port,
+            hostname,
+            type,
         )
     }
 
@@ -81,12 +85,8 @@ class DatasourceConnectionService(
 
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_GET)
-    fun getDatasourceConnection(
-        datasourceId: DatasourceId,
-        datasourceConnectionId: DatasourceConnectionId,
-    ): DatasourceConnection {
+    fun getDatasourceConnection(datasourceConnectionId: DatasourceConnectionId): DatasourceConnection {
         return datasourceConnectionAdapter.getDatasourceConnection(
-            datasourceId = datasourceId,
             datasourceConnectionId = datasourceConnectionId,
         )
     }

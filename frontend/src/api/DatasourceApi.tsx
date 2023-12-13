@@ -1,10 +1,13 @@
 import { z } from "zod";
 import baseUrl from "./base";
 
-const datasourceUrl = `${baseUrl}/datasources/`;
-
 enum AuthenticationType {
   USER_PASSWORD = "USER_PASSWORD",
+}
+
+enum DatabaseType {
+  POSTGRES = "POSTGRESQL",
+  MYSQL = "MYSQL",
 }
 
 const connectionResponseSchema = z.object({
@@ -19,23 +22,6 @@ const connectionResponseSchema = z.object({
   }),
 });
 
-const databaseResponseSchema = z.object({
-  id: z.coerce.string(),
-  displayName: z.coerce.string(),
-  datasourceType: z.enum(["POSTGRESQL", "MYSQL"]).or(z.string()),
-  hostname: z.coerce.string(),
-  port: z.coerce.number(),
-  datasourceConnections: z.array(connectionResponseSchema),
-});
-
-const ApiResponse = z.object({
-  databases: z.array(databaseResponseSchema),
-});
-
-const databasePayloadSchema = databaseResponseSchema.omit({
-  datasourceConnections: true,
-});
-
 const connectionPayloadSchema = z.object({
   displayName: z.coerce.string(),
   id: z.string(),
@@ -46,6 +32,9 @@ const connectionPayloadSchema = z.object({
   reviewConfig: z.object({
     numTotalRequired: z.number(),
   }),
+  type: z.nativeEnum(DatabaseType),
+  hostname: z.string(),
+  port: z.number(),
 });
 
 const patchConnectionPayloadSchema = z.object({
@@ -61,43 +50,15 @@ const patchConnectionPayloadSchema = z.object({
     .optional(),
 });
 
-const fetchDatabases = async (): Promise<DatabaseResponse[]> => {
-  const response = await fetch(datasourceUrl, {
-    method: "GET",
-    credentials: "include",
-  });
-  const json: unknown = await response.json();
-  const parsedResponse = ApiResponse.parse(json);
-  return parsedResponse.databases;
-};
-
 // extract the inferred type
-type DatabaseResponse = z.infer<typeof databaseResponseSchema>;
 type ConnectionResponse = z.infer<typeof connectionResponseSchema>;
-type DatabasePayload = z.infer<typeof databasePayloadSchema>;
 type ConnectionPayload = z.infer<typeof connectionPayloadSchema>;
 type PatchConnectionPayload = z.infer<typeof patchConnectionPayloadSchema>;
 
-const addDatabase = async (
-  payload: DatabasePayload,
-): Promise<DatabaseResponse> => {
-  const response = await fetch(datasourceUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    credentials: "include",
-    body: JSON.stringify(payload),
-  });
-  const newDatabase = databaseResponseSchema.parse(await response.json());
-  return newDatabase;
-};
-
 const addConnection = async (
   payload: ConnectionPayload,
-  datasourceId: string,
 ): Promise<ConnectionResponse> => {
-  const response = await fetch(`${datasourceUrl}${datasourceId}/connections`, {
+  const response = await fetch(`${baseUrl}/connections/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -111,47 +72,36 @@ const addConnection = async (
 
 const patchConnection = async (
   payload: PatchConnectionPayload,
-  datasourceId: string,
   connectionId: string,
 ): Promise<ConnectionResponse> => {
-  const response = await fetch(
-    `${datasourceUrl}${datasourceId}/connections/${connectionId}`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-      body: JSON.stringify(payload),
+  const response = await fetch(`${baseUrl}/connections/${connectionId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
     },
-  );
+    credentials: "include",
+    body: JSON.stringify(payload),
+  });
   const connection = connectionResponseSchema.parse(await response.json());
   return connection;
 };
 
-const removeDatabase = async (id: string): Promise<void> => {
-  await fetch(`${datasourceUrl}${id}`, {
-    method: "DELETE",
+const getConnections = async (): Promise<ConnectionResponse[]> => {
+  const response = await fetch(`${baseUrl}/connections/`, {
+    method: "GET",
     credentials: "include",
   });
-  return;
+  const data: unknown = await response.json();
+  return z.array(connectionResponseSchema).parse(data);
 };
 
 export {
-  fetchDatabases,
-  addDatabase,
   addConnection,
-  removeDatabase,
-  databaseResponseSchema,
   connectionResponseSchema,
   AuthenticationType,
   patchConnection,
+  getConnections,
+  DatabaseType,
 };
 
-export type {
-  DatabaseResponse,
-  ConnectionResponse,
-  DatabasePayload,
-  ConnectionPayload,
-  PatchConnectionPayload,
-};
+export type { ConnectionResponse, ConnectionPayload, PatchConnectionPayload };

@@ -3,20 +3,16 @@ package dev.kviklet.kviklet.db
 import dev.kviklet.kviklet.db.util.ReviewConfigConverter
 import dev.kviklet.kviklet.service.EntityNotFound
 import dev.kviklet.kviklet.service.dto.AuthenticationType
-import dev.kviklet.kviklet.service.dto.Datasource
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
-import dev.kviklet.kviklet.service.dto.DatasourceId
+import dev.kviklet.kviklet.service.dto.DatasourceType
 import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
 import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
-import jakarta.persistence.FetchType
 import jakarta.persistence.Id
-import jakarta.persistence.JoinColumn
-import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import org.apache.commons.lang3.builder.ToStringBuilder
 import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
@@ -33,9 +29,6 @@ data class ReviewConfig(
 class DatasourceConnectionEntity(
     @Id
     val id: String,
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "datasource_id")
-    val datasource: DatasourceEntity,
     var displayName: String,
     @Enumerated(EnumType.STRING)
     var authenticationType: AuthenticationType,
@@ -49,6 +42,10 @@ class DatasourceConnectionEntity(
     var reviewConfig: ReviewConfig,
     @OneToMany(mappedBy = "connection", cascade = [CascadeType.ALL])
     val executionRequests: Set<ExecutionRequestEntity> = emptySet(),
+    @Enumerated(EnumType.STRING)
+    var type: DatasourceType,
+    var hostname: String,
+    var port: Int,
 ) {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
@@ -56,9 +53,8 @@ class DatasourceConnectionEntity(
         .append("name", displayName)
         .toString()
 
-    fun toDto(datasourceDto: Datasource? = null) = DatasourceConnection(
+    fun toDto() = DatasourceConnection(
         id = DatasourceConnectionId(id),
-        datasource = datasourceDto ?: datasource.toDto(),
         displayName = displayName,
         authenticationType = authenticationType,
         databaseName = databaseName,
@@ -66,47 +62,28 @@ class DatasourceConnectionEntity(
         password = password,
         description = description,
         reviewConfig = reviewConfig,
-
+        port = port,
+        hostname = hostname,
+        type = type,
     )
 }
 
-interface DatasourceConnectionRepository : JpaRepository<DatasourceConnectionEntity, String> {
-    fun findByDatasourceAndId(datasource: DatasourceEntity, id: String): DatasourceConnectionEntity?
-}
+interface DatasourceConnectionRepository : JpaRepository<DatasourceConnectionEntity, String>
 
 @Service
 class DatasourceConnectionAdapter(
-    val datasourceRepository: DatasourceRepository,
     val datasourceConnectionRepository: DatasourceConnectionRepository,
 ) {
 
-    fun getDatasourceConnection(
-        datasourceId: DatasourceId?,
-        datasourceConnectionId: DatasourceConnectionId,
-    ): DatasourceConnection {
-        if (datasourceId != null) {
-            val datasource = datasourceRepository.findByIdOrNull(datasourceId.toString()) ?: throw EntityNotFound(
-                "Datasource Not Found",
-                "Datasource $datasourceId does not exist.",
+    fun getDatasourceConnection(datasourceConnectionId: DatasourceConnectionId): DatasourceConnection {
+        return datasourceConnectionRepository.findByIdOrNull(datasourceConnectionId.toString())?.toDto()
+            ?: throw EntityNotFound(
+                "Datasource Connection Not Found",
+                "Datasource Connection $$datasourceConnectionId does not exist.",
             )
-
-            return datasourceConnectionRepository
-                .findByDatasourceAndId(datasource, datasourceConnectionId.toString())?.toDto()
-                ?: throw EntityNotFound(
-                    "Datasource Connection Not Found",
-                    "Datasource Connection $datasourceId/$datasourceConnectionId does not exist.",
-                )
-        } else {
-            return datasourceConnectionRepository.findByIdOrNull(datasourceConnectionId.toString())?.toDto()
-                ?: throw EntityNotFound(
-                    "Datasource Connection Not Found",
-                    "Datasource Connection $datasourceId/$datasourceConnectionId does not exist.",
-                )
-        }
     }
 
     fun createDatasourceConnection(
-        datasourceId: DatasourceId,
         datasourceConnectionId: DatasourceConnectionId,
         displayName: String,
         authenticationType: AuthenticationType,
@@ -115,10 +92,12 @@ class DatasourceConnectionAdapter(
         password: String,
         description: String,
         reviewConfig: ReviewConfig,
+        port: Int,
+        hostname: String,
+        type: DatasourceType,
     ): DatasourceConnection {
         return datasourceConnectionRepository.save(
             DatasourceConnectionEntity(
-                datasource = datasourceRepository.getReferenceById(datasourceId.toString()),
                 id = datasourceConnectionId.toString(),
                 displayName = displayName,
                 authenticationType = authenticationType,
@@ -128,6 +107,9 @@ class DatasourceConnectionAdapter(
                 description = description,
                 reviewConfig = reviewConfig,
                 executionRequests = emptySet(),
+                port = port,
+                hostname = hostname,
+                type = type,
             ),
         ).toDto()
     }

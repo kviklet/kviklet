@@ -1,0 +1,25 @@
+databaseChangeLog:
+  # ... previous changesets ...
+  - changeSet:
+        id: 003-add-new-columns-to-connection
+        author: jascha
+        changes:
+          - addColumn:
+              tableName: datasource_connection
+              columns:
+                - column:
+                    name: port
+                    type: VARCHAR(255)
+                - column:
+                    name: hostname
+                    type: VARCHAR(255)
+                - column:
+                    name: type
+                    type: VARCHAR(255)
+
+  - changeSet:
+      id: 004-merge-datasource-into-connection
+      author: jascha
+      changes:
+        - customChange:
+            class: dev.kviklet.kviklet.migration.MergeDataSourceIntoConnection

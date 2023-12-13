@@ -1,7 +1,6 @@
 package dev.kviklet.kviklet
 
 import dev.kviklet.kviklet.controller.CreateDatasourceConnectionRequest
-import dev.kviklet.kviklet.controller.CreateDatasourceRequest
 import dev.kviklet.kviklet.controller.CreateExecutionRequestRequest
 import dev.kviklet.kviklet.controller.ReviewConfigRequest
 import dev.kviklet.kviklet.controller.UpdateExecutionRequestRequest
@@ -10,22 +9,18 @@ import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.RequestType
 
 object TestFixtures {
-    fun createDatasourceRequest(id: String) = dev.kviklet.kviklet.controller.CreateDatasourceRequest(
-        id = id,
-        displayName = "dev db1",
-        datasourceType = DatasourceType.MYSQL,
-        hostname = "localhost",
-        port = 3306,
-    )
 
     fun createDatasourceConnectionRequest(id: String, displayName: String = "display name") =
-        dev.kviklet.kviklet.controller.CreateDatasourceConnectionRequest(
+        CreateDatasourceConnectionRequest(
             id = id,
             displayName = displayName,
             username = "username",
             password = "password",
             description = "description",
-            reviewConfig = dev.kviklet.kviklet.controller.ReviewConfigRequest(0),
+            reviewConfig = ReviewConfigRequest(0),
+            type = DatasourceType.MYSQL,
+            hostname = "localhost",
+            port = 3306,
         )
 
     fun updateExecutionRequestRequest(statement: String = "select 1") = UpdateExecutionRequestRequest(

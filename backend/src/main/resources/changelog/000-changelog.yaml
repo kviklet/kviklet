@@ -5,3 +5,9 @@ databaseChangeLog:
   - include:
       file: 002-add-database-name.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 003-merge-dataset-and-connection.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: 005-cleanup-database.yaml
+      relativeToChangelogFile: true

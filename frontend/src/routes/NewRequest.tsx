@@ -1,9 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  ConnectionResponse,
-  DatabaseResponse,
-  fetchDatabases,
-} from "../api/DatasourceApi";
+import { ConnectionResponse, getConnections } from "../api/DatasourceApi";
 import Spinner from "../components/Spinner";
 import { CircleStackIcon, CommandLineIcon } from "@heroicons/react/20/solid";
 import { useNavigate } from "react-router-dom";
@@ -32,24 +28,24 @@ const ExecutionRequestSchema = z
 
 type ExecutionRequest = z.infer<typeof ExecutionRequestSchema>;
 
-const useDatabases = () => {
-  const [databases, setDatabases] = useState<DatabaseResponse[]>([]);
+const useConnections = () => {
+  const [connections, setConnections] = useState<ConnectionResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchData = async () => {
-      const response = await fetchDatabases();
-      setDatabases(response);
+      const response = await getConnections();
+      setConnections(response);
       setLoading(false);
     };
     void fetchData();
   }, []);
 
-  return { databases, loading };
+  return { connections, loading };
 };
 
 export default function ConnectionChooser() {
-  const { databases, loading } = useDatabases();
+  const { connections, loading } = useConnections();
   const [chosenConnection, setChosenConnection] = useState<
     ConnectionResponse | undefined
   >(undefined);
@@ -94,26 +90,24 @@ export default function ConnectionChooser() {
               role="list"
               className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
             >
-              {databases.map((database) =>
-                database.datasourceConnections.map((connection) => (
-                  <Card
-                    header={connection.displayName}
-                    subheader={connection.description}
-                    label={connection.id}
-                    key={connection.id}
-                    clickQuery={() => {
-                      setChosenConnection(connection);
-                      setChosenMode("SingleQuery");
-                      setValue("type", "SingleQuery");
-                    }}
-                    clickAccess={() => {
-                      setChosenConnection(connection);
-                      setChosenMode("TemporaryAccess");
-                      setValue("type", "TemporaryAccess");
-                    }}
-                  ></Card>
-                )),
-              )}
+              {connections.map((connection) => (
+                <Card
+                  header={connection.displayName}
+                  subheader={connection.description}
+                  label={connection.id}
+                  key={connection.id}
+                  clickQuery={() => {
+                    setChosenConnection(connection);
+                    setChosenMode("SingleQuery");
+                    setValue("type", "SingleQuery");
+                  }}
+                  clickAccess={() => {
+                    setChosenConnection(connection);
+                    setChosenMode("TemporaryAccess");
+                    setValue("type", "TemporaryAccess");
+                  }}
+                ></Card>
+              ))}
             </ul>
             {chosenConnection && (
               <div className="mx-auto w-full">
