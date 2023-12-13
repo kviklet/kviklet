@@ -72,7 +72,6 @@ data class ExecutionRequestDetails(
 
     override fun getRelated(resource: Resource) = when (resource) {
         Resource.DATASOURCE_CONNECTION -> request.connection
-        Resource.DATASOURCE -> request.connection.datasource
         else -> null
     }
 

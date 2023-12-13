@@ -2,8 +2,6 @@ package dev.kviklet.kviklet.db.init
 
 import dev.kviklet.kviklet.db.DatasourceConnectionEntity
 import dev.kviklet.kviklet.db.DatasourceConnectionRepository
-import dev.kviklet.kviklet.db.DatasourceEntity
-import dev.kviklet.kviklet.db.DatasourceRepository
 import dev.kviklet.kviklet.db.ExecutionRequestEntity
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
 import dev.kviklet.kviklet.db.PolicyEntity
@@ -27,7 +25,6 @@ import java.util.concurrent.ThreadLocalRandom
 @Configuration
 @Profile("local", "e2e")
 class TestDataInitializer(
-    private val datasourceRepository: DatasourceRepository,
     private val datasourceConnectionRepository: DatasourceConnectionRepository,
     private val executionRequestRepository: ExecutionRequestRepository,
     private val roleRepository: RoleRepository,
@@ -94,23 +91,9 @@ class TestDataInitializer(
 
             val savedUser = userRepository.saveAndFlush(user)
 
-            // Create a datasource
-            val datasource1 = DatasourceEntity(
-                id = "test-datasource",
-                displayName = "Test Datasource",
-                type = DatasourceType.POSTGRESQL,
-                hostname = "localhost",
-                port = 5432,
-                datasourceConnections = emptySet(),
-            )
-
-            // Save the datasource
-            val savedDatasource1 = datasourceRepository.saveAndFlush(datasource1)
-
             // Create connections linked to the saved datasource
             val connection1 = DatasourceConnectionEntity(
                 id = "test-connection",
-                datasource = savedDatasource1,
                 displayName = "Test Connection",
                 databaseName = null,
                 authenticationType = AuthenticationType.USER_PASSWORD,
@@ -118,6 +101,9 @@ class TestDataInitializer(
                 username = "postgres",
                 password = "postgres",
                 reviewConfig = ReviewConfig(numTotalRequired = 1),
+                type = DatasourceType.POSTGRESQL,
+                hostname = "localhost",
+                port = 5432,
             )
 
             // Save the connection

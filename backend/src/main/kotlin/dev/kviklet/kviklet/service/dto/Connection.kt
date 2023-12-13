@@ -57,27 +57,6 @@ class DatasourceConnectionIdSerializer : JsonSerializer<DatasourceConnectionId>(
     }
 }
 
-data class Datasource(
-    val id: DatasourceId,
-    val displayName: String,
-    val type: DatasourceType,
-    val hostname: String,
-    val port: Int,
-//    var datasourceConnections: List<DatasourceConnection>,
-) : SecuredDomainObject {
-    fun getConnectionString() = "jdbc:${type.schema}://$hostname:$port/"
-    override fun getId() = id.toString()
-    override fun getDomainObjectType() = Resource.DATASOURCE
-
-    override fun getRelated(resource: Resource): SecuredDomainObject? {
-        return when (resource) {
-            Resource.DATASOURCE -> this
-            Resource.DATASOURCE_CONNECTION -> null
-            else -> throw IllegalStateException("Unexpected resource: $resource")
-        }
-    }
-}
-
 @JsonDeserialize(using = DatasourceConnectionIdDeserializer::class)
 @JsonSerialize(using = DatasourceConnectionIdSerializer::class)
 data class DatasourceConnectionId(private val id: String) : Serializable, SecuredDomainId {
@@ -86,7 +65,6 @@ data class DatasourceConnectionId(private val id: String) : Serializable, Secure
 
 data class DatasourceConnection(
     val id: DatasourceConnectionId,
-    val datasource: Datasource,
     val displayName: String,
     val databaseName: String?,
     val authenticationType: AuthenticationType,
@@ -94,15 +72,17 @@ data class DatasourceConnection(
     val password: String,
     val description: String,
     val reviewConfig: ReviewConfig,
+    val port: Int,
+    val hostname: String,
+    val type: DatasourceType,
 ) : SecuredDomainObject {
-    fun getConnectionString() = datasource.getConnectionString() + (databaseName ?: "")
+    fun getConnectionString() = "jdbc:${type.schema}://$hostname:$port/" + (databaseName ?: "")
     override fun getId() = id.toString()
     override fun getDomainObjectType() = Resource.DATASOURCE_CONNECTION
 
     override fun getRelated(resource: Resource): SecuredDomainObject {
         return when (resource) {
             Resource.DATASOURCE_CONNECTION -> this
-            Resource.DATASOURCE -> datasource
             else -> throw IllegalStateException("Unexpected resource: $resource")
         }
     }

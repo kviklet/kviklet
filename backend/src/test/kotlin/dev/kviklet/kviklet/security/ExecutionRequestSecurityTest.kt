@@ -1,19 +1,15 @@
 package dev.kviklet.kviklet.security
 
 import dev.kviklet.kviklet.TestFixtures.createDatasourceConnectionRequest
-import dev.kviklet.kviklet.TestFixtures.createDatasourceRequest
 import dev.kviklet.kviklet.TestFixtures.createExecutionRequestRequest
 import dev.kviklet.kviklet.TestFixtures.updateExecutionRequestRequest
 import dev.kviklet.kviklet.controller.DatasourceConnectionController
-import dev.kviklet.kviklet.controller.DatasourceController
 import dev.kviklet.kviklet.controller.ExecutionRequestController
 import dev.kviklet.kviklet.controller.ExecutionRequestDetailResponse
 import dev.kviklet.kviklet.controller.ExecutionRequestResponse
 import dev.kviklet.kviklet.db.DatasourceConnectionRepository
-import dev.kviklet.kviklet.db.DatasourceRepository
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
 import dev.kviklet.kviklet.db.UserEntity
-import dev.kviklet.kviklet.service.dto.DatasourceId
 import dev.kviklet.kviklet.service.dto.Policy
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.AfterEach
@@ -30,11 +26,9 @@ import java.util.stream.Stream
 
 @ActiveProfiles("test")
 class ExecutionRequestSecurityTest(
-    @Autowired val datasourceController: DatasourceController,
     @Autowired val datasourceConnectionController: DatasourceConnectionController,
     @Autowired val executionRequestController: ExecutionRequestController,
     @Autowired val executionRequestRepository: ExecutionRequestRepository,
-    @Autowired val datasourceRepository: DatasourceRepository,
     @Autowired val datasourceConnectionRepository: DatasourceConnectionRepository,
 ) : SecurityTestBase() {
 
@@ -43,9 +37,7 @@ class ExecutionRequestSecurityTest(
     @BeforeEach
     fun setUp() {
         asAdmin {
-            datasourceController.createDatasource(createDatasourceRequest("db1"))
             datasourceConnectionController.createDatasourceConnection(
-                DatasourceId("db1").toString(),
                 createDatasourceConnectionRequest("db1-conn1"),
             )
             executionRequest = executionRequestController
@@ -55,9 +47,8 @@ class ExecutionRequestSecurityTest(
 
     @AfterEach
     fun tearDown() {
-        datasourceRepository.deleteAll()
-        datasourceConnectionRepository.deleteAll()
-        executionRequestRepository.deleteAll()
+        datasourceConnectionRepository.deleteAllInBatch()
+        executionRequestRepository.deleteAllInBatch()
     }
 
     @ParameterizedTest
@@ -117,7 +108,6 @@ class ExecutionRequestSecurityTest(
             Arguments.of(
                 listOf(
                     allow("datasource_connection:get", "*"),
-                    allow("datasource:get", "*"),
                     allow("execution_request:edit", "*"),
                     allow("execution_request:get", "*"),
                 ),
@@ -126,7 +116,6 @@ class ExecutionRequestSecurityTest(
             Arguments.of(
                 listOf(
                     allow("datasource_connection:get", "db1-conn1"),
-                    allow("datasource:get", "db1"),
                     allow("execution_request:edit", "*"),
                     allow("execution_request:get", "*"),
                 ),

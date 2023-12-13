@@ -1,0 +1,28 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-make-columns-non-nullable
+      author: jascha
+      changes:
+        - modifyDataType:
+            tableName: datasource_connection
+            columnName: port
+            newDataType: VARCHAR(255) NOT NULL
+        - modifyDataType:
+            tableName: datasource_connection
+            columnName: hostname
+            newDataType: VARCHAR(255) NOT NULL
+        - modifyDataType:
+            tableName: datasource_connection
+            columnName: type
+            newDataType: VARCHAR(255) NOT NULL
+        - dropColumn:
+            tableName: datasource_connection
+            columnName: datasource_id
+
+  # Drop the datasource table
+  - changeSet:
+      id: 006-drop-datasource-table
+      author: jascha
+      changes:
+        - dropTable:
+            tableName: datasource

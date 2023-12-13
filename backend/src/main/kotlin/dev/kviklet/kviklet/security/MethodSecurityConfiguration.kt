@@ -24,7 +24,6 @@ import org.springframework.stereotype.Component
 import java.util.function.Supplier
 
 enum class Resource(val resourceName: String) {
-    DATASOURCE("datasource"),
     DATASOURCE_CONNECTION("datasource_connection"),
     EXECUTION_REQUEST("execution_request"),
     EVENT("event"),
@@ -37,11 +36,7 @@ enum class Permission(
     val action: String?,
     val requiredPermission: Permission?,
 ) {
-    DATASOURCE_GET(Resource.DATASOURCE, "get", null),
-    DATASOURCE_EDIT(Resource.DATASOURCE, "edit", DATASOURCE_GET),
-    DATASOURCE_CREATE(Resource.DATASOURCE, "create", DATASOURCE_GET),
-
-    DATASOURCE_CONNECTION_GET(Resource.DATASOURCE_CONNECTION, "get", DATASOURCE_GET),
+    DATASOURCE_CONNECTION_GET(Resource.DATASOURCE_CONNECTION, "get", null),
     DATASOURCE_CONNECTION_EDIT(Resource.DATASOURCE_CONNECTION, "edit", DATASOURCE_CONNECTION_GET),
     DATASOURCE_CONNECTION_CREATE(Resource.DATASOURCE_CONNECTION, "create", DATASOURCE_CONNECTION_GET),
 

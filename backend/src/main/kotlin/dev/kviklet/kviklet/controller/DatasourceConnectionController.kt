@@ -5,6 +5,7 @@ import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
 import dev.kviklet.kviklet.service.dto.DatasourceId
+import dev.kviklet.kviklet.service.dto.DatasourceType
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
@@ -44,6 +45,10 @@ data class CreateDatasourceConnectionRequest(
     val description: String = "",
 
     val reviewConfig: ReviewConfigRequest,
+
+    val type: DatasourceType,
+    val hostname: String,
+    val port: Int,
 )
 
 data class UpdateDataSourceConnectionRequest(
@@ -101,7 +106,7 @@ data class DatasourceConnectionResponse(
 
 @RestController()
 @Validated
-@RequestMapping("/datasources")
+@RequestMapping("/connections")
 @Tag(
     name = "Datasource Connections",
 )
@@ -109,7 +114,7 @@ class DatasourceConnectionController(
     val datasourceConnectionService: DatasourceConnectionService,
 ) {
 
-    @GetMapping("/{datasourceId}/connections/{connectionId}")
+    @GetMapping("/{connectionId}")
     fun getDatasourceConnection(
         @PathVariable datasourceId: String,
         @PathVariable connectionId: String,
@@ -121,14 +126,12 @@ class DatasourceConnectionController(
         return DatasourceConnectionResponse.fromDto(datasourceConnection)
     }
 
-    @PostMapping("/{datasourceId}/connections")
+    @PostMapping("/")
     fun createDatasourceConnection(
-        @PathVariable datasourceId: String,
         @Valid @RequestBody
         datasourceConnection: CreateDatasourceConnectionRequest,
     ): DatasourceConnectionResponse {
         val datasource = datasourceConnectionService.createDatasourceConnection(
-            datasourceId = datasourceId,
             datasourceConnectionId = DatasourceConnectionId(datasourceConnection.id),
             displayName = datasourceConnection.displayName,
             databaseName = datasourceConnection.databaseName,
@@ -136,26 +139,27 @@ class DatasourceConnectionController(
             password = datasourceConnection.password,
             description = datasourceConnection.description,
             reviewsRequired = datasourceConnection.reviewConfig.numTotalRequired,
+            port = datasourceConnection.port,
+            hostname = datasourceConnection.hostname,
+            type = datasourceConnection.type,
         )
         return DatasourceConnectionResponse.fromDto(datasource)
     }
 
-    @DeleteMapping("/{datasourceId}/connections/{connectionId}")
+    @DeleteMapping("/{connectionId}")
     fun deleteDatasourceConnection(@PathVariable datasourceId: String, @PathVariable connectionId: String) {
         datasourceConnectionService.deleteDatasourceConnection(
             connectionId = DatasourceConnectionId(connectionId),
         )
     }
 
-    @PatchMapping("/{datasourceId}/connections/{connectionId}")
+    @PatchMapping("/{connectionId}")
     fun updateDatasourceConnection(
-        @PathVariable datasourceId: String,
         @PathVariable connectionId: String,
         @Valid @RequestBody
         datasourceConnection: UpdateDataSourceConnectionRequest,
     ): DatasourceConnectionResponse {
         val datasource = datasourceConnectionService.updateDatasourceConnection(
-            datasourceId = datasourceId,
             connectionId = DatasourceConnectionId(connectionId),
             request = datasourceConnection,
         )
