@@ -9,7 +9,6 @@ import image from "../logo.png";
 function TopBanner() {
   const themeContext = useContext<ThemeContext>(ThemeStatusContext);
 
-  localStorage.theme = "dark";
   const switchTheme = () => {
     if (themeContext.currentTheme === "light") {
       themeContext.setTheme("dark");
@@ -29,7 +28,7 @@ function TopBanner() {
           <div className="relative flex items-center">
             <a href="http://localhost:3000">
               <div className="flex">
-                <img src={image} className="h-8" />
+                <img src={image} className="h-8 invert dark:invert-0" />
                 <h1 className="text-xl font-bold text-slate-700 dark:text-slate-50">
                   Kviklet
                 </h1>
