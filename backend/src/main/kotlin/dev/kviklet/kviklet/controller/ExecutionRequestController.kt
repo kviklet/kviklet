@@ -16,6 +16,7 @@ import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
 import dev.kviklet.kviklet.service.dto.EditEvent
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventType
+import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.RequestType
@@ -258,6 +259,12 @@ abstract class EventResponse(
                 event.createdAt,
                 event.previousQuery,
             )
+            is ExecuteEvent -> ExecuteEventResponse(
+                event.eventId!!,
+                event.author,
+                event.createdAt,
+                event.query,
+            )
             else -> {
                 throw IllegalStateException("Somehow found event of type ${event.type}")
             }
@@ -289,6 +296,14 @@ data class EditEventResponse(
     override val createdAt: LocalDateTime = LocalDateTime.now(),
     val previousQuery: String,
 ) : EventResponse(EventType.EDIT, createdAt)
+
+@JsonTypeName("EXECUTE")
+data class ExecuteEventResponse(
+    override val id: String,
+    override val author: User,
+    override val createdAt: LocalDateTime = LocalDateTime.now(),
+    val query: String,
+) : EventResponse(EventType.EXECUTE, createdAt)
 
 @RestController()
 @Validated
@@ -366,7 +381,10 @@ class ExecutionRequestController(
     fun execute(
         @PathVariable executionRequestId: ExecutionRequestId,
         @RequestBody(required = false) request: ExecuteExecutionRequestRequest?,
+        @AuthenticationPrincipal userDetails: UserDetailsWithId,
     ): ExecutionResponse {
-        return ExecutionResponse.fromDto(executionRequestService.execute(executionRequestId, request?.query))
+        return ExecutionResponse.fromDto(
+            executionRequestService.execute(executionRequestId, request?.query, userDetails.id),
+        )
     }
 }

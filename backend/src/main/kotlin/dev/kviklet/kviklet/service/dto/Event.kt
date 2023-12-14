@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.service.dto
 
 import dev.kviklet.kviklet.db.CommentPayload
 import dev.kviklet.kviklet.db.EditPayload
+import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.Payload
 import dev.kviklet.kviklet.db.ReviewPayload
 import dev.kviklet.kviklet.db.User
@@ -20,6 +21,7 @@ enum class EventType {
     REVIEW,
     COMMENT,
     EDIT,
+    EXECUTE,
 }
 
 enum class ReviewAction {
@@ -57,6 +59,7 @@ abstract class Event(
             is CommentPayload -> CommentEvent(id, request, author, createdAt, payload.comment)
             is ReviewPayload -> ReviewEvent(id, request, author, createdAt, payload.comment, payload.action)
             is EditPayload -> EditEvent(id, request, author, createdAt, payload.previousQuery)
+            is ExecutePayload -> ExecuteEvent(id, request, author, createdAt, payload.query)
         }
     }
 }
@@ -89,5 +92,15 @@ data class EditEvent(
     override val createdAt: LocalDateTime = LocalDateTime.now(),
     val previousQuery: String,
 ) : Event(EventType.EDIT, createdAt, request) {
+    override fun hashCode() = Objects.hash(eventId)
+}
+
+data class ExecuteEvent(
+    override val eventId: String?,
+    override val request: ExecutionRequestDetails,
+    override val author: User,
+    override val createdAt: LocalDateTime = LocalDateTime.now(),
+    val query: String,
+) : Event(EventType.EXECUTE, createdAt, request) {
     override fun hashCode() = Objects.hash(eventId)
 }

@@ -62,6 +62,16 @@ const EditEvent = withType(
   "EDIT",
 );
 
+const ExecuteEvent = withType(
+  z.object({
+    author: userResponseSchema.optional(),
+    query: z.string(),
+    createdAt: DateTime,
+    id: z.string(),
+  }),
+  "EXECUTE",
+);
+
 const ExecutionRequestResponse = z.object({
   id: z.string(),
   type: z.enum(["TemporaryAccess", "SingleQuery"]),
@@ -85,7 +95,9 @@ const ChangeExecutionRequestPayload = z.object({
 });
 
 const ExecutionRequestResponseWithComments = ExecutionRequestResponse.extend({
-  events: z.array(z.union([ReviewEvent, CommentEvent, EditEvent])),
+  events: z.array(
+    z.union([ReviewEvent, CommentEvent, EditEvent, ExecuteEvent]),
+  ),
 });
 
 const ExecutionRequestsResponse = z.array(ExecutionRequestResponse);
@@ -102,7 +114,8 @@ type ChangeExecutionRequestPayload = z.infer<
 type Edit = z.infer<typeof EditEvent>;
 type Review = z.infer<typeof ReviewEvent>;
 type Comment = z.infer<typeof CommentEvent>;
-type Event = Edit | Review | Comment;
+type Execute = z.infer<typeof ExecuteEvent>;
+type Event = Edit | Review | Comment | Execute;
 
 const addRequest = async (payload: ExecutionRequest): Promise<boolean> => {
   const mappedPayload: ExecutionRequestPayload = {
@@ -289,5 +302,6 @@ export type {
   Review,
   Comment,
   Event,
+  Execute,
   Column,
 };
