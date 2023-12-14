@@ -113,11 +113,12 @@ function CreateConnectionForm(props: {
 
   return (
     <form method="post" onSubmit={(e) => void submit(e)}>
-      <div className="w-2xl shadow p-3 bg-slate-50 border border-slate-300 dark:border-none dark:bg-slate-950 rounded">
+      <div className="flex flex-col w-2xl shadow px-10 py-5 bg-slate-50 border border-slate-300 dark:border-none dark:bg-slate-950 rounded-lg">
+        <h1 className="text-lg font-semibold p-2">Add a new connection</h1>
         <InputField
           id="displayName"
           name="Name"
-          placeholder="Connection Name"
+          placeholder="Connection name"
           value={displayName}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
             changeDisplayName(e.target.value)
@@ -134,7 +135,7 @@ function CreateConnectionForm(props: {
         />
         <InputField
           id="databaseName"
-          name="database"
+          name="Database"
           placeholder="postgres"
           value={databaseName}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -152,7 +153,7 @@ function CreateConnectionForm(props: {
         ></InputField>
         <InputField
           id="username"
-          name="username"
+          name="Username"
           placeholder="readonly"
           value={username}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -169,11 +170,12 @@ function CreateConnectionForm(props: {
             setPassword(e.target.value)
           }
         />
-        <div className="flex justify-between">
-          <div className="w-1/2">
+        <div className="flex flex-row justify-between">
+          <div className="w-full text-slate-400">
             <InputField
               id="hostname"
               name="Hostname"
+              className=""
               placeholder="localhost"
               value={hostname}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -181,10 +183,11 @@ function CreateConnectionForm(props: {
               }
             />
           </div>
-          <div className="w-1/2">
+          <div className="w-3/5 text-slate-400">
             <InputField
               id="port"
               name="Port"
+              className=""
               type="number"
               placeholder="5432"
               value={port}
@@ -194,29 +197,32 @@ function CreateConnectionForm(props: {
             />
           </div>
         </div>
-        <div className="flex justify-between">
-          <div className="w-1/2">
-            <label
-              htmlFor="type"
-              className="block text-sm font-medium leading-6 text-slate-900 dark:text-slate-50"
-            >
-              Database Type
-            </label>
-            <select
-              id="type"
-              name="type"
-              className="mt-2 block w-full dark:bg-slate-900 rounded-md border-0 py-1.5 pl-3 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6 dark:text-slate-50"
-              defaultValue="POSTGRES"
-              onChange={(e) => setType(e.target.value as DatabaseType)}
-            >
-              {Object.values(DatabaseType).map((type) => (
-                <option>{type}</option>
-              ))}
-            </select>
-          </div>
+        <div className="flex items-center justify-between pl-5 pr-2">
+          <label
+            htmlFor="type"
+            className="block text-sm font-medium leading-6 text-slate-700 dark:text-slate-200"
+          >
+            Database Type
+          </label>
+          <select
+            id="type"
+            name="type"
+            className="basis-2/5 mt-2 block appearance-none rounded-md text-sm transition-colors border border-slate-300
+              dark:bg-slate-900 hover:border-slate-400 focus:border-indigo-600 focus:hover:border-indigo-600
+              focus-outline-none dark:hover:border-slate-600 dark:focus:border-gray-500 dark:focus:hover:border-slate-700 dark:border-slate-700
+              py-2 pl-2 pr-10 text-slate-400"
+            defaultValue="POSTGRES"
+            onChange={(e) => setType(e.target.value as DatabaseType)}
+          >
+            {Object.values(DatabaseType).map((type) => (
+              <option>{type}</option>
+            ))}
+          </select>
         </div>
-        <div className="flex justify-end mx-2 my-2">
-          <Button type="submit">Add</Button>
+        <div className="flex justify-end mx-2 mt-4 mb-1">
+          <Button type="submit" className="px-8 text-sm">
+            Add
+          </Button>
         </div>
       </div>
     </form>
@@ -251,6 +257,7 @@ function SingleConnectionSettings(props: {
     setShowCheck(false);
   };
 
+  // Main screen showing connection
   return (
     <div className=" my-4 mx-2 px-4 py-4 shadow-md border border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border dark:border-slate-700 rounded-md transition-colors">
       <div className="flex justify-between">
