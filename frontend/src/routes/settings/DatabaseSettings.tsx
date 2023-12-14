@@ -261,7 +261,7 @@ function SingleConnectionSettings(props: {
           {props.connection.shortUsername + "..."}
         </div>
       </div>
-      
+
       <div className="flex flex-col pl-2 pt-3">
         <div className="pb-3 text-slate-500 dark:text-slate-400">
           {props.connection.description}
@@ -270,7 +270,7 @@ function SingleConnectionSettings(props: {
           <label
             htmlFor="database-name"
             className="mr-auto dark:text-slate-400"
-            >
+          >
             Database name:
           </label>
           <input
@@ -311,13 +311,12 @@ function SingleConnectionSettings(props: {
             onClick={() => void submit()}
             className={`dark:bg-slate-800 mt-3 mr-1 px-5 rounded-md text-white-600 hover:text-sky-500 dark:hover:text-sky-400
               shadow-sm border border-slate-300 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-colors ${
-              showCheck ? "visible" : "invisible"
-            }`}
-            >
+                showCheck ? "visible" : "invisible"
+              }`}
+          >
             <FontAwesomeIcon icon={solid("check")} />
           </button>
         </div>
-
       </div>
     </div>
   );
@@ -333,9 +332,8 @@ function ConnectionSettings(props: {
 }) {
   return (
     <div className="flex flex-col max-h-[calc(100vh-theme(spacing.52))] w-full border-l dark:border-slate-700  dark:bg-slate-950">
-      
       <div className="pl-8 text-lg">Connections</div>
-      
+
       <div className="flex-grow overflow-hidden">
         <div className="pl-5 h-full flex flex-col justify-between">
           <div className="overflow-y-auto flex-grow">
@@ -347,7 +345,10 @@ function ConnectionSettings(props: {
               />
             ))}
           </div>
-          <Button className="ml-auto mx-2 my-1" onClick={props.addConnectionHandler}>
+          <Button
+            className="ml-auto mx-2 my-1"
+            onClick={props.addConnectionHandler}
+          >
             Add connection
           </Button>
         </div>
