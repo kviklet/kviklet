@@ -202,7 +202,7 @@ function CreateConnectionForm(props: {
             htmlFor="type"
             className="block text-sm font-medium leading-6 text-slate-700 dark:text-slate-200"
           >
-            Database Type
+            Database type
           </label>
           <select
             id="type"
