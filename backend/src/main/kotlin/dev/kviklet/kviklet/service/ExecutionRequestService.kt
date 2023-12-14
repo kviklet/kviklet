@@ -7,8 +7,8 @@ import dev.kviklet.kviklet.controller.UpdateExecutionRequestRequest
 import dev.kviklet.kviklet.db.CommentPayload
 import dev.kviklet.kviklet.db.DatasourceConnectionAdapter
 import dev.kviklet.kviklet.db.EditPayload
+import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
-import dev.kviklet.kviklet.db.Payload
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.ReviewPayload
 import dev.kviklet.kviklet.security.Permission
@@ -25,12 +25,14 @@ import dev.kviklet.kviklet.service.dto.ReviewStatus
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
 import java.lang.RuntimeException
+import java.time.LocalDateTime
 
 @Service
 class ExecutionRequestService(
     val executionRequestAdapter: ExecutionRequestAdapter,
     val datasourceConnectionAdapter: DatasourceConnectionAdapter,
     val executorService: ExecutorService,
+    val eventService: EventService,
 ) {
 
     @Transactional
@@ -62,7 +64,7 @@ class ExecutionRequestService(
         val executionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
 
         if (request.statement != executionRequestDetails.request.statement) {
-            saveEvent(
+            eventService.saveEvent(
                 id,
                 userId,
                 EditPayload(previousQuery = executionRequestDetails.request.statement ?: ""),
@@ -94,7 +96,7 @@ class ExecutionRequestService(
         if (executionRequest.request.author.id == authorId && request.action == ReviewAction.APPROVE) {
             throw InvalidReviewException("A user can't approve their own request!")
         }
-        return saveEvent(
+        return eventService.saveEvent(
             id,
             authorId,
             ReviewPayload(comment = request.comment, action = request.action),
@@ -103,16 +105,11 @@ class ExecutionRequestService(
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
-    fun createComment(id: ExecutionRequestId, request: CreateCommentRequest, authorId: String) = saveEvent(
+    fun createComment(id: ExecutionRequestId, request: CreateCommentRequest, authorId: String) = eventService.saveEvent(
         id,
         authorId,
         CommentPayload(comment = request.comment),
     )
-
-    private fun saveEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Event {
-        val (executionRequest, event) = executionRequestAdapter.addEvent(id, authorId, payload)
-        return event
-    }
 
     fun resolveReviewStatus(events: Set<Event>, reviewConfig: ReviewConfig): ReviewStatus {
         val numReviews = events.filter {
@@ -127,26 +124,39 @@ class ExecutionRequestService(
     }
 
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
-    fun execute(id: ExecutionRequestId, query: String?): List<QueryResult> {
+    fun execute(id: ExecutionRequestId, query: String?, userId: String): List<QueryResult> {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
         val connection = executionRequest.request.connection
 
-        if (executionRequest.request.executionStatus == "EXECUTED") {
-            throw AlreadyExecutedException("This request has already been executed, can only execute once!")
+        val reviewStatus = resolveReviewStatus(executionRequest.events, connection.reviewConfig)
+        if (reviewStatus != ReviewStatus.APPROVED) {
+            throw InvalidReviewException("This request has not been approved yet!")
         }
+
+        executionRequest.events.raiseIfAlreadyExecuted(executionRequest.request.type)
+
+        val query = when (executionRequest.request.type) {
+            RequestType.SingleQuery -> executionRequest.request.statement!!
+            RequestType.TemporaryAccess -> query ?: throw MissingQueryException(
+                "For temporary access requests the query param is required",
+            )
+        }
+        eventService.saveEvent(
+            id,
+            userId,
+            ExecutePayload(
+                query = query,
+            ),
+        )
 
         val result = executorService.execute(
             executionRequestId = id,
             connectionString = connection.getConnectionString(),
             username = connection.username,
             password = connection.password,
-            query = when (executionRequest.request.type) {
-                RequestType.SingleQuery -> executionRequest.request.statement!!
-                RequestType.TemporaryAccess -> query ?: throw MissingQueryException(
-                    "For temporary access requests the query param is required",
-                )
-            },
+            query = query,
         )
+
         if (executionRequest.request.type == RequestType.SingleQuery) {
             executionRequestAdapter.updateExecutionRequest(
                 id,
@@ -159,6 +169,27 @@ class ExecutionRequestService(
         }
 
         return result
+    }
+}
+
+fun Set<Event>.raiseIfAlreadyExecuted(requestType: RequestType) {
+    val executedEvents = filter { it.type == EventType.EXECUTE }
+    if (executedEvents.isEmpty()) return
+
+    when (requestType) {
+        RequestType.SingleQuery -> {
+            if (this.isNotEmpty()) {
+                throw AlreadyExecutedException("This request has already been executed, can only execute once!")
+            }
+        }
+        RequestType.TemporaryAccess -> {
+            val firstEventTime = executedEvents.minOf { it.createdAt }
+            if (firstEventTime.plusMinutes(60) < LocalDateTime.now()) {
+                throw AlreadyExecutedException(
+                    "This request has timed out, temporary access is only valid for 60 minutes!",
+                )
+            }
+        }
     }
 }
 

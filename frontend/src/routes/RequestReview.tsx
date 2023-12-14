@@ -15,6 +15,7 @@ import {
   Edit,
   Review,
   Comment as CommentEvent,
+  Execute,
 } from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
 import { mapStatus, mapStatusToLabelColor, timeSince } from "./Requests";
@@ -220,13 +221,21 @@ function RequestReview() {
             <div>
               {request === undefined
                 ? ""
-                : request?.events?.map((event, index) =>
-                    event?._type === "EDIT" ? (
-                      <EditEvent event={event} index={index}></EditEvent>
-                    ) : (
-                      <Comment event={event} index={index}></Comment>
-                    ),
-                  )}
+                : request?.events?.map((event, index) => {
+                    if (event?._type === "EDIT")
+                      return (
+                        <EditEvent event={event} index={index}></EditEvent>
+                      );
+                    if (event?._type === "EXECUTE")
+                      return (
+                        <ExecuteEvent
+                          event={event}
+                          index={index}
+                        ></ExecuteEvent>
+                      );
+
+                    return <Comment event={event} index={index}></Comment>;
+                  })}
               <CommentBox
                 addComment={addComment}
                 approve={approve}
@@ -397,6 +406,46 @@ function EditEvent({ event, index }: { event: Edit; index: number }) {
         </p>
         <div className="py-3 px-4 dark:bg-slate-900 rounded-b-md">
           <Highlighter>{event.previousQuery}</Highlighter>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
+  return (
+    <div>
+      <div className="relative py-4 ml-4 flex">
+        {(!(index === 0) && (
+          <div className="bg-slate-700 w-0.5 absolute block whitespace-pre left-0 top-0 bottom-0">
+            {" "}
+          </div>
+        )) || (
+          <div className="bg-slate-700 w-0.5 absolute block whitespace-pre left-0 top-5 bottom-0">
+            {" "}
+          </div>
+        )}
+        <div className="h-4 w-4 -ml-0.5 pb-6 mr-2 inline-block align-text-bottom items-center dark:bg-slate-950 bg-slate-50 fill-slate-950 dark:fill-slate-50 z-0">
+          <div className="inline pr-2 text-green-600 text-xs">
+            <FontAwesomeIcon icon={solid("play")} />
+          </div>
+        </div>
+        <div className="text-slate-500 text-sm">
+          {event?.author?.fullName} ran the following statement:
+        </div>
+      </div>
+      <div className="relative shadow-md dark:shadow-none dark:border-slate-700 rounded-md border">
+        <InitialBubble name={event?.author?.fullName} />
+        <p className="text-slate-500 dark:text-slate-500 px-4 pt-2 text-sm flex justify-between dark:bg-slate-900 rounded-t-md">
+          <div className="mr-4">
+            {((event?.createdAt &&
+              timeSince(new Date(event.createdAt as string))) as
+              | string
+              | undefined) || ""}
+          </div>
+        </p>
+        <div className="py-3 px-4 dark:bg-slate-900 rounded-b-md">
+          <Highlighter>{event.query}</Highlighter>
         </div>
       </div>
     </div>

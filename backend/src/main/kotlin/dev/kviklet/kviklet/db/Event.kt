@@ -42,6 +42,11 @@ data class EditPayload(
     val previousQuery: String,
 ) : Payload(EventType.EDIT)
 
+@JsonTypeName("EXECUTE")
+data class ExecutePayload(
+    val query: String,
+) : Payload(EventType.EXECUTE)
+
 @Entity(name = "event")
 class EventEntity(
 
