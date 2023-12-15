@@ -90,7 +90,7 @@ function CreateConnectionForm(props: {
   const [description, setDescription] = useState<string>("");
   const [databaseName, setDatabaseName] = useState<string>("");
   const [type, setType] = useState<DatabaseType>(DatabaseType.POSTGRES);
-  const [hostname, setHostname] = useState<string>("localhost");
+  const [hostname, setHostname] = useState<string>("");
   const [port, setPort] = useState<number>(5432);
 
   const submit = async (e: React.SyntheticEvent) => {
@@ -171,7 +171,7 @@ function CreateConnectionForm(props: {
           }
         />
         <div className="flex flex-row justify-between">
-          <div className="w-full text-slate-400">
+          <div className="w-full">
             <InputField
               id="hostname"
               name="Hostname"
@@ -183,7 +183,7 @@ function CreateConnectionForm(props: {
               }
             />
           </div>
-          <div className="w-3/5 text-slate-400">
+          <div className="w-3/5">
             <InputField
               id="port"
               name="Port"
@@ -208,9 +208,9 @@ function CreateConnectionForm(props: {
             id="type"
             name="type"
             className="basis-2/5 mt-2 block appearance-none rounded-md text-sm transition-colors border border-slate-300
-              dark:bg-slate-900 hover:border-slate-400 focus:border-indigo-600 focus:hover:border-indigo-600
-              focus-outline-none dark:hover:border-slate-600 dark:focus:border-gray-500 dark:focus:hover:border-slate-700 dark:border-slate-700
-              py-2 pl-2 pr-10 text-slate-400"
+              dark:bg-slate-900 hover:border-slate-400 ring-none focus-visible:outline-none
+              focus-outline-none dark:focus:border-gray-500 dark:focus:hover:border-slate-700 dark:border-slate-700 focus:border-indigo-600 focus:hover:border-indigo-600 dark:hover:border-slate-600 dark:hover:focus:border-gray-500
+              py-2 pl-2 pr-10 dark:text-slate-200"
             defaultValue="POSTGRES"
             onChange={(e) => setType(e.target.value as DatabaseType)}
           >
