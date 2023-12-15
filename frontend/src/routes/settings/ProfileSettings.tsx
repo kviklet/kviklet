@@ -38,7 +38,7 @@ function ProfileSettings() {
             type="password"
             name="new-password"
             id="new-password"
-            className="block dark:bg-slate-900 w-full rounded-md border-0 py-1.5 pr-14 text-slate-900 dark:text-slate-50 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 px-3 my-3 pb-1.5 pt-2.5 dark:ring-slate-700 focus-visible:outline-none focus:border-indigo-600 focus:hover:border-indigo-600"
+            className="block dark:bg-slate-900 w-full rounded-md border-0 py-1.5 pr-14 text-slate-900 dark:text-slate-50 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 px-3 my-3 pb-1.5 pt-2.5 dark:ring-slate-700 focus-visible:outline-none"
             autoComplete={undefined}
             value={newPassword}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>

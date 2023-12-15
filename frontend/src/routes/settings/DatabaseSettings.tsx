@@ -259,13 +259,10 @@ function SingleConnectionSettings(props: {
 
   // Main screen showing connection
   return (
-    <div className=" my-4 mx-2 px-4 py-4 shadow-md border border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border dark:border-slate-700 rounded-md transition-colors">
+    <div className="my-4 mx-2 px-4 py-4 shadow-md border border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border dark:border-slate-700 rounded-md transition-colors">
       <div className="flex justify-between">
-        <div className="text-md font-semibold">
+        <div className="text-md font-medium">
           {props.connection.displayName}
-        </div>
-        <div className="font-mono text-slate-300 text-sm">
-          {props.connection.shortUsername + "..."}
         </div>
       </div>
 
@@ -287,7 +284,7 @@ function SingleConnectionSettings(props: {
               setDatabaseName(e.target.value);
               setShowCheck(true);
             }}
-            className="sm:w-36 lg:w-auto mb-2 rounded mx-1 py-1 px-3 appearance-none border border-slate-200 
+            className="sm:w-36 lg:w-auto mb-2 rounded mx-1 py-2 px-3 appearance-none border border-slate-200 
               hover:border-slate-300 focus:border-slate-500 focus:hover:border-slate-500 focus:shadow-outline focus:outline-none
               text-slate-600 dark:text-slate-50 leading-tight
               dark:bg-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors"
@@ -305,7 +302,7 @@ function SingleConnectionSettings(props: {
               setNumTotalRequired(parseInt(e.target.value));
               setShowCheck(true);
             }}
-            className="w-32 sm:w-36 lg:w-auto rounded mx-1 py-1 px-3 appearance-none border border-slate-200 
+            className="w-32 sm:w-36 lg:w-auto rounded mx-1 py-2 px-3 appearance-none border border-slate-200 
             hover:border-slate-300 focus:border-slate-500 focus:hover:border-slate-500 focus:shadow-outline focus:outline-none
             text-slate-600 dark:text-slate-50 leading-tight
             dark:bg-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors"

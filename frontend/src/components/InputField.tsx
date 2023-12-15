@@ -10,7 +10,7 @@ function InputField(props: {
   const inputType = props.type === "passwordlike" ? "password" : props.type;
 
   return (
-    <div className="flex m-2">
+    <div className="flex m-2 justify-between w-full">
       <label
         htmlFor={props.id}
         className="my-auto text-sm font-medium text-slate-700 dark:text-slate-200 ml-2 pl-1.5 mr-auto"
