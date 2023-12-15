@@ -90,7 +90,7 @@ function CreateConnectionForm(props: {
   const [description, setDescription] = useState<string>("");
   const [databaseName, setDatabaseName] = useState<string>("");
   const [type, setType] = useState<DatabaseType>(DatabaseType.POSTGRES);
-  const [hostname, setHostname] = useState<string>("localhost");
+  const [hostname, setHostname] = useState<string>("");
   const [port, setPort] = useState<number>(5432);
 
   const submit = async (e: React.SyntheticEvent) => {
@@ -113,11 +113,12 @@ function CreateConnectionForm(props: {
 
   return (
     <form method="post" onSubmit={(e) => void submit(e)}>
-      <div className="w-2xl shadow p-3 bg-slate-50 border border-slate-300 dark:border-none dark:bg-slate-950 rounded">
+      <div className="flex flex-col w-2xl shadow px-10 py-5 bg-slate-50 border border-slate-300 dark:border-none dark:bg-slate-950 rounded-lg">
+        <h1 className="text-lg font-semibold p-2">Add a new connection</h1>
         <InputField
           id="displayName"
           name="Name"
-          placeholder="Connection Name"
+          placeholder="Connection name"
           value={displayName}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
             changeDisplayName(e.target.value)
@@ -134,7 +135,7 @@ function CreateConnectionForm(props: {
         />
         <InputField
           id="databaseName"
-          name="database"
+          name="Database"
           placeholder="postgres"
           value={databaseName}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -152,7 +153,7 @@ function CreateConnectionForm(props: {
         ></InputField>
         <InputField
           id="username"
-          name="username"
+          name="Username"
           placeholder="readonly"
           value={username}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -169,11 +170,12 @@ function CreateConnectionForm(props: {
             setPassword(e.target.value)
           }
         />
-        <div className="flex justify-between">
-          <div className="w-1/2">
+        <div className="flex flex-row justify-between">
+          <div className="w-full">
             <InputField
               id="hostname"
               name="Hostname"
+              className=""
               placeholder="localhost"
               value={hostname}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -181,10 +183,11 @@ function CreateConnectionForm(props: {
               }
             />
           </div>
-          <div className="w-1/2">
+          <div className="w-3/5">
             <InputField
               id="port"
               name="Port"
+              className=""
               type="number"
               placeholder="5432"
               value={port}
@@ -194,29 +197,32 @@ function CreateConnectionForm(props: {
             />
           </div>
         </div>
-        <div className="flex justify-between">
-          <div className="w-1/2">
-            <label
-              htmlFor="type"
-              className="block text-sm font-medium leading-6 text-slate-900 dark:text-slate-50"
-            >
-              Database Type
-            </label>
-            <select
-              id="type"
-              name="type"
-              className="mt-2 block w-full dark:bg-slate-900 rounded-md border-0 py-1.5 pl-3 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6 dark:text-slate-50"
-              defaultValue="POSTGRES"
-              onChange={(e) => setType(e.target.value as DatabaseType)}
-            >
-              {Object.values(DatabaseType).map((type) => (
-                <option>{type}</option>
-              ))}
-            </select>
-          </div>
+        <div className="flex items-center justify-between pl-5 pr-2">
+          <label
+            htmlFor="type"
+            className="block text-sm font-medium leading-6 text-slate-700 dark:text-slate-200"
+          >
+            Database type
+          </label>
+          <select
+            id="type"
+            name="type"
+            className="basis-2/5 mt-2 block appearance-none rounded-md text-sm transition-colors border border-slate-300
+              dark:bg-slate-900 hover:border-slate-400 ring-none focus-visible:outline-none
+              focus-outline-none dark:focus:border-gray-500 dark:focus:hover:border-slate-700 dark:border-slate-700 focus:border-indigo-600 focus:hover:border-indigo-600 dark:hover:border-slate-600 dark:hover:focus:border-gray-500
+              py-2 pl-2 pr-10 dark:text-slate-200"
+            defaultValue="POSTGRES"
+            onChange={(e) => setType(e.target.value as DatabaseType)}
+          >
+            {Object.values(DatabaseType).map((type) => (
+              <option>{type}</option>
+            ))}
+          </select>
         </div>
-        <div className="flex justify-end mx-2 my-2">
-          <Button type="submit">Add</Button>
+        <div className="flex justify-end mx-2 mt-4 mb-1">
+          <Button type="submit" className="px-8 text-sm">
+            Add
+          </Button>
         </div>
       </div>
     </form>
@@ -251,26 +257,25 @@ function SingleConnectionSettings(props: {
     setShowCheck(false);
   };
 
+  // Main screen showing connection
   return (
-    <div className="shadow-md border border-slate-200 bg-slate-50 my-4 mx-2 px-4 py-4 dark:bg-slate-900 dark:border dark:border-slate-700 rounded-md transition-colors">
+    <div className="my-4 mx-2 px-4 py-4 shadow-md border border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border dark:border-slate-700 rounded-md transition-colors">
       <div className="flex justify-between">
-        <div className="font-medium text-md">
+        <div className="text-md font-medium">
           {props.connection.displayName}
         </div>
-        <div className="font-mono text-slate-300 text-sm">
-          {props.connection.shortUsername + "..."}
-        </div>
       </div>
-      <div className="m-2">
-        <div className="text-slate-500 text-sm mb-2 dark:text-slate-400">
+
+      <div className="flex flex-col pl-2 pt-3">
+        <div className="pb-3 text-slate-500 dark:text-slate-400">
           {props.connection.description}
         </div>
-        <div className="flex justify-between text-sm">
+        <div className="flex justify-between">
           <label
             htmlFor="database-name"
             className="mr-auto dark:text-slate-400"
           >
-            Database Name:
+            Database name:
           </label>
           <input
             type="database-name"
@@ -279,31 +284,43 @@ function SingleConnectionSettings(props: {
               setDatabaseName(e.target.value);
               setShowCheck(true);
             }}
-            className="focus:border-slate-500 focus:hover:border-slate-500 my-auto appearance-none border border-slate-200 hover:border-slate-300 rounded mx-1 py-2 px-3 text-slate-600 leading-tight focus:outline-none focus:shadow-outline dark:bg-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors dark:text-slate-50"
+            className="sm:w-36 lg:w-auto mb-2 rounded mx-1 py-2 px-3 appearance-none border border-slate-200 
+              hover:border-slate-300 focus:border-slate-500 focus:hover:border-slate-500 focus:shadow-outline focus:outline-none
+              text-slate-600 dark:text-slate-50 leading-tight
+              dark:bg-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors"
           ></input>
         </div>
-        <div className="flex justify-between text-sm">
+        <div className="flex justify-between">
           <label htmlFor="number" className="mr-auto dark:text-slate-400">
-            Number of required reviews:
+            Required reviews:
           </label>
           <input
             type="number"
+            min="0"
             value={numTotalRequired}
             onChange={(e) => {
               setNumTotalRequired(parseInt(e.target.value));
               setShowCheck(true);
             }}
-            className="focus:border-slate-500 focus:hover:border-slate-500 my-auto appearance-none border border-slate-200 hover:border-slate-300 rounded mx-1 py-2 px-3 text-slate-600 leading-tight focus:outline-none focus:shadow-outline dark:bg-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors dark:text-slate-50"
+            className="w-32 sm:w-36 lg:w-auto rounded mx-1 py-2 px-3 appearance-none border border-slate-200 
+            hover:border-slate-300 focus:border-slate-500 focus:hover:border-slate-500 focus:shadow-outline focus:outline-none
+            text-slate-600 dark:text-slate-50 leading-tight
+            dark:bg-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors"
           ></input>
         </div>
-        <button
-          onClick={() => void submit()}
-          className={`text-green-600 ml-2 hover:text-green-900 transition-colors ${
-            showCheck ? "visible" : "invisible"
-          }`}
-        >
-          <FontAwesomeIcon icon={solid("check")} />
-        </button>
+
+        {/* Accept button */}
+        <div className="flex justify-end">
+          <button
+            onClick={() => void submit()}
+            className={`dark:bg-slate-800 mt-3 mr-1 px-5 rounded-md text-white-600 hover:text-sky-500 dark:hover:text-sky-400
+              shadow-sm border border-slate-300 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-colors ${
+                showCheck ? "visible" : "invisible"
+              }`}
+          >
+            <FontAwesomeIcon icon={solid("check")} />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -321,7 +338,7 @@ function ConnectionSettings(props: {
     <div className="flex flex-col max-h-[calc(100vh-theme(spacing.52))] w-full border-l dark:border-slate-700  dark:bg-slate-950">
       <div className="pl-8 text-lg">Connections</div>
       <div className="flex-grow overflow-hidden">
-        <div className="pl-8 h-full flex flex-col justify-between">
+        <div className="pl-5 h-full flex flex-col justify-between">
           <div className="overflow-y-auto flex-grow">
             {props.connections.map((connection) => (
               <SingleConnectionSettings
@@ -331,8 +348,11 @@ function ConnectionSettings(props: {
               />
             ))}
           </div>
-          <Button className="ml-auto my-2" onClick={props.addConnectionHandler}>
-            Add Connection
+          <Button
+            className="ml-auto mx-2 my-1"
+            onClick={props.addConnectionHandler}
+          >
+            Add connection
           </Button>
         </div>
       </div>
