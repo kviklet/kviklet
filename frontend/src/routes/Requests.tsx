@@ -155,7 +155,7 @@ function Requests() {
               </Link>
             );
           })}
-          <Link to={"/requests/new"}>
+          <Link to={"/new"}>
             <Button className="float-right">Create new Request</Button>
           </Link>
         </div>

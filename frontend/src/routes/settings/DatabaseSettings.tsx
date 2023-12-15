@@ -337,7 +337,6 @@ function ConnectionSettings(props: {
   return (
     <div className="flex flex-col max-h-[calc(100vh-theme(spacing.52))] w-full border-l dark:border-slate-700  dark:bg-slate-950">
       <div className="pl-8 text-lg">Connections</div>
-
       <div className="flex-grow overflow-hidden">
         <div className="pl-5 h-full flex flex-col justify-between">
           <div className="overflow-y-auto flex-grow">

@@ -27,17 +27,17 @@ test("Create Connection", async ({ page }) => {
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await page
     .locator("div")
-    .filter({ hasText: /^Database Name:Number of required reviews:$/ })
+    .filter({ hasText: /^Database name:Required reviews:$/ })
     .getByRole("spinbutton")
     .click();
   await page
     .locator("div")
-    .filter({ hasText: /^Database Name:Number of required reviews:$/ })
+    .filter({ hasText: /^Database name:Required reviews:$/ })
     .getByRole("spinbutton")
     .fill("0");
   await page
     .locator("div")
-    .filter({ hasText: /^Database Name:Number of required reviews:$/ })
+    .filter({ hasText: /^Database name:Required reviews:$/ })
     .getByRole("button")
     .click();
   await expect(page.getByText("my test connection")).toBeVisible();
