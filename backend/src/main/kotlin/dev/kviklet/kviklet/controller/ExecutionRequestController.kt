@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
 import dev.kviklet.kviklet.db.User
+import dev.kviklet.kviklet.security.CurrentUser
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.ColumnInfo
 import dev.kviklet.kviklet.service.ErrorQueryResult
@@ -28,7 +29,6 @@ import io.swagger.v3.oas.annotations.media.DiscriminatorMapping
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
-import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
@@ -321,7 +321,7 @@ class ExecutionRequestController(
     fun create(
         @Valid @RequestBody
         request: CreateExecutionRequestRequest,
-        @AuthenticationPrincipal userDetails: UserDetailsWithId,
+        @CurrentUser userDetails: UserDetailsWithId,
     ): ExecutionRequestResponse {
         val executionRequest = executionRequestService.create(request.datasourceConnectionId, request, userDetails.id)
         return ExecutionRequestResponse.fromDto(executionRequest)
@@ -345,7 +345,7 @@ class ExecutionRequestController(
         @PathVariable executionRequestId: ExecutionRequestId,
         @Valid @RequestBody
         request: CreateReviewRequest,
-        @AuthenticationPrincipal userDetails: UserDetailsWithId,
+        @CurrentUser userDetails: UserDetailsWithId,
     ): Event {
         return executionRequestService.createReview(executionRequestId, request, userDetails.id)
     }
@@ -355,7 +355,7 @@ class ExecutionRequestController(
         @PathVariable id: ExecutionRequestId,
         @Valid @RequestBody
         request: UpdateExecutionRequestRequest,
-        @AuthenticationPrincipal userDetails: UserDetailsWithId,
+        @CurrentUser userDetails: UserDetailsWithId,
     ): ExecutionRequestDetailResponse {
         val newRequest = executionRequestService.update(id, request, userDetails.id)
         return ExecutionRequestDetailResponse.fromDto(newRequest)
@@ -367,7 +367,7 @@ class ExecutionRequestController(
         @PathVariable executionRequestId: ExecutionRequestId,
         @Valid @RequestBody
         request: CreateCommentRequest,
-        @AuthenticationPrincipal userDetails: UserDetailsWithId,
+        @CurrentUser userDetails: UserDetailsWithId,
     ): EventResponse {
         return EventResponse
             .fromEvent(executionRequestService.createComment(executionRequestId, request, userDetails.id))
@@ -381,7 +381,7 @@ class ExecutionRequestController(
     fun execute(
         @PathVariable executionRequestId: ExecutionRequestId,
         @RequestBody(required = false) request: ExecuteExecutionRequestRequest?,
-        @AuthenticationPrincipal userDetails: UserDetailsWithId,
+        @CurrentUser userDetails: UserDetailsWithId,
     ): ExecutionResponse {
         return ExecutionResponse.fromDto(
             executionRequestService.execute(executionRequestId, request?.query, userDetails.id),

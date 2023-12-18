@@ -4,23 +4,31 @@ import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import jakarta.transaction.Transactional
+import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpStatus
 import org.springframework.security.access.AccessDeniedException
+import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.AuthenticationProvider
 import org.springframework.security.authentication.BadCredentialsException
-import org.springframework.security.authentication.ProviderManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.annotation.web.invoke
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.AuthenticationException
+import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest
+import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService
+import org.springframework.security.oauth2.core.oidc.OidcIdToken
+import org.springframework.security.oauth2.core.oidc.OidcUserInfo
+import org.springframework.security.oauth2.core.oidc.user.OidcUser
 import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
@@ -33,6 +41,9 @@ import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import org.springframework.web.filter.ForwardedHeaderFilter
+import org.springframework.web.method.support.HandlerMethodArgumentResolver
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
+import java.io.Serializable
 
 @Configuration
 class PasswordEncoderConfig {
@@ -45,19 +56,34 @@ class PasswordEncoderConfig {
 @Configuration
 @EnableWebSecurity
 class SecurityConfig(
-    private val customAuthenticationProvider: CustomAuthenticationProvider,
     private val oauth2LoginSuccessHandler: OAuth2LoginSuccessHandler,
+    private val customAuthenticationProvider: CustomAuthenticationProvider,
+    private val customOidcUserService: CustomOidcUserService,
+    private val idpProperties: IdentityProviderProperties,
 ) {
+
+    @Bean
+    fun authManager(http: HttpSecurity): AuthenticationManager {
+        val authenticationManagerBuilder = http.getSharedObject(AuthenticationManagerBuilder::class.java)
+        authenticationManagerBuilder.authenticationProvider(customAuthenticationProvider)
+        return authenticationManagerBuilder.build()
+    }
 
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http.invoke {
             addFilterBefore<WebAsyncManagerIntegrationFilter>(ForwardedHeaderFilter())
             cors { }
+            authenticationManager = authManager(http)
 
-            authenticationManager = ProviderManager(customAuthenticationProvider)
-
-            oauth2Login { authenticationSuccessHandler = oauth2LoginSuccessHandler }
+            if (idpProperties.isOauth2Enabled()) {
+                oauth2Login {
+                    authenticationSuccessHandler = oauth2LoginSuccessHandler
+                    userInfoEndpoint {
+                        oidcUserService = customOidcUserService
+                    }
+                }
+            }
 
             exceptionHandling {
                 authenticationEntryPoint = CustomAuthenticationEntryPoint()
@@ -65,6 +91,7 @@ class SecurityConfig(
             }
 
             authorizeHttpRequests {
+                authorize("/login", permitAll)
                 authorize("/login**", permitAll)
                 authorize("/oauth2**", permitAll)
                 authorize("/v3/api-docs/**", permitAll)
@@ -80,7 +107,7 @@ class SecurityConfig(
             }
 
             securityContext {
-                requireExplicitSave = false // TODO: This is discouraged (see spring security 6 migration guide)
+                requireExplicitSave = true
             }
             sessionManagement {
                 sessionCreationPolicy = SessionCreationPolicy.IF_REQUIRED
@@ -123,6 +150,13 @@ class SecurityConfig(
     }
 }
 
+@Configuration
+class MvcConfig : WebMvcConfigurer {
+    override fun addArgumentResolvers(resolvers: MutableList<HandlerMethodArgumentResolver>) {
+        resolvers.add(CurrentUserArgumentResolver())
+    }
+}
+
 class CustomAccessDeniedHandler : AccessDeniedHandler {
     override fun handle(
         request: HttpServletRequest?,
@@ -134,11 +168,17 @@ class CustomAccessDeniedHandler : AccessDeniedHandler {
 }
 
 class CustomAuthenticationEntryPoint : AuthenticationEntryPoint {
+
+    private val logger = LoggerFactory.getLogger(CustomAuthenticationEntryPoint::class.java)
     override fun commence(
         request: HttpServletRequest,
         response: HttpServletResponse,
         authException: AuthenticationException,
     ) {
+        val requestURI = request.requestURI
+
+        // For other API requests, return 401
+        logger.info("Unauthorized error on {} : {}", requestURI, authException.message)
         response.sendError(HttpServletResponse.SC_UNAUTHORIZED, authException.message)
     }
 }
@@ -176,46 +216,88 @@ class CustomAuthenticationProvider(
     }
 }
 
+class CustomOidcUser(
+    private val oidcUser: OidcUser,
+    private val userDetails: UserDetailsWithId,
+    private val authorities: Collection<GrantedAuthority>,
+) : OidcUser, Serializable {
+
+    override fun getClaims(): Map<String, Any> = oidcUser.claims
+
+    override fun getIdToken(): OidcIdToken = oidcUser.idToken
+
+    override fun getUserInfo(): OidcUserInfo = oidcUser.userInfo
+
+    override fun getName(): String = oidcUser.name
+
+    override fun getAuthorities(): Collection<GrantedAuthority> = authorities
+
+    override fun getAttributes(): Map<String, Any> = oidcUser.attributes
+
+    // Additional methods to expose userDetails
+    fun getUserDetails(): UserDetailsWithId = userDetails
+
+    companion object {
+        private const val serialVersionUID = 1L // Serializable version UID
+    }
+}
+
+@Service
+class CustomOidcUserService(
+    private val userAdapter: UserAdapter,
+) : OidcUserService() {
+
+    @Transactional
+    override fun loadUser(userRequest: OidcUserRequest): OidcUser {
+        val oidcUser = super.loadUser(userRequest)
+
+        val googleId = oidcUser.getAttribute<String>("sub")!!
+        val email = oidcUser.getAttribute<String>("email")!!
+        val name = oidcUser.getAttribute<String>("name")
+
+        var user = userAdapter.findByGoogleId(googleId)
+
+        if (user == null) {
+            // If the user is signing in for the first time, create a new user
+            user = User(
+                googleId = googleId,
+                email = email,
+                fullName = name,
+                // Set default roles and other user properties here
+            )
+        } else {
+            // If the user has already signed in before, update the user's information
+            val user = user.copy(
+                googleId = googleId,
+                email = email,
+                fullName = name,
+            )
+            // Update other user properties here
+        }
+
+        val savedUser = userAdapter.createOrUpdateUser(user)
+        // Handle your custom logic (e.g., saving the user to the database)
+        // Extract policies
+
+        val policies = savedUser.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
+        val userDetails = UserDetailsWithId(savedUser.id!!, email, "", policies)
+
+        // Return a CustomOidcUser with the original OidcUser, custom user details, and authorities
+        return CustomOidcUser(oidcUser, userDetails, policies)
+    }
+}
+
 @Component
 class OAuth2LoginSuccessHandler(
     private val userAdapter: UserAdapter,
 ) : SimpleUrlAuthenticationSuccessHandler() {
 
+    @Transactional
     override fun onAuthenticationSuccess(
         request: HttpServletRequest?,
         response: HttpServletResponse?,
         authentication: Authentication?,
     ) {
-        if (authentication is OAuth2AuthenticationToken) {
-            val oauth2User = authentication.principal
-            val googleId = oauth2User.getAttribute<String>("sub")!!
-            val email = oauth2User.getAttribute<String>("email")!!
-            val name = oauth2User.getAttribute<String>("name")
-
-            var user = userAdapter.findByGoogleId(googleId)
-
-            if (user == null) {
-                // If the user is signing in for the first time, create a new user
-                user = User(
-                    googleId = googleId,
-                    email = email,
-                    fullName = name,
-                    // Set default roles and other user properties here
-                )
-            } else {
-                // If the user has already signed in before, update the user's information
-                user = User(
-                    id = user.id,
-                    email = email,
-                    fullName = name,
-                    // Set default roles and other user properties here
-                )
-                // Update other user properties here
-            }
-
-            userAdapter.createOrUpdateUser(user)
-        }
-
-        redirectStrategy.sendRedirect(request, response, "http://localhost:3000/requests")
+        redirectStrategy.sendRedirect(request, response, "http://localhost:5173/requests")
     }
 }
