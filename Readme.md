@@ -56,3 +56,19 @@ docker run \
 --network host \
 ghcr.io/kviklet/kviklet:main
 ```
+
+### Google SSO
+
+If you want to setup SSO for your Kviklet instance (which makes a lot of sense since otherwise you have to manage passwords again).
+You need to setup these 3 environment variables:
+
+```
+kviklet_identity-provider_client-id
+kviklet_identity-provider_client-secret
+kviklet_identity-provider_type=google
+```
+
+The google client id and secret you can easily get by following google instructions here:
+https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid
+
+After setting those environment variables everyone in your organization can login with the sign in with google button. But they wont have any permissions by default, you will have to assign them a role after they log in once.
