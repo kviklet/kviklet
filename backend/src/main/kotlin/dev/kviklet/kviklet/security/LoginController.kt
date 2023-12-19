@@ -39,7 +39,7 @@ class LoginController(private val customAuthenticationProvider: CustomAuthentica
             val authenticationToken = UsernamePasswordAuthenticationToken(credentials.email, credentials.password)
             val authentication = customAuthenticationProvider.authenticate(authenticationToken)
 
-            val session = request.getSession(false)
+            val session = request.getSession(true)
             val sessionId = session?.id ?: throw IllegalStateException("Session was not created")
             val context: SecurityContext = this.securityContextHolderStrategy.createEmptyContext()
             context.authentication = authentication
