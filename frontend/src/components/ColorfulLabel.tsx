@@ -17,7 +17,7 @@ const colorFromText = (text: string) => {
     return hash;
   };
   const colors = [
-    "darK:bg-blue-600 dark:text-white bg-white border-blue-600 text-blue-800",
+    "dark:bg-blue-600 dark:text-white bg-white border-blue-600 text-blue-800",
     "dark:bg-green-600 dark:text-white bg-white border-green-600 text-green-800",
     "dark:bg-yellow-600 dark:text-white bg-white border-yellow-600 text-yellow-800",
     "dark:bg-red-600 dark:text-white bg-white border-red-600 text-red-800",
