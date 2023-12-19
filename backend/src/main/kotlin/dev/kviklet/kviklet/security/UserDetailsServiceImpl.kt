@@ -8,6 +8,7 @@ import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.stereotype.Service
+import java.io.Serializable
 
 @Service
 class UserDetailsServiceImpl(
@@ -29,4 +30,8 @@ class UserDetailsWithId(
     email: String,
     password: String?,
     authorities: Collection<out GrantedAuthority>,
-) : User(email, password, authorities)
+) : User(email, password, authorities), Serializable {
+    companion object {
+        private const val serialVersionUID = 1L // Serializable version UID
+    }
+}

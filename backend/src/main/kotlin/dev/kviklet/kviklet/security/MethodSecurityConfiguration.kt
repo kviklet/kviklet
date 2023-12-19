@@ -20,6 +20,7 @@ import org.springframework.security.authorization.AuthorizationDecision
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.security.oauth2.core.oidc.user.OidcUser
 import org.springframework.stereotype.Component
 import java.util.function.Supplier
 
@@ -100,11 +101,17 @@ class MyAuthorizationManager {
         var permissionToCheck: Permission = policyAnnotation.permission
         var securedObject = returnObject
 
+        val userDetailsWithId = when (auth.principal) {
+            is UserDetailsWithId -> auth.principal as UserDetailsWithId
+            is OidcUser -> (auth.principal as CustomOidcUser).getUserDetails()
+            else -> throw RuntimeException("Unknown principal type: ${auth.principal.javaClass}")
+        }
+
         do {
             if (!policies.vote(permissionToCheck, securedObject).isAllowed()) {
                 return AuthorizationDecision(false)
             }
-            if (returnObject?.auth(permissionToCheck, auth.principal as UserDetailsWithId) == false) {
+            if (returnObject?.auth(permissionToCheck, userDetailsWithId) == false) {
                 return AuthorizationDecision(false)
             }
         } while ((permissionToCheck.requiredPermission != null).also {
