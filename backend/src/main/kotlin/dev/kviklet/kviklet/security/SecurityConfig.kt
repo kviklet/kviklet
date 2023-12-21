@@ -298,6 +298,16 @@ class OAuth2LoginSuccessHandler(
         response: HttpServletResponse?,
         authentication: Authentication?,
     ) {
-        redirectStrategy.sendRedirect(request, response, "http://localhost:5173/requests")
+        val baseUrl = request?.let { getBaseUrl(it) }
+        val redirectUrl = "$baseUrl/requests"
+        redirectStrategy.sendRedirect(request, response, redirectUrl)
+    }
+
+    private fun getBaseUrl(request: HttpServletRequest): String {
+        val scheme = request.scheme
+        val serverName = request.serverName
+        val serverPort = request.serverPort
+
+        return "$scheme://$serverName${if (serverPort != 80 && serverPort != 443) ":$serverPort" else ""}"
     }
 }
