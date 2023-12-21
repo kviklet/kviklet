@@ -63,9 +63,9 @@ If you want to setup SSO for your Kviklet instance (which makes a lot of sense s
 You need to setup these 3 environment variables:
 
 ```
-kviklet_identity-provider_client-id
-kviklet_identity-provider_client-secret
-kviklet_identity-provider_type=google
+KVIKLET_IDENTITY_PRORVIDER_CLIENT_ID
+KVIKLET_IDENTITY_PRORVIDER_CLIENT_SECRET
+KVIKLET_IDENTITY_PRORVIDER_TYPE=google
 ```
 
 The google client id and secret you can easily get by following google instructions here:
