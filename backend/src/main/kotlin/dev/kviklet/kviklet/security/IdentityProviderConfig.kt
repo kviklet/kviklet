@@ -5,6 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.Order
+import org.springframework.core.env.Environment
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClientService
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService
@@ -48,18 +49,28 @@ class IdentityProviderProperties {
 @EnableWebSecurity
 data class IdentityProviderConfig(
     private val properties: IdentityProviderProperties,
+    private val environment: Environment,
 ) {
 
     @Order(2)
     @Bean
     fun clientRegistrationRepository(): ClientRegistrationRepository {
+        val activeProfiles = environment.activeProfiles
+        val redirectUri = if (!activeProfiles.contains("test") &&
+            !activeProfiles.contains("local") &&
+            !activeProfiles.contains("e2e")
+        ) {
+            "{baseUrl}/api/login/oauth2/code/{registrationId}"
+        } else {
+            "{baseUrl}/login/oauth2/code/{registrationId}"
+        }
         val clientRegistration = ClientRegistrations
             .fromIssuerLocation(properties.getIssuerUri())
             .registrationId(properties.type)
             .clientId(properties.clientId)
             .clientSecret(properties.clientSecret)
             .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-            .redirectUri("{baseUrl}/login/oauth2/code/{registrationId}")
+            .redirectUri(redirectUri)
             .scope("openid", "email", "profile")
             .userNameAttributeName(IdTokenClaimNames.SUB)
             .clientName(properties.type!!.replaceFirstChar { it.uppercase() })
