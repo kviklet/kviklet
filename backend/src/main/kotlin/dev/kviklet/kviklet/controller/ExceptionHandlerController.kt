@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.controller
 
+import dev.kviklet.kviklet.service.AlreadyExecutedException
 import dev.kviklet.kviklet.service.InvalidReviewException
 import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
@@ -37,18 +38,24 @@ class ExceptionHandlerController {
         request: HttpServletRequest,
     ): ResponseEntity<Any> {
         logger.error("JSON parse error at ${request.requestURI}: ${ex.message}")
-        return ResponseEntity("JSON parse error", HttpStatus.BAD_REQUEST)
+        return ResponseEntity(ErrorResponse("JSON parse error"), HttpStatus.BAD_REQUEST)
     }
 
     @ExceptionHandler(org.springframework.security.access.AccessDeniedException::class)
     fun handleAccessDeniedException(ex: AccessDeniedException, request: HttpServletRequest): ResponseEntity<Any> {
         logger.error("Access denied at ${request.requestURI}", ex)
-        return ResponseEntity("Access denied", HttpStatus.FORBIDDEN)
+        return ResponseEntity(ErrorResponse("Access denied"), HttpStatus.FORBIDDEN)
+    }
+
+    @ExceptionHandler(AlreadyExecutedException::class)
+    fun handleAlreadyExecutedException(ex: AlreadyExecutedException, request: HttpServletRequest): ResponseEntity<Any> {
+        logger.error("Already executed at ${request.requestURI}", ex)
+        return ResponseEntity(ErrorResponse(ex.message ?: "Already Executed"), HttpStatus.BAD_REQUEST)
     }
 
     @ExceptionHandler(Exception::class)
     fun handleAllExceptions(ex: Exception, request: HttpServletRequest): ResponseEntity<Any> {
         logger.error("Exception occurred at ${request.requestURI}", ex)
-        return ResponseEntity("An error occurred", HttpStatus.INTERNAL_SERVER_ERROR)
+        return ResponseEntity(ErrorResponse("An unexpected error occurred :("), HttpStatus.INTERNAL_SERVER_ERROR)
     }
 }

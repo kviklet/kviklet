@@ -11,7 +11,6 @@ import {
   ChangeExecutionRequestPayload,
   patchRequest,
   SelectExecuteResponse,
-  ErrorResponse,
   Edit,
   Review,
   Comment as CommentEvent,
@@ -97,9 +96,9 @@ const useRequest = (id: string) => {
   const [data, setData] = useState<SelectExecuteResponse>();
   const [updatedRows, setUpdatedRows] = useState<number | undefined>(undefined);
   const [dataLoading, setDataLoading] = useState<boolean>(false);
-  const [executionError, setExecutionError] = useState<
-    ErrorResponse | undefined
-  >(undefined);
+  const [executionError, setExecutionError] = useState<string | undefined>(
+    undefined,
+  );
 
   const addComment = async (comment: string) => {
     const event = await addCommentToRequest(id, comment);
@@ -129,17 +128,21 @@ const useRequest = (id: string) => {
 
   const execute = async () => {
     setDataLoading(true);
-    const result = await runQuery(id);
-    switch (result._type) {
-      case "select":
-        setData(result);
-        break;
-      case "update":
-        setUpdatedRows(result.rowsUpdated);
-        break;
-      case "error":
-        setExecutionError(result);
-        break;
+    const response = await runQuery(id);
+    if (response.result) {
+      switch (response.result._type) {
+        case "select":
+          setData(response.result);
+          break;
+        case "update":
+          setUpdatedRows(response.result.rowsUpdated);
+          break;
+        case "error":
+          setExecutionError(response.result.message);
+          break;
+      }
+    } else {
+      setExecutionError(response.error?.message);
     }
     setDataLoading(false);
   };
@@ -209,9 +212,7 @@ function RequestReview() {
               <div className="text-slate-500">{updatedRows} rows updated</div>
             )}
             {executionError && (
-              <div className="text-red-500">
-                {executionError.errorCode}: {executionError.message}
-              </div>
+              <div className="text-red-500">{executionError}</div>
             )}
 
             <div className="w-full border-b dark:border-slate-700 border-slate-300 mt-3"></div>

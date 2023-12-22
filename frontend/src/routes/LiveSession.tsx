@@ -1,9 +1,5 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import {
-  ErrorResponse,
-  SelectExecuteResponse,
-  runQuery,
-} from "../api/ExecutionRequestApi";
+import { SelectExecuteResponse, runQuery } from "../api/ExecutionRequestApi";
 import Table from "../components/Table";
 import Button from "../components/Button";
 
@@ -28,9 +24,9 @@ export default function LiveSession() {
   });
   const [dataLoading, setDataLoading] = useState(false);
   const [updatedRows, setUpdatedRows] = useState<number | undefined>(undefined);
-  const [executionError, setExecutionError] = useState<
-    ErrorResponse | undefined
-  >(undefined);
+  const [executionError, setExecutionError] = useState<string | undefined>(
+    undefined,
+  );
 
   const [editor, setEditor] =
     useState<monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -80,18 +76,23 @@ export default function LiveSession() {
       _type: "select",
     });
     setDataLoading(true);
-    const result = await runQuery(params.requestId, text);
-    switch (result._type) {
-      case "select":
-        setData(result);
-        break;
-      case "update":
-        setUpdatedRows(result.rowsUpdated);
-        break;
-      case "error":
-        setExecutionError(result);
-        break;
+    const response = await runQuery(params.requestId, text);
+    if (response.result) {
+      switch (response.result._type) {
+        case "select":
+          setData(response.result);
+          break;
+        case "update":
+          setUpdatedRows(response.result.rowsUpdated);
+          break;
+        case "error":
+          setExecutionError(response.result.message);
+          break;
+      }
+    } else {
+      setExecutionError(response.error?.message);
     }
+
     setDataLoading(false);
   };
 
@@ -111,11 +112,7 @@ export default function LiveSession() {
         {updatedRows && (
           <div className="text-slate-500">{updatedRows} rows updated</div>
         )}
-        {executionError && (
-          <div className="text-red-500">
-            {executionError.errorCode}: {executionError.message}
-          </div>
-        )}
+        {executionError && <div className="text-red-500">{executionError}</div>}
         <div className="flex justify-center h-full">
           {(dataLoading && <Spinner></Spinner>) ||
             (data && <Table data={data}></Table>)}
