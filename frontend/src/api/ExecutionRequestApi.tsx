@@ -13,14 +13,12 @@ const DateTime = z.preprocess(
 
 const ExecutionRequestPayload = z
   .object({
-    //issueLink: z.string().url(),
     title: z.string().min(1),
     description: z.string(),
     type: z.enum(["TemporaryAccess", "SingleQuery"]),
     statement: z.coerce.string().nullable().optional(),
     readOnly: z.boolean(),
     datasourceConnectionId: z.string().min(1),
-    //confidential: z.boolean(),
   })
   .refine(
     (data) =>
@@ -71,6 +69,10 @@ const ExecuteEvent = withType(
   }),
   "EXECUTE",
 );
+
+const ApiErrorResponseSchema = z.object({
+  message: z.string(),
+});
 
 const ExecutionRequestResponse = z.object({
   id: z.string(),
@@ -233,7 +235,7 @@ const ColumnSchema = z.object({
 const SelectExecuteResponseSchema = withType(
   z.object({
     columns: z.array(ColumnSchema),
-    data: z.array(z.record(z.string())),
+    data: z.array(z.record(z.coerce.string())),
   }),
   "select",
 );
@@ -262,11 +264,14 @@ type UpdateExecuteResponse = z.infer<typeof UpdateExecuteResponseSchema>;
 type SelectExecuteResponse = z.infer<typeof SelectExecuteResponseSchema>;
 type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 type Column = z.infer<typeof ColumnSchema>;
+type ApiErrorResponse = z.infer<typeof ApiErrorResponseSchema>;
 
-const runQuery = async (
-  id: string,
-  query?: string,
-): Promise<ExecuteResponseResult> => {
+type QueryResult = {
+  result?: ExecuteResponseResult;
+  error?: ApiErrorResponse;
+};
+
+const runQuery = async (id: string, query?: string): Promise<QueryResult> => {
   const response = await fetch(requestUrl + id + "/execute", {
     method: "POST",
     headers: {
@@ -276,8 +281,15 @@ const runQuery = async (
     ...(query && { body: JSON.stringify({ query }) }),
   });
   const json: unknown = await response.json();
-  const result = ExecuteResponseSchema.parse(json);
-  return result.results[result.results.length - 1];
+  if (response.ok) {
+    const result = ExecuteResponseSchema.parse(json);
+    return {
+      result: result.results[result.results.length - 1],
+    };
+  } else {
+    const result = ApiErrorResponseSchema.parse(json);
+    return { error: result };
+  }
 };
 
 export {
@@ -288,6 +300,7 @@ export {
   addReviewToRequest,
   runQuery,
   patchRequest,
+  ApiErrorResponseSchema,
 };
 export type {
   ExecutionRequestResponse,
@@ -304,4 +317,6 @@ export type {
   Event,
   Execute,
   Column,
+  ApiErrorResponse,
+  QueryResult,
 };
