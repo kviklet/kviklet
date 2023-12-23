@@ -128,7 +128,7 @@ class ExecutionRequestAdapter(
 
         val event = entityManager.merge(eventEntity)
 
-        executionRequestEntity.events.add(eventEntity)
+        executionRequestEntity.events.add(event)
         executionRequestRepository.saveAndFlush(executionRequestEntity)
         val details = executionRequestEntity.toDetailDto()
         entityManager.refresh(event)
