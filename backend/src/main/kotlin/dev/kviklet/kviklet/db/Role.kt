@@ -33,7 +33,7 @@ class RoleEntity : BaseEntity {
         id: String? = null,
         name: String,
         description: String,
-        policies: Set<PolicyEntity> = emptySet(),
+        policies: Set<PolicyEntity> = emptySet<PolicyEntity>().toMutableSet(),
     ) : this() {
         this.id = id
         this.name = name
@@ -98,7 +98,7 @@ class RoleAdapter(
                         effect = it.effect,
                         resource = it.resource,
                     )
-                }.toSet(),
+                }.toMutableSet(),
             ),
         )
         return savedRole.toDto()

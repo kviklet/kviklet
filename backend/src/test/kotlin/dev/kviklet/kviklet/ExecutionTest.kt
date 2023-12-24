@@ -24,6 +24,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.time.format.DateTimeFormatter
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -56,6 +57,7 @@ class ExecutionTest {
 
     @AfterEach
     fun tearDown() {
+        executionRequestAdapter.deleteAll()
         userAdapter.deleteAll()
         roleAdapter.deleteAll()
     }
@@ -80,7 +82,6 @@ class ExecutionTest {
 
     @Test
     fun createExecutionRequest() {
-        val user = userHelper.createUser(permissions = listOf("*"))
         val connection = datasourceConnectionAdapter.createDatasourceConnection(
             DatasourceConnectionId("ds-conn-test"),
             "Test Connection",
@@ -97,6 +98,7 @@ class ExecutionTest {
             "postgres",
             DatasourceType.POSTGRESQL,
         )
+        userHelper.createUser(permissions = listOf("*"))
         val cookie = login()
 
         mockMvc.perform(
@@ -174,7 +176,9 @@ class ExecutionTest {
                             "statement": "SELECT * FROM test",
                             "readOnly": true,
                             "executionStatus": "PENDING",
-                            "createdAt": "${executionRequest.request.createdAt}",
+                            "createdAt": "${refreshedExecutionRequest.request.createdAt.format(
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS"),
+                    )}",
                             "author": {
                                 "id": "${user.id}",
                                 "email": "${user.email}",
@@ -209,7 +213,9 @@ class ExecutionTest {
                             {
                                 "id": "${refreshedExecutionRequest.events.first().getId()}",
                                 "type": "COMMENT",
-                                "createdAt": "${refreshedExecutionRequest.events.first().createdAt}",
+                                "createdAt": "${refreshedExecutionRequest.events.first().createdAt.format(
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS"),
+                    )}",
                                 "author": {
                                     "id": "${user.id}",
                                     "email": ${user.email},

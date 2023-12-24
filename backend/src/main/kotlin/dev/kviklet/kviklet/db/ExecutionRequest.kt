@@ -137,6 +137,10 @@ class ExecutionRequestAdapter(
         return Pair(details, event.toDto(details))
     }
 
+    fun deleteAll() {
+        executionRequestRepository.deleteAll()
+    }
+
     @Transactional
     fun createExecutionRequest(
         connectionId: DatasourceConnectionId,
