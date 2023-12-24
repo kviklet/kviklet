@@ -20,6 +20,7 @@ import org.hibernate.annotations.ColumnTransformer
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 data class ReviewConfig(
     val numTotalRequired: Int,
@@ -83,6 +84,7 @@ class DatasourceConnectionAdapter(
             )
     }
 
+    @Transactional
     fun createDatasourceConnection(
         datasourceConnectionId: DatasourceConnectionId,
         displayName: String,

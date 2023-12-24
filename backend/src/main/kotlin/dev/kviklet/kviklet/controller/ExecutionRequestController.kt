@@ -76,7 +76,7 @@ data class ExecutionRequestResponse(
     val title: String,
     val type: RequestType,
     val author: UserResponse,
-    val connection: dev.kviklet.kviklet.controller.DatasourceConnectionResponse,
+    val connection: DatasourceConnectionResponse,
     val description: String?,
     val statement: String?,
     val readOnly: Boolean,
@@ -99,7 +99,7 @@ data class ExecutionRequestResponse(
                 reviewStatus = dto.resolveReviewStatus(),
                 executionStatus = dto.request.executionStatus,
                 createdAt = dto.request.createdAt,
-                connection = dev.kviklet.kviklet.controller.DatasourceConnectionResponse.fromDto(
+                connection = DatasourceConnectionResponse.fromDto(
                     dto.request.connection,
                 ),
             )
@@ -114,7 +114,7 @@ data class ExecutionRequestDetailResponse(
     val id: ExecutionRequestId,
     val type: RequestType,
     val author: UserResponse,
-    val connection: dev.kviklet.kviklet.controller.DatasourceConnectionResponse,
+    val connection: DatasourceConnectionResponse,
     val title: String,
     val description: String?,
     val statement: String?,
@@ -138,7 +138,7 @@ data class ExecutionRequestDetailResponse(
             executionStatus = dto.request.executionStatus,
             createdAt = dto.request.createdAt,
             events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
-            connection = dev.kviklet.kviklet.controller.DatasourceConnectionResponse.fromDto(dto.request.connection),
+            connection = DatasourceConnectionResponse.fromDto(dto.request.connection),
         )
     }
 }

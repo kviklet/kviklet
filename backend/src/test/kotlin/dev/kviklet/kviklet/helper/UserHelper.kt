@@ -7,10 +7,11 @@ import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.RoleId
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 
 @Component
 class UserHelper(private val userService: UserService, private val roleService: RoleService) {
-
+    @Transactional
     fun createUser(permissions: List<String>, resources: List<String>? = null): User {
         val user = userService.createUser(
             email = "user@example.com",

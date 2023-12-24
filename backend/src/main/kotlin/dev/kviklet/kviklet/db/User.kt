@@ -38,7 +38,7 @@ data class UserEntity(
         joinColumns = [JoinColumn(name = "user_id")],
         inverseJoinColumns = [JoinColumn(name = "role_id")],
     )
-    var roles: Set<RoleEntity> = HashSet(),
+    var roles: Set<RoleEntity> = emptySet<RoleEntity>().toMutableSet(),
 ) : BaseEntity() {
     fun toDto() = User(
         id = id,

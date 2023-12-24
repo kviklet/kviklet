@@ -24,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -128,7 +129,7 @@ class ExecutionRequestAdapter(
 
         val event = entityManager.merge(eventEntity)
 
-        executionRequestEntity.events.add(eventEntity)
+        executionRequestEntity.events.add(event)
         executionRequestRepository.saveAndFlush(executionRequestEntity)
         val details = executionRequestEntity.toDetailDto()
         entityManager.refresh(event)
@@ -136,6 +137,11 @@ class ExecutionRequestAdapter(
         return Pair(details, event.toDto(details))
     }
 
+    fun deleteAll() {
+        executionRequestRepository.deleteAll()
+    }
+
+    @Transactional
     fun createExecutionRequest(
         connectionId: DatasourceConnectionId,
         title: String,
@@ -198,6 +204,7 @@ class ExecutionRequestAdapter(
     private fun getUserEntity(id: String): UserEntity = userRepository.findByIdOrNull(id)
         ?: throw EntityNotFound("User Not Found", "User with id $id does not exist.")
 
+    @Transactional
     fun getExecutionRequestDetails(id: ExecutionRequestId): ExecutionRequestDetails = getExecutionRequestDetailsEntity(
         id,
     ).toDetailDto()
