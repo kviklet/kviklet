@@ -6,6 +6,7 @@ import dev.kviklet.kviklet.db.RoleEntity
 import dev.kviklet.kviklet.db.RoleRepository
 import dev.kviklet.kviklet.db.UserEntity
 import dev.kviklet.kviklet.db.UserRepository
+import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.service.dto.PolicyEffect
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ApplicationRunner
@@ -38,6 +39,36 @@ class InitialUserInitializer(
         savedUser.roles += savedRole
     }
 
+    fun createDevRole() {
+        val role = RoleEntity(
+            name = "Developer Role",
+            description = "This role gives permission to create, review and execute requests",
+            policies = setOf(
+                PolicyEntity(
+                    action = Permission.DATASOURCE_CONNECTION_GET.getPermissionString(),
+                    effect = PolicyEffect.ALLOW,
+                    resource = "*",
+                ),
+                PolicyEntity(
+                    action = Permission.EXECUTION_REQUEST_GET.getPermissionString(),
+                    effect = PolicyEffect.ALLOW,
+                    resource = "*",
+                ),
+                PolicyEntity(
+                    action = Permission.EXECUTION_REQUEST_EDIT.getPermissionString(),
+                    effect = PolicyEffect.ALLOW,
+                    resource = "*",
+                ),
+                PolicyEntity(
+                    action = Permission.EXECUTION_REQUEST_EXECUTE.getPermissionString(),
+                    effect = PolicyEffect.ALLOW,
+                    resource = "*",
+                ),
+            ),
+        )
+        roleRepository.saveAndFlush(role)
+    }
+
     @Bean
     fun initializer(
         userRepository: UserRepository,
@@ -59,6 +90,7 @@ class InitialUserInitializer(
             val savedUser = userRepository.saveAndFlush(user)
 
             createAdminRole(savedUser)
+            createDevRole()
             userRepository.saveAndFlush(savedUser)
         }
     }

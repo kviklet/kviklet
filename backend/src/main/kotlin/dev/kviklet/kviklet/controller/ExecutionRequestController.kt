@@ -346,8 +346,10 @@ class ExecutionRequestController(
         @Valid @RequestBody
         request: CreateReviewRequest,
         @CurrentUser userDetails: UserDetailsWithId,
-    ): Event {
-        return executionRequestService.createReview(executionRequestId, request, userDetails.id)
+    ): EventResponse {
+        return EventResponse.fromEvent(
+            executionRequestService.createReview(executionRequestId, request, userDetails.id),
+        )
     }
 
     @PatchMapping("/{id}")
