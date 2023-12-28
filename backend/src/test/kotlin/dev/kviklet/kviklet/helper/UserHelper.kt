@@ -1,6 +1,7 @@
 package dev.kviklet.kviklet.helper
 
 import dev.kviklet.kviklet.db.User
+import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.security.UserService
 import dev.kviklet.kviklet.service.RoleService
 import dev.kviklet.kviklet.service.dto.Policy
@@ -30,7 +31,7 @@ class UserHelper(private val userService: UserService, private val roleService: 
             id = RoleId(role.getId()!!),
             policies = policies,
         )
-        val updatedUser = userService.updateUser(user.id!!, roles = listOf(role.getId()!!))
+        val updatedUser = userService.updateUserWithRoles(UserId(user.getId()!!), roles = listOf(role.getId()!!))
         return updatedUser
     }
 }

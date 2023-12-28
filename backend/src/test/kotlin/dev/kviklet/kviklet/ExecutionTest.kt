@@ -144,7 +144,7 @@ class ExecutionTest {
             statement = "SELECT * FROM test",
             readOnly = true,
             executionStatus = "PENDING",
-            authorId = user.id!!,
+            authorId = user.getId()!!,
         )
         val cookie = login()
 
@@ -180,7 +180,7 @@ class ExecutionTest {
                         DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS"),
                     )}",
                             "author": {
-                                "id": "${user.id}",
+                                "id": "${user.getId()}",
                                 "email": "${user.email}",
                                 "roles": [
                                     {
@@ -217,7 +217,7 @@ class ExecutionTest {
                         DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS"),
                     )}",
                                 "author": {
-                                    "id": "${user.id}",
+                                    "id": "${user.getId()}",
                                     "email": ${user.email},
                                     "roles": [
                                         {
