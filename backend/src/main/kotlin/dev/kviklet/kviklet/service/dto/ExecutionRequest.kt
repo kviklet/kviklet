@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.service.dto
 
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.security.Permission
+import dev.kviklet.kviklet.security.PolicyGrantedAuthority
 import dev.kviklet.kviklet.security.Resource
 import dev.kviklet.kviklet.security.SecuredDomainId
 import dev.kviklet.kviklet.security.SecuredDomainObject
@@ -56,7 +57,7 @@ data class ExecutionRequestDetails(
         val numReviews = events.filter {
             it.type == EventType.REVIEW && it is ReviewEvent && it.action == ReviewAction.APPROVE &&
                 it.createdAt > latestEditTimeStamp
-        }.groupBy { it.author.id }.count()
+        }.groupBy { it.author.getId() }.count()
         val reviewStatus = if (numReviews >= reviewConfig.numTotalRequired) {
             ReviewStatus.APPROVED
         } else {
@@ -75,10 +76,14 @@ data class ExecutionRequestDetails(
         else -> null
     }
 
-    override fun auth(permission: Permission, userDetails: UserDetailsWithId): Boolean {
+    override fun auth(
+        permission: Permission,
+        userDetails: UserDetailsWithId,
+        policies: List<PolicyGrantedAuthority>,
+    ): Boolean {
         return when (permission) {
-            Permission.EXECUTION_REQUEST_EDIT -> request.author.id == userDetails.id
-            Permission.EXECUTION_REQUEST_EXECUTE -> request.author.id == userDetails.id && isExecutable()
+            Permission.EXECUTION_REQUEST_EDIT -> request.author.getId() == userDetails.id
+            Permission.EXECUTION_REQUEST_EXECUTE -> request.author.getId() == userDetails.id && isExecutable()
             else -> true
         }
     }

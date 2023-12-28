@@ -1,10 +1,8 @@
 package dev.kviklet.kviklet.service
 
 import com.zaxxer.hikari.HikariDataSource
-import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Resource
 import dev.kviklet.kviklet.security.SecuredDomainObject
-import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import org.springframework.boot.jdbc.DataSourceBuilder
 import org.springframework.stereotype.Service
@@ -16,7 +14,6 @@ sealed class QueryResult(open val executionRequestId: ExecutionRequestId) : Secu
     override fun getId() = executionRequestId.toString()
     override fun getDomainObjectType() = Resource.EXECUTION_REQUEST
     override fun getRelated(resource: Resource) = null
-    override fun auth(permission: Permission, userDetails: UserDetailsWithId): Boolean = true
 }
 
 data class RecordsQueryResult(

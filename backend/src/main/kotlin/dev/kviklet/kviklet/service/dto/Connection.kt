@@ -1,14 +1,7 @@
 package dev.kviklet.kviklet.service.dto
 
 import com.fasterxml.jackson.annotation.JsonCreator
-import com.fasterxml.jackson.core.JsonGenerator
-import com.fasterxml.jackson.core.JsonParser
-import com.fasterxml.jackson.databind.DeserializationContext
-import com.fasterxml.jackson.databind.JsonDeserializer
-import com.fasterxml.jackson.databind.JsonSerializer
-import com.fasterxml.jackson.databind.SerializerProvider
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize
-import com.fasterxml.jackson.databind.annotation.JsonSerialize
+import com.fasterxml.jackson.annotation.JsonValue
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.security.Resource
 import dev.kviklet.kviklet.security.SecuredDomainId
@@ -25,41 +18,9 @@ enum class AuthenticationType {
     // other: aws iam, gpc, env var
 }
 
-@JsonDeserialize(using = DatasourceIdDeserializer::class)
-@JsonSerialize(using = DatasourceIdSerializer::class)
-data class DatasourceId
-@JsonCreator(mode = JsonCreator.Mode.DELEGATING)
-constructor(
-    private val id: String,
-) : Serializable, SecuredDomainId {
-    override fun toString() = id
-}
-
-class DatasourceIdDeserializer : JsonDeserializer<DatasourceId>() {
-    override fun deserialize(p: JsonParser, ctxt: DeserializationContext): DatasourceId {
-        return DatasourceId(ctxt.readValue(p, String::class.java))
-    }
-}
-class DatasourceIdSerializer : JsonSerializer<DatasourceId>() {
-    override fun serialize(value: DatasourceId?, gen: JsonGenerator?, serializers: SerializerProvider?) {
-        gen?.writeString(value.toString())
-    }
-}
-
-class DatasourceConnectionIdDeserializer : JsonDeserializer<DatasourceConnectionId>() {
-    override fun deserialize(p: JsonParser, ctxt: DeserializationContext): DatasourceConnectionId {
-        return DatasourceConnectionId(ctxt.readValue(p, String::class.java))
-    }
-}
-class DatasourceConnectionIdSerializer : JsonSerializer<DatasourceConnectionId>() {
-    override fun serialize(value: DatasourceConnectionId?, gen: JsonGenerator?, serializers: SerializerProvider?) {
-        gen?.writeString(value.toString())
-    }
-}
-
-@JsonDeserialize(using = DatasourceConnectionIdDeserializer::class)
-@JsonSerialize(using = DatasourceConnectionIdSerializer::class)
-data class DatasourceConnectionId(private val id: String) : Serializable, SecuredDomainId {
+data class DatasourceConnectionId
+@JsonCreator constructor(private val id: String) : Serializable, SecuredDomainId {
+    @JsonValue
     override fun toString() = id
 }
 

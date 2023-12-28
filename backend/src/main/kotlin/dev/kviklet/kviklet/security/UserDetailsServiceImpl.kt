@@ -21,7 +21,7 @@ class UserDetailsServiceImpl(
 
         val authorities = listOf(SimpleGrantedAuthority("USERS"))
 
-        return UserDetailsWithId(user.id!!, user.email, user.password, authorities)
+        return UserDetailsWithId(user.getId()!!, user.email, user.password, authorities)
     }
 }
 
@@ -29,7 +29,7 @@ class UserDetailsWithId(
     val id: String,
     email: String,
     password: String?,
-    authorities: Collection<out GrantedAuthority>,
+    authorities: Collection<GrantedAuthority>,
 ) : User(email, password, authorities), Serializable {
     companion object {
         private const val serialVersionUID = 1L // Serializable version UID

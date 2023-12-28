@@ -93,7 +93,7 @@ class ExecutionRequestService(
     @Policy(Permission.EXECUTION_REQUEST_GET)
     fun createReview(id: ExecutionRequestId, request: CreateReviewRequest, authorId: String): Event {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
-        if (executionRequest.request.author.id == authorId && request.action == ReviewAction.APPROVE) {
+        if (executionRequest.request.author.getId() == authorId && request.action == ReviewAction.APPROVE) {
             throw InvalidReviewException("A user can't approve their own request!")
         }
         return eventService.saveEvent(
@@ -114,7 +114,7 @@ class ExecutionRequestService(
     fun resolveReviewStatus(events: Set<Event>, reviewConfig: ReviewConfig): ReviewStatus {
         val numReviews = events.filter {
             it.type == EventType.REVIEW && it is ReviewEvent && it.action == ReviewAction.APPROVE
-        }.groupBy { it.author.id }.count()
+        }.groupBy { it.author.getId() }.count()
         val reviewStatus = if (numReviews >= reviewConfig.numTotalRequired) {
             ReviewStatus.APPROVED
         } else {
@@ -135,7 +135,7 @@ class ExecutionRequestService(
 
         executionRequest.events.raiseIfAlreadyExecuted(executionRequest.request.type)
 
-        val query = when (executionRequest.request.type) {
+        val queryToExecute = when (executionRequest.request.type) {
             RequestType.SingleQuery -> executionRequest.request.statement!!
             RequestType.TemporaryAccess -> query ?: throw MissingQueryException(
                 "For temporary access requests the query param is required",
@@ -145,7 +145,7 @@ class ExecutionRequestService(
             id,
             userId,
             ExecutePayload(
-                query = query,
+                query = queryToExecute,
             ),
         )
 
@@ -154,7 +154,7 @@ class ExecutionRequestService(
             connectionString = connection.getConnectionString(),
             username = connection.username,
             password = connection.password,
-            query = query,
+            query = queryToExecute,
         )
 
         if (executionRequest.request.type == RequestType.SingleQuery) {
