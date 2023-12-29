@@ -99,6 +99,16 @@ class TestDataInitializer(
                     effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
+                PolicyEntity(
+                    action = Permission.USER_GET.getPermissionString(),
+                    effect = PolicyEffect.ALLOW,
+                    resource = "*",
+                ),
+                PolicyEntity(
+                    action = Permission.USER_EDIT.getPermissionString(),
+                    effect = PolicyEffect.ALLOW,
+                    resource = "*",
+                ),
             ),
         )
         val savedRole = roleRepository.saveAndFlush(role)

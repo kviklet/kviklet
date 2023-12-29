@@ -1,13 +1,11 @@
 package dev.kviklet.kviklet.controller
 
-import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.User
-import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.security.UserService
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
-import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -56,7 +54,7 @@ data class UserResponse(
     val roles: List<RoleResponse>,
 ) {
     constructor(user: User) : this(
-        id = user.id!!,
+        id = user.getId()!!,
         email = user.email,
         fullName = user.fullName,
         permissionString = permissionsToPermissionString(user.policies),
@@ -78,9 +76,6 @@ data class UsersResponse(
 @Validated
 @RequestMapping("/users")
 class UserController(
-    private val userAdapter: UserAdapter,
-    private val passwordEncoder: PasswordEncoder,
-    private val roleAdapter: RoleAdapter,
     private val userService: UserService,
 ) {
 
@@ -100,7 +95,7 @@ class UserController(
 
     @GetMapping("/")
     fun getUsers(): UsersResponse {
-        return UsersResponse.fromUsers(userAdapter.listUsers())
+        return UsersResponse.fromUsers(userService.getUsers())
     }
 
     @PatchMapping("/{id}")
@@ -109,18 +104,30 @@ class UserController(
         @RequestBody @Valid
         userRequest: EditUserRequest,
     ): UserResponse {
-        val savedUser = userService.updateUser(
-            id = id,
-            email = userRequest.email,
-            fullName = userRequest.fullName,
-            roles = userRequest.roles,
-            password = userRequest.password,
-        )
-        return UserResponse(savedUser)
+        if (userRequest.roles != null) {
+            return UserResponse(
+                userService.updateUserWithRoles(
+                    userId = UserId(id),
+                    email = userRequest.email,
+                    fullName = userRequest.fullName,
+                    roles = userRequest.roles,
+                    password = userRequest.password,
+                ),
+            )
+        } else {
+            return UserResponse(
+                userService.updateUser(
+                    userId = UserId(id),
+                    email = userRequest.email,
+                    fullName = userRequest.fullName,
+                    password = userRequest.password,
+                ),
+            )
+        }
     }
 
     @DeleteMapping("/{id}")
     fun deleteUser(@PathVariable id: String) {
-        userAdapter.deleteUser(id)
+        userService.deleteUser(UserId(id))
     }
 }

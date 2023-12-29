@@ -200,7 +200,7 @@ class CustomAuthenticationProvider(
         }
 
         // Create a CustomUserDetails object
-        val userDetails = UserDetailsWithId(user.id!!, email, user.password, emptyList())
+        val userDetails = UserDetailsWithId(user.getId()!!, email, user.password, emptyList())
 
         val policies = user.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
 
@@ -267,7 +267,7 @@ class CustomOidcUserService(
             )
         } else {
             // If the user has already signed in before, update the user's information
-            val user = user.copy(
+            user = user.copy(
                 googleId = googleId,
                 email = email,
                 fullName = name,
@@ -280,7 +280,7 @@ class CustomOidcUserService(
         // Extract policies
 
         val policies = savedUser.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
-        val userDetails = UserDetailsWithId(savedUser.id!!, email, "", policies)
+        val userDetails = UserDetailsWithId(savedUser.getId()!!, email, "", policies)
 
         // Return a CustomOidcUser with the original OidcUser, custom user details, and authorities
         return CustomOidcUser(oidcUser, userDetails, policies)

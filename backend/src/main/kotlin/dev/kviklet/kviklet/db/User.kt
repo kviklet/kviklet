@@ -1,6 +1,16 @@
 package dev.kviklet.kviklet.db
 
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonValue
 import dev.kviklet.kviklet.db.util.BaseEntity
+import dev.kviklet.kviklet.security.Permission
+import dev.kviklet.kviklet.security.PolicyGrantedAuthority
+import dev.kviklet.kviklet.security.Resource
+import dev.kviklet.kviklet.security.SecuredDomainId
+import dev.kviklet.kviklet.security.SecuredDomainObject
+import dev.kviklet.kviklet.security.UserDetailsWithId
+import dev.kviklet.kviklet.security.isAllowed
+import dev.kviklet.kviklet.security.vote
 import dev.kviklet.kviklet.service.EntityNotFound
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.Role
@@ -16,6 +26,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.io.Serializable
 
 @Entity
 @Table(name = "user")
@@ -41,7 +52,7 @@ data class UserEntity(
     var roles: Set<RoleEntity> = emptySet<RoleEntity>().toMutableSet(),
 ) : BaseEntity() {
     fun toDto() = User(
-        id = id,
+        id = id?.let { UserId(it) },
         fullName = fullName,
         password = password,
         googleId = googleId,
@@ -50,21 +61,59 @@ data class UserEntity(
     )
 }
 
+data class UserId
+@JsonCreator constructor(private val id: String) : Serializable, SecuredDomainId {
+    @JsonValue
+    override fun toString() = id
+}
+
 // A dto for the UserEntity
 data class User(
-    val id: String? = "",
+    private val id: UserId? = null,
     val fullName: String? = null,
     val password: String? = null,
     val googleId: String? = null,
     val email: String = "",
     val policies: Set<Policy> = HashSet(),
     val roles: Set<Role> = HashSet(),
-) {
+) : SecuredDomainObject {
     fun getAllPolicies(): Set<Policy> {
         val allPolicies = HashSet<Policy>()
         allPolicies.addAll(policies)
         roles.forEach { allPolicies.addAll(it.policies) }
         return allPolicies
+    }
+
+    override fun getId(): String? {
+        return id?.toString()
+    }
+
+    override fun getDomainObjectType(): Resource {
+        return Resource.USER
+    }
+
+    override fun getRelated(resource: Resource): SecuredDomainObject? {
+        return when (resource) {
+            Resource.USER -> this
+            else -> null
+        }
+    }
+
+    override fun auth(
+        permission: Permission,
+        userDetails: UserDetailsWithId,
+        policies: List<PolicyGrantedAuthority>,
+    ): Boolean {
+        if (permission.resource != Resource.USER) {
+            return false
+        }
+        // Only the user themselves are allowed to edit themselves,
+        // or if they have the USER_EDIT_ROLES permission which is a special case for admins
+        if (permission.action == "edit") {
+            return userDetails.id == this.getId() ||
+                policies.vote(Permission.USER_EDIT_ROLES, this).isAllowed()
+        }
+        return super.auth(permission, userDetails, policies)
     }
 }
 
@@ -108,7 +157,7 @@ class UserAdapter(
     }
 
     fun createOrUpdateUser(user: User): User {
-        val userEntity = userRepository.findByIdOrNull(user.id)
+        val userEntity = userRepository.findByIdOrNull(user.getId())
 
         if (userEntity == null) {
             return createUser(user)
@@ -124,9 +173,9 @@ class UserAdapter(
 
     @Transactional
     fun updateUser(user: User): User {
-        val userEntity = userRepository.findByIdOrNull(user.id) ?: throw EntityNotFound(
+        val userEntity = userRepository.findByIdOrNull(user.getId()) ?: throw EntityNotFound(
             "User not found",
-            "User with id ${user.id} does not exist",
+            "User with id ${user.getId()} does not exist",
         )
         userEntity.fullName = user.fullName
         userEntity.password = user.password

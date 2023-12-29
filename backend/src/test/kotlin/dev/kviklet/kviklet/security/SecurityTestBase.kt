@@ -70,7 +70,7 @@ class SecurityTestBase {
 
         testUser = savedUser.toDto()
         testUserDetails = UserDetailsWithId(
-            id = testUser.id!!,
+            id = testUser.getId()!!,
             email = testUser.email,
             password = testUser.password,
             authorities = emptyList(),

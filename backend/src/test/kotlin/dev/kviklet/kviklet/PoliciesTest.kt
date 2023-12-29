@@ -3,6 +3,7 @@ package dev.kviklet.kviklet
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.UserService
@@ -69,7 +70,7 @@ class PoliciesTest {
             id = RoleId(role.getId()!!),
             policies = policies,
         )
-        val updatedUser = userService.updateUser(user.id!!, roles = listOf(role.getId()!!))
+        val updatedUser = userService.updateUserWithRoles(UserId(user.getId()!!), roles = listOf(role.getId()!!))
         return updatedUser
     }
 
@@ -105,8 +106,8 @@ class PoliciesTest {
                         "roles": [
                             {
                                 "id": "${user.roles.first().getId()}",
-                                "name": "USER",
-                                "description": "the users role",
+                                "name": "Some User Role",
+                                "description": "Some User users role",
                                 "policies": [
                                     {
                                         "id": "${user.roles.first().policies.first().id}",
@@ -166,8 +167,8 @@ class PoliciesTest {
                         "roles": [
                             {
                                 "id": "${user.roles.first().getId()}",
-                                "name": "USER",
-                                "description": "the users role",
+                                "name": "Some User Role",
+                                "description": "Some User users role",
                                 "policies": [
                                     {
                                         "id": "${user.roles.first().policies.first().id}",

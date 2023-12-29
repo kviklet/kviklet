@@ -29,6 +29,7 @@ enum class Resource(val resourceName: String) {
     EXECUTION_REQUEST("execution_request"),
     EVENT("event"),
     ROLE("role"),
+    USER("user"),
 }
 
 enum class Permission(
@@ -46,7 +47,13 @@ enum class Permission(
     EXECUTION_REQUEST_EXECUTE(Resource.EXECUTION_REQUEST, "execute", EXECUTION_REQUEST_GET),
 
     ROLE_GET(Resource.ROLE, "get", null),
-    ROLE_EDIT(Resource.ROLE, "edit", ROLE_GET), ;
+    ROLE_EDIT(Resource.ROLE, "edit", ROLE_GET),
+
+    USER_GET(Resource.USER, "get", null),
+    USER_EDIT(Resource.USER, "edit", USER_GET),
+    USER_CREATE(Resource.USER, "create", USER_GET),
+    USER_EDIT_ROLES(Resource.USER, "edit_roles", USER_GET),
+    ;
 
     fun getPermissionString(): String {
         return "${this.resource.resourceName}:${this.action}"
@@ -61,7 +68,8 @@ interface SecuredDomainObject {
     fun getId(): String?
     fun getDomainObjectType(): Resource
     fun getRelated(resource: Resource): SecuredDomainObject?
-    fun auth(permission: Permission, userDetails: UserDetailsWithId): Boolean = true
+    fun auth(permission: Permission, userDetails: UserDetailsWithId, policies: List<PolicyGrantedAuthority>): Boolean =
+        true
 }
 
 @Target(AnnotationTarget.FUNCTION)
@@ -111,7 +119,7 @@ class MyAuthorizationManager {
             if (!policies.vote(permissionToCheck, securedObject).isAllowed()) {
                 return AuthorizationDecision(false)
             }
-            if (returnObject?.auth(permissionToCheck, userDetailsWithId) == false) {
+            if (returnObject?.auth(permissionToCheck, userDetailsWithId, policies) == false) {
                 return AuthorizationDecision(false)
             }
         } while ((permissionToCheck.requiredPermission != null).also {
