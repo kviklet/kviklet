@@ -6,8 +6,6 @@ import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.helper.UserHelper
-import dev.kviklet.kviklet.security.UserService
-import dev.kviklet.kviklet.service.RoleService
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
 import dev.kviklet.kviklet.service.dto.DatasourceType
@@ -44,16 +42,10 @@ class ExecutionTest {
     private lateinit var executionRequestAdapter: ExecutionRequestAdapter
 
     @Autowired
-    private lateinit var roleService: RoleService
-
-    @Autowired
     private lateinit var userHelper: UserHelper
 
     @Autowired
     lateinit var mockMvc: MockMvc
-
-    @Autowired
-    lateinit var userService: UserService
 
     @AfterEach
     fun tearDown() {
@@ -185,8 +177,8 @@ class ExecutionTest {
                                 "roles": [
                                     {
                                         "id": "${user.roles.first().getId()}",
-                                        "name": "USER",
-                                        "description": "the users role",
+                                        "name": "Some User Role",
+                                        "description": "Some User users role",
                                         "policies": [
                                             {
                                                 "id": "${user.roles.first().policies.first().id}",
@@ -222,8 +214,8 @@ class ExecutionTest {
                                     "roles": [
                                         {
                                             "id": "${user.roles.first().getId()}",
-                                            "name": "USER",
-                                            "description": "the users role",
+                                            "name": "Some User Role",
+                                            "description": "Some User users role",
                                             "policies": [
                                                 {
                                                     "id": "${user.roles.first().policies.first().id}",

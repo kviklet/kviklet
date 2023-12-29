@@ -106,8 +106,8 @@ class PoliciesTest {
                         "roles": [
                             {
                                 "id": "${user.roles.first().getId()}",
-                                "name": "USER",
-                                "description": "the users role",
+                                "name": "Some User Role",
+                                "description": "Some User users role",
                                 "policies": [
                                     {
                                         "id": "${user.roles.first().policies.first().id}",
@@ -167,8 +167,8 @@ class PoliciesTest {
                         "roles": [
                             {
                                 "id": "${user.roles.first().getId()}",
-                                "name": "USER",
-                                "description": "the users role",
+                                "name": "Some User Role",
+                                "description": "Some User users role",
                                 "policies": [
                                     {
                                         "id": "${user.roles.first().policies.first().id}",
