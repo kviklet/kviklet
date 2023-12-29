@@ -157,7 +157,9 @@ class UserAdapter(
     }
 
     fun createOrUpdateUser(user: User): User {
-        val userEntity = userRepository.findByIdOrNull(user.getId())
+        val userEntity = user.getId()?.let {
+            userRepository.findByIdOrNull(it)
+        }
 
         if (userEntity == null) {
             return createUser(user)
