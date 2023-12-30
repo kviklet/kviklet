@@ -28,11 +28,11 @@ import {
   ThemeContext,
   ThemeStatusContext,
 } from "../components/ThemeStatusProvider";
-import { colorFromText } from "../components/ColorfulLabel";
 import { CodeProps } from "react-markdown/lib/ast-to-react";
 import Spinner from "../components/Spinner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
+import { AbsoluteInitialBubble as InitialBubble } from "../components/InitialBubble";
 
 interface RequestReviewParams {
   requestId: string;
@@ -65,21 +65,6 @@ const componentMap = {
     <ul className="list-disc ml-4 mt-4">{children}</ul>
   ),
 };
-
-function firstTwoLetters(input: string): string {
-  const words = input.split(" ");
-  let result = "";
-
-  for (let i = 0; i < words.length; i++) {
-    if (result.length < 2) {
-      result += words[i][0];
-    } else {
-      break;
-    }
-  }
-
-  return result;
-}
 
 const useRequest = (id: string) => {
   const [request, setRequest] = useState<
@@ -249,20 +234,6 @@ function RequestReview() {
     </div>
   );
 }
-
-const InitialBubble = (props: { name?: string | null; className?: string }) => {
-  return (
-    <div
-      className={`absolute -left-12 rounded-full text-slate-50 ${colorFromText(
-        props.name || "",
-      )} w-8 h-8 flex text-sm items-center justify-center ${
-        props.className ?? ""
-      }`}
-    >
-      {firstTwoLetters(props.name ?? "")}
-    </div>
-  );
-};
 
 function RequestBox({
   request,
