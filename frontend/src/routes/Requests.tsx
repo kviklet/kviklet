@@ -5,7 +5,6 @@ import {
 } from "../api/ExecutionRequestApi";
 import { Link } from "react-router-dom";
 import Button from "../components/Button";
-import React from "react";
 
 const Toggle = (props: { active: boolean; onClick: () => void }) => {
   return (

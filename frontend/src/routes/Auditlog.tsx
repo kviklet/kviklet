@@ -1,28 +1,33 @@
 export default function Auditlog() {
   return (
-    <div className="max-w-7xl mx-auto">
-      <List></List>
+    <div>
+      <div className="border-b border-slate-300 bg-slate-50 dark:bg-slate-950 dark:border-slate-700">
+        <h1 className="mx-auto max-w-7xl text-xl m-5 pl-1.5">Execution Log</h1>
+      </div>
+      <div className="max-w-7xl mx-auto">
+        <List></List>
+      </div>
     </div>
   );
 }
 
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import InitialBubble from "../components/InitialBubble";
+import { Link } from "react-router-dom";
 
-const executions = [
-  {
-    requestId: "123",
-    name: "Leslie Alexander",
-    statement: "Select * from users",
-    connectionId: "dev-root",
-    href: "#",
-    lastSeen: "3h ago",
-    executionTime: "2023-01-23T13:23Z",
-  },
-  {
-    requestId: "123",
-    name: "Michael Foster",
-    statement: `SELECT
+function useExectuions() {
+  const executions = [
+    {
+      requestId: "123",
+      name: "Leslie Alexander",
+      statement: "Select * from users",
+      connectionId: "dev-root",
+      executionTime: "2023-01-23T13:23Z",
+    },
+    {
+      requestId: "123",
+      name: "Michael Foster",
+      statement: `SELECT
     e.employee_id,
     e.first_name,
     e.last_name,
@@ -55,50 +60,43 @@ HAVING
 ORDER BY
     total_hours DESC,
     e.last_name;`,
-    connectionId: "prod-read-only",
-    href: "#",
-    lastSeen: "3h ago",
-    executionTime: "2023-01-23T13:23Z",
-  },
-  {
-    requestId: "123",
-    name: "Dries Vincent",
-    statement: "Select * from users",
-    connectionId: "test-environment",
-    href: "#",
-    lastSeen: null,
-    executionTime: "2023-01-23T13:23Z",
-  },
-  {
-    requestId: "123",
-    name: "Lindsay Walton",
-    statement: "Select * from users",
-    connectionId: "staging-area",
-    href: "#",
-    lastSeen: "3h ago",
-    executionTime: "2023-01-23T13:23Z",
-  },
-  {
-    requestId: "123",
-    name: "Courtney Henry",
-    statement: "Select * from users",
-    connectionId: "user-acceptance-testing",
-    href: "#",
-    lastSeen: "3h ago",
-    executionTime: "2023-01-23T13:23Z",
-  },
-  {
-    requestId: "123",
-    name: "Tom Cook",
-    statement: "Select * from users",
-    connectionId: "production-support",
-    href: "#",
-    lastSeen: null,
-    executionTime: "2023-01-23T13:23Z",
-  },
-];
+      connectionId: "prod-read-only",
+      executionTime: "2023-01-23T13:23Z",
+    },
+    {
+      requestId: "123",
+      name: "Dries Vincent",
+      statement: "Select * from users",
+      connectionId: "test-environment",
+      executionTime: "2023-01-23T13:23Z",
+    },
+    {
+      requestId: "123",
+      name: "Lindsay Walton",
+      statement: "Select * from users",
+      connectionId: "staging-area",
+      executionTime: "2023-01-23T13:23Z",
+    },
+    {
+      requestId: "123",
+      name: "Courtney Henry",
+      statement: "Select * from users",
+      connectionId: "user-acceptance-testing",
+      executionTime: "2023-01-23T13:23Z",
+    },
+    {
+      requestId: "123",
+      name: "Tom Cook",
+      statement: "Select * from users",
+      connectionId: "production-support",
+      executionTime: "2023-01-23T13:23Z",
+    },
+  ];
+  return { executions };
+}
 
 function List() {
+  const { executions } = useExectuions();
   return (
     <ul role="list" className="divide-y divide-slate-100 dark:divide-slate-800">
       {executions.map((execution) => (
@@ -110,47 +108,49 @@ function List() {
 
 function Item({ execution }: { execution: (typeof executions)[0] }) {
   return (
-    <li
-      key={execution.statement}
-      className="relative flex justify-between gap-x-6 py-5"
-    >
-      <div className="flex min-w-0 gap-x-4">
-        <InitialBubble name={execution.name} className="shrink-0" />
-        <div className="min-w-0 flex-auto">
-          <p className="text-sm font-semibold leading-6 text-slate-900 dark:text-slate-50">
-            <a href={execution.href}>
-              <span className="absolute inset-x-0 -top-px bottom-0" />
-              {execution.name}
-            </a>
-          </p>
-          <p className="mt-1 flex text-xs leading-5 text-slate-500 dark:text-slate-400">
-            <a
-              href={`mailto:${execution.statement}`}
-              className="relative truncate"
-            >
-              {execution.statement}
-            </a>
-          </p>
+    <Link to={`/requests/${execution.requestId}`}>
+      <li
+        key={execution.statement}
+        className="relative flex justify-between gap-x-6 py-5"
+      >
+        <div className="flex min-w-0 gap-x-4">
+          <InitialBubble name={execution.name} className="shrink-0" />
+          <div className="min-w-0 flex-auto">
+            <p className="text-sm font-semibold leading-6 text-slate-900 dark:text-slate-50">
+              <a href={execution.href}>
+                <span className="absolute inset-x-0 -top-px bottom-0" />
+                {execution.name}
+              </a>
+            </p>
+            <p className="mt-1 flex text-xs leading-5 text-slate-500 dark:text-slate-400">
+              <a
+                href={`mailto:${execution.statement}`}
+                className="relative truncate"
+              >
+                {execution.statement}
+              </a>
+            </p>
+          </div>
         </div>
-      </div>
-      <div className="flex shrink-0 items-center gap-x-4">
-        <div className="hidden sm:flex sm:flex-col sm:items-end">
-          <span className="inline-flex flex-shrink-0 items-center rounded-full bg-green-50 dark:bg-green-400/10 dark:text-green-400 px-1.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-            {execution.connectionId}
-          </span>
-          <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-            Executed{" "}
-            <time dateTime={execution.executionTime}>
-              {timeAgo(execution.executionTime)}
-            </time>
-          </p>
+        <div className="flex shrink-0 items-center gap-x-4">
+          <div className="hidden sm:flex sm:flex-col sm:items-end">
+            <span className="inline-flex flex-shrink-0 items-center rounded-full bg-green-50 dark:bg-green-400/10 dark:text-green-400 px-1.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+              {execution.connectionId}
+            </span>
+            <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+              Executed{" "}
+              <time dateTime={execution.executionTime}>
+                {timeAgo(execution.executionTime)}
+              </time>
+            </p>
+          </div>
+          <ChevronRightIcon
+            className="h-5 w-5 flex-none text-slate-400 dark:text-slate-500"
+            aria-hidden="true"
+          />
         </div>
-        <ChevronRightIcon
-          className="h-5 w-5 flex-none text-slate-400 dark:text-slate-500"
-          aria-hidden="true"
-        />
-      </div>
-    </li>
+      </li>
+    </Link>
   );
 }
 

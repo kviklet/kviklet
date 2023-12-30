@@ -5,6 +5,7 @@ import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.helper.ExecutionRequestHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
@@ -12,16 +13,22 @@ import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.RequestType
 import jakarta.servlet.http.Cookie
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.core.io.FileUrlResource
+import org.springframework.jdbc.datasource.init.ScriptUtils
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.testcontainers.containers.JdbcDatabaseContainer
+import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.utility.DockerImageName
 import java.time.format.DateTimeFormatter
 
 @SpringBootTest
@@ -45,7 +52,32 @@ class ExecutionTest {
     private lateinit var userHelper: UserHelper
 
     @Autowired
+    private lateinit var executionRequestHelper: ExecutionRequestHelper
+
+    @Autowired
     lateinit var mockMvc: MockMvc
+
+    companion object {
+        val db: PostgreSQLContainer<*> = PostgreSQLContainer(DockerImageName.parse("postgres:11.1"))
+            .withUsername("root")
+            .withPassword("root")
+            .withReuse(true)
+            .withDatabaseName("")
+
+        init {
+            db.start()
+        }
+    }
+
+    val initScript: String = "psql_init.sql"
+
+    fun getDb(): JdbcDatabaseContainer<*> = db
+
+    @BeforeEach
+    fun setup() {
+        val initScript = this::class.java.classLoader.getResource(initScript)!!
+        ScriptUtils.executeSqlScript(getDb().createConnection(""), FileUrlResource(initScript))
+    }
 
     @AfterEach
     fun tearDown() {
@@ -54,7 +86,7 @@ class ExecutionTest {
         roleAdapter.deleteAll()
     }
 
-    fun login(email: String = "user@example.com", password: String = "123456"): Cookie {
+    fun login(email: String = "user-1@example.com", password: String = "123456"): Cookie {
         val loginResponse = mockMvc.perform(
             post("/login")
                 .content(
@@ -235,5 +267,44 @@ class ExecutionTest {
                     """.trimIndent(),
                 ),
             )
+    }
+
+    @Test
+    fun `execute simple query`() {
+        val user = userHelper.createUser(permissions = listOf("*"))
+        val approver = userHelper.createUser(permissions = listOf("*"))
+        // Creates a new execution request with SELECT 1; as the statement
+        val executionRequest = executionRequestHelper.createApprovedRequest(getDb(), user, approver)
+        val cookie = login()
+
+        mockMvc.perform(
+            post("/execution-requests/${executionRequest.getId()}/execute").cookie(cookie).contentType(
+                "application/json",
+            ),
+        ).andExpect(status().isOk).andExpect(
+            content().json(
+                """
+                {
+                  "results": [
+                    {
+                      "columns": [
+                        {
+                          "label": "?column?",
+                          "typeName": "int4",
+                          "typeClass": "java.lang.Integer"
+                        }
+                      ],
+                      "data": [
+                        {
+                          "?column?": "1"
+                        }
+                      ],
+                      "type": "RECORDS"
+                    }
+                  ]
+                }
+                """.trimIndent(),
+            ),
+        )
     }
 }
