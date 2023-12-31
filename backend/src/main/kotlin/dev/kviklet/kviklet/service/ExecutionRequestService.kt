@@ -16,6 +16,7 @@ import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventType
+import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.RequestType
@@ -169,6 +170,12 @@ class ExecutionRequestService(
         }
 
         return result
+    }
+
+    @Transactional
+    @Policy(Permission.EXECUTION_REQUEST_GET)
+    fun getExecutions(): List<ExecuteEvent> {
+        return eventService.getAllExecutions()
     }
 }
 

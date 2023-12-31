@@ -12,6 +12,7 @@ import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.RequestType
 import jakarta.servlet.http.Cookie
+import org.hamcrest.CoreMatchers.notNullValue
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -25,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.testcontainers.containers.JdbcDatabaseContainer
 import org.testcontainers.containers.PostgreSQLContainer
@@ -306,5 +308,27 @@ class ExecutionTest {
                 """.trimIndent(),
             ),
         )
+
+        mockMvc.perform(
+            get("/executions/").cookie(cookie).contentType(
+                "application/json",
+            ),
+        ).andExpect(status().isOk).andExpect(
+            content().json(
+                """
+                {
+                  "executions": [
+                    {
+                      "requestId": "${executionRequest.getId()}",
+                      "name": "${user.fullName}",
+                      "statement": "SELECT 1;",
+                      "connectionId": "${executionRequest.request.connection.id}"
+                      }
+                  ]
+                }
+                """.trimIndent(),
+            ),
+        )
+            .andExpect(jsonPath("$.executions[0].executionTime", notNullValue()))
     }
 }

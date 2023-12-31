@@ -7,6 +7,7 @@ import dev.kviklet.kviklet.db.util.BaseEntity
 import dev.kviklet.kviklet.db.util.EventPayloadConverter
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventType
+import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import jakarta.persistence.Column
@@ -18,6 +19,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder
 import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
 import org.hibernate.annotations.ColumnTransformer
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.stereotype.Service
 import java.time.LocalDateTime
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -73,7 +75,11 @@ class EventEntity(
             .toString()
     }
 
-    fun toDto(request: ExecutionRequestDetails): Event {
+    fun toDto(request: ExecutionRequestDetails? = null): Event {
+        if (request == null) {
+            val executionDetails = executionRequest.toDetailDto()
+            return executionDetails.events.find { it.eventId == id }!!
+        }
         return Event.create(
             id = id,
             createdAt = createdAt,
@@ -84,4 +90,16 @@ class EventEntity(
     }
 }
 
-interface EventRepository : JpaRepository<EventEntity, String>
+interface EventRepository : JpaRepository<EventEntity, String> {
+    fun findByType(type: EventType): List<EventEntity>
+}
+
+@Service
+class EventAdapter(
+    private val eventRepository: EventRepository,
+) {
+    fun getExecutions(): List<ExecuteEvent> {
+        val events = eventRepository.findByType(EventType.EXECUTE)
+        return events.map { it.toDto() }.filterIsInstance<ExecuteEvent>()
+    }
+}
