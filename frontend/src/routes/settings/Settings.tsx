@@ -1,8 +1,11 @@
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 import BaseSettingsLayout from "./BaseSettingsLayout";
-import React from "react";
-import { UserCircleIcon } from "@heroicons/react/20/solid";
+import {
+  Bars4Icon,
+  CircleStackIcon,
+  UserCircleIcon,
+  UserIcon,
+  UsersIcon,
+} from "@heroicons/react/20/solid";
 
 export const Settings = () => {
   const tabStyles =
@@ -13,7 +16,7 @@ export const Settings = () => {
       tabContent: (
         <div className="flex flex-col">
           <div className={tabStyles}>
-            <FontAwesomeIcon icon={solid("database")} className="mr-2" />
+            <CircleStackIcon className="mr-2 h-6" />
             Databases
           </div>
         </div>
@@ -25,7 +28,7 @@ export const Settings = () => {
       tabContent: (
         <div className="flex flex-col">
           <div className={tabStyles}>
-            <FontAwesomeIcon icon={solid("user")} className="mr-2" />
+            <UserIcon className="mr-2 h-6" />
             Users
           </div>
         </div>
@@ -37,7 +40,7 @@ export const Settings = () => {
       tabContent: (
         <div className="flex flex-col">
           <div className={tabStyles}>
-            <FontAwesomeIcon icon={solid("users")} className="mr-2" />
+            <UsersIcon className="mr-2 h-6" />
             Roles
           </div>
         </div>
@@ -55,6 +58,18 @@ export const Settings = () => {
         </div>
       ),
       link: "/settings/profile",
+    },
+    {
+      name: "auditlog",
+      tabContent: (
+        <div className="flex flex-col">
+          <div className={tabStyles}>
+            <Bars4Icon className="mr-2 h-6"></Bars4Icon>
+            Auditlog
+          </div>
+        </div>
+      ),
+      link: "/settings/auditlog",
     },
   ];
   return <BaseSettingsLayout tabs={tabs}></BaseSettingsLayout>;

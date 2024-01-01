@@ -4,7 +4,6 @@ import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
-import jakarta.servlet.http.Cookie
 import org.hamcrest.CoreMatchers.`is`
 import org.hamcrest.CoreMatchers.notNullValue
 import org.junit.jupiter.api.AfterEach
@@ -46,26 +45,8 @@ class UserTest {
 
     @AfterEach
     fun tearDown() {
-        userAdapter.deleteAll()
+        userHelper.deleteAll()
         roleAdapter.deleteAll()
-    }
-
-    fun login(email: String = "user@example.com", password: String = "123456"): Cookie {
-        val loginResponse = mockMvc.perform(
-            post("/login")
-                .content(
-                    """
-                        {
-                            "email": "$email",
-                            "password": "$password"
-                        }
-                    """.trimIndent(),
-                )
-                .contentType("application/json"),
-        )
-            .andExpect(status().isOk).andReturn()
-        val cookie = loginResponse.response.cookies.find { it.name == "SESSION" }!!
-        return cookie
     }
 
     fun successPermissions() = listOf(
@@ -77,7 +58,7 @@ class UserTest {
     @MethodSource("successPermissions")
     fun createUser(permissions: List<String>, resources: List<String>) {
         userHelper.createUser(permissions = permissions, resources = resources)
-        val cookie = login()
+        val cookie = userHelper.login(mockMvc = mockMvc)
 
         mockMvc.perform(
             post("/users/").cookie(cookie).content(
@@ -107,7 +88,7 @@ class UserTest {
     @MethodSource("failPermissions")
     fun createUserFails(permissions: List<String>, resources: List<String>) {
         userHelper.createUser(permissions = permissions, resources = resources)
-        val cookie = login()
+        val cookie = userHelper.login(mockMvc = mockMvc)
 
         mockMvc.perform(
             post("/users/").cookie(cookie).content(
@@ -131,7 +112,7 @@ class UserTest {
     @MethodSource("editPermissions")
     fun editUser(permissions: List<String>, resources: List<String>) {
         val user = userHelper.createUser(permissions = permissions, resources = resources)
-        val cookie = login()
+        val cookie = userHelper.login(mockMvc = mockMvc)
 
         mockMvc.perform(
             patch("/users/${user.getId()}").cookie(cookie).content(
@@ -153,7 +134,7 @@ class UserTest {
     @Test
     fun `not allowed to edit other user`() {
         val testUser = userHelper.createUser(listOf("user:edit", "user:get"), listOf("*", "*"))
-        val cookie = login()
+        val cookie = userHelper.login(mockMvc = mockMvc)
         val user = userHelper.createUser(
             permissions = listOf("*"),
             email = "secondUser@email.de",
@@ -175,7 +156,7 @@ class UserTest {
     @Test
     fun `allowed to edit others with edit roles permission`() {
         val testUser = userHelper.createUser(listOf("user:edit", "user:get", "user:edit_roles"), listOf("*", "*", "*"))
-        val cookie = login()
+        val cookie = userHelper.login(mockMvc = mockMvc)
         val user = userHelper.createUser(
             permissions = listOf("*"),
             email = "secondUser@email.de",
@@ -197,7 +178,7 @@ class UserTest {
     @Test
     fun `editing roles with edit roles permission`() {
         val testUser = userHelper.createUser(listOf("user:edit", "user:get", "user:edit_roles"), listOf("*", "*", "*"))
-        val cookie = login()
+        val cookie = userHelper.login(mockMvc = mockMvc)
         val user = userHelper.createUser(
             permissions = listOf("*"),
             email = "secondUser@email.de",
@@ -221,7 +202,7 @@ class UserTest {
     @Test
     fun `editing roles without edit roles permission`() {
         val testUser = userHelper.createUser(listOf("user:edit", "user:get"), listOf("*", "*"))
-        val cookie = login()
+        val cookie = userHelper.login(mockMvc = mockMvc)
         val user = userHelper.createUser(
             permissions = listOf("*"),
             email = "secondUser@email.de",

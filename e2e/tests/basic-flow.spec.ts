@@ -11,7 +11,12 @@ test.beforeEach("visit page and login", async ({ page }) => {
 });
 
 test("Create Connection", async ({ page }) => {
-  await page.getByRole("link", { name: "Settings" }).click({ force: true });
+  await page
+    .locator("div")
+    .filter({ hasText: /^about$/ })
+    .getByRole("link")
+    .first()
+    .click();
   await page.waitForURL("**/settings");
   await page.getByRole("button", { name: "Add Connection" }).click();
   await page.getByPlaceholder("Connection Name").click();
