@@ -11,7 +11,6 @@ import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.RequestType
-import jakarta.servlet.http.Cookie
 import org.hamcrest.CoreMatchers.notNullValue
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -31,7 +30,6 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.testcontainers.containers.JdbcDatabaseContainer
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
-import java.time.format.DateTimeFormatter
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -84,26 +82,8 @@ class ExecutionTest {
     @AfterEach
     fun tearDown() {
         executionRequestAdapter.deleteAll()
-        userAdapter.deleteAll()
+        userHelper.deleteAll()
         roleAdapter.deleteAll()
-    }
-
-    fun login(email: String = "user-1@example.com", password: String = "123456"): Cookie {
-        val loginResponse = mockMvc.perform(
-            post("/login")
-                .content(
-                    """
-                        {
-                            "email": "$email",
-                            "password": "$password"
-                        }
-                    """.trimIndent(),
-                )
-                .contentType("application/json"),
-        )
-            .andExpect(status().isOk).andReturn()
-        val cookie = loginResponse.response.cookies.find { it.name == "SESSION" }!!
-        return cookie
     }
 
     @Test
@@ -125,7 +105,7 @@ class ExecutionTest {
             DatasourceType.POSTGRESQL,
         )
         userHelper.createUser(permissions = listOf("*"))
-        val cookie = login()
+        val cookie = userHelper.login(mockMvc = mockMvc)
 
         mockMvc.perform(
             post("/execution-requests/").cookie(cookie).content(
@@ -172,7 +152,7 @@ class ExecutionTest {
             executionStatus = "PENDING",
             authorId = user.getId()!!,
         )
-        val cookie = login()
+        val cookie = userHelper.login(mockMvc = mockMvc)
 
         mockMvc.perform(
             post("/execution-requests/${executionRequest.getId()}/comments").cookie(cookie).content(
@@ -202,17 +182,14 @@ class ExecutionTest {
                             "statement": "SELECT * FROM test",
                             "readOnly": true,
                             "executionStatus": "PENDING",
-                            "createdAt": "${refreshedExecutionRequest.request.createdAt.format(
-                        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS"),
-                    )}",
                             "author": {
                                 "id": "${user.getId()}",
                                 "email": "${user.email}",
                                 "roles": [
                                     {
                                         "id": "${user.roles.first().getId()}",
-                                        "name": "Some User Role",
-                                        "description": "Some User users role",
+                                        "name": "User 1 Role",
+                                        "description": "User 1 users role",
                                         "policies": [
                                             {
                                                 "id": "${user.roles.first().policies.first().id}",
@@ -239,17 +216,14 @@ class ExecutionTest {
                             {
                                 "id": "${refreshedExecutionRequest.events.first().getId()}",
                                 "type": "COMMENT",
-                                "createdAt": "${refreshedExecutionRequest.events.first().createdAt.format(
-                        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS"),
-                    )}",
                                 "author": {
                                     "id": "${user.getId()}",
                                     "email": ${user.email},
                                     "roles": [
                                         {
                                             "id": "${user.roles.first().getId()}",
-                                            "name": "Some User Role",
-                                            "description": "Some User users role",
+                                            "name": "User 1 Role",
+                                            "description": "User 1 users role",
                                             "policies": [
                                                 {
                                                     "id": "${user.roles.first().policies.first().id}",
@@ -277,7 +251,7 @@ class ExecutionTest {
         val approver = userHelper.createUser(permissions = listOf("*"))
         // Creates a new execution request with SELECT 1; as the statement
         val executionRequest = executionRequestHelper.createApprovedRequest(getDb(), user, approver)
-        val cookie = login()
+        val cookie = userHelper.login(mockMvc = mockMvc)
 
         mockMvc.perform(
             post("/execution-requests/${executionRequest.getId()}/execute").cookie(cookie).contentType(

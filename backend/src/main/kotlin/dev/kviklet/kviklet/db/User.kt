@@ -30,7 +30,7 @@ import java.io.Serializable
 
 @Entity
 @Table(name = "user")
-data class UserEntity(
+class UserEntity(
     @Column(nullable = true)
     var fullName: String? = null,
 

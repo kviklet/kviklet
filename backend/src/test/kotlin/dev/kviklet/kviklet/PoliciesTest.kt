@@ -11,7 +11,6 @@ import dev.kviklet.kviklet.service.RoleService
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.RoleId
-import jakarta.servlet.http.Cookie
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -20,7 +19,6 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
@@ -48,7 +46,7 @@ class PoliciesTest {
 
     @AfterEach
     fun tearDown() {
-        userAdapter.deleteAll()
+        userHelper.deleteAll()
         roleAdapter.deleteAll()
     }
 
@@ -56,7 +54,7 @@ class PoliciesTest {
         val user = userService.createUser(
             email = "user@example.com",
             password = "123456",
-            fullName = "Some User",
+            fullName = "User 1",
         )
         val role = roleService.createRole("USER", "the users role")
         val policies = permissions.mapIndexed { index, it ->
@@ -74,28 +72,10 @@ class PoliciesTest {
         return updatedUser
     }
 
-    fun login(email: String = "user@example.com", password: String = "123456"): Cookie {
-        val loginResponse = mockMvc.perform(
-            post("/login")
-                .content(
-                    """
-                        {
-                            "email": "$email",
-                            "password": "$password"
-                        }
-                    """.trimIndent(),
-                )
-                .contentType("application/json"),
-        )
-            .andExpect(status().isOk).andReturn()
-        val cookie = loginResponse.response.cookies.find { it.name == "SESSION" }!!
-        return cookie
-    }
-
     @Test
     fun getRolePolicies() {
         val user = userHelper.createUser(permissions = listOf("*"))
-        val cookie = login()
+        val cookie = userHelper.login(mockMvc = mockMvc)
 
         mockMvc.perform(get("/roles/").cookie(cookie))
             .andExpect(status().isOk)
@@ -106,8 +86,8 @@ class PoliciesTest {
                         "roles": [
                             {
                                 "id": "${user.roles.first().getId()}",
-                                "name": "Some User Role",
-                                "description": "Some User users role",
+                                "name": "User 1 Role",
+                                "description": "User 1 users role",
                                 "policies": [
                                     {
                                         "id": "${user.roles.first().policies.first().id}",
@@ -131,7 +111,7 @@ class PoliciesTest {
             permissions = listOf(Permission.ROLE_GET.getPermissionString()),
             resources = listOf(role.getId()!!),
         )
-        val cookie = login()
+        val cookie = userHelper.login(mockMvc = mockMvc)
 
         mockMvc.perform(get("/roles/").cookie(cookie))
             .andExpect(status().isOk)
@@ -156,7 +136,7 @@ class PoliciesTest {
     @Test
     fun getRolePoliciesSpecificPermissions() {
         val user = userHelper.createUser(permissions = listOf(Permission.ROLE_GET.getPermissionString()))
-        val cookie = login()
+        val cookie = userHelper.login(mockMvc = mockMvc)
 
         mockMvc.perform(get("/roles/").cookie(cookie))
             .andExpect(status().isOk)
@@ -167,8 +147,8 @@ class PoliciesTest {
                         "roles": [
                             {
                                 "id": "${user.roles.first().getId()}",
-                                "name": "Some User Role",
-                                "description": "Some User users role",
+                                "name": "User 1 Role",
+                                "description": "User 1 users role",
                                 "policies": [
                                     {
                                         "id": "${user.roles.first().policies.first().id}",
@@ -188,7 +168,7 @@ class PoliciesTest {
     @Test
     fun getRolesWrongPermissions() {
         userHelper.createUser(permissions = listOf(Permission.EXECUTION_REQUEST_GET.getPermissionString()))
-        val cookie = login()
+        val cookie = userHelper.login(mockMvc = mockMvc)
 
         mockMvc.perform(get("/roles/").cookie(cookie))
             .andExpect(status().isForbidden)

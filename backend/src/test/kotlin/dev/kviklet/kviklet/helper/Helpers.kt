@@ -5,6 +5,7 @@ import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.ReviewPayload
 import dev.kviklet.kviklet.db.User
+import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.security.UserService
 import dev.kviklet.kviklet.service.RoleService
@@ -20,12 +21,20 @@ import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.Role
 import dev.kviklet.kviklet.service.dto.RoleId
+import jakarta.servlet.http.Cookie
 import org.springframework.stereotype.Component
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers
 import org.springframework.transaction.annotation.Transactional
 import org.testcontainers.containers.JdbcDatabaseContainer
 
 @Component
-class UserHelper(private val userService: UserService, private val roleHelper: RoleHelper) {
+class UserHelper(
+    private val userService: UserService,
+    private val roleHelper: RoleHelper,
+    private val userAdapter: UserAdapter,
+) {
     var userCount = 1
 
     @Transactional
@@ -43,10 +52,33 @@ class UserHelper(private val userService: UserService, private val roleHelper: R
             password = password,
             fullName = userFullName,
         )
-        val role = roleHelper.createRole(permissions, resources, "$fullName Role", "$fullName users role")
+        val role = roleHelper.createRole(permissions, resources, "$userFullName Role", "$userFullName users role")
         val updatedUser = userService.updateUserWithRoles(UserId(user.getId()!!), roles = listOf(role.getId()!!))
         userCount++
         return updatedUser
+    }
+
+    fun deleteAll() {
+        userAdapter.deleteAll()
+        userCount = 1
+    }
+
+    fun login(email: String = "user-1@example.com", password: String = "123456", mockMvc: MockMvc): Cookie {
+        val loginResponse = mockMvc.perform(
+            MockMvcRequestBuilders.post("/login")
+                .content(
+                    """
+                        {
+                            "email": "$email",
+                            "password": "$password"
+                        }
+                    """.trimIndent(),
+                )
+                .contentType("application/json"),
+        )
+            .andExpect(MockMvcResultMatchers.status().isOk).andReturn()
+        val cookie = loginResponse.response.cookies.find { it.name == "SESSION" }!!
+        return cookie
     }
 }
 
