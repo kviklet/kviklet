@@ -5,6 +5,7 @@ import {
   ThemeStatusContext,
 } from "../components/ThemeStatusProvider";
 import image from "../logo.png";
+import { Cog6ToothIcon } from "@heroicons/react/20/solid";
 
 function TopBanner() {
   const themeContext = useContext<ThemeContext>(ThemeStatusContext);
@@ -52,17 +53,12 @@ function TopBanner() {
                     Requests
                   </Link>
                 </li>
-                <li>
-                  <Link
-                    to={"/settings"}
-                    className="hover:text-sky-500 dark:hover:text-sky-400"
-                  >
-                    Settings
-                  </Link>
-                </li>
               </ul>
             </nav>
             <div className="flex items-center border-l border-slate-200 ml-6 pl-6 dark:border-slate-800">
+              <Link to="/settings">
+                <Cog6ToothIcon className="h-5 w-5 mr-4 dark:text-slate-500 text-slate-400" />
+              </Link>
               <button onClick={switchTheme}>
                 <span className="dark:hidden">
                   <svg

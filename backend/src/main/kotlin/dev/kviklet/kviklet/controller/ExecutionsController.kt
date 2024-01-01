@@ -34,7 +34,7 @@ class ExecutionsController(
     fun getExecutions(): ExecutionsResponse {
         val executions = executionRequestService.getExecutions()
         return ExecutionsResponse(
-            executions = executions.map {
+            executions = executions.sortedByDescending { it.createdAt }.map {
                 ExecutionLogResponse(
                     requestId = it.request.getId(),
                     name = it.author.fullName ?: "",

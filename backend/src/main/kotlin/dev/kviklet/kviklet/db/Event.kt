@@ -13,6 +13,8 @@ import dev.kviklet.kviklet.service.dto.ReviewAction
 import jakarta.persistence.Column
 import jakarta.persistence.Convert
 import jakarta.persistence.Entity
+import jakarta.persistence.EnumType
+import jakarta.persistence.Enumerated
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import org.apache.commons.lang3.builder.ToStringBuilder
@@ -60,6 +62,7 @@ class EventEntity(
     @JoinColumn(name = "author_id")
     val author: UserEntity,
 
+    @Enumerated(EnumType.STRING)
     private val type: EventType,
 
     @Convert(converter = EventPayloadConverter::class)

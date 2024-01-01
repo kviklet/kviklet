@@ -12,7 +12,7 @@ import {
 import { ThemeStatusProvider } from "./components/ThemeStatusProvider";
 import LiveSession from "./routes/LiveSession";
 import ConnectionChooser from "./routes/NewRequest";
-import Auditlog from "./routes/Auditlog";
+import Auditlog from "./routes/settings/Auditlog";
 
 export interface ProtectedRouteProps {
   children: JSX.Element;
@@ -83,14 +83,6 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <LiveSession />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="auditlog"
-                element={
-                  <ProtectedRoute>
-                    <Auditlog />
                   </ProtectedRoute>
                 }
               />
