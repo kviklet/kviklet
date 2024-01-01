@@ -12,7 +12,6 @@ import {
 import { ThemeStatusProvider } from "./components/ThemeStatusProvider";
 import LiveSession from "./routes/LiveSession";
 import ConnectionChooser from "./routes/NewRequest";
-import Auditlog from "./routes/settings/Auditlog";
 
 export interface ProtectedRouteProps {
   children: JSX.Element;

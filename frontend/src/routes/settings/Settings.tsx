@@ -1,7 +1,4 @@
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 import BaseSettingsLayout from "./BaseSettingsLayout";
-import React from "react";
 import {
   Bars4Icon,
   CircleStackIcon,
