@@ -12,6 +12,16 @@ services:
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
       - ./e2e/init.sql:/docker-entrypoint-initdb.d/init.sql
+  mysql:
+    image: mysql:8
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mysql
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql-data:/var/lib/mysql
   kviklet-postgres:
     image: postgres:9.6
     restart: always

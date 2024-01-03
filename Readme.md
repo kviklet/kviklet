@@ -6,7 +6,7 @@ Kviklet utilizes the Four-Eyes Principle and a high level of configurability, to
 
 Kviklet is a self hosted docker container, that provides you with a Single Page Web app that you can login to to create your SQL requests or approve the ones of others.
 
-We currently only support Postgres but more is coming.
+We currently only support Postgres and MySQL but more is coming.
 
 ### Under Construction!
 
