@@ -1,7 +1,6 @@
 package dev.kviklet.kviklet
 
 import dev.kviklet.kviklet.db.RoleAdapter
-import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import org.hamcrest.CoreMatchers.`is`
@@ -30,9 +29,6 @@ class UserTest {
 
     @Autowired
     private lateinit var roleAdapter: RoleAdapter
-
-    @Autowired
-    private lateinit var userAdapter: UserAdapter
 
     @Autowired
     private lateinit var userHelper: UserHelper

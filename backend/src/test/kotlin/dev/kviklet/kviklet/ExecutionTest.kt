@@ -4,7 +4,6 @@ import dev.kviklet.kviklet.db.DatasourceConnectionAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.RoleAdapter
-import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.dto.AuthenticationType
@@ -41,9 +40,6 @@ class ExecutionTest {
 
     @Autowired
     private lateinit var roleAdapter: RoleAdapter
-
-    @Autowired
-    private lateinit var userAdapter: UserAdapter
 
     @Autowired
     private lateinit var executionRequestAdapter: ExecutionRequestAdapter
