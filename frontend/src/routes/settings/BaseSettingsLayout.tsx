@@ -6,6 +6,7 @@ import RoleSettings from "./RolesSettings";
 import React from "react";
 import ProfileSettings from "./ProfileSettings";
 import Auditlog from "./Auditlog";
+import GeneralSettings from "./LicenseSettings";
 
 const Tab = (props: {
   children: React.ReactNode;
@@ -81,6 +82,7 @@ const BaseSettingsLayout = (props: LayoutProps) => {
               <Route path="roles" element={<RoleSettings />} />
               <Route path="profile" element={<ProfileSettings />} />
               <Route path="auditlog" element={<Auditlog />} />
+              <Route path="license" element={<GeneralSettings />} />
             </Routes>
             <Outlet></Outlet>
           </div>

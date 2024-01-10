@@ -1,6 +1,6 @@
 import { useContext, useState } from "react";
 import Button from "../../components/Button";
-import Alert from "../../components/Alert";
+import Error from "../../components/Alert";
 import { updateUser } from "../../api/UserApi";
 import { UserStatusContext } from "../../components/UserStatusProvider";
 import Success from "../../components/Success";
@@ -68,9 +68,9 @@ function ProfileSettings() {
         <Button onClick={() => void changePassword()}>Save</Button>
       </div>
       {newPassword !== confirmNewPassowrd && (
-        <Alert heading="Can't change password">
+        <Error heading="Can't change password">
           <li>Passwords don't match</li>
-        </Alert>
+        </Error>
       )}
       {showSuccessBanner && (
         <Success heading="Successfully changed password!" text=""></Success>

@@ -13,7 +13,12 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: license_key
+                  name: file_content
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_name
                   type: TEXT
                   constraints:
                     nullable: false

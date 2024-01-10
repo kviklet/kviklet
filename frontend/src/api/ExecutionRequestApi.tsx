@@ -6,7 +6,7 @@ import baseUrl from "./base";
 
 const requestUrl = `${baseUrl}/execution-requests/`;
 
-const DateTime = z.preprocess(
+export const DateTime = z.preprocess(
   (val) => (typeof val == "string" ? val.concat("Z") : undefined),
   z.string().datetime(),
 );

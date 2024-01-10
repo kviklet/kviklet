@@ -1,7 +1,7 @@
 package dev.kviklet.kviklet.db
 
 import dev.kviklet.kviklet.db.util.BaseEntity
-import dev.kviklet.kviklet.service.dto.License
+import dev.kviklet.kviklet.service.dto.LicenseFile
 import jakarta.persistence.Entity
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Service
@@ -11,15 +11,15 @@ import java.time.ZoneOffset
 
 @Entity(name = "license")
 class LicenseEntity(
-    var licenseKey: String,
+    var fileContent: String,
+    var fileName: String,
     var createdAt: LocalDateTime = Instant.now().atZone(ZoneOffset.UTC).toLocalDateTime(),
 ) : BaseEntity() {
-    fun toDto(): License {
-        return License(
-            licenseKey = licenseKey,
+    fun toDto(): LicenseFile {
+        return LicenseFile(
+            fileContent = fileContent,
+            fileName = fileName,
             createdAt = createdAt,
-            validUntil = LocalDateTime.now().plusDays(30),
-            allowedUsers = 20u,
         )
     }
 }
@@ -30,11 +30,20 @@ interface LicenseRepository : JpaRepository<LicenseEntity, String>
 class LicenseAdapter(
     private val licenseRepository: LicenseRepository,
 ) {
-    fun getLicenses(): List<License> {
+    fun getLicenses(): List<LicenseFile> {
         return licenseRepository.findAll().map { it.toDto() }
     }
 
-    fun createLicense(license: License): License {
-        return licenseRepository.save(LicenseEntity(licenseKey = license.licenseKey)).toDto()
+    fun createLicense(license: LicenseFile): LicenseFile {
+        return licenseRepository.save(
+            LicenseEntity(
+                fileContent = license.fileContent,
+                fileName = license.fileName,
+            ),
+        ).toDto()
+    }
+
+    fun deleteAll() {
+        licenseRepository.deleteAll()
     }
 }
