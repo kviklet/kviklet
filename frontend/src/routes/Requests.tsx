@@ -101,7 +101,7 @@ function Requests() {
           Open Requests
         </h1>
       </div>
-      <div className="bg-slate-100 h-full dark:bg-slate-950">
+      <div className="bg-slate-50 h-full dark:bg-slate-950">
         <div className="max-w-5xl mx-auto ">
           <div className="flex flex-row">
             <div className="ml-auto flex flex-row mb-2 mt-4 mr-2">

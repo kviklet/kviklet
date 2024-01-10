@@ -78,7 +78,7 @@ function UserForm(props: {
   );
 }
 
-const useUsers = () => {
+export const useUsers = () => {
   const [users, setUsers] = useState<UserResponse[]>([]);
   useEffect(() => {
     async function request() {

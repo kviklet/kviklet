@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-create-license-table
+      author: jascha
+      changes:
+        - createTable:
+            tableName: license
+            columns:
+              - column:
+                  name: id
+                  type: CHAR(22)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: file_content
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: file_name
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: datetime
+                  defaultValueDate: 'now()'
+                  constraints:
+                    nullable: false
