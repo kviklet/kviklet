@@ -141,9 +141,6 @@ class AuthorizationManagerInterceptor(
 
     private val authentication: Supplier<Authentication?> = Supplier {
         SecurityContextHolder.getContextHolderStrategy().context.authentication
-        // ?: throw AuthenticationCredentialsNotFoundException(
-        //    "An Authentication object was not found in the SecurityContext",
-        // )
     }
 
     override fun getOrder(): Int = 500

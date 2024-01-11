@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { roleResponseSchema } from "./RoleApi";
 import baseUrl from "./base";
+import { ApiErrorResponse, ApiErrorResponseSchema } from "./Errors";
 
 // Define the schema for the user response
 const userResponseSchema = z.object({
@@ -44,7 +45,9 @@ async function fetchUsers(): Promise<UserResponse[]> {
   return usersResponseSchema.parse(data).users;
 }
 
-async function createUser(request: CreateUserRequest): Promise<UserResponse> {
+async function createUser(
+  request: CreateUserRequest,
+): Promise<UserResponse | ApiErrorResponse> {
   const response = await fetch(`${baseUrl}/users/`, {
     method: "POST",
     headers: {
@@ -54,7 +57,7 @@ async function createUser(request: CreateUserRequest): Promise<UserResponse> {
     body: JSON.stringify(request),
   });
   const data: unknown = await response.json();
-  return userResponseSchema.parse(data);
+  return z.union([userResponseSchema, ApiErrorResponseSchema]).parse(data);
 }
 
 async function updateUser(

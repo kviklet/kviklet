@@ -218,4 +218,23 @@ class UserTest {
             ).contentType("application/json"),
         ).andExpect(status().isForbidden)
     }
+
+    @Test
+    fun `Creating more users than allowed fails`() {
+        userHelper.createUser(listOf("*"), listOf("*"))
+        val cookie = userHelper.login(mockMvc = mockMvc)
+        userHelper.createUsersBatch(9)
+
+        mockMvc.perform(
+            post("/users/").cookie(cookie).content(
+                """
+                {
+                    "email": "someemail@email.de",
+                    "password": "123456",
+                    "fullName": "Some User"
+                }
+                """.trimIndent(),
+            ).contentType("application/json"),
+        ).andExpect(status().isBadRequest)
+    }
 }

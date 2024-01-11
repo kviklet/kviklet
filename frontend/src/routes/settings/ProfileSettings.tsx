@@ -1,9 +1,8 @@
 import { useContext, useState } from "react";
 import Button from "../../components/Button";
-import Error from "../../components/Alert";
+import { Error, Success } from "../../components/Alert";
 import { updateUser } from "../../api/UserApi";
 import { UserStatusContext } from "../../components/UserStatusProvider";
-import Success from "../../components/Success";
 
 function ProfileSettings() {
   const [newPassword, setNewPassword] = useState<string>("");
@@ -68,13 +67,12 @@ function ProfileSettings() {
         <Button onClick={() => void changePassword()}>Save</Button>
       </div>
       {newPassword !== confirmNewPassowrd && (
-        <Error heading="Can't change password">
-          <li>Passwords don't match</li>
+        <Error>
+          <h3>Can't change password</h3>
+          <p>Passwords don't match</p>
         </Error>
       )}
-      {showSuccessBanner && (
-        <Success heading="Successfully changed password!" text=""></Success>
-      )}
+      {showSuccessBanner && <Success>Successfully changed password!</Success>}
     </div>
   );
 }

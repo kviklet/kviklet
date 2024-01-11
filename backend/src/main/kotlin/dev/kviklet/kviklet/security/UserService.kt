@@ -4,6 +4,8 @@ import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.db.UserId
+import dev.kviklet.kviklet.service.LicenseRestrictionException
+import dev.kviklet.kviklet.service.LicenseService
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -13,11 +15,17 @@ class UserService(
     private val userAdapter: UserAdapter,
     private val passwordEncoder: PasswordEncoder,
     private val roleAdapter: RoleAdapter,
+    private val licenseService: LicenseService,
 ) {
 
     @Transactional
     @Policy(Permission.USER_CREATE)
     fun createUser(email: String, password: String, fullName: String): User {
+        val license = licenseService.getActiveLicense()
+        val maxUsers = license?.allowedUsers ?: 10U
+        if (maxUsers <= userAdapter.listUsers().size.toUInt()) {
+            throw LicenseRestrictionException("License does not allow more users")
+        }
         val user = User(
             email = email,
             fullName = fullName,
@@ -50,6 +58,9 @@ class UserService(
     @Policy(Permission.USER_EDIT)
     fun updateUser(userId: UserId, email: String? = null, fullName: String? = null, password: String? = null): User {
         val user = userAdapter.findById(userId.toString())
+        if (user.googleId != null && (email != null || password != null)) {
+            throw Exception("Cannot change email or password for OAuth users")
+        }
         val updatedUser = user.copy(
             email = email ?: user.email,
             fullName = fullName ?: user.fullName,

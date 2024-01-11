@@ -11,6 +11,8 @@ import Modal from "../../components/Modal";
 import { useRoles } from "./RolesSettings";
 import { RoleResponse } from "../../api/RoleApi";
 import ColorfulLabel from "../../components/ColorfulLabel";
+import { isApiErrorResponse } from "../../api/Errors";
+import { Error, Success } from "../../components/Alert";
 
 function UserForm(props: {
   disableModal: () => void;
@@ -80,6 +82,16 @@ function UserForm(props: {
 
 export const useUsers = () => {
   const [users, setUsers] = useState<UserResponse[]>([]);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  function clearNotifications() {
+    setTimeout(() => {
+      setError("");
+      setSuccess("");
+    }, 5000);
+  }
+
   useEffect(() => {
     async function request() {
       const apiUsers = await fetchUsers();
@@ -97,6 +109,7 @@ export const useUsers = () => {
       roles: [...currentUser.roles.map((g) => g.id), roleId],
     });
     setUsers(users.map((u) => (u.id === userId ? newUser : u)));
+    setSuccess("Role added");
   }
 
   async function createNewUser(
@@ -104,12 +117,22 @@ export const useUsers = () => {
     password: string,
     fullName: string,
   ) {
-    const newUser = await createUser({
-      email: email,
-      password: password,
-      fullName: fullName,
-    });
-    setUsers([...users, newUser]);
+    try {
+      const userResponse = await createUser({
+        email: email,
+        password: password,
+        fullName: fullName,
+      });
+      if (isApiErrorResponse(userResponse)) {
+        setError(userResponse.message);
+      } else {
+        setUsers([...users, userResponse]);
+        setSuccess(`User created for email ${userResponse.email}`);
+      }
+    } catch (err) {
+      setError("Something went wrong");
+    }
+    clearNotifications();
   }
 
   async function removeRoleFromUser(userId: string, roleId: string) {
@@ -121,9 +144,17 @@ export const useUsers = () => {
       roles: currentUser.roles.filter((g) => g.id !== roleId).map((g) => g.id),
     });
     setUsers(users.map((u) => (u.id === userId ? newUser : u)));
+    setSuccess("Role removed");
   }
 
-  return { addRoleToUser, users, createNewUser, removeRoleFromUser };
+  return {
+    addRoleToUser,
+    users,
+    createNewUser,
+    removeRoleFromUser,
+    error,
+    success,
+  };
 };
 
 const UserRow = (props: {
@@ -195,13 +226,29 @@ const UserRow = (props: {
 
 const UserSettings = () => {
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
-  const { addRoleToUser, users, createNewUser, removeRoleFromUser } =
-    useUsers();
+  const {
+    addRoleToUser,
+    users,
+    createNewUser,
+    removeRoleFromUser,
+    error,
+    success,
+  } = useUsers();
 
   const { roles } = useRoles();
 
   return (
     <div>
+      {error && (
+        <div className="my-4 mx-2 px-4 py-2">
+          <Error>{error}</Error>
+        </div>
+      )}
+      {success && (
+        <div className="my-4 mx-2 px-4 py-2">
+          <Success>{success}</Success>
+        </div>
+      )}
       <div className="flex flex-col justify-between w-2/3 mx-auto">
         <div className="flex flex-col min-h-60">
           {users.map((user) => (
