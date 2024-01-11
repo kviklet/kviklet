@@ -109,6 +109,12 @@ class LicenseService(
 
         licenseAdapter.createLicense(license.file)
     }
+
+    fun getActiveLicense(): License? {
+        return getLicenses().filter { it.isValid() }.maxByOrNull { it.validUntil }
+    }
 }
 
 class InvalidLicenseException(message: String, e: Exception? = null) : IllegalArgumentException(message, e)
+
+class LicenseRestrictionException(message: String, e: Exception? = null) : RuntimeException(message, e)

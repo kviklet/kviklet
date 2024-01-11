@@ -58,6 +58,13 @@ class UserHelper(
         return updatedUser
     }
 
+    @Transactional
+    fun createUsersBatch(count: Int = 10) {
+        for (i in 1..count) {
+            createUser(listOf("*"))
+        }
+    }
+
     fun deleteAll() {
         userAdapter.deleteAll()
         userCount = 1

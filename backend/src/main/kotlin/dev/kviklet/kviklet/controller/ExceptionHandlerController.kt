@@ -3,6 +3,7 @@ package dev.kviklet.kviklet.controller
 import dev.kviklet.kviklet.service.AlreadyExecutedException
 import dev.kviklet.kviklet.service.InvalidLicenseException
 import dev.kviklet.kviklet.service.InvalidReviewException
+import dev.kviklet.kviklet.service.LicenseRestrictionException
 import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
@@ -41,6 +42,15 @@ class ExceptionHandlerController {
     ): ResponseEntity<Any> {
         logger.error("JSON parse error at ${request.requestURI}: ${ex.message}")
         return ResponseEntity(ErrorResponse("JSON parse error"), HttpStatus.BAD_REQUEST)
+    }
+
+    @ExceptionHandler(LicenseRestrictionException::class)
+    fun handleLicenseRestrictionException(
+        ex: LicenseRestrictionException,
+        request: HttpServletRequest,
+    ): ResponseEntity<Any> {
+        logger.error("License restriction at ${request.requestURI}", ex)
+        return ResponseEntity(ErrorResponse(ex.message ?: "License restriction"), HttpStatus.BAD_REQUEST)
     }
 
     @ExceptionHandler(InvalidLicenseException::class)

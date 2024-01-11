@@ -3,6 +3,7 @@ import { ExecutionRequest } from "../routes/NewRequest";
 import { userResponseSchema } from "./UserApi";
 import { connectionResponseSchema } from "./DatasourceApi";
 import baseUrl from "./base";
+import { ApiErrorResponse, ApiErrorResponseSchema } from "./Errors";
 
 const requestUrl = `${baseUrl}/execution-requests/`;
 
@@ -69,10 +70,6 @@ const ExecuteEvent = withType(
   }),
   "EXECUTE",
 );
-
-const ApiErrorResponseSchema = z.object({
-  message: z.string(),
-});
 
 const ExecutionRequestResponse = z.object({
   id: z.string(),
@@ -264,7 +261,6 @@ type UpdateExecuteResponse = z.infer<typeof UpdateExecuteResponseSchema>;
 type SelectExecuteResponse = z.infer<typeof SelectExecuteResponseSchema>;
 type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 type Column = z.infer<typeof ColumnSchema>;
-type ApiErrorResponse = z.infer<typeof ApiErrorResponseSchema>;
 
 type QueryResult = {
   result?: ExecuteResponseResult;
@@ -300,7 +296,6 @@ export {
   addReviewToRequest,
   runQuery,
   patchRequest,
-  ApiErrorResponseSchema,
 };
 export type {
   ExecutionRequestResponse,
