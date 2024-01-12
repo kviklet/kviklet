@@ -40,8 +40,11 @@ const LicenseInfo = ({
   userCount: string;
 }) => {
   const stats = [
-    { name: "License Valid until", stat: license.validUntil?.toDateString() },
-    { name: "Users", stat: `${userCount}/${license.allowedUsers}` },
+    {
+      name: "License Valid until",
+      stat: license.validUntil?.toDateString() || "/",
+    },
+    { name: "Users", stat: `${userCount}/${license.allowedUsers || "10"}` },
   ];
 
   return (

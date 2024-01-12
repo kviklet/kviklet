@@ -1,22 +1,33 @@
 # Kviklet
 
+![Request Screenshot](images/ExecutedRequest.png)
+
+[Kviklet.dev](https://kviklet.dev) | [Release Notes](https://github.com/kviklet/kviklet/releases)
+
 Secure access to production databases without impairing developer productivity.
 
-Kviklet utilizes the Four-Eyes Principle and a high level of configurability, to allow a Pull Request-like Review and Approval flow for individual SQL statements or Database sessions. This allows engineering teams to self regulate on who gets access to what data and when.
+Kviklet utilizes the **Four-Eyes Principle** and a high level of configurability, to allow a **Pull Request-like Review and Approval** flow for individual SQL statements or Database sessions. This allows engineering teams to self regulate on who gets access to what data and when.
 
-Kviklet is a self hosted docker container, that provides you with a Single Page Web app that you can login to to create your SQL requests or approve the ones of others.
+Kviklet is a self hosted docker container, that provides you with a Single Page Web app that you can login to create your SQL requests or approve the ones of others.
 
-We currently only support Postgres and MySQL but more is coming.
+We currently only support Postgres and MySQL but more is coming. If you have a specific DB required or other fea
 
-### Under Construction!
+## Features
 
-This project is not yet fully functional and is currently being built! If you are interested in the featureset feel free to reach out we are happy to cooperate and prioritize your feature requests.
+Kviklet ships with a variety of features that an engineering team needs to manage their production database access in a **simple but secure** manner:
 
-See our website for more details on who is behind this project: https://kviklet.dev
+- **SSO (Google)**: Log into Kviklet without the need for a username or password. No more shared credentials for DB access.
+- **Review/Approval Flow**: Leave Comments and Suggestions on other developers data requests.
+- **Temporary Access (1h)**: Execute any statement on a db for 1h after having been approved
+- **Single Query**: Execute a singular statement. Allows the reviewer to review your query before execution.
+- **Auditlog**: Singular plane that logs all executed statements with Author, reason for execution etc.
+- **RBAC**: Configure which team has access to which database/table to as fine of a granularity as the DB Engine allows.
+- And more...
 
 ## Setup
 
-We currently publish only a latest tag of the container on every commit. Use this at your own risk. Versioning will come in the future.
+Kviklet runs as a standalone docker container.
+To start you can find the available verions under [Releases](https://github.com/kviklet/kviklet/releases) you can chose your desired version tag. The latest one currently is `ghcr.io/kviklet/kviklet:0.1.0`. Make sure to check back every now and then since we regularly release new versions with bugfixes, and new features.
 
 ### DB Setup
 
@@ -71,4 +82,29 @@ KVIKLET_IDENTITY_PRORVIDER_TYPE=google
 The google client id and secret you can easily get by following google instructions here:
 https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid
 
-After setting those environment variables everyone in your organization can login with the sign in with google button. But they wont have any permissions by default, you will have to assign them a role after they log in once.
+After setting those environment variables everyone in your organization can login with the sign in with google button. But they wont have any permissions by default, you will have to assign them a role after they log in
+once.
+
+## Configuration
+
+### Connections
+
+After starting Kviklet you first have to configure a database connection. Go to Settings -> Databases -> Add Connection.
+![Add Connection Form](images/AddConnectionForm.png)
+
+After creating a connection, you can configure how many reviews are required for running queries.
+
+### Roles
+
+Kviklet ships with 2 default roles, Admins and Developers.
+
+- Admins have the permission to create and edit connections, as well as adding new Users and setting their permissions.
+- Developers can create Requests as well as approve and comment on them and ofcourse execute the actual statements.
+
+You can completely customize Roles and e.g. give a role only access to a specific connection or a group of db connections.
+
+# License
+
+You might have noticed that the project currently contains no License file. We plan to make Kviklet an open-core product, but havent decided on which parts ot make open source yet. So for now it only counts as source-available.
+
+You are free to use the Software as is, the free version allows for up to 10 users. If you want to use it with a larger team in a professional setting, please get in touch with us at https://kviklet.dev/.
