@@ -4,7 +4,7 @@ Secure access to production databases without impairing developer productivity.
 
 Kviklet utilizes the Four-Eyes Principle and a high level of configurability, to allow a Pull Request-like Review and Approval flow for individual SQL statements or Database sessions. This allows engineering teams to self regulate on who gets access to what data and when.
 
-Kviklet is a self hosted docker container, that provides you with a Single Page Web app that you can login to to create your SQL requests or approve the ones of others.
+Kviklet is a self hosted docker container, that provides you with a Single Page Web app that you can login to create your SQL requests or approve the ones of others.
 
 We currently only support Postgres and MySQL but more is coming.
 
