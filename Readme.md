@@ -110,6 +110,6 @@ You can completely customize Roles and e.g. give a role only access to a specifi
 
 # License
 
-You might have noticed that the project currently contains no License file. We plan to make Kviklet an open-core product, but havent decided on which parts ot make open source yet. So for now it only counts as source-available.
+You might have noticed that the project currently contains no License file. We plan to make Kviklet an open-core product, but haven't decided on which parts to make open source yet. So for now it only counts as source-available.
 
 You are free to use the Software as is, the free version allows for up to 10 users. If you want to use it with a larger team in a professional setting, please get in touch with us at https://kviklet.dev/.
