@@ -1,6 +1,8 @@
 # Kviklet
 
-![Request Screenshot](images/ExecutedRequest.png)
+<p align="center">
+<img src="https://github.com/kviklet/kviklet/raw/main/images/ExecutedRequest.png" height="300px">
+</p>
 
 [Kviklet.dev](https://kviklet.dev) | [Release Notes](https://github.com/kviklet/kviklet/releases)
 
@@ -90,9 +92,12 @@ once.
 ### Connections
 
 After starting Kviklet you first have to configure a database connection. Go to Settings -> Databases -> Add Connection.
-![Add Connection Form](images/AddConnectionForm.png)
 
-After creating a connection, you can configure how many reviews are required for running queries.
+<p align="center">
+<img src="https://github.com/kviklet/kviklet/raw/main/images/AddConnectionForm.png" height="400px">
+</p>
+
+After creating a connection, you can configure how many reviews are required for running queries via this connection.
 
 ### Roles
 
