@@ -184,6 +184,27 @@ class ExecutionRequestService(
         return result
     }
 
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
+    fun explain(id: ExecutionRequestId, query: String?, userId: String): List<QueryResult> {
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
+        val connection = executionRequest.request.connection
+
+        val requestType = executionRequest.request.type
+        if (requestType != RequestType.SingleQuery) {
+            throw InvalidReviewException("Can only explain single queries!")
+        }
+
+        val result = executorService.execute(
+            executionRequestId = id,
+            connectionString = connection.getConnectionString(),
+            username = connection.username,
+            password = connection.password,
+            query = "EXPLAIN ${executionRequest.request.statement}",
+        )
+
+        return result
+    }
+
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
     fun getExecutions(): List<ExecuteEvent> {

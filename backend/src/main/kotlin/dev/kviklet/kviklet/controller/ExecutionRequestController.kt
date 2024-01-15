@@ -56,7 +56,8 @@ data class UpdateExecutionRequestRequest(
 )
 
 data class ExecuteExecutionRequestRequest(
-    val query: String,
+    val query: String?,
+    val explain: Boolean = false,
 )
 
 data class CreateReviewRequest(
@@ -391,6 +392,11 @@ class ExecutionRequestController(
         @RequestBody(required = false) request: ExecuteExecutionRequestRequest?,
         @CurrentUser userDetails: UserDetailsWithId,
     ): ExecutionResponse {
+        if (request?.explain == true) {
+            return ExecutionResponse.fromDto(
+                executionRequestService.explain(executionRequestId, request.query, userDetails.id),
+            )
+        }
         return ExecutionResponse.fromDto(
             executionRequestService.execute(executionRequestId, request?.query, userDetails.id),
         )
