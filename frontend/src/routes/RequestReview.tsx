@@ -70,10 +70,14 @@ const useRequest = (id: string) => {
   const [request, setRequest] = useState<
     ExecutionRequestResponseWithComments | undefined
   >(undefined);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     async function request() {
+      setLoading(true);
       const request = await getSingleRequest(id);
       setRequest(request);
+      setLoading(false);
     }
     void request();
   }, []);
@@ -142,6 +146,7 @@ const useRequest = (id: string) => {
     dataLoading,
     updatedRows,
     executionError,
+    loading,
   };
 };
 
@@ -157,6 +162,7 @@ function RequestReview() {
     dataLoading,
     updatedRows,
     executionError,
+    loading,
   } = useRequest(params.requestId);
 
   const navigate = useNavigate();
@@ -171,66 +177,68 @@ function RequestReview() {
 
   return (
     <div>
-      <div className="max-w-3xl m-auto mt-10">
-        <h1 className="text-3xl my-2 w-full flex">
-          <div className="mr-auto">{request?.title}</div>
-          <div
-            className={` ${mapStatusToLabelColor(
-              request?.reviewStatus,
-            )} w-min rounded-md px-2 py-1 mt-2 text-base font-medium ring-1 ring-inset`}
-          >
-            {mapStatus(request?.reviewStatus)}
-          </div>
-        </h1>
-        <div className="">
+      {(loading && <Spinner />) || (
+        <div className="max-w-3xl m-auto mt-10">
+          <h1 className="text-3xl my-2 w-full flex">
+            <div className="mr-auto">{request?.title}</div>
+            <div
+              className={` ${mapStatusToLabelColor(
+                request?.reviewStatus,
+              )} w-min rounded-md px-2 py-1 mt-2 text-base font-medium ring-1 ring-inset`}
+            >
+              {mapStatus(request?.reviewStatus)}
+            </div>
+          </h1>
           <div className="">
-            <RequestBox
-              request={request}
-              runQuery={run}
-              updateRequest={updateRequest}
-            ></RequestBox>
-            <div className="flex justify-center">
-              {(dataLoading && <Spinner></Spinner>) ||
-                (data && <Table data={data}></Table>)}
-            </div>
-            {updatedRows && (
-              <div className="text-slate-500">{updatedRows} rows updated</div>
-            )}
-            {executionError && (
-              <div className="text-red-500">{executionError}</div>
-            )}
+            <div className="">
+              <RequestBox
+                request={request}
+                runQuery={run}
+                updateRequest={updateRequest}
+              ></RequestBox>
+              <div className="flex justify-center">
+                {(dataLoading && <Spinner></Spinner>) ||
+                  (data && <Table data={data}></Table>)}
+              </div>
+              {updatedRows && (
+                <div className="text-slate-500">{updatedRows} rows updated</div>
+              )}
+              {executionError && (
+                <div className="text-red-500">{executionError}</div>
+              )}
 
-            <div className="w-full border-b dark:border-slate-700 border-slate-300 mt-3"></div>
-            <div className="mt-6">
-              <span>Activity</span>
-            </div>
-            <div>
-              {request === undefined
-                ? ""
-                : request?.events?.map((event, index) => {
-                    if (event?._type === "EDIT")
-                      return (
-                        <EditEvent event={event} index={index}></EditEvent>
-                      );
-                    if (event?._type === "EXECUTE")
-                      return (
-                        <ExecuteEvent
-                          event={event}
-                          index={index}
-                        ></ExecuteEvent>
-                      );
+              <div className="w-full border-b dark:border-slate-700 border-slate-300 mt-3"></div>
+              <div className="mt-6">
+                <span>Activity</span>
+              </div>
+              <div>
+                {request === undefined
+                  ? ""
+                  : request?.events?.map((event, index) => {
+                      if (event?._type === "EDIT")
+                        return (
+                          <EditEvent event={event} index={index}></EditEvent>
+                        );
+                      if (event?._type === "EXECUTE")
+                        return (
+                          <ExecuteEvent
+                            event={event}
+                            index={index}
+                          ></ExecuteEvent>
+                        );
 
-                    return <Comment event={event} index={index}></Comment>;
-                  })}
-              <CommentBox
-                addComment={addComment}
-                approve={approve}
-                userId={request?.author?.id}
-              ></CommentBox>
+                      return <Comment event={event} index={index}></Comment>;
+                    })}
+                <CommentBox
+                  addComment={addComment}
+                  approve={approve}
+                  userId={request?.author?.id}
+                ></CommentBox>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
