@@ -5,6 +5,7 @@ import {
 } from "../api/ExecutionRequestApi";
 import { Link } from "react-router-dom";
 import Button from "../components/Button";
+import Spinner from "../components/Spinner";
 
 const Toggle = (props: { active: boolean; onClick: () => void }) => {
   return (
@@ -77,10 +78,13 @@ function mapStatusToLabelColor(status?: string) {
 
 function Requests() {
   const [requests, setRequests] = useState<ExecutionRequestResponse[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       const requests = await getRequests();
       setRequests(requests);
+      setLoading(false);
     };
     void fetchData();
   }, []);
@@ -101,64 +105,66 @@ function Requests() {
           Open Requests
         </h1>
       </div>
-      <div className="bg-slate-50 h-full dark:bg-slate-950">
-        <div className="max-w-5xl mx-auto ">
-          <div className="flex flex-row">
-            <div className="ml-auto flex flex-row mb-2 mt-4 mr-2">
-              <label className="mr-2">Only show pending requests</label>
-              <Toggle
-                active={onlyPending}
-                onClick={() => setOnlyPending(!onlyPending)}
-              ></Toggle>
+      {(loading && <Spinner></Spinner>) || (
+        <div className="bg-slate-50 h-full dark:bg-slate-950">
+          <div className="max-w-5xl mx-auto ">
+            <div className="flex flex-row">
+              <div className="ml-auto flex flex-row mb-2 mt-4 mr-2">
+                <label className="mr-2">Only show pending requests</label>
+                <Toggle
+                  active={onlyPending}
+                  onClick={() => setOnlyPending(!onlyPending)}
+                ></Toggle>
+              </div>
             </div>
-          </div>
 
-          {visibleRequests.length === 0 && (
-            <div className="my-4 mx-2 px-4 py-2">
-              <h2 className="text-lg text-center">No open requests</h2>
-            </div>
-          )}
-          {sortedRequests.map((request) => {
-            return (
-              <Link to={`/requests/${request.id}`}>
-                <div
-                  className="shadow-md border border-slate-200 bg-white my-4 mx-2 px-4 py-4 dark:bg-slate-900 dark:border dark:border-slate-700 dark:hover:bg-slate-800 hover:bg-slate-50 rounded-md transition-colors"
-                  key={request.id}
-                >
-                  <div className="flex">
-                    <div className="flex mb-2 flex-col">
-                      <h2 className="text-md">{request.title}</h2>
-                      <p className="dark:text-slate-400 text-slate-600">
-                        {request.description}
-                      </p>
-                    </div>
-                    <div className="ml-auto flex flex-col items-end">
-                      <div className="mb-2 text-sm dark:text-slate-400 text-slate-600">
-                        {timeSince(new Date(request.createdAt))}
+            {visibleRequests.length === 0 && (
+              <div className="my-4 mx-2 px-4 py-2">
+                <h2 className="text-lg text-center">No open requests</h2>
+              </div>
+            )}
+            {sortedRequests.map((request) => {
+              return (
+                <Link to={`/requests/${request.id}`}>
+                  <div
+                    className="shadow-md border border-slate-200 bg-white my-4 mx-2 px-4 py-4 dark:bg-slate-900 dark:border dark:border-slate-700 dark:hover:bg-slate-800 hover:bg-slate-50 rounded-md transition-colors"
+                    key={request.id}
+                  >
+                    <div className="flex">
+                      <div className="flex mb-2 flex-col">
+                        <h2 className="text-md">{request.title}</h2>
+                        <p className="dark:text-slate-400 text-slate-600">
+                          {request.description}
+                        </p>
                       </div>
-                      <span
-                        className={`${mapStatusToLabelColor(
-                          request.reviewStatus,
-                        )} w-min rounded-md px-2 py-1 mt-2 text-xs font-medium ring-1 ring-inset`}
-                      >
-                        {mapStatus(request?.reviewStatus)}
-                      </span>
-                      <span
-                        className={`w-min rounded-md px-2 py-1 mt-2 text-xs font-medium  ring-1 ring-inset bg-yellow-50 text-yellow-600 ring-yellow-500/10 dark:bg-yellow-400/10 dark:text-yellow-500 dark:ring-yellow-400/20`}
-                      >
-                        {request.type}
-                      </span>
+                      <div className="ml-auto flex flex-col items-end">
+                        <div className="mb-2 text-sm dark:text-slate-400 text-slate-600">
+                          {timeSince(new Date(request.createdAt))}
+                        </div>
+                        <span
+                          className={`${mapStatusToLabelColor(
+                            request.reviewStatus,
+                          )} w-min rounded-md px-2 py-1 mt-2 text-xs font-medium ring-1 ring-inset`}
+                        >
+                          {mapStatus(request?.reviewStatus)}
+                        </span>
+                        <span
+                          className={`w-min rounded-md px-2 py-1 mt-2 text-xs font-medium  ring-1 ring-inset bg-yellow-50 text-yellow-600 ring-yellow-500/10 dark:bg-yellow-400/10 dark:text-yellow-500 dark:ring-yellow-400/20`}
+                        >
+                          {request.type}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            );
-          })}
-          <Link to={"/new"}>
-            <Button className="float-right">Create new Request</Button>
-          </Link>
+                </Link>
+              );
+            })}
+            <Link to={"/new"}>
+              <Button className="float-right">Create new Request</Button>
+            </Link>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
