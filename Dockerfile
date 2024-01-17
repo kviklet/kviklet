@@ -8,7 +8,7 @@ WORKDIR /home/gradle/src
 COPY --chown=gradle:gradle ./backend .
 
 # Build the application
-RUN gradle build  -x kaptTestKotlin -x compileTestKotlin --no-daemon
+RUN gradle build  -x kaptTestKotlin -x compileTestKotlin -x test --no-daemon
 
 FROM node:20 as build-frontend
 WORKDIR /app

@@ -7,12 +7,12 @@ test.beforeEach("visit page and login", async ({ page }) => {
   await page.getByLabel("Email").press("Tab");
   await page.getByLabel("Password").fill("testPassword");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.waitForURL("**/requests", { waitUntil: "networkidle" });
+  await page.waitForURL("**/requests");
 });
 
 test("Create Connection", async ({ page }) => {
-  await page.waitForSelector('[id="headlessui-popover-button-\\:r2\\:"]');
-  await page.locator('[id="headlessui-popover-button-\\:r2\\:"]').click();
+  await page.waitForSelector('[id="headlessui-popover-button-\\:r0\\:"]');
+  await page.locator('[id="headlessui-popover-button-\\:r0\\:"]').click();
   await page.getByRole("link", { name: "Settings" }).click();
   await page.waitForURL("**/settings");
   await page.getByRole("button", { name: "Add Connection" }).click();
