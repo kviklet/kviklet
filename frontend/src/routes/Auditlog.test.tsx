@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, Mock } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import AuditLog from "./Auditlog";
-import * as ExecutionsApi from "../../api/ExecutionsApi";
+import * as ExecutionsApi from "../api/ExecutionsApi";
 import { MemoryRouter } from "react-router-dom";
 
 // Mock data conforming to ExecutionLogResponseSchema
@@ -26,7 +26,7 @@ const mockExecutions = {
 };
 
 // Replace the real ExecutionsApi module with the mock module
-vi.mock("../../api/ExecutionsApi", () => ({
+vi.mock("../api/ExecutionsApi", () => ({
   getExecutions: vi.fn(),
 }));
 

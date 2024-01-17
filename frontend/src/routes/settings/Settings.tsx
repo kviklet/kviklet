@@ -1,6 +1,5 @@
 import BaseSettingsLayout from "./BaseSettingsLayout";
 import {
-  Bars4Icon,
   CircleStackIcon,
   ClipboardDocumentListIcon,
   UserCircleIcon,
@@ -59,18 +58,6 @@ export const Settings = () => {
         </div>
       ),
       link: "/settings/profile",
-    },
-    {
-      name: "auditlog",
-      tabContent: (
-        <div className="flex flex-col">
-          <div className={tabStyles}>
-            <Bars4Icon className="mr-2 h-6"></Bars4Icon>
-            Auditlog
-          </div>
-        </div>
-      ),
-      link: "/settings/auditlog",
     },
     {
       name: "License",

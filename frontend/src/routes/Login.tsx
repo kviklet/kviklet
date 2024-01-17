@@ -55,7 +55,10 @@ const Login = () => {
     <div>
       <div className="max-w-sm mx-auto my-2 mt-6 dark:bg-slate-950">
         <div className="text-center">
-          <img src={image} className="mx-auto h-24 w-auto" />
+          <img
+            src={image}
+            className="mx-auto h-24 w-auto invert dark:invert-0"
+          />
         </div>
         <div className="text-2xl text-center mb-6">Sign in to Kviklet</div>
         <div className=" dark:bg-slate-900 p-6 rounded-md shadow-xl">
