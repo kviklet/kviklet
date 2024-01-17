@@ -9,15 +9,6 @@ jobs:
         working-directory: ./e2e
     steps:
       - uses: actions/checkout@v3
-      - name: Cache node modules
-        uses: actions/cache@v2
-        with:
-          path: |
-            node_modules
-            ~/.cache/ms-playwright
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
       - uses: actions/setup-node@v3
         with:
           node-version: 18
