@@ -1,13 +1,19 @@
 import { useEffect, useState } from "react";
 import { ConnectionResponse, getConnections } from "../api/DatasourceApi";
 import Spinner from "../components/Spinner";
-import { CircleStackIcon, CommandLineIcon } from "@heroicons/react/20/solid";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  CircleStackIcon,
+  CommandLineIcon,
+} from "@heroicons/react/20/solid";
 import { useNavigate } from "react-router-dom";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { addRequest } from "../api/ExecutionRequestApi";
 import { z } from "zod";
 import Button from "../components/Button";
+import { Disclosure } from "@headlessui/react";
 
 const ExecutionRequestSchema = z
   .object({
@@ -86,29 +92,62 @@ export default function ConnectionChooser() {
           <Spinner></Spinner>
         ) : (
           <div className="w-full">
-            <ul
-              role="list"
-              className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
-            >
-              {connections.map((connection) => (
-                <Card
-                  header={connection.displayName}
-                  subheader={connection.description}
-                  label={connection.id}
-                  key={connection.id}
-                  clickQuery={() => {
-                    setChosenConnection(connection);
-                    setChosenMode("SingleQuery");
-                    setValue("type", "SingleQuery");
-                  }}
-                  clickAccess={() => {
-                    setChosenConnection(connection);
-                    setChosenMode("TemporaryAccess");
-                    setValue("type", "TemporaryAccess");
-                  }}
-                ></Card>
-              ))}
-            </ul>
+            <Disclosure defaultOpen={true}>
+              {({ open, close }) => (
+                <>
+                  <Disclosure.Button className="py-2">
+                    <div className="flex flex-row justify-between">
+                      <div className="flex flex-row">
+                        <div>Connections</div>
+                      </div>
+                      <div className="flex flex-row">
+                        {open ? (
+                          <ChevronDownIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronDownIcon>
+                        ) : (
+                          <ChevronRightIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronRightIcon>
+                        )}
+                      </div>
+                      {chosenConnection && (
+                        <div className="flex flex-row">
+                          <div className="flex flex-row">
+                            <span className="inline-flex flex-shrink-0 items-center rounded-full bg-green-50 dark:bg-green-400/10 dark:text-green-400 px-1.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                              {chosenConnection.id}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Disclosure.Button>
+                  <Disclosure.Panel>
+                    <ul
+                      role="list"
+                      className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
+                    >
+                      {connections.map((connection) => (
+                        <Card
+                          header={connection.displayName}
+                          subheader={connection.description}
+                          label={connection.id}
+                          key={connection.id}
+                          clickQuery={() => {
+                            setChosenConnection(connection);
+                            setChosenMode("SingleQuery");
+                            setValue("type", "SingleQuery");
+                            close();
+                          }}
+                          clickAccess={() => {
+                            setChosenConnection(connection);
+                            setChosenMode("TemporaryAccess");
+                            setValue("type", "TemporaryAccess");
+                            close();
+                          }}
+                        ></Card>
+                      ))}
+                    </ul>
+                  </Disclosure.Panel>
+                </>
+              )}
+            </Disclosure>
             {chosenConnection && (
               <div className="mx-auto w-full">
                 <form
