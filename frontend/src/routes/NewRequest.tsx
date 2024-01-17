@@ -92,7 +92,7 @@ export default function ConnectionChooser() {
           <Spinner></Spinner>
         ) : (
           <div className="w-full">
-            <Disclosure>
+            <Disclosure defaultOpen={true}>
               {({ open, close }) => (
                 <>
                   <Disclosure.Button className="py-2">
