@@ -12,6 +12,7 @@ import {
 import { ThemeStatusProvider } from "./components/ThemeStatusProvider";
 import LiveSession from "./routes/LiveSession";
 import ConnectionChooser from "./routes/NewRequest";
+import Auditlog from "./routes/Auditlog";
 
 export interface ProtectedRouteProps {
   children: JSX.Element;
@@ -32,7 +33,7 @@ export const ProtectedRoute = ({
 };
 function App() {
   return (
-    <div className="dark:text-slate-50 dark:bg-slate-950 text-slate-900 bg-slate-50 min-h-screen">
+    <div className="dark:text-slate-50 dark:bg-slate-950 text-slate-900 bg-slate-50 min-h-screen transition-colors">
       <UserStatusProvider>
         <ThemeStatusProvider>
           <Routes>
@@ -69,6 +70,14 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              <Route
+                path="auditlog"
+                element={
+                  <ProtectedRoute>
+                    <Auditlog />
+                  </ProtectedRoute>
+                }
+              ></Route>
               <Route
                 path="requests/:requestId"
                 element={
