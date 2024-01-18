@@ -179,12 +179,12 @@ function RequestReview() {
     <div>
       {(loading && <Spinner />) || (
         <div className="max-w-3xl m-auto mt-10">
-          <h1 className="text-3xl my-2 w-full flex">
+          <h1 className="text-3xl my-2 w-full flex items-start">
             <div className="mr-auto">{request?.title}</div>
             <div
               className={` ${mapStatusToLabelColor(
                 request?.reviewStatus,
-              )} w-min rounded-md px-2 py-1 mt-2 text-base font-medium ring-1 ring-inset`}
+              )} w-min rounded-md px-2 py-1 mt-2 text-base font-medium ring-1 ring-inset `}
             >
               {mapStatus(request?.reviewStatus)}
             </div>
