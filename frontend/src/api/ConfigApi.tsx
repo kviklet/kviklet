@@ -7,11 +7,12 @@ const ConfigResponseSchema = z.object({
   validUntil: z.coerce.date().nullable().optional(),
   createdAt: DateTime.nullable().optional(),
   allowedUsers: z.number().int().positive().nullable().optional(),
+  oauthProvider: z.string().nullable().optional(),
 });
 
 export type ConfigResponse = z.infer<typeof ConfigResponseSchema>;
 
-export async function getLicense(): Promise<ConfigResponse> {
+export async function getConfig(): Promise<ConfigResponse> {
   const response = await fetch(`${baseUrl}/config/`, {
     method: "GET",
     headers: {

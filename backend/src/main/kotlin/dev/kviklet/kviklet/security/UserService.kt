@@ -58,7 +58,7 @@ class UserService(
     @Policy(Permission.USER_EDIT)
     fun updateUser(userId: UserId, email: String? = null, fullName: String? = null, password: String? = null): User {
         val user = userAdapter.findById(userId.toString())
-        if (user.googleId != null && (email != null || password != null)) {
+        if (user.subject != null && (email != null || password != null)) {
             throw Exception("Cannot change email or password for OAuth users")
         }
         val updatedUser = user.copy(

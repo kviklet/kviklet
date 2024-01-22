@@ -38,7 +38,7 @@ class UserEntity(
     var password: String? = null,
 
     @Column(unique = true)
-    var googleId: String? = null,
+    var subject: String? = null,
 
     @Column(unique = true)
     var email: String = "",
@@ -55,7 +55,7 @@ class UserEntity(
         id = id?.let { UserId(it) },
         fullName = fullName,
         password = password,
-        googleId = googleId,
+        subject = subject,
         email = email,
         roles = roles.map { it.toDto() }.toSet(),
     )
@@ -72,7 +72,7 @@ data class User(
     private val id: UserId? = null,
     val fullName: String? = null,
     val password: String? = null,
-    val googleId: String? = null,
+    val subject: String? = null,
     val email: String = "",
     val policies: Set<Policy> = HashSet(),
     val roles: Set<Role> = HashSet(),
@@ -119,7 +119,7 @@ data class User(
 
 interface UserRepository : JpaRepository<UserEntity, String> {
     fun findByEmail(email: String): UserEntity?
-    fun findByGoogleId(googleId: String): UserEntity?
+    fun findBySubject(subject: String): UserEntity?
 }
 
 @Service
@@ -132,8 +132,8 @@ class UserAdapter(
         return userEntity.toDto()
     }
 
-    fun findByGoogleId(googleId: String): User? {
-        val userEntity = userRepository.findByGoogleId(googleId) ?: return null
+    fun findBySubject(subject: String): User? {
+        val userEntity = userRepository.findBySubject(subject) ?: return null
         return userEntity.toDto()
     }
 
@@ -149,7 +149,7 @@ class UserAdapter(
         val userEntity = UserEntity(
             fullName = user.fullName,
             password = user.password,
-            googleId = user.googleId,
+            subject = user.subject,
             email = user.email,
         )
         val savedUserEntity = userRepository.save(userEntity)
@@ -166,7 +166,7 @@ class UserAdapter(
         } else {
             userEntity.fullName = user.fullName
             userEntity.password = user.password
-            userEntity.googleId = user.googleId
+            userEntity.subject = user.subject
             userEntity.email = user.email
             val savedUserEntity = userRepository.save(userEntity)
             return savedUserEntity.toDto()
@@ -181,7 +181,7 @@ class UserAdapter(
         )
         userEntity.fullName = user.fullName
         userEntity.password = user.password
-        userEntity.googleId = user.googleId
+        userEntity.subject = user.subject
         userEntity.email = user.email
         // update Roles
         user.roles.let { newRoleIds ->

@@ -14,3 +14,6 @@ databaseChangeLog:
   - include:
       file: 006-create-license-table.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 007-rename-googleid-column-to-subject.yaml
+      relativeToChangelogFile: true

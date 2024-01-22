@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.controller
 
+import dev.kviklet.kviklet.security.IdentityProviderProperties
 import dev.kviklet.kviklet.service.LicenseService
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.ResponseEntity
@@ -17,11 +18,28 @@ data class CreateConfigRequest(
     val licenseKey: String,
 )
 
+enum class OAuthProvider() {
+    GOOGLE,
+    KEYCLOAK,
+    ;
+
+    companion object {
+        fun fromString(string: String): OAuthProvider? {
+            return when (string) {
+                "google" -> GOOGLE
+                "keycloak" -> KEYCLOAK
+                else -> null
+            }
+        }
+    }
+}
+
 data class ConfigResponse(
     val licenseValid: Boolean,
     val validUntil: LocalDate?,
     val createdAt: LocalDateTime?,
     val allowedUsers: UInt?,
+    val oAuthProvider: OAuthProvider?,
 )
 
 @RestController
@@ -33,6 +51,7 @@ data class ConfigResponse(
 )
 class ConfigController(
     val licenseService: LicenseService,
+    val IdentityProviderProperties: IdentityProviderProperties,
 ) {
 
     @GetMapping("/")
@@ -45,6 +64,7 @@ class ConfigController(
             validUntil = licensesSorted.firstOrNull()?.validUntil,
             createdAt = licensesSorted.firstOrNull()?.createdAt,
             allowedUsers = licensesSorted.firstOrNull()?.allowedUsers,
+            oAuthProvider = IdentityProviderProperties.type?.let { OAuthProvider.fromString(it) },
         )
     }
 
