@@ -1,13 +1,14 @@
-import { ChangeEvent, useEffect, useState } from "react";
-import { ConfigResponse, getLicense, uploadLicense } from "../../api/ConfigApi";
+import { ChangeEvent, useState } from "react";
+import { ConfigResponse, uploadLicense } from "../../api/ConfigApi";
 import Spinner from "../../components/Spinner";
 import { Warning } from "../../components/Alert";
 import { ArrowUpCircleIcon, DocumentTextIcon } from "@heroicons/react/20/solid";
 import Button from "../../components/Button";
 import { useUsers } from "./UserSettings";
+import useConfig from "../../hooks/config";
 
 export default function GeneralSettings() {
-  const { license, loading, refreshLicense } = useLicense();
+  const { config, loading, refreshConfig } = useConfig();
   const { users } = useUsers();
 
   return (
@@ -17,14 +18,14 @@ export default function GeneralSettings() {
           <Spinner />
         ) : (
           <div className="flex-col flex gap-y-2">
-            {license && (
+            {config && (
               <LicenseInfo
-                license={license}
+                license={config}
                 userCount={users.length.toString()}
               />
             )}
-            <LicenseStatus license={license!} />
-            <LicenseDropZone refreshLicense={refreshLicense}></LicenseDropZone>
+            <LicenseStatus license={config!} />
+            <LicenseDropZone refreshLicense={refreshConfig}></LicenseDropZone>
           </div>
         )}
       </div>
@@ -193,27 +194,4 @@ const LicenseDropZone = ({
       </Button>
     </div>
   );
-};
-
-const useLicense = () => {
-  const [license, setLicense] = useState<ConfigResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const refreshLicense = async () => {
-    setLoading(true);
-    try {
-      const license = await getLicense();
-      setLicense(license);
-      setLoading(false);
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void refreshLicense();
-  }, []);
-
-  return { license, loading, refreshLicense };
 };

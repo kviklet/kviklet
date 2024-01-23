@@ -104,6 +104,7 @@ class SecurityConfig(
                 authorize("/h2-console", permitAll)
                 authorize("/h2-console/**", permitAll)
                 authorize("/error", permitAll)
+                authorize("/config/", permitAll)
 
                 authorize(anyRequest, authenticated)
             }
@@ -197,7 +198,7 @@ class CustomAuthenticationProvider(
 
         val user = userAdapter.findByEmail(email)
 
-        if (user == null || user.googleId != null || !passwordEncoder.matches(password, user.password)) {
+        if (user == null || user.subject != null || !passwordEncoder.matches(password, user.password)) {
             throw BadCredentialsException("Invalid username or password, or user is an OAuth user.")
         }
 
@@ -254,11 +255,11 @@ class CustomOidcUserService(
     override fun loadUser(userRequest: OidcUserRequest): OidcUser {
         val oidcUser = super.loadUser(userRequest)
 
-        val googleId = oidcUser.getAttribute<String>("sub")!!
+        val subject = oidcUser.getAttribute<String>("sub")!!
         val email = oidcUser.getAttribute<String>("email")!!
         val name = oidcUser.getAttribute<String>("name")
 
-        var user = userAdapter.findByGoogleId(googleId)
+        var user = userAdapter.findBySubject(subject)
 
         if (user == null) {
             // If the user is signing in for the first time, create a new user if license allows
@@ -268,7 +269,7 @@ class CustomOidcUserService(
                 throw LicenseRestrictionException("License does not allow more users")
             }
             user = User(
-                googleId = googleId,
+                subject = subject,
                 email = email,
                 fullName = name,
                 // Set default roles and other user properties here
@@ -276,7 +277,7 @@ class CustomOidcUserService(
         } else {
             // If the user has already signed in before, update the user's information
             user = user.copy(
-                googleId = googleId,
+                subject = subject,
                 email = email,
                 fullName = name,
             )
@@ -296,9 +297,7 @@ class CustomOidcUserService(
 }
 
 @Component
-class OAuth2LoginSuccessHandler(
-    private val userAdapter: UserAdapter,
-) : SimpleUrlAuthenticationSuccessHandler() {
+class OAuth2LoginSuccessHandler() : SimpleUrlAuthenticationSuccessHandler() {
 
     @Transactional
     override fun onAuthenticationSuccess(
@@ -316,6 +315,6 @@ class OAuth2LoginSuccessHandler(
         val serverName = request.serverName
         val serverPort = request.serverPort
 
-        return "$scheme://$serverName${if (serverPort != 80 && serverPort != 443) ":$serverPort" else ""}"
+        return "$scheme://$serverName${if (serverPort != 80 && serverPort != 443) ":5173" else ""}"
     }
 }

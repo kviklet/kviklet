@@ -46,10 +46,25 @@ const handleGetExecutionRequests = rest.get(
     return res(ctx.status(200), ctx.json([]));
   },
 );
+
+const handleConfig = rest.get(
+  "http://localhost:8080/config/",
+  (req, res, ctx) => {
+    return res(
+      ctx.status(200),
+      ctx.json({
+        licenseValid: false,
+        oauthProvider: "GOOGLE",
+      }),
+    );
+  },
+);
+
 const server = setupServer(
   handleStatusNotLoggedIn,
   handleLogin,
   handleGetExecutionRequests,
+  handleConfig,
 );
 
 beforeAll(() => {
@@ -85,7 +100,10 @@ describe("App not logged in", () => {
         <App />
       </MemoryRouter>,
     );
-    expect(screen.queryByText("Sign in to Kviklet")).toBeInTheDocument();
+
+    const element = await screen.findByText("Sign in to Kviklet");
+    expect(element).toBeInTheDocument();
+
     server.use(handleStatusLoggedIn);
     const emailInput = screen.getByLabelText("Email");
     userEvent.type(emailInput, "some@email.com");

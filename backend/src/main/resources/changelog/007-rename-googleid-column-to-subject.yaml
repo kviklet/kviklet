@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 007-rename-googleid-column-to-subject
+      author: jascha
+      changes:
+        - renameColumn:
+            oldColumnName: google_id
+            newColumnName: subject
+            tableName: user

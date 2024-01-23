@@ -29,13 +29,13 @@ class IdentityProviderProperties {
     var type: String? = null
     var clientId: String? = null
     var clientSecret: String? = null
-    private var issuerUri: String? = null
+    var issuerUri: String? = null
 
     fun isOauth2Enabled(): Boolean {
         return type != null && clientId != null && clientSecret != null
     }
 
-    fun getIssuerUri(): String {
+    fun getIssuer(): String {
         return if (type == "google") {
             "https://accounts.google.com"
         } else {
@@ -65,7 +65,7 @@ data class IdentityProviderConfig(
             "{baseUrl}/login/oauth2/code/{registrationId}"
         }
         val clientRegistration = ClientRegistrations
-            .fromIssuerLocation(properties.getIssuerUri())
+            .fromIssuerLocation(properties.getIssuer())
             .registrationId(properties.type)
             .clientId(properties.clientId)
             .clientSecret(properties.clientSecret)
