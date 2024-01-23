@@ -21,7 +21,7 @@ class MysqlExecutorTest(
 ) {
 
     companion object {
-        val db: MySQLContainer<*> = MySQLContainer(DockerImageName.parse("mysql:8"))
+        val db: MySQLContainer<*> = MySQLContainer(DockerImageName.parse("mysql:8.2"))
             .withUsername("root")
             .withPassword("")
             .withReuse(true)
