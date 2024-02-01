@@ -1,5 +1,8 @@
 package dev.kviklet.kviklet.proxy
 
+import dev.kviklet.kviklet.db.ExecutePayload
+import dev.kviklet.kviklet.service.EventService
+import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.ServerSocket
@@ -37,13 +40,22 @@ class Statement(
 class PostgresProxy(
     private val targetHost: String,
     private val targetPort: Int,
-    private val pgTypeStringifier: PGTypeStringifier = PGTypeStringifier(),
+    private val username: String,
+    private val password: String,
+    private val eventService: EventService,
+    private val executionRequest: ExecutionRequest,
+    private val userId: String,
 ) {
     private var md5Salt = byteArrayOf()
 
     private val boundStatements: MutableMap<String, Statement> = mutableMapOf()
 
-    fun startServer(port: Int) {
+    private var proxyUsername = "postgres"
+    private var proxyPassword = "postgres"
+
+    fun startServer(port: Int, proxyUsername: String, proxyPassword: String) {
+        this.proxyUsername = proxyUsername
+        this.proxyPassword = proxyPassword
         ServerSocket(port).use { serverSocket ->
             println("Server started on port $port")
 
@@ -129,7 +141,6 @@ class PostgresProxy(
             }
 
             // Sleep briefly to prevent a tight loop that consumes too much CPU
-            // You can adjust the sleep duration to balance responsiveness and CPU usage
             Thread.sleep(10)
         }
     }
@@ -196,7 +207,14 @@ class PostgresProxy(
             if (parsedMessage is ExecuteMessage) {
                 println("Execute message with ${parsedMessage.statementName}")
                 val statement = boundStatements[parsedMessage.statementName]!!
-                println(statement)
+                val executePayload = ExecutePayload(
+                    query = statement.interpolateQuery(),
+                )
+                eventService.saveEvent(
+                    executionRequest.id!!,
+                    userId,
+                    executePayload,
+                )
             }
 
             messages.add(MessageOrBytes(parsedMessage, null))
@@ -206,11 +224,11 @@ class PostgresProxy(
 
     private fun replacePasswordMessage(message: HashedPasswordMessage): MessageOrBytes {
         val password = message.message
-        val expectedMessage = HashedPasswordMessage.passwordContent("postgres", "bla", md5Salt)
+        val expectedMessage = HashedPasswordMessage.passwordContent(this.proxyUsername, this.proxyPassword, md5Salt)
         println("Expected message: ${expectedMessage.toHexString()}")
         println("Password: ${password.toByteArray().toHexString()}")
         assert(password.toByteArray().contentEquals(expectedMessage))
-        val messageWithHeader = HashedPasswordMessage.from("postgres", "postgres", md5Salt)
+        val messageWithHeader = HashedPasswordMessage.from(this.username, this.password, md5Salt)
         return MessageOrBytes(messageWithHeader, null)
     }
 
@@ -363,7 +381,7 @@ open class ParsedMessage(
                 },
             )
             return when (header) {
-                'X' -> TerminationMessage.fromBytes(bytes)
+                'X' -> TerminationMessage.fromBytes(length, bytes)
                 'p' -> {
                     HashedPasswordMessage.fromBytes(length, bytes)
                 }
@@ -394,11 +412,8 @@ class TerminationMessage(
     originalContent: ByteArray,
 ) : ParsedMessage(header, length, originalContent) {
     companion object {
-        fun fromBytes(bytes: ByteArray): TerminationMessage {
-            val buffer = ByteBuffer.wrap(bytes)
-            val header = buffer.get().toInt().toChar()
-            val length = buffer.int
-            return TerminationMessage(header, length, bytes)
+        fun fromBytes(length: Int, bytes: ByteArray): TerminationMessage {
+            return TerminationMessage('X', length, bytes)
         }
     }
 }

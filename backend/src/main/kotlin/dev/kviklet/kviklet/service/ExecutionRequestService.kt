@@ -11,12 +11,17 @@ import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.ReviewPayload
+import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.proxy.PostgresProxy
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
+import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
+import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventType
 import dev.kviklet.kviklet.service.dto.ExecuteEvent
+import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.RequestType
@@ -24,9 +29,13 @@ import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewEvent
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import jakarta.transaction.Transactional
+import org.slf4j.LoggerFactory
+import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
 import java.lang.RuntimeException
+import java.security.SecureRandom
 import java.time.LocalDateTime
+import java.util.concurrent.CompletableFuture
 
 @Service
 class ExecutionRequestService(
@@ -34,7 +43,9 @@ class ExecutionRequestService(
     val datasourceConnectionAdapter: DatasourceConnectionAdapter,
     val executorService: ExecutorService,
     val eventService: EventService,
+    val userAdapter: UserAdapter,
 ) {
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
@@ -177,7 +188,80 @@ class ExecutionRequestService(
     fun getExecutions(): List<ExecuteEvent> {
         return eventService.getAllExecutions()
     }
+
+    // @Policy(Permission.EXECUTION_REQUEST_GET)
+    @Transactional
+    fun proxy(executionRequestId: ExecutionRequestId, userDetails: UserDetailsWithId): ProxyResponse {
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(executionRequestId)
+        val connection = executionRequest.request.connection
+        val reviewStatus = resolveReviewStatus(executionRequest.events, connection.reviewConfig)
+        if (reviewStatus != ReviewStatus.APPROVED) {
+            throw InvalidReviewException("This request has not been approved yet!")
+        }
+        if (connection.type != DatasourceType.POSTGRESQL) {
+            throw RuntimeException("Only Postgres is supported for proxying!")
+        }
+        // Randomly generate a temp password for the proxy
+        val password = generateRandomPassword(16)
+
+        startServerAsync(
+            connection.hostname,
+            connection.port,
+            connection.username,
+            connection.password,
+            connection.username,
+            password,
+            executionRequest = executionRequest.request,
+            userId = userDetails.id,
+        )
+        logger.info("Started proxy for user ${connection.username} on port 5438")
+
+        return ProxyResponse(
+            port = 5438,
+            username = connection.username,
+            password = password,
+        )
+    }
+
+    fun generateRandomPassword(length: Int): String {
+        val characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        val secureRandom = SecureRandom()
+        val password = StringBuilder(length)
+
+        for (i in 0 until length) {
+            val randomIndex = secureRandom.nextInt(characters.length)
+            password.append(characters[randomIndex])
+        }
+
+        return password.toString()
+    }
+
+    @Async
+    fun startServerAsync(
+        hostname: String,
+        port: Int,
+        username: String,
+        password: String,
+        email: String,
+        tempPassword: String,
+        executionRequest: ExecutionRequest,
+        userId: String,
+    ): CompletableFuture<Void>? {
+        return CompletableFuture.runAsync {
+            PostgresProxy(hostname, port, username, password, eventService, executionRequest, userId).startServer(
+                5438,
+                email,
+                tempPassword,
+            )
+        }
+    }
 }
+
+data class ProxyResponse(
+    val port: Int,
+    val username: String,
+    val password: String,
+)
 
 fun Set<Event>.raiseIfAlreadyExecuted(requestType: RequestType) {
     val executedEvents = filter { it.type == EventType.EXECUTE }

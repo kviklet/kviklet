@@ -15,6 +15,8 @@ import {
   Review,
   Comment as CommentEvent,
   Execute,
+  postStartServer,
+  ProxyResponse,
 } from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
 import { mapStatus, mapStatusToLabelColor, timeSince } from "./Requests";
@@ -71,6 +73,9 @@ const useRequest = (id: string) => {
     ExecutionRequestResponseWithComments | undefined
   >(undefined);
   const [loading, setLoading] = useState(true);
+  const [proxyResponse, setProxyResponse] = useState<ProxyResponse | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
     async function request() {
@@ -102,6 +107,12 @@ const useRequest = (id: string) => {
         events: [...request.events, event],
       };
     });
+  };
+
+  const start = async (): Promise<ProxyResponse> => {
+    const response = await postStartServer(id);
+    setProxyResponse(response);
+    return response;
   };
 
   const updateRequest = async (request: ChangeExecutionRequestPayload) => {
@@ -141,12 +152,14 @@ const useRequest = (id: string) => {
     addComment,
     approve,
     execute,
+    start,
     updateRequest,
     data,
     dataLoading,
     updatedRows,
     executionError,
     loading,
+    proxyResponse,
   };
 };
 
@@ -157,12 +170,14 @@ function RequestReview() {
     addComment,
     approve,
     execute,
+    start,
     updateRequest,
     data,
     dataLoading,
     updatedRows,
     executionError,
     loading,
+    proxyResponse,
   } = useRequest(params.requestId);
 
   const navigate = useNavigate();
@@ -194,6 +209,7 @@ function RequestReview() {
               <RequestBox
                 request={request}
                 runQuery={run}
+                startServer={start}
                 updateRequest={updateRequest}
               ></RequestBox>
               <div className="flex justify-center">
@@ -205,6 +221,12 @@ function RequestReview() {
               )}
               {executionError && (
                 <div className="text-red-500">{executionError}</div>
+              )}
+              {proxyResponse && (
+                <div className="text-slate-500">
+                  Server started on {proxyResponse.port} with username{" "}
+                  {proxyResponse.username} and password {proxyResponse.password}
+                </div>
               )}
 
               <div className="w-full border-b dark:border-slate-700 border-slate-300 mt-3"></div>
@@ -246,10 +268,12 @@ function RequestReview() {
 function RequestBox({
   request,
   runQuery,
+  startServer,
   updateRequest,
 }: {
   request: ExecutionRequestResponseWithComments | undefined;
   runQuery: () => Promise<void>;
+  startServer: () => Promise<ProxyResponse>;
   updateRequest: (request: { statement?: string }) => Promise<void>;
 }) {
   const [editMode, setEditMode] = useState(false);
@@ -344,6 +368,19 @@ function RequestBox({
           ></div>
           {request?.type == "SingleQuery" ? "Run Query" : "Start Session"}
         </Button>
+        {(request?.type == "TemporaryAccess" && (
+          <Button
+            className="mt-3"
+            id="startServer"
+            type={
+              (request?.reviewStatus == "APPROVED" && "submit") || "disabled"
+            }
+            onClick={() => void startServer()}
+          >
+            Start Server
+          </Button>
+        )) ||
+          ""}
       </div>
     </div>
   );
