@@ -7,10 +7,11 @@ import { ApiErrorResponse, ApiErrorResponseSchema } from "./Errors";
 
 const requestUrl = `${baseUrl}/execution-requests/`;
 
-export const DateTime = z.preprocess(
-  (val) => (typeof val == "string" ? val.concat("Z") : undefined),
-  z.string().datetime(),
-);
+export const DateTime = z.preprocess((arg) => {
+  if (typeof arg === "string") {
+    return new Date(arg);
+  }
+}, z.date());
 
 const ExecutionRequestPayload = z
   .object({

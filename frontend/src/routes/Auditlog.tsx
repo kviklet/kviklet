@@ -110,7 +110,7 @@ function Item({ execution }: { execution: ExecutionLogResponse }) {
   );
 }
 
-function timeAgo(input: string | Date): string {
+export function timeAgo(input: string | Date): string {
   const now = new Date();
   const past = input instanceof Date ? input : new Date(input);
   const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000);

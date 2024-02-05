@@ -35,6 +35,7 @@ import Spinner from "../components/Spinner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 import { AbsoluteInitialBubble as InitialBubble } from "../components/InitialBubble";
+import { timeAgo } from "./Auditlog";
 
 interface RequestReviewParams {
   requestId: string;
@@ -305,7 +306,7 @@ function RequestBox({
             <span className="italic">{request?.connection.displayName}</span>
           </div>
           <div className="ml-auto dark:text-slate-500">
-            {timeSince(new Date(request?.createdAt ?? ""))}
+            {timeAgo(new Date(request?.createdAt ?? ""))}
           </div>
         </p>
         <div className="py-3">
