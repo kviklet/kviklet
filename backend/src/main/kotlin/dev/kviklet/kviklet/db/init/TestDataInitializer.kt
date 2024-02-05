@@ -118,8 +118,6 @@ class TestDataInitializer(
     fun initializer(userRepository: UserRepository, passwordEncoder: PasswordEncoder): ApplicationRunner {
         return ApplicationRunner { _ ->
 
-            println("initializing data")
-
             if (userRepository.findAll().isNotEmpty()) {
                 return@ApplicationRunner
             }

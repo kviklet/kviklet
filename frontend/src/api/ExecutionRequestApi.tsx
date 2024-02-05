@@ -7,10 +7,11 @@ import { ApiErrorResponse, ApiErrorResponseSchema } from "./Errors";
 
 const requestUrl = `${baseUrl}/execution-requests/`;
 
-export const DateTime = z.preprocess(
-  (val) => (typeof val == "string" ? val.concat("Z") : undefined),
-  z.string().datetime(),
-);
+export const DateTime = z.preprocess((arg) => {
+  if (typeof arg === "string") {
+    return new Date(arg);
+  }
+}, z.date());
 
 const ExecutionRequestPayload = z
   .object({
@@ -86,6 +87,12 @@ const ExecutionRequestResponse = z.object({
   connectionName: z.string().optional(),
 });
 
+const ProxyResponse = z.object({
+  port: z.number(),
+  username: z.string(),
+  password: z.string(),
+});
+
 const ChangeExecutionRequestPayload = z.object({
   title: z.string().min(1).optional(),
   description: z.string().optional(),
@@ -115,6 +122,7 @@ type Review = z.infer<typeof ReviewEvent>;
 type Comment = z.infer<typeof CommentEvent>;
 type Execute = z.infer<typeof ExecuteEvent>;
 type Event = Edit | Review | Comment | Execute;
+type ProxyResponse = z.infer<typeof ProxyResponse>;
 
 const addRequest = async (payload: ExecutionRequest): Promise<boolean> => {
   const mappedPayload: ExecutionRequestPayload = {
@@ -150,6 +158,16 @@ const patchRequest = async (
   });
   const json: unknown = await response.json();
   return ExecutionRequestResponseWithComments.parse(json);
+};
+
+const postStartServer = async (id: string): Promise<ProxyResponse> => {
+  const response = await fetch(requestUrl + id + "/proxy", {
+    method: "POST",
+    credentials: "include",
+  });
+  const json: unknown = await response.json();
+  const proxy = ProxyResponse.parse(json);
+  return proxy;
 };
 
 const getRequests = async (): Promise<ExecutionRequestsResponse> => {
@@ -296,6 +314,7 @@ export {
   addReviewToRequest,
   runQuery,
   patchRequest,
+  postStartServer,
 };
 export type {
   ExecutionRequestResponse,
@@ -314,4 +333,5 @@ export type {
   Column,
   ApiErrorResponse,
   QueryResult,
+  ProxyResponse,
 };

@@ -305,6 +305,12 @@ data class ExecuteEventResponse(
     val query: String,
 ) : EventResponse(EventType.EXECUTE, createdAt)
 
+data class ProxyResponse(
+    val port: Int,
+    val username: String,
+    val password: String,
+)
+
 @RestController()
 @Validated
 @RequestMapping("/execution-requests")
@@ -387,6 +393,23 @@ class ExecutionRequestController(
     ): ExecutionResponse {
         return ExecutionResponse.fromDto(
             executionRequestService.execute(executionRequestId, request?.query, userDetails.id),
+        )
+    }
+
+    @Operation(
+        summary = "Start Proxy",
+        description = "Start the Kviklet proxy for a temp access request. Only works for postgresql.",
+    )
+    @PostMapping("/{executionRequestId}/proxy")
+    fun proxy(
+        @PathVariable executionRequestId: ExecutionRequestId,
+        @CurrentUser userDetails: UserDetailsWithId,
+    ): ProxyResponse {
+        val proxy = executionRequestService.proxy(executionRequestId, userDetails)
+        return ProxyResponse(
+            port = proxy.port,
+            username = proxy.username,
+            password = proxy.password,
         )
     }
 }

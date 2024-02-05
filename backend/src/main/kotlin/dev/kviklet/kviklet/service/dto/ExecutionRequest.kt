@@ -92,3 +92,17 @@ data class ExecutionRequestDetails(
         return resolveReviewStatus() == ReviewStatus.APPROVED
     }
 }
+
+data class ExecutionProxy(
+    val request: ExecutionRequest,
+    val port: Int,
+    val username: String,
+    val password: String,
+    val startTime: LocalDateTime,
+) : SecuredDomainObject {
+    override fun getId() = request.id.toString()
+
+    override fun getDomainObjectType() = Resource.EXECUTION_REQUEST
+
+    override fun getRelated(resource: Resource): SecuredDomainObject? = null
+}

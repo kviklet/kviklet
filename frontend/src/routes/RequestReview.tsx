@@ -15,6 +15,8 @@ import {
   Review,
   Comment as CommentEvent,
   Execute,
+  postStartServer,
+  ProxyResponse,
 } from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
 import { mapStatus, mapStatusToLabelColor, timeSince } from "./Requests";
@@ -33,6 +35,7 @@ import Spinner from "../components/Spinner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 import { AbsoluteInitialBubble as InitialBubble } from "../components/InitialBubble";
+import { timeAgo } from "./Auditlog";
 
 interface RequestReviewParams {
   requestId: string;
@@ -71,6 +74,9 @@ const useRequest = (id: string) => {
     ExecutionRequestResponseWithComments | undefined
   >(undefined);
   const [loading, setLoading] = useState(true);
+  const [proxyResponse, setProxyResponse] = useState<ProxyResponse | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
     async function request() {
@@ -102,6 +108,12 @@ const useRequest = (id: string) => {
         events: [...request.events, event],
       };
     });
+  };
+
+  const start = async (): Promise<ProxyResponse> => {
+    const response = await postStartServer(id);
+    setProxyResponse(response);
+    return response;
   };
 
   const updateRequest = async (request: ChangeExecutionRequestPayload) => {
@@ -141,12 +153,14 @@ const useRequest = (id: string) => {
     addComment,
     approve,
     execute,
+    start,
     updateRequest,
     data,
     dataLoading,
     updatedRows,
     executionError,
     loading,
+    proxyResponse,
   };
 };
 
@@ -157,12 +171,14 @@ function RequestReview() {
     addComment,
     approve,
     execute,
+    start,
     updateRequest,
     data,
     dataLoading,
     updatedRows,
     executionError,
     loading,
+    proxyResponse,
   } = useRequest(params.requestId);
 
   const navigate = useNavigate();
@@ -194,6 +210,7 @@ function RequestReview() {
               <RequestBox
                 request={request}
                 runQuery={run}
+                startServer={start}
                 updateRequest={updateRequest}
               ></RequestBox>
               <div className="flex justify-center">
@@ -205,6 +222,13 @@ function RequestReview() {
               )}
               {executionError && (
                 <div className="text-red-500">{executionError}</div>
+              )}
+              {proxyResponse && (
+                <div className="text-lime-500 my-4">
+                  Server started on {proxyResponse.port} with username{" "}
+                  <i>{proxyResponse.username}</i> and password{" "}
+                  <i>{proxyResponse.password}</i>
+                </div>
               )}
 
               <div className="w-full border-b dark:border-slate-700 border-slate-300 mt-3"></div>
@@ -246,10 +270,12 @@ function RequestReview() {
 function RequestBox({
   request,
   runQuery,
+  startServer,
   updateRequest,
 }: {
   request: ExecutionRequestResponseWithComments | undefined;
   runQuery: () => Promise<void>;
+  startServer: () => Promise<ProxyResponse>;
   updateRequest: (request: { statement?: string }) => Promise<void>;
 }) {
   const [editMode, setEditMode] = useState(false);
@@ -280,7 +306,7 @@ function RequestBox({
             <span className="italic">{request?.connection.displayName}</span>
           </div>
           <div className="ml-auto dark:text-slate-500">
-            {timeSince(new Date(request?.createdAt ?? ""))}
+            {timeAgo(new Date(request?.createdAt ?? ""))}
           </div>
         </p>
         <div className="py-3">
@@ -344,6 +370,19 @@ function RequestBox({
           ></div>
           {request?.type == "SingleQuery" ? "Run Query" : "Start Session"}
         </Button>
+        {(request?.type == "TemporaryAccess" && (
+          <Button
+            className="mt-3 ml-2"
+            id="startServer"
+            type={
+              (request?.reviewStatus == "APPROVED" && "submit") || "disabled"
+            }
+            onClick={() => void startServer()}
+          >
+            Start Proxy
+          </Button>
+        )) ||
+          ""}
       </div>
     </div>
   );
