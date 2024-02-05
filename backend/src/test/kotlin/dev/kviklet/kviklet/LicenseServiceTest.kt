@@ -16,7 +16,6 @@ class LicenseServiceTest {
 
     @Test
     fun `test license service`() {
-        println("Java version: " + System.getProperty("java.version"))
         val algorithms = TreeSet<String>()
         for (provider in Security.getProviders()) for (service in provider.getServices()) if (service.getType().equals(
                 "Signature",
@@ -24,7 +23,6 @@ class LicenseServiceTest {
         ) {
             algorithms.add(service.getAlgorithm())
         }
-        for (algorithm in algorithms) println(algorithm)
         val pubkey = licenseService.loadPublicKey()
         val valid = licenseService.verifyLicense(
             """{"max_users":20,"expiry_date":"2024-01-01"}""",

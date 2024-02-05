@@ -10,6 +10,154 @@ import java.net.Socket
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.security.MessageDigest
+import java.time.LocalDateTime
+import java.util.concurrent.Executors
+
+class Connection(
+    val clientSocket: Socket,
+    val targetSocket: Socket,
+    private val eventService: EventService,
+    private val executionRequest: ExecutionRequest,
+    private val userId: String,
+    private val username: String,
+    private val password: String,
+
+) {
+    var clientInput: InputStream = clientSocket.getInputStream()
+    var clientOutput: OutputStream = clientSocket.getOutputStream()
+    var targetInput: InputStream = targetSocket.getInputStream()
+    var targetOutput: OutputStream = targetSocket.getOutputStream()
+
+    private var md5Salt = byteArrayOf()
+
+    private val boundStatements: MutableMap<String, Statement> = mutableMapOf()
+
+    private var proxyUsername = "postgres"
+    private var proxyPassword = "postgres"
+
+    fun startHandling(proxyUsername: String, proxyPassword: String) {
+        this.proxyUsername = proxyUsername
+        this.proxyPassword = proxyPassword
+        this.clientInput = clientSocket.getInputStream()
+        this.clientOutput = clientSocket.getOutputStream()
+        this.targetInput = targetSocket.getInputStream()
+        this.targetOutput = targetSocket.getOutputStream()
+
+        val clientBuffer = ByteArray(8192)
+        val targetBuffer = ByteArray(8192)
+        var lastClientMessage: MessageOrBytes? = null
+
+        while (true) {
+            if (clientInput.available() > 0) {
+                val bytesRead = clientInput.read(clientBuffer)
+                val data = clientBuffer.copyOf(bytesRead)
+                for (clientMessage in parseDataToMessages(data)) {
+                    val newData = clientMessage.message?.toByteArray() ?: clientMessage.bytes!!
+                    targetOutput.write(newData, 0, newData.size)
+                    targetOutput.flush()
+                    lastClientMessage = clientMessage
+                }
+            }
+
+            if (targetInput.available() > 0) {
+                val bytesRead = targetInput.read(targetBuffer)
+                val data = targetBuffer.copyOf(bytesRead)
+                parseResponse(data)
+                clientOutput.write(targetBuffer, 0, bytesRead)
+                clientOutput.flush()
+            }
+
+            if (lastClientMessage?.message?.isTermination() == true) {
+                break
+            }
+        }
+    }
+
+    private fun parseDataToMessages(byteArray: ByteArray): List<MessageOrBytes> {
+        // Check for SSL Request and startup message
+        val buffer = ByteBuffer.wrap(byteArray)
+        if (
+            byteArray[0] == 0x00.toByte() &&
+            byteArray[1] == 0x00.toByte() &&
+            byteArray[2] == 0x00.toByte() &&
+            byteArray[3] == 0x08.toByte() &&
+            byteArray[4] == 0x04.toByte() &&
+            byteArray[5] == 0xd2.toByte() &&
+            byteArray[6] == 0x16.toByte() &&
+            byteArray[7] == 0x2f.toByte()
+        ) {
+            return listOf(MessageOrBytes(null, byteArray))
+        } else if (
+            byteArray[0] == 0x00.toByte()
+        ) {
+            val length = buffer.getInt() // Length
+            val protocolVersion = buffer.getInt() // Protocol version
+            val parameters = mutableListOf<Pair<String, String>>()
+            return listOf(MessageOrBytes(null, byteArray))
+        }
+        val messages = mutableListOf<MessageOrBytes>()
+        while (buffer.remaining() > 0) {
+            val header = buffer.get().toInt().toChar()
+            val length = buffer.int
+            val messageBytes = ByteArray(length - 4)
+            buffer.get(messageBytes)
+            val parsedMessage = ParsedMessage.fromBytes(header, length, messageBytes)
+
+            if (parsedMessage is HashedPasswordMessage) {
+                messages.add(replacePasswordMessage(parsedMessage))
+                continue
+            }
+            if (parsedMessage is ParseMessage) {
+                boundStatements[parsedMessage.statementName] = Statement(
+                    parsedMessage.query,
+                    parameterTypes = parsedMessage.parameterTypes,
+                )
+            }
+            if (parsedMessage is BindMessage) {
+                val statement = boundStatements[parsedMessage.statementName]!!
+                boundStatements[parsedMessage.statementName] = Statement(
+                    statement.query,
+                    parsedMessage.parameterFormatCodes,
+                    statement.parameterTypes,
+                    parsedMessage.parameters,
+                )
+            }
+            if (parsedMessage is ExecuteMessage) {
+                val statement = boundStatements[parsedMessage.statementName]!!
+                val executePayload = ExecutePayload(
+                    query = statement.interpolateQuery(),
+                )
+                eventService.saveEvent(
+                    executionRequest.id!!,
+                    userId,
+                    executePayload,
+                )
+            }
+
+            messages.add(MessageOrBytes(parsedMessage, null))
+        }
+        return messages
+    }
+
+    private fun replacePasswordMessage(message: HashedPasswordMessage): MessageOrBytes {
+        val password = message.message
+        val expectedMessage = HashedPasswordMessage.passwordContent(this.proxyUsername, this.proxyPassword, md5Salt)
+        assert(password.toByteArray().contentEquals(expectedMessage))
+        val messageWithHeader = HashedPasswordMessage.from(this.username, this.password, md5Salt)
+        return MessageOrBytes(messageWithHeader, null)
+    }
+
+    private fun parseResponse(byteArray: ByteArray): ByteArray {
+        if (byteArray[0] == 'R'.code.toByte()) {
+            // AuthenticationMD5Password
+            if (byteArray[4] == 0x0c.toByte() && byteArray[8] == 0x05.toByte()) {
+                md5Salt = byteArray.copyOfRange(9, 13)
+            }
+            val auth = String(byteArray.copyOfRange(5, byteArray.size - 1), Charset.forName("UTF-8"))
+        }
+        return byteArray
+    }
+}
 
 class Statement(
     val query: String,
@@ -46,23 +194,44 @@ class PostgresProxy(
     private val executionRequest: ExecutionRequest,
     private val userId: String,
 ) {
-    private var md5Salt = byteArrayOf()
-
-    private val boundStatements: MutableMap<String, Statement> = mutableMapOf()
-
     private var proxyUsername = "postgres"
     private var proxyPassword = "postgres"
 
-    fun startServer(port: Int, proxyUsername: String, proxyPassword: String) {
+    fun startServer(port: Int, proxyUsername: String, proxyPassword: String, startTime: LocalDateTime) {
         this.proxyUsername = proxyUsername
         this.proxyPassword = proxyPassword
+
+        val maxConnections = 5
+        var currentConnections = 0
+        val threadPool = Executors.newCachedThreadPool()
         ServerSocket(port).use { serverSocket ->
-            println("Server started on port $port")
 
             while (true) {
+                if (LocalDateTime.now().isAfter(startTime.plusMinutes(60))) {
+                    // kill all running threads and close sockets
+                    threadPool.shutdownNow()
+                    serverSocket.close()
+                    break
+                }
+                if (currentConnections >= maxConnections) {
+                    Thread.sleep(1000)
+                    continue
+                }
                 val clientSocket = serverSocket.accept()
-                println("Accepted connection from ${clientSocket.inetAddress}:${clientSocket.port}")
-                handleClient(clientSocket)
+                currentConnections++
+
+                threadPool.submit {
+                    try {
+                        handleClient(clientSocket)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    } finally {
+                        if (!clientSocket.isClosed) {
+                            clientSocket.close()
+                        }
+                        currentConnections--
+                    }
+                }
             }
         }
     }
@@ -71,182 +240,21 @@ class PostgresProxy(
         clientSocket.use { socket ->
             val targetSocket = Socket(targetHost, targetPort)
             targetSocket.use { forwardSocket ->
-                val clientInput = socket.getInputStream()
-                val clientOutput = socket.getOutputStream()
-                val targetInput = forwardSocket.getInputStream()
-                val targetOutput = forwardSocket.getOutputStream()
 
-                // Continuously relay data in both directions
-                relayContinuously(clientInput, targetOutput, targetInput, clientOutput)
-            }
-        }
-    }
-
-    private fun relayContinuously(
-        clientInput: InputStream,
-        targetOutput: OutputStream,
-        targetInput: InputStream,
-        clientOutput: OutputStream,
-    ) {
-        val clientBuffer = ByteArray(8192)
-        val targetBuffer = ByteArray(8192)
-        var lastClientMessage: MessageOrBytes? = null
-
-        while (true) {
-            if (clientInput.available() > 0) {
-                val bytesRead = clientInput.read(clientBuffer)
-                val data = clientBuffer.copyOf(bytesRead)
-                val hexData = data.joinToString(separator = " ") { byte -> "%02x".format(byte) }
-                val stringData = String(clientBuffer, 0, bytesRead, Charset.forName("UTF-8"))
-                println(
-                    "Client to Target: $hexData [${stringData.filter {
-                        it.isLetterOrDigit() || it.isWhitespace()
-                    }}]",
-                )
-                for (clientMessage in parseDataToMessages(data)) {
-                    if (clientMessage.message is ParseMessage) {
-                        clientMessage.message.printQuery()
-                    }
-                    val newData = clientMessage.message?.toByteArray() ?: clientMessage.bytes!!
-                    println(
-                        "Adapted data to Target: ${newData.joinToString(separator = " ") { byte ->
-                            "%02x".format(byte)
-                        }} [${String(
-                            newData,
-                            Charset.forName("UTF-8"),
-                        ).filter { it.isLetterOrDigit() || it.isWhitespace() }}]",
-                    )
-                    targetOutput.write(newData, 0, newData.size)
-                    targetOutput.flush()
-                    lastClientMessage = clientMessage
-                }
-            }
-
-            if (targetInput.available() > 0) {
-                val bytesRead = targetInput.read(targetBuffer)
-                val data = targetBuffer.copyOf(bytesRead)
-                parseResponse(data)
-                val hexData = data.joinToString(separator = " ") { byte -> "%02x".format(byte) }
-                val stringData = String(targetBuffer, 0, bytesRead, Charset.forName("UTF-8"))
-                println(
-                    "Target to Client: $hexData [${stringData.filter { it.isLetterOrDigit() || it.isWhitespace() }}]",
-                )
-                clientOutput.write(targetBuffer, 0, bytesRead)
-                clientOutput.flush()
-            }
-
-            if (lastClientMessage?.message?.isTermination() == true) {
-                println("Terminating")
-                break
-            }
-
-            // Sleep briefly to prevent a tight loop that consumes too much CPU
-            Thread.sleep(10)
-        }
-    }
-
-    private fun parseDataToMessages(byteArray: ByteArray): List<MessageOrBytes> {
-        // Check for SSL Request and startup message
-        val buffer = ByteBuffer.wrap(byteArray)
-        if (
-            byteArray[0] == 0x00.toByte() &&
-            byteArray[1] == 0x00.toByte() &&
-            byteArray[2] == 0x00.toByte() &&
-            byteArray[3] == 0x08.toByte() &&
-            byteArray[4] == 0x04.toByte() &&
-            byteArray[5] == 0xd2.toByte() &&
-            byteArray[6] == 0x16.toByte() &&
-            byteArray[7] == 0x2f.toByte()
-        ) {
-            println("SSL Request")
-            return listOf(MessageOrBytes(null, byteArray))
-        } else if (
-            byteArray[0] == 0x00.toByte()
-        ) {
-            println("Startup")
-            val length = buffer.getInt() // Length
-            val protocolVersion = buffer.getInt() // Protocol version
-            val parameters = mutableListOf<Pair<String, String>>()
-            println(length)
-            println(protocolVersion)
-            println(parameters)
-            return listOf(MessageOrBytes(null, byteArray))
-        }
-        val messages = mutableListOf<MessageOrBytes>()
-        while (buffer.remaining() > 0) {
-            val header = buffer.get().toInt().toChar()
-            val length = buffer.int
-            val messageBytes = ByteArray(length - 4)
-            buffer.get(messageBytes)
-            val parsedMessage = ParsedMessage.fromBytes(header, length, messageBytes)
-
-            println(header)
-            println(length)
-            println(parsedMessage)
-            if (parsedMessage is HashedPasswordMessage) {
-                messages.add(replacePasswordMessage(parsedMessage))
-                continue
-            }
-            if (parsedMessage is ParseMessage) {
-                println("Parse message with ${parsedMessage.query}")
-                boundStatements[parsedMessage.statementName] = Statement(
-                    parsedMessage.query,
-                    parameterTypes = parsedMessage.parameterTypes,
-                )
-            }
-            if (parsedMessage is BindMessage) {
-                println("Bind message with ${parsedMessage.statementName}")
-                val statement = boundStatements[parsedMessage.statementName]!!
-                boundStatements[parsedMessage.statementName] = Statement(
-                    statement.query,
-                    parsedMessage.parameterFormatCodes,
-                    statement.parameterTypes,
-                    parsedMessage.parameters,
-                )
-            }
-            if (parsedMessage is ExecuteMessage) {
-                println("Execute message with ${parsedMessage.statementName}")
-                val statement = boundStatements[parsedMessage.statementName]!!
-                val executePayload = ExecutePayload(
-                    query = statement.interpolateQuery(),
-                )
-                eventService.saveEvent(
-                    executionRequest.id!!,
+                Connection(
+                    socket,
+                    forwardSocket,
+                    eventService,
+                    executionRequest,
                     userId,
-                    executePayload,
+                    username,
+                    password,
+                ).startHandling(
+                    proxyUsername,
+                    proxyPassword,
                 )
             }
-
-            messages.add(MessageOrBytes(parsedMessage, null))
         }
-        return messages
-    }
-
-    private fun replacePasswordMessage(message: HashedPasswordMessage): MessageOrBytes {
-        val password = message.message
-        val expectedMessage = HashedPasswordMessage.passwordContent(this.proxyUsername, this.proxyPassword, md5Salt)
-        println("Expected message: ${expectedMessage.toHexString()}")
-        println("Password: ${password.toByteArray().toHexString()}")
-        assert(password.toByteArray().contentEquals(expectedMessage))
-        val messageWithHeader = HashedPasswordMessage.from(this.username, this.password, md5Salt)
-        return MessageOrBytes(messageWithHeader, null)
-    }
-
-    private fun parseResponse(byteArray: ByteArray): ByteArray {
-        if (byteArray[0] == 'R'.code.toByte()) {
-            // AuthenticationMD5Password
-            if (byteArray[4] == 0x0c.toByte() && byteArray[8] == 0x05.toByte()) {
-                println("AuthenticationMD5Password")
-                md5Salt = byteArray.copyOfRange(9, 13)
-                println(
-                    "md5Salt: ${md5Salt.joinToString(separator = " ")
-                        { byte -> "%02x".format(byte) }}",
-                )
-            }
-            val auth = String(byteArray.copyOfRange(5, byteArray.size - 1), Charset.forName("UTF-8"))
-            println(auth)
-        }
-        return byteArray
     }
 }
 
@@ -375,11 +383,6 @@ open class ParsedMessage(
             if (bytes.size < length - 4) {
                 throw Exception("Not enough bytes to parse message")
             }
-            println(
-                "Parsing message with header $header" + bytes.joinToString(separator = " ") { byte ->
-                    "%02x".format(byte)
-                },
-            )
             return when (header) {
                 'X' -> TerminationMessage.fromBytes(length, bytes)
                 'p' -> {
@@ -432,7 +435,6 @@ class QueryMessage(
     companion object {
         fun fromBytes(length: Int, bytes: ByteArray): QueryMessage {
             val query = String(bytes.copyOfRange(0, bytes.size - 1), Charset.forName("UTF-8"))
-            println(query)
             return QueryMessage('Q', length, originalContent = bytes, query = query)
         }
     }
@@ -636,12 +638,6 @@ class ParseMessage(
 
         return buffer.array()
     } */
-
-    fun printQuery() {
-        println("Query: $query")
-        println("Statement name: $statementName")
-        println("Parameter types: $parameterTypes")
-    }
 }
 
 class HashedPasswordMessage(

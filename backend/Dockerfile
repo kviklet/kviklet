@@ -21,6 +21,7 @@ COPY --from=build /home/gradle/src/build/libs/*.jar app.jar
 
 # Expose the application on port 8080
 EXPOSE 8080
+#EXPOSE 5438-6000
 
 # Start the application
 CMD ["java", "-jar", "app.jar"]

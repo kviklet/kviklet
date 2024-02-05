@@ -223,9 +223,10 @@ function RequestReview() {
                 <div className="text-red-500">{executionError}</div>
               )}
               {proxyResponse && (
-                <div className="text-slate-500">
+                <div className="text-lime-500 my-4">
                   Server started on {proxyResponse.port} with username{" "}
-                  {proxyResponse.username} and password {proxyResponse.password}
+                  <i>{proxyResponse.username}</i> and password{" "}
+                  <i>{proxyResponse.password}</i>
                 </div>
               )}
 
@@ -370,14 +371,14 @@ function RequestBox({
         </Button>
         {(request?.type == "TemporaryAccess" && (
           <Button
-            className="mt-3"
+            className="mt-3 ml-2"
             id="startServer"
             type={
               (request?.reviewStatus == "APPROVED" && "submit") || "disabled"
             }
             onClick={() => void startServer()}
           >
-            Start Server
+            Start Proxy
           </Button>
         )) ||
           ""}
