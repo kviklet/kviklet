@@ -1,7 +1,7 @@
 # Kviklet
 
 <p align="center">
-<img src="https://github.com/kviklet/kviklet/raw/main/images/ExecutedRequest.png" height="300px">
+<img src="https://github.com/kviklet/kviklet/raw/main/images/Detailed_Auditlog_View.png" height="300px">
 </p>
 
 [Kviklet.dev](https://kviklet.dev) | [Release Notes](https://github.com/kviklet/kviklet/releases)
