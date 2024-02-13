@@ -15,15 +15,10 @@ import java.net.SocketTimeoutException
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.security.MessageDigest
-import java.security.cert.X509Certificate
 import java.time.LocalDateTime
 import java.util.*
 import java.util.concurrent.Executors
-import javax.net.ssl.SSLContext
-import javax.net.ssl.SSLSocket
-import javax.net.ssl.SSLSocketFactory
-import javax.net.ssl.TrustManager
-import javax.net.ssl.X509TrustManager
+import kotlin.random.Random
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.isAccessible
 
@@ -47,8 +42,6 @@ class Connection(
     var params: Map<String, String> = emptyMap()
 
     private var md5Salt = byteArrayOf()
-
-    private var sslEnabled = true
 
     private val boundStatements: MutableMap<String, Statement> = mutableMapOf()
 
@@ -113,51 +106,31 @@ class Connection(
                     clientOutput.flush()
                 }
             } else {
-                if (!sslEnabled) {
-                    if (targetInput.available() > 0) {
-                        val bytesRead = targetInput.read(targetBuffer)
-                        var responseData = targetBuffer.copyOf(bytesRead)
-                        printBytesAsHexAndUTF8(responseData, "Target data")
-                        val parsedData = parseResponse(responseData)
-                        if (parsedData.second == "SSL") {
-                            responseData = "N".toByteArray()
-                        }
-                        printBytesAsHexAndUTF8(responseData, "Target data to send")
-                        clientOutput.write(responseData, 0, responseData.size)
-                        clientOutput.flush()
-                    }
+                val singleByte = ByteArray(1)
+                val bytesRead: Int = try {
+                    targetInput.read(singleByte, 0, 1)
+                } catch (e: SocketTimeoutException) {
+                    0 // No data available
                 }
-                // if ssl is enabled the available() method will always return 0
-                // so we have to process the read data in a separate thread again
 
-                // start new thread to process target read
-                if (sslEnabled) {
-                    val singleByte = ByteArray(1)
-                    val bytesRead: Int = try {
-                        targetInput.read(singleByte, 0, 1)
-                    } catch (e: SocketTimeoutException) {
-                        0 // No data available
+                if (bytesRead > 0) {
+                    // Data is available, prepend the read byte to the buffer
+                    val availableBytes = targetInput.available()
+                    var dataBuffer = ByteArray(availableBytes + 1)
+                    System.arraycopy(singleByte, 0, dataBuffer, 0, 1)
+                    if (availableBytes > 0) {
+                        targetInput.read(dataBuffer, 1, availableBytes)
                     }
 
-                    if (bytesRead > 0) {
-                        // Data is available, prepend the read byte to the buffer
-                        val availableBytes = targetInput.available()
-                        var dataBuffer = ByteArray(availableBytes + 1)
-                        System.arraycopy(singleByte, 0, dataBuffer, 0, 1)
-                        if (availableBytes > 0) {
-                            targetInput.read(dataBuffer, 1, availableBytes)
-                        }
-
-                        // Handle the data as before
-                        printBytesAsHexAndUTF8(dataBuffer, "Target data")
-                        var responseData = parseResponse(dataBuffer)
-                        if (responseData.second == "SSL") {
-                            dataBuffer = "N".toByteArray()
-                        }
-                        printBytesAsHexAndUTF8(dataBuffer, "Target data to send")
-                        clientOutput.write(dataBuffer, 0, dataBuffer.size)
-                        clientOutput.flush()
+                    // Handle the data as before
+                    printBytesAsHexAndUTF8(dataBuffer, "Target data")
+                    var responseData = parseResponse(dataBuffer)
+                    if (responseData.second == "SSL") {
+                        dataBuffer = "N".toByteArray()
                     }
+                    printBytesAsHexAndUTF8(dataBuffer, "Target data to send")
+                    clientOutput.write(dataBuffer, 0, dataBuffer.size)
+                    clientOutput.flush()
                 }
             }
 
@@ -165,26 +138,6 @@ class Connection(
                 break
             }
         }
-    }
-
-    fun createSSLSocket(): SSLSocket {
-        val trustAllCerts = arrayOf<TrustManager>(object : X509TrustManager {
-            override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-            override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) {}
-            override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {}
-        })
-
-        // Install the all-trusting trust manager
-        val sslContext: SSLContext = SSLContext.getInstance("TLS")
-        sslContext.init(null, trustAllCerts, java.security.SecureRandom())
-        val sslSocketFactory: SSLSocketFactory = sslContext.socketFactory
-        val sslSocket: SSLSocket = sslSocketFactory.createSocket(
-            targetSocket,
-            targetSocket.getInetAddress().hostAddress,
-            targetSocket.getPort(),
-            true,
-        ) as SSLSocket
-        return sslSocket
     }
 
     private fun printBytesAsHexAndUTF8(bytes: ByteArray, prefix: String) {
@@ -212,16 +165,14 @@ class Connection(
         } else if (
             byteArray[0] == 0x00.toByte()
         ) {
-            val length = buffer.getInt() // Length
-            val protocolVersion = buffer.getInt() // Protocol version
-            val parameters = mutableListOf<Pair<String, String>>()
             // return authentication okay as if we are in trust mode
             val responseBuffer = ByteBuffer.allocate(13)
             responseBuffer.put('R'.code.toByte())
             responseBuffer.putInt(12)
             responseBuffer.putInt(5)
-            responseBuffer.putInt(4)
-            md5Salt = 4.toByte().toString().toByteArray()
+            val salt = Random.nextInt(0, 10000)
+            responseBuffer.putInt(salt)
+            md5Salt = ByteBuffer.allocate(4).putInt(salt).array()
             val okByteArray = responseBuffer.array()
             val authMessage = MessageOrBytes(null, byteArray, okByteArray)
             return listOf(authMessage)
@@ -233,59 +184,35 @@ class Connection(
             val messageBytes = ByteArray(length - 4)
             buffer.get(messageBytes)
             val parsedMessage = ParsedMessage.fromBytes(header, length, messageBytes)
-            // handle ssl request with no
 
             if (parsedMessage is HashedPasswordMessage) {
-                val responseBuffer = ByteBuffer.allocate(9)
-                responseBuffer.put('R'.code.toByte())
-                responseBuffer.putInt(8)
-                responseBuffer.putInt(0)
+                confirmPasswordMessage(parsedMessage)
                 messages.add(
                     MessageOrBytes(
                         null,
                         parsedMessage.originalContent,
-                        responseBuffer.array(),
+                        authenticationOk(),
                     ),
                 )
 
                 for (param in params) {
-                    val responseBuffer = ByteBuffer.allocate(
-                        7 + param.key.toByteArray().size + param.value.toByteArray().size,
-                    )
-                    responseBuffer.put('S'.code.toByte())
-                    responseBuffer.putInt(6 + param.key.toByteArray().size + param.value.toByteArray().size)
-                    responseBuffer.put(param.key.toByteArray())
-                    responseBuffer.put(0.toByte())
-                    responseBuffer.put(param.value.toByteArray())
-                    responseBuffer.put(0.toByte())
                     messages.add(
                         MessageOrBytes(
                             null,
                             parsedMessage.originalContent,
-                            responseBuffer.array(),
+                            paramMessage(param.key, param.value),
                         ),
                     )
                 }
                 // param end message BackendKeyData
-                val responseBufferBackendKeyData = ByteBuffer.allocate(13)
-                responseBufferBackendKeyData.put('K'.code.toByte())
-                responseBufferBackendKeyData.putInt(12)
-                responseBufferBackendKeyData.putInt(0)
-                responseBufferBackendKeyData.putInt(0)
                 messages.add(
                     MessageOrBytes(
                         null,
                         parsedMessage.originalContent,
-                        responseBufferBackendKeyData.array(),
+                        backendKeyData(),
                     ),
                 )
-
-                val responseBufferReadyForQuery = ByteBuffer.allocate(6)
-                responseBufferReadyForQuery.put('Z'.code.toByte())
-                responseBufferReadyForQuery.putInt(5)
-                responseBufferReadyForQuery.put('I'.code.toByte())
-                val readyForQueryByteArray = responseBufferReadyForQuery.array()
-                messages.add(MessageOrBytes(null, byteArray, readyForQueryByteArray))
+                messages.add(MessageOrBytes(null, byteArray, readyForQuery()))
                 continue
             }
             if (parsedMessage is ParseMessage) {
@@ -320,36 +247,55 @@ class Connection(
         return messages
     }
 
-    private fun replacePasswordMessage(message: HashedPasswordMessage): MessageOrBytes {
+    private fun authenticationOk(): ByteArray {
+        val responseBuffer = ByteBuffer.allocate(9)
+        responseBuffer.put('R'.code.toByte())
+        responseBuffer.putInt(8)
+        responseBuffer.putInt(0)
+        return responseBuffer.array()
+    }
+
+    private fun paramMessage(key: String, value: String): ByteArray {
+        val responseBuffer = ByteBuffer.allocate(
+            7 + key.toByteArray().size + value.toByteArray().size,
+        )
+        responseBuffer.put('S'.code.toByte())
+        responseBuffer.putInt(6 + key.toByteArray().size + value.toByteArray().size)
+        responseBuffer.put(key.toByteArray())
+        responseBuffer.put(0.toByte())
+        responseBuffer.put(value.toByteArray())
+        responseBuffer.put(0.toByte())
+        return responseBuffer.array()
+    }
+
+    private fun backendKeyData(): ByteArray {
+        val responseBuffer = ByteBuffer.allocate(13)
+        responseBuffer.put('K'.code.toByte())
+        responseBuffer.putInt(12)
+        responseBuffer.putInt(0)
+        responseBuffer.putInt(0)
+        return responseBuffer.array()
+    }
+
+    private fun readyForQuery(): ByteArray {
+        val responseBuffer = ByteBuffer.allocate(6)
+        responseBuffer.put('Z'.code.toByte())
+        responseBuffer.putInt(5)
+        responseBuffer.put('I'.code.toByte())
+        return responseBuffer.array()
+    }
+
+    private fun confirmPasswordMessage(message: HashedPasswordMessage) {
         val password = message.message
         val expectedMessage = HashedPasswordMessage.passwordContent(this.proxyUsername, this.proxyPassword, md5Salt)
-        assert(password.toByteArray().contentEquals(expectedMessage))
-        val messageWithHeader = HashedPasswordMessage.from(this.username, this.password, md5Salt)
-        return MessageOrBytes(messageWithHeader, null)
+        printBytesAsHexAndUTF8(expectedMessage, "expected Password")
+        printBytesAsHexAndUTF8(password.toByteArray(), "Password")
+        if (!password.toByteArray().contentEquals(expectedMessage)) {
+            throw Exception("Password does not match")
+        }
     }
 
     private fun parseResponse(byteArray: ByteArray): Pair<ByteArray, String> {
-        if (byteArray[0] == 'R'.code.toByte()) {
-            // AuthenticationMD5Password
-            if (byteArray[4] == 0x0c.toByte() && byteArray[8] == 0x05.toByte()) {
-                md5Salt = byteArray.copyOfRange(9, 13)
-            }
-            val auth = String(byteArray.copyOfRange(5, byteArray.size - 1), Charset.forName("UTF-8"))
-        }
-        if (byteArray[0] == 'S'.code.toByte()) {
-            sslEnabled = true
-            val sslSocket = createSSLSocket()
-            sslSocket.startHandshake()
-            sslSocket.soTimeout = 10
-            this.targetSocket = sslSocket
-            this.targetInput = sslSocket.getInputStream()
-            this.targetOutput = sslSocket.getOutputStream()
-            return byteArray to "SSL"
-        }
-        if (byteArray[0] == 'N'.code.toByte()) {
-            sslEnabled = false
-            return byteArray to "No SSL"
-        }
         return byteArray to "Not handled"
     }
 }
