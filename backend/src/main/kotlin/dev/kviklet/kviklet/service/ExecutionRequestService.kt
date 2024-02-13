@@ -33,7 +33,6 @@ import jakarta.transaction.Transactional
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
-import java.lang.RuntimeException
 import java.security.SecureRandom
 import java.time.LocalDateTime
 import java.util.concurrent.CompletableFuture
@@ -231,6 +230,7 @@ class ExecutionRequestService(
         startServerAsync(
             connection.hostname,
             connection.port,
+            connection.databaseName ?: "",
             availablePort,
             connection.username,
             connection.password,
@@ -270,6 +270,7 @@ class ExecutionRequestService(
     fun startServerAsync(
         hostname: String,
         port: Int,
+        databaseName: String,
         mappedPort: Int,
         username: String,
         password: String,
@@ -280,7 +281,16 @@ class ExecutionRequestService(
         startTime: LocalDateTime,
     ): CompletableFuture<Void>? {
         return CompletableFuture.runAsync {
-            PostgresProxy(hostname, port, username, password, eventService, executionRequest, userId).startServer(
+            PostgresProxy(
+                hostname,
+                port,
+                databaseName,
+                username,
+                password,
+                eventService,
+                executionRequest,
+                userId,
+            ).startServer(
                 mappedPort,
                 email,
                 tempPassword,

@@ -3,19 +3,28 @@ package dev.kviklet.kviklet.proxy
 import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
+import org.postgresql.core.PGStream
+import org.postgresql.core.QueryExecutorBase
+import org.postgresql.core.v3.ConnectionFactoryImpl
+import org.postgresql.util.HostSpec
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.ServerSocket
 import java.net.Socket
+import java.net.SocketTimeoutException
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.security.MessageDigest
 import java.time.LocalDateTime
+import java.util.*
 import java.util.concurrent.Executors
+import kotlin.random.Random
+import kotlin.reflect.full.memberProperties
+import kotlin.reflect.jvm.isAccessible
 
 class Connection(
     val clientSocket: Socket,
-    val targetSocket: Socket,
+    var targetSocket: Socket,
     private val eventService: EventService,
     private val executionRequest: ExecutionRequest,
     private val userId: String,
@@ -28,6 +37,10 @@ class Connection(
     var targetInput: InputStream = targetSocket.getInputStream()
     var targetOutput: OutputStream = targetSocket.getOutputStream()
 
+    var targetHost: String = ""
+    var targetPort: Int = 5432
+    var params: Map<String, String> = emptyMap()
+
     private var md5Salt = byteArrayOf()
 
     private val boundStatements: MutableMap<String, Statement> = mutableMapOf()
@@ -35,13 +48,25 @@ class Connection(
     private var proxyUsername = "postgres"
     private var proxyPassword = "postgres"
 
-    fun startHandling(proxyUsername: String, proxyPassword: String) {
+    fun startHandling(
+        targetHost: String,
+        targetPort: Int,
+        proxyUsername: String,
+        proxyPassword: String,
+        passThrough: Boolean = false,
+        params: Map<String, String>,
+    ) {
         this.proxyUsername = proxyUsername
         this.proxyPassword = proxyPassword
+        this.targetHost = targetHost
+        this.targetPort = targetPort
         this.clientInput = clientSocket.getInputStream()
         this.clientOutput = clientSocket.getOutputStream()
         this.targetInput = targetSocket.getInputStream()
         this.targetOutput = targetSocket.getOutputStream()
+        this.params = params
+
+        println(params)
 
         val clientBuffer = ByteArray(8192)
         val targetBuffer = ByteArray(8192)
@@ -51,26 +76,74 @@ class Connection(
             if (clientInput.available() > 0) {
                 val bytesRead = clientInput.read(clientBuffer)
                 val data = clientBuffer.copyOf(bytesRead)
-                for (clientMessage in parseDataToMessages(data)) {
-                    val newData = clientMessage.message?.toByteArray() ?: clientMessage.bytes!!
-                    targetOutput.write(newData, 0, newData.size)
+                printBytesAsHexAndUTF8(data, "Client data")
+                if (passThrough) {
+                    printBytesAsHexAndUTF8(data, "Passing through to server")
+                    targetOutput.write(data, 0, data.size)
                     targetOutput.flush()
-                    lastClientMessage = clientMessage
+                } else {
+                    for (clientMessage in parseDataToMessages(data)) {
+                        val newData = clientMessage.message?.toByteArray() ?: clientMessage.bytes!!
+                        printBytesAsHexAndUTF8(newData, "Client data to send")
+                        if (clientMessage.response != null) {
+                            printBytesAsHexAndUTF8(clientMessage.response, "Client response")
+                            clientOutput.write(clientMessage.response, 0, clientMessage.response.size)
+                            clientOutput.flush()
+                        } else {
+                            targetOutput.write(newData, 0, newData.size)
+                            targetOutput.flush()
+                            lastClientMessage = clientMessage
+                        }
+                    }
                 }
             }
+            if (passThrough) {
+                if (targetInput.available() > 0) {
+                    val bytesRead = targetInput.read(targetBuffer)
+                    val data = targetBuffer.copyOf(bytesRead)
+                    printBytesAsHexAndUTF8(data, "Passing through to client")
+                    clientOutput.write(data, 0, data.size)
+                    clientOutput.flush()
+                }
+            } else {
+                val singleByte = ByteArray(1)
+                val bytesRead: Int = try {
+                    targetInput.read(singleByte, 0, 1)
+                } catch (e: SocketTimeoutException) {
+                    0 // No data available
+                }
 
-            if (targetInput.available() > 0) {
-                val bytesRead = targetInput.read(targetBuffer)
-                val data = targetBuffer.copyOf(bytesRead)
-                parseResponse(data)
-                clientOutput.write(targetBuffer, 0, bytesRead)
-                clientOutput.flush()
+                if (bytesRead > 0) {
+                    // Data is available, prepend the read byte to the buffer
+                    val availableBytes = targetInput.available()
+                    var dataBuffer = ByteArray(availableBytes + 1)
+                    System.arraycopy(singleByte, 0, dataBuffer, 0, 1)
+                    if (availableBytes > 0) {
+                        targetInput.read(dataBuffer, 1, availableBytes)
+                    }
+
+                    // Handle the data as before
+                    printBytesAsHexAndUTF8(dataBuffer, "Target data")
+                    var responseData = parseResponse(dataBuffer)
+                    if (responseData.second == "SSL") {
+                        dataBuffer = "N".toByteArray()
+                    }
+                    printBytesAsHexAndUTF8(dataBuffer, "Target data to send")
+                    clientOutput.write(dataBuffer, 0, dataBuffer.size)
+                    clientOutput.flush()
+                }
             }
 
             if (lastClientMessage?.message?.isTermination() == true) {
                 break
             }
         }
+    }
+
+    private fun printBytesAsHexAndUTF8(bytes: ByteArray, prefix: String) {
+        println(
+            "$prefix: ${bytes.joinToString(" ") { "%02x".format(it) }} - ${String(bytes, Charset.forName("UTF-8"))}",
+        )
     }
 
     private fun parseDataToMessages(byteArray: ByteArray): List<MessageOrBytes> {
@@ -86,14 +159,23 @@ class Connection(
             byteArray[6] == 0x16.toByte() &&
             byteArray[7] == 0x2f.toByte()
         ) {
-            return listOf(MessageOrBytes(null, byteArray))
+            // return N for no SSL
+            val nByteArray = "N".toByteArray()
+            return listOf(MessageOrBytes(null, byteArray, nByteArray))
         } else if (
             byteArray[0] == 0x00.toByte()
         ) {
-            val length = buffer.getInt() // Length
-            val protocolVersion = buffer.getInt() // Protocol version
-            val parameters = mutableListOf<Pair<String, String>>()
-            return listOf(MessageOrBytes(null, byteArray))
+            // return authentication okay as if we are in trust mode
+            val responseBuffer = ByteBuffer.allocate(13)
+            responseBuffer.put('R'.code.toByte())
+            responseBuffer.putInt(12)
+            responseBuffer.putInt(5)
+            val salt = Random.nextInt(0, 10000)
+            responseBuffer.putInt(salt)
+            md5Salt = ByteBuffer.allocate(4).putInt(salt).array()
+            val okByteArray = responseBuffer.array()
+            val authMessage = MessageOrBytes(null, byteArray, okByteArray)
+            return listOf(authMessage)
         }
         val messages = mutableListOf<MessageOrBytes>()
         while (buffer.remaining() > 0) {
@@ -104,7 +186,33 @@ class Connection(
             val parsedMessage = ParsedMessage.fromBytes(header, length, messageBytes)
 
             if (parsedMessage is HashedPasswordMessage) {
-                messages.add(replacePasswordMessage(parsedMessage))
+                confirmPasswordMessage(parsedMessage)
+                messages.add(
+                    MessageOrBytes(
+                        null,
+                        parsedMessage.originalContent,
+                        authenticationOk(),
+                    ),
+                )
+
+                for (param in params) {
+                    messages.add(
+                        MessageOrBytes(
+                            null,
+                            parsedMessage.originalContent,
+                            paramMessage(param.key, param.value),
+                        ),
+                    )
+                }
+                // param end message BackendKeyData
+                messages.add(
+                    MessageOrBytes(
+                        null,
+                        parsedMessage.originalContent,
+                        backendKeyData(),
+                    ),
+                )
+                messages.add(MessageOrBytes(null, byteArray, readyForQuery()))
                 continue
             }
             if (parsedMessage is ParseMessage) {
@@ -139,23 +247,56 @@ class Connection(
         return messages
     }
 
-    private fun replacePasswordMessage(message: HashedPasswordMessage): MessageOrBytes {
-        val password = message.message
-        val expectedMessage = HashedPasswordMessage.passwordContent(this.proxyUsername, this.proxyPassword, md5Salt)
-        assert(password.toByteArray().contentEquals(expectedMessage))
-        val messageWithHeader = HashedPasswordMessage.from(this.username, this.password, md5Salt)
-        return MessageOrBytes(messageWithHeader, null)
+    private fun authenticationOk(): ByteArray {
+        val responseBuffer = ByteBuffer.allocate(9)
+        responseBuffer.put('R'.code.toByte())
+        responseBuffer.putInt(8)
+        responseBuffer.putInt(0)
+        return responseBuffer.array()
     }
 
-    private fun parseResponse(byteArray: ByteArray): ByteArray {
-        if (byteArray[0] == 'R'.code.toByte()) {
-            // AuthenticationMD5Password
-            if (byteArray[4] == 0x0c.toByte() && byteArray[8] == 0x05.toByte()) {
-                md5Salt = byteArray.copyOfRange(9, 13)
-            }
-            val auth = String(byteArray.copyOfRange(5, byteArray.size - 1), Charset.forName("UTF-8"))
+    private fun paramMessage(key: String, value: String): ByteArray {
+        val responseBuffer = ByteBuffer.allocate(
+            7 + key.toByteArray().size + value.toByteArray().size,
+        )
+        responseBuffer.put('S'.code.toByte())
+        responseBuffer.putInt(6 + key.toByteArray().size + value.toByteArray().size)
+        responseBuffer.put(key.toByteArray())
+        responseBuffer.put(0.toByte())
+        responseBuffer.put(value.toByteArray())
+        responseBuffer.put(0.toByte())
+        return responseBuffer.array()
+    }
+
+    private fun backendKeyData(): ByteArray {
+        val responseBuffer = ByteBuffer.allocate(13)
+        responseBuffer.put('K'.code.toByte())
+        responseBuffer.putInt(12)
+        responseBuffer.putInt(0)
+        responseBuffer.putInt(0)
+        return responseBuffer.array()
+    }
+
+    private fun readyForQuery(): ByteArray {
+        val responseBuffer = ByteBuffer.allocate(6)
+        responseBuffer.put('Z'.code.toByte())
+        responseBuffer.putInt(5)
+        responseBuffer.put('I'.code.toByte())
+        return responseBuffer.array()
+    }
+
+    private fun confirmPasswordMessage(message: HashedPasswordMessage) {
+        val password = message.message
+        val expectedMessage = HashedPasswordMessage.passwordContent(this.proxyUsername, this.proxyPassword, md5Salt)
+        printBytesAsHexAndUTF8(expectedMessage, "expected Password")
+        printBytesAsHexAndUTF8(password.toByteArray(), "Password")
+        if (!password.toByteArray().contentEquals(expectedMessage)) {
+            throw Exception("Password does not match")
         }
-        return byteArray
+    }
+
+    private fun parseResponse(byteArray: ByteArray): Pair<ByteArray, String> {
+        return byteArray to "Not handled"
     }
 }
 
@@ -188,6 +329,7 @@ class Statement(
 class PostgresProxy(
     private val targetHost: String,
     private val targetPort: Int,
+    private val databaseName: String,
     private val username: String,
     private val password: String,
     private val eventService: EventService,
@@ -237,9 +379,44 @@ class PostgresProxy(
     }
 
     private fun handleClient(clientSocket: Socket) {
+        // {application_name=PostgreSQL JDBC Driver, client_encoding=UTF8, DateStyle=ISO, MDY, integer_datetimes=on, IntervalStyle=postgres, is_superuser=on, server_encoding=UTF8, server_version=9.6.24, session_authorization=postgres, standard_conforming_strings=on, TimeZone=Europe/Berlin}
+        val passThroughMode = false
         clientSocket.use { socket ->
-            val targetSocket = Socket(targetHost, targetPort)
+
+            val targetSocket: Socket
+            val params: Map<String, String>
+
+            if (!passThroughMode) {
+                val hostSpec = HostSpec(targetHost, targetPort)
+                val factory = ConnectionFactoryImpl()
+                val props = Properties()
+                props.setProperty("user", username)
+                props.setProperty("password", password)
+                val database = if (databaseName != "") databaseName else username
+                props.setProperty("PGDBNAME", database)
+                val queryExecutor = factory.openConnectionImpl(arrayOf(hostSpec), props) as QueryExecutorBase
+
+                val queryExecutorClass = QueryExecutorBase::class
+
+                // Find the property by name
+                val pgStreamProperty = queryExecutorClass.memberProperties.firstOrNull { it.name == "pgStream" }
+                    ?: throw NoSuchElementException("Property 'pgStream' is not found")
+
+                // Make the property accessible
+                pgStreamProperty.isAccessible = true
+
+                // Get the property value
+                val pgStream = pgStreamProperty.get(queryExecutor) as PGStream
+                params = queryExecutor.getParameterStatuses()
+                targetSocket = pgStream.socket
+            } else {
+                targetSocket = Socket(targetHost, targetPort)
+                params = mapOf()
+            }
+
             targetSocket.use { forwardSocket ->
+
+                forwardSocket.soTimeout = 10
 
                 Connection(
                     socket,
@@ -250,8 +427,12 @@ class PostgresProxy(
                     username,
                     password,
                 ).startHandling(
+                    targetHost,
+                    targetPort,
                     proxyUsername,
                     proxyPassword,
+                    passThroughMode,
+                    params,
                 )
             }
         }
@@ -424,6 +605,7 @@ class TerminationMessage(
 class MessageOrBytes(
     val message: ParsedMessage?,
     val bytes: ByteArray?,
+    val response: ByteArray? = null,
 )
 
 class QueryMessage(
