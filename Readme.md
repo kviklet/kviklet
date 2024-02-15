@@ -1,7 +1,7 @@
 # Kviklet
 
 <p align="center">
-<img src="https://github.com/kviklet/kviklet/raw/main/images/Detailed_Auditlog_View.png" height="300px">
+<img src="https://github.com/kviklet/kviklet/raw/main/images/ExecutionRequest.png" height="300px">
 </p>
 
 [Kviklet.dev](https://kviklet.dev) | [Release Notes](https://github.com/kviklet/kviklet/releases)
@@ -24,6 +24,7 @@ Kviklet ships with a variety of features that an engineering team needs to manag
 - **Single Query**: Execute a singular statement. Allows the reviewer to review your query before execution.
 - **Auditlog**: Singular plane that logs all executed statements with Author, reason for execution etc.
 - **RBAC**: Configure which team has access to which database/table to as fine of a granularity as the DB Engine allows.
+- **PostgresProxy**: Start a proxy server to use the DB Client of your choice, but everything will be stored in the Kviklet Auditlog.
 - And more...
 
 ## Setup
@@ -105,6 +106,16 @@ For valid redirect URIs, you should configure: http://[kviklet_host]/api/login/o
 For Allowed Origins, simply your hosted kviklet url.
 
 After setting those environment variables the login page should show a Login with Keycloak button that redirects to your keycloak instance. We do currently not support role sync yet so you will have to manage roles directly in kviklet manually for now.
+
+### Proxy (Beta), Postgres only
+
+If you create requests for temporary access. You can instead of using the web interface to run queries also enable a proxy and use the DB client of your choice.
+For this the container uses ports 5438-6000 so you need to expose those.
+The user can then create a temp access request, and click "Start Proxy" once it's been approved. They will get a port and a user + temporary password. With this they can login to the database. Kviklet validates the temp user and password and proxies all requests to the underlying user on the database. Any executed statements are logged in the auditlog as if they were run via the web interface.
+
+<p align="center">
+<img src="https://github.com/kviklet/kviklet/raw/main/images/Proxy.png" height="400px">
+</p>
 
 ## Configuration
 
