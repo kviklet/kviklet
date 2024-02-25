@@ -137,9 +137,3 @@ Kviklet ships with 2 default roles, Admins and Developers.
 - Developers can create Requests as well as approve and comment on them and ofcourse execute the actual statements.
 
 You can completely customize Roles and e.g. give a role only access to a specific connection or a group of db connections.
-
-# License
-
-You might have noticed that the project currently contains no License file. We plan to make Kviklet an open-core product, but haven't decided on which parts to make open source yet. So for now it only counts as source-available.
-
-You are free to use the Software as is, the free version allows for up to 10 users. If you want to use it with a larger team in a professional setting, please get in touch with us at https://kviklet.dev/.

@@ -1,7 +1,6 @@
 import BaseSettingsLayout from "./BaseSettingsLayout";
 import {
   CircleStackIcon,
-  ClipboardDocumentListIcon,
   UserCircleIcon,
   UserIcon,
   UsersIcon,
@@ -58,18 +57,6 @@ export const Settings = () => {
         </div>
       ),
       link: "/settings/profile",
-    },
-    {
-      name: "License",
-      tabContent: (
-        <div className="flex flex-col">
-          <div className={tabStyles}>
-            <ClipboardDocumentListIcon className="mr-2 h-6"></ClipboardDocumentListIcon>
-            License
-          </div>
-        </div>
-      ),
-      link: "/settings/license",
     },
   ];
   return <BaseSettingsLayout tabs={tabs}></BaseSettingsLayout>;

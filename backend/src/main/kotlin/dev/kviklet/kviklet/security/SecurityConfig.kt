@@ -2,8 +2,6 @@ package dev.kviklet.kviklet.security
 
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
-import dev.kviklet.kviklet.service.LicenseRestrictionException
-import dev.kviklet.kviklet.service.LicenseService
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.transaction.Transactional
@@ -248,7 +246,6 @@ class CustomOidcUser(
 @Service
 class CustomOidcUserService(
     private val userAdapter: UserAdapter,
-    private val licenseService: LicenseService,
 ) : OidcUserService() {
 
     @Transactional
@@ -262,12 +259,7 @@ class CustomOidcUserService(
         var user = userAdapter.findBySubject(subject)
 
         if (user == null) {
-            // If the user is signing in for the first time, create a new user if license allows
-            val license = licenseService.getActiveLicense()
-            val maxUsers = license?.allowedUsers ?: 10U
-            if (maxUsers <= userAdapter.listUsers().size.toUInt()) {
-                throw LicenseRestrictionException("License does not allow more users")
-            }
+            // If the user is signing in for the first time, create a new user
             user = User(
                 subject = subject,
                 email = email,
