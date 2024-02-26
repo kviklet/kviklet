@@ -53,7 +53,6 @@ const handleConfig = rest.get(
     return res(
       ctx.status(200),
       ctx.json({
-        licenseValid: false,
         oauthProvider: "GOOGLE",
       }),
     );
