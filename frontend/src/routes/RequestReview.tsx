@@ -361,6 +361,7 @@ function RequestBox({
           id="runQuery"
           type={
             (request?.reviewStatus == "AWAITING_APPROVAL" && "submit") ||
+            (request?.reviewStatus == "APPROVED" && "submit") ||
             "disabled"
           }
           onClick={() => void runQuery(true)}
