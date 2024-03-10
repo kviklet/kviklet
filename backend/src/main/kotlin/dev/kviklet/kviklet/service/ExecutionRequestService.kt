@@ -189,22 +189,20 @@ class ExecutionRequestService(
     fun explain(id: ExecutionRequestId, query: String?, userId: String): List<QueryResult> {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
         val connection = executionRequest.request.connection
-        val parsedStatements = CCJSqlParserUtil.parseStatements(executionRequest.request.statement)
-        if (parsedStatements.size != 1) {
-            throw IllegalArgumentException("Only one statement is allowed in explain")
-        }
 
         val requestType = executionRequest.request.type
         if (requestType != RequestType.SingleQuery) {
             throw InvalidReviewException("Can only explain single queries!")
         }
+        val parsedStatements = CCJSqlParserUtil.parseStatements(executionRequest.request.statement)
+        val explainStatements = parsedStatements.joinToString(";") { "EXPLAIN $it" }
 
         val result = executorService.execute(
             executionRequestId = id,
             connectionString = connection.getConnectionString(),
             username = connection.username,
             password = connection.password,
-            query = "EXPLAIN ${executionRequest.request.statement}",
+            query = explainStatements,
         )
 
         return result
