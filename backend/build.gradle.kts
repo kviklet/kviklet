@@ -50,6 +50,7 @@ dependencies {
     implementation("org.springframework.security:spring-security-acl")
     implementation("org.springframework.security:spring-security-config")
     implementation("org.springframework:spring-context-support")
+    implementation("com.github.jsqlparser:jsqlparser:4.9")
 
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")

@@ -285,14 +285,18 @@ type QueryResult = {
   error?: ApiErrorResponse;
 };
 
-const runQuery = async (id: string, query?: string): Promise<QueryResult> => {
+const runQuery = async (
+  id: string,
+  query?: string,
+  explain: boolean = false,
+): Promise<QueryResult> => {
   const response = await fetch(requestUrl + id + "/execute", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     credentials: "include",
-    ...(query && { body: JSON.stringify({ query }) }),
+    body: JSON.stringify({ query, explain }),
   });
   const json: unknown = await response.json();
   if (response.ok) {

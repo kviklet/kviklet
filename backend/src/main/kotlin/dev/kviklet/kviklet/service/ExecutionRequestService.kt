@@ -30,6 +30,7 @@ import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewEvent
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import jakarta.transaction.Transactional
+import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
@@ -180,6 +181,29 @@ class ExecutionRequestService(
                 executionStatus = "EXECUTED",
             )
         }
+
+        return result
+    }
+
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
+    fun explain(id: ExecutionRequestId, query: String?, userId: String): List<QueryResult> {
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
+        val connection = executionRequest.request.connection
+
+        val requestType = executionRequest.request.type
+        if (requestType != RequestType.SingleQuery) {
+            throw InvalidReviewException("Can only explain single queries!")
+        }
+        val parsedStatements = CCJSqlParserUtil.parseStatements(executionRequest.request.statement)
+        val explainStatements = parsedStatements.joinToString(";") { "EXPLAIN $it" }
+
+        val result = executorService.execute(
+            executionRequestId = id,
+            connectionString = connection.getConnectionString(),
+            username = connection.username,
+            password = connection.password,
+            query = explainStatements,
+        )
 
         return result
     }

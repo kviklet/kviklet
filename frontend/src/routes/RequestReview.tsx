@@ -127,9 +127,9 @@ const useRequest = (id: string) => {
     setRequest(newRequest);
   };
 
-  const execute = async () => {
+  const execute = async (explain: boolean) => {
     setDataLoading(true);
-    const response = await runQuery(id);
+    const response = await runQuery(id, undefined, explain);
     if (response.result) {
       switch (response.result._type) {
         case "select":
@@ -183,9 +183,9 @@ function RequestReview() {
 
   const navigate = useNavigate();
 
-  const run = async () => {
+  const run = async (explain?: boolean) => {
     if (request?.type === "SingleQuery") {
-      await execute();
+      await execute(explain || false);
     } else {
       navigate(`/requests/${request?.id}/session`);
     }
@@ -274,7 +274,7 @@ function RequestBox({
   updateRequest,
 }: {
   request: ExecutionRequestResponseWithComments | undefined;
-  runQuery: () => Promise<void>;
+  runQuery: (explain?: boolean) => Promise<void>;
   startServer: () => Promise<ProxyResponse>;
   updateRequest: (request: { statement?: string }) => Promise<void>;
 }) {
@@ -356,6 +356,18 @@ function RequestBox({
         </div>
       </div>
       <div className="relative ml-4 flex justify-end">
+        <Button
+          className="mt-3 mr-4"
+          id="runQuery"
+          type={
+            (request?.reviewStatus == "AWAITING_APPROVAL" && "submit") ||
+            (request?.reviewStatus == "APPROVED" && "submit") ||
+            "disabled"
+          }
+          onClick={() => void runQuery(true)}
+        >
+          Explain
+        </Button>
         <Button
           className="mt-3"
           id="runQuery"
