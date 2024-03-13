@@ -1,10 +1,10 @@
 # Kviklet
 
-<p align="center">
-<img src="https://github.com/kviklet/kviklet/raw/main/images/ExecutionRequest.png" height="300px">
-</p>
-
 [Kviklet.dev](https://kviklet.dev) | [Release Notes](https://github.com/kviklet/kviklet/releases)
+
+<p align="center">
+<img src="https://github.com/kviklet/kviklet/raw/main/images/ExecutionRequest.png" height="500px">
+</p>
 
 Secure access to production databases without impairing developer productivity.
 
@@ -24,7 +24,7 @@ Kviklet ships with a variety of features that an engineering team needs to manag
 - **Single Query**: Execute a singular statement. Allows the reviewer to review your query before execution.
 - **Auditlog**: Singular plane that logs all executed statements with Author, reason for execution etc.
 - **RBAC**: Configure which team has access to which database/table to as fine of a granularity as the DB Engine allows.
-- **PostgresProxy**: Start a proxy server to use the DB Client of your choice, but everything will be stored in the Kviklet Auditlog.
+- **Postgres Proxy**: Start a proxy server to use the DB Client of your choice, but everything will be stored in the Kviklet Auditlog.
 - And more...
 
 ## Setup
