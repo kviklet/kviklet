@@ -1,6 +1,5 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { SelectExecuteResponse, runQuery } from "../api/ExecutionRequestApi";
-import Table from "../components/Table";
+import { ExecuteResponseResult, runQuery } from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
 
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
@@ -10,6 +9,7 @@ import {
 } from "../components/ThemeStatusProvider";
 import Spinner from "../components/Spinner";
 import { useParams } from "react-router-dom";
+import MultiResult from "../components/MultiResult";
 
 interface SessionParams {
   requestId: string;
@@ -17,11 +17,9 @@ interface SessionParams {
 
 export default function LiveSession() {
   const params = useParams() as unknown as SessionParams;
-  const [data, setData] = useState<SelectExecuteResponse>({
-    columns: [],
-    data: [],
-    _type: "select",
-  });
+  const [results, setResults] = useState<ExecuteResponseResult[] | undefined>(
+    undefined,
+  );
   const [dataLoading, setDataLoading] = useState(false);
   const [updatedRows, setUpdatedRows] = useState<number | undefined>(undefined);
   const [executionError, setExecutionError] = useState<string | undefined>(
@@ -70,27 +68,16 @@ export default function LiveSession() {
     console.log("executing: " + text);
     setUpdatedRows(undefined);
     setExecutionError(undefined);
-    setData({
-      columns: [],
-      data: [],
-      _type: "select",
-    });
+    setResults(undefined);
     setDataLoading(true);
     const response = await runQuery(params.requestId, text);
-    if (response.result) {
-      switch (response.result._type) {
-        case "select":
-          setData(response.result);
-          break;
-        case "update":
-          setUpdatedRows(response.result.rowsUpdated);
-          break;
-        case "error":
-          setExecutionError(response.result.message);
-          break;
-      }
-    } else {
-      setExecutionError(response.error?.message);
+    if (response.error) {
+      setExecutionError(response.error.message);
+      setDataLoading(false);
+      return;
+    }
+    if (response.results && response.results.length > 0) {
+      setResults(response.results);
     }
 
     setDataLoading(false);
@@ -115,7 +102,7 @@ export default function LiveSession() {
         {executionError && <div className="text-red-500">{executionError}</div>}
         <div className="flex justify-center h-full">
           {(dataLoading && <Spinner></Spinner>) ||
-            (data && <Table data={data}></Table>)}
+            (results && <MultiResult resultList={results}></MultiResult>)}
         </div>
       </div>
     </div>

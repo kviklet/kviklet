@@ -3,6 +3,7 @@ function Button(props: {
   onClick?: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
   children: React.ReactNode;
   className?: string;
+  size?: "sm" | "md" | "lg";
   type?:
     | "button"
     | "submit"
@@ -24,13 +25,15 @@ function Button(props: {
   const disabled = props.type == "disabled" ? true : undefined;
   const submit = props.type == "submit" ? "submit" : undefined;
 
+  const size = props.size == "sm" ? "px-2 py-1 text-xs" : "px-4 py-2 text-md";
+
   return (
     <button
       id={props.id}
       onClick={props.onClick}
       type={submit}
       disabled={disabled}
-      className={`${props.className} px-4 py-2  text-md ${
+      className={`${props.className} ${size} ${
         (props.type == "submit" && submitStyle) ||
         (props.type == "disabled" && disabledStyle) ||
         (props.type == "danger" && dangerStyle) ||

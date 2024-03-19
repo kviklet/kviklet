@@ -10,18 +10,18 @@ import {
   runQuery,
   ChangeExecutionRequestPayload,
   patchRequest,
-  SelectExecuteResponse,
   Edit,
   Review,
   Comment as CommentEvent,
   Execute,
   postStartServer,
   ProxyResponse,
+  ExecuteResponseResult,
 } from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
 import { mapStatus, mapStatusToLabelColor, timeSince } from "./Requests";
 import { UserStatusContext } from "../components/UserStatusProvider";
-import Table from "../components/Table";
+import MultiResult from "../components/MultiResult";
 import {
   a11yDark,
   a11yLight,
@@ -88,8 +88,7 @@ const useRequest = (id: string) => {
     void request();
   }, []);
 
-  const [data, setData] = useState<SelectExecuteResponse>();
-  const [updatedRows, setUpdatedRows] = useState<number | undefined>(undefined);
+  const [results, setResults] = useState<ExecuteResponseResult[] | undefined>();
   const [dataLoading, setDataLoading] = useState<boolean>(false);
   const [executionError, setExecutionError] = useState<string | undefined>(
     undefined,
@@ -130,18 +129,8 @@ const useRequest = (id: string) => {
   const execute = async (explain: boolean) => {
     setDataLoading(true);
     const response = await runQuery(id, undefined, explain);
-    if (response.result) {
-      switch (response.result._type) {
-        case "select":
-          setData(response.result);
-          break;
-        case "update":
-          setUpdatedRows(response.result.rowsUpdated);
-          break;
-        case "error":
-          setExecutionError(response.result.message);
-          break;
-      }
+    if (response.results) {
+      setResults(response.results);
     } else {
       setExecutionError(response.error?.message);
     }
@@ -155,9 +144,8 @@ const useRequest = (id: string) => {
     execute,
     start,
     updateRequest,
-    data,
+    results,
     dataLoading,
-    updatedRows,
     executionError,
     loading,
     proxyResponse,
@@ -173,9 +161,8 @@ function RequestReview() {
     execute,
     start,
     updateRequest,
-    data,
+    results,
     dataLoading,
-    updatedRows,
     executionError,
     loading,
     proxyResponse,
@@ -215,13 +202,10 @@ function RequestReview() {
               ></RequestBox>
               <div className="flex justify-center">
                 {(dataLoading && <Spinner></Spinner>) ||
-                  (data && <Table data={data}></Table>)}
+                  (results && <MultiResult resultList={results}></MultiResult>)}
               </div>
-              {updatedRows && (
-                <div className="text-slate-500">{updatedRows} rows updated</div>
-              )}
               {executionError && (
-                <div className="text-red-500">{executionError}</div>
+                <div className="text-red-500 my-4">{executionError}</div>
               )}
               {proxyResponse && (
                 <div className="text-lime-500 my-4">
