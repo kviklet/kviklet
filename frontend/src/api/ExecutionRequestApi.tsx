@@ -281,7 +281,7 @@ type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 type Column = z.infer<typeof ColumnSchema>;
 
 type QueryResult = {
-  result?: ExecuteResponseResult;
+  results?: ExecuteResponseResult[];
   error?: ApiErrorResponse;
 };
 
@@ -302,7 +302,7 @@ const runQuery = async (
   if (response.ok) {
     const result = ExecuteResponseSchema.parse(json);
     return {
-      result: result.results[result.results.length - 1],
+      results: result.results,
     };
   } else {
     const result = ApiErrorResponseSchema.parse(json);
@@ -321,6 +321,7 @@ export {
   postStartServer,
 };
 export type {
+  ExecuteResponseResult,
   ExecutionRequestResponse,
   ExecutionRequestsResponse,
   ExecutionRequestResponseWithComments,
