@@ -30,7 +30,7 @@ Kviklet ships with a variety of features that an engineering team needs to manag
 ## Setup
 
 Kviklet runs as a standalone docker container.
-To start you can find the available verions under [Releases](https://github.com/kviklet/kviklet/releases) you can chose your desired version tag. The latest one currently is `ghcr.io/kviklet/kviklet:0.1.1`, you can also use `:main` but it might happen every now and then that we accidentally merge something buggy alhtough we try to avoid that. Also make sure to check back every now and then since we regularly release new versions with bugfixes, and new features.
+To start you can find the available verions under [Releases](https://github.com/kviklet/kviklet/releases) you can chose your desired version tag. The latest one currently is `ghcr.io/kviklet/kviklet:0.2.0`, you can also use `:main` but it might happen every now and then that we accidentally merge something buggy alhtough we try to avoid that. Also make sure to check back every now and then since we regularly release new versions with bugfixes, and new features.
 
 ### DB Setup
 
