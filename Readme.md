@@ -3,7 +3,7 @@
 [Kviklet.dev](https://kviklet.dev) | [Release Notes](https://github.com/kviklet/kviklet/releases)
 
 <p align="center">
-<img src="https://github.com/kviklet/kviklet/raw/main/images/ExecutionRequest.png" max-height="500px">
+<img src="https://github.com/kviklet/kviklet/raw/main/images/ExecutionRequest.png" width="700px">
 </p>
 
 Secure access to production databases without impairing developer productivity.
@@ -114,7 +114,7 @@ For this the container uses ports 5438-6000 so you need to expose those.
 The user can then create a temp access request, and click "Start Proxy" once it's been approved. They will get a port and a user + temporary password. With this they can login to the database. Kviklet validates the temp user and password and proxies all requests to the underlying user on the database. Any executed statements are logged in the auditlog as if they were run via the web interface.
 
 <p align="center">
-<img src="https://github.com/kviklet/kviklet/raw/main/images/Proxy.png" max-height="400px">
+<img src="https://github.com/kviklet/kviklet/raw/main/images/Proxy.png" width="700px">
 </p>
 
 ## Configuration
@@ -124,7 +124,7 @@ The user can then create a temp access request, and click "Start Proxy" once it'
 After starting Kviklet you first have to configure a database connection. Go to Settings -> Databases -> Add Connection.
 
 <p align="center">
-<img src="https://github.com/kviklet/kviklet/raw/main/images/AddConnectionForm.png" max-height="400px">
+<img src="https://github.com/kviklet/kviklet/raw/main/images/AddConnectionForm.png" width="400px">
 </p>
 
 After creating a connection, you can configure how many reviews are required for running queries via this connection.
