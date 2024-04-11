@@ -13,6 +13,7 @@ import { ThemeStatusProvider } from "./components/ThemeStatusProvider";
 import LiveSession from "./routes/LiveSession";
 import ConnectionChooser from "./routes/NewRequest";
 import Auditlog from "./routes/Auditlog";
+import KubernetesView from "./routes/Kubernetes";
 
 export interface ProtectedRouteProps {
   children: JSX.Element;
@@ -43,6 +44,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Requests />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="kubernetes"
+                element={
+                  <ProtectedRoute>
+                    <KubernetesView />
                   </ProtectedRoute>
                 }
               />
