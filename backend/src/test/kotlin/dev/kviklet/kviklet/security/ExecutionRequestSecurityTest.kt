@@ -3,11 +3,11 @@ package dev.kviklet.kviklet.security
 import dev.kviklet.kviklet.TestFixtures.createDatasourceConnectionRequest
 import dev.kviklet.kviklet.TestFixtures.createExecutionRequestRequest
 import dev.kviklet.kviklet.TestFixtures.updateExecutionRequestRequest
-import dev.kviklet.kviklet.controller.DatasourceConnectionController
+import dev.kviklet.kviklet.controller.ConnectionController
 import dev.kviklet.kviklet.controller.ExecutionRequestController
 import dev.kviklet.kviklet.controller.ExecutionRequestDetailResponse
 import dev.kviklet.kviklet.controller.ExecutionRequestResponse
-import dev.kviklet.kviklet.db.DatasourceConnectionRepository
+import dev.kviklet.kviklet.db.ConnectionRepository
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
 import dev.kviklet.kviklet.db.UserEntity
 import dev.kviklet.kviklet.service.dto.Policy
@@ -26,10 +26,10 @@ import java.util.stream.Stream
 
 @ActiveProfiles("test")
 class ExecutionRequestSecurityTest(
-    @Autowired val datasourceConnectionController: DatasourceConnectionController,
+    @Autowired val connectionController: ConnectionController,
     @Autowired val executionRequestController: ExecutionRequestController,
     @Autowired val executionRequestRepository: ExecutionRequestRepository,
-    @Autowired val datasourceConnectionRepository: DatasourceConnectionRepository,
+    @Autowired val connectionRepository: ConnectionRepository,
 ) : SecurityTestBase() {
 
     private lateinit var executionRequest: ExecutionRequestResponse
@@ -37,7 +37,7 @@ class ExecutionRequestSecurityTest(
     @BeforeEach
     fun setUp() {
         asAdmin {
-            datasourceConnectionController.createDatasourceConnection(
+            connectionController.createConnection(
                 createDatasourceConnectionRequest("db1-conn1"),
             )
             executionRequest = executionRequestController
@@ -47,7 +47,7 @@ class ExecutionRequestSecurityTest(
 
     @AfterEach
     fun tearDown() {
-        datasourceConnectionRepository.deleteAllInBatch()
+        connectionRepository.deleteAllInBatch()
         executionRequestRepository.deleteAllInBatch()
     }
 

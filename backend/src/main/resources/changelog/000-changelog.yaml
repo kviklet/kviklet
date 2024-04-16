@@ -17,3 +17,9 @@ databaseChangeLog:
   - include:
       file: 007-rename-googleid-column-to-subject.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 008-drop-license-table.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: 009-rename-datasource_connection-to-connection.yaml
+      relativeToChangelogFile: true

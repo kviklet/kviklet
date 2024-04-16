@@ -1,6 +1,6 @@
 package dev.kviklet.kviklet.helper
 
-import dev.kviklet.kviklet.db.DatasourceConnectionAdapter
+import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.ReviewPayload
@@ -10,8 +10,8 @@ import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.security.UserService
 import dev.kviklet.kviklet.service.RoleService
 import dev.kviklet.kviklet.service.dto.AuthenticationType
-import dev.kviklet.kviklet.service.dto.DatasourceConnection
-import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
+import dev.kviklet.kviklet.service.dto.Connection
+import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
@@ -116,12 +116,12 @@ class RoleHelper(private val roleService: RoleService) {
 
 @Component
 class ConnectionHelper(
-    private val connectionAdapter: DatasourceConnectionAdapter,
+    private val connectionAdapter: ConnectionAdapter,
 ) {
     @Transactional
-    fun createPostgresConnection(container: JdbcDatabaseContainer<*>): DatasourceConnection {
+    fun createPostgresConnection(container: JdbcDatabaseContainer<*>): Connection {
         return connectionAdapter.createDatasourceConnection(
-            DatasourceConnectionId("ds-conn-test"),
+            ConnectionId("ds-conn-test"),
             "Test Connection",
             AuthenticationType.USER_PASSWORD,
             container.databaseName,

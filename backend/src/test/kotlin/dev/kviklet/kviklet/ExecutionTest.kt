@@ -1,13 +1,13 @@
 package dev.kviklet.kviklet
 
-import dev.kviklet.kviklet.db.DatasourceConnectionAdapter
+import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.dto.AuthenticationType
-import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
+import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.RequestType
 import org.hamcrest.CoreMatchers.notNullValue
@@ -36,7 +36,7 @@ import org.testcontainers.utility.DockerImageName
 class ExecutionTest {
 
     @Autowired
-    private lateinit var datasourceConnectionAdapter: DatasourceConnectionAdapter
+    private lateinit var datasourceConnectionAdapter: ConnectionAdapter
 
     @Autowired
     private lateinit var roleAdapter: RoleAdapter
@@ -85,7 +85,7 @@ class ExecutionTest {
     @Test
     fun createExecutionRequest() {
         val connection = datasourceConnectionAdapter.createDatasourceConnection(
-            DatasourceConnectionId("ds-conn-test"),
+            ConnectionId("ds-conn-test"),
             "Test Connection",
             AuthenticationType.USER_PASSWORD,
             "test",
@@ -123,7 +123,7 @@ class ExecutionTest {
     fun addComment() {
         val user = userHelper.createUser(permissions = listOf("*"))
         val connection = datasourceConnectionAdapter.createDatasourceConnection(
-            DatasourceConnectionId("ds-conn-test"),
+            ConnectionId("ds-conn-test"),
             "Test Connection",
             AuthenticationType.USER_PASSWORD,
             "test",

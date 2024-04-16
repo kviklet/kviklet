@@ -1,9 +1,11 @@
 package dev.kviklet.kviklet.db.init
 
-import dev.kviklet.kviklet.db.DatasourceConnectionEntity
-import dev.kviklet.kviklet.db.DatasourceConnectionRepository
+import dev.kviklet.kviklet.db.ConnectionEntity
+import dev.kviklet.kviklet.db.ConnectionRepository
+import dev.kviklet.kviklet.db.ConnectionType
 import dev.kviklet.kviklet.db.ExecutionRequestEntity
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
+import dev.kviklet.kviklet.db.ExecutionRequestType
 import dev.kviklet.kviklet.db.PolicyEntity
 import dev.kviklet.kviklet.db.PolicyRepository
 import dev.kviklet.kviklet.db.ReviewConfig
@@ -26,7 +28,7 @@ import java.util.concurrent.ThreadLocalRandom
 @Configuration
 @Profile("local", "e2e")
 class TestDataInitializer(
-    private val datasourceConnectionRepository: DatasourceConnectionRepository,
+    private val connectionRepository: ConnectionRepository,
     private val executionRequestRepository: ExecutionRequestRepository,
     private val roleRepository: RoleRepository,
     private val policyRepository: PolicyRepository,
@@ -34,7 +36,7 @@ class TestDataInitializer(
 
     // Helper function to generate an ExecutionRequestEntity
     fun generateExecutionRequest(
-        connection: DatasourceConnectionEntity,
+        connection: ConnectionEntity,
         titlePrefix: String,
         index: Int,
         author: UserEntity,
@@ -54,6 +56,7 @@ class TestDataInitializer(
             executionStatus = executionStatus,
             author = author,
             events = mutableSetOf(),
+            executionRequestType = ExecutionRequestType.DATASOURCE,
         )
     }
 
@@ -131,7 +134,7 @@ class TestDataInitializer(
             val savedUser = userRepository.saveAndFlush(user)
 
             // Create connections linked to the saved datasource
-            val connection1 = DatasourceConnectionEntity(
+            val connection1 = ConnectionEntity(
                 id = "test-connection",
                 displayName = "Test Connection",
                 databaseName = null,
@@ -143,10 +146,11 @@ class TestDataInitializer(
                 type = DatasourceType.POSTGRESQL,
                 hostname = "localhost",
                 port = 5432,
+                connectionType = ConnectionType.DATASOURCE,
             )
 
             // Save the connection
-            val savedConnection1 = datasourceConnectionRepository.saveAndFlush(connection1)
+            val savedConnection1 = connectionRepository.saveAndFlush(connection1)
 
             val request1 = generateExecutionRequest(savedConnection1, "First", 1, savedUser)
 

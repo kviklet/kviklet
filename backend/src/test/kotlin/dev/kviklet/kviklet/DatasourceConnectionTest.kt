@@ -1,18 +1,18 @@
 package dev.kviklet.kviklet
 
 import dev.kviklet.kviklet.controller.CommentEventResponse
+import dev.kviklet.kviklet.controller.ConnectionController
 import dev.kviklet.kviklet.controller.CreateCommentRequest
 import dev.kviklet.kviklet.controller.CreateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.CreateExecutionRequestRequest
-import dev.kviklet.kviklet.controller.DatasourceConnectionController
 import dev.kviklet.kviklet.controller.ExecutionRequestController
 import dev.kviklet.kviklet.controller.ReviewConfigRequest
-import dev.kviklet.kviklet.db.DatasourceConnectionRepository
+import dev.kviklet.kviklet.db.ConnectionRepository
 import dev.kviklet.kviklet.db.EventRepository
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
 import dev.kviklet.kviklet.security.WithAdminUser
 import dev.kviklet.kviklet.service.ExecutionRequestService
-import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
+import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.RequestType
 import io.kotest.matchers.equality.shouldBeEqualToIgnoringFields
@@ -23,7 +23,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import java.time.LocalDateTime
 
 @SpringBootTest
@@ -32,11 +31,11 @@ import java.time.LocalDateTime
 @ActiveProfiles("test")
 class DatasourceConnectionTest(
     @Autowired val mockMvc: MockMvc,
-    @Autowired val datasourceConnectionRepository: DatasourceConnectionRepository,
+    @Autowired val connectionRepository: ConnectionRepository,
     @Autowired val executionRequestRepository: ExecutionRequestRepository,
     @Autowired val eventRepository: EventRepository,
     @Autowired val executionRequestController: ExecutionRequestController,
-    @Autowired val datasourceConnectionController: DatasourceConnectionController,
+    @Autowired val datasourceConnectionController: ConnectionController,
     @Autowired val executionRequestService: ExecutionRequestService,
 ) : TestBase() {
 
@@ -44,12 +43,12 @@ class DatasourceConnectionTest(
     fun tearDownRequests() {
         eventRepository.deleteAllInBatch()
         executionRequestRepository.deleteAllInBatch()
-        datasourceConnectionRepository.deleteAllInBatch()
+        connectionRepository.deleteAllInBatch()
     }
 
     @Test
     fun `test full setup`() {
-        val connection = datasourceConnectionController.createDatasourceConnection(
+        val connection = datasourceConnectionController.createConnection(
             CreateDatasourceConnectionRequest(
                 id = "db-conn",
                 displayName = "My Connection",
@@ -66,7 +65,7 @@ class DatasourceConnectionTest(
 
         val request = executionRequestController.create(
             CreateExecutionRequestRequest(
-                datasourceConnectionId = DatasourceConnectionId("db-conn"),
+                connectionId = ConnectionId("db-conn"),
                 title = "My Request",
                 description = "Request description",
                 statement = "SELECT 1",

@@ -5,7 +5,7 @@ import dev.kviklet.kviklet.controller.CreateExecutionRequestRequest
 import dev.kviklet.kviklet.controller.CreateReviewRequest
 import dev.kviklet.kviklet.controller.UpdateExecutionRequestRequest
 import dev.kviklet.kviklet.db.CommentPayload
-import dev.kviklet.kviklet.db.DatasourceConnectionAdapter
+import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.EditPayload
 import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
@@ -16,7 +16,9 @@ import dev.kviklet.kviklet.proxy.PostgresProxy
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.security.UserDetailsWithId
-import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
+import dev.kviklet.kviklet.service.dto.ConnectionId
+import dev.kviklet.kviklet.service.dto.DatasourceConnection
+import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventType
@@ -25,10 +27,13 @@ import dev.kviklet.kviklet.service.dto.ExecutionProxy
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
+import dev.kviklet.kviklet.service.dto.KubernetesConnection
+import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewEvent
 import dev.kviklet.kviklet.service.dto.ReviewStatus
+import dev.kviklet.kviklet.shell.KubernetesApi
 import jakarta.transaction.Transactional
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import org.slf4j.LoggerFactory
@@ -41,10 +46,11 @@ import java.util.concurrent.CompletableFuture
 @Service
 class ExecutionRequestService(
     val executionRequestAdapter: ExecutionRequestAdapter,
-    val datasourceConnectionAdapter: DatasourceConnectionAdapter,
+    val datasourceConnectionAdapter: ConnectionAdapter,
     val executorService: ExecutorService,
     val eventService: EventService,
     val userAdapter: UserAdapter,
+    val kubernetesApi: KubernetesApi,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val proxies = mutableListOf<ExecutionProxy>()
@@ -52,12 +58,12 @@ class ExecutionRequestService(
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
     fun create(
-        connectionId: DatasourceConnectionId,
+        connectionId: ConnectionId,
         request: CreateExecutionRequestRequest,
         userId: String,
     ): ExecutionRequestDetails {
         return executionRequestAdapter.createExecutionRequest(
-            connectionId = request.datasourceConnectionId,
+            connectionId = request.connectionId,
             title = request.title,
             type = request.type,
             description = request.description,
@@ -77,21 +83,38 @@ class ExecutionRequestService(
     ): ExecutionRequestDetails {
         val executionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
 
-        if (request.statement != executionRequestDetails.request.statement) {
-            eventService.saveEvent(
-                id,
-                userId,
-                EditPayload(previousQuery = executionRequestDetails.request.statement ?: ""),
-            )
+        when (executionRequestDetails.request) {
+            is DatasourceExecutionRequest -> {
+                if (request.statement != executionRequestDetails.request.statement) {
+                    eventService.saveEvent(
+                        id,
+                        userId,
+                        EditPayload(previousQuery = executionRequestDetails.request.statement ?: ""),
+                    )
+                }
+            }
+            is KubernetesExecutionRequest -> {
+                if (request.command != executionRequestDetails.request.command) {
+                    eventService.saveEvent(
+                        id,
+                        userId,
+                        EditPayload(previousQuery = executionRequestDetails.request.command ?: ""),
+                    )
+                }
+            }
         }
 
         return executionRequestAdapter.updateExecutionRequest(
             id = executionRequestDetails.request.id!!,
-            title = request.title ?: executionRequestDetails.request.title,
-            description = request.description ?: executionRequestDetails.request.description,
-            statement = request.statement ?: executionRequestDetails.request.statement,
-            readOnly = request.readOnly ?: executionRequestDetails.request.readOnly,
+            title = request.title,
+            description = request.description,
+            statement = request.statement,
+            readOnly = request.readOnly,
             executionStatus = executionRequestDetails.request.executionStatus,
+            namespace = request.namespace,
+            podName = request.podName,
+            containerName = request.containerName,
+            command = request.command,
         )
     }
 
@@ -137,11 +160,16 @@ class ExecutionRequestService(
         return reviewStatus
     }
 
-    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
-    fun execute(id: ExecutionRequestId, query: String?, userId: String): List<QueryResult> {
-        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
-        val connection = executionRequest.request.connection
-
+    private fun executeDatasourceRequest(
+        id: ExecutionRequestId,
+        executionRequest: ExecutionRequestDetails,
+        connection: DatasourceConnection,
+        query: String?,
+        userId: String,
+    ): DBExecutionResult {
+        if (executionRequest.request !is DatasourceExecutionRequest) {
+            throw RuntimeException("This should never happen! Probably there is a way to refactor this code")
+        }
         val reviewStatus = resolveReviewStatus(executionRequest.events, connection.reviewConfig)
         if (reviewStatus != ReviewStatus.APPROVED) {
             throw InvalidReviewException("This request has not been approved yet!")
@@ -182,13 +210,50 @@ class ExecutionRequestService(
             )
         }
 
-        return result
+        return DBExecutionResult(results = result)
+    }
+
+    private fun executeKubernetesRequest(
+        id: ExecutionRequestId,
+        executionRequest: ExecutionRequestDetails,
+        connection: KubernetesConnection,
+        userId: String,
+    ): KubernetesExecutionResult {
+        if (executionRequest.request !is KubernetesExecutionRequest) {
+            throw RuntimeException("This should never happen! Probably there is a way to refactor this code")
+        }
+        kubernetesApi.executeCommandOnPod(
+            namespace = executionRequest.request.namespace!!,
+            podName = executionRequest.request.podName!!,
+            command = executionRequest.request.command!!,
+            timeout = 60,
+        )
+        return KubernetesExecutionResult(
+            errors = emptyList(),
+            messages = emptyList(),
+        )
     }
 
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
-    fun explain(id: ExecutionRequestId, query: String?, userId: String): List<QueryResult> {
+    fun execute(id: ExecutionRequestId, query: String?, userId: String): ExecutionResult {
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
+        return when (val connection = executionRequest.request.connection) {
+            is DatasourceConnection -> {
+                executeDatasourceRequest(id, executionRequest, connection, query, userId)
+            }
+            is KubernetesConnection -> {
+                executeKubernetesRequest(id, executionRequest, connection, userId)
+            }
+        }
+    }
+
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
+    fun explain(id: ExecutionRequestId, query: String?, userId: String): DBExecutionResult {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
         val connection = executionRequest.request.connection
+        if (connection !is DatasourceConnection || executionRequest.request !is DatasourceExecutionRequest) {
+            throw RuntimeException("Only Datasource connections can be explained")
+        }
 
         val requestType = executionRequest.request.type
         if (requestType != RequestType.SingleQuery) {
@@ -205,7 +270,7 @@ class ExecutionRequestService(
             query = explainStatements,
         )
 
-        return result
+        return DBExecutionResult(results = result)
     }
 
     @Transactional
@@ -228,6 +293,9 @@ class ExecutionRequestService(
         cleanUpProxies()
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(executionRequestId)
         val connection = executionRequest.request.connection
+        if (connection !is DatasourceConnection) {
+            throw RuntimeException("Only Datasource connections be proxied")
+        }
         val reviewStatus = resolveReviewStatus(executionRequest.events, connection.reviewConfig)
         if (executionRequest.request.author.getId() != userDetails.id) {
             throw RuntimeException("Only the author of the request can proxy it!")
@@ -323,6 +391,17 @@ class ExecutionRequestService(
         }
     }
 }
+
+sealed class ExecutionResult
+
+data class DBExecutionResult(
+    val results: List<QueryResult>,
+) : ExecutionResult()
+
+data class KubernetesExecutionResult(
+    val errors: List<String>,
+    val messages: List<String>,
+) : ExecutionResult()
 
 fun Set<Event>.raiseIfAlreadyExecuted(requestType: RequestType) {
     val executedEvents = filter { it.type == EventType.EXECUTE }
