@@ -69,7 +69,9 @@ data class CreateDatasourceConnectionRequest(
     val port: Int,
 ) : ConnectionRequest()
 
-data class UpdateDataSourceConnectionRequest(
+sealed class UpdateConnectionRequest
+
+data class UpdateDatasourceConnectionRequest(
     @Schema(example = "My Postgres Db User")
     @field:Size(max = 255, message = "Maximum length 255")
     val displayName: String? = null,
@@ -88,7 +90,17 @@ data class UpdateDataSourceConnectionRequest(
     val description: String? = null,
 
     val reviewConfig: ReviewConfigRequest? = null,
-)
+) : UpdateConnectionRequest()
+
+data class UpdateKubernetesConnectionRequest(
+    @Schema(example = "My Kubernetes Connection")
+    @field:Size(max = 255, message = "Maximum length 255")
+    val displayName: String? = null,
+
+    val description: String? = null,
+
+    val reviewConfig: ReviewConfigRequest? = null,
+) : UpdateConnectionRequest()
 
 data class ReviewConfigRequest(
     val numTotalRequired: Int = 0,
@@ -220,10 +232,10 @@ class ConnectionController(
     }
 
     @PatchMapping("/{connectionId}")
-    fun updateDatasourceConnection(
+    fun updateConnection(
         @PathVariable connectionId: String,
         @Valid @RequestBody
-        datasourceConnection: UpdateDataSourceConnectionRequest,
+        datasourceConnection: UpdateConnectionRequest,
     ): ConnectionResponse {
         val connection = connectionService.updateConnection(
             connectionId = ConnectionId(connectionId),

@@ -1,6 +1,8 @@
 package dev.kviklet.kviklet.service
 
-import dev.kviklet.kviklet.controller.UpdateDataSourceConnectionRequest
+import dev.kviklet.kviklet.controller.UpdateConnectionRequest
+import dev.kviklet.kviklet.controller.UpdateDatasourceConnectionRequest
+import dev.kviklet.kviklet.controller.UpdateKubernetesConnectionRequest
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.security.Permission
@@ -27,42 +29,62 @@ class ConnectionService(
         return connectionAdapter.listConnections()
     }
 
+    private fun updateDatasourceConnection(
+        connectionId: ConnectionId,
+        request: UpdateDatasourceConnectionRequest,
+    ): Connection {
+        val connection = connectionAdapter.getConnection(
+            connectionId,
+        ) as DatasourceConnection
+
+        return connectionAdapter.updateDatasourceConnection(
+            connectionId,
+            request.displayName ?: connection.displayName,
+            request.databaseName ?: connection.databaseName,
+            request.username ?: connection.username,
+            request.password ?: connection.password,
+            request.description ?: connection.description,
+            request.reviewConfig?.let {
+                ReviewConfig(
+                    it.numTotalRequired,
+                )
+            } ?: connection.reviewConfig,
+        )
+    }
+
+    private fun updateKubernetesConnection(
+        connectionId: ConnectionId,
+        request: UpdateKubernetesConnectionRequest,
+    ): Connection {
+        val connection = connectionAdapter.getConnection(
+            connectionId,
+        ) as KubernetesConnection
+
+        return connectionAdapter.updateKubernetesConnection(
+            connectionId,
+            request.displayName ?: connection.displayName,
+            request.description ?: connection.description,
+            request.reviewConfig?.let {
+                ReviewConfig(
+                    it.numTotalRequired,
+                )
+            } ?: connection.reviewConfig,
+        )
+    }
+
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_EDIT)
-    fun updateConnection(connectionId: ConnectionId, request: UpdateDataSourceConnectionRequest): Connection {
+    fun updateConnection(connectionId: ConnectionId, request: UpdateConnectionRequest): Connection {
         val connection = connectionAdapter.getConnection(
             connectionId,
         )
 
-        when (connection) {
-            is DatasourceConnection -> {
-                return connectionAdapter.updateDatasourceConnection(
-                    connectionId,
-                    request.displayName ?: connection.displayName,
-                    request.databaseName ?: connection.databaseName,
-                    request.username ?: connection.username,
-                    request.password ?: connection.password,
-                    request.description ?: connection.description,
-                    request.reviewConfig?.let {
-                        ReviewConfig(
-                            it.numTotalRequired,
-                        )
-                    } ?: connection.reviewConfig,
-                )
-            }
-            is KubernetesConnection -> {
-                return connectionAdapter.updateKubernetesConnection(
-                    connectionId,
-                    request.displayName ?: connection.displayName,
-                    request.description ?: connection.description,
-                    request.reviewConfig?.let {
-                        ReviewConfig(
-                            it.numTotalRequired,
-                        )
-                    } ?: connection.reviewConfig,
-                )
-            }
-            else -> throw EntityNotFound("Connection not found", "Connection with id $connectionId not found")
+        if (request is UpdateDatasourceConnectionRequest && connection is DatasourceConnection) {
+            return updateDatasourceConnection(connectionId, request)
+        } else if (request is UpdateKubernetesConnectionRequest && connection is KubernetesConnection) {
+            return updateKubernetesConnection(connectionId, request)
+        } else {
+            throw EntityNotFound("Connection not found", "Connection with id $connectionId not found")
         }
     }
 

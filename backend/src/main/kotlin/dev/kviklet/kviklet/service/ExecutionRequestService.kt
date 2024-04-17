@@ -1,7 +1,9 @@
 package dev.kviklet.kviklet.service
 
 import dev.kviklet.kviklet.controller.CreateCommentRequest
+import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
 import dev.kviklet.kviklet.controller.CreateExecutionRequestRequest
+import dev.kviklet.kviklet.controller.CreateKubernetesExecutionRequestRequest
 import dev.kviklet.kviklet.controller.CreateReviewRequest
 import dev.kviklet.kviklet.controller.UpdateExecutionRequestRequest
 import dev.kviklet.kviklet.db.CommentPayload
@@ -62,13 +64,43 @@ class ExecutionRequestService(
         request: CreateExecutionRequestRequest,
         userId: String,
     ): ExecutionRequestDetails {
+        return when (request) {
+            is CreateDatasourceExecutionRequestRequest -> {
+                createDatasourceRequest(connectionId, request, userId)
+            }
+            is CreateKubernetesExecutionRequestRequest -> {
+                createKubernetesRequest(connectionId, request, userId)
+            }
+        }
+    }
+
+    private fun createDatasourceRequest(
+        connectionId: ConnectionId,
+        request: CreateDatasourceExecutionRequestRequest,
+        userId: String,
+    ): ExecutionRequestDetails {
         return executionRequestAdapter.createExecutionRequest(
-            connectionId = request.connectionId,
+            connectionId = connectionId,
             title = request.title,
             type = request.type,
             description = request.description,
             statement = request.statement,
             readOnly = request.readOnly,
+            executionStatus = "PENDING",
+            authorId = userId,
+        )
+    }
+
+    private fun createKubernetesRequest(
+        connectionId: ConnectionId,
+        request: CreateExecutionRequestRequest,
+        userId: String,
+    ): ExecutionRequestDetails {
+        return executionRequestAdapter.createExecutionRequest(
+            connectionId = connectionId,
+            title = request.title,
+            type = request.type,
+            description = request.description,
             executionStatus = "PENDING",
             authorId = userId,
         )

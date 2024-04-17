@@ -44,14 +44,32 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDateTime
 
-data class CreateExecutionRequestRequest(
-    val connectionId: ConnectionId,
-    val title: String,
-    val type: RequestType,
-    val description: String?,
+sealed class CreateExecutionRequestRequest(
+    open val connectionId: ConnectionId,
+    open val title: String,
+    open val type: RequestType,
+    open val description: String?,
+)
+
+data class CreateDatasourceExecutionRequestRequest(
+    override val connectionId: ConnectionId,
+    override val title: String,
+    override val type: RequestType,
+    override val description: String?,
     val statement: String?,
     val readOnly: Boolean,
-)
+) : CreateExecutionRequestRequest(connectionId, title, type, description)
+
+data class CreateKubernetesExecutionRequestRequest(
+    override val connectionId: ConnectionId,
+    override val title: String,
+    override val type: RequestType,
+    override val description: String?,
+    val namespace: String?,
+    val podName: String?,
+    val containerName: String?,
+    val command: String?,
+) : CreateExecutionRequestRequest(connectionId, title, type, description)
 
 data class UpdateExecutionRequestRequest(
     val title: String?,

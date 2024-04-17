@@ -187,16 +187,36 @@ class ExecutionRequestAdapter(
         connectionId: ConnectionId,
         title: String,
         type: RequestType,
-        description: String?,
-        statement: String?,
-        readOnly: Boolean,
+        description: String? = null,
+        statement: String? = null,
+        readOnly: Boolean? = null,
         executionStatus: String,
         authorId: String,
+        namespace: String? = null,
+        podName: String? = null,
+        containerName: String? = null,
+        command: String? = null,
     ): ExecutionRequestDetails {
         val connection = connectionRepository.findByIdOrNull(connectionId.toString())
             ?: throw EntityNotFound("Connection Not Found", "Connection with id $connectionId does not exist.")
         val authorEntity = userRepository.findByIdOrNull(authorId)
             ?: throw EntityNotFound("User Not Found", "User with id $authorId does not exist.")
+
+        if (connection.connectionType == ConnectionType.DATASOURCE &&
+            (namespace != null || podName != null || containerName != null || command != null)
+        ) {
+            throw IllegalArgumentException(
+                "Cannot create Kubernetes specific fields for a Datasource Execution Request",
+            )
+        }
+
+        if (connection.connectionType == ConnectionType.KUBERNETES &&
+            (statement != null || readOnly != null)
+        ) {
+            throw IllegalArgumentException(
+                "Cannot create Datasource specific fields for a Kubernetes Execution Request",
+            )
+        }
 
         return executionRequestRepository.save(
             ExecutionRequestEntity(
@@ -213,6 +233,10 @@ class ExecutionRequestAdapter(
                     ConnectionType.DATASOURCE -> ExecutionRequestType.DATASOURCE
                     ConnectionType.KUBERNETES -> ExecutionRequestType.KUBERNETES
                 },
+                namespace = namespace,
+                podName = podName,
+                containerName = containerName,
+                command = command,
             ),
         ).toDetailDto()
     }

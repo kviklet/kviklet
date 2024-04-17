@@ -51,7 +51,7 @@ class DatasourceConnectionSecurityTest(
     @ParameterizedTest
     @MethodSource
     fun testUpdateSuccessful(policies: List<Policy>) {
-        val request = dev.kviklet.kviklet.controller.UpdateDataSourceConnectionRequest(
+        val request = dev.kviklet.kviklet.controller.UpdateDatasourceConnectionRequest(
             displayName = "new name",
         )
 
@@ -69,7 +69,7 @@ class DatasourceConnectionSecurityTest(
     @ParameterizedTest
     @MethodSource
     fun testUpdateForbidden(policies: List<Policy>) {
-        val request = dev.kviklet.kviklet.controller.UpdateDataSourceConnectionRequest(
+        val request = dev.kviklet.kviklet.controller.UpdateDatasourceConnectionRequest(
             displayName = "new name",
         )
 
