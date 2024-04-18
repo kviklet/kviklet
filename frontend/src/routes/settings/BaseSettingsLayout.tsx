@@ -1,6 +1,6 @@
 import { ReactNode, useState } from "react";
 import { Link, Outlet, Route, Routes } from "react-router-dom";
-import DatabaseSettings from "./DatabaseSettings";
+import DatabaseSettings from "./connection/DatabaseSettings";
 import UserSettings from "./UserSettings";
 import RoleSettings from "./RolesSettings";
 import React from "react";

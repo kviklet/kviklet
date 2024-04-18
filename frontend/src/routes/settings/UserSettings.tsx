@@ -42,7 +42,7 @@ function UserForm(props: {
         <div className="flex flex-col mb-3">
           <InputField
             id="email"
-            name="Email"
+            label="Email"
             value={email}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setEmail(e.target.value)
@@ -52,7 +52,7 @@ function UserForm(props: {
         <div className="flex flex-col mb-3">
           <InputField
             id="password"
-            name="Password"
+            label="Password"
             type="passwordlike"
             value={password}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -63,7 +63,7 @@ function UserForm(props: {
         <div className="flex flex-col mb-3">
           <InputField
             id="fullName"
-            name="Full Name"
+            label="Full Name"
             value={fullName}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setFullName(e.target.value)

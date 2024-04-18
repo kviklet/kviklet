@@ -1,5 +1,7 @@
 package dev.kviklet.kviklet.controller
 
+import com.fasterxml.jackson.annotation.JsonSubTypes
+import com.fasterxml.jackson.annotation.JsonTypeInfo
 import dev.kviklet.kviklet.service.ConnectionService
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
@@ -22,6 +24,11 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
+@JsonSubTypes(
+    JsonSubTypes.Type(value = CreateDatasourceExecutionRequestRequest::class, name = "DATASOURCE"),
+    JsonSubTypes.Type(value = CreateKubernetesConnectionRequest::class, name = "KUBERNETES"),
+)
 sealed class ConnectionRequest
 
 data class CreateKubernetesConnectionRequest(
@@ -69,6 +76,11 @@ data class CreateDatasourceConnectionRequest(
     val port: Int,
 ) : ConnectionRequest()
 
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
+@JsonSubTypes(
+    JsonSubTypes.Type(value = UpdateDatasourceConnectionRequest::class, name = "DATASOURCE"),
+    JsonSubTypes.Type(value = UpdateKubernetesConnectionRequest::class, name = "KUBERNETES"),
+)
 sealed class UpdateConnectionRequest
 
 data class UpdateDatasourceConnectionRequest(

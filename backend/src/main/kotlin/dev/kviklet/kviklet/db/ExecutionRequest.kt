@@ -63,7 +63,7 @@ class ExecutionRequestEntity(
     @Enumerated(EnumType.STRING)
     var type: RequestType,
 
-    var description: String?,
+    var description: String,
 
     // Datsource Request specific fields
     var statement: String?,
@@ -187,7 +187,7 @@ class ExecutionRequestAdapter(
         connectionId: ConnectionId,
         title: String,
         type: RequestType,
-        description: String? = null,
+        description: String,
         statement: String? = null,
         readOnly: Boolean? = null,
         executionStatus: String,

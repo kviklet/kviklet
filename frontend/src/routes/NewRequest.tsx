@@ -69,7 +69,6 @@ export default function ConnectionChooser() {
   } = useForm<ExecutionRequest>({
     resolver: zodResolver(ExecutionRequestSchema),
   });
-  console.log(errors);
 
   const onSubmit: SubmitHandler<ExecutionRequest> = async (
     data: ExecutionRequest,
@@ -77,7 +76,6 @@ export default function ConnectionChooser() {
     await addRequest(data);
     navigate("/requests");
   };
-  console.log(chosenMode);
 
   return (
     <div>

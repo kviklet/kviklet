@@ -55,7 +55,7 @@ class ConnectionEntity(
     var username: String? = null,
     var password: String? = null,
     @Enumerated(EnumType.STRING)
-    var type: DatasourceType? = null,
+    var datasourceType: DatasourceType? = null,
     var hostname: String? = null,
     var port: Int? = null,
 ) {
@@ -79,7 +79,7 @@ class ConnectionEntity(
                     reviewConfig = reviewConfig,
                     port = port!!,
                     hostname = hostname!!,
-                    type = type!!,
+                    type = datasourceType!!,
                 )
             ConnectionType.KUBERNETES ->
                 KubernetesConnection(
@@ -134,7 +134,7 @@ class ConnectionAdapter(
                 executionRequests = emptySet(),
                 port = port,
                 hostname = hostname,
-                type = type,
+                datasourceType = type,
                 connectionType = ConnectionType.DATASOURCE,
             ),
         ).toDto()

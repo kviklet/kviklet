@@ -1,5 +1,5 @@
 import { z } from "zod";
-import baseUrl from "./base";
+import baseUrl, { withType } from "./base";
 
 enum AuthenticationType {
   USER_PASSWORD = "USER_PASSWORD",
@@ -10,50 +10,122 @@ enum DatabaseType {
   MYSQL = "MYSQL",
 }
 
-const connectionResponseSchema = z.object({
-  id: z.coerce.string(),
-  displayName: z.coerce.string(),
-  authenticationType: z.nativeEnum(AuthenticationType),
-  shortUsername: z.coerce.string(),
-  description: z.coerce.string(),
-  databaseName: z.string().nullable(),
-  reviewConfig: z.object({
-    numTotalRequired: z.number(),
-  }),
-});
-
-const connectionPayloadSchema = z.object({
-  displayName: z.coerce.string(),
-  id: z.string(),
-  username: z.string(),
-  password: z.string(),
-  description: z.string(),
-  databaseName: z.string(),
-  reviewConfig: z.object({
-    numTotalRequired: z.number(),
-  }),
-  type: z.nativeEnum(DatabaseType),
-  hostname: z.string(),
-  port: z.number(),
-});
-
-const patchConnectionPayloadSchema = z.object({
-  displayName: z.coerce.string().optional(),
-  username: z.string().optional(),
-  password: z.string().optional(),
-  description: z.string().optional(),
-  databaseName: z.string().optional(),
-  reviewConfig: z
-    .object({
+const databaseConnectionResponseSchema = withType(
+  z.object({
+    id: z.coerce.string(),
+    displayName: z.coerce.string(),
+    authenticationType: z.nativeEnum(AuthenticationType),
+    shortUsername: z.coerce.string(),
+    description: z.coerce.string(),
+    databaseName: z.string().nullable(),
+    reviewConfig: z.object({
       numTotalRequired: z.number(),
-    })
-    .optional(),
-});
+    }),
+  }),
+  "DATASOURCE",
+);
+
+const kubernetesConnectionResponseSchema = withType(
+  z.object({
+    id: z.coerce.string(),
+    displayName: z.coerce.string(),
+    description: z.coerce.string(),
+    reviewConfig: z.object({
+      numTotalRequired: z.coerce.number(),
+    }),
+  }),
+  "KUBERNETES",
+);
+
+const connectionResponseSchema = z.union([
+  databaseConnectionResponseSchema,
+  kubernetesConnectionResponseSchema,
+]);
+
+const databaseConnectionPayloadSchema = z
+  .object({
+    displayName: z.coerce.string(),
+    id: z.string(),
+    username: z.string(),
+    password: z.string(),
+    description: z.string(),
+    databaseName: z.string(),
+    reviewConfig: z.object({
+      numTotalRequired: z.number(),
+    }),
+    type: z.nativeEnum(DatabaseType),
+    hostname: z.string(),
+    port: z.number(),
+  })
+  .transform((data) => ({ ...data, connectionType: "DATASOURCE" }));
+
+const kubernetesConnectionPayloadSchema = z
+  .object({
+    displayName: z.coerce.string(),
+    id: z.string(),
+    description: z.string(),
+    reviewConfig: z.object({
+      numTotalRequired: z.coerce.number(),
+    }),
+  })
+  .transform((data) => ({ ...data, connectionType: "KUBERNETES" }));
+
+const connectionPayloadSchema = z.union([
+  databaseConnectionPayloadSchema,
+  kubernetesConnectionPayloadSchema,
+]);
+
+const patchDatabaseConnectionPayloadSchema = z
+  .object({
+    displayName: z.coerce.string().optional(),
+    username: z.string().optional(),
+    password: z.string().optional(),
+    description: z.string().optional(),
+    databaseName: z.string().optional(),
+    reviewConfig: z
+      .object({
+        numTotalRequired: z.number(),
+      })
+      .optional(),
+  })
+  .transform((data) => ({ ...data, connectionType: "DATASOURCE" }));
+
+const patchKubernetesConnectionPayloadSchema = z
+  .object({
+    displayName: z.coerce.string().optional(),
+    description: z.string().optional(),
+    reviewConfig: z
+      .object({
+        numTotalRequired: z.number(),
+      })
+      .optional(),
+  })
+  .transform((data) => ({ ...data, connectionType: "KUBERNETES" }));
+
+const patchConnectionPayloadSchema = z.union([
+  patchDatabaseConnectionPayloadSchema,
+  patchKubernetesConnectionPayloadSchema,
+]);
 
 // extract the inferred type
 type ConnectionResponse = z.infer<typeof connectionResponseSchema>;
+type DatabaseConnectionResponse = z.infer<
+  typeof databaseConnectionResponseSchema
+>;
+type KubernetesConnectionResponse = z.infer<
+  typeof kubernetesConnectionResponseSchema
+>;
 type ConnectionPayload = z.infer<typeof connectionPayloadSchema>;
+type PatchDatabaseConnectionPayload = z.infer<
+  typeof patchDatabaseConnectionPayloadSchema
+>;
+type PatchKubernetesConnectionPayload = z.infer<
+  typeof patchKubernetesConnectionPayloadSchema
+>;
 type PatchConnectionPayload = z.infer<typeof patchConnectionPayloadSchema>;
+type KubernetesConnectionPayload = z.infer<
+  typeof kubernetesConnectionPayloadSchema
+>;
 
 const addConnection = async (
   payload: ConnectionPayload,
@@ -102,6 +174,16 @@ export {
   patchConnection,
   getConnections,
   DatabaseType,
+  kubernetesConnectionPayloadSchema,
 };
 
-export type { ConnectionResponse, ConnectionPayload, PatchConnectionPayload };
+export type {
+  ConnectionResponse,
+  ConnectionPayload,
+  PatchConnectionPayload,
+  KubernetesConnectionPayload,
+  DatabaseConnectionResponse,
+  KubernetesConnectionResponse,
+  PatchDatabaseConnectionPayload,
+  PatchKubernetesConnectionPayload,
+};

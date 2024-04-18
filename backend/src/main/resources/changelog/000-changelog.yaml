@@ -23,3 +23,9 @@ databaseChangeLog:
   - include:
       file: 009-rename-datasource_connection-to-connection.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 010-add-kubernetes-connections.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: 011-add-kubernetes-execution-requests.yaml
+      relativeToChangelogFile: true

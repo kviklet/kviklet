@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: rename-datasource_connection-to-connection
+      id: 009-rename-datasource_connection-to-connection
       author: jascha
       changes:
         - renameTable:
