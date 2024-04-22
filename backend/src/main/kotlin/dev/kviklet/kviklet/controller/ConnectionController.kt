@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
 @JsonSubTypes(
-    JsonSubTypes.Type(value = CreateDatasourceExecutionRequestRequest::class, name = "DATASOURCE"),
+    JsonSubTypes.Type(value = CreateDatasourceConnectionRequest::class, name = "DATASOURCE"),
     JsonSubTypes.Type(value = CreateKubernetesConnectionRequest::class, name = "KUBERNETES"),
 )
 sealed class ConnectionRequest

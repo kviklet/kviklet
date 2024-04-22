@@ -1,41 +1,17 @@
 import { z } from "zod";
-import { ExecutionRequest } from "../routes/NewRequest";
 import { userResponseSchema } from "./UserApi";
 import { connectionResponseSchema } from "./DatasourceApi";
 import baseUrl from "./base";
 import { ApiErrorResponse, ApiErrorResponseSchema } from "./Errors";
+import { ExecutionRequest } from "../routes/NewRequest";
 
 const requestUrl = `${baseUrl}/execution-requests/`;
-
-export const DateTime = z.preprocess((arg) => {
-  if (typeof arg === "string") {
-    return new Date(arg);
-  }
-}, z.date());
-
-const ExecutionRequestPayload = z
-  .object({
-    title: z.string().min(1),
-    description: z.string(),
-    type: z.enum(["TemporaryAccess", "SingleQuery"]),
-    statement: z.coerce.string().nullable().optional(),
-    readOnly: z.boolean(),
-    datasourceConnectionId: z.string().min(1),
-  })
-  .refine(
-    (data) =>
-      data.type === "TemporaryAccess" ||
-      (!!data.statement && data.type === "SingleQuery"),
-    {
-      message: "If you create a query request an SQL statement is rquired",
-    },
-  );
 
 const CommentEvent = withType(
   z.object({
     author: userResponseSchema.optional(),
     comment: z.string(),
-    createdAt: DateTime,
+    createdAt: z.coerce.date(),
     id: z.string(),
   }),
   "COMMENT",
@@ -45,7 +21,7 @@ const ReviewEvent = withType(
   z.object({
     author: userResponseSchema.optional(),
     comment: z.string(),
-    createdAt: DateTime,
+    createdAt: z.coerce.date(),
     action: z.enum(["APPROVE", "COMMENT", "REQUEST_CHANGE"]),
     id: z.string(),
   }),
@@ -56,7 +32,7 @@ const EditEvent = withType(
   z.object({
     author: userResponseSchema.optional(),
     previousQuery: z.string(),
-    createdAt: DateTime,
+    createdAt: z.coerce.date(),
     id: z.string(),
   }),
   "EDIT",
@@ -66,25 +42,41 @@ const ExecuteEvent = withType(
   z.object({
     author: userResponseSchema.optional(),
     query: z.string(),
-    createdAt: DateTime,
+    createdAt: z.coerce.date(),
     id: z.string(),
   }),
   "EXECUTE",
 );
 
-const ExecutionRequestResponse = z.object({
+const RawDatasourceRequestSchema = z.object({
   id: z.string(),
   type: z.enum(["TemporaryAccess", "SingleQuery"]),
   author: userResponseSchema,
   title: z.string().min(1),
   description: z.string(),
   statement: z.string().nullable().optional(),
-  readOnly: z.boolean(),
   connection: connectionResponseSchema,
   executionStatus: z.string(),
   reviewStatus: z.string(),
-  createdAt: DateTime,
+  createdAt: z.coerce.date(),
   connectionName: z.string().optional(),
+});
+
+const RawKubernetesRequestSchema = z.object({
+  id: z.string(),
+  type: z.enum(["TemporaryAccess", "SingleQuery"]),
+  author: userResponseSchema,
+  title: z.string().min(1),
+  description: z.string(),
+  connection: connectionResponseSchema,
+  executionStatus: z.string(),
+  reviewStatus: z.string(),
+  createdAt: z.coerce.date(),
+  connectionName: z.string().optional(),
+  podName: z.string(),
+  namespace: z.string(),
+  containerName: z.coerce.string(),
+  command: z.string().optional(),
 });
 
 const ProxyResponse = z.object({
@@ -100,20 +92,60 @@ const ChangeExecutionRequestPayload = z.object({
   readOnly: z.boolean().optional(),
 });
 
-const ExecutionRequestResponseWithComments = ExecutionRequestResponse.extend({
-  events: z.array(
-    z.union([ReviewEvent, CommentEvent, EditEvent, ExecuteEvent]),
-  ),
-});
+const DatasourceExecutionRequestResponse = withType(
+  RawDatasourceRequestSchema,
+  "DATASOURCE",
+);
 
-const ExecutionRequestsResponse = z.array(ExecutionRequestResponse);
+const KubernetesExecutionRequestResponse = withType(
+  RawKubernetesRequestSchema,
+  "KUBERNETES",
+);
 
-type ExecutionRequestResponseWithComments = z.infer<
-  typeof ExecutionRequestResponseWithComments
+const ExecutionRequestResponseSchema = z.union([
+  KubernetesExecutionRequestResponse,
+  DatasourceExecutionRequestResponse,
+]);
+
+const DatasourceExecutionRequestResponseWithCommentsSchema = withType(
+  RawDatasourceRequestSchema.extend({
+    events: z.array(
+      z.union([ReviewEvent, CommentEvent, EditEvent, ExecuteEvent]),
+    ),
+  }),
+  "DATASOURCE",
+);
+
+const KubernetesExecutionRequestResponseWithCommentsSchema = withType(
+  RawKubernetesRequestSchema.extend({
+    events: z.array(
+      z.union([ReviewEvent, CommentEvent, EditEvent, ExecuteEvent]),
+    ),
+  }),
+  "KUBERNETES",
+);
+
+const ExecutionRequestResponseWithCommentsSchema = z.union([
+  KubernetesExecutionRequestResponseWithCommentsSchema,
+  DatasourceExecutionRequestResponseWithCommentsSchema,
+]);
+
+const ExecutionRequestsResponseSchema = z.array(ExecutionRequestResponseSchema);
+
+type DatasourceExecutionRequestResponseWithComments = z.infer<
+  typeof DatasourceExecutionRequestResponseWithCommentsSchema
 >;
-type ExecutionRequestResponse = z.infer<typeof ExecutionRequestResponse>;
-type ExecutionRequestsResponse = z.infer<typeof ExecutionRequestsResponse>;
-type ExecutionRequestPayload = z.infer<typeof ExecutionRequestPayload>;
+type KubernetesExecutionRequestResponseWithComments = z.infer<
+  typeof KubernetesExecutionRequestResponseWithCommentsSchema
+>;
+type ExecutionRequestResponseWithComments = z.infer<
+  typeof ExecutionRequestResponseWithCommentsSchema
+>;
+type ExecutionRequestsResponse = z.infer<
+  typeof ExecutionRequestsResponseSchema
+>;
+type ExecutionRequestResponse = z.infer<typeof ExecutionRequestResponseSchema>;
+
 type ChangeExecutionRequestPayload = z.infer<
   typeof ChangeExecutionRequestPayload
 >;
@@ -125,21 +157,13 @@ type Event = Edit | Review | Comment | Execute;
 type ProxyResponse = z.infer<typeof ProxyResponse>;
 
 const addRequest = async (payload: ExecutionRequest): Promise<boolean> => {
-  const mappedPayload: ExecutionRequestPayload = {
-    title: payload.title,
-    description: payload.description,
-    statement: payload.statement,
-    type: payload.type,
-    readOnly: false,
-    datasourceConnectionId: payload.connection,
-  };
   await fetch(requestUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     credentials: "include",
-    body: JSON.stringify(mappedPayload),
+    body: JSON.stringify(payload),
   });
   return true;
 };
@@ -157,7 +181,7 @@ const patchRequest = async (
     body: JSON.stringify(payload),
   });
   const json: unknown = await response.json();
-  return ExecutionRequestResponseWithComments.parse(json);
+  return ExecutionRequestResponseWithCommentsSchema.parse(json);
 };
 
 const postStartServer = async (id: string): Promise<ProxyResponse> => {
@@ -176,7 +200,7 @@ const getRequests = async (): Promise<ExecutionRequestsResponse> => {
     credentials: "include",
   });
   const json: unknown = await response.json();
-  const requests = ExecutionRequestsResponse.parse(json);
+  const requests = ExecutionRequestsResponseSchema.parse(json);
   return requests;
 };
 
@@ -191,7 +215,7 @@ const getSingleRequest = async (
     return undefined;
   }
   const json: unknown = await response.json();
-  const request = ExecutionRequestResponseWithComments.parse(json);
+  const request = ExecutionRequestResponseWithCommentsSchema.parse(json);
   return request;
 };
 
@@ -324,6 +348,8 @@ export type {
   ExecuteResponseResult,
   ExecutionRequestResponse,
   ExecutionRequestsResponse,
+  DatasourceExecutionRequestResponseWithComments,
+  KubernetesExecutionRequestResponseWithComments,
   ExecutionRequestResponseWithComments,
   ChangeExecutionRequestPayload,
   ExecuteResponse,

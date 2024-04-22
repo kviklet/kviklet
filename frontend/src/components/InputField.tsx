@@ -6,7 +6,7 @@ type InputFieldProps = {
   id?: string;
   className?: string;
   error?: string;
-  [x: string]: any;
+  [x: string]: unknown;
 };
 
 const InputField = forwardRef<HTMLInputElement, InputFieldProps>(

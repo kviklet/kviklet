@@ -93,7 +93,7 @@ class ExecutionRequestService(
 
     private fun createKubernetesRequest(
         connectionId: ConnectionId,
-        request: CreateExecutionRequestRequest,
+        request: CreateKubernetesExecutionRequestRequest,
         userId: String,
     ): ExecutionRequestDetails {
         return executionRequestAdapter.createExecutionRequest(
@@ -103,6 +103,10 @@ class ExecutionRequestService(
             description = request.description,
             executionStatus = "PENDING",
             authorId = userId,
+            namespace = request.namespace,
+            podName = request.podName,
+            containerName = request.containerName,
+            command = request.command,
         )
     }
 

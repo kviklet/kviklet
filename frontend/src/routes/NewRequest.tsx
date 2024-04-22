@@ -15,13 +15,14 @@ import { z } from "zod";
 import Button from "../components/Button";
 import { Disclosure } from "@headlessui/react";
 
-const ExecutionRequestSchema = z
+const DatasourceExecutionRequestSchema = z
   .object({
+    connectionType: z.literal("DATASOURCE"),
     title: z.string().min(1, { message: "Title is required" }),
     type: z.enum(["TemporaryAccess", "SingleQuery"]),
     description: z.string(),
     statement: z.string().optional(),
-    connection: z.string().min(1),
+    connectionId: z.string().min(1),
   })
   .refine(
     (data) =>
@@ -32,6 +33,38 @@ const ExecutionRequestSchema = z
     },
   );
 
+const KubernetesExecutionRequestSchema = z
+  .object({
+    connectionType: z.literal("KUBERNETES"),
+    title: z.string().min(1, { message: "Title is required" }),
+    type: z.enum(["TemporaryAccess", "SingleQuery"]),
+    description: z.string(),
+    command: z.string().optional(),
+    connectionId: z.string().min(1),
+    namespace: z.string().min(1).default("default"),
+    podName: z.string().min(1),
+    containerName: z.string().optional(),
+  })
+  .refine(
+    (data) =>
+      data.type === "TemporaryAccess" ||
+      (!!data.command && data.type === "SingleQuery"),
+    {
+      message: "If you create a command request a command is required",
+    },
+  );
+
+const ExecutionRequestSchema = z.union([
+  DatasourceExecutionRequestSchema,
+  KubernetesExecutionRequestSchema,
+]);
+
+type DatasourceExecutionRequest = z.infer<
+  typeof DatasourceExecutionRequestSchema
+>;
+type KubernetesExecutionRequest = z.infer<
+  typeof KubernetesExecutionRequestSchema
+>;
 type ExecutionRequest = z.infer<typeof ExecutionRequestSchema>;
 
 const useConnections = () => {
@@ -58,24 +91,6 @@ export default function ConnectionChooser() {
   const [chosenMode, setChosenMode] = useState<
     "SingleQuery" | "TemporaryAccess" | undefined
   >(undefined);
-
-  const navigate = useNavigate();
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    setValue,
-  } = useForm<ExecutionRequest>({
-    resolver: zodResolver(ExecutionRequestSchema),
-  });
-
-  const onSubmit: SubmitHandler<ExecutionRequest> = async (
-    data: ExecutionRequest,
-  ) => {
-    await addRequest(data);
-    navigate("/requests");
-  };
 
   return (
     <div>
@@ -130,13 +145,11 @@ export default function ConnectionChooser() {
                           clickQuery={() => {
                             setChosenConnection(connection);
                             setChosenMode("SingleQuery");
-                            setValue("type", "SingleQuery");
                             close();
                           }}
                           clickAccess={() => {
                             setChosenConnection(connection);
                             setChosenMode("TemporaryAccess");
-                            setValue("type", "TemporaryAccess");
                             close();
                           }}
                         ></Card>
@@ -146,112 +159,354 @@ export default function ConnectionChooser() {
                 </>
               )}
             </Disclosure>
-            {chosenConnection && (
-              <div className="mx-auto w-full">
-                <form
-                  className="w-full mx-auto"
-                  onSubmit={(event) => void handleSubmit(onSubmit)(event)}
-                >
-                  <span
-                    className={`inline-block w-min rounded-md px-2 py-1 mt-6 text-xs font-medium ring-1 ring-inset bg-yellow-50 text-yellow-600 ring-yellow-500/10 dark:bg-yellow-400/10 dark:text-yellow-500 dark:ring-yellow-400/20`}
-                  >
-                    {chosenMode}
-                  </span>
-                  <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
-                    <label
-                      htmlFor="connection-id"
-                      className="block text-xs font-medium text-slate-900 dark:text-slate-50"
-                    >
-                      Connection
-                    </label>
-                    <input
-                      type="text"
-                      readOnly
-                      id="connection-id"
-                      className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
-                      value={chosenConnection.id}
-                      {...register("connection")}
-                    />
-                  </div>
-                  <input type="hidden" id="type" {...register("type")}></input>
-                  <div className="rounded-md my-3  px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
-                    <label
-                      htmlFor="title-input"
-                      className="block text-xs font-medium text-slate-900 dark:text-slate-50"
-                    >
-                      Title
-                    </label>
-                    <input
-                      className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
-                      id="title-input"
-                      type="text"
-                      placeholder="My query"
-                      {...register("title")}
-                    />
-                    {errors.title && (
-                      <p className="text-xs italic text-red-500 mt-2">
-                        {errors.title?.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
-                    <label
-                      htmlFor="description-input"
-                      className="block text-xs font-medium text-slate-900 dark:text-slate-50"
-                    >
-                      Description
-                    </label>
-                    <textarea
-                      className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
-                      id="description-input"
-                      placeholder={
-                        chosenMode === "TemporaryAccess"
-                          ? "Why do you need access to this connection?"
-                          : "What are you trying to accomplish with this Query?"
-                      }
-                      {...register("description")}
-                    ></textarea>
-                    {errors.description && (
-                      <p className="text-xs italic text-red-500 mt-2">
-                        {errors.description?.message}
-                      </p>
-                    )}
-                  </div>
-                  {chosenMode === "SingleQuery" && (
-                    <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
-                      <label
-                        htmlFor="description-input"
-                        className="block text-xs font-medium text-slate-900 dark:text-slate-50"
-                      >
-                        SQL
-                      </label>
-                      <textarea
-                        className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
-                        id="statement-input"
-                        placeholder="Select id from some_table;"
-                        {...register("statement")}
-                      ></textarea>
-                      {errors.statement && (
-                        <p className="text-xs italic text-red-500 mt-2">
-                          {errors.statement?.message}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  <div className="flex flex-wrap -mx-3 mb-2">
-                    <div className="px-3 mb-6 ml-auto">
-                      <Button type="submit">Submit</Button>
-                    </div>
-                  </div>
-                </form>
-              </div>
-            )}
+            {(chosenConnection &&
+              chosenMode &&
+              chosenConnection._type == "DATASOURCE" && (
+                <DatasourceExecutionRequestForm
+                  connection={chosenConnection}
+                  mode={chosenMode}
+                ></DatasourceExecutionRequestForm>
+              )) ||
+              (chosenConnection &&
+                chosenMode &&
+                chosenConnection._type == "KUBERNETES" && (
+                  <KubernetesExecutionRequestForm
+                    connection={chosenConnection}
+                    mode={chosenMode}
+                  ></KubernetesExecutionRequestForm>
+                ))}
           </div>
         )}
       </div>
     </div>
   );
 }
+
+const DatasourceExecutionRequestForm = ({
+  connection,
+  mode,
+}: {
+  connection: ConnectionResponse;
+  mode: "SingleQuery" | "TemporaryAccess";
+}) => {
+  const navigate = useNavigate();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+  } = useForm<DatasourceExecutionRequest>({
+    resolver: zodResolver(DatasourceExecutionRequestSchema),
+  });
+
+  useEffect(() => {
+    setValue("connectionType", "DATASOURCE");
+    setValue("connectionId", connection.id);
+    setValue("type", mode);
+  }, [connection, mode]);
+
+  const onSubmit: SubmitHandler<DatasourceExecutionRequest> = async (
+    data: DatasourceExecutionRequest,
+  ) => {
+    await addRequest(data);
+    navigate("/requests");
+  };
+
+  return (
+    <div className="mx-auto w-full">
+      <form
+        className="w-full mx-auto"
+        onSubmit={(event) => void handleSubmit(onSubmit)(event)}
+      >
+        <span
+          className={`inline-block w-min rounded-md px-2 py-1 mt-6 text-xs font-medium ring-1 ring-inset bg-yellow-50 text-yellow-600 ring-yellow-500/10 dark:bg-yellow-400/10 dark:text-yellow-500 dark:ring-yellow-400/20`}
+        >
+          {mode}
+        </span>
+        <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+          <label
+            htmlFor="connection-id"
+            className="block text-xs font-medium text-slate-900 dark:text-slate-50"
+          >
+            Connection
+          </label>
+          <input
+            type="text"
+            readOnly
+            id="connection-id"
+            className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+            value={connection.id}
+            {...register("connectionId")}
+          />
+        </div>
+        <input type="hidden" id="type" {...register("type")}></input>
+        <div className="rounded-md my-3  px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+          <label
+            htmlFor="title-input"
+            className="block text-xs font-medium text-slate-900 dark:text-slate-50"
+          >
+            Title
+          </label>
+          <input
+            className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+            id="title-input"
+            type="text"
+            placeholder="My query"
+            {...register("title")}
+          />
+          {errors.title && (
+            <p className="text-xs italic text-red-500 mt-2">
+              {errors.title?.message}
+            </p>
+          )}
+        </div>
+        <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+          <label
+            htmlFor="description-input"
+            className="block text-xs font-medium text-slate-900 dark:text-slate-50"
+          >
+            Description
+          </label>
+          <textarea
+            className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+            id="description-input"
+            placeholder={
+              mode === "TemporaryAccess"
+                ? "Why do you need access to this connection?"
+                : "What are you trying to accomplish with this Query?"
+            }
+            {...register("description")}
+          ></textarea>
+          {errors.description && (
+            <p className="text-xs italic text-red-500 mt-2">
+              {errors.description?.message}
+            </p>
+          )}
+        </div>
+        {mode === "SingleQuery" && (
+          <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+            <label
+              htmlFor="description-input"
+              className="block text-xs font-medium text-slate-900 dark:text-slate-50"
+            >
+              SQL
+            </label>
+            <textarea
+              className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+              id="statement-input"
+              placeholder="Select id from some_table;"
+              {...register("statement")}
+            ></textarea>
+            {errors.statement && (
+              <p className="text-xs italic text-red-500 mt-2">
+                {errors.statement?.message}
+              </p>
+            )}
+          </div>
+        )}
+        <div className="flex flex-wrap -mx-3 mb-2">
+          <div className="px-3 mb-6 ml-auto">
+            <Button type="submit">Submit</Button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+const KubernetesExecutionRequestForm = ({
+  connection,
+  mode,
+}: {
+  connection: ConnectionResponse;
+  mode: "SingleQuery" | "TemporaryAccess";
+}) => {
+  const navigate = useNavigate();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+  } = useForm<KubernetesExecutionRequest>({
+    resolver: zodResolver(KubernetesExecutionRequestSchema),
+  });
+
+  useEffect(() => {
+    setValue("connectionType", "KUBERNETES");
+    setValue("connectionId", connection.id);
+    setValue("type", mode);
+  }, [connection, mode]);
+
+  const onSubmit: SubmitHandler<KubernetesExecutionRequest> = async (
+    data: KubernetesExecutionRequest,
+  ) => {
+    await addRequest(data);
+    navigate("/requests");
+  };
+
+  return (
+    <div className="mx-auto w-full">
+      <form
+        className="w-full mx-auto"
+        onSubmit={(event) => void handleSubmit(onSubmit)(event)}
+      >
+        <span
+          className={`inline-block w-min rounded-md px-2 py-1 mt-6 text-xs font-medium ring-1 ring-inset bg-yellow-50 text-yellow-600 ring-yellow-500/10 dark:bg-yellow-400/10 dark:text-yellow-500 dark:ring-yellow-400/20`}
+        >
+          {mode}
+        </span>
+        <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+          <label
+            htmlFor="connection-id"
+            className="block text-xs font-medium text-slate-900 dark:text-slate-50"
+          >
+            Connection
+          </label>
+          <input
+            type="text"
+            readOnly
+            id="connection-id"
+            className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+            value={connection.id}
+            {...register("connectionId")}
+          />
+        </div>
+        <input type="hidden" id="type" {...register("type")}></input>
+        <div className="rounded-md my-3  px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+          <label
+            htmlFor="title-input"
+            className="block text-xs font-medium text-slate-900 dark:text-slate-50"
+          >
+            Title
+          </label>
+          <input
+            className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+            id="title-input"
+            type="text"
+            placeholder="My query"
+            {...register("title")}
+          />
+          {errors.title && (
+            <p className="text-xs italic text-red-500 mt-2">
+              {errors.title?.message}
+            </p>
+          )}
+        </div>
+        <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+          <label
+            htmlFor="description-input"
+            className="block text-xs font-medium text-slate-900 dark:text-slate-50"
+          >
+            Description
+          </label>
+          <textarea
+            className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+            id="description-input"
+            placeholder={
+              mode === "TemporaryAccess"
+                ? "Why do you need access to this connection?"
+                : "What are you trying to accomplish with this Query?"
+            }
+            {...register("description")}
+          ></textarea>
+          {errors.description && (
+            <p className="text-xs italic text-red-500 mt-2">
+              {errors.description?.message}
+            </p>
+          )}
+        </div>
+        <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+          <label
+            htmlFor="namespace-input"
+            className="block text-xs font-medium text-slate-900 dark:text-slate-50"
+          >
+            Namespace
+          </label>
+          <input
+            className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+            id="namespace-input"
+            type="text"
+            placeholder="default"
+            {...register("namespace")}
+          />
+          {errors.namespace && (
+            <p className="text-xs italic text-red-500 mt-2">
+              {errors.namespace?.message}
+            </p>
+          )}
+        </div>
+        <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+          <label
+            htmlFor="pod-name-input"
+            className="block text-xs font-medium text-slate-900 dark:text-slate-50"
+          >
+            Pod Name
+          </label>
+          <input
+            className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+            id="pod-name-input"
+            type="text"
+            placeholder="my-pod"
+            {...register("podName")}
+          />
+          {errors.podName && (
+            <p className="text-xs italic text-red-500 mt-2">
+              {errors.podName?.message}
+            </p>
+          )}
+        </div>
+        <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+          <label
+            htmlFor="container-name-input"
+            className="block text-xs font-medium text-slate-900 dark:text-slate-50"
+          >
+            Container Name
+          </label>
+          <input
+            className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+            id="container-name-input"
+            type="text"
+            placeholder="my-container"
+            {...register("containerName")}
+          />
+          {errors.containerName && (
+            <p className="text-xs italic text-red-500 mt-2">
+              {errors.containerName?.message}
+            </p>
+          )}
+        </div>
+        {mode === "SingleQuery" && (
+          <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+            <label
+              htmlFor="command-input"
+              className="block text-xs font-medium text-slate-900 dark:text-slate-50"
+            >
+              Command
+            </label>
+            <textarea
+              className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+              id="command-input"
+              placeholder="/bin/sh -c 'echo hello world'"
+              {...register("command")}
+            ></textarea>
+            {errors.command && (
+              <p className="text-xs italic text-red-500 mt-2">
+                {errors.command?.message}
+              </p>
+            )}
+          </div>
+        )}
+        <div className="flex flex-wrap -mx-3 mb-2">
+          <div className="px-3 mb-6 ml-auto">
+            <Button type="submit">Submit</Button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+};
 
 interface CardProps {
   header: string;

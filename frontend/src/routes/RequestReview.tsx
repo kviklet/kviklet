@@ -17,6 +17,8 @@ import {
   postStartServer,
   ProxyResponse,
   ExecuteResponseResult,
+  KubernetesExecutionRequestResponseWithComments,
+  DatasourceExecutionRequestResponseWithComments,
 } from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
 import { mapStatus, mapStatusToLabelColor, timeSince } from "./Requests";
@@ -194,27 +196,29 @@ function RequestReview() {
           </h1>
           <div className="">
             <div className="">
-              <RequestBox
-                request={request}
-                runQuery={run}
-                startServer={start}
-                updateRequest={updateRequest}
-              ></RequestBox>
-              <div className="flex justify-center">
-                {(dataLoading && <Spinner></Spinner>) ||
-                  (results && <MultiResult resultList={results}></MultiResult>)}
-              </div>
-              {executionError && (
-                <div className="text-red-500 my-4">{executionError}</div>
+              {request?._type === "DATASOURCE" ? (
+                <DatasourceRequestDisplay
+                  request={request}
+                  run={run}
+                  start={start}
+                  updateRequest={updateRequest}
+                  results={results}
+                  dataLoading={dataLoading}
+                  executionError={executionError}
+                  proxyResponse={proxyResponse}
+                ></DatasourceRequestDisplay>
+              ) : (
+                <KubernetesRequestDisplay
+                  request={request}
+                  run={run}
+                  start={start}
+                  updateRequest={updateRequest}
+                  results={results}
+                  dataLoading={dataLoading}
+                  executionError={executionError}
+                  proxyResponse={proxyResponse}
+                ></KubernetesRequestDisplay>
               )}
-              {proxyResponse && (
-                <div className="text-lime-500 my-4">
-                  Server started on {proxyResponse.port} with username{" "}
-                  <i>{proxyResponse.username}</i> and password{" "}
-                  <i>{proxyResponse.password}</i>
-                </div>
-              )}
-
               <div className="w-full border-b dark:border-slate-700 border-slate-300 mt-3"></div>
               <div className="mt-6">
                 <span>Activity</span>
@@ -251,13 +255,178 @@ function RequestReview() {
   );
 }
 
-function RequestBox({
+function DatasourceRequestDisplay({
+  request,
+  run,
+  start,
+  updateRequest,
+  results,
+  dataLoading,
+  executionError,
+  proxyResponse,
+}: {
+  request: DatasourceExecutionRequestResponseWithComments | undefined;
+  run: (explain?: boolean) => Promise<void>;
+  start: () => Promise<ProxyResponse>;
+  updateRequest: (request: { statement?: string }) => Promise<void>;
+  results: ExecuteResponseResult[] | undefined;
+  dataLoading: boolean;
+  executionError: string | undefined;
+  proxyResponse: ProxyResponse | undefined;
+}) {
+  return (
+    <>
+      <DatasourceRequestBox
+        request={request}
+        runQuery={run}
+        startServer={start}
+        updateRequest={updateRequest}
+      ></DatasourceRequestBox>
+      <div className="flex justify-center">
+        {(dataLoading && <Spinner></Spinner>) ||
+          (results && <MultiResult resultList={results}></MultiResult>)}
+      </div>
+      {executionError && (
+        <div className="text-red-500 my-4">{executionError}</div>
+      )}
+      {proxyResponse && (
+        <div className="text-lime-500 my-4">
+          Server started on {proxyResponse.port} with username{" "}
+          <i>{proxyResponse.username}</i> and password{" "}
+          <i>{proxyResponse.password}</i>
+        </div>
+      )}
+    </>
+  );
+}
+
+function KubernetesRequestDisplay({
+  request,
+  run,
+  start,
+  updateRequest,
+  results,
+  dataLoading,
+  executionError,
+  proxyResponse,
+}: {
+  request: KubernetesExecutionRequestResponseWithComments | undefined;
+  run: (explain?: boolean) => Promise<void>;
+  start: () => Promise<ProxyResponse>;
+  updateRequest: (request: { statement?: string }) => Promise<void>;
+  results: ExecuteResponseResult[] | undefined;
+  dataLoading: boolean;
+  executionError: string | undefined;
+  proxyResponse: ProxyResponse | undefined;
+}) {
+  return (
+    <>
+      <KubernetesRequestBox
+        request={request}
+        runQuery={run}
+        startServer={start}
+        updateRequest={updateRequest}
+      ></KubernetesRequestBox>
+      <div className="flex justify-center">
+        {(dataLoading && <Spinner></Spinner>) ||
+          (results && <MultiResult resultList={results}></MultiResult>)}
+      </div>
+      {executionError && (
+        <div className="text-red-500 my-4">{executionError}</div>
+      )}
+      {proxyResponse && (
+        <div className="text-lime-500 my-4">
+          Server started on {proxyResponse.port} with username{" "}
+          <i>{proxyResponse.username}</i> and password{" "}
+          <i>{proxyResponse.password}</i>
+        </div>
+      )}
+    </>
+  );
+}
+
+interface KubernetesRequestBoxProps {
+  request: KubernetesExecutionRequestResponseWithComments | undefined;
+  runQuery: (explain?: boolean) => Promise<void>;
+  startServer: () => Promise<ProxyResponse>;
+  updateRequest: (request: { statement?: string }) => Promise<void>;
+}
+
+const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
+  request,
+  updateRequest,
+}) => {
+  const [editMode, setEditMode] = useState(false);
+  const [command, setCommand] = useState(request?.command || "");
+
+  useEffect(() => {
+    setCommand(request?.command || "");
+  }, [request?.command]);
+
+  const changeCommand = async (
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
+  ) => {
+    e.preventDefault();
+    await updateRequest({ statement: command });
+    setEditMode(false);
+  };
+
+  return (
+    <div className="relative border-slate-500 dark:bg-slate-950 dark:border dark:border-slate-950">
+      <div className="text-slate-800 py-2 text-sm flex bg-slate-50 dark:bg-slate-950 dark:text-slate-50 dark:border-none">
+        <div>
+          {request?.author.fullName} wants to execute a Kubernetes command in:
+          <span className="italic"> {request?.connection.displayName}</span>
+        </div>
+        <div className="ml-auto dark:text-slate-500">
+          {timeAgo(new Date(request?.createdAt ?? ""))}
+        </div>
+      </div>
+      <div className="py-3 px-4">
+        <p className="text-slate-500 pb-6">{request?.description}</p>
+        <div className="text-slate-500">
+          Namespace: <strong>{request?.namespace}</strong>
+          <br />
+          Pod Name: <strong>{request?.podName}</strong>
+          <br />
+          Container Name: <strong>{request?.containerName || "Default"}</strong>
+          <br />
+          Command:{" "}
+          {editMode ? (
+            <textarea
+              className="appearance-none block w-full text-gray-700 border border-gray-200 bg-slate-100 focus:bg-white dark:bg-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors dark:text-slate-50 p-1 rounded-md leading-normal mb-2 focus:outline-none focus:border-gray-500"
+              rows={3}
+              onChange={(e) => setCommand(e.target.value)}
+              value={command}
+            ></textarea>
+          ) : (
+            <Highlighter>{command || "No command specified"}</Highlighter>
+          )}
+        </div>
+        {editMode ? (
+          <div className="flex justify-end mt-2">
+            <Button className="mr-2" onClick={() => setEditMode(false)}>
+              Cancel
+            </Button>
+            <Button onClick={(e) => void changeCommand(e)}>Save</Button>
+          </div>
+        ) : (
+          <Button className="mt-2" onClick={() => setEditMode(true)}>
+            Edit Command
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+function DatasourceRequestBox({
   request,
   runQuery,
   startServer,
   updateRequest,
 }: {
-  request: ExecutionRequestResponseWithComments | undefined;
+  request: DatasourceExecutionRequestResponseWithComments | undefined;
   runQuery: (explain?: boolean) => Promise<void>;
   startServer: () => Promise<ProxyResponse>;
   updateRequest: (request: { statement?: string }) => Promise<void>;
@@ -410,8 +579,7 @@ function EditEvent({ event, index }: { event: Edit; index: number }) {
         <InitialBubble name={event?.author?.fullName} />
         <p className="text-slate-500 dark:text-slate-500 px-4 pt-2 text-sm flex justify-between dark:bg-slate-900 rounded-t-md">
           <div className="mr-4">
-            {((event?.createdAt &&
-              timeSince(new Date(event.createdAt as string))) as
+            {((event?.createdAt && timeSince(event.createdAt)) as
               | string
               | undefined) || ""}
           </div>
@@ -453,8 +621,7 @@ function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
         <InitialBubble name={event?.author?.fullName} />
         <p className="text-slate-500 dark:text-slate-500 px-4 pt-2 text-sm flex justify-between dark:bg-slate-900 rounded-t-md">
           <div className="mr-4">
-            {((event?.createdAt &&
-              timeSince(new Date(event.createdAt as string))) as
+            {((event?.createdAt && timeSince(event.createdAt)) as
               | string
               | undefined) || ""}
           </div>
@@ -510,8 +677,7 @@ function Comment({
         <InitialBubble name={event?.author?.fullName} />
         <p className="text-slate-500 dark:text-slate-500 px-4 pt-2 text-sm flex justify-between dark:bg-slate-900 rounded-t-md">
           <div>
-            {((event?.createdAt &&
-              timeSince(new Date(event.createdAt as string))) as
+            {((event?.createdAt && timeSince(event.createdAt)) as
               | string
               | undefined) || ""}
           </div>

@@ -44,6 +44,11 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDateTime
 
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
+@JsonSubTypes(
+    JsonSubTypes.Type(value = CreateDatasourceExecutionRequestRequest::class, name = "DATASOURCE"),
+    JsonSubTypes.Type(value = CreateKubernetesExecutionRequestRequest::class, name = "KUBERNETES"),
+)
 sealed class CreateExecutionRequestRequest(
     open val connectionId: ConnectionId,
     open val title: String,
@@ -65,10 +70,10 @@ data class CreateKubernetesExecutionRequestRequest(
     override val title: String,
     override val type: RequestType,
     override val description: String,
-    val namespace: String?,
-    val podName: String?,
+    val namespace: String,
+    val podName: String,
     val containerName: String?,
-    val command: String?,
+    val command: String,
 ) : CreateExecutionRequestRequest(connectionId, title, type, description)
 
 data class UpdateExecutionRequestRequest(
@@ -172,7 +177,7 @@ sealed class ExecutionRequestResponse() {
 /**
  * A DTO for the {@link dev.kviklet.kviklet.db.ExecutionRequestEntity} entity
  */
-sealed class ExecutionRequestDetailResponse() {
+sealed class ExecutionRequestDetailResponse {
 
     companion object {
         fun fromDto(dto: ExecutionRequestDetails): ExecutionRequestDetailResponse {
@@ -210,39 +215,39 @@ sealed class ExecutionRequestDetailResponse() {
             }
         }
     }
-
-    data class DatasourceExecutionRequestDetailResponse(
-        val id: ExecutionRequestId,
-        val title: String,
-        val type: RequestType,
-        val author: UserResponse,
-        val connection: ConnectionResponse,
-        val description: String?,
-        val statement: String?,
-        val readOnly: Boolean,
-        val reviewStatus: ReviewStatus,
-        val executionStatus: String,
-        val createdAt: LocalDateTime = LocalDateTime.now(),
-        val events: List<EventResponse>,
-    ) : ExecutionRequestDetailResponse()
-
-    data class KubernetesExecutionRequestDetailResponse(
-        val id: ExecutionRequestId,
-        val title: String,
-        val type: RequestType,
-        val author: UserResponse,
-        val connection: ConnectionResponse,
-        val description: String?,
-        val reviewStatus: ReviewStatus,
-        val executionStatus: String,
-        val createdAt: LocalDateTime = LocalDateTime.now(),
-        val namespace: String?,
-        val podName: String?,
-        val containerName: String?,
-        val command: String?,
-        val events: List<EventResponse>,
-    ) : ExecutionRequestDetailResponse()
 }
+
+data class DatasourceExecutionRequestDetailResponse(
+    val id: ExecutionRequestId,
+    val title: String,
+    val type: RequestType,
+    val author: UserResponse,
+    val connection: ConnectionResponse,
+    val description: String?,
+    val statement: String?,
+    val readOnly: Boolean,
+    val reviewStatus: ReviewStatus,
+    val executionStatus: String,
+    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val events: List<EventResponse>,
+) : ExecutionRequestDetailResponse()
+
+data class KubernetesExecutionRequestDetailResponse(
+    val id: ExecutionRequestId,
+    val title: String,
+    val type: RequestType,
+    val author: UserResponse,
+    val connection: ConnectionResponse,
+    val description: String?,
+    val reviewStatus: ReviewStatus,
+    val executionStatus: String,
+    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val namespace: String?,
+    val podName: String?,
+    val containerName: String?,
+    val command: String?,
+    val events: List<EventResponse>,
+) : ExecutionRequestDetailResponse()
 
 @Schema(
     name = "ExecutionResultResponse",
