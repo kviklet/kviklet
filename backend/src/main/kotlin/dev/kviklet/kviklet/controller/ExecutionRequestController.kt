@@ -7,16 +7,14 @@ import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.security.CurrentUser
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.ColumnInfo
-import dev.kviklet.kviklet.service.DBExecutionResult
 import dev.kviklet.kviklet.service.ErrorQueryResult
 import dev.kviklet.kviklet.service.ExecutionRequestService
-import dev.kviklet.kviklet.service.ExecutionResult
-import dev.kviklet.kviklet.service.KubernetesExecutionResult
 import dev.kviklet.kviklet.service.QueryResult
 import dev.kviklet.kviklet.service.RecordsQueryResult
 import dev.kviklet.kviklet.service.UpdateQueryResult
 import dev.kviklet.kviklet.service.dto.CommentEvent
 import dev.kviklet.kviklet.service.dto.ConnectionId
+import dev.kviklet.kviklet.service.dto.DBExecutionResult
 import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
 import dev.kviklet.kviklet.service.dto.EditEvent
 import dev.kviklet.kviklet.service.dto.Event
@@ -24,7 +22,9 @@ import dev.kviklet.kviklet.service.dto.EventType
 import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
+import dev.kviklet.kviklet.service.dto.ExecutionResult
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
+import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewEvent
@@ -288,6 +288,8 @@ sealed class ExecutionResponse() {
                 is KubernetesExecutionResult -> KubernetesExecutionResponse(
                     errors = results.errors,
                     messages = results.messages,
+                    finished = results.finished,
+                    exitCode = results.exitCode,
                 )
             }
         }
@@ -300,6 +302,8 @@ sealed class ExecutionResponse() {
     data class KubernetesExecutionResponse(
         val errors: List<String>,
         val messages: List<String>,
+        val finished: Boolean = true,
+        val exitCode: Int? = 0,
     ) : ExecutionResponse()
 }
 

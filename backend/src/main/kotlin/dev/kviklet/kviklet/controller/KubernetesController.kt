@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.controller
 
+import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.shell.KubernetesApi
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.validation.annotation.Validated
@@ -10,9 +11,11 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 data class Pod(
+    val id: String,
     val name: String,
     val namespace: String,
     val status: String,
+    val containerNames: List<String>,
 )
 
 data class PodList(
@@ -26,8 +29,8 @@ data class CommandRequest(
 )
 
 data class CommandResponse(
-    val output: String,
-    val error: String,
+    val output: List<String>,
+    val error: List<String>,
 )
 
 @RestController
@@ -46,9 +49,11 @@ class KubernetesController(
         return PodList(
             pods = kubernetesApi.getActivePods().map {
                 Pod(
+                    id = it.metadata?.uid ?: "",
                     name = it.metadata?.name ?: "",
                     namespace = it.metadata?.namespace ?: "",
                     status = it.status?.phase ?: "",
+                    containerNames = it.spec?.containers?.map { container -> container.name } ?: emptyList(),
                 )
             },
         )
@@ -57,13 +62,14 @@ class KubernetesController(
     @PostMapping("/execute-command")
     fun executeCommand(@RequestBody commandRequest: CommandRequest): CommandResponse {
         kubernetesApi.executeCommandOnPod(
+            ExecutionRequestId("test"),
             commandRequest.namespace,
             commandRequest.podName,
             commandRequest.command,
-        ).let { (output, error) ->
+        ).let { result ->
             return CommandResponse(
-                output = output,
-                error = error,
+                output = result.messages,
+                error = result.errors,
             )
         }
     }

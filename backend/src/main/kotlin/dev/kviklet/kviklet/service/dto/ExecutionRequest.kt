@@ -7,6 +7,7 @@ import dev.kviklet.kviklet.security.Resource
 import dev.kviklet.kviklet.security.SecuredDomainId
 import dev.kviklet.kviklet.security.SecuredDomainObject
 import dev.kviklet.kviklet.security.UserDetailsWithId
+import dev.kviklet.kviklet.service.QueryResult
 import java.io.Serializable
 import java.time.LocalDateTime
 
@@ -38,6 +39,25 @@ sealed class ExecutionRequest(
     open val createdAt: LocalDateTime = LocalDateTime.now(),
     open val author: User,
 )
+
+sealed class ExecutionResult(open val executionRequestId: ExecutionRequestId) : SecuredDomainObject {
+    override fun getId() = executionRequestId.toString()
+    override fun getDomainObjectType() = Resource.EXECUTION_REQUEST
+    override fun getRelated(resource: Resource) = null
+}
+
+data class DBExecutionResult(
+    override val executionRequestId: ExecutionRequestId,
+    val results: List<QueryResult>,
+) : ExecutionResult(executionRequestId)
+
+data class KubernetesExecutionResult(
+    override val executionRequestId: ExecutionRequestId,
+    val errors: List<String>,
+    val messages: List<String>,
+    val finished: Boolean = true,
+    val exitCode: Int? = 0,
+) : ExecutionResult(executionRequestId)
 
 data class DatasourceExecutionRequest(
     override val id: ExecutionRequestId?,

@@ -90,6 +90,10 @@ const ChangeExecutionRequestPayload = z.object({
   description: z.string().optional(),
   statement: z.string().optional(),
   readOnly: z.boolean().optional(),
+  command: z.string().optional(),
+  podName: z.string().optional(),
+  namespace: z.string().optional(),
+  containerName: z.string().optional(),
 });
 
 const DatasourceExecutionRequestResponse = withType(
@@ -287,25 +291,40 @@ const ErrorResponseSchema = withType(
   "error",
 );
 
-const ExecuteResponseResultSchema = z.union([
+const DBExecuteResponseResultSchema = z.union([
   UpdateExecuteResponseSchema,
   SelectExecuteResponseSchema,
   ErrorResponseSchema,
 ]);
 
-const ExecuteResponseSchema = z.object({
-  results: z.array(ExecuteResponseResultSchema),
+const DBExecuteResponseSchema = z.object({
+  results: z.array(DBExecuteResponseResultSchema),
 });
 
-type ExecuteResponseResult = z.infer<typeof ExecuteResponseResultSchema>;
-type ExecuteResponse = z.infer<typeof ExecuteResponseSchema>;
+const KubernetesExecuteResponseSchema = z.object({
+  errors: z.array(z.string()),
+  messages: z.array(z.string()),
+  finished: z.boolean(),
+  exitCode: z.number().optional(),
+});
+
+type DBExecuteResponseResult = z.infer<typeof DBExecuteResponseResultSchema>;
+type KubernetesExecuteResponse = z.infer<
+  typeof KubernetesExecuteResponseSchema
+>;
+type DBExecuteResponse = z.infer<typeof DBExecuteResponseSchema>;
 type UpdateExecuteResponse = z.infer<typeof UpdateExecuteResponseSchema>;
 type SelectExecuteResponse = z.infer<typeof SelectExecuteResponseSchema>;
 type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 type Column = z.infer<typeof ColumnSchema>;
 
 type QueryResult = {
-  results?: ExecuteResponseResult[];
+  results?: DBExecuteResponseResult[];
+  error?: ApiErrorResponse;
+};
+
+type KubernetesResponse = {
+  results?: KubernetesExecuteResponse;
   error?: ApiErrorResponse;
 };
 
@@ -324,10 +343,28 @@ const runQuery = async (
   });
   const json: unknown = await response.json();
   if (response.ok) {
-    const result = ExecuteResponseSchema.parse(json);
+    const result = DBExecuteResponseSchema.parse(json);
     return {
       results: result.results,
     };
+  } else {
+    const result = ApiErrorResponseSchema.parse(json);
+    return { error: result };
+  }
+};
+
+const executeCommand = async (id: string): Promise<KubernetesResponse> => {
+  const response = await fetch(requestUrl + id + "/execute", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+  });
+  const json: unknown = await response.json();
+  if (response.ok) {
+    const result = KubernetesExecuteResponseSchema.parse(json);
+    return { results: result };
   } else {
     const result = ApiErrorResponseSchema.parse(json);
     return { error: result };
@@ -343,16 +380,17 @@ export {
   runQuery,
   patchRequest,
   postStartServer,
+  executeCommand,
 };
 export type {
-  ExecuteResponseResult,
+  DBExecuteResponseResult as ExecuteResponseResult,
   ExecutionRequestResponse,
   ExecutionRequestsResponse,
   DatasourceExecutionRequestResponseWithComments,
   KubernetesExecutionRequestResponseWithComments,
   ExecutionRequestResponseWithComments,
   ChangeExecutionRequestPayload,
-  ExecuteResponse,
+  DBExecuteResponse as ExecuteResponse,
   UpdateExecuteResponse,
   SelectExecuteResponse,
   ErrorResponse,
@@ -365,4 +403,5 @@ export type {
   ApiErrorResponse,
   QueryResult,
   ProxyResponse,
+  KubernetesExecuteResponse,
 };

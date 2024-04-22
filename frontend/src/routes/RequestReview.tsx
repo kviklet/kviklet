@@ -19,6 +19,8 @@ import {
   ExecuteResponseResult,
   KubernetesExecutionRequestResponseWithComments,
   DatasourceExecutionRequestResponseWithComments,
+  executeCommand,
+  KubernetesExecuteResponse,
 } from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
 import { mapStatus, mapStatusToLabelColor, timeSince } from "./Requests";
@@ -38,6 +40,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 import { AbsoluteInitialBubble as InitialBubble } from "../components/InitialBubble";
 import { timeAgo } from "./Auditlog";
+import ShellResult from "../components/ShellResult";
 
 interface RequestReviewParams {
   requestId: string;
@@ -92,6 +95,9 @@ const useRequest = (id: string) => {
 
   const [results, setResults] = useState<ExecuteResponseResult[] | undefined>();
   const [dataLoading, setDataLoading] = useState<boolean>(false);
+  const [kubernetesResults, setKubernetesResults] = useState<
+    KubernetesExecuteResponse | undefined
+  >();
   const [executionError, setExecutionError] = useState<string | undefined>(
     undefined,
   );
@@ -130,12 +136,22 @@ const useRequest = (id: string) => {
 
   const execute = async (explain: boolean) => {
     setDataLoading(true);
-    const response = await runQuery(id, undefined, explain);
-    if (response.results) {
-      setResults(response.results);
-    } else {
-      setExecutionError(response.error?.message);
+    if (request?._type === "DATASOURCE") {
+      const response = await runQuery(id, undefined, explain);
+      if (response.results) {
+        setResults(response.results);
+      } else {
+        setExecutionError(response.error?.message);
+      }
+    } else if (request?._type === "KUBERNETES") {
+      const response = await executeCommand(id);
+      if (response.results) {
+        setKubernetesResults(response.results);
+      } else {
+        setExecutionError(response.error?.message);
+      }
     }
+
     setDataLoading(false);
   };
 
@@ -147,6 +163,7 @@ const useRequest = (id: string) => {
     start,
     updateRequest,
     results,
+    kubernetesResults,
     dataLoading,
     executionError,
     loading,
@@ -164,6 +181,7 @@ function RequestReview() {
     start,
     updateRequest,
     results,
+    kubernetesResults,
     dataLoading,
     executionError,
     loading,
@@ -196,29 +214,32 @@ function RequestReview() {
           </h1>
           <div className="">
             <div className="">
-              {request?._type === "DATASOURCE" ? (
-                <DatasourceRequestDisplay
-                  request={request}
-                  run={run}
-                  start={start}
-                  updateRequest={updateRequest}
-                  results={results}
-                  dataLoading={dataLoading}
-                  executionError={executionError}
-                  proxyResponse={proxyResponse}
-                ></DatasourceRequestDisplay>
-              ) : (
-                <KubernetesRequestDisplay
-                  request={request}
-                  run={run}
-                  start={start}
-                  updateRequest={updateRequest}
-                  results={results}
-                  dataLoading={dataLoading}
-                  executionError={executionError}
-                  proxyResponse={proxyResponse}
-                ></KubernetesRequestDisplay>
-              )}
+              {request &&
+                (request?._type === "DATASOURCE" ? (
+                  <DatasourceRequestDisplay
+                    request={request}
+                    run={run}
+                    start={start}
+                    updateRequest={updateRequest}
+                    results={results}
+                    dataLoading={dataLoading}
+                    executionError={executionError}
+                    proxyResponse={proxyResponse}
+                  ></DatasourceRequestDisplay>
+                ) : (
+                  (
+                    <KubernetesRequestDisplay
+                      request={request}
+                      run={run}
+                      start={start}
+                      updateRequest={updateRequest}
+                      results={kubernetesResults}
+                      dataLoading={dataLoading}
+                      executionError={executionError}
+                      proxyResponse={proxyResponse}
+                    ></KubernetesRequestDisplay>
+                  ) || <></>
+                ))}
               <div className="w-full border-b dark:border-slate-700 border-slate-300 mt-3"></div>
               <div className="mt-6">
                 <span>Activity</span>
@@ -310,11 +331,11 @@ function KubernetesRequestDisplay({
   executionError,
   proxyResponse,
 }: {
-  request: KubernetesExecutionRequestResponseWithComments | undefined;
+  request: KubernetesExecutionRequestResponseWithComments;
   run: (explain?: boolean) => Promise<void>;
   start: () => Promise<ProxyResponse>;
-  updateRequest: (request: { statement?: string }) => Promise<void>;
-  results: ExecuteResponseResult[] | undefined;
+  updateRequest: (request: { command?: string }) => Promise<void>;
+  results: KubernetesExecuteResponse | undefined;
   dataLoading: boolean;
   executionError: string | undefined;
   proxyResponse: ProxyResponse | undefined;
@@ -329,7 +350,7 @@ function KubernetesRequestDisplay({
       ></KubernetesRequestBox>
       <div className="flex justify-center">
         {(dataLoading && <Spinner></Spinner>) ||
-          (results && <MultiResult resultList={results}></MultiResult>)}
+          (results && <ShellResult {...results}></ShellResult>)}
       </div>
       {executionError && (
         <div className="text-red-500 my-4">{executionError}</div>
@@ -346,15 +367,16 @@ function KubernetesRequestDisplay({
 }
 
 interface KubernetesRequestBoxProps {
-  request: KubernetesExecutionRequestResponseWithComments | undefined;
+  request: KubernetesExecutionRequestResponseWithComments;
   runQuery: (explain?: boolean) => Promise<void>;
   startServer: () => Promise<ProxyResponse>;
-  updateRequest: (request: { statement?: string }) => Promise<void>;
+  updateRequest: (request: { command?: string }) => Promise<void>;
 }
 
 const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
   request,
   updateRequest,
+  runQuery,
 }) => {
   const [editMode, setEditMode] = useState(false);
   const [command, setCommand] = useState(request?.command || "");
@@ -367,7 +389,7 @@ const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
   ) => {
     e.preventDefault();
-    await updateRequest({ statement: command });
+    await updateRequest({ command: command });
     setEditMode(false);
   };
 
@@ -415,6 +437,22 @@ const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
             Edit Command
           </Button>
         )}
+      </div>
+      <div className="relative ml-4 flex justify-end">
+        <Button
+          className="mt-3"
+          id="runQuery"
+          type={(request?.reviewStatus == "APPROVED" && "submit") || "disabled"}
+          onClick={() => void runQuery(false)}
+        >
+          <div
+            className={`play-triangle inline-block w-2 h-3 mr-2 ${
+              (request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
+              "bg-slate-500"
+            }`}
+          ></div>
+          {request?.type == "SingleQuery" ? "Run Command" : "Start Session"}
+        </Button>
       </div>
     </div>
   );

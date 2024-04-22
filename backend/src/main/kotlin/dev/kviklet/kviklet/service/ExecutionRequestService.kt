@@ -7,18 +7,17 @@ import dev.kviklet.kviklet.controller.CreateKubernetesExecutionRequestRequest
 import dev.kviklet.kviklet.controller.CreateReviewRequest
 import dev.kviklet.kviklet.controller.UpdateExecutionRequestRequest
 import dev.kviklet.kviklet.db.CommentPayload
-import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.EditPayload
 import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.ReviewPayload
-import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.proxy.PostgresProxy
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.dto.ConnectionId
+import dev.kviklet.kviklet.service.dto.DBExecutionResult
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
 import dev.kviklet.kviklet.service.dto.DatasourceType
@@ -29,8 +28,10 @@ import dev.kviklet.kviklet.service.dto.ExecutionProxy
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
+import dev.kviklet.kviklet.service.dto.ExecutionResult
 import dev.kviklet.kviklet.service.dto.KubernetesConnection
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
+import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewEvent
@@ -48,10 +49,8 @@ import java.util.concurrent.CompletableFuture
 @Service
 class ExecutionRequestService(
     val executionRequestAdapter: ExecutionRequestAdapter,
-    val datasourceConnectionAdapter: ConnectionAdapter,
     val executorService: ExecutorService,
     val eventService: EventService,
-    val userAdapter: UserAdapter,
     val kubernetesApi: KubernetesApi,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -246,7 +245,10 @@ class ExecutionRequestService(
             )
         }
 
-        return DBExecutionResult(results = result)
+        return DBExecutionResult(
+            executionRequestId = id,
+            results = result,
+        )
     }
 
     private fun executeKubernetesRequest(
@@ -258,16 +260,14 @@ class ExecutionRequestService(
         if (executionRequest.request !is KubernetesExecutionRequest) {
             throw RuntimeException("This should never happen! Probably there is a way to refactor this code")
         }
-        kubernetesApi.executeCommandOnPod(
+        val result = kubernetesApi.executeCommandOnPod(
+            executionRequestId = id,
             namespace = executionRequest.request.namespace!!,
             podName = executionRequest.request.podName!!,
             command = executionRequest.request.command!!,
             timeout = 60,
         )
-        return KubernetesExecutionResult(
-            errors = emptyList(),
-            messages = emptyList(),
-        )
+        return result
     }
 
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
@@ -306,7 +306,7 @@ class ExecutionRequestService(
             query = explainStatements,
         )
 
-        return DBExecutionResult(results = result)
+        return DBExecutionResult(results = result, executionRequestId = id)
     }
 
     @Transactional
@@ -427,17 +427,6 @@ class ExecutionRequestService(
         }
     }
 }
-
-sealed class ExecutionResult
-
-data class DBExecutionResult(
-    val results: List<QueryResult>,
-) : ExecutionResult()
-
-data class KubernetesExecutionResult(
-    val errors: List<String>,
-    val messages: List<String>,
-) : ExecutionResult()
 
 fun Set<Event>.raiseIfAlreadyExecuted(requestType: RequestType) {
     val executedEvents = filter { it.type == EventType.EXECUTE }

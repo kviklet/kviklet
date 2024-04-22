@@ -1,5 +1,7 @@
 package dev.kviklet.kviklet.shell
 
+import dev.kviklet.kviklet.service.dto.ExecutionRequestId
+import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
 import io.kubernetes.client.Exec
 import io.kubernetes.client.openapi.ApiClient
 import io.kubernetes.client.openapi.apis.CoreV1Api
@@ -47,24 +49,25 @@ class KubernetesApi(
     }
 
     fun executeCommandOnPod(
+        executionRequestId: ExecutionRequestId,
         namespace: String,
         podName: String,
         command: String,
         timeout: Long = 5,
-    ): Pair<String, String> {
+    ): KubernetesExecutionResult {
         val apiClient: ApiClient = Config.defaultClient()
         val exec = Exec(apiClient)
 
         val commands = arrayOf("/bin/sh", "-c", command)
-        val process: Process = exec.exec(namespace, podName, commands, true, true)
+        val process: Process = exec.exec(namespace, podName, commands, true, false)
+
+        val outputLines = mutableListOf<String>()
+        val errorLines = mutableListOf<String>()
 
         val inputReader = process.inputStream.bufferedReader()
         val errorReader = process.errorStream.bufferedReader()
 
         val completed = process.waitFor(5, TimeUnit.SECONDS)
-
-        val outputLines = mutableListOf<String>()
-        val errorLines = mutableListOf<String>()
         var lineCount = 0
 
         while (inputReader.ready() && lineCount < 10) {
@@ -78,9 +81,6 @@ class KubernetesApi(
             lineCount++
         }
 
-        val output = outputLines.joinToString("\n")
-        val error = errorLines.joinToString("\n")
-
         if (!completed) {
             CompletableFuture.runAsync {
                 process.waitFor(timeout, TimeUnit.MINUTES)
@@ -88,8 +88,13 @@ class KubernetesApi(
                 process.destroy()
             }
         }
-
-        return Pair(output, error)
+        return KubernetesExecutionResult(
+            executionRequestId = executionRequestId,
+            errors = errorLines,
+            messages = outputLines,
+            finished = completed,
+            exitCode = if (completed) process.exitValue() else null,
+        )
     }
 
     fun executeCommandOnPodLive(

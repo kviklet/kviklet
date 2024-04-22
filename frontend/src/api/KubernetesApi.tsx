@@ -1,9 +1,11 @@
 import { z } from "zod";
 
 const PodSchema = z.object({
+  id: z.string(),
   name: z.string(),
   namespace: z.string(),
   status: z.enum(["Running", "Pending", "Succeeded", "Failed", "Unknown"]),
+  containerNames: z.array(z.string()),
 });
 
 const PodsResponseSchema = z.object({
