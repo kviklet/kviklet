@@ -21,7 +21,7 @@ const DatasourceExecutionRequestSchema = z
   .object({
     connectionType: z.literal("DATASOURCE"),
     title: z.string().min(1, { message: "Title is required" }),
-    type: z.enum(["TemporaryAccess", "SingleQuery"]),
+    type: z.enum(["TemporaryAccess", "SingleExecution"]),
     description: z.string(),
     statement: z.string().optional(),
     connectionId: z.string().min(1),
@@ -29,7 +29,7 @@ const DatasourceExecutionRequestSchema = z
   .refine(
     (data) =>
       data.type === "TemporaryAccess" ||
-      (!!data.statement && data.type === "SingleQuery"),
+      (!!data.statement && data.type === "SingleExecution"),
     {
       message: "If you create a query request an SQL statement is rquired",
     },
@@ -39,7 +39,7 @@ const KubernetesExecutionRequestSchema = z
   .object({
     connectionType: z.literal("KUBERNETES"),
     title: z.string().min(1, { message: "Title is required" }),
-    type: z.enum(["TemporaryAccess", "SingleQuery"]),
+    type: z.enum(["TemporaryAccess", "SingleExecution"]),
     description: z.string(),
     command: z.string().optional(),
     connectionId: z.string().min(1),
@@ -50,7 +50,7 @@ const KubernetesExecutionRequestSchema = z
   .refine(
     (data) =>
       data.type === "TemporaryAccess" ||
-      (!!data.command && data.type === "SingleQuery"),
+      (!!data.command && data.type === "SingleExecution"),
     {
       message: "If you create a command request a command is required",
     },
@@ -91,7 +91,7 @@ export default function ConnectionChooser() {
     ConnectionResponse | undefined
   >(undefined);
   const [chosenMode, setChosenMode] = useState<
-    "SingleQuery" | "TemporaryAccess" | undefined
+    "SingleExecution" | "TemporaryAccess" | undefined
   >(undefined);
 
   return (
@@ -146,7 +146,7 @@ export default function ConnectionChooser() {
                           key={connection.id}
                           clickQuery={() => {
                             setChosenConnection(connection);
-                            setChosenMode("SingleQuery");
+                            setChosenMode("SingleExecution");
                             close();
                           }}
                           clickAccess={() => {
@@ -190,7 +190,7 @@ const DatasourceExecutionRequestForm = ({
   mode,
 }: {
   connection: ConnectionResponse;
-  mode: "SingleQuery" | "TemporaryAccess";
+  mode: "SingleExecution" | "TemporaryAccess";
 }) => {
   const navigate = useNavigate();
 
@@ -287,7 +287,7 @@ const DatasourceExecutionRequestForm = ({
             </p>
           )}
         </div>
-        {mode === "SingleQuery" && (
+        {mode === "SingleExecution" && (
           <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
             <label
               htmlFor="description-input"
@@ -339,7 +339,7 @@ const KubernetesExecutionRequestForm = ({
   mode,
 }: {
   connection: ConnectionResponse;
-  mode: "SingleQuery" | "TemporaryAccess";
+  mode: "SingleExecution" | "TemporaryAccess";
 }) => {
   const navigate = useNavigate();
 
@@ -532,7 +532,7 @@ const KubernetesExecutionRequestForm = ({
               </p>
             )}
           </div>
-          {mode === "SingleQuery" && (
+          {mode === "SingleExecution" && (
             <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
               <label
                 htmlFor="command-input"
