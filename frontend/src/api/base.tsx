@@ -6,7 +6,6 @@ const baseUrl = `${window.location.protocol}//${window.location.hostname}${apiBa
 
 export default baseUrl;
 
-
 function withType<T, U extends string>(schema: z.ZodSchema<T>, typeValue: U) {
   return schema.transform((data) => ({
     ...data,
@@ -14,4 +13,4 @@ function withType<T, U extends string>(schema: z.ZodSchema<T>, typeValue: U) {
   })) as z.ZodSchema<T & { _type: U }>;
 }
 
-export {withType};
+export { withType };
