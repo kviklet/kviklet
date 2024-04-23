@@ -70,7 +70,7 @@ class DatasourceConnectionTest(
                 description = "Request description",
                 statement = "SELECT 1",
                 readOnly = false,
-                type = RequestType.SingleQuery,
+                type = RequestType.SingleExecution,
             ),
             testUserDetails,
         )

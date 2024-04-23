@@ -6,6 +6,7 @@ import {
 import { Link } from "react-router-dom";
 import Button from "../components/Button";
 import Spinner from "../components/Spinner";
+import { CircleStackIcon, CloudIcon } from "@heroicons/react/20/solid";
 
 const Toggle = (props: { active: boolean; onClick: () => void }) => {
   return (
@@ -142,6 +143,11 @@ function Requests() {
                         <p className="dark:text-slate-400 text-slate-600">
                           {request.description}
                         </p>
+                        {(request._type === "DATASOURCE" && (
+                          <CircleStackIcon className="w-4 mt-auto dark:text-slate-600 text-slate-400"></CircleStackIcon>
+                        )) || (
+                          <CloudIcon className="w-4 mt-auto dark:text-slate-600 text-slate-400"></CloudIcon>
+                        )}
                       </div>
                       <div className="ml-auto flex flex-col items-end">
                         <div className="mb-2 text-sm dark:text-slate-400 text-slate-600">

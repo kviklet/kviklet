@@ -22,7 +22,7 @@ enum class ReviewStatus {
 }
 
 enum class RequestType {
-    SingleQuery,
+    SingleExecution,
     TemporaryAccess,
 }
 

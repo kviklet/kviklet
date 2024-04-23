@@ -141,7 +141,7 @@ class ExecutionTest {
         val executionRequest = executionRequestAdapter.createExecutionRequest(
             connectionId = connection.id,
             title = "Test Execution",
-            type = RequestType.SingleQuery,
+            type = RequestType.SingleExecution,
             description = "A test execution request",
             statement = "SELECT * FROM test",
             readOnly = true,

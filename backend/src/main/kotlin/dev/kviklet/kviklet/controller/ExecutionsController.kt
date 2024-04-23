@@ -38,7 +38,7 @@ class ExecutionsController(
                 ExecutionLogResponse(
                     requestId = it.request.getId(),
                     name = it.author.fullName ?: "",
-                    Statement = it.query,
+                    Statement = it.query ?: it.command ?: "",
                     connectionId = it.request.request.connection.getId(),
                     executionTime = it.createdAt,
                 )

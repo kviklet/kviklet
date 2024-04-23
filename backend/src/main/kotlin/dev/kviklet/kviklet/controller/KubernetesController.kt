@@ -65,6 +65,7 @@ class KubernetesController(
             ExecutionRequestId("test"),
             commandRequest.namespace,
             commandRequest.podName,
+            null,
             commandRequest.command,
         ).let { result ->
             return CommandResponse(

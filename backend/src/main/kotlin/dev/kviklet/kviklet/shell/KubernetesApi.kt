@@ -52,6 +52,7 @@ class KubernetesApi(
         executionRequestId: ExecutionRequestId,
         namespace: String,
         podName: String,
+        containerName: String? = null,
         command: String,
         timeout: Long = 5,
     ): KubernetesExecutionResult {
@@ -59,7 +60,10 @@ class KubernetesApi(
         val exec = Exec(apiClient)
 
         val commands = arrayOf("/bin/sh", "-c", command)
-        val process: Process = exec.exec(namespace, podName, commands, true, false)
+        val process = when (containerName != null) {
+            true -> exec.exec(namespace, podName, commands, containerName, true, false)
+            false -> exec.exec(namespace, podName, commands, true, false)
+        }
 
         val outputLines = mutableListOf<String>()
         val errorLines = mutableListOf<String>()

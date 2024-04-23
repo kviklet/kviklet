@@ -5,6 +5,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   CircleStackIcon,
+  CloudIcon,
   CommandLineIcon,
 } from "@heroicons/react/20/solid";
 import { useNavigate } from "react-router-dom";
@@ -15,7 +16,6 @@ import { z } from "zod";
 import Button from "../components/Button";
 import { Disclosure } from "@headlessui/react";
 import { Pod, getPods } from "../api/KubernetesApi";
-import Select from "../components/Select";
 
 const DatasourceExecutionRequestSchema = z
   .object({
@@ -154,6 +154,7 @@ export default function ConnectionChooser() {
                             setChosenMode("TemporaryAccess");
                             close();
                           }}
+                          connectionType={connection._type}
                         ></Card>
                       ))}
                     </ul>
@@ -438,7 +439,7 @@ const KubernetesExecutionRequestForm = ({
               placeholder={
                 mode === "TemporaryAccess"
                   ? "Why do you need access to this connection?"
-                  : "What are you trying to accomplish with this Query?"
+                  : "What are you trying to accomplish?"
               }
               {...register("description")}
             ></textarea>
@@ -539,12 +540,17 @@ const KubernetesExecutionRequestForm = ({
               >
                 Command
               </label>
-              <textarea
-                className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
-                id="command-input"
-                placeholder="/bin/sh -c 'echo hello world'"
-                {...register("command")}
-              ></textarea>
+              <div className="flex">
+                <span className="whitespace-nowrap text-slate-400 dark:text-slate-400 mr-3">
+                  /bin/sh -c
+                </span>
+                <textarea
+                  className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+                  id="command-input"
+                  placeholder="echo hello world"
+                  {...register("command")}
+                ></textarea>
+              </div>
               {errors.command && (
                 <p className="text-xs italic text-red-500 mt-2">
                   {errors.command?.message}
@@ -569,6 +575,7 @@ interface CardProps {
   subheader: string;
   clickQuery: () => void;
   clickAccess: () => void;
+  connectionType: "DATASOURCE" | "KUBERNETES";
 }
 
 const Card = (props: CardProps) => {
@@ -596,25 +603,34 @@ const Card = (props: CardProps) => {
               onClick={props.clickQuery}
               className="relative -mr-px inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-bl-lg border border-transparent py-4 text-sm font-semibold text-slate-900 dark:text-slate-50 dark:hover:bg-slate-800 hover:bg-slate-100"
             >
-              <CircleStackIcon
-                className="h-5 w-5 text-slate-400 dark:text-slate-500"
-                aria-hidden="true"
-              />
-              Query
+              {props.connectionType === "DATASOURCE" ? (
+                <CircleStackIcon
+                  className="h-5 w-5 text-slate-400 dark:text-slate-500"
+                  aria-hidden="true"
+                />
+              ) : (
+                <CloudIcon
+                  className="h-5 w-5 text-slate-400 dark:text-slate-500"
+                  aria-hidden="true"
+                />
+              )}
+              {props.connectionType === "DATASOURCE" ? "Query" : "Command"}
             </button>
           </div>
-          <div className="-ml-px flex w-0 flex-1">
-            <button
-              onClick={props.clickAccess}
-              className="relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-br-lg border border-transparent py-4 text-sm font-semibold text-slate-900 dark:text-slate-50 dark:hover:bg-slate-800 hover:bg-slate-100"
-            >
-              <CommandLineIcon
-                className="h-5 w-5 text-slate-400 dark:text-slate-500"
-                aria-hidden="true"
-              />
-              Access
-            </button>
-          </div>
+          {props.connectionType === "DATASOURCE" && (
+            <div className="-ml-px flex w-0 flex-1">
+              <button
+                onClick={props.clickAccess}
+                className="relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-br-lg border border-transparent py-4 text-sm font-semibold text-slate-900 dark:text-slate-50 dark:hover:bg-slate-800 hover:bg-slate-100"
+              >
+                <CommandLineIcon
+                  className="h-5 w-5 text-slate-400 dark:text-slate-500"
+                  aria-hidden="true"
+                />
+                Access
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </li>

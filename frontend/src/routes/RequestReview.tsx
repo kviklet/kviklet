@@ -191,7 +191,7 @@ function RequestReview() {
   const navigate = useNavigate();
 
   const run = async (explain?: boolean) => {
-    if (request?.type === "SingleQuery") {
+    if (request?.type === "SingleExecution") {
       await execute(explain || false);
     } else {
       navigate(`/requests/${request?.id}/session`);
@@ -451,7 +451,7 @@ const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
               "bg-slate-500"
             }`}
           ></div>
-          {request?.type == "SingleQuery" ? "Run Command" : "Start Session"}
+          {request?.type == "SingleExecution" ? "Run Command" : "Start Session"}
         </Button>
       </div>
     </div>
@@ -483,7 +483,7 @@ function DatasourceRequestBox({
   }, [request?.statement]);
 
   const questionText =
-    request?.type == "SingleQuery"
+    request?.type == "SingleExecution"
       ? " wants to execute a statement on "
       : " wants to have access to ";
 
@@ -502,7 +502,7 @@ function DatasourceRequestBox({
         </p>
         <div className="py-3">
           <p className="text-slate-500 pb-6">{request?.description}</p>
-          {request?.type == "SingleQuery" ? (
+          {request?.type == "SingleExecution" ? (
             editMode ? (
               <div>
                 <textarea
@@ -571,7 +571,7 @@ function DatasourceRequestBox({
               "bg-slate-500"
             }`}
           ></div>
-          {request?.type == "SingleQuery" ? "Run Query" : "Start Session"}
+          {request?.type == "SingleExecution" ? "Run Query" : "Start Session"}
         </Button>
         {(request?.type == "TemporaryAccess" && (
           <Button
@@ -621,13 +621,27 @@ function EditEvent({ event, index }: { event: Edit; index: number }) {
               | string
               | undefined) || ""}
           </div>
-          <div>
-            <p>Previous Statement</p>
-          </div>
+          {event?.previousQuery && (
+            <div>
+              <p>Previous Statement</p>
+            </div>
+          )}
+          {event?.previousCommand && (
+            <div>
+              <p>Previous Command</p>
+            </div>
+          )}
         </p>
-        <div className="py-3 px-4 dark:bg-slate-900 rounded-b-md">
-          <Highlighter>{event.previousQuery}</Highlighter>
-        </div>
+        {event?.previousQuery && (
+          <div className="py-3 px-4 dark:bg-slate-900 rounded-b-md">
+            <Highlighter>{event.previousQuery}</Highlighter>
+          </div>
+        )}
+        {event?.previousCommand && (
+          <div className="py-3 px-4 dark:bg-slate-900 rounded-b-md">
+            <Highlighter>{event.previousCommand}</Highlighter>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -651,9 +665,16 @@ function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
             <FontAwesomeIcon icon={solid("play")} />
           </div>
         </div>
-        <div className="text-slate-500 text-sm">
-          {event?.author?.fullName} ran the following statement:
-        </div>
+        {event?.query && (
+          <div className="text-slate-500 text-sm">
+            {event?.author?.fullName} ran the following statement:
+          </div>
+        )}
+        {event?.command && (
+          <div className="text-slate-500 text-sm">
+            {event?.author?.fullName} ran the following command:
+          </div>
+        )}
       </div>
       <div className="relative shadow-md dark:shadow-none dark:border-slate-700 rounded-md border">
         <InitialBubble name={event?.author?.fullName} />
@@ -664,9 +685,16 @@ function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
               | undefined) || ""}
           </div>
         </p>
-        <div className="py-3 px-4 dark:bg-slate-900 rounded-b-md">
-          <Highlighter>{event.query}</Highlighter>
-        </div>
+        {event?.query && (
+          <div className="py-3 px-4 dark:bg-slate-900 rounded-b-md">
+            <Highlighter>{event.query}</Highlighter>
+          </div>
+        )}
+        {event?.command && (
+          <div className="py-3 px-4 dark:bg-slate-900 rounded-b-md">
+            <Highlighter>{event.command}</Highlighter>
+          </div>
+        )}
       </div>
     </div>
   );

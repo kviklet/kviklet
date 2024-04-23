@@ -19,6 +19,7 @@ const CommentEvent = withType(
 
 const ReviewEvent = withType(
   z.object({
+    type: z.literal("REVIEW"),
     author: userResponseSchema.optional(),
     comment: z.string(),
     createdAt: z.coerce.date(),
@@ -30,8 +31,13 @@ const ReviewEvent = withType(
 
 const EditEvent = withType(
   z.object({
+    type: z.literal("EDIT"),
     author: userResponseSchema.optional(),
-    previousQuery: z.string(),
+    previousQuery: z.string().optional().nullable(),
+    previousCommand: z.string().optional().nullable(),
+    previousPodName: z.string().optional().nullable(),
+    previousNamespace: z.string().optional().nullable(),
+    previousContainerName: z.string().optional().nullable(),
     createdAt: z.coerce.date(),
     id: z.string(),
   }),
@@ -40,8 +46,13 @@ const EditEvent = withType(
 
 const ExecuteEvent = withType(
   z.object({
+    type: z.literal("EXECUTE"),
     author: userResponseSchema.optional(),
-    query: z.string(),
+    query: z.string().optional().nullable(),
+    command: z.string().optional().nullable(),
+    podName: z.string().optional().nullable(),
+    namespace: z.string().optional().nullable(),
+    containerName: z.string().optional().nullable(),
     createdAt: z.coerce.date(),
     id: z.string(),
   }),
@@ -50,7 +61,7 @@ const ExecuteEvent = withType(
 
 const RawDatasourceRequestSchema = z.object({
   id: z.string(),
-  type: z.enum(["TemporaryAccess", "SingleQuery"]),
+  type: z.enum(["TemporaryAccess", "SingleExecution"]),
   author: userResponseSchema,
   title: z.string().min(1),
   description: z.string(),
@@ -64,7 +75,7 @@ const RawDatasourceRequestSchema = z.object({
 
 const RawKubernetesRequestSchema = z.object({
   id: z.string(),
-  type: z.enum(["TemporaryAccess", "SingleQuery"]),
+  type: z.enum(["TemporaryAccess", "SingleExecution"]),
   author: userResponseSchema,
   title: z.string().min(1),
   description: z.string(),
@@ -85,7 +96,7 @@ const ProxyResponse = z.object({
   password: z.string(),
 });
 
-const ChangeExecutionRequestPayload = z.object({
+const ChangeExecutionRequestPayloadSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().optional(),
   statement: z.string().optional(),
@@ -151,7 +162,7 @@ type ExecutionRequestsResponse = z.infer<
 type ExecutionRequestResponse = z.infer<typeof ExecutionRequestResponseSchema>;
 
 type ChangeExecutionRequestPayload = z.infer<
-  typeof ChangeExecutionRequestPayload
+  typeof ChangeExecutionRequestPayloadSchema
 >;
 type Edit = z.infer<typeof EditEvent>;
 type Review = z.infer<typeof ReviewEvent>;

@@ -61,7 +61,7 @@ class ExecutionRequestEntity(
     var executionRequestType: ExecutionRequestType,
 
     @Enumerated(EnumType.STRING)
-    var type: RequestType,
+    var executionType: RequestType,
 
     var description: String,
 
@@ -89,7 +89,7 @@ class ExecutionRequestEntity(
                 id = ExecutionRequestId(id!!),
                 connection = connection.toDto() as DatasourceConnection,
                 title = title,
-                type = type,
+                type = executionType,
                 description = description,
                 statement = statement,
                 readOnly = readOnly!!,
@@ -102,7 +102,7 @@ class ExecutionRequestEntity(
                 id = ExecutionRequestId(id!!),
                 connection = connection.toDto() as KubernetesConnection,
                 title = title,
-                type = type,
+                type = executionType,
                 description = description,
                 executionStatus = executionStatus,
                 createdAt = createdAt,
@@ -222,7 +222,7 @@ class ExecutionRequestAdapter(
             ExecutionRequestEntity(
                 connection = connection,
                 title = title,
-                type = type,
+                executionType = type,
                 description = description,
                 statement = statement,
                 readOnly = readOnly,

@@ -43,12 +43,20 @@ data class ReviewPayload(
 
 @JsonTypeName("EDIT")
 data class EditPayload(
-    val previousQuery: String,
+    val previousQuery: String? = null,
+    val previousCommand: String? = null,
+    val previousContainerName: String? = null,
+    val previousPodName: String? = null,
+    val previousNamespace: String? = null,
 ) : Payload(EventType.EDIT)
 
 @JsonTypeName("EXECUTE")
 data class ExecutePayload(
-    val query: String,
+    val query: String? = null,
+    val command: String? = null,
+    val containerName: String? = null,
+    val podName: String? = null,
+    val namespace: String? = null,
 ) : Payload(EventType.EXECUTE)
 
 @Entity(name = "event")

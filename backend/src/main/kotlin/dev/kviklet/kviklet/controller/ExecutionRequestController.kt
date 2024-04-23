@@ -382,12 +382,20 @@ abstract class EventResponse(
                 event.author,
                 event.createdAt,
                 event.previousQuery,
+                event.previousCommand,
+                event.previousContainerName,
+                event.previousPodName,
+                event.previousNamespace,
             )
             is ExecuteEvent -> ExecuteEventResponse(
                 event.eventId!!,
                 event.author,
                 event.createdAt,
                 event.query,
+                event.command,
+                event.containerName,
+                event.podName,
+                event.namespace,
             )
             else -> {
                 throw IllegalStateException("Somehow found event of type ${event.type}")
@@ -418,7 +426,11 @@ data class EditEventResponse(
     override val id: String,
     override val author: User,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
-    val previousQuery: String,
+    val previousQuery: String? = null,
+    val previousCommand: String? = null,
+    val previousContainerName: String? = null,
+    val previousPodName: String? = null,
+    val previousNamespace: String? = null,
 ) : EventResponse(EventType.EDIT, createdAt)
 
 @JsonTypeName("EXECUTE")
@@ -426,7 +438,11 @@ data class ExecuteEventResponse(
     override val id: String,
     override val author: User,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
-    val query: String,
+    val query: String? = null,
+    val command: String? = null,
+    val containerName: String? = null,
+    val podName: String? = null,
+    val namespace: String? = null,
 ) : EventResponse(EventType.EXECUTE, createdAt)
 
 data class ProxyResponse(

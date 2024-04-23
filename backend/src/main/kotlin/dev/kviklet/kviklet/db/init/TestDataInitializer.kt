@@ -49,7 +49,7 @@ class TestDataInitializer(
         return ExecutionRequestEntity(
             connection = connection,
             title = title,
-            type = RequestType.SingleQuery,
+            executionType = RequestType.SingleExecution,
             description = description,
             statement = statement,
             readOnly = readOnly,

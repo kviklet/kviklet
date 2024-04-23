@@ -36,6 +36,6 @@ object TestFixtures {
         description = "description",
         statement = "select 1",
         readOnly = false,
-        type = RequestType.SingleQuery,
+        type = RequestType.SingleExecution,
     )
 }

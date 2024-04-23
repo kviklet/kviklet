@@ -133,7 +133,13 @@ class ExecutionRequestService(
                     eventService.saveEvent(
                         id,
                         userId,
-                        EditPayload(previousQuery = executionRequestDetails.request.command ?: ""),
+                        EditPayload(
+                            previousCommand = request.command?.let { executionRequestDetails.request.command },
+                            previousContainerName = request.containerName
+                                ?.let { executionRequestDetails.request.containerName ?: "" },
+                            previousPodName = request.podName?.let { executionRequestDetails.request.podName },
+                            previousNamespace = request.namespace?.let { executionRequestDetails.request.namespace },
+                        ),
                     )
                 }
             }
@@ -205,15 +211,9 @@ class ExecutionRequestService(
         if (executionRequest.request !is DatasourceExecutionRequest) {
             throw RuntimeException("This should never happen! Probably there is a way to refactor this code")
         }
-        val reviewStatus = resolveReviewStatus(executionRequest.events, connection.reviewConfig)
-        if (reviewStatus != ReviewStatus.APPROVED) {
-            throw InvalidReviewException("This request has not been approved yet!")
-        }
-
-        executionRequest.events.raiseIfAlreadyExecuted(executionRequest.request.type)
 
         val queryToExecute = when (executionRequest.request.type) {
-            RequestType.SingleQuery -> executionRequest.request.statement!!
+            RequestType.SingleExecution -> executionRequest.request.statement!!
             RequestType.TemporaryAccess -> query ?: throw MissingQueryException(
                 "For temporary access requests the query param is required",
             )
@@ -234,7 +234,7 @@ class ExecutionRequestService(
             query = queryToExecute,
         )
 
-        if (executionRequest.request.type == RequestType.SingleQuery) {
+        if (executionRequest.request.type == RequestType.SingleExecution) {
             executionRequestAdapter.updateExecutionRequest(
                 id,
                 title = executionRequest.request.title,
@@ -260,11 +260,27 @@ class ExecutionRequestService(
         if (executionRequest.request !is KubernetesExecutionRequest) {
             throw RuntimeException("This should never happen! Probably there is a way to refactor this code")
         }
+
+        eventService.saveEvent(
+            id,
+            userId,
+            ExecutePayload(
+                command = executionRequest.request.command!!,
+                containerName = executionRequest.request.containerName,
+                podName = executionRequest.request.podName,
+                namespace = executionRequest.request.namespace,
+            ),
+        )
+
+        // only pass container name if it's not empty
+        val containerName = executionRequest.request.containerName?.takeIf { it.isNotBlank() }
+
         val result = kubernetesApi.executeCommandOnPod(
             executionRequestId = id,
             namespace = executionRequest.request.namespace!!,
             podName = executionRequest.request.podName!!,
-            command = executionRequest.request.command!!,
+            command = executionRequest.request.command,
+            containerName = containerName,
             timeout = 60,
         )
         return result
@@ -273,7 +289,15 @@ class ExecutionRequestService(
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
     fun execute(id: ExecutionRequestId, query: String?, userId: String): ExecutionResult {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
-        return when (val connection = executionRequest.request.connection) {
+        val connection = executionRequest.request.connection
+
+        val reviewStatus = resolveReviewStatus(executionRequest.events, connection.reviewConfig)
+        if (reviewStatus != ReviewStatus.APPROVED) {
+            throw InvalidReviewException("This request has not been approved yet!")
+        }
+
+        executionRequest.events.raiseIfAlreadyExecuted(executionRequest.request.type)
+        return when (connection) {
             is DatasourceConnection -> {
                 executeDatasourceRequest(id, executionRequest, connection, query, userId)
             }
@@ -292,7 +316,7 @@ class ExecutionRequestService(
         }
 
         val requestType = executionRequest.request.type
-        if (requestType != RequestType.SingleQuery) {
+        if (requestType != RequestType.SingleExecution) {
             throw InvalidReviewException("Can only explain single queries!")
         }
         val parsedStatements = CCJSqlParserUtil.parseStatements(executionRequest.request.statement)
@@ -433,7 +457,7 @@ fun Set<Event>.raiseIfAlreadyExecuted(requestType: RequestType) {
     if (executedEvents.isEmpty()) return
 
     when (requestType) {
-        RequestType.SingleQuery -> {
+        RequestType.SingleExecution -> {
             if (this.isNotEmpty()) {
                 throw AlreadyExecutedException("This request has already been executed, can only execute once!")
             }

@@ -154,7 +154,7 @@ class ExecutionRequestHelper(
         val executionRequest = executionRequestAdapter.createExecutionRequest(
             connectionId = connection.id,
             title = "Test Execution",
-            type = RequestType.SingleQuery,
+            type = RequestType.SingleExecution,
             description = "A test execution request",
             statement = "SELECT 1;",
             readOnly = true,
