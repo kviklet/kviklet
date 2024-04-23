@@ -1,12 +1,9 @@
 package dev.kviklet.kviklet.controller
 
-import dev.kviklet.kviklet.service.dto.ExecutionRequestId
-import dev.kviklet.kviklet.shell.KubernetesApi
+import dev.kviklet.kviklet.service.KubernetesService
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
@@ -41,13 +38,13 @@ data class CommandResponse(
     description = "Interact with a kubernetes cluster",
 )
 class KubernetesController(
-    private val kubernetesApi: KubernetesApi,
+    private val kubernetesService: KubernetesService,
 ) {
 
     @GetMapping("/pods")
     fun getPods(): PodList {
         return PodList(
-            pods = kubernetesApi.getActivePods().map {
+            pods = kubernetesService.listPods().map {
                 Pod(
                     id = it.metadata?.uid ?: "",
                     name = it.metadata?.name ?: "",
@@ -57,21 +54,5 @@ class KubernetesController(
                 )
             },
         )
-    }
-
-    @PostMapping("/execute-command")
-    fun executeCommand(@RequestBody commandRequest: CommandRequest): CommandResponse {
-        kubernetesApi.executeCommandOnPod(
-            ExecutionRequestId("test"),
-            commandRequest.namespace,
-            commandRequest.podName,
-            null,
-            commandRequest.command,
-        ).let { result ->
-            return CommandResponse(
-                output = result.messages,
-                error = result.errors,
-            )
-        }
     }
 }

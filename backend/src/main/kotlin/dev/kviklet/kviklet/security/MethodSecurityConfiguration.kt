@@ -74,7 +74,7 @@ interface SecuredDomainObject {
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention
-annotation class Policy(val permission: Permission)
+annotation class Policy(val permission: Permission, val checkIsPresentOnly: Boolean = false)
 
 @Configuration
 @EnableMethodSecurity(prePostEnabled = true)
@@ -98,7 +98,7 @@ class MyAuthorizationManager {
     fun check(
         authentication: Supplier<Authentication?>,
         invocation: MethodInvocation,
-        returnObject: SecuredDomainObject? = null,
+        returnObject: Any? = null,
     ): AuthorizationDecision {
         val policyAnnotation: Policy = AnnotationUtils.findAnnotation(invocation.method, Policy::class.java)!!
         // If there is no SecurityContext the method has been called from within the application
@@ -107,7 +107,15 @@ class MyAuthorizationManager {
         val policies = auth.authorities.filterIsInstance<PolicyGrantedAuthority>()
 
         var permissionToCheck: Permission = policyAnnotation.permission
-        var securedObject = returnObject
+        if (policyAnnotation.checkIsPresentOnly) {
+            if (policies.vote(permissionToCheck).isAllowed()) {
+                return AuthorizationDecision(true)
+            }
+        }
+        if ((returnObject !is SecuredDomainObject) && (returnObject != null)) {
+            throw Exception("Expected SecuredDomainObject, got $returnObject.")
+        }
+        var securedObject: SecuredDomainObject? = returnObject as SecuredDomainObject?
 
         val userDetailsWithId = when (auth.principal) {
             is UserDetailsWithId -> auth.principal as UserDetailsWithId
@@ -156,17 +164,21 @@ class AuthorizationManagerInterceptor(
     }
 
     private fun attemptPostAuthorization(invocation: MethodInvocation, returnedObject: Any?): Any? {
-        return if (returnedObject is SecuredDomainObject) {
-            if (!authorizationManager.check(authentication, invocation, returnedObject).isGranted) {
-                throw AccessDeniedException("Access Denied")
+        return when (returnedObject) {
+            is Collection<*> -> {
+                filterCollection(invocation, returnedObject as MutableCollection<*>)
             }
-            returnedObject
-        } else if (returnedObject is Collection<*>) {
-            filterCollection(invocation, returnedObject as MutableCollection<*>)
-        } else if (returnedObject == null) {
-            null
-        } else {
-            throw IllegalStateException("Expected SecuredDomainObject, got $returnedObject.")
+
+            null -> {
+                null
+            }
+
+            else -> {
+                if (!authorizationManager.check(authentication, invocation, returnedObject).isGranted) {
+                    throw AccessDeniedException("Access Denied")
+                }
+                returnedObject
+            }
         }
     }
 
@@ -176,12 +188,8 @@ class AuthorizationManagerInterceptor(
     ): MutableCollection<T> {
         val retain: MutableList<T> = ArrayList(filterTarget.size)
         for (filterObject in filterTarget) {
-            if (filterObject is SecuredDomainObject) {
-                if (authorizationManager.check(authentication, invocation, filterObject).isGranted) {
-                    retain.add(filterObject)
-                }
-            } else {
-                throw IllegalStateException("Expected SecuredDomainObject, got $filterObject.")
+            if (authorizationManager.check(authentication, invocation, filterObject).isGranted) {
+                retain.add(filterObject)
             }
         }
         filterTarget.clear()

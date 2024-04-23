@@ -38,16 +38,6 @@ class KubernetesApi(
         }
     }
 
-    fun getPods() {
-        val activePods = getActivePods()
-        activePods.forEach { pod ->
-            println(
-                "Pod: ${pod.metadata?.name}, Namespace: ${pod.metadata?.namespace}, Status: ${pod.status?.phase}",
-            )
-        }
-        println("Getting pods")
-    }
-
     fun executeCommandOnPod(
         executionRequestId: ExecutionRequestId,
         namespace: String,
@@ -99,44 +89,6 @@ class KubernetesApi(
             finished = completed,
             exitCode = if (completed) process.exitValue() else null,
         )
-    }
-
-    fun executeCommandOnPodLive(
-        namespace: String,
-        podName: String,
-        command: String,
-        requestId: String,
-        sendWebSocketMessage: (String) -> Unit,
-    ): Process {
-        val apiClient: ApiClient = Config.defaultClient()
-        val exec = Exec(apiClient)
-
-        val commands = arrayOf("/bin/sh", "-c", command)
-        val process: Process = exec.exec(namespace, podName, commands, true, true)
-
-        // asynchronously forwards all output of the process to the shell websocket
-        CompletableFuture.runAsync {
-            process.inputStream.bufferedReader().use { reader ->
-                var line: String? = reader.readLine()
-                while (line != null) {
-                    sendWebSocketMessage(line)
-                    line = reader.readLine()
-                }
-            }
-        }
-
-        // asynchronously forwards all error output of the process to the shell websocket
-        CompletableFuture.runAsync {
-            process.errorStream.bufferedReader().use { reader ->
-                var line: String? = reader.readLine()
-                while (line != null) {
-                    sendWebSocketMessage(line!!)
-                    line = reader.readLine()
-                }
-            }
-        }
-
-        return process
     }
 }
 
