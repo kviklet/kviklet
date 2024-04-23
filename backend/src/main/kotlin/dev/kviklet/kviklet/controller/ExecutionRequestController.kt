@@ -79,12 +79,12 @@ data class CreateKubernetesExecutionRequestRequest(
 data class UpdateExecutionRequestRequest(
     val title: String?,
     val description: String?,
-    val statement: String?,
+    val statement: String? = null,
     val readOnly: Boolean?,
-    val namespace: String?,
-    val podName: String?,
-    val containerName: String?,
-    val command: String?,
+    val namespace: String? = null,
+    val podName: String? = null,
+    val containerName: String? = null,
+    val command: String? = null,
 )
 
 data class ExecuteExecutionRequestRequest(
@@ -101,7 +101,9 @@ data class CreateCommentRequest(
     val comment: String,
 )
 
-sealed class ExecutionRequestResponse() {
+sealed class ExecutionRequestResponse(
+    open val id: ExecutionRequestId,
+) {
     companion object {
         fun fromDto(dto: ExecutionRequestDetails): ExecutionRequestResponse {
             val userResponse = UserResponse(dto.request.author)
@@ -144,7 +146,7 @@ sealed class ExecutionRequestResponse() {
     }
 
     data class DatasourceExecutionRequestResponse(
-        val id: ExecutionRequestId,
+        override val id: ExecutionRequestId,
         val title: String,
         val type: RequestType,
         val author: UserResponse,
@@ -155,10 +157,10 @@ sealed class ExecutionRequestResponse() {
         val reviewStatus: ReviewStatus,
         val executionStatus: String,
         val createdAt: LocalDateTime = LocalDateTime.now(),
-    ) : ExecutionRequestResponse()
+    ) : ExecutionRequestResponse(id = id)
 
     data class KubernetesExecutionRequestResponse(
-        val id: ExecutionRequestId,
+        override val id: ExecutionRequestId,
         val title: String,
         val type: RequestType,
         val author: UserResponse,
@@ -171,13 +173,16 @@ sealed class ExecutionRequestResponse() {
         val podName: String?,
         val containerName: String?,
         val command: String?,
-    ) : ExecutionRequestResponse()
+    ) : ExecutionRequestResponse(id = id)
 }
 
 /**
  * A DTO for the {@link dev.kviklet.kviklet.db.ExecutionRequestEntity} entity
  */
-sealed class ExecutionRequestDetailResponse {
+sealed class ExecutionRequestDetailResponse(
+    open val id: ExecutionRequestId,
+    open val events: List<EventResponse>,
+) {
 
     companion object {
         fun fromDto(dto: ExecutionRequestDetails): ExecutionRequestDetailResponse {
@@ -218,7 +223,7 @@ sealed class ExecutionRequestDetailResponse {
 }
 
 data class DatasourceExecutionRequestDetailResponse(
-    val id: ExecutionRequestId,
+    override val id: ExecutionRequestId,
     val title: String,
     val type: RequestType,
     val author: UserResponse,
@@ -229,11 +234,14 @@ data class DatasourceExecutionRequestDetailResponse(
     val reviewStatus: ReviewStatus,
     val executionStatus: String,
     val createdAt: LocalDateTime = LocalDateTime.now(),
-    val events: List<EventResponse>,
-) : ExecutionRequestDetailResponse()
+    override val events: List<EventResponse>,
+) : ExecutionRequestDetailResponse(
+    id = id,
+    events = events,
+)
 
 data class KubernetesExecutionRequestDetailResponse(
-    val id: ExecutionRequestId,
+    override val id: ExecutionRequestId,
     val title: String,
     val type: RequestType,
     val author: UserResponse,
@@ -246,8 +254,11 @@ data class KubernetesExecutionRequestDetailResponse(
     val podName: String?,
     val containerName: String?,
     val command: String?,
-    val events: List<EventResponse>,
-) : ExecutionRequestDetailResponse()
+    override val events: List<EventResponse>,
+) : ExecutionRequestDetailResponse(
+    id = id,
+    events = events,
+)
 
 @Schema(
     name = "ExecutionResultResponse",

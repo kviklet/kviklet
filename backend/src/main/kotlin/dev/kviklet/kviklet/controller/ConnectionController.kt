@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.controller
 
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
+import dev.kviklet.kviklet.db.ConnectionType
 import dev.kviklet.kviklet.service.ConnectionService
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
@@ -121,7 +122,15 @@ data class ReviewConfigRequest(
 data class ReviewConfigResponse(
     val numTotalRequired: Int = 0,
 )
-sealed class ConnectionResponse {
+
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
+@JsonSubTypes(
+    JsonSubTypes.Type(value = UpdateDatasourceConnectionRequest::class, name = "DATASOURCE"),
+    JsonSubTypes.Type(value = UpdateKubernetesConnectionRequest::class, name = "KUBERNETES"),
+)
+sealed class ConnectionResponse(
+    val connectionType: ConnectionType,
+) {
     companion object {
         fun fromDto(connection: Connection): ConnectionResponse {
             return when (connection) {
@@ -141,7 +150,7 @@ data class DatasourceConnectionResponse(
     val username: String,
     val description: String,
     val reviewConfig: ReviewConfigResponse,
-) : ConnectionResponse() {
+) : ConnectionResponse(ConnectionType.DATASOURCE) {
     companion object {
         fun fromDto(datasourceConnection: DatasourceConnection) = DatasourceConnectionResponse(
             id = datasourceConnection.id,
@@ -162,7 +171,7 @@ data class KubernetesConnectionResponse(
     val displayName: String,
     val description: String,
     val reviewConfig: ReviewConfigResponse,
-) : ConnectionResponse() {
+) : ConnectionResponse(connectionType = ConnectionType.KUBERNETES) {
     companion object {
         fun fromDto(kubernetesConnection: KubernetesConnection) = KubernetesConnectionResponse(
             id = kubernetesConnection.id,

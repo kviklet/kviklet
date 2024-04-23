@@ -4,8 +4,8 @@ import dev.kviklet.kviklet.TestFixtures.createDatasourceConnectionRequest
 import dev.kviklet.kviklet.TestFixtures.createExecutionRequestRequest
 import dev.kviklet.kviklet.TestFixtures.updateExecutionRequestRequest
 import dev.kviklet.kviklet.controller.ConnectionController
+import dev.kviklet.kviklet.controller.DatasourceExecutionRequestDetailResponse
 import dev.kviklet.kviklet.controller.ExecutionRequestController
-import dev.kviklet.kviklet.controller.ExecutionRequestDetailResponse
 import dev.kviklet.kviklet.controller.ExecutionRequestResponse
 import dev.kviklet.kviklet.db.ConnectionRepository
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
@@ -65,7 +65,7 @@ class ExecutionRequestSecurityTest(
         val response = mockMvc.perform(
             patch("/execution-requests/${executionRequest.id}").content(request).withContext(policies, userDetails),
         ).andExpect(status().isOk)
-            .andReturn().parse<ExecutionRequestDetailResponse>()
+            .andReturn().parse<DatasourceExecutionRequestDetailResponse>()
 
         response.statement shouldBe "select 2"
         executionRequestRepository.findById(executionRequest.id.toString()).get().statement shouldBe "select 2"

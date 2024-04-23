@@ -4,7 +4,7 @@ import dev.kviklet.kviklet.controller.CommentEventResponse
 import dev.kviklet.kviklet.controller.ConnectionController
 import dev.kviklet.kviklet.controller.CreateCommentRequest
 import dev.kviklet.kviklet.controller.CreateDatasourceConnectionRequest
-import dev.kviklet.kviklet.controller.CreateExecutionRequestRequest
+import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
 import dev.kviklet.kviklet.controller.ExecutionRequestController
 import dev.kviklet.kviklet.controller.ReviewConfigRequest
 import dev.kviklet.kviklet.db.ConnectionRepository
@@ -64,7 +64,7 @@ class DatasourceConnectionTest(
         )
 
         val request = executionRequestController.create(
-            CreateExecutionRequestRequest(
+            CreateDatasourceExecutionRequestRequest(
                 connectionId = ConnectionId("db-conn"),
                 title = "My Request",
                 description = "Request description",

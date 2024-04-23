@@ -1,7 +1,7 @@
 package dev.kviklet.kviklet
 
 import dev.kviklet.kviklet.controller.CreateDatasourceConnectionRequest
-import dev.kviklet.kviklet.controller.CreateExecutionRequestRequest
+import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
 import dev.kviklet.kviklet.controller.ReviewConfigRequest
 import dev.kviklet.kviklet.controller.UpdateExecutionRequestRequest
 import dev.kviklet.kviklet.service.dto.ConnectionId
@@ -30,7 +30,7 @@ object TestFixtures {
         readOnly = false,
     )
 
-    fun createExecutionRequestRequest(db: String) = CreateExecutionRequestRequest(
+    fun createExecutionRequestRequest(db: String) = CreateDatasourceExecutionRequestRequest(
         connectionId = ConnectionId(db),
         title = "title",
         description = "description",

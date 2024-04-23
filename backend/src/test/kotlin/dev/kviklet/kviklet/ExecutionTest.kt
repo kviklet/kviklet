@@ -107,12 +107,13 @@ class ExecutionTest {
             post("/execution-requests/").cookie(cookie).content(
                 """
                 {
-                    "datasourceConnectionId": "${connection.id}",
+                    "connectionId": "${connection.id}",
                     "title": "Test Execution",
-                    "type": "SingleQuery",
+                    "type": "SingleExecution",
                     "statement": "SELECT * FROM test",
                     "description": "A test execution request",
-                    "readOnly": true
+                    "readOnly": true,
+                    "connectionType": "DATASOURCE"
                 }
                 """.trimIndent(),
             ).contentType("application/json"),
@@ -173,7 +174,7 @@ class ExecutionTest {
                     {
                             "id": "${executionRequest.getId()}",
                             "title": "Test Execution",
-                            "type": "SingleQuery",
+                            "type": "SingleExecution",
                             "description": "A test execution request",
                             "statement": "SELECT * FROM test",
                             "readOnly": true,
