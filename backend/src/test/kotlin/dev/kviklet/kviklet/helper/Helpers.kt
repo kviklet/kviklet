@@ -137,6 +137,23 @@ class ConnectionHelper(
             DatasourceType.POSTGRESQL,
         )
     }
+
+    @Transactional
+    fun createKubernetesConnection(): Connection {
+        return connectionAdapter.createKubernetesConnection(
+            ConnectionId("k8s-conn-test"),
+            "Test Kubernetes Connection",
+            "A test kubernetes connection",
+            ReviewConfig(
+                numTotalRequired = 1,
+            ),
+        )
+    }
+
+    @Transactional
+    fun deleteAll() {
+        connectionAdapter.deleteAll()
+    }
 }
 
 @Component
@@ -162,7 +179,7 @@ class ExecutionRequestHelper(
             authorId = author.getId()!!,
         )
         executionRequestAdapter.addEvent(
-            ExecutionRequestId(executionRequest.getId()!!),
+            ExecutionRequestId(executionRequest.getId()),
             approver.getId()!!,
             ReviewPayload(
                 action = ReviewAction.APPROVE,
@@ -171,7 +188,36 @@ class ExecutionRequestHelper(
         )
 
         return executionRequestAdapter.getExecutionRequestDetails(
-            ExecutionRequestId(executionRequest.getId()!!),
+            ExecutionRequestId(executionRequest.getId()),
+        )
+    }
+
+    @Transactional
+    fun createApprovedKubernetesExecutionRequest(author: User, approver: User): ExecutionRequestDetails {
+        val connection = connectionHelper.createKubernetesConnection()
+        val executionRequestDetails = executionRequestAdapter.createExecutionRequest(
+            connectionId = connection.id,
+            title = "Test Kubernetes Execution",
+            type = RequestType.SingleExecution,
+            description = "A test kubernetes execution request",
+            executionStatus = "PENDING",
+            authorId = author.getId()!!,
+            namespace = "default",
+            podName = "test-pod",
+            containerName = "test-container",
+            command = "echo 'Hello, World!'",
+        )
+
+        executionRequestAdapter.addEvent(
+            ExecutionRequestId(executionRequestDetails.getId()),
+            approver.getId()!!,
+            ReviewPayload(
+                action = ReviewAction.APPROVE,
+                comment = "lgtm",
+            ),
+        )
+        return executionRequestAdapter.getExecutionRequestDetails(
+            ExecutionRequestId(executionRequestDetails.getId()),
         )
     }
 }

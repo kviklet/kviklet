@@ -3,7 +3,6 @@ package dev.kviklet.kviklet.shell
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
 import io.kubernetes.client.Exec
-import io.kubernetes.client.openapi.ApiClient
 import io.kubernetes.client.openapi.apis.CoreV1Api
 import io.kubernetes.client.openapi.models.V1Pod
 import io.kubernetes.client.util.Config
@@ -45,10 +44,8 @@ class KubernetesApi(
         containerName: String? = null,
         command: String,
         timeout: Long = 5,
+        exec: Exec = Exec(Config.defaultClient()),
     ): KubernetesExecutionResult {
-        val apiClient: ApiClient = Config.defaultClient()
-        val exec = Exec(apiClient)
-
         val commands = arrayOf("/bin/sh", "-c", command)
         val process = when (containerName != null) {
             true -> exec.exec(namespace, podName, commands, containerName, true, false)

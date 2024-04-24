@@ -213,4 +213,8 @@ class ConnectionAdapter(
     fun listConnections(): List<Connection> {
         return connectionRepository.findAll().map { it.toDto() }
     }
+
+    fun deleteAll() {
+        connectionRepository.deleteAll()
+    }
 }
