@@ -49,7 +49,7 @@ class KubernetesApiTest {
         }
 
         coEvery {
-            mockCoreV1Api.listPodForAllNamespaces(null, null, null, null, null, null, null, null, null, null)
+            mockCoreV1Api.listPodForAllNamespaces().execute()
         } returns podList
 
         val kubernetesApi = KubernetesApi(mockCoreV1Api)

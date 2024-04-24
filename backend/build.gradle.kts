@@ -52,7 +52,7 @@ dependencies {
     implementation("org.springframework.security:spring-security-config")
     implementation("org.springframework:spring-context-support")
     implementation("com.github.jsqlparser:jsqlparser:4.9")
-    implementation("io.kubernetes:client-java:15.0.1")
+    implementation("io.kubernetes:client-java:20.0.1")
 
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
@@ -60,7 +60,7 @@ dependencies {
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0")
     implementation("org.liquibase:liquibase-core")
     implementation("jakarta.validation:jakarta.validation-api")
-    implementation("org.postgresql:postgresql:42.7.1")
+    implementation("org.postgresql:postgresql:42.7.3")
 
     runtimeOnly("com.h2database:h2")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
@@ -89,7 +89,7 @@ dependencies {
 
     // db drivers
     implementation("org.mariadb.jdbc:mariadb-java-client:3.1.4")
-    implementation("com.mysql:mysql-connector-j:8.0.33")
+    implementation("com.mysql:mysql-connector-j:8.3.0")
 }
 
 tasks.withType<KotlinCompile> {

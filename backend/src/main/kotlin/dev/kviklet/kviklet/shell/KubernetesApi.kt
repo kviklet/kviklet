@@ -5,6 +5,7 @@ import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
 import io.kubernetes.client.Exec
 import io.kubernetes.client.openapi.apis.CoreV1Api
 import io.kubernetes.client.openapi.models.V1Pod
+import io.kubernetes.client.openapi.models.V1PodList
 import io.kubernetes.client.util.Config
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -18,19 +19,8 @@ class KubernetesApi(
 ) {
     fun getActivePods(): List<V1Pod> {
         try {
-            val pods: List<V1Pod> = coreV1Api.listPodForAllNamespaces(
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-            ).items
-            return pods.filter { it.status?.phase == "Running" }
+            val pods: V1PodList = coreV1Api.listPodForAllNamespaces().execute()
+            return pods.items.filter { it.status?.phase == "Running" }
         } catch (e: Exception) {
             e.printStackTrace()
             return emptyList()
