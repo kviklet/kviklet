@@ -1,11 +1,9 @@
 package dev.kviklet.kviklet
 
 import com.ninjasquad.springmockk.MockkBean
-import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.helper.ConnectionHelper
-import dev.kviklet.kviklet.helper.ExecutionRequestHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.shell.KubernetesApi
@@ -31,12 +29,8 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers
 @ActiveProfiles("test")
 class KubernetesControllerTest {
 
-    // Mock the KubernetesApi
     @MockkBean
     private lateinit var kubernetesApi: KubernetesApi
-
-    @Autowired
-    private lateinit var datasourceConnectionAdapter: ConnectionAdapter
 
     @Autowired
     private lateinit var roleAdapter: RoleAdapter
@@ -51,14 +45,10 @@ class KubernetesControllerTest {
     private lateinit var connectionHelper: ConnectionHelper
 
     @Autowired
-    private lateinit var executionRequestHelper: ExecutionRequestHelper
-
-    @Autowired
     lateinit var mockMvc: MockMvc
 
     @BeforeEach
     fun setup() {
-        // Here you configure the mock to return a predefined response
         val mockPods = mutableListOf(
             V1Pod().apply {
                 metadata = V1ObjectMeta().apply {

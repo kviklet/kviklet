@@ -1,10 +1,8 @@
 package dev.kviklet.kviklet
 
-import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.helper.ConnectionHelper
-import dev.kviklet.kviklet.helper.ExecutionRequestHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.security.Permission
 import org.junit.jupiter.api.AfterEach
@@ -24,9 +22,6 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers
 class KubernetesConnectionTest {
 
     @Autowired
-    private lateinit var datasourceConnectionAdapter: ConnectionAdapter
-
-    @Autowired
     private lateinit var roleAdapter: RoleAdapter
 
     @Autowired
@@ -37,9 +32,6 @@ class KubernetesConnectionTest {
 
     @Autowired
     private lateinit var connectionHelper: ConnectionHelper
-
-    @Autowired
-    private lateinit var executionRequestHelper: ExecutionRequestHelper
 
     @Autowired
     lateinit var mockMvc: MockMvc
