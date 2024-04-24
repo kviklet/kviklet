@@ -75,7 +75,6 @@ class KubernetesApi(
         if (!completed) {
             CompletableFuture.runAsync {
                 process.waitFor(timeout, TimeUnit.MINUTES)
-                println("Waited $timeout minutes")
                 process.destroy()
             }
         }
