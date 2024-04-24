@@ -110,7 +110,7 @@ After setting those environment variables the login page should show a Login wit
 
 ### Kubernetes Exec
 
-If you want to use the Kubernetes Exec feature you have to create a separate kubernetes connection. Kviklet will use the user of the deployed pod to execute the command, so make sure that the user has the necessary permissions to execute commands on the pods that you want to access.
+If you want to use the Kubernetes Exec feature you have to create a separate kubernetes connection. Kviklet will use the user of the deployed pod to execute the command. So make sure that the user has the necessary permissions to execute commands on the pods that you want to access.
 
 Kviklet also uses /bin/sh to execute the command, so you will need to make sure your pods have a shell or at least a symlink in /bin/sh. If this bothers you feel free to open an issue, we can potentially make this configurable or find another solution.
 
