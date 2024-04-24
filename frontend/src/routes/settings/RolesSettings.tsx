@@ -15,7 +15,7 @@ import {
   removeRole,
 } from "../../api/RoleApi";
 import ColorfulLabel from "../../components/ColorfulLabel";
-import { useConnections } from "./DatabaseSettings";
+import { useConnections } from "./connection/DatabaseSettings";
 import { ConnectionResponse } from "../../api/DatasourceApi";
 import DeleteConfirm from "../../components/DeleteConfirm";
 import React from "react";
@@ -267,7 +267,7 @@ function EditRoleForm(props: {
         <div className="flex flex-col mb-3">
           <InputField
             id="name"
-            name="Name"
+            label="Name"
             value={name}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setName(e.target.value)
@@ -277,7 +277,7 @@ function EditRoleForm(props: {
         <div className="flex flex-col mb-3">
           <InputField
             id="description"
-            name="Description"
+            label="Description"
             value={description || ""}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setDescription(e.target.value)
@@ -368,7 +368,7 @@ function RoleForm(props: {
         <div className="flex flex-col mb-3">
           <InputField
             id="name"
-            name="Name"
+            label="Name"
             value={name}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setName(e.target.value)
@@ -378,7 +378,7 @@ function RoleForm(props: {
         <div className="flex flex-col mb-3">
           <InputField
             id="description"
-            name="Description"
+            label="Description"
             value={description}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setDescription(e.target.value)

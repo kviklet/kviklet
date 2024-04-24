@@ -1,41 +1,17 @@
 import { z } from "zod";
-import { ExecutionRequest } from "../routes/NewRequest";
 import { userResponseSchema } from "./UserApi";
 import { connectionResponseSchema } from "./DatasourceApi";
 import baseUrl from "./base";
 import { ApiErrorResponse, ApiErrorResponseSchema } from "./Errors";
+import { ExecutionRequest } from "../routes/NewRequest";
 
 const requestUrl = `${baseUrl}/execution-requests/`;
-
-export const DateTime = z.preprocess((arg) => {
-  if (typeof arg === "string") {
-    return new Date(arg);
-  }
-}, z.date());
-
-const ExecutionRequestPayload = z
-  .object({
-    title: z.string().min(1),
-    description: z.string(),
-    type: z.enum(["TemporaryAccess", "SingleQuery"]),
-    statement: z.coerce.string().nullable().optional(),
-    readOnly: z.boolean(),
-    datasourceConnectionId: z.string().min(1),
-  })
-  .refine(
-    (data) =>
-      data.type === "TemporaryAccess" ||
-      (!!data.statement && data.type === "SingleQuery"),
-    {
-      message: "If you create a query request an SQL statement is rquired",
-    },
-  );
 
 const CommentEvent = withType(
   z.object({
     author: userResponseSchema.optional(),
     comment: z.string(),
-    createdAt: DateTime,
+    createdAt: z.coerce.date(),
     id: z.string(),
   }),
   "COMMENT",
@@ -43,9 +19,10 @@ const CommentEvent = withType(
 
 const ReviewEvent = withType(
   z.object({
+    type: z.literal("REVIEW"),
     author: userResponseSchema.optional(),
     comment: z.string(),
-    createdAt: DateTime,
+    createdAt: z.coerce.date(),
     action: z.enum(["APPROVE", "COMMENT", "REQUEST_CHANGE"]),
     id: z.string(),
   }),
@@ -54,9 +31,14 @@ const ReviewEvent = withType(
 
 const EditEvent = withType(
   z.object({
+    type: z.literal("EDIT"),
     author: userResponseSchema.optional(),
-    previousQuery: z.string(),
-    createdAt: DateTime,
+    previousQuery: z.string().optional().nullable(),
+    previousCommand: z.string().optional().nullable(),
+    previousPodName: z.string().optional().nullable(),
+    previousNamespace: z.string().optional().nullable(),
+    previousContainerName: z.string().optional().nullable(),
+    createdAt: z.coerce.date(),
     id: z.string(),
   }),
   "EDIT",
@@ -64,27 +46,48 @@ const EditEvent = withType(
 
 const ExecuteEvent = withType(
   z.object({
+    type: z.literal("EXECUTE"),
     author: userResponseSchema.optional(),
-    query: z.string(),
-    createdAt: DateTime,
+    query: z.string().optional().nullable(),
+    command: z.string().optional().nullable(),
+    podName: z.string().optional().nullable(),
+    namespace: z.string().optional().nullable(),
+    containerName: z.string().optional().nullable(),
+    createdAt: z.coerce.date(),
     id: z.string(),
   }),
   "EXECUTE",
 );
 
-const ExecutionRequestResponse = z.object({
+const RawDatasourceRequestSchema = z.object({
   id: z.string(),
-  type: z.enum(["TemporaryAccess", "SingleQuery"]),
+  type: z.enum(["TemporaryAccess", "SingleExecution"]),
   author: userResponseSchema,
   title: z.string().min(1),
   description: z.string(),
   statement: z.string().nullable().optional(),
-  readOnly: z.boolean(),
   connection: connectionResponseSchema,
   executionStatus: z.string(),
   reviewStatus: z.string(),
-  createdAt: DateTime,
+  createdAt: z.coerce.date(),
   connectionName: z.string().optional(),
+});
+
+const RawKubernetesRequestSchema = z.object({
+  id: z.string(),
+  type: z.enum(["TemporaryAccess", "SingleExecution"]),
+  author: userResponseSchema,
+  title: z.string().min(1),
+  description: z.string(),
+  connection: connectionResponseSchema,
+  executionStatus: z.string(),
+  reviewStatus: z.string(),
+  createdAt: z.coerce.date(),
+  connectionName: z.string().optional(),
+  podName: z.string(),
+  namespace: z.string(),
+  containerName: z.coerce.string(),
+  command: z.string().optional(),
 });
 
 const ProxyResponse = z.object({
@@ -93,29 +96,73 @@ const ProxyResponse = z.object({
   password: z.string(),
 });
 
-const ChangeExecutionRequestPayload = z.object({
+const ChangeExecutionRequestPayloadSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().optional(),
   statement: z.string().optional(),
   readOnly: z.boolean().optional(),
+  command: z.string().optional(),
+  podName: z.string().optional(),
+  namespace: z.string().optional(),
+  containerName: z.string().optional(),
 });
 
-const ExecutionRequestResponseWithComments = ExecutionRequestResponse.extend({
-  events: z.array(
-    z.union([ReviewEvent, CommentEvent, EditEvent, ExecuteEvent]),
-  ),
-});
+const DatasourceExecutionRequestResponse = withType(
+  RawDatasourceRequestSchema,
+  "DATASOURCE",
+);
 
-const ExecutionRequestsResponse = z.array(ExecutionRequestResponse);
+const KubernetesExecutionRequestResponse = withType(
+  RawKubernetesRequestSchema,
+  "KUBERNETES",
+);
 
-type ExecutionRequestResponseWithComments = z.infer<
-  typeof ExecutionRequestResponseWithComments
+const ExecutionRequestResponseSchema = z.union([
+  KubernetesExecutionRequestResponse,
+  DatasourceExecutionRequestResponse,
+]);
+
+const DatasourceExecutionRequestResponseWithCommentsSchema = withType(
+  RawDatasourceRequestSchema.extend({
+    events: z.array(
+      z.union([ReviewEvent, CommentEvent, EditEvent, ExecuteEvent]),
+    ),
+  }),
+  "DATASOURCE",
+);
+
+const KubernetesExecutionRequestResponseWithCommentsSchema = withType(
+  RawKubernetesRequestSchema.extend({
+    events: z.array(
+      z.union([ReviewEvent, CommentEvent, EditEvent, ExecuteEvent]),
+    ),
+  }),
+  "KUBERNETES",
+);
+
+const ExecutionRequestResponseWithCommentsSchema = z.union([
+  KubernetesExecutionRequestResponseWithCommentsSchema,
+  DatasourceExecutionRequestResponseWithCommentsSchema,
+]);
+
+const ExecutionRequestsResponseSchema = z.array(ExecutionRequestResponseSchema);
+
+type DatasourceExecutionRequestResponseWithComments = z.infer<
+  typeof DatasourceExecutionRequestResponseWithCommentsSchema
 >;
-type ExecutionRequestResponse = z.infer<typeof ExecutionRequestResponse>;
-type ExecutionRequestsResponse = z.infer<typeof ExecutionRequestsResponse>;
-type ExecutionRequestPayload = z.infer<typeof ExecutionRequestPayload>;
+type KubernetesExecutionRequestResponseWithComments = z.infer<
+  typeof KubernetesExecutionRequestResponseWithCommentsSchema
+>;
+type ExecutionRequestResponseWithComments = z.infer<
+  typeof ExecutionRequestResponseWithCommentsSchema
+>;
+type ExecutionRequestsResponse = z.infer<
+  typeof ExecutionRequestsResponseSchema
+>;
+type ExecutionRequestResponse = z.infer<typeof ExecutionRequestResponseSchema>;
+
 type ChangeExecutionRequestPayload = z.infer<
-  typeof ChangeExecutionRequestPayload
+  typeof ChangeExecutionRequestPayloadSchema
 >;
 type Edit = z.infer<typeof EditEvent>;
 type Review = z.infer<typeof ReviewEvent>;
@@ -125,21 +172,13 @@ type Event = Edit | Review | Comment | Execute;
 type ProxyResponse = z.infer<typeof ProxyResponse>;
 
 const addRequest = async (payload: ExecutionRequest): Promise<boolean> => {
-  const mappedPayload: ExecutionRequestPayload = {
-    title: payload.title,
-    description: payload.description,
-    statement: payload.statement,
-    type: payload.type,
-    readOnly: false,
-    datasourceConnectionId: payload.connection,
-  };
   await fetch(requestUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     credentials: "include",
-    body: JSON.stringify(mappedPayload),
+    body: JSON.stringify(payload),
   });
   return true;
 };
@@ -157,7 +196,7 @@ const patchRequest = async (
     body: JSON.stringify(payload),
   });
   const json: unknown = await response.json();
-  return ExecutionRequestResponseWithComments.parse(json);
+  return ExecutionRequestResponseWithCommentsSchema.parse(json);
 };
 
 const postStartServer = async (id: string): Promise<ProxyResponse> => {
@@ -176,7 +215,7 @@ const getRequests = async (): Promise<ExecutionRequestsResponse> => {
     credentials: "include",
   });
   const json: unknown = await response.json();
-  const requests = ExecutionRequestsResponse.parse(json);
+  const requests = ExecutionRequestsResponseSchema.parse(json);
   return requests;
 };
 
@@ -191,7 +230,7 @@ const getSingleRequest = async (
     return undefined;
   }
   const json: unknown = await response.json();
-  const request = ExecutionRequestResponseWithComments.parse(json);
+  const request = ExecutionRequestResponseWithCommentsSchema.parse(json);
   return request;
 };
 
@@ -263,25 +302,40 @@ const ErrorResponseSchema = withType(
   "error",
 );
 
-const ExecuteResponseResultSchema = z.union([
+const DBExecuteResponseResultSchema = z.union([
   UpdateExecuteResponseSchema,
   SelectExecuteResponseSchema,
   ErrorResponseSchema,
 ]);
 
-const ExecuteResponseSchema = z.object({
-  results: z.array(ExecuteResponseResultSchema),
+const DBExecuteResponseSchema = z.object({
+  results: z.array(DBExecuteResponseResultSchema),
 });
 
-type ExecuteResponseResult = z.infer<typeof ExecuteResponseResultSchema>;
-type ExecuteResponse = z.infer<typeof ExecuteResponseSchema>;
+const KubernetesExecuteResponseSchema = z.object({
+  errors: z.array(z.string()),
+  messages: z.array(z.string()),
+  finished: z.boolean(),
+  exitCode: z.number().optional(),
+});
+
+type DBExecuteResponseResult = z.infer<typeof DBExecuteResponseResultSchema>;
+type KubernetesExecuteResponse = z.infer<
+  typeof KubernetesExecuteResponseSchema
+>;
+type DBExecuteResponse = z.infer<typeof DBExecuteResponseSchema>;
 type UpdateExecuteResponse = z.infer<typeof UpdateExecuteResponseSchema>;
 type SelectExecuteResponse = z.infer<typeof SelectExecuteResponseSchema>;
 type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 type Column = z.infer<typeof ColumnSchema>;
 
 type QueryResult = {
-  results?: ExecuteResponseResult[];
+  results?: DBExecuteResponseResult[];
+  error?: ApiErrorResponse;
+};
+
+type KubernetesResponse = {
+  results?: KubernetesExecuteResponse;
   error?: ApiErrorResponse;
 };
 
@@ -300,10 +354,28 @@ const runQuery = async (
   });
   const json: unknown = await response.json();
   if (response.ok) {
-    const result = ExecuteResponseSchema.parse(json);
+    const result = DBExecuteResponseSchema.parse(json);
     return {
       results: result.results,
     };
+  } else {
+    const result = ApiErrorResponseSchema.parse(json);
+    return { error: result };
+  }
+};
+
+const executeCommand = async (id: string): Promise<KubernetesResponse> => {
+  const response = await fetch(requestUrl + id + "/execute", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+  });
+  const json: unknown = await response.json();
+  if (response.ok) {
+    const result = KubernetesExecuteResponseSchema.parse(json);
+    return { results: result };
   } else {
     const result = ApiErrorResponseSchema.parse(json);
     return { error: result };
@@ -319,14 +391,17 @@ export {
   runQuery,
   patchRequest,
   postStartServer,
+  executeCommand,
 };
 export type {
-  ExecuteResponseResult,
+  DBExecuteResponseResult as ExecuteResponseResult,
   ExecutionRequestResponse,
   ExecutionRequestsResponse,
+  DatasourceExecutionRequestResponseWithComments,
+  KubernetesExecutionRequestResponseWithComments,
   ExecutionRequestResponseWithComments,
   ChangeExecutionRequestPayload,
-  ExecuteResponse,
+  DBExecuteResponse as ExecuteResponse,
   UpdateExecuteResponse,
   SelectExecuteResponse,
   ErrorResponse,
@@ -339,4 +414,5 @@ export type {
   ApiErrorResponse,
   QueryResult,
   ProxyResponse,
+  KubernetesExecuteResponse,
 };

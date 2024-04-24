@@ -58,8 +58,15 @@ abstract class Event(
         ): Event = when (payload) {
             is CommentPayload -> CommentEvent(id, request, author, createdAt, payload.comment)
             is ReviewPayload -> ReviewEvent(id, request, author, createdAt, payload.comment, payload.action)
-            is EditPayload -> EditEvent(id, request, author, createdAt, payload.previousQuery)
-            is ExecutePayload -> ExecuteEvent(id, request, author, createdAt, payload.query)
+            is EditPayload -> EditEvent(
+                id, request, author, createdAt, payload.previousQuery,
+                payload.previousCommand, payload.previousContainerName, payload.previousPodName,
+                payload.previousNamespace,
+            )
+            is ExecutePayload -> ExecuteEvent(
+                id, request, author, createdAt, payload.query, payload.command,
+                payload.containerName, payload.podName, payload.namespace,
+            )
         }
     }
 }
@@ -90,7 +97,11 @@ data class EditEvent(
     override val request: ExecutionRequestDetails,
     override val author: User,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
-    val previousQuery: String,
+    val previousQuery: String? = null,
+    val previousCommand: String? = null,
+    val previousContainerName: String? = null,
+    val previousPodName: String? = null,
+    val previousNamespace: String? = null,
 ) : Event(EventType.EDIT, createdAt, request) {
     override fun hashCode() = Objects.hash(eventId)
 }
@@ -100,7 +111,11 @@ data class ExecuteEvent(
     override val request: ExecutionRequestDetails,
     override val author: User,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
-    val query: String,
+    val query: String? = null,
+    val command: String? = null,
+    val containerName: String? = null,
+    val podName: String? = null,
+    val namespace: String? = null,
 ) : Event(EventType.EXECUTE, createdAt, request) {
     override fun hashCode() = Objects.hash(eventId)
 }

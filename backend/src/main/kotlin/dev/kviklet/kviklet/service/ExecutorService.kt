@@ -8,7 +8,7 @@ import org.springframework.boot.jdbc.DataSourceBuilder
 import org.springframework.stereotype.Service
 import java.sql.ResultSet
 import java.sql.SQLException
-import java.util.HexFormat
+import java.util.*
 
 sealed class QueryResult(open val executionRequestId: ExecutionRequestId) : SecuredDomainObject {
     override fun getId() = executionRequestId.toString()

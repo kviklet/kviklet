@@ -66,8 +66,6 @@ class Connection(
         this.targetOutput = targetSocket.getOutputStream()
         this.params = params
 
-        println(params)
-
         val clientBuffer = ByteArray(8192)
         val targetBuffer = ByteArray(8192)
         var lastClientMessage: MessageOrBytes? = null
@@ -76,17 +74,13 @@ class Connection(
             if (clientInput.available() > 0) {
                 val bytesRead = clientInput.read(clientBuffer)
                 val data = clientBuffer.copyOf(bytesRead)
-                printBytesAsHexAndUTF8(data, "Client data")
                 if (passThrough) {
-                    printBytesAsHexAndUTF8(data, "Passing through to server")
                     targetOutput.write(data, 0, data.size)
                     targetOutput.flush()
                 } else {
                     for (clientMessage in parseDataToMessages(data)) {
                         val newData = clientMessage.message?.toByteArray() ?: clientMessage.bytes!!
-                        printBytesAsHexAndUTF8(newData, "Client data to send")
                         if (clientMessage.response != null) {
-                            printBytesAsHexAndUTF8(clientMessage.response, "Client response")
                             clientOutput.write(clientMessage.response, 0, clientMessage.response.size)
                             clientOutput.flush()
                         } else {
@@ -101,7 +95,6 @@ class Connection(
                 if (targetInput.available() > 0) {
                     val bytesRead = targetInput.read(targetBuffer)
                     val data = targetBuffer.copyOf(bytesRead)
-                    printBytesAsHexAndUTF8(data, "Passing through to client")
                     clientOutput.write(data, 0, data.size)
                     clientOutput.flush()
                 }
@@ -123,12 +116,10 @@ class Connection(
                     }
 
                     // Handle the data as before
-                    printBytesAsHexAndUTF8(dataBuffer, "Target data")
                     var responseData = parseResponse(dataBuffer)
                     if (responseData.second == "SSL") {
                         dataBuffer = "N".toByteArray()
                     }
-                    printBytesAsHexAndUTF8(dataBuffer, "Target data to send")
                     clientOutput.write(dataBuffer, 0, dataBuffer.size)
                     clientOutput.flush()
                 }
@@ -288,8 +279,6 @@ class Connection(
     private fun confirmPasswordMessage(message: HashedPasswordMessage) {
         val password = message.message
         val expectedMessage = HashedPasswordMessage.passwordContent(this.proxyUsername, this.proxyPassword, md5Salt)
-        printBytesAsHexAndUTF8(expectedMessage, "expected Password")
-        printBytesAsHexAndUTF8(password.toByteArray(), "Password")
         if (!password.toByteArray().contentEquals(expectedMessage)) {
             throw Exception("Password does not match")
         }

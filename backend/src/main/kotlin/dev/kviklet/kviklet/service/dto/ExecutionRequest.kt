@@ -7,6 +7,7 @@ import dev.kviklet.kviklet.security.Resource
 import dev.kviklet.kviklet.security.SecuredDomainId
 import dev.kviklet.kviklet.security.SecuredDomainObject
 import dev.kviklet.kviklet.security.UserDetailsWithId
+import dev.kviklet.kviklet.service.QueryResult
 import java.io.Serializable
 import java.time.LocalDateTime
 
@@ -21,24 +22,78 @@ enum class ReviewStatus {
 }
 
 enum class RequestType {
-    SingleQuery,
+    SingleExecution,
     TemporaryAccess,
 }
 
 /**
  * A DTO for the {@link dev.kviklet.kviklet.db.ExecutionRequestEntity} entity
  */
-data class ExecutionRequest(
-    val id: ExecutionRequestId?,
-    val connection: DatasourceConnection,
-    val title: String,
-    val type: RequestType,
-    val description: String?,
+sealed class ExecutionRequest(
+    open val id: ExecutionRequestId?,
+    open val connection: Connection,
+    open val title: String,
+    open val type: RequestType,
+    open val description: String?,
+    open val executionStatus: String,
+    open val createdAt: LocalDateTime = LocalDateTime.now(),
+    open val author: User,
+)
+
+sealed class ExecutionResult(open val executionRequestId: ExecutionRequestId) : SecuredDomainObject {
+    override fun getId() = executionRequestId.toString()
+    override fun getDomainObjectType() = Resource.EXECUTION_REQUEST
+    override fun getRelated(resource: Resource) = null
+}
+
+data class DBExecutionResult(
+    override val executionRequestId: ExecutionRequestId,
+    val results: List<QueryResult>,
+) : ExecutionResult(executionRequestId)
+
+data class KubernetesExecutionResult(
+    override val executionRequestId: ExecutionRequestId,
+    val errors: List<String>,
+    val messages: List<String>,
+    val finished: Boolean = true,
+    val exitCode: Int? = 0,
+) : ExecutionResult(executionRequestId)
+
+data class DatasourceExecutionRequest(
+    override val id: ExecutionRequestId?,
+    override val connection: DatasourceConnection,
+    override val title: String,
+    override val type: RequestType,
+    override val description: String?,
     val statement: String?,
     val readOnly: Boolean,
-    val executionStatus: String,
-    val createdAt: LocalDateTime = LocalDateTime.now(),
-    val author: User,
+    override val executionStatus: String,
+    override val createdAt: LocalDateTime = LocalDateTime.now(),
+    override val author: User,
+) : ExecutionRequest(id, connection, title, type, description, executionStatus, createdAt, author)
+
+data class KubernetesExecutionRequest(
+    override val id: ExecutionRequestId?,
+    override val connection: KubernetesConnection,
+    override val title: String,
+    override val type: RequestType,
+    override val description: String?,
+    override val executionStatus: String,
+    override val createdAt: LocalDateTime = LocalDateTime.now(),
+    override val author: User,
+    val namespace: String?,
+    val podName: String?,
+    val containerName: String?,
+    val command: String?,
+) : ExecutionRequest(
+    id,
+    connection,
+    title,
+    type,
+    description,
+    executionStatus,
+    createdAt,
+    author,
 )
 
 data class ExecutionRequestDetails(

@@ -13,13 +13,18 @@ import dev.kviklet.kviklet.service.QueryResult
 import dev.kviklet.kviklet.service.RecordsQueryResult
 import dev.kviklet.kviklet.service.UpdateQueryResult
 import dev.kviklet.kviklet.service.dto.CommentEvent
-import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
+import dev.kviklet.kviklet.service.dto.ConnectionId
+import dev.kviklet.kviklet.service.dto.DBExecutionResult
+import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
 import dev.kviklet.kviklet.service.dto.EditEvent
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventType
 import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
+import dev.kviklet.kviklet.service.dto.ExecutionResult
+import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
+import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewEvent
@@ -39,20 +44,47 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDateTime
 
-data class CreateExecutionRequestRequest(
-    val datasourceConnectionId: DatasourceConnectionId,
-    val title: String,
-    val type: RequestType,
-    val description: String?,
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
+@JsonSubTypes(
+    JsonSubTypes.Type(value = CreateDatasourceExecutionRequestRequest::class, name = "DATASOURCE"),
+    JsonSubTypes.Type(value = CreateKubernetesExecutionRequestRequest::class, name = "KUBERNETES"),
+)
+sealed class CreateExecutionRequestRequest(
+    open val connectionId: ConnectionId,
+    open val title: String,
+    open val type: RequestType,
+    open val description: String,
+)
+
+data class CreateDatasourceExecutionRequestRequest(
+    override val connectionId: ConnectionId,
+    override val title: String,
+    override val type: RequestType,
+    override val description: String,
     val statement: String?,
     val readOnly: Boolean,
-)
+) : CreateExecutionRequestRequest(connectionId, title, type, description)
+
+data class CreateKubernetesExecutionRequestRequest(
+    override val connectionId: ConnectionId,
+    override val title: String,
+    override val type: RequestType,
+    override val description: String,
+    val namespace: String,
+    val podName: String,
+    val containerName: String?,
+    val command: String,
+) : CreateExecutionRequestRequest(connectionId, title, type, description)
 
 data class UpdateExecutionRequestRequest(
     val title: String?,
     val description: String?,
-    val statement: String?,
+    val statement: String? = null,
     val readOnly: Boolean?,
+    val namespace: String? = null,
+    val podName: String? = null,
+    val containerName: String? = null,
+    val command: String? = null,
 )
 
 data class ExecuteExecutionRequestRequest(
@@ -69,80 +101,164 @@ data class CreateCommentRequest(
     val comment: String,
 )
 
-/**
- * A DTO for the {@link dev.kviklet.kviklet.db.ExecutionRequestEntity} entity
- */
-data class ExecutionRequestResponse(
-    val id: ExecutionRequestId,
-    val title: String,
-    val type: RequestType,
-    val author: UserResponse,
-    val connection: DatasourceConnectionResponse,
-    val description: String?,
-    val statement: String?,
-    val readOnly: Boolean,
-    val reviewStatus: ReviewStatus,
-    val executionStatus: String,
-    val createdAt: LocalDateTime = LocalDateTime.now(),
+sealed class ExecutionRequestResponse(
+    open val id: ExecutionRequestId,
 ) {
-
     companion object {
         fun fromDto(dto: ExecutionRequestDetails): ExecutionRequestResponse {
             val userResponse = UserResponse(dto.request.author)
-            return ExecutionRequestResponse(
-                id = dto.request.id!!,
-                author = userResponse,
-                type = dto.request.type,
-                title = dto.request.title,
-                description = dto.request.description,
-                statement = dto.request.statement,
-                readOnly = dto.request.readOnly,
-                reviewStatus = dto.resolveReviewStatus(),
-                executionStatus = dto.request.executionStatus,
-                createdAt = dto.request.createdAt,
-                connection = DatasourceConnectionResponse.fromDto(
-                    dto.request.connection,
-                ),
-            )
+
+            return when (dto.request) {
+                is DatasourceExecutionRequest -> DatasourceExecutionRequestResponse(
+                    id = dto.request.id!!,
+                    author = userResponse,
+                    type = dto.request.type,
+                    title = dto.request.title,
+                    description = dto.request.description,
+                    statement = dto.request.statement,
+                    readOnly = dto.request.readOnly,
+                    reviewStatus = dto.resolveReviewStatus(),
+                    executionStatus = dto.request.executionStatus,
+                    createdAt = dto.request.createdAt,
+                    connection = ConnectionResponse.fromDto(
+                        dto.request.connection,
+                    ),
+                )
+                is KubernetesExecutionRequest -> KubernetesExecutionRequestResponse(
+                    id = dto.request.id!!,
+                    author = userResponse,
+                    type = dto.request.type,
+                    title = dto.request.title,
+                    description = dto.request.description,
+                    reviewStatus = dto.resolveReviewStatus(),
+                    executionStatus = dto.request.executionStatus,
+                    createdAt = dto.request.createdAt,
+                    connection = ConnectionResponse.fromDto(
+                        dto.request.connection,
+                    ),
+                    namespace = dto.request.namespace,
+                    podName = dto.request.podName,
+                    containerName = dto.request.containerName,
+                    command = dto.request.command,
+                )
+            }
+        }
+    }
+
+    data class DatasourceExecutionRequestResponse(
+        override val id: ExecutionRequestId,
+        val title: String,
+        val type: RequestType,
+        val author: UserResponse,
+        val connection: ConnectionResponse,
+        val description: String?,
+        val statement: String?,
+        val readOnly: Boolean,
+        val reviewStatus: ReviewStatus,
+        val executionStatus: String,
+        val createdAt: LocalDateTime = LocalDateTime.now(),
+    ) : ExecutionRequestResponse(id = id)
+
+    data class KubernetesExecutionRequestResponse(
+        override val id: ExecutionRequestId,
+        val title: String,
+        val type: RequestType,
+        val author: UserResponse,
+        val connection: ConnectionResponse,
+        val description: String?,
+        val reviewStatus: ReviewStatus,
+        val executionStatus: String,
+        val createdAt: LocalDateTime = LocalDateTime.now(),
+        val namespace: String?,
+        val podName: String?,
+        val containerName: String?,
+        val command: String?,
+    ) : ExecutionRequestResponse(id = id)
+}
+
+/**
+ * A DTO for the {@link dev.kviklet.kviklet.db.ExecutionRequestEntity} entity
+ */
+sealed class ExecutionRequestDetailResponse(
+    open val id: ExecutionRequestId,
+    open val events: List<EventResponse>,
+) {
+
+    companion object {
+        fun fromDto(dto: ExecutionRequestDetails): ExecutionRequestDetailResponse {
+            return when (dto.request) {
+                is DatasourceExecutionRequest -> DatasourceExecutionRequestDetailResponse(
+                    id = dto.request.id!!,
+                    author = UserResponse(dto.request.author),
+                    type = dto.request.type,
+                    title = dto.request.title,
+                    description = dto.request.description,
+                    statement = dto.request.statement,
+                    readOnly = dto.request.readOnly,
+                    reviewStatus = dto.resolveReviewStatus(),
+                    executionStatus = dto.request.executionStatus,
+                    createdAt = dto.request.createdAt,
+                    events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
+                    connection = ConnectionResponse.fromDto(dto.request.connection),
+                )
+                is KubernetesExecutionRequest -> KubernetesExecutionRequestDetailResponse(
+                    id = dto.request.id!!,
+                    author = UserResponse(dto.request.author),
+                    type = dto.request.type,
+                    title = dto.request.title,
+                    description = dto.request.description,
+                    reviewStatus = dto.resolveReviewStatus(),
+                    executionStatus = dto.request.executionStatus,
+                    createdAt = dto.request.createdAt,
+                    namespace = dto.request.namespace,
+                    podName = dto.request.podName,
+                    containerName = dto.request.containerName,
+                    command = dto.request.command,
+                    events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
+                    connection = ConnectionResponse.fromDto(dto.request.connection),
+                )
+            }
         }
     }
 }
 
-/**
- * A DTO for the {@link dev.kviklet.kviklet.db.ExecutionRequestEntity} entity
- */
-data class ExecutionRequestDetailResponse(
-    val id: ExecutionRequestId,
+data class DatasourceExecutionRequestDetailResponse(
+    override val id: ExecutionRequestId,
+    val title: String,
     val type: RequestType,
     val author: UserResponse,
-    val connection: DatasourceConnectionResponse,
-    val title: String,
+    val connection: ConnectionResponse,
     val description: String?,
     val statement: String?,
     val readOnly: Boolean,
     val reviewStatus: ReviewStatus,
     val executionStatus: String,
-    val events: List<EventResponse>,
     val createdAt: LocalDateTime = LocalDateTime.now(),
-) {
+    override val events: List<EventResponse>,
+) : ExecutionRequestDetailResponse(
+    id = id,
+    events = events,
+)
 
-    companion object {
-        fun fromDto(dto: ExecutionRequestDetails) = ExecutionRequestDetailResponse(
-            id = dto.request.id!!,
-            author = UserResponse(dto.request.author),
-            type = dto.request.type,
-            title = dto.request.title,
-            description = dto.request.description,
-            statement = dto.request.statement,
-            readOnly = dto.request.readOnly,
-            reviewStatus = dto.resolveReviewStatus(),
-            executionStatus = dto.request.executionStatus,
-            createdAt = dto.request.createdAt,
-            events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
-            connection = DatasourceConnectionResponse.fromDto(dto.request.connection),
-        )
-    }
-}
+data class KubernetesExecutionRequestDetailResponse(
+    override val id: ExecutionRequestId,
+    val title: String,
+    val type: RequestType,
+    val author: UserResponse,
+    val connection: ConnectionResponse,
+    val description: String?,
+    val reviewStatus: ReviewStatus,
+    val executionStatus: String,
+    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val namespace: String?,
+    val podName: String?,
+    val containerName: String?,
+    val command: String?,
+    override val events: List<EventResponse>,
+) : ExecutionRequestDetailResponse(
+    id = id,
+    events = events,
+)
 
 @Schema(
     name = "ExecutionResultResponse",
@@ -172,16 +288,34 @@ sealed class ExecutionResultResponse(
     }
 }
 
-data class ExecutionResponse(
-    val results: List<ExecutionResultResponse>,
-) {
+sealed class ExecutionResponse() {
     companion object {
-        fun fromDto(results: List<QueryResult>): ExecutionResponse {
-            return ExecutionResponse(
-                results.map { it -> ExecutionResultResponse.fromDto(it) },
-            )
+        fun fromDto(results: ExecutionResult): ExecutionResponse {
+            return when (results) {
+                is DBExecutionResult -> DatasourceExecutionResponse(
+                    results.results.map { it -> ExecutionResultResponse.fromDto(it) },
+                )
+
+                is KubernetesExecutionResult -> KubernetesExecutionResponse(
+                    errors = results.errors,
+                    messages = results.messages,
+                    finished = results.finished,
+                    exitCode = results.exitCode,
+                )
+            }
         }
     }
+
+    data class DatasourceExecutionResponse(
+        val results: List<ExecutionResultResponse>,
+    ) : ExecutionResponse()
+
+    data class KubernetesExecutionResponse(
+        val errors: List<String>,
+        val messages: List<String>,
+        val finished: Boolean = true,
+        val exitCode: Int? = 0,
+    ) : ExecutionResponse()
 }
 
 enum class ExecutionResultType {
@@ -259,12 +393,20 @@ abstract class EventResponse(
                 event.author,
                 event.createdAt,
                 event.previousQuery,
+                event.previousCommand,
+                event.previousContainerName,
+                event.previousPodName,
+                event.previousNamespace,
             )
             is ExecuteEvent -> ExecuteEventResponse(
                 event.eventId!!,
                 event.author,
                 event.createdAt,
                 event.query,
+                event.command,
+                event.containerName,
+                event.podName,
+                event.namespace,
             )
             else -> {
                 throw IllegalStateException("Somehow found event of type ${event.type}")
@@ -295,7 +437,11 @@ data class EditEventResponse(
     override val id: String,
     override val author: User,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
-    val previousQuery: String,
+    val previousQuery: String? = null,
+    val previousCommand: String? = null,
+    val previousContainerName: String? = null,
+    val previousPodName: String? = null,
+    val previousNamespace: String? = null,
 ) : EventResponse(EventType.EDIT, createdAt)
 
 @JsonTypeName("EXECUTE")
@@ -303,7 +449,11 @@ data class ExecuteEventResponse(
     override val id: String,
     override val author: User,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
-    val query: String,
+    val query: String? = null,
+    val command: String? = null,
+    val containerName: String? = null,
+    val podName: String? = null,
+    val namespace: String? = null,
 ) : EventResponse(EventType.EXECUTE, createdAt)
 
 data class ProxyResponse(
@@ -330,7 +480,7 @@ class ExecutionRequestController(
         request: CreateExecutionRequestRequest,
         @CurrentUser userDetails: UserDetailsWithId,
     ): ExecutionRequestResponse {
-        val executionRequest = executionRequestService.create(request.datasourceConnectionId, request, userDetails.id)
+        val executionRequest = executionRequestService.create(request.connectionId, request, userDetails.id)
         return ExecutionRequestResponse.fromDto(executionRequest)
     }
 
@@ -392,13 +542,11 @@ class ExecutionRequestController(
         @RequestBody(required = false) request: ExecuteExecutionRequestRequest?,
         @CurrentUser userDetails: UserDetailsWithId,
     ): ExecutionResponse {
-        if (request?.explain == true) {
-            return ExecutionResponse.fromDto(
-                executionRequestService.explain(executionRequestId, request.query, userDetails.id),
-            )
-        }
         return ExecutionResponse.fromDto(
-            executionRequestService.execute(executionRequestId, request?.query, userDetails.id),
+            when (request?.explain) {
+                true -> executionRequestService.explain(executionRequestId, request.query, userDetails.id)
+                else -> executionRequestService.execute(executionRequestId, request?.query, userDetails.id)
+            },
         )
     }
 

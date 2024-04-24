@@ -1,9 +1,9 @@
 package dev.kviklet.kviklet.security
 
 import dev.kviklet.kviklet.TestFixtures.createDatasourceConnectionRequest
-import dev.kviklet.kviklet.controller.DatasourceConnectionController
-import dev.kviklet.kviklet.db.DatasourceConnectionRepository
-import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
+import dev.kviklet.kviklet.controller.ConnectionController
+import dev.kviklet.kviklet.db.ConnectionRepository
+import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.Policy
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.AfterEach
@@ -16,28 +16,28 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
-import java.util.Optional
+import java.util.*
 import java.util.stream.Stream
 
 @ActiveProfiles("test")
 class DatasourceConnectionSecurityTest(
-    @Autowired val datasourceConnectionRepository: DatasourceConnectionRepository,
-    @Autowired val datasourceConnectionController: DatasourceConnectionController,
+    @Autowired val connectionRepository: ConnectionRepository,
+    @Autowired val datasourceConnectionController: ConnectionController,
 ) : SecurityTestBase() {
 
     @BeforeEach
     fun setUp() {
         asAdmin {
-            datasourceConnectionController.createDatasourceConnection(
+            datasourceConnectionController.createConnection(
                 createDatasourceConnectionRequest("db1-conn1"),
             )
-            datasourceConnectionController.createDatasourceConnection(
+            datasourceConnectionController.createConnection(
                 createDatasourceConnectionRequest("db1-conn2"),
             )
-            datasourceConnectionController.createDatasourceConnection(
+            datasourceConnectionController.createConnection(
                 createDatasourceConnectionRequest("db2-conn1"),
             )
-            datasourceConnectionController.createDatasourceConnection(
+            datasourceConnectionController.createConnection(
                 createDatasourceConnectionRequest("db2-conn2"),
             )
         }
@@ -45,13 +45,13 @@ class DatasourceConnectionSecurityTest(
 
     @AfterEach
     fun tearDown() {
-        datasourceConnectionRepository.deleteAllInBatch()
+        connectionRepository.deleteAllInBatch()
     }
 
     @ParameterizedTest
     @MethodSource
     fun testUpdateSuccessful(policies: List<Policy>) {
-        val request = dev.kviklet.kviklet.controller.UpdateDataSourceConnectionRequest(
+        val request = dev.kviklet.kviklet.controller.UpdateDatasourceConnectionRequest(
             displayName = "new name",
         )
 
@@ -60,23 +60,23 @@ class DatasourceConnectionSecurityTest(
         )
             .andExpect(status().isOk).andReturn().parse<dev.kviklet.kviklet.controller.DatasourceConnectionResponse>()
 
-        response.id shouldBe DatasourceConnectionId("db1-conn1")
+        response.id shouldBe ConnectionId("db1-conn1")
         response.displayName shouldBe "new name"
 
-        datasourceConnectionRepository.findById("db1-conn1").get().displayName shouldBe "new name"
+        connectionRepository.findById("db1-conn1").get().displayName shouldBe "new name"
     }
 
     @ParameterizedTest
     @MethodSource
     fun testUpdateForbidden(policies: List<Policy>) {
-        val request = dev.kviklet.kviklet.controller.UpdateDataSourceConnectionRequest(
+        val request = dev.kviklet.kviklet.controller.UpdateDatasourceConnectionRequest(
             displayName = "new name",
         )
 
         mockMvc.perform(patch("/connections/db1-conn1").content(request).withContext(policies))
             .andExpect(status().isForbidden)
 
-        datasourceConnectionRepository.findById("db1-conn1").get().displayName shouldBe "display name"
+        connectionRepository.findById("db1-conn1").get().displayName shouldBe "display name"
     }
 
     @ParameterizedTest
@@ -86,7 +86,7 @@ class DatasourceConnectionSecurityTest(
         mockMvc.perform(post("/connections/").content(request).withContext(policies))
             .andExpect(status().isOk)
 
-        datasourceConnectionRepository.findById("db1-conn3").get().displayName shouldBe "new name"
+        connectionRepository.findById("db1-conn3").get().displayName shouldBe "new name"
     }
 
     @ParameterizedTest
@@ -96,7 +96,7 @@ class DatasourceConnectionSecurityTest(
         mockMvc.perform(post("/connections/").content(request).withContext(policies))
             .andExpect(status().isForbidden)
 
-        datasourceConnectionRepository.findById("db1-conn3") shouldBe Optional.empty()
+        connectionRepository.findById("db1-conn3") shouldBe Optional.empty()
     }
 
     companion object {

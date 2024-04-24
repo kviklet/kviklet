@@ -1,0 +1,44 @@
+databaseChangeLog:
+  - changeSet:
+      id: 011-add-kubernetes-execution-requests
+      author: jascha
+      changes:
+        - addColumn:
+            tableName: execution_request
+            columns:
+              - column:
+                  name: namespace
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: pod_name
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: container_name
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: command
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: execution_request_type
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                  defaultValue: 'DATASOURCE'
+
+        - dropNotNullConstraint:
+            tableName: execution_request
+            columnName: statement
+            columnDataType: text
+
+        - dropNotNullConstraint:
+            tableName: execution_request
+            columnName: read_only
+            columnDataType: boolean

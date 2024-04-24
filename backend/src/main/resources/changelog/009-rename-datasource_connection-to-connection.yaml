@@ -1,0 +1,8 @@
+databaseChangeLog:
+  - changeSet:
+      id: 009-rename-datasource_connection-to-connection
+      author: jascha
+      changes:
+        - renameTable:
+            oldTableName: datasource_connection
+            newTableName: connection

@@ -6,13 +6,13 @@
 <img src="https://github.com/kviklet/kviklet/raw/main/images/ExecutionRequest.png" width="700px">
 </p>
 
-Secure access to production databases without impairing developer productivity.
+Secure access to production environments without impairing developer productivity.
 
 Kviklet utilizes the **Four-Eyes Principle** and a high level of configurability, to allow a **Pull Request-like Review and Approval** flow for individual SQL statements or Database sessions. This allows engineering teams to self regulate on who gets access to what data and when.
 
 Kviklet is a self hosted docker container, that provides you with a Single Page Web app that you can login to create your SQL requests or approve the ones of others.
 
-We currently only support Postgres and MySQL but more is coming. If you have a specific DB required or other fea
+We currently only support Postgres and MySQL and since very recently also have an integration for `kubectl exec`. If you have a specific DB required or other feature requests or just questions, feel free to open an issue.
 
 ## Features
 
@@ -25,6 +25,7 @@ Kviklet ships with a variety of features that an engineering team needs to manag
 - **Auditlog**: Singular plane that logs all executed statements with Author, reason for execution etc.
 - **RBAC**: Configure which team has access to which database/table to as fine of a granularity as the DB Engine allows.
 - **Postgres Proxy**: Start a proxy server to use the DB Client of your choice, but everything will be stored in the Kviklet Auditlog.
+- **Kubernetes Exec**: Execute a statement on a pod in your kubernetes cluster. (Currently only supports Execution of a single command no live session yet)
 - And more...
 
 ## Setup
@@ -106,6 +107,18 @@ For valid redirect URIs, you should configure: http://[kviklet_host]/api/login/o
 For Allowed Origins, simply your hosted kviklet url.
 
 After setting those environment variables the login page should show a Login with Keycloak button that redirects to your keycloak instance. We do currently not support role sync yet so you will have to manage roles directly in kviklet manually for now.
+
+### Kubernetes Exec
+
+<p align="center">
+<img src= "https://github.com/kviklet/kviklet/raw/main/images/KubernetesExec.png" width="700px">
+</p>
+
+If you want to use the Kubernetes Exec feature you have to create a separate kubernetes connection. Kviklet will use the user of the deployed pod to execute the command. So make sure that the user has the necessary permissions to execute commands on the pods that you want to access.
+
+Kviklet also uses /bin/sh to execute the command, so you will need to make sure your pods have a shell or at least a symlink in /bin/sh. If this bothers you feel free to open an issue, we can potentially make this configurable or find another solution.
+
+Kubernetes commands only wait for 5 seconds for output if the command takes longer than that Kviklet will wait for up to an hour before timing out the command. This is a a provisional solution, we are looking into websockets to make this more responsive and potentially enable terminal sessions.
 
 ### Proxy (Beta), Postgres only
 

@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-fix-enum-in-type-column
+      author: jascha
+      changes:
+        - sql:
+            sql: |
+              UPDATE execution_request
+              SET execution_type = 'SingleExecution'
+              WHERE execution_type = 'SingleQuery'

@@ -1,0 +1,55 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010-add-kubernetes-connections
+      author: jascha
+      changes:
+        - addColumn:
+            tableName: connection
+            columns:
+              - column:
+                  name: connection_type
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                  defaultValue: 'DATASOURCE'
+
+        - dropNotNullConstraint:
+            tableName: connection
+            columnName: authentication_type
+            columnDataType: varchar(255)
+
+        - dropNotNullConstraint:
+            tableName: connection
+            columnName: username
+            columnDataType: varchar(255)
+
+        - dropNotNullConstraint:
+            tableName: connection
+            columnName: password
+            columnDataType: varchar(255)
+
+        - dropNotNullConstraint:
+            tableName: connection
+            columnName: database_name
+            columnDataType: varchar(255)
+
+        - dropNotNullConstraint:
+            tableName: connection
+            columnName: hostname
+            columnDataType: varchar(255)
+
+        - dropNotNullConstraint:
+            tableName: connection
+            columnName: port
+            columnDataType: varchar(255)
+
+        - renameColumn:
+            tableName: connection
+            oldColumnName: type
+            newColumnName: datasource_type
+            columnDataType: varchar(255)
+
+        - dropNotNullConstraint:
+            tableName: connection
+            columnName: datasource_type
+            columnDataType: varchar(255)

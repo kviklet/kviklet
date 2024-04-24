@@ -1,10 +1,10 @@
 package dev.kviklet.kviklet
 
 import dev.kviklet.kviklet.controller.CreateDatasourceConnectionRequest
-import dev.kviklet.kviklet.controller.CreateExecutionRequestRequest
+import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
 import dev.kviklet.kviklet.controller.ReviewConfigRequest
 import dev.kviklet.kviklet.controller.UpdateExecutionRequestRequest
-import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
+import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.RequestType
 
@@ -30,12 +30,12 @@ object TestFixtures {
         readOnly = false,
     )
 
-    fun createExecutionRequestRequest(db: String) = CreateExecutionRequestRequest(
-        datasourceConnectionId = DatasourceConnectionId(db),
+    fun createExecutionRequestRequest(db: String) = CreateDatasourceExecutionRequestRequest(
+        connectionId = ConnectionId(db),
         title = "title",
         description = "description",
         statement = "select 1",
         readOnly = false,
-        type = RequestType.SingleQuery,
+        type = RequestType.SingleExecution,
     )
 }

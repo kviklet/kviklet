@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: 007-drop-license-table
+      id: 008-drop-license-table
       author: jascha
       changes:
         - dropTable:

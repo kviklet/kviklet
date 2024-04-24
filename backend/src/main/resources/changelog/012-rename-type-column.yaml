@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: 012-rename-type-column
+      author: jascha
+      changes:
+        - renameColumn:
+            tableName: execution_request
+            oldColumnName: type
+            newColumnName: execution_type
+            columnDataType: varchar(255)

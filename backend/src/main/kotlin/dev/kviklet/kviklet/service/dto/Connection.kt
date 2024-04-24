@@ -18,26 +18,18 @@ enum class AuthenticationType {
     // other: aws iam, gpc, env var
 }
 
-data class DatasourceConnectionId
+data class ConnectionId
 @JsonCreator constructor(private val id: String) : Serializable, SecuredDomainId {
     @JsonValue
     override fun toString() = id
 }
 
-data class DatasourceConnection(
-    val id: DatasourceConnectionId,
-    val displayName: String,
-    val databaseName: String?,
-    val authenticationType: AuthenticationType,
-    val username: String,
-    val password: String,
-    val description: String,
-    val reviewConfig: ReviewConfig,
-    val port: Int,
-    val hostname: String,
-    val type: DatasourceType,
+sealed class Connection(
+    open val id: ConnectionId,
+    open val displayName: String,
+    open val description: String,
+    open val reviewConfig: ReviewConfig,
 ) : SecuredDomainObject {
-    fun getConnectionString() = "jdbc:${type.schema}://$hostname:$port/" + (databaseName ?: "")
     override fun getId() = id.toString()
     override fun getDomainObjectType() = Resource.DATASOURCE_CONNECTION
 
@@ -47,4 +39,29 @@ data class DatasourceConnection(
             else -> throw IllegalStateException("Unexpected resource: $resource")
         }
     }
+}
+
+data class DatasourceConnection(
+    override val id: ConnectionId,
+    override val displayName: String,
+    override val description: String,
+    override val reviewConfig: ReviewConfig,
+    val databaseName: String?,
+    val authenticationType: AuthenticationType,
+    val username: String,
+    val password: String,
+    val port: Int,
+    val hostname: String,
+    val type: DatasourceType,
+) : Connection(id, displayName, description, reviewConfig) {
+    fun getConnectionString() = "jdbc:${type.schema}://$hostname:$port/" + (databaseName ?: "")
+}
+
+data class KubernetesConnection(
+    override val id: ConnectionId,
+    override val displayName: String,
+    override val description: String,
+    override val reviewConfig: ReviewConfig,
+) : Connection(id, displayName, description, reviewConfig) {
+    // methods
 }

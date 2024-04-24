@@ -1,6 +1,6 @@
 package dev.kviklet.kviklet.helper
 
-import dev.kviklet.kviklet.db.DatasourceConnectionAdapter
+import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.ReviewPayload
@@ -10,8 +10,8 @@ import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.security.UserService
 import dev.kviklet.kviklet.service.RoleService
 import dev.kviklet.kviklet.service.dto.AuthenticationType
-import dev.kviklet.kviklet.service.dto.DatasourceConnection
-import dev.kviklet.kviklet.service.dto.DatasourceConnectionId
+import dev.kviklet.kviklet.service.dto.Connection
+import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
@@ -116,12 +116,12 @@ class RoleHelper(private val roleService: RoleService) {
 
 @Component
 class ConnectionHelper(
-    private val connectionAdapter: DatasourceConnectionAdapter,
+    private val connectionAdapter: ConnectionAdapter,
 ) {
     @Transactional
-    fun createPostgresConnection(container: JdbcDatabaseContainer<*>): DatasourceConnection {
+    fun createPostgresConnection(container: JdbcDatabaseContainer<*>): Connection {
         return connectionAdapter.createDatasourceConnection(
-            DatasourceConnectionId("ds-conn-test"),
+            ConnectionId("ds-conn-test"),
             "Test Connection",
             AuthenticationType.USER_PASSWORD,
             container.databaseName,
@@ -136,6 +136,23 @@ class ConnectionHelper(
             container.host,
             DatasourceType.POSTGRESQL,
         )
+    }
+
+    @Transactional
+    fun createKubernetesConnection(): Connection {
+        return connectionAdapter.createKubernetesConnection(
+            ConnectionId("k8s-conn-test"),
+            "Test Kubernetes Connection",
+            "A test kubernetes connection",
+            ReviewConfig(
+                numTotalRequired = 1,
+            ),
+        )
+    }
+
+    @Transactional
+    fun deleteAll() {
+        connectionAdapter.deleteAll()
     }
 }
 
@@ -154,7 +171,7 @@ class ExecutionRequestHelper(
         val executionRequest = executionRequestAdapter.createExecutionRequest(
             connectionId = connection.id,
             title = "Test Execution",
-            type = RequestType.SingleQuery,
+            type = RequestType.SingleExecution,
             description = "A test execution request",
             statement = "SELECT 1;",
             readOnly = true,
@@ -162,7 +179,7 @@ class ExecutionRequestHelper(
             authorId = author.getId()!!,
         )
         executionRequestAdapter.addEvent(
-            ExecutionRequestId(executionRequest.getId()!!),
+            ExecutionRequestId(executionRequest.getId()),
             approver.getId()!!,
             ReviewPayload(
                 action = ReviewAction.APPROVE,
@@ -171,7 +188,36 @@ class ExecutionRequestHelper(
         )
 
         return executionRequestAdapter.getExecutionRequestDetails(
-            ExecutionRequestId(executionRequest.getId()!!),
+            ExecutionRequestId(executionRequest.getId()),
+        )
+    }
+
+    @Transactional
+    fun createApprovedKubernetesExecutionRequest(author: User, approver: User): ExecutionRequestDetails {
+        val connection = connectionHelper.createKubernetesConnection()
+        val executionRequestDetails = executionRequestAdapter.createExecutionRequest(
+            connectionId = connection.id,
+            title = "Test Kubernetes Execution",
+            type = RequestType.SingleExecution,
+            description = "A test kubernetes execution request",
+            executionStatus = "PENDING",
+            authorId = author.getId()!!,
+            namespace = "default",
+            podName = "test-pod",
+            containerName = "test-container",
+            command = "echo 'Hello, World!'",
+        )
+
+        executionRequestAdapter.addEvent(
+            ExecutionRequestId(executionRequestDetails.getId()),
+            approver.getId()!!,
+            ReviewPayload(
+                action = ReviewAction.APPROVE,
+                comment = "lgtm",
+            ),
+        )
+        return executionRequestAdapter.getExecutionRequestDetails(
+            ExecutionRequestId(executionRequestDetails.getId()),
         )
     }
 }
