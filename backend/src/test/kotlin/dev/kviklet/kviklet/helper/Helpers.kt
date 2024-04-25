@@ -135,6 +135,7 @@ class ConnectionHelper(
             container.getMappedPort(5432),
             container.host,
             DatasourceType.POSTGRESQL,
+            additionalJDBCOptions = "",
         )
     }
 

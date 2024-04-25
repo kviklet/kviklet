@@ -2,3 +2,4 @@ backend/src/main/resources/application-local.properties
 postgres-data
 kviklet-postgres-data/
 mysql-data
+mssql-data

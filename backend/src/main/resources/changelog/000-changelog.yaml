@@ -35,3 +35,6 @@ databaseChangeLog:
   - include:
       file: 013-fix-enum-in-type-column.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 014-add-jdbc-options-column.yaml
+      relativeToChangelogFile: true

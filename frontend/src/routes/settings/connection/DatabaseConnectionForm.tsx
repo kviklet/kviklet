@@ -15,6 +15,8 @@ export default function CreateDatasourceConnectionForm(props: {
   const [type, setType] = useState<DatabaseType>(DatabaseType.POSTGRES);
   const [hostname, setHostname] = useState<string>("");
   const [port, setPort] = useState<number>(5432);
+  const [additionalJDBCOptions, setAdditionalJDBCOptions] =
+    useState<string>("");
 
   const submit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -32,6 +34,7 @@ export default function CreateDatasourceConnectionForm(props: {
       hostname,
       port,
       connectionType: "DATASOURCE",
+      additionalJDBCOptions,
     });
   };
 
@@ -94,12 +97,20 @@ export default function CreateDatasourceConnectionForm(props: {
             setPassword(e.target.value)
           }
         />
+        <InputField
+          id="additionalJDBCOptions"
+          label="Additional JDBC Options"
+          placeholder="?ssl=true"
+          value={additionalJDBCOptions}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            setAdditionalJDBCOptions(e.target.value)
+          }
+        />
         <div className="flex flex-row justify-between">
           <div className="w-full">
             <InputField
               id="hostname"
               label="Hostname"
-              className=""
               placeholder="localhost"
               value={hostname}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -111,7 +122,6 @@ export default function CreateDatasourceConnectionForm(props: {
             <InputField
               id="port"
               label="Port"
-              className=""
               type="number"
               placeholder="5432"
               value={port}

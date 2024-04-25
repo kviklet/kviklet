@@ -58,6 +58,8 @@ class ConnectionEntity(
     var datasourceType: DatasourceType? = null,
     var hostname: String? = null,
     var port: Int? = null,
+    @Column(name = "additional_jdbc_options")
+    var additionalJDBCOptions: String? = null,
 ) {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
@@ -80,6 +82,7 @@ class ConnectionEntity(
                     port = port!!,
                     hostname = hostname!!,
                     type = datasourceType!!,
+                    additionalJDBCOptions = additionalJDBCOptions ?: "",
                 )
             ConnectionType.KUBERNETES ->
                 KubernetesConnection(
@@ -120,6 +123,7 @@ class ConnectionAdapter(
         port: Int,
         hostname: String,
         type: DatasourceType,
+        additionalJDBCOptions: String,
     ): Connection {
         return connectionRepository.save(
             ConnectionEntity(
@@ -136,6 +140,7 @@ class ConnectionAdapter(
                 hostname = hostname,
                 datasourceType = type,
                 connectionType = ConnectionType.DATASOURCE,
+                additionalJDBCOptions = additionalJDBCOptions,
             ),
         ).toDto()
     }
@@ -148,6 +153,7 @@ class ConnectionAdapter(
         password: String,
         description: String,
         reviewConfig: ReviewConfig,
+        additionalJDBCOptions: String,
     ): Connection {
         val datasourceConnection = connectionRepository.findByIdOrNull(id.toString())
             ?: throw EntityNotFound(
@@ -163,6 +169,7 @@ class ConnectionAdapter(
         datasourceConnection.description = description
         datasourceConnection.reviewConfig = reviewConfig
         datasourceConnection.databaseName = databaseName
+        datasourceConnection.additionalJDBCOptions = additionalJDBCOptions
 
         return connectionRepository.save(datasourceConnection).toDto()
     }

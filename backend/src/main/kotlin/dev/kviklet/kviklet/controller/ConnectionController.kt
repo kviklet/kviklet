@@ -75,6 +75,7 @@ data class CreateDatasourceConnectionRequest(
     val type: DatasourceType,
     val hostname: String,
     val port: Int,
+    val additionalJDBCOptions: String = "",
 ) : ConnectionRequest()
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
@@ -103,6 +104,8 @@ data class UpdateDatasourceConnectionRequest(
     val description: String? = null,
 
     val reviewConfig: ReviewConfigRequest? = null,
+
+    val additionalJDBCOptions: String? = null,
 ) : UpdateConnectionRequest()
 
 data class UpdateKubernetesConnectionRequest(
@@ -150,6 +153,7 @@ data class DatasourceConnectionResponse(
     val username: String,
     val description: String,
     val reviewConfig: ReviewConfigResponse,
+    val additionalJDBCOptions: String,
 ) : ConnectionResponse(ConnectionType.DATASOURCE) {
     companion object {
         fun fromDto(datasourceConnection: DatasourceConnection) = DatasourceConnectionResponse(
@@ -162,6 +166,7 @@ data class DatasourceConnectionResponse(
             reviewConfig = ReviewConfigResponse(
                 datasourceConnection.reviewConfig.numTotalRequired,
             ),
+            additionalJDBCOptions = datasourceConnection.additionalJDBCOptions,
         )
     }
 }
@@ -220,6 +225,7 @@ class ConnectionController(
             port = request.port,
             hostname = request.hostname,
             type = request.type,
+            additionalJDBCOptions = request.additionalJDBCOptions,
         )
     }
 

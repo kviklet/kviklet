@@ -49,6 +49,7 @@ class ConnectionService(
                     it.numTotalRequired,
                 )
             } ?: connection.reviewConfig,
+            request.additionalJDBCOptions ?: connection.additionalJDBCOptions,
         )
     }
 
@@ -101,6 +102,7 @@ class ConnectionService(
         port: Int,
         hostname: String,
         type: DatasourceType,
+        additionalJDBCOptions: String,
     ): Connection {
         return connectionAdapter.createDatasourceConnection(
             connectionId,
@@ -116,6 +118,7 @@ class ConnectionService(
             port,
             hostname,
             type,
+            additionalJDBCOptions,
         )
     }
 
