@@ -1,4 +1,7 @@
 -- CLEAN UP
+DROP TABLE IF EXISTS foo.simple_table;
+DROP TABLE IF EXISTS foo.all_datatypes;
+DROP TABLE IF EXISTS foo.temp;
 DROP SCHEMA IF EXISTS foo;
 
 -- INIT
