@@ -99,6 +99,7 @@ class ExecutionTest {
             3306,
             "postgres",
             DatasourceType.POSTGRESQL,
+            additionalJDBCOptions = "",
         )
         userHelper.createUser(permissions = listOf("*"))
         val cookie = userHelper.login(mockMvc = mockMvc)
@@ -138,6 +139,7 @@ class ExecutionTest {
             3306,
             "postgres",
             DatasourceType.POSTGRESQL,
+            additionalJDBCOptions = "",
         )
         val executionRequest = executionRequestAdapter.createExecutionRequest(
             connectionId = connection.id,

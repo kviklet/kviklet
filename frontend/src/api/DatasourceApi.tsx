@@ -8,6 +8,7 @@ enum AuthenticationType {
 enum DatabaseType {
   POSTGRES = "POSTGRESQL",
   MYSQL = "MYSQL",
+  MSSQL = "MSSQL",
 }
 
 const databaseConnectionResponseSchema = withType(
@@ -21,6 +22,7 @@ const databaseConnectionResponseSchema = withType(
     reviewConfig: z.object({
       numTotalRequired: z.number(),
     }),
+    additionalJDBCOptions: z.string().optional(),
   }),
   "DATASOURCE",
 );
@@ -56,6 +58,7 @@ const databaseConnectionPayloadSchema = z
     type: z.nativeEnum(DatabaseType),
     hostname: z.string(),
     port: z.number(),
+    additionalJDBCOptions: z.string().optional(),
   })
   .transform((data) => ({ ...data, connectionType: "DATASOURCE" }));
 

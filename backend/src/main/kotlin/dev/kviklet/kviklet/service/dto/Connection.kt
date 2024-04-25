@@ -11,6 +11,7 @@ import java.io.Serializable
 enum class DatasourceType(val schema: String) {
     POSTGRESQL("postgresql"),
     MYSQL("mysql"),
+    MSSQL("sqlserver"),
 }
 
 enum class AuthenticationType {
@@ -53,8 +54,24 @@ data class DatasourceConnection(
     val port: Int,
     val hostname: String,
     val type: DatasourceType,
+    val additionalJDBCOptions: String,
 ) : Connection(id, displayName, description, reviewConfig) {
-    fun getConnectionString() = "jdbc:${type.schema}://$hostname:$port/" + (databaseName ?: "")
+    fun getConnectionString(): String {
+        return when (type) {
+            DatasourceType.POSTGRESQL ->
+                "jdbc:postgresql://$hostname:$port/" +
+                    databaseName +
+                    additionalJDBCOptions
+            DatasourceType.MYSQL ->
+                "jdbc:mysql://$hostname:$port/" +
+                    databaseName +
+                    additionalJDBCOptions
+            DatasourceType.MSSQL ->
+                "jdbc:sqlserver://$hostname:$port" +
+                    (databaseName?.takeIf { it.isNotBlank() }?.let { ";databaseName=$databaseName" } ?: "") +
+                    additionalJDBCOptions
+        }
+    }
 }
 
 data class KubernetesConnection(

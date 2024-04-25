@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 014-add-jdbc-options-column
+      author: jascha
+      changes:
+        - addColumn:
+            tableName: connection
+            columns:
+              - column:
+                  name: additional_jdbc_options
+                  type: TEXT
+                  constraints:
+                    nullable: true
+                    defaultValue: null

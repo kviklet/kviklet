@@ -87,7 +87,7 @@ class ExecutorService {
             results.add(
                 columns.associate {
                     if (it.typeClass == "[B") {
-                        Pair(it.label, "0x" + HexFormat.of().formatHex(resultSet.getBytes(it.label)))
+                        Pair(it.label, resultSet.getBytes(it.label)?.let { "0x" + HexFormat.of().formatHex(it) } ?: "")
                     } else {
                         Pair(it.label, resultSet.getString(it.label))
                     }
