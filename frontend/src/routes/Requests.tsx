@@ -55,6 +55,21 @@ function timeSince(date: Date) {
   return Math.floor(seconds) + " seconds ago";
 }
 
+function mapExecutionStatus(status?: string) {
+  switch (status) {
+    case "EXECUTED":
+      return "Executed";
+    case "AWAITING_APPROVAL":
+      return "Waiting";
+    case "PENDING":
+      return "Pending";
+    case "SUCCESS":
+      return "Executed";
+    default:
+      return "Unknown";
+}
+}
+
 function mapStatus(status?: string) {
   switch (status) {
     case "APPROVED":
@@ -84,6 +99,21 @@ function mapStatusToLabelColor(status?: string) {
       return "dark:ring-gray-400/10 dark:text-gray-500 ring-gray-500/10 text-gray-600 bg-gray-50 dark:bg-gray-400/10";
   }
 }
+
+  function mapExecutionStatusToLabelColor(status?: string) {
+    switch (status) {
+      case "EXECUTED":
+        return "dark:ring-lime-400/10 dark:text-lime-500 ring-lime-500/10 text-lime-600 bg-lime-50 dark:bg-lime-400/10";
+      case "AWAITING_APPROVAL":
+        return "dark:ring-sky-400/10 dark:text-sky-500 ring-sky-500/10 text-sky-600 bg-sky-50 dark:bg-sky-400/10";
+      case "PENDING":
+        return "dark:ring-yellow-400/10 dark:text-yellow-500 ring-yellow-500/10 text-yellow-600 bg-yellow-50 dark:bg-yellow-400/10";
+      case "SUCCESS":
+        return "dark:ring-lime-400/10 dark:text-lime-500 ring-lime-500/10 text-lime-600 bg-lime-50 dark:bg-lime-400/10";
+      default:
+        return "dark:ring-gray-400/10 dark:text-gray-500 ring-gray-500/10 text-gray-600 bg-gray-50 dark:bg-gray-400/10";
+    }
+  }
 
 function Requests() {
   const [requests, setRequests] = useState<ExecutionRequestResponse[]>([]);
@@ -169,6 +199,13 @@ function Requests() {
                           {mapStatus(request?.reviewStatus)}
                         </span>
                         <span
+                          className={`${mapExecutionStatusToLabelColor(
+                            request.executionStatus
+                          )} w-min rounded-md px-2 py-1 mt-2 text-xs font-medium ring-1 ring-inset`}
+                        >
+                          {mapExecutionStatus(request?.executionStatus)}
+                        </span>
+                        <span
                           className={`w-min rounded-md px-2 py-1 mt-2 text-xs font-medium  ring-1 ring-inset bg-yellow-50 text-yellow-600 ring-yellow-500/10 dark:bg-yellow-400/10 dark:text-yellow-500 dark:ring-yellow-400/20`}
                         >
                           {request.type}
@@ -189,4 +226,4 @@ function Requests() {
   );
 }
 
-export { Requests, mapStatusToLabelColor, mapStatus, timeSince };
+export { Requests, mapStatusToLabelColor, mapStatus, mapExecutionStatus, mapExecutionStatusToLabelColor, timeSince };
