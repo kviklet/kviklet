@@ -322,7 +322,7 @@ class ExecutionRequestService(
         val parsedStatements = CCJSqlParserUtil.parseStatements(executionRequest.request.statement)
 
         val explainStatements = if (connection.type == DatasourceType.MSSQL) {
-            parsedStatements.joinToString(";") { "SET SHOWPLAN_TEXT ON;\nGO;\n $it" }
+            parsedStatements.joinToString(";") { "SET SHOWPLAN_TEXT ON;\nGO\n $it" }
         } else {
             parsedStatements.joinToString(";") { "EXPLAIN $it" }
         }
