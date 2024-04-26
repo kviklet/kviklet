@@ -27,7 +27,9 @@ const Toggle = (props: { active: boolean; onClick: () => void }) => {
 };
 
 function timeSince(date: Date) {
-  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000) + (new Date().getTimezoneOffset()*60);
+  const seconds =
+    Math.floor((new Date().getTime() - date.getTime()) / 1000) +
+    new Date().getTimezoneOffset() * 60;
 
   let interval = seconds / 31536000;
 
@@ -150,7 +152,13 @@ function Requests() {
                         )}
                       </div>
                       <div className="ml-auto flex flex-col items-end">
-                        <div className="mb-2 text-sm dark:text-slate-400 text-slate-600" title="{new Date(request.createdAt).toLocaleDateString()} UTC">
+                        <div
+                          className="mb-2 text-sm dark:text-slate-400 text-slate-600"
+                          title={
+                            new Date(request.createdAt).toLocaleDateString() +
+                            " UTC"
+                          }
+                        >
                           {timeSince(new Date(request.createdAt))}
                         </div>
                         <span
