@@ -50,10 +50,14 @@ class ExecutorService {
         username: String,
         password: String,
         query: String,
+        MSSQLexplain: Boolean = false,
     ): List<QueryResult> {
         createConnection(connectionString, username, password).use { dataSource: HikariDataSource ->
             try {
                 dataSource.connection.createStatement().use { statement ->
+                    if (MSSQLexplain) {
+                        statement.execute("SET SHOWPLAN_TEXT ON")
+                    }
                     var hasResults = statement.execute(query)
                     val queryResults = mutableListOf<QueryResult>()
 
