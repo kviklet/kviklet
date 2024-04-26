@@ -150,7 +150,7 @@ function Requests() {
                         )}
                       </div>
                       <div className="ml-auto flex flex-col items-end">
-                        <div className="mb-2 text-sm dark:text-slate-400 text-slate-600">
+                        <div className="mb-2 text-sm dark:text-slate-400 text-slate-600" title="{new Date(request.createdAt).toLocaleDateString()} UTC">
                           {timeSince(new Date(request.createdAt))}
                         </div>
                         <span
