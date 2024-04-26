@@ -180,7 +180,8 @@ class ExecutionTest {
                             "description": "A test execution request",
                             "statement": "SELECT * FROM test",
                             "readOnly": true,
-                            "executionStatus": "PENDING",
+                            "reviewStatus": "AWAITING_APPROVAL",
+                            "executionStatus": "NOT_EXECUTED",
                             "author": {
                                 "id": "${user.getId()}",
                                 "email": "${user.email}",
@@ -303,5 +304,29 @@ class ExecutionTest {
             ),
         )
             .andExpect(jsonPath("$.executions[0].executionTime", notNullValue()))
+
+        mockMvc.perform(
+            get("/execution-requests/${executionRequest.getId()}").cookie(cookie).contentType(
+                "application/json",
+            ),
+        ).andExpect(status().isOk).andExpect(
+            content().json(
+                """
+                   {
+                    "id": "${executionRequest.getId()}",
+                    "executionStatus": "EXECUTED",
+                    "reviewStatus": "APPROVED",
+                    "events": [
+                    {
+                        "type": "REVIEW"
+                    },
+                    {
+                        "type": "EXECUTE"
+                    }
+                    ]
+              }
+                """.trimIndent(),
+            ),
+        )
     }
 }

@@ -21,6 +21,12 @@ enum class ReviewStatus {
     APPROVED,
 }
 
+enum class ExecutionStatus {
+    NOT_EXECUTED,
+    ACTIVE,
+    EXECUTED,
+}
+
 enum class RequestType {
     SingleExecution,
     TemporaryAccess,
@@ -120,6 +126,14 @@ data class ExecutionRequestDetails(
         }
 
         return reviewStatus
+    }
+
+    fun resolveExecutionStatus(): ExecutionStatus {
+        val executions = events.filter { it.type == EventType.EXECUTE }
+        if (executions.isEmpty()) {
+            return ExecutionStatus.NOT_EXECUTED
+        }
+        return ExecutionStatus.EXECUTED
     }
 
     override fun getId() = request.id.toString()
