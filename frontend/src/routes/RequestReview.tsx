@@ -200,78 +200,79 @@ function RequestReview() {
 
   return (
     <div>
-      {(loading && <Spinner />) || (
-        <div className="max-w-3xl m-auto mt-10">
-          <h1 className="text-3xl my-2 w-full flex items-start">
-            <div className="mr-auto">{request?.title}</div>
-            <div
-              className={` ${mapStatusToLabelColor(
-                request?.reviewStatus,
-              )} w-min rounded-md px-2 py-1 mt-2 text-base font-medium ring-1 ring-inset `}
-            >
-              {mapStatus(request?.reviewStatus)}
-            </div>
-          </h1>
-          <div className="">
+      {(loading && <Spinner />) ||
+        (request && (
+          <div className="max-w-3xl m-auto mt-10">
+            <h1 className="text-3xl my-2 w-full flex items-start">
+              <div className="mr-auto">{request?.title}</div>
+              <div
+                className={` ${mapStatusToLabelColor(
+                  mapStatus(request.reviewStatus, request.executionStatus),
+                )} w-min rounded-md px-2 py-1 mt-2 text-base font-medium ring-1 ring-inset `}
+              >
+                {mapStatus(request.reviewStatus, request.executionStatus)}
+              </div>
+            </h1>
             <div className="">
-              {request &&
-                (request?._type === "DATASOURCE" ? (
-                  <DatasourceRequestDisplay
-                    request={request}
-                    run={run}
-                    start={start}
-                    updateRequest={updateRequest}
-                    results={results}
-                    dataLoading={dataLoading}
-                    executionError={executionError}
-                    proxyResponse={proxyResponse}
-                  ></DatasourceRequestDisplay>
-                ) : (
-                  (
-                    <KubernetesRequestDisplay
+              <div className="">
+                {request &&
+                  (request?._type === "DATASOURCE" ? (
+                    <DatasourceRequestDisplay
                       request={request}
                       run={run}
                       start={start}
                       updateRequest={updateRequest}
-                      results={kubernetesResults}
+                      results={results}
                       dataLoading={dataLoading}
                       executionError={executionError}
                       proxyResponse={proxyResponse}
-                    ></KubernetesRequestDisplay>
-                  ) || <></>
-                ))}
-              <div className="w-full border-b dark:border-slate-700 border-slate-300 mt-3"></div>
-              <div className="mt-6">
-                <span>Activity</span>
-              </div>
-              <div>
-                {request === undefined
-                  ? ""
-                  : request?.events?.map((event, index) => {
-                      if (event?._type === "EDIT")
-                        return (
-                          <EditEvent event={event} index={index}></EditEvent>
-                        );
-                      if (event?._type === "EXECUTE")
-                        return (
-                          <ExecuteEvent
-                            event={event}
-                            index={index}
-                          ></ExecuteEvent>
-                        );
+                    ></DatasourceRequestDisplay>
+                  ) : (
+                    (
+                      <KubernetesRequestDisplay
+                        request={request}
+                        run={run}
+                        start={start}
+                        updateRequest={updateRequest}
+                        results={kubernetesResults}
+                        dataLoading={dataLoading}
+                        executionError={executionError}
+                        proxyResponse={proxyResponse}
+                      ></KubernetesRequestDisplay>
+                    ) || <></>
+                  ))}
+                <div className="w-full border-b dark:border-slate-700 border-slate-300 mt-3"></div>
+                <div className="mt-6">
+                  <span>Activity</span>
+                </div>
+                <div>
+                  {request === undefined
+                    ? ""
+                    : request?.events?.map((event, index) => {
+                        if (event?._type === "EDIT")
+                          return (
+                            <EditEvent event={event} index={index}></EditEvent>
+                          );
+                        if (event?._type === "EXECUTE")
+                          return (
+                            <ExecuteEvent
+                              event={event}
+                              index={index}
+                            ></ExecuteEvent>
+                          );
 
-                      return <Comment event={event} index={index}></Comment>;
-                    })}
-                <CommentBox
-                  addComment={addComment}
-                  approve={approve}
-                  userId={request?.author?.id}
-                ></CommentBox>
+                        return <Comment event={event} index={index}></Comment>;
+                      })}
+                  <CommentBox
+                    addComment={addComment}
+                    approve={approve}
+                    userId={request?.author?.id}
+                  ></CommentBox>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        ))}
     </div>
   );
 }
