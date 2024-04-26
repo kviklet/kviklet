@@ -155,7 +155,7 @@ function Requests() {
                         <div
                           className="mb-2 text-sm dark:text-slate-400 text-slate-600"
                           title={
-                            new Date(request.createdAt).toLocaleDateString() +
+                            new Date(request.createdAt).toLocaleString() +
                             " UTC"
                           }
                         >
