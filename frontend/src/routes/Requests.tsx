@@ -27,7 +27,7 @@ const Toggle = (props: { active: boolean; onClick: () => void }) => {
 };
 
 function timeSince(date: Date) {
-  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000) + (new Date().getTimezoneOffset()*60);
 
   let interval = seconds / 31536000;
 
