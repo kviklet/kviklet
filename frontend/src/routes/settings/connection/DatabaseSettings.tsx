@@ -13,7 +13,7 @@ import Spinner from "../../../components/Spinner";
 import CreateKubernetesConnectionForm from "./KubernetesConnectionForm";
 import SingleKubernetesConnectionSettings from "./SingleKubernetesSettings";
 import SingleDatabaseConnectionSettings from "./SingleDatabaseSettings";
-import NewDatabaseConnectionForm from "./NewDatabaseConnectionForm";
+import DatabaseConnectionForm from "./DatabaseConnectionForm";
 
 const useIdNamePair = () => {
   const [displayName, setDisplayName] = useState<string>("");
@@ -169,7 +169,7 @@ const DatabaseSettings = () => {
           </div>
           {showAddConnectionModal && (
             <Modal setVisible={setShowAddConnectionModal}>
-              <NewDatabaseConnectionForm
+              <DatabaseConnectionForm
                 handleCreateConnection={handleCreateConnection}
               />
             </Modal>
