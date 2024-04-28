@@ -19,8 +19,6 @@ test("Create Connection", async ({ page }) => {
   await page.getByPlaceholder("Connection Name").click();
   await page.getByPlaceholder("Connection Name").fill("my test connection");
   await page.getByPlaceholder("Connection Name").press("Tab");
-  await page.getByPlaceholder("readonly").fill("postgres");
-  await page.getByPlaceholder("readonly").press("Tab");
   await page.getByPlaceholder("password").fill("postgres");
   await page.getByPlaceholder("localhost").fill("postgres");
   await page.getByPlaceholder("5432").fill("5432");
