@@ -16,15 +16,17 @@ test("Create Connection", async ({ page }) => {
   await page.getByRole("link", { name: "Settings" }).click();
   await page.waitForURL("**/settings");
   await page.getByRole("button", { name: "Add Connection" }).click();
+
+  const select = await page.getByLabel("Database Type");
+  await select.selectOption("POSTGRESQL");
   await page.getByPlaceholder("Connection Name").click();
   await page.getByPlaceholder("Connection Name").fill("my test connection");
   await page.getByPlaceholder("Connection Name").press("Tab");
   await page.getByPlaceholder("password").fill("postgres");
   await page.getByPlaceholder("localhost").fill("postgres");
-  await page.getByPlaceholder("5432").fill("5432");
-  const select = await page.getByLabel("Database Type");
-  await select.selectOption("POSTGRESQL");
-  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Create Connection", exact: true })
+    .click();
   await page
     .locator("div")
     .filter({ hasText: /^Database name:Required reviews:$/ })

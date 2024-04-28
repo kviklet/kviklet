@@ -107,7 +107,7 @@ export default function DatabaseConnectionForm(props: {
               htmlFor="type"
               className="my-auto text-sm font-medium text-slate-700 dark:text-slate-200 mr-auto"
             >
-              Database type:
+              Database Type
             </label>
             <select
               {...register("type")}
@@ -155,7 +155,7 @@ export default function DatabaseConnectionForm(props: {
           <InputField
             id="hostname"
             label="Hostname"
-            placeholder="Hostname"
+            placeholder="localhost"
             {...register("hostname")}
             error={errors.hostname?.message}
           />
