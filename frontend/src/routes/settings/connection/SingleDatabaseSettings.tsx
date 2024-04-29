@@ -67,11 +67,16 @@ export default function SingleDatabaseConnectionSettings(props: {
           ></input>
         </div>
         <div className="flex justify-between">
-          <label htmlFor="number" className="mr-auto dark:text-slate-400">
+          <label
+            htmlFor={`required-reviews-${props.connection.id}`}
+            className="mr-auto dark:text-slate-400"
+          >
             Required reviews:
           </label>
           <input
             type="number"
+            name="required-reviews"
+            id={`required-reviews-${props.connection.id}`}
             min="0"
             value={numTotalRequired}
             onChange={(e) => {

@@ -20,7 +20,7 @@ const connectionFormSchema = z
     password: z.string().min(1),
     databaseName: z.string(),
     reviewConfig: z.object({
-      numTotalRequired: z.number(),
+      numTotalRequired: z.coerce.number(),
     }),
     additionalJDBCOptions: z.string(),
   })
