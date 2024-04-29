@@ -16,34 +16,20 @@ test("Create Connection", async ({ page }) => {
   await page.getByRole("link", { name: "Settings" }).click();
   await page.waitForURL("**/settings");
   await page.getByRole("button", { name: "Add Connection" }).click();
+
   await page.getByPlaceholder("Connection Name").click();
   await page.getByPlaceholder("Connection Name").fill("my test connection");
   await page.getByPlaceholder("Connection Name").press("Tab");
-  await page.getByPlaceholder("readonly").fill("postgres");
-  await page.getByPlaceholder("readonly").press("Tab");
+  await page.getByPlaceholder("Username").fill("postgres");
   await page.getByPlaceholder("password").fill("postgres");
   await page.getByPlaceholder("localhost").fill("postgres");
-  await page.getByPlaceholder("5432").fill("5432");
-  const select = await page.getByLabel("Database Type");
-  await select.selectOption("POSTGRESQL");
-  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByLabel("Required reviews", { exact: true }).click();
+  await page.getByLabel("Required reviews", { exact: true }).fill("0");
   await page
-    .locator("div")
-    .filter({ hasText: /^Database name:Required reviews:$/ })
-    .getByRole("spinbutton")
-    .click();
-  await page
-    .locator("div")
-    .filter({ hasText: /^Database name:Required reviews:$/ })
-    .getByRole("spinbutton")
-    .fill("0");
-  await page
-    .locator("div")
-    .filter({ hasText: /^Database name:Required reviews:$/ })
-    .getByRole("button")
+    .getByRole("button", { name: "Create Connection", exact: true })
     .click();
   await expect(page.getByText("my test connection")).toBeVisible();
-  await expect(page.getByRole("spinbutton").nth(1)).toHaveValue("0");
+  await expect(page.getByLabel("Required reviews:").nth(1)).toHaveValue("0");
 });
 
 test("Create Request", async ({ page }) => {

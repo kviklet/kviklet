@@ -10,11 +10,10 @@ import {
 import Button from "../../../components/Button";
 import Modal from "../../../components/Modal";
 import Spinner from "../../../components/Spinner";
-import React from "react";
 import CreateKubernetesConnectionForm from "./KubernetesConnectionForm";
 import SingleKubernetesConnectionSettings from "./SingleKubernetesSettings";
-import CreateDatasourceConnectionForm from "./DatabaseConnectionForm";
 import SingleDatabaseConnectionSettings from "./SingleDatabaseSettings";
+import DatabaseConnectionForm from "./DatabaseConnectionForm";
 
 const useIdNamePair = () => {
   const [displayName, setDisplayName] = useState<string>("");
@@ -170,7 +169,7 @@ const DatabaseSettings = () => {
           </div>
           {showAddConnectionModal && (
             <Modal setVisible={setShowAddConnectionModal}>
-              <CreateDatasourceConnectionForm
+              <DatabaseConnectionForm
                 handleCreateConnection={handleCreateConnection}
               />
             </Modal>

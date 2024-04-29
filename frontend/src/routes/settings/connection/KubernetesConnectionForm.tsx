@@ -22,7 +22,6 @@ export default function CreateKubernetesConnectionForm(props: {
   } = useForm<KubernetesConnectionPayload>({
     resolver: zodResolver(kubernetesConnectionPayloadSchema),
   });
-  console.log(errors);
 
   const watchDisplayName = watch("displayName");
 
