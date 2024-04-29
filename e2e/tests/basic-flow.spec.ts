@@ -17,8 +17,8 @@ test("Create Connection", async ({ page }) => {
   await page.waitForURL("**/settings");
   await page.getByRole("button", { name: "Add Connection" }).click();
 
-  const select = await page.getByLabel("Database Type");
-  await select.selectOption("POSTGRESQL");
+  const select = page.getByLabel("Database Type");
+  await select.selectOption("Postgres");
   await page.getByPlaceholder("Connection Name").click();
   await page.getByPlaceholder("Connection Name").fill("my test connection");
   await page.getByPlaceholder("Connection Name").press("Tab");
