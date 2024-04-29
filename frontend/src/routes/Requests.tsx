@@ -27,7 +27,9 @@ const Toggle = (props: { active: boolean; onClick: () => void }) => {
 };
 
 function timeSince(date: Date) {
-  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+  const seconds =
+    Math.floor((new Date().getTime() - date.getTime()) / 1000) +
+    new Date().getTimezoneOffset() * 60;
 
   let interval = seconds / 31536000;
 
@@ -53,45 +55,24 @@ function timeSince(date: Date) {
   return Math.floor(seconds) + " seconds ago";
 }
 
-function mapExecutionStatus(status?: string) {
-  switch (status) {
-    case "EXECUTED":
-      return "Executed";
-    case "AWAITING_APPROVAL":
-      return "Waiting";
-    case "PENDING":
-      return "Pending";
-    case "SUCCESS":
-      return "Executed";
-    default:
-      return "Unknown";
-}
-}
-
-function mapStatus(status?: string) {
-  switch (status) {
-    case "APPROVED":
-      return "Approved";
-    case "AWAITING_APPROVAL":
-      return "Waiting";
-    case "PENDING":
-      return "Pending";
-    case "SUCCESS":
-      return "Success";
-    default:
-      return "Unknown";
-  }
+function mapStatus(reviewStatus: string, executionStatus: string) {
+  if (reviewStatus === "AWAITING_APPROVAL" && executionStatus === "EXECUTED")
+    return "Pending";
+  else if (executionStatus === "NOT_EXECUTED") return "Ready";
+  else if (executionStatus === "ACTIVE") return "Active";
+  else if (executionStatus === "EXECUTED") return "Executed";
+  else return "Unknown";
 }
 
 function mapStatusToLabelColor(status?: string) {
   switch (status) {
-    case "APPROVED":
+    case "Ready":
       return "dark:ring-lime-400/10 dark:text-lime-500 ring-lime-500/10 text-lime-600 bg-lime-50 dark:bg-lime-400/10";
-    case "AWAITING_APPROVAL":
+    case "Pending":
       return "dark:ring-sky-400/10 dark:text-sky-500 ring-sky-500/10 text-sky-600 bg-sky-50 dark:bg-sky-400/10";
-    case "PENDING":
+    case "Active":
       return "dark:ring-yellow-400/10 dark:text-yellow-500 ring-yellow-500/10 text-yellow-600 bg-yellow-50 dark:bg-yellow-400/10";
-    case "SUCCESS":
+    case "Executed":
       return "dark:ring-lime-400/10 dark:text-lime-500 ring-lime-500/10 text-lime-600 bg-lime-50 dark:bg-lime-400/10";
     default:
       return "dark:ring-gray-400/10 dark:text-gray-500 ring-gray-500/10 text-gray-600 bg-gray-50 dark:bg-gray-400/10";
@@ -180,15 +161,27 @@ function Requests() {
                         )}
                       </div>
                       <div className="ml-auto flex flex-col items-end">
-                        <div className="mb-2 text-sm dark:text-slate-400 text-slate-600">
+                        <div
+                          className="mb-2 text-sm dark:text-slate-400 text-slate-600"
+                          title={
+                            new Date(request.createdAt).toLocaleString() +
+                            " UTC"
+                          }
+                        >
                           {timeSince(new Date(request.createdAt))}
                         </div>
                         <span
                           className={`${mapStatusToLabelColor(
-                            request.reviewStatus,
+                            mapStatus(
+                              request?.reviewStatus,
+                              request?.executionStatus,
+                            ),
                           )} w-min rounded-md px-2 py-1 mt-2 text-xs font-medium ring-1 ring-inset`}
                         >
-                          {mapStatus(request?.reviewStatus)}
+                          {mapStatus(
+                            request?.reviewStatus,
+                            request?.executionStatus,
+                          )}
                         </span>
                         <span
                           className={`${mapExecutionStatusToLabelColor(

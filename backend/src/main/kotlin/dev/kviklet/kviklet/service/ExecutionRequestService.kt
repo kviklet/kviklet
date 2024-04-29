@@ -320,7 +320,12 @@ class ExecutionRequestService(
             throw InvalidReviewException("Can only explain single queries!")
         }
         val parsedStatements = CCJSqlParserUtil.parseStatements(executionRequest.request.statement)
-        val explainStatements = parsedStatements.joinToString(";") { "EXPLAIN $it" }
+
+        val explainStatements = if (connection.type == DatasourceType.MSSQL) {
+            parsedStatements.joinToString(";")
+        } else {
+            parsedStatements.joinToString(";") { "EXPLAIN $it" }
+        }
 
         val result = executorService.execute(
             executionRequestId = id,
@@ -328,6 +333,7 @@ class ExecutionRequestService(
             username = connection.username,
             password = connection.password,
             query = explainStatements,
+            MSSQLexplain = connection.type == DatasourceType.MSSQL,
         )
 
         return DBExecutionResult(results = result, executionRequestId = id)

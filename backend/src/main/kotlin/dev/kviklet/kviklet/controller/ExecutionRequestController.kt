@@ -23,6 +23,7 @@ import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.ExecutionResult
+import dev.kviklet.kviklet.service.dto.ExecutionStatus
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
 import dev.kviklet.kviklet.service.dto.RequestType
@@ -118,7 +119,7 @@ sealed class ExecutionRequestResponse(
                     statement = dto.request.statement,
                     readOnly = dto.request.readOnly,
                     reviewStatus = dto.resolveReviewStatus(),
-                    executionStatus = dto.request.executionStatus,
+                    executionStatus = dto.resolveExecutionStatus(),
                     createdAt = dto.request.createdAt,
                     connection = ConnectionResponse.fromDto(
                         dto.request.connection,
@@ -131,7 +132,7 @@ sealed class ExecutionRequestResponse(
                     title = dto.request.title,
                     description = dto.request.description,
                     reviewStatus = dto.resolveReviewStatus(),
-                    executionStatus = dto.request.executionStatus,
+                    executionStatus = dto.resolveExecutionStatus(),
                     createdAt = dto.request.createdAt,
                     connection = ConnectionResponse.fromDto(
                         dto.request.connection,
@@ -155,7 +156,7 @@ sealed class ExecutionRequestResponse(
         val statement: String?,
         val readOnly: Boolean,
         val reviewStatus: ReviewStatus,
-        val executionStatus: String,
+        val executionStatus: ExecutionStatus,
         val createdAt: LocalDateTime = LocalDateTime.now(),
     ) : ExecutionRequestResponse(id = id)
 
@@ -167,7 +168,7 @@ sealed class ExecutionRequestResponse(
         val connection: ConnectionResponse,
         val description: String?,
         val reviewStatus: ReviewStatus,
-        val executionStatus: String,
+        val executionStatus: ExecutionStatus,
         val createdAt: LocalDateTime = LocalDateTime.now(),
         val namespace: String?,
         val podName: String?,
@@ -196,7 +197,7 @@ sealed class ExecutionRequestDetailResponse(
                     statement = dto.request.statement,
                     readOnly = dto.request.readOnly,
                     reviewStatus = dto.resolveReviewStatus(),
-                    executionStatus = dto.request.executionStatus,
+                    executionStatus = dto.resolveExecutionStatus(),
                     createdAt = dto.request.createdAt,
                     events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
                     connection = ConnectionResponse.fromDto(dto.request.connection),
@@ -208,7 +209,7 @@ sealed class ExecutionRequestDetailResponse(
                     title = dto.request.title,
                     description = dto.request.description,
                     reviewStatus = dto.resolveReviewStatus(),
-                    executionStatus = dto.request.executionStatus,
+                    executionStatus = dto.resolveExecutionStatus(),
                     createdAt = dto.request.createdAt,
                     namespace = dto.request.namespace,
                     podName = dto.request.podName,
@@ -232,7 +233,7 @@ data class DatasourceExecutionRequestDetailResponse(
     val statement: String?,
     val readOnly: Boolean,
     val reviewStatus: ReviewStatus,
-    val executionStatus: String,
+    val executionStatus: ExecutionStatus,
     val createdAt: LocalDateTime = LocalDateTime.now(),
     override val events: List<EventResponse>,
 ) : ExecutionRequestDetailResponse(
@@ -248,7 +249,7 @@ data class KubernetesExecutionRequestDetailResponse(
     val connection: ConnectionResponse,
     val description: String?,
     val reviewStatus: ReviewStatus,
-    val executionStatus: String,
+    val executionStatus: ExecutionStatus,
     val createdAt: LocalDateTime = LocalDateTime.now(),
     val namespace: String?,
     val podName: String?,
