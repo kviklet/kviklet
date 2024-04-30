@@ -3,7 +3,11 @@ package dev.kviklet.kviklet.service
 import com.zaxxer.hikari.HikariDataSource
 import dev.kviklet.kviklet.security.Resource
 import dev.kviklet.kviklet.security.SecuredDomainObject
+import dev.kviklet.kviklet.service.dto.ErrorResultLog
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
+import dev.kviklet.kviklet.service.dto.QueryResultLog
+import dev.kviklet.kviklet.service.dto.ResultLog
+import dev.kviklet.kviklet.service.dto.UpdateResultLog
 import org.springframework.boot.jdbc.DataSourceBuilder
 import org.springframework.stereotype.Service
 import java.sql.ResultSet
@@ -14,24 +18,47 @@ sealed class QueryResult(open val executionRequestId: ExecutionRequestId) : Secu
     override fun getId() = executionRequestId.toString()
     override fun getDomainObjectType() = Resource.EXECUTION_REQUEST
     override fun getRelated(resource: Resource) = null
+
+    abstract fun toResultLog(): ResultLog
 }
 
 data class RecordsQueryResult(
     val columns: List<ColumnInfo>,
     val data: List<Map<String, String>>,
     override val executionRequestId: ExecutionRequestId,
-) : QueryResult(executionRequestId)
+) : QueryResult(executionRequestId) {
+    override fun toResultLog(): QueryResultLog {
+        return QueryResultLog(
+            columnCount = columns.size,
+            rowCount = data.size,
+        )
+    }
+}
 
 data class UpdateQueryResult(
     val rowsUpdated: Int,
     override val executionRequestId: ExecutionRequestId,
-) : QueryResult(executionRequestId)
+) : QueryResult(executionRequestId) {
+
+    override fun toResultLog(): UpdateResultLog {
+        return UpdateResultLog(
+            rowsUpdated = rowsUpdated,
+        )
+    }
+}
 
 data class ErrorQueryResult(
     val errorCode: Int,
     val message: String?,
     override val executionRequestId: ExecutionRequestId,
-) : QueryResult(executionRequestId)
+) : QueryResult(executionRequestId) {
+    override fun toResultLog(): ResultLog {
+        return ErrorResultLog(
+            errorCode = errorCode,
+            message = message ?: "",
+        )
+    }
+}
 
 data class ColumnInfo(
     val label: String,
@@ -42,7 +69,7 @@ data class ColumnInfo(
 )
 
 @Service
-class ExecutorService {
+class ExecutorService() {
 
     fun execute(
         executionRequestId: ExecutionRequestId,

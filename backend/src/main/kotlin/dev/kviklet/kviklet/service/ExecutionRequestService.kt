@@ -218,7 +218,7 @@ class ExecutionRequestService(
                 "For temporary access requests the query param is required",
             )
         }
-        eventService.saveEvent(
+        val event = eventService.saveEvent(
             id,
             userId,
             ExecutePayload(
@@ -244,6 +244,10 @@ class ExecutionRequestService(
                 executionStatus = "EXECUTED",
             )
         }
+        val resultLogs = result.map {
+            it.toResultLog()
+        }
+        eventService.addResultLogs(event.eventId!!, resultLogs)
 
         return DBExecutionResult(
             executionRequestId = id,

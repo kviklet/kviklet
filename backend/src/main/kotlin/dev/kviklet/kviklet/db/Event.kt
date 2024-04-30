@@ -1,14 +1,17 @@
 package dev.kviklet.kviklet.db
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
 import dev.kviklet.kviklet.db.util.BaseEntity
 import dev.kviklet.kviklet.db.util.EventPayloadConverter
 import dev.kviklet.kviklet.service.dto.Event
+import dev.kviklet.kviklet.service.dto.EventId
 import dev.kviklet.kviklet.service.dto.EventType
 import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
+import dev.kviklet.kviklet.service.dto.ResultType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import jakarta.persistence.Column
 import jakarta.persistence.Convert
@@ -57,7 +60,38 @@ data class ExecutePayload(
     val containerName: String? = null,
     val podName: String? = null,
     val namespace: String? = null,
+    val results: List<ResultLogPayload> = emptyList(),
 ) : Payload(EventType.EXECUTE)
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+@JsonTypeInfo(
+    use = JsonTypeInfo.Id.NAME,
+    include = JsonTypeInfo.As.EXISTING_PROPERTY,
+    property = "type",
+    visible = true,
+)
+@JsonSubTypes(
+    JsonSubTypes.Type(value = ErrorResultLogPayload::class, name = "ERROR"),
+    JsonSubTypes.Type(value = UpdateResultLogPayload::class, name = "UPDATE"),
+    JsonSubTypes.Type(value = QueryResultLogPayload::class, name = "QUERY"),
+)
+sealed class ResultLogPayload(
+    val type: ResultType,
+)
+
+data class ErrorResultLogPayload(
+    val errorCode: Int,
+    val message: String,
+) : ResultLogPayload(ResultType.ERROR)
+
+data class UpdateResultLogPayload(
+    val rowsUpdated: Int,
+) : ResultLogPayload(ResultType.UPDATE)
+
+data class QueryResultLogPayload(
+    val columnCount: Int,
+    val rowCount: Int,
+) : ResultLogPayload(ResultType.QUERY)
 
 @Entity(name = "event")
 class EventEntity(
@@ -71,13 +105,13 @@ class EventEntity(
     val author: UserEntity,
 
     @Enumerated(EnumType.STRING)
-    private val type: EventType,
+    var type: EventType,
 
     @Convert(converter = EventPayloadConverter::class)
     @Column(columnDefinition = "json")
     @ColumnTransformer(write = "?::json")
-    private val payload: Payload,
-    private val createdAt: LocalDateTime = LocalDateTime.now(),
+    var payload: Payload,
+    var createdAt: LocalDateTime = LocalDateTime.now(),
 ) : BaseEntity() {
 
     override fun toString(): String {
@@ -89,10 +123,10 @@ class EventEntity(
     fun toDto(request: ExecutionRequestDetails? = null): Event {
         if (request == null) {
             val executionDetails = executionRequest.toDetailDto()
-            return executionDetails.events.find { it.eventId == id }!!
+            return executionDetails.events.find { it.eventId.toString() == id }!!
         }
         return Event.create(
-            id = id,
+            id = EventId(id!!),
             createdAt = createdAt,
             payload = payload,
             author = author.toDto(),
@@ -112,5 +146,17 @@ class EventAdapter(
     fun getExecutions(): List<ExecuteEvent> {
         val events = eventRepository.findByType(EventType.EXECUTE)
         return events.map { it.toDto() }.filterIsInstance<ExecuteEvent>()
+    }
+
+    fun updateEvent(id: EventId, payload: Payload): Event {
+        val event = eventRepository.findById(id.toString()).orElseThrow { IllegalArgumentException("Event not found") }
+        event.payload = payload
+        eventRepository.save(event)
+        return event.toDto()
+    }
+
+    fun getEvent(id: EventId): Event {
+        val event = eventRepository.findById(id.toString()).orElseThrow { IllegalArgumentException("Event not found") }
+        return event.toDto()
     }
 }
