@@ -41,6 +41,8 @@ import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 import { AbsoluteInitialBubble as InitialBubble } from "../components/InitialBubble";
 import { timeAgo } from "./Auditlog";
 import ShellResult from "../components/ShellResult";
+import { Disclosure } from "@headlessui/react";
+import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 
 interface RequestReviewParams {
   requestId: string;
@@ -492,7 +494,7 @@ function DatasourceRequestBox({
     <div>
       <div className="relative border-slate-500 dark:bg-slate-950 dark:border dark:border-slate-950">
         <InitialBubble name={request?.author.fullName} />
-        <p className="text-slate-800 py-2 text-sm flex bg-slate-50 dark:bg-slate-950 dark:text-slate-50 dark:border-none">
+        <div className="text-slate-800 py-2 text-sm flex bg-slate-50 dark:bg-slate-950 dark:text-slate-50 dark:border-none">
           <div>
             {request?.author?.fullName + questionText}
             <span className="italic">{request?.connection.displayName}</span>
@@ -500,7 +502,7 @@ function DatasourceRequestBox({
           <div className="ml-auto dark:text-slate-500">
             {timeAgo(new Date(request?.createdAt ?? ""))}
           </div>
-        </p>
+        </div>
         <div className="py-3">
           <p className="text-slate-500 pb-6">{request?.description}</p>
           {request?.type == "SingleExecution" ? (
@@ -650,7 +652,7 @@ function EditEvent({ event, index }: { event: Edit; index: number }) {
 
 function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
   return (
-    <div>
+    <div className="">
       <div className="relative py-4 ml-4 flex">
         {(!(index === 0) && (
           <div className="bg-slate-700 w-0.5 absolute block whitespace-pre left-0 top-0 bottom-0">
@@ -677,25 +679,81 @@ function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
           </div>
         )}
       </div>
-      <div className="relative shadow-md dark:shadow-none dark:border-slate-700 rounded-md border">
+      <div className="relative shadow-md dark:shadow-none dark:border-slate-700 rounded-md border dark:bg-slate-900">
         <InitialBubble name={event?.author?.fullName} />
-        <p className="text-slate-500 dark:text-slate-500 px-4 pt-2 text-sm flex justify-between dark:bg-slate-900 rounded-t-md">
+        <div className="text-slate-500 dark:text-slate-500 px-4 pt-2 text-sm flex justify-between dark:bg-slate-900 rounded-t-md">
           <div className="mr-4">
             {((event?.createdAt && timeSince(event.createdAt)) as
               | string
               | undefined) || ""}
           </div>
-        </p>
+        </div>
         {event?.query && (
           <div className="py-3 px-4 dark:bg-slate-900 rounded-b-md">
             <Highlighter>{event.query}</Highlighter>
           </div>
         )}
+
         {event?.command && (
           <div className="py-3 px-4 dark:bg-slate-900 rounded-b-md">
             <Highlighter>{event.command}</Highlighter>
           </div>
         )}
+        <div className="px-4 dark:bg-slate-900">
+          <Disclosure defaultOpen={true}>
+            {({ open }) => (
+              <>
+                <Disclosure.Button className="py-2 w-full ">
+                  <div className="flex flex-row justify-start w-full">
+                    <p className="text-xs">Results</p>
+                    {open ? (
+                      <ChevronDownIcon className="h-4 w-4 text-slate-400 dark:text-slate-500"></ChevronDownIcon>
+                    ) : (
+                      <ChevronRightIcon className="h-4 w-4 text-slate-400 dark:text-slate-500"></ChevronRightIcon>
+                    )}
+                  </div>
+                </Disclosure.Button>
+                <Disclosure.Panel>
+                  <div className="flex flex-col space-y-2 text-sm mb-2 dark:text-slate-300">
+                    {event.results.map((result, index) => {
+                      const renderResult = () => {
+                        console.log(result);
+                        if (result.type === "QUERY") {
+                          return (
+                            <div className="flex justify-between">
+                              <span>
+                                Returned {result.columnCount} Column(s) with{" "}
+                                {result.rowCount} row(s).
+                              </span>
+                            </div>
+                          );
+                        } else if (result.type === "ERROR") {
+                          return (
+                            <div className="flex justify-between text-red-500">
+                              <span>
+                                Query resulted in Error "{result.message}"" with
+                                code "{result.errorCode}"".
+                              </span>
+                            </div>
+                          );
+                        } else if (result.type === "UPDATE") {
+                          return (
+                            <div className="flex justify-between">
+                              <span>
+                                Statement affected {result.rowsUpdated} row(s).
+                              </span>
+                            </div>
+                          );
+                        }
+                      };
+                      return <div key={index}>{renderResult()}</div>;
+                    })}
+                  </div>
+                </Disclosure.Panel>
+              </>
+            )}
+          </Disclosure>
+        </div>
       </div>
     </div>
   );

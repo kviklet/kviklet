@@ -2,9 +2,12 @@ package dev.kviklet.kviklet.service.dto
 
 import dev.kviklet.kviklet.db.CommentPayload
 import dev.kviklet.kviklet.db.EditPayload
+import dev.kviklet.kviklet.db.ErrorResultLogPayload
 import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.Payload
+import dev.kviklet.kviklet.db.QueryResultLogPayload
 import dev.kviklet.kviklet.db.ReviewPayload
+import dev.kviklet.kviklet.db.UpdateResultLogPayload
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.security.Resource
 import dev.kviklet.kviklet.security.SecuredDomainObject
@@ -38,10 +41,10 @@ abstract class Event(
     open val createdAt: LocalDateTime = LocalDateTime.now(),
     open val request: ExecutionRequestDetails,
 ) : SecuredDomainObject {
-    abstract val eventId: String?
+    abstract val eventId: EventId?
     abstract val author: User
 
-    override fun getId(): String? = eventId
+    override fun getId(): String? = eventId.toString()
 
     override fun getDomainObjectType(): Resource = Resource.EVENT
 
@@ -50,7 +53,7 @@ abstract class Event(
 
     companion object {
         fun create(
-            id: String?,
+            id: EventId?,
             request: ExecutionRequestDetails,
             author: User,
             createdAt: LocalDateTime,
@@ -63,16 +66,25 @@ abstract class Event(
                 payload.previousCommand, payload.previousContainerName, payload.previousPodName,
                 payload.previousNamespace,
             )
-            is ExecutePayload -> ExecuteEvent(
-                id, request, author, createdAt, payload.query, payload.command,
-                payload.containerName, payload.podName, payload.namespace,
-            )
+            is ExecutePayload -> {
+                val results = payload.results.map {
+                    when (it) {
+                        is ErrorResultLogPayload -> ErrorResultLog(it.errorCode, it.message)
+                        is UpdateResultLogPayload -> UpdateResultLog(it.rowsUpdated)
+                        is QueryResultLogPayload -> QueryResultLog(it.columnCount, it.rowCount)
+                    }
+                }
+                ExecuteEvent(
+                    id, request, author, createdAt, payload.query, results, payload.command,
+                    payload.containerName, payload.podName, payload.namespace,
+                )
+            }
         }
     }
 }
 
 data class CommentEvent(
-    override val eventId: String?,
+    override val eventId: EventId?,
     override val request: ExecutionRequestDetails,
     override val author: User,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
@@ -82,7 +94,7 @@ data class CommentEvent(
 }
 
 data class ReviewEvent(
-    override val eventId: String?,
+    override val eventId: EventId?,
     override val request: ExecutionRequestDetails,
     override val author: User,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
@@ -93,7 +105,7 @@ data class ReviewEvent(
 }
 
 data class EditEvent(
-    override val eventId: String?,
+    override val eventId: EventId?,
     override val request: ExecutionRequestDetails,
     override val author: User,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
@@ -107,11 +119,12 @@ data class EditEvent(
 }
 
 data class ExecuteEvent(
-    override val eventId: String?,
+    override val eventId: EventId?,
     override val request: ExecutionRequestDetails,
     override val author: User,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
     val query: String? = null,
+    val results: List<ResultLog> = emptyList(),
     val command: String? = null,
     val containerName: String? = null,
     val podName: String? = null,
@@ -119,3 +132,27 @@ data class ExecuteEvent(
 ) : Event(EventType.EXECUTE, createdAt, request) {
     override fun hashCode() = Objects.hash(eventId)
 }
+
+enum class ResultType {
+    ERROR,
+    UPDATE,
+    QUERY,
+}
+
+sealed class ResultLog(
+    val type: ResultType,
+)
+
+data class ErrorResultLog(
+    val errorCode: Int,
+    val message: String,
+) : ResultLog(ResultType.ERROR)
+
+data class UpdateResultLog(
+    val rowsUpdated: Int,
+) : ResultLog(ResultType.UPDATE)
+
+data class QueryResultLog(
+    val columnCount: Int,
+    val rowCount: Int,
+) : ResultLog(ResultType.QUERY)

@@ -321,7 +321,181 @@ class ExecutionTest {
                         "type": "REVIEW"
                     },
                     {
-                        "type": "EXECUTE"
+                        "type": "EXECUTE",
+                        "results": [
+                         {
+                          "type": "QUERY",
+                          "columnCount": 1,
+                          "rowCount": 1
+                          }
+                       ]
+                    }
+                    ]
+              }
+                """.trimIndent(),
+            ),
+        )
+    }
+
+    @Test
+    fun `execute simple insert`() {
+        val user = userHelper.createUser(permissions = listOf("*"))
+        val approver = userHelper.createUser(permissions = listOf("*"))
+        // Creates a new execution request with SELECT 1; as the statement
+        val executionRequest = executionRequestHelper.createApprovedRequest(
+            getDb(),
+            user,
+            approver,
+            sql = "INSERT INTO foo.simple_table VALUES (1, 'test');",
+        )
+        val cookie = userHelper.login(mockMvc = mockMvc)
+
+        mockMvc.perform(
+            post("/execution-requests/${executionRequest.getId()}/execute").cookie(cookie).contentType(
+                "application/json",
+            ),
+        ).andExpect(status().isOk).andExpect(
+            content().json(
+                """
+                {
+                  "results": [{"rowsUpdated":1,"type":"UPDATE_COUNT"}]
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        mockMvc.perform(
+            get("/executions/").cookie(cookie).contentType(
+                "application/json",
+            ),
+        ).andExpect(status().isOk).andExpect(
+            content().json(
+                """
+                {
+                  "executions": [
+                    {
+                      "requestId": "${executionRequest.getId()}",
+                      "name": "${user.fullName}",
+                      "statement": "INSERT INTO foo.simple_table VALUES (1, 'test');",
+                      "connectionId": "${executionRequest.request.connection.id}"
+                      }
+                  ]
+                }
+                """.trimIndent(),
+            ),
+        )
+            .andExpect(jsonPath("$.executions[0].executionTime", notNullValue()))
+
+        mockMvc.perform(
+            get("/execution-requests/${executionRequest.getId()}").cookie(cookie).contentType(
+                "application/json",
+            ),
+        ).andExpect(status().isOk).andExpect(
+            content().json(
+                """
+                   {
+                    "id": "${executionRequest.getId()}",
+                    "executionStatus": "EXECUTED",
+                    "reviewStatus": "APPROVED",
+                    "events": [
+                    {
+                        "type": "REVIEW"
+                    },
+                    {
+                        "type": "EXECUTE",
+                        "results": [
+                         {
+                            "type":"UPDATE",
+                            "rowsUpdated":1
+                         }
+                       ]
+                    }
+                    ]
+              }
+                """.trimIndent(),
+            ),
+        )
+    }
+
+    @Test
+    fun `execution error`() {
+        val user = userHelper.createUser(permissions = listOf("*"))
+        val approver = userHelper.createUser(permissions = listOf("*"))
+        // Creates a new execution request with SELECT 1; as the statement
+        val executionRequest = executionRequestHelper.createApprovedRequest(
+            getDb(),
+            user,
+            approver,
+            sql = "INSERT INTO non_existent_table VALUES (1, 'test');",
+        )
+        val cookie = userHelper.login(mockMvc = mockMvc)
+
+        mockMvc.perform(
+            post("/execution-requests/${executionRequest.getId()}/execute").cookie(cookie).contentType(
+                "application/json",
+            ),
+        ).andExpect(status().isOk).andExpect(
+            content().json(
+                """
+                {
+                  "results": [
+                  {
+                      "errorCode": 0,
+                      "message": "ERROR: relation \"non_existent_table\" does not exist\n  Position: 13",
+                      "type": "ERROR"
+                  }
+                 ]
+                }
+                """.trimIndent(),
+            ),
+        )
+
+        mockMvc.perform(
+            get("/executions/").cookie(cookie).contentType(
+                "application/json",
+            ),
+        ).andExpect(status().isOk).andExpect(
+            content().json(
+                """
+                {
+                  "executions": [
+                    {
+                      "requestId": "${executionRequest.getId()}",
+                      "name": "${user.fullName}",
+                      "statement": "INSERT INTO non_existent_table VALUES (1, 'test');",
+                      "connectionId": "${executionRequest.request.connection.id}"
+                      }
+                  ]
+                }
+                """.trimIndent(),
+            ),
+        )
+            .andExpect(jsonPath("$.executions[0].executionTime", notNullValue()))
+
+        mockMvc.perform(
+            get("/execution-requests/${executionRequest.getId()}").cookie(cookie).contentType(
+                "application/json",
+            ),
+        ).andExpect(status().isOk).andExpect(
+            content().json(
+                """
+                   {
+                    "id": "${executionRequest.getId()}",
+                    "executionStatus": "EXECUTED",
+                    "reviewStatus": "APPROVED",
+                    "events": [
+                    {
+                        "type": "REVIEW"
+                    },
+                    {
+                        "type": "EXECUTE",
+                        "results": [
+                        {
+                         "errorCode": 0,
+                         "message": "ERROR: relation \"non_existent_table\" does not exist\n  Position: 13",
+                         "type": "ERROR"
+                        }
+                       ]
                     }
                     ]
               }

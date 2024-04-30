@@ -3,7 +3,6 @@ package dev.kviklet.kviklet.controller
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
-import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.security.CurrentUser
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.ColumnInfo
@@ -17,6 +16,7 @@ import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DBExecutionResult
 import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
 import dev.kviklet.kviklet.service.dto.EditEvent
+import dev.kviklet.kviklet.service.dto.ErrorResultLog
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventType
 import dev.kviklet.kviklet.service.dto.ExecuteEvent
@@ -26,10 +26,13 @@ import dev.kviklet.kviklet.service.dto.ExecutionResult
 import dev.kviklet.kviklet.service.dto.ExecutionStatus
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
+import dev.kviklet.kviklet.service.dto.QueryResultLog
 import dev.kviklet.kviklet.service.dto.RequestType
+import dev.kviklet.kviklet.service.dto.ResultType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewEvent
 import dev.kviklet.kviklet.service.dto.ReviewStatus
+import dev.kviklet.kviklet.service.dto.UpdateResultLog
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.DiscriminatorMapping
 import io.swagger.v3.oas.annotations.media.Schema
@@ -377,21 +380,26 @@ abstract class EventResponse(
     open val createdAt: LocalDateTime = LocalDateTime.now(),
 ) {
     abstract val id: String
-    abstract val author: User
+    abstract val author: UserResponse
 
     companion object {
         fun fromEvent(event: Event): EventResponse = when (event) {
-            is CommentEvent -> CommentEventResponse(event.eventId!!, event.author, event.createdAt, event.comment)
+            is CommentEvent -> CommentEventResponse(
+                event.getId()!!,
+                UserResponse(event.author),
+                event.createdAt,
+                event.comment,
+            )
             is ReviewEvent -> ReviewEventResponse(
-                event.eventId!!,
-                event.author,
+                event.getId()!!,
+                UserResponse(event.author),
                 event.createdAt,
                 event.comment,
                 event.action,
             )
             is EditEvent -> EditEventResponse(
-                event.eventId!!,
-                event.author,
+                event.getId()!!,
+                UserResponse(event.author),
                 event.createdAt,
                 event.previousQuery,
                 event.previousCommand,
@@ -400,10 +408,11 @@ abstract class EventResponse(
                 event.previousNamespace,
             )
             is ExecuteEvent -> ExecuteEventResponse(
-                event.eventId!!,
-                event.author,
+                event.getId()!!,
+                UserResponse(event.author),
                 event.createdAt,
                 event.query,
+                event.results.map { ResultLogResponse.fromDto(it) },
                 event.command,
                 event.containerName,
                 event.podName,
@@ -419,7 +428,7 @@ abstract class EventResponse(
 @JsonTypeName("COMMENT")
 data class CommentEventResponse(
     override val id: String,
-    override val author: User,
+    override val author: UserResponse,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
     val comment: String,
 ) : EventResponse(EventType.COMMENT, createdAt)
@@ -427,7 +436,7 @@ data class CommentEventResponse(
 @JsonTypeName("REVIEW")
 data class ReviewEventResponse(
     override val id: String,
-    override val author: User,
+    override val author: UserResponse,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
     val comment: String,
     val action: ReviewAction,
@@ -436,7 +445,7 @@ data class ReviewEventResponse(
 @JsonTypeName("EDIT")
 data class EditEventResponse(
     override val id: String,
-    override val author: User,
+    override val author: UserResponse,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
     val previousQuery: String? = null,
     val previousCommand: String? = null,
@@ -448,14 +457,57 @@ data class EditEventResponse(
 @JsonTypeName("EXECUTE")
 data class ExecuteEventResponse(
     override val id: String,
-    override val author: User,
+    override val author: UserResponse,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
     val query: String? = null,
+    val results: List<ResultLogResponse> = emptyList(),
     val command: String? = null,
     val containerName: String? = null,
     val podName: String? = null,
     val namespace: String? = null,
 ) : EventResponse(EventType.EXECUTE, createdAt)
+
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
+@JsonSubTypes(
+    JsonSubTypes.Type(value = ErrorResultLogResponse::class, name = "ERROR"),
+    JsonSubTypes.Type(value = UpdateResultLogResponse::class, name = "UPDATE"),
+    JsonSubTypes.Type(value = QueryResultLogResponse::class, name = "QUERY"),
+)
+abstract class ResultLogResponse(
+    val type: ResultType,
+) {
+    companion object {
+        fun fromDto(dto: dev.kviklet.kviklet.service.dto.ResultLog): ResultLogResponse {
+            return when (dto) {
+                is ErrorResultLog -> ErrorResultLogResponse(
+                    errorCode = dto.errorCode,
+                    message = dto.message,
+                )
+                is UpdateResultLog -> UpdateResultLogResponse(
+                    rowsUpdated = dto.rowsUpdated,
+                )
+                is QueryResultLog -> QueryResultLogResponse(
+                    columnCount = dto.columnCount,
+                    rowCount = dto.rowCount,
+                )
+            }
+        }
+    }
+}
+
+data class ErrorResultLogResponse(
+    val errorCode: Int,
+    val message: String,
+) : ResultLogResponse(ResultType.ERROR)
+
+data class UpdateResultLogResponse(
+    val rowsUpdated: Int,
+) : ResultLogResponse(ResultType.UPDATE)
+
+data class QueryResultLogResponse(
+    val columnCount: Int,
+    val rowCount: Int,
+) : ResultLogResponse(ResultType.QUERY)
 
 data class ProxyResponse(
     val port: Int,

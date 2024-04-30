@@ -167,6 +167,7 @@ class ExecutionRequestHelper(
         dbcontainer: JdbcDatabaseContainer<*>,
         author: User,
         approver: User,
+        sql: String = "SELECT 1;",
     ): ExecutionRequestDetails {
         val connection = connectionHelper.createPostgresConnection(dbcontainer)
         val executionRequest = executionRequestAdapter.createExecutionRequest(
@@ -174,7 +175,7 @@ class ExecutionRequestHelper(
             title = "Test Execution",
             type = RequestType.SingleExecution,
             description = "A test execution request",
-            statement = "SELECT 1;",
+            statement = sql,
             readOnly = true,
             executionStatus = "PENDING",
             authorId = author.getId()!!,

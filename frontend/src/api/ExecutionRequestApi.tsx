@@ -44,11 +44,31 @@ const EditEvent = withType(
   "EDIT",
 );
 
+const ErrorResultLog = z.object({
+  type: z.literal("ERROR"),
+  errorCode: z.number(),
+  message: z.string(),
+});
+
+const UpdateResultLog = z.object({
+  type: z.literal("UPDATE"),
+  rowsUpdated: z.number(),
+});
+
+const QueryResultLog = z.object({
+  type: z.literal("QUERY"),
+  columnCount: z.number(),
+  rowCount: z.number(),
+});
+
+const ResultLog = z.union([ErrorResultLog, UpdateResultLog, QueryResultLog]);
+
 const ExecuteEvent = withType(
   z.object({
     type: z.literal("EXECUTE"),
     author: userResponseSchema.optional(),
     query: z.string().optional().nullable(),
+    results: z.array(ResultLog),
     command: z.string().optional().nullable(),
     podName: z.string().optional().nullable(),
     namespace: z.string().optional().nullable(),

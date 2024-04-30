@@ -1,11 +1,20 @@
 package dev.kviklet.kviklet.service
 
+import dev.kviklet.kviklet.db.ErrorResultLogPayload
 import dev.kviklet.kviklet.db.EventAdapter
+import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.Payload
+import dev.kviklet.kviklet.db.QueryResultLogPayload
+import dev.kviklet.kviklet.db.UpdateResultLogPayload
+import dev.kviklet.kviklet.service.dto.ErrorResultLog
 import dev.kviklet.kviklet.service.dto.Event
+import dev.kviklet.kviklet.service.dto.EventId
 import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
+import dev.kviklet.kviklet.service.dto.QueryResultLog
+import dev.kviklet.kviklet.service.dto.ResultLog
+import dev.kviklet.kviklet.service.dto.UpdateResultLog
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
 
@@ -21,7 +30,36 @@ class EventService(
         return event
     }
 
+    @Transactional
+    fun addResultLogs(id: EventId, resultLogs: List<ResultLog>): Event {
+        val event = eventAdapter.getEvent(id)
+        if (event !is ExecuteEvent) {
+            throw IllegalArgumentException("Event is not an execution event")
+        }
+        val updatedEvent = event.copy(
+            results = resultLogs,
+        )
+        return eventAdapter.updateEvent(id, updatedEvent.toPayload())
+    }
+
     fun getAllExecutions(): List<ExecuteEvent> {
         return eventAdapter.getExecutions()
     }
+}
+
+fun ExecuteEvent.toPayload(): Payload {
+    return ExecutePayload(
+        query = query,
+        command = command,
+        containerName = containerName,
+        podName = podName,
+        namespace = namespace,
+        results = results.map {
+            when (it) {
+                is ErrorResultLog -> ErrorResultLogPayload(it.errorCode, it.message)
+                is UpdateResultLog -> UpdateResultLogPayload(it.rowsUpdated)
+                is QueryResultLog -> QueryResultLogPayload(it.columnCount, it.rowCount)
+            }
+        },
+    )
 }
