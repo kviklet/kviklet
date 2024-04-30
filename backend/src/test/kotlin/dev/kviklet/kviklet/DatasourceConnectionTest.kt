@@ -7,6 +7,7 @@ import dev.kviklet.kviklet.controller.CreateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
 import dev.kviklet.kviklet.controller.ExecutionRequestController
 import dev.kviklet.kviklet.controller.ReviewConfigRequest
+import dev.kviklet.kviklet.controller.UserResponse
 import dev.kviklet.kviklet.db.ConnectionRepository
 import dev.kviklet.kviklet.db.EventRepository
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
@@ -91,7 +92,7 @@ class DatasourceConnectionTest(
                 id = "id",
                 createdAt = LocalDateTime.now(),
                 comment = "Comment with a \"quote\"!",
-                author = testUser,
+                author = UserResponse(testUser),
             ),
             false,
             CommentEventResponse::createdAt,

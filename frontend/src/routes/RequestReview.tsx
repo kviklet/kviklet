@@ -42,11 +42,7 @@ import { AbsoluteInitialBubble as InitialBubble } from "../components/InitialBub
 import { timeAgo } from "./Auditlog";
 import ShellResult from "../components/ShellResult";
 import { Disclosure } from "@headlessui/react";
-import {
-  ChevronDownIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-} from "@heroicons/react/20/solid";
+import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 
 interface RequestReviewParams {
   requestId: string;

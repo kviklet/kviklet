@@ -3,7 +3,6 @@ package dev.kviklet.kviklet.controller
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
-import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.security.CurrentUser
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.ColumnInfo
@@ -381,21 +380,26 @@ abstract class EventResponse(
     open val createdAt: LocalDateTime = LocalDateTime.now(),
 ) {
     abstract val id: String
-    abstract val author: User
+    abstract val author: UserResponse
 
     companion object {
         fun fromEvent(event: Event): EventResponse = when (event) {
-            is CommentEvent -> CommentEventResponse(event.getId()!!, event.author, event.createdAt, event.comment)
+            is CommentEvent -> CommentEventResponse(
+                event.getId()!!,
+                UserResponse(event.author),
+                event.createdAt,
+                event.comment,
+            )
             is ReviewEvent -> ReviewEventResponse(
                 event.getId()!!,
-                event.author,
+                UserResponse(event.author),
                 event.createdAt,
                 event.comment,
                 event.action,
             )
             is EditEvent -> EditEventResponse(
                 event.getId()!!,
-                event.author,
+                UserResponse(event.author),
                 event.createdAt,
                 event.previousQuery,
                 event.previousCommand,
@@ -405,7 +409,7 @@ abstract class EventResponse(
             )
             is ExecuteEvent -> ExecuteEventResponse(
                 event.getId()!!,
-                event.author,
+                UserResponse(event.author),
                 event.createdAt,
                 event.query,
                 event.results.map { ResultLogResponse.fromDto(it) },
@@ -424,7 +428,7 @@ abstract class EventResponse(
 @JsonTypeName("COMMENT")
 data class CommentEventResponse(
     override val id: String,
-    override val author: User,
+    override val author: UserResponse,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
     val comment: String,
 ) : EventResponse(EventType.COMMENT, createdAt)
@@ -432,7 +436,7 @@ data class CommentEventResponse(
 @JsonTypeName("REVIEW")
 data class ReviewEventResponse(
     override val id: String,
-    override val author: User,
+    override val author: UserResponse,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
     val comment: String,
     val action: ReviewAction,
@@ -441,7 +445,7 @@ data class ReviewEventResponse(
 @JsonTypeName("EDIT")
 data class EditEventResponse(
     override val id: String,
-    override val author: User,
+    override val author: UserResponse,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
     val previousQuery: String? = null,
     val previousCommand: String? = null,
@@ -453,7 +457,7 @@ data class EditEventResponse(
 @JsonTypeName("EXECUTE")
 data class ExecuteEventResponse(
     override val id: String,
-    override val author: User,
+    override val author: UserResponse,
     override val createdAt: LocalDateTime = LocalDateTime.now(),
     val query: String? = null,
     val results: List<ResultLogResponse> = emptyList(),
