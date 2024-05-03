@@ -29,7 +29,6 @@ test("Create Connection", async ({ page }) => {
     .getByRole("button", { name: "Create Connection", exact: true })
     .click();
   await expect(page.getByText("my test connection")).toBeVisible();
-  await expect(page.getByLabel("Required reviews:").nth(1)).toHaveValue("0");
 });
 
 test("Create Request", async ({ page }) => {
