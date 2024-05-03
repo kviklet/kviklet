@@ -187,7 +187,7 @@ export default function DatabaseConnectionForm(props: {
                       </div>
                     </div>
                   </Disclosure.Button>
-                  <Disclosure.Panel>
+                  <Disclosure.Panel unmount={false}>
                     <div className="flex-col space-y-2">
                       <InputField
                         id="id"
