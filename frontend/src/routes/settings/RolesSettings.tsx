@@ -15,11 +15,11 @@ import {
   removeRole,
 } from "../../api/RoleApi";
 import ColorfulLabel from "../../components/ColorfulLabel";
-import { useConnections } from "./connection/DatabaseSettings";
 import { ConnectionResponse } from "../../api/DatasourceApi";
 import DeleteConfirm from "../../components/DeleteConfirm";
 import React from "react";
 import ComboBox from "../../components/ComboBox";
+import useConnections from "../../hooks/connections";
 
 const Tooltip = ({
   children,

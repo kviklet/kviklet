@@ -16,6 +16,7 @@ import { z } from "zod";
 import Button from "../components/Button";
 import { Disclosure } from "@headlessui/react";
 import { Pod, getPods } from "../api/KubernetesApi";
+import useConnections from "../hooks/connections";
 
 const DatasourceExecutionRequestSchema = z
   .object({
@@ -68,22 +69,6 @@ type KubernetesExecutionRequest = z.infer<
   typeof KubernetesExecutionRequestSchema
 >;
 type ExecutionRequest = z.infer<typeof ExecutionRequestSchema>;
-
-const useConnections = () => {
-  const [connections, setConnections] = useState<ConnectionResponse[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      const response = await getConnections();
-      setConnections(response);
-      setLoading(false);
-    };
-    void fetchData();
-  }, []);
-
-  return { connections, loading };
-};
 
 export default function ConnectionChooser() {
   const { connections, loading } = useConnections();
