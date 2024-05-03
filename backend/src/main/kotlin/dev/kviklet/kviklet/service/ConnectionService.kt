@@ -40,10 +40,13 @@ class ConnectionService(
         return connectionAdapter.updateDatasourceConnection(
             connectionId,
             request.displayName ?: connection.displayName,
-            request.databaseName ?: connection.databaseName,
+            request.description ?: connection.description,
+            request.type ?: connection.type,
+            request.hostname ?: connection.hostname,
+            request.port ?: connection.port,
             request.username ?: connection.username,
             request.password ?: connection.password,
-            request.description ?: connection.description,
+            request.databaseName ?: connection.databaseName,
             request.reviewConfig?.let {
                 ReviewConfig(
                     it.numTotalRequired,

@@ -90,6 +90,14 @@ data class UpdateDatasourceConnectionRequest(
     @field:Size(max = 255, message = "Maximum length 255")
     val displayName: String? = null,
 
+    val description: String? = null,
+
+    val type: DatasourceType? = null,
+
+    val hostname: String? = null,
+
+    val port: Int? = null,
+
     @Schema(example = "postgres")
     val databaseName: String? = null,
 
@@ -97,11 +105,9 @@ data class UpdateDatasourceConnectionRequest(
     @field:Size(min = 1, max = 255, message = "Maximum length 255")
     val username: String? = null,
 
-    @Schema(example = "root")
+    @Schema(example = "password")
     @field:Size(min = 1, max = 255, message = "Maximum length 255")
     val password: String? = null,
-
-    val description: String? = null,
 
     val reviewConfig: ReviewConfigRequest? = null,
 
@@ -148,9 +154,12 @@ sealed class ConnectionResponse(
 data class DatasourceConnectionResponse(
     val id: ConnectionId,
     val authenticationType: AuthenticationType,
+    val type: DatasourceType,
     val displayName: String,
     val databaseName: String?,
     val username: String,
+    val hostname: String,
+    val port: Int,
     val description: String,
     val reviewConfig: ReviewConfigResponse,
     val additionalJDBCOptions: String,
@@ -160,8 +169,11 @@ data class DatasourceConnectionResponse(
             id = datasourceConnection.id,
             authenticationType = datasourceConnection.authenticationType,
             displayName = datasourceConnection.displayName,
+            type = datasourceConnection.type,
             databaseName = datasourceConnection.databaseName,
             username = datasourceConnection.username,
+            hostname = datasourceConnection.hostname,
+            port = datasourceConnection.port,
             description = datasourceConnection.description,
             reviewConfig = ReviewConfigResponse(
                 datasourceConnection.reviewConfig.numTotalRequired,

@@ -40,38 +40,38 @@ export default function CreateKubernetesConnectionForm(props: {
         <h1 className="text-lg font-semibold p-2">
           Add a new Kubernetes connection
         </h1>
-        <InputField
-          label="Connection name"
-          id="displayName"
-          placeholder="Connection name"
-          {...register("displayName")}
-          error={errors.displayName?.message}
-        />
-        <InputField
-          label="Description"
-          id="description"
-          placeholder="Provides prod read access with no required reviews"
-          {...register("description")}
-          error={errors.description?.message}
-        />
-        <InputField
-          label="Connection ID"
-          id="id"
-          placeholder="datasource-id"
-          {...register("id")}
-          error={errors.id?.message}
-        />
-        <InputField
-          label="Required reviews"
-          id="numTotalRequired"
-          placeholder="1"
-          type="number"
-          {...register("reviewConfig.numTotalRequired")}
-          error={errors.reviewConfig?.numTotalRequired?.message}
-        />
-        <Button type="submit" className="mt-4 btn btn-primary">
-          Create Connection
-        </Button>
+        <div className="flex-col space-y-2">
+          <InputField
+            label="Connection name"
+            id="displayName"
+            placeholder="Connection name"
+            {...register("displayName")}
+            error={errors.displayName?.message}
+          />
+          <InputField
+            label="Description"
+            id="description"
+            placeholder="Provides prod read access with no required reviews"
+            {...register("description")}
+            error={errors.description?.message}
+          />
+          <InputField
+            label="Connection ID"
+            id="id"
+            placeholder="datasource-id"
+            {...register("id")}
+            error={errors.id?.message}
+          />
+          <InputField
+            label="Required reviews"
+            id="numTotalRequired"
+            placeholder="1"
+            type="number"
+            {...register("reviewConfig.numTotalRequired")}
+            error={errors.reviewConfig?.numTotalRequired?.message}
+          />
+          <Button type="submit">Create Connection</Button>
+        </div>
       </div>
     </form>
   );

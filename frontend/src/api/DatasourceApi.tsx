@@ -15,10 +15,13 @@ const databaseConnectionResponseSchema = withType(
   z.object({
     id: z.coerce.string(),
     displayName: z.coerce.string(),
+    type: z.nativeEnum(DatabaseType),
     authenticationType: z.nativeEnum(AuthenticationType),
-    shortUsername: z.coerce.string(),
+    username: z.coerce.string(),
+    hostname: z.coerce.string(),
+    port: z.coerce.number(),
     description: z.coerce.string(),
-    databaseName: z.string().nullable(),
+    databaseName: z.coerce.string().nullable(),
     reviewConfig: z.object({
       numTotalRequired: z.number(),
     }),
@@ -170,12 +173,22 @@ const getConnections = async (): Promise<ConnectionResponse[]> => {
   return z.array(connectionResponseSchema).parse(data);
 };
 
+const getConnection = async (id: string): Promise<ConnectionResponse> => {
+  const response = await fetch(`${baseUrl}/connections/${id}`, {
+    method: "GET",
+    credentials: "include",
+  });
+  const data: unknown = await response.json();
+  return connectionResponseSchema.parse(data);
+};
+
 export {
   addConnection,
   connectionResponseSchema,
   AuthenticationType,
   patchConnection,
   getConnections,
+  getConnection,
   DatabaseType,
   kubernetesConnectionPayloadSchema,
 };

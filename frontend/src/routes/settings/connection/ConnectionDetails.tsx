@@ -1,23 +1,33 @@
+import { useParams } from "react-router-dom";
 import { z } from "zod";
-import { ConnectionPayload, DatabaseType } from "../../../api/DatasourceApi";
+import {
+  DatabaseConnectionResponse,
+  DatabaseType,
+  KubernetesConnectionResponse,
+} from "../../../api/DatasourceApi";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useConnection } from "../../../hooks/connections";
+import Spinner from "../../../components/Spinner";
 import InputField, { TextField } from "../../../components/InputField";
-import Button from "../../../components/Button";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import { getJDBCOptionsPlaceholder } from "./DatabaseConnectionForm";
+import Button from "../../../components/Button";
 
-const connectionFormSchema = z
+interface RequestReviewParams {
+  connectionId: string;
+}
+
+const datasourceConnectionFormSchema = z
   .object({
     displayName: z.string().min(3),
     description: z.string(),
-    id: z.string().min(3).min(3),
     type: z.nativeEnum(DatabaseType),
     hostname: z.string().min(1),
     port: z.coerce.number(),
     username: z.string().min(1),
-    password: z.string().min(1),
+    password: z.string(),
     databaseName: z.string(),
     reviewConfig: z.object({
       numTotalRequired: z.coerce.number(),
@@ -26,81 +36,84 @@ const connectionFormSchema = z
   })
   .transform((data) => ({ ...data, connectionType: "DATASOURCE" }));
 
-type ConnectionForm = z.infer<typeof connectionFormSchema>;
+type ConnectionForm = z.infer<typeof datasourceConnectionFormSchema>;
 
-const getJDBCOptionsPlaceholder = (type: DatabaseType) => {
-  if (type === DatabaseType.POSTGRES) {
-    return "?sslmode=require";
-  }
-  if (type === DatabaseType.MYSQL) {
-    return "?useSSL=false";
-  }
-  if (type === DatabaseType.MSSQL) {
-    return ";encrypt=true;trustServerCertificate=true";
-  }
-  return "";
-};
+export default function ConnectionDetails() {
+  const params = useParams() as unknown as RequestReviewParams;
+  const connectionId = params.connectionId;
 
-export default function DatabaseConnectionForm(props: {
-  handleCreateConnection: (connection: ConnectionPayload) => Promise<void>;
-}) {
+  const { loading, connection, editConnection } = useConnection(connectionId);
+
+  return (
+    <div>
+      <div className="flex flex-col w-full">
+        <div className="flex items-center justify-between w-full">
+          <div className="text-lg font-semibold dark:text-white">
+            Connection Settings
+          </div>
+        </div>
+        {loading ? (
+          <Spinner></Spinner>
+        ) : (
+          (connection && connection._type === "DATASOURCE" && (
+            <UpdateDatasourceConnectionForm
+              connection={connection}
+              editConnection={editConnection}
+            ></UpdateDatasourceConnectionForm>
+          )) ||
+          (connection && connection._type === "KUBERNETES" && (
+            <UpdateKubernetesConnectionForm
+              connection={connection}
+              editConnection={editConnection}
+            ></UpdateKubernetesConnectionForm>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface UpdateDatasourceFormProps {
+  connection: DatabaseConnectionResponse;
+  editConnection: (connection: ConnectionForm) => Promise<void>;
+}
+
+function UpdateDatasourceConnectionForm({
+  connection,
+  editConnection,
+}: UpdateDatasourceFormProps) {
   const {
     register,
     handleSubmit,
-    formState: { errors, touchedFields },
+    formState: { errors, isDirty },
     watch,
-    resetField,
-    setValue,
   } = useForm<ConnectionForm>({
-    resolver: zodResolver(connectionFormSchema),
+    resolver: zodResolver(datasourceConnectionFormSchema),
+    defaultValues: {
+      displayName: connection.displayName,
+      description: connection.description,
+      type: connection.type,
+      hostname: connection.hostname,
+      port: connection.port,
+      username: connection.username,
+      password: "",
+      databaseName: connection.databaseName || "",
+      reviewConfig: {
+        numTotalRequired: connection.reviewConfig.numTotalRequired,
+      },
+      additionalJDBCOptions: connection.additionalJDBCOptions,
+    },
   });
 
-  const watchDisplayName = watch("displayName");
-  const watchId = watch("id");
+  const onSubmit = async (data: ConnectionForm) => {
+    await editConnection(data);
+  };
 
   const watchType = watch("type");
 
-  useEffect(() => {
-    if (watchId === "") {
-      resetField("id");
-    }
-  }, [watchId]);
-
-  useEffect(() => {
-    const lowerCasedString = watchDisplayName?.toLowerCase() || "";
-    if (!touchedFields.id) {
-      setValue("id", lowerCasedString.replace(/\s+/g, "-"));
-    }
-  }, [watchDisplayName]);
-
-  useEffect(() => {
-    setValue("reviewConfig", { numTotalRequired: 1 });
-    setValue("port", 5432);
-    setValue("type", DatabaseType.POSTGRES);
-  }, []);
-
-  useEffect(() => {
-    if (!touchedFields.port) {
-      if (watchType === DatabaseType.POSTGRES) {
-        setValue("port", 5432);
-      }
-      if (watchType === DatabaseType.MYSQL) {
-        setValue("port", 3306);
-      }
-      if (watchType === DatabaseType.MSSQL) {
-        setValue("port", 1433);
-      }
-    }
-  }, [watchType]);
-
-  const onSubmit = async (data: ConnectionForm) => {
-    await props.handleCreateConnection(data);
-  };
-
   return (
     <form onSubmit={(event) => void handleSubmit(onSubmit)(event)}>
-      <div className="flex flex-col w-2xl shadow p-5 bg-slate-50 border border-slate-300 dark:border-none dark:bg-slate-950 rounded-lg">
-        <h1 className="text-lg font-semibold">Add a new connection</h1>
+      <div className="flex flex-col w-full">
         <div className="flex-col space-y-2">
           <div className="flex justify-between w-full">
             <label
@@ -147,7 +160,7 @@ export default function DatabaseConnectionForm(props: {
           <InputField
             id="password"
             label="Password"
-            placeholder="Password"
+            placeholder="Unchanged"
             type="password"
             {...register("password")}
             error={errors.password?.message}
@@ -170,7 +183,7 @@ export default function DatabaseConnectionForm(props: {
           />
 
           <div className="w-full">
-            <Disclosure defaultOpen={false}>
+            <Disclosure defaultOpen={true}>
               {({ open }) => (
                 <>
                   <Disclosure.Button className="py-2">
@@ -189,13 +202,6 @@ export default function DatabaseConnectionForm(props: {
                   </Disclosure.Button>
                   <Disclosure.Panel unmount={false}>
                     <div className="flex-col space-y-2">
-                      <InputField
-                        id="id"
-                        label="Connection ID"
-                        placeholder="datasource-id"
-                        {...register("id")}
-                        error={errors.id?.message}
-                      />
                       <InputField
                         id="databaseName"
                         label="Database name"
@@ -224,11 +230,85 @@ export default function DatabaseConnectionForm(props: {
               )}
             </Disclosure>
           </div>
-          <Button type="submit">Create Connection</Button>
+          <Button type={isDirty ? "submit" : "disabled"}>Save</Button>
         </div>
       </div>
     </form>
   );
 }
 
-export { getJDBCOptionsPlaceholder };
+const kubernetesConnectionFormSchema = z
+  .object({
+    displayName: z.string().min(3),
+    description: z.string(),
+    reviewConfig: z.object({
+      numTotalRequired: z.coerce.number(),
+    }),
+  })
+  .transform((data) => ({ ...data, connectionType: "KUBERNETES" }));
+type KubernetesConnectionForm = z.infer<typeof kubernetesConnectionFormSchema>;
+
+interface UpdateFormProps {
+  connection: KubernetesConnectionResponse;
+  editConnection: (connection: KubernetesConnectionForm) => Promise<void>;
+}
+
+function UpdateKubernetesConnectionForm({
+  connection,
+  editConnection,
+}: UpdateFormProps) {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isDirty },
+  } = useForm<KubernetesConnectionForm>({
+    resolver: zodResolver(kubernetesConnectionFormSchema),
+    defaultValues: {
+      displayName: connection.displayName,
+      description: connection.description,
+      reviewConfig: {
+        numTotalRequired: connection.reviewConfig.numTotalRequired,
+      },
+    },
+  });
+
+  const onSubmit = async (data: KubernetesConnectionForm) => {
+    await editConnection(data);
+  };
+  return (
+    <form onSubmit={(event) => void handleSubmit(onSubmit)(event)}>
+      <div className="flex flex-col w-full ">
+        <div className="flex-col space-y-2">
+          <InputField
+            label="Connection name"
+            id="displayName"
+            placeholder="Connection name"
+            {...register("displayName")}
+            error={errors.displayName?.message}
+          />
+          <TextField
+            label="Description"
+            id="description"
+            placeholder="Provides prod read access with no required reviews"
+            {...register("description")}
+            error={errors.description?.message}
+          />
+          <InputField
+            label="Required reviews"
+            id="numTotalRequired"
+            placeholder="1"
+            type="number"
+            {...register("reviewConfig.numTotalRequired")}
+            error={errors.reviewConfig?.numTotalRequired?.message}
+          />
+          <Button
+            type={isDirty ? "submit" : "disabled"}
+            className="mt-4 btn btn-primary"
+          >
+            Save
+          </Button>
+        </div>
+      </div>
+    </form>
+  );
+}

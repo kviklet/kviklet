@@ -148,10 +148,13 @@ class ConnectionAdapter(
     fun updateDatasourceConnection(
         id: ConnectionId,
         displayName: String,
-        databaseName: String?,
+        description: String,
+        type: DatasourceType,
+        hostname: String,
+        port: Int,
         username: String,
         password: String,
-        description: String,
+        databaseName: String?,
         reviewConfig: ReviewConfig,
         additionalJDBCOptions: String,
     ): Connection {
@@ -164,11 +167,14 @@ class ConnectionAdapter(
             throw IllegalStateException("Connection is not a Datasource Connection")
         }
         datasourceConnection.displayName = displayName
+        datasourceConnection.description = description
+        datasourceConnection.datasourceType = type
+        datasourceConnection.hostname = hostname
+        datasourceConnection.port = port
         datasourceConnection.username = username
         datasourceConnection.password = password
-        datasourceConnection.description = description
-        datasourceConnection.reviewConfig = reviewConfig
         datasourceConnection.databaseName = databaseName
+        datasourceConnection.reviewConfig = reviewConfig
         datasourceConnection.additionalJDBCOptions = additionalJDBCOptions
 
         return connectionRepository.save(datasourceConnection).toDto()

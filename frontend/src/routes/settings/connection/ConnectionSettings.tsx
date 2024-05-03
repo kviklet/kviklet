@@ -1,19 +1,16 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ConnectionPayload,
   ConnectionResponse,
   PatchConnectionPayload,
-  addConnection,
-  getConnections,
-  patchConnection,
 } from "../../../api/DatasourceApi";
 import Button from "../../../components/Button";
 import Modal from "../../../components/Modal";
 import Spinner from "../../../components/Spinner";
 import CreateKubernetesConnectionForm from "./KubernetesConnectionForm";
-import SingleKubernetesConnectionSettings from "./SingleKubernetesSettings";
-import SingleDatabaseConnectionSettings from "./SingleDatabaseSettings";
+import ConnectionCard from "./ConnectionCard";
 import DatabaseConnectionForm from "./DatabaseConnectionForm";
+import useConnections from "../../../hooks/connections";
 
 const useIdNamePair = () => {
   const [displayName, setDisplayName] = useState<string>("");
@@ -40,47 +37,7 @@ const useIdNamePair = () => {
   return { displayName, id, changeId, changeDisplayName };
 };
 
-const useConnections = () => {
-  const [connections, setConnections] = useState<ConnectionResponse[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  useEffect(() => {
-    async function request() {
-      const response = await getConnections();
-      setConnections(response);
-      setLoading(false);
-    }
-    void request();
-  }, []);
-
-  const createConnection = async (connection: ConnectionPayload) => {
-    const newConnection = await addConnection(connection);
-    const newConnections = [...connections, newConnection];
-    setConnections(newConnections);
-  };
-
-  const editConnection = async (
-    connectionId: string,
-    connection: PatchConnectionPayload,
-  ) => {
-    const updatedConnection = await patchConnection(connection, connectionId);
-    const newConnections = connections.map((connection) => {
-      if (connection.id === updatedConnection.id) {
-        return updatedConnection;
-      }
-      return connection;
-    });
-    setConnections(newConnections);
-  };
-
-  return {
-    loading,
-    connections,
-    createConnection,
-    editConnection,
-  };
-};
-
-function ConnectionSettings(props: {
+function ConnectionSettingsList(props: {
   connections: ConnectionResponse[];
   addConnectionHandler: () => void;
   addKubnernetesConnectionHandler: () => void;
@@ -90,26 +47,14 @@ function ConnectionSettings(props: {
   ) => Promise<void>;
 }) {
   return (
-    <div className="flex flex-col max-h-[calc(100vh-theme(spacing.52))] w-full border-l dark:border-slate-700  dark:bg-slate-950">
-      <div className="pl-8 text-lg">Connections</div>
+    <div className="pl-4 flex flex-col max-h-[calc(100vh-theme(spacing.52))] w-full border-l dark:border-slate-700  dark:bg-slate-950">
+      <div className="text-lg">Connections</div>
       <div className="flex-grow overflow-hidden">
-        <div className="pl-5 h-full flex flex-col justify-between">
+        <div className=" h-full flex flex-col justify-between">
           <div className="overflow-y-auto flex-grow">
-            {props.connections.map((connection) =>
-              connection._type === "DATASOURCE" ? (
-                <SingleDatabaseConnectionSettings
-                  key={connection.id} // Assuming each connection has a unique 'id'
-                  connection={connection}
-                  editConnectionHandler={props.editConnectionHandler}
-                />
-              ) : connection._type === "KUBERNETES" ? (
-                <SingleKubernetesConnectionSettings
-                  key={connection.id} // Assuming each connection has a unique 'id'
-                  connection={connection}
-                  editConnectionHandler={props.editConnectionHandler}
-                />
-              ) : null,
-            )}
+            {props.connections.map((connection) => (
+              <ConnectionCard key={connection.id} connection={connection} />
+            ))}
           </div>
           <Button
             className="ml-auto mx-2 my-1"
@@ -129,7 +74,7 @@ function ConnectionSettings(props: {
   );
 }
 
-const DatabaseSettings = () => {
+const ConnectionSettings = () => {
   const { loading, connections, createConnection, editConnection } =
     useConnections();
 
@@ -154,7 +99,7 @@ const DatabaseSettings = () => {
       ) : (
         <div className="">
           <div className="flex w-full dark:bg-slate-950 h-full">
-            <ConnectionSettings
+            <ConnectionSettingsList
               connections={connections}
               addConnectionHandler={() => {
                 setShowAddConnectionModal(true);
@@ -189,6 +134,6 @@ const DatabaseSettings = () => {
   );
 };
 
-export default DatabaseSettings;
+export default ConnectionSettings;
 
 export { useConnections, useIdNamePair };

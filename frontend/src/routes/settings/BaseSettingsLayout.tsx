@@ -1,10 +1,11 @@
 import { ReactNode, useState } from "react";
 import { Link, Outlet, Route, Routes } from "react-router-dom";
-import DatabaseSettings from "./connection/DatabaseSettings";
+import ConnectionSettings from "./connection/ConnectionSettings";
 import UserSettings from "./UserSettings";
 import RoleSettings from "./RolesSettings";
 import React from "react";
 import ProfileSettings from "./ProfileSettings";
+import ConnectionDetails from "./connection/ConnectionDetails";
 
 const Tab = (props: {
   children: React.ReactNode;
@@ -75,8 +76,12 @@ const BaseSettingsLayout = (props: LayoutProps) => {
           <SettingsSidebar>{tabs}</SettingsSidebar>
           <div className="w-full ml-2 h-full">
             <Routes>
-              <Route path="/*" element={<DatabaseSettings />} />
-              <Route path="databases" element={<DatabaseSettings />} />
+              <Route path="/*" element={<ConnectionSettings />} />
+              <Route path="databases" element={<ConnectionSettings />} />
+              <Route
+                path="connections/:connectionId"
+                element={<ConnectionDetails />}
+              />
               <Route path="users" element={<UserSettings />} />
               <Route path="roles" element={<RoleSettings />} />
               <Route path="profile" element={<ProfileSettings />} />
