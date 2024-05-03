@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ConnectionResponse, getConnections } from "../api/DatasourceApi";
+import { ConnectionResponse } from "../api/DatasourceApi";
 import Spinner from "../components/Spinner";
 import {
   ChevronDownIcon,
