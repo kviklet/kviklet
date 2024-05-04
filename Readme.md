@@ -12,7 +12,7 @@ Kviklet utilizes the **Four-Eyes Principle** and a high level of configurability
 
 Kviklet is a self hosted docker container, that provides you with a Single Page Web app that you can login to create your SQL requests or approve the ones of others.
 
-We currently only support Postgres and MySQL and since very recently also have an integration for `kubectl exec`. If you have a specific DB required or other feature requests or just questions, feel free to open an issue.
+We currently support **Postgres**, **MySQL** and **MS SQL Server**. Additionally we have a kubernetes shell integration that allows to run `kubectl exec` commands on pods.
 
 ## Features
 
@@ -30,8 +30,9 @@ Kviklet ships with a variety of features that an engineering team needs to manag
 
 ## Setup
 
-Kviklet runs as a standalone docker container.
-To start you can find the available verions under [Releases](https://github.com/kviklet/kviklet/releases) you can chose your desired version tag. The latest one currently is `ghcr.io/kviklet/kviklet:0.2.0`, you can also use `:main` but it might happen every now and then that we accidentally merge something buggy alhtough we try to avoid that. Also make sure to check back every now and then since we regularly release new versions with bugfixes, and new features.
+Kviklet ships as a simple docker container.
+You can find the available verions under [Releases](https://github.com/kviklet/kviklet/releases). We recommend to regularly update the version you are using as we continue to build new features.  
+The latest one currently is `ghcr.io/kviklet/kviklet:0.3.0`, you can also use `:main` but it might happen every now and then that we accidentally merge something buggy alhtough we try to avoid that.
 
 ### DB Setup
 
@@ -43,7 +44,7 @@ When starting the container you then need to set these three environment variabl
 ```
 SPRING_DATASOURCE_PASSWORD = password
 SPRING_DATASOURCE_USERNAME = username
-SPRING_DATASOURCE_URL = jdbc:postgresql://[url]:[port]/[database]?currentSchema=[schema]
+SPRING_DATASOURCE_URL = jdbc:postgresql://[host]:[port]/[database]?currentSchema=[schema]
 ```
 
 ### Initial User
@@ -65,7 +66,7 @@ An example docker run could looks like this:
 docker run \
 -e SPRING_DATASOURCE_PASSWORD=postgres \
 -e SPRING_DATASOURCE_USERNAME=postgres \
--e SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5433/Kviklet \
+-e SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/Kviklet \
 -e INITIAL_USER_EMAIL=admin@example.com \
 -e INITIAL_USER_PASSWORD=someverysecurepassword \
 --network host \
@@ -140,7 +141,7 @@ After starting Kviklet you first have to configure a database connection. Go to 
 <img src="https://github.com/kviklet/kviklet/raw/main/images/AddConnectionForm.png" width="400px">
 </p>
 
-After creating a connection, you can configure how many reviews are required for running queries via this connection.
+Here you can configure how many reviews are required to run Requests on this connection. You can also configure how often a request can be run. The default is 1 and we recommend to stick to this for most use cases. As a special config, setting this to 0 any request on the connection can be run an infinite amount of times.
 
 ### Roles
 
@@ -149,4 +150,4 @@ Kviklet ships with 2 default roles, Admins and Developers.
 - Admins have the permission to create and edit connections, as well as adding new Users and setting their permissions.
 - Developers can create Requests as well as approve and comment on them and ofcourse execute the actual statements.
 
-You can completely customize Roles and e.g. give a role only access to a specific connection or a group of db connections.
+You can completely customize Roles and e.g. give a role only access to a specific connection or a group of db connections. The UI for this is a bit clunky right now, but we are working on improving this for 0.4.0.
