@@ -42,6 +42,7 @@ class ConnectionService(
             request.displayName ?: connection.displayName,
             request.description ?: connection.description,
             request.type ?: connection.type,
+            request.maxExecutions ?: connection.maxExecutions,
             request.hostname ?: connection.hostname,
             request.port ?: connection.port,
             request.username ?: connection.username,
@@ -73,6 +74,7 @@ class ConnectionService(
                     it.numTotalRequired,
                 )
             } ?: connection.reviewConfig,
+            request.maxExecutions ?: connection.maxExecutions,
         )
     }
 
@@ -98,6 +100,7 @@ class ConnectionService(
         connectionId: ConnectionId,
         displayName: String,
         databaseName: String?,
+        maxExecutions: Int?,
         username: String,
         password: String,
         description: String,
@@ -112,6 +115,7 @@ class ConnectionService(
             displayName,
             AuthenticationType.USER_PASSWORD,
             databaseName,
+            maxExecutions,
             username,
             password,
             description,
@@ -132,6 +136,7 @@ class ConnectionService(
         displayName: String,
         description: String,
         reviewsRequired: Int,
+        maxExecutions: Int?,
     ): Connection {
         return connectionAdapter.createKubernetesConnection(
             connectionId,
@@ -140,7 +145,7 @@ class ConnectionService(
             ReviewConfig(
                 numTotalRequired = reviewsRequired,
             ),
-
+            maxExecutions,
         )
     }
 

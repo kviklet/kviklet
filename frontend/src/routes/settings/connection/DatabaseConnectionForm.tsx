@@ -23,6 +23,7 @@ const connectionFormSchema = z
       numTotalRequired: z.coerce.number(),
     }),
     additionalJDBCOptions: z.string(),
+    maxExecutions: z.coerce.number().nullable(),
   })
   .transform((data) => ({ ...data, connectionType: "DATASOURCE" }));
 
@@ -77,6 +78,7 @@ export default function DatabaseConnectionForm(props: {
     setValue("reviewConfig", { numTotalRequired: 1 });
     setValue("port", 5432);
     setValue("type", DatabaseType.POSTGRES);
+    setValue("maxExecutions", 1);
   }, []);
 
   useEffect(() => {
@@ -217,6 +219,14 @@ export default function DatabaseConnectionForm(props: {
                         placeholder={getJDBCOptionsPlaceholder(watchType)}
                         {...register("additionalJDBCOptions")}
                         error={errors.additionalJDBCOptions?.message}
+                      />
+                      <InputField
+                        id="maxExecutions"
+                        label="Max executions"
+                        placeholder="Max executions"
+                        type="number"
+                        {...register("maxExecutions")}
+                        error={errors.maxExecutions?.message}
                       />
                     </div>
                   </Disclosure.Panel>

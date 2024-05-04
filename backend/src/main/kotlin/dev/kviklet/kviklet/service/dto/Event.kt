@@ -38,7 +38,7 @@ enum class ReviewAction {
  */
 abstract class Event(
     val type: EventType,
-    open val createdAt: LocalDateTime = LocalDateTime.now(),
+    open val createdAt: LocalDateTime = utcTimeNow(),
     open val request: ExecutionRequestDetails,
 ) : SecuredDomainObject {
     abstract val eventId: EventId?
@@ -87,7 +87,7 @@ data class CommentEvent(
     override val eventId: EventId?,
     override val request: ExecutionRequestDetails,
     override val author: User,
-    override val createdAt: LocalDateTime = LocalDateTime.now(),
+    override val createdAt: LocalDateTime = utcTimeNow(),
     val comment: String,
 ) : Event(EventType.COMMENT, createdAt, request) {
     override fun hashCode() = Objects.hash(eventId)
@@ -97,7 +97,7 @@ data class ReviewEvent(
     override val eventId: EventId?,
     override val request: ExecutionRequestDetails,
     override val author: User,
-    override val createdAt: LocalDateTime = LocalDateTime.now(),
+    override val createdAt: LocalDateTime = utcTimeNow(),
     val comment: String,
     val action: ReviewAction,
 ) : Event(EventType.REVIEW, createdAt, request) {
@@ -108,7 +108,7 @@ data class EditEvent(
     override val eventId: EventId?,
     override val request: ExecutionRequestDetails,
     override val author: User,
-    override val createdAt: LocalDateTime = LocalDateTime.now(),
+    override val createdAt: LocalDateTime = utcTimeNow(),
     val previousQuery: String? = null,
     val previousCommand: String? = null,
     val previousContainerName: String? = null,
@@ -122,7 +122,7 @@ data class ExecuteEvent(
     override val eventId: EventId?,
     override val request: ExecutionRequestDetails,
     override val author: User,
-    override val createdAt: LocalDateTime = LocalDateTime.now(),
+    override val createdAt: LocalDateTime = utcTimeNow(),
     val query: String? = null,
     val results: List<ResultLog> = emptyList(),
     val command: String? = null,

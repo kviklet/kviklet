@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 015-add-max-executions-column
+      author: jascha
+      changes:
+        - addColumn:
+            tableName: connection
+            columns:
+              - column:
+                  name: max_executions
+                  type: varchar(255)
+                  defaultValue: '1'
+                  constraints:
+                    nullable: true

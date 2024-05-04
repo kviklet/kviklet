@@ -58,7 +58,7 @@ function timeSince(date: Date) {
 function mapStatus(reviewStatus: string, executionStatus: string) {
   if (reviewStatus === "AWAITING_APPROVAL" && executionStatus === "EXECUTED")
     return "Pending";
-  else if (executionStatus === "NOT_EXECUTED") return "Ready";
+  else if (executionStatus === "EXECUTABLE") return "Ready";
   else if (executionStatus === "ACTIVE") return "Active";
   else if (executionStatus === "EXECUTED") return "Executed";
   else return "Unknown";
@@ -69,9 +69,9 @@ function mapStatusToLabelColor(status?: string) {
     case "Ready":
       return "dark:ring-lime-400/10 dark:text-lime-500 ring-lime-500/10 text-lime-600 bg-lime-50 dark:bg-lime-400/10";
     case "Pending":
-      return "dark:ring-sky-400/10 dark:text-sky-500 ring-sky-500/10 text-sky-600 bg-sky-50 dark:bg-sky-400/10";
-    case "Active":
       return "dark:ring-yellow-400/10 dark:text-yellow-500 ring-yellow-500/10 text-yellow-600 bg-yellow-50 dark:bg-yellow-400/10";
+    case "Active":
+      return "dark:ring-sky-400/10 dark:text-sky-500 ring-sky-500/10 text-sky-600 bg-sky-50 dark:bg-sky-400/10";
     case "Executed":
       return "dark:ring-lime-400/10 dark:text-lime-500 ring-lime-500/10 text-lime-600 bg-lime-50 dark:bg-lime-400/10";
     default:

@@ -13,6 +13,7 @@ import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ResultType
 import dev.kviklet.kviklet.service.dto.ReviewAction
+import dev.kviklet.kviklet.service.dto.utcTimeNow
 import jakarta.persistence.Column
 import jakarta.persistence.Convert
 import jakarta.persistence.Entity
@@ -111,7 +112,7 @@ class EventEntity(
     @Column(columnDefinition = "json")
     @ColumnTransformer(write = "?::json")
     var payload: Payload,
-    var createdAt: LocalDateTime = LocalDateTime.now(),
+    var createdAt: LocalDateTime = utcTimeNow(),
 ) : BaseEntity() {
 
     override fun toString(): String {

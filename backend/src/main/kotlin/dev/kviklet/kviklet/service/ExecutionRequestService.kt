@@ -29,6 +29,7 @@ import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.ExecutionResult
+import dev.kviklet.kviklet.service.dto.ExecutionStatus
 import dev.kviklet.kviklet.service.dto.KubernetesConnection
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
@@ -36,6 +37,7 @@ import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewEvent
 import dev.kviklet.kviklet.service.dto.ReviewStatus
+import dev.kviklet.kviklet.service.dto.utcTimeNow
 import dev.kviklet.kviklet.shell.KubernetesApi
 import jakarta.transaction.Transactional
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
@@ -300,7 +302,7 @@ class ExecutionRequestService(
             throw InvalidReviewException("This request has not been approved yet!")
         }
 
-        executionRequest.events.raiseIfAlreadyExecuted(executionRequest.request.type)
+        executionRequest.raiseIfAlreadyExecuted()
         return when (connection) {
             is DatasourceConnection -> {
                 executeDatasourceRequest(id, executionRequest, connection, query, userId)
@@ -350,7 +352,7 @@ class ExecutionRequestService(
     }
 
     private fun cleanUpProxies() {
-        val now = LocalDateTime.now()
+        val now = utcTimeNow()
         val expiredProxies = proxies.filter { it.startTime.plusMinutes(60) < now }
         expiredProxies.forEach {
             proxies.remove(it)
@@ -376,11 +378,11 @@ class ExecutionRequestService(
         if (connection.type != DatasourceType.POSTGRESQL) {
             throw RuntimeException("Only Postgres is supported for proxying!")
         }
-        executionRequest.events.raiseIfAlreadyExecuted(executionRequest.request.type)
+        executionRequest.raiseIfAlreadyExecuted()
 
         val executedEvents = executionRequest.events.filter { it.type == EventType.EXECUTE }
         val firstEventTime = executedEvents.map { it.createdAt }
-            .ifEmpty { listOf(LocalDateTime.now()) }
+            .ifEmpty { listOf(utcTimeNow()) }
             .minOf { it }
 
         // Randomly generate a temp password for the proxy
@@ -462,23 +464,17 @@ class ExecutionRequestService(
     }
 }
 
-fun Set<Event>.raiseIfAlreadyExecuted(requestType: RequestType) {
-    val executedEvents = filter { it.type == EventType.EXECUTE }
-    if (executedEvents.isEmpty()) return
-
-    when (requestType) {
-        RequestType.SingleExecution -> {
-            if (this.isNotEmpty()) {
-                throw AlreadyExecutedException("This request has already been executed, can only execute once!")
-            }
-        }
-        RequestType.TemporaryAccess -> {
-            val firstEventTime = executedEvents.minOf { it.createdAt }
-            if (firstEventTime.plusMinutes(60) < LocalDateTime.now()) {
+fun ExecutionRequestDetails.raiseIfAlreadyExecuted() {
+    if (resolveExecutionStatus() == ExecutionStatus.EXECUTED) {
+        when (request.type) {
+            RequestType.SingleExecution ->
+                throw AlreadyExecutedException(
+                    "This request has already been executed, can only execute a configured amount of times!",
+                )
+            RequestType.TemporaryAccess ->
                 throw AlreadyExecutedException(
                     "This request has timed out, temporary access is only valid for 60 minutes!",
                 )
-            }
         }
     }
 }

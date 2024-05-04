@@ -29,6 +29,7 @@ const datasourceConnectionFormSchema = z
     username: z.string().min(1),
     password: z.string(),
     databaseName: z.string(),
+    maxExecutions: z.coerce.number().nullable(),
     reviewConfig: z.object({
       numTotalRequired: z.coerce.number(),
     }),
@@ -102,6 +103,7 @@ function UpdateDatasourceConnectionForm({
         numTotalRequired: connection.reviewConfig.numTotalRequired,
       },
       additionalJDBCOptions: connection.additionalJDBCOptions,
+      maxExecutions: connection.maxExecutions,
     },
   });
 
@@ -224,6 +226,14 @@ function UpdateDatasourceConnectionForm({
                         {...register("additionalJDBCOptions")}
                         error={errors.additionalJDBCOptions?.message}
                       />
+                      <InputField
+                        id="maxExecutions"
+                        label="Max executions"
+                        placeholder="Max executions"
+                        type="number"
+                        {...register("maxExecutions")}
+                        error={errors.maxExecutions?.message}
+                      />
                     </div>
                   </Disclosure.Panel>
                 </>
@@ -244,6 +254,7 @@ const kubernetesConnectionFormSchema = z
     reviewConfig: z.object({
       numTotalRequired: z.coerce.number(),
     }),
+    maxExecutions: z.coerce.number().nullable(),
   })
   .transform((data) => ({ ...data, connectionType: "KUBERNETES" }));
 type KubernetesConnectionForm = z.infer<typeof kubernetesConnectionFormSchema>;
@@ -269,6 +280,7 @@ function UpdateKubernetesConnectionForm({
       reviewConfig: {
         numTotalRequired: connection.reviewConfig.numTotalRequired,
       },
+      maxExecutions: connection.maxExecutions,
     },
   });
 
@@ -301,6 +313,40 @@ function UpdateKubernetesConnectionForm({
             {...register("reviewConfig.numTotalRequired")}
             error={errors.reviewConfig?.numTotalRequired?.message}
           />
+          <div className="w-full">
+            <Disclosure defaultOpen={false}>
+              {({ open }) => (
+                <>
+                  <Disclosure.Button className="py-2">
+                    <div className="flex flex-row justify-between">
+                      <div className="flex flex-row">
+                        <div>Advanced Options</div>
+                      </div>
+                      <div className="flex flex-row">
+                        {open ? (
+                          <ChevronDownIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronDownIcon>
+                        ) : (
+                          <ChevronRightIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronRightIcon>
+                        )}
+                      </div>
+                    </div>
+                  </Disclosure.Button>
+                  <Disclosure.Panel unmount={false}>
+                    <div className="flex-col space-y-2">
+                      <InputField
+                        label="Max executions"
+                        id="maxExecutions"
+                        placeholder="Max executions"
+                        type="number"
+                        {...register("maxExecutions")}
+                        error={errors.maxExecutions?.message}
+                      />
+                    </div>
+                  </Disclosure.Panel>
+                </>
+              )}
+            </Disclosure>
+          </div>
           <Button
             type={isDirty ? "submit" : "disabled"}
             className="mt-4 btn btn-primary"

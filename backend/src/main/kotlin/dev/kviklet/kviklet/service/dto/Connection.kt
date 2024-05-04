@@ -30,6 +30,7 @@ sealed class Connection(
     open val displayName: String,
     open val description: String,
     open val reviewConfig: ReviewConfig,
+    open val maxExecutions: Int?,
 ) : SecuredDomainObject {
     override fun getId() = id.toString()
     override fun getDomainObjectType() = Resource.DATASOURCE_CONNECTION
@@ -47,6 +48,7 @@ data class DatasourceConnection(
     override val displayName: String,
     override val description: String,
     override val reviewConfig: ReviewConfig,
+    override val maxExecutions: Int?,
     val databaseName: String?,
     val authenticationType: AuthenticationType,
     val username: String,
@@ -55,7 +57,7 @@ data class DatasourceConnection(
     val hostname: String,
     val type: DatasourceType,
     val additionalJDBCOptions: String,
-) : Connection(id, displayName, description, reviewConfig) {
+) : Connection(id, displayName, description, reviewConfig, maxExecutions) {
     fun getConnectionString(): String {
         return when (type) {
             DatasourceType.POSTGRESQL ->
@@ -79,6 +81,5 @@ data class KubernetesConnection(
     override val displayName: String,
     override val description: String,
     override val reviewConfig: ReviewConfig,
-) : Connection(id, displayName, description, reviewConfig) {
-    // methods
-}
+    override val maxExecutions: Int?,
+) : Connection(id, displayName, description, reviewConfig, maxExecutions)

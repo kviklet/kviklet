@@ -45,6 +45,8 @@ data class CreateKubernetesConnectionRequest(
     val description: String = "",
 
     val reviewConfig: ReviewConfigRequest,
+
+    val maxExecutions: Int? = null,
 ) : ConnectionRequest()
 
 data class CreateDatasourceConnectionRequest(
@@ -59,6 +61,8 @@ data class CreateDatasourceConnectionRequest(
 
     @Schema(example = "postgres")
     val databaseName: String? = null,
+
+    val maxExecutions: Int? = null,
 
     @Schema(example = "root")
     @field:Size(min = 1, max = 255, message = "Maximum length 255")
@@ -76,6 +80,7 @@ data class CreateDatasourceConnectionRequest(
     val hostname: String,
     val port: Int,
     val additionalJDBCOptions: String = "",
+
 ) : ConnectionRequest()
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
@@ -93,6 +98,8 @@ data class UpdateDatasourceConnectionRequest(
     val description: String? = null,
 
     val type: DatasourceType? = null,
+
+    val maxExecutions: Int? = null,
 
     val hostname: String? = null,
 
@@ -122,6 +129,8 @@ data class UpdateKubernetesConnectionRequest(
     val description: String? = null,
 
     val reviewConfig: ReviewConfigRequest? = null,
+
+    val maxExecutions: Int? = null,
 ) : UpdateConnectionRequest()
 
 data class ReviewConfigRequest(
@@ -155,6 +164,7 @@ data class DatasourceConnectionResponse(
     val id: ConnectionId,
     val authenticationType: AuthenticationType,
     val type: DatasourceType,
+    val maxExecutions: Int?,
     val displayName: String,
     val databaseName: String?,
     val username: String,
@@ -171,6 +181,7 @@ data class DatasourceConnectionResponse(
             displayName = datasourceConnection.displayName,
             type = datasourceConnection.type,
             databaseName = datasourceConnection.databaseName,
+            maxExecutions = datasourceConnection.maxExecutions,
             username = datasourceConnection.username,
             hostname = datasourceConnection.hostname,
             port = datasourceConnection.port,
@@ -188,6 +199,7 @@ data class KubernetesConnectionResponse(
     val displayName: String,
     val description: String,
     val reviewConfig: ReviewConfigResponse,
+    val maxExecutions: Int?,
 ) : ConnectionResponse(connectionType = ConnectionType.KUBERNETES) {
     companion object {
         fun fromDto(kubernetesConnection: KubernetesConnection) = KubernetesConnectionResponse(
@@ -197,6 +209,7 @@ data class KubernetesConnectionResponse(
             reviewConfig = ReviewConfigResponse(
                 kubernetesConnection.reviewConfig.numTotalRequired,
             ),
+            maxExecutions = kubernetesConnection.maxExecutions,
         )
     }
 }
@@ -238,6 +251,7 @@ class ConnectionController(
             hostname = request.hostname,
             type = request.type,
             additionalJDBCOptions = request.additionalJDBCOptions,
+            maxExecutions = request.maxExecutions,
         )
     }
 
@@ -247,6 +261,7 @@ class ConnectionController(
             displayName = request.displayName,
             description = request.description,
             reviewsRequired = request.reviewConfig.numTotalRequired,
+            maxExecutions = request.maxExecutions,
         )
     }
 

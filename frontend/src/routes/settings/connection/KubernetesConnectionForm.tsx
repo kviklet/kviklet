@@ -30,6 +30,11 @@ export default function CreateKubernetesConnectionForm(props: {
     setValue("id", lowerCasedString.replace(/\s+/g, "-"));
   }, [watchDisplayName]);
 
+  useEffect(() => {
+    setValue("reviewConfig", { numTotalRequired: 1 });
+    setValue("maxExecutions", 1);
+  }, []);
+
   const onSubmit = async (data: KubernetesConnectionPayload) => {
     await props.handleCreateConnection(data);
   };
@@ -69,6 +74,14 @@ export default function CreateKubernetesConnectionForm(props: {
             type="number"
             {...register("reviewConfig.numTotalRequired")}
             error={errors.reviewConfig?.numTotalRequired?.message}
+          />
+          <InputField
+            id="maxExecutions"
+            label="Max executions"
+            placeholder="Max executions"
+            type="number"
+            {...register("maxExecutions")}
+            error={errors.maxExecutions?.message}
           />
           <Button type="submit">Create Connection</Button>
         </div>
