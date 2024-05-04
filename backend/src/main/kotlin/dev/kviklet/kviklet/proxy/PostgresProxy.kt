@@ -3,6 +3,7 @@ package dev.kviklet.kviklet.proxy
 import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
+import dev.kviklet.kviklet.service.dto.utcTimeNow
 import org.postgresql.core.PGStream
 import org.postgresql.core.QueryExecutorBase
 import org.postgresql.core.v3.ConnectionFactoryImpl
@@ -338,7 +339,7 @@ class PostgresProxy(
         ServerSocket(port).use { serverSocket ->
 
             while (true) {
-                if (LocalDateTime.now().isAfter(startTime.plusMinutes(60))) {
+                if (utcTimeNow().isAfter(startTime.plusMinutes(60))) {
                     // kill all running threads and close sockets
                     threadPool.shutdownNow()
                     serverSocket.close()

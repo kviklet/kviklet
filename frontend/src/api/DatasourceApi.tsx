@@ -16,6 +16,7 @@ const databaseConnectionResponseSchema = withType(
     id: z.coerce.string(),
     displayName: z.coerce.string(),
     type: z.nativeEnum(DatabaseType),
+    maxExecutions: z.coerce.number().nullable(),
     authenticationType: z.nativeEnum(AuthenticationType),
     username: z.coerce.string(),
     hostname: z.coerce.string(),
@@ -38,6 +39,7 @@ const kubernetesConnectionResponseSchema = withType(
     reviewConfig: z.object({
       numTotalRequired: z.coerce.number(),
     }),
+    maxExecutions: z.coerce.number().nullable(),
   }),
   "KUBERNETES",
 );
@@ -55,6 +57,7 @@ const databaseConnectionPayloadSchema = z
     password: z.string(),
     description: z.string(),
     databaseName: z.string(),
+    maxExecutions: z.coerce.number().nullable(),
     reviewConfig: z.object({
       numTotalRequired: z.number(),
     }),
@@ -73,6 +76,7 @@ const kubernetesConnectionPayloadSchema = z
     reviewConfig: z.object({
       numTotalRequired: z.coerce.number(),
     }),
+    maxExecutions: z.coerce.number().nullable(),
   })
   .transform((data) => ({ ...data, connectionType: "KUBERNETES" }));
 
@@ -93,6 +97,7 @@ const patchDatabaseConnectionPayloadSchema = z
         numTotalRequired: z.number(),
       })
       .optional(),
+    maxExecutions: z.number().optional().nullable(),
   })
   .transform((data) => ({ ...data, connectionType: "DATASOURCE" }));
 
@@ -105,6 +110,7 @@ const patchKubernetesConnectionPayloadSchema = z
         numTotalRequired: z.number(),
       })
       .optional(),
+    maxExecutions: z.number().optional().nullable(),
   })
   .transform((data) => ({ ...data, connectionType: "KUBERNETES" }));
 

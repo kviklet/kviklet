@@ -22,7 +22,7 @@ enum class ReviewStatus {
 }
 
 enum class ExecutionStatus {
-    NOT_EXECUTED,
+    EXECUTABLE,
     ACTIVE,
     EXECUTED,
 }
@@ -42,7 +42,7 @@ sealed class ExecutionRequest(
     open val type: RequestType,
     open val description: String?,
     open val executionStatus: String,
-    open val createdAt: LocalDateTime = LocalDateTime.now(),
+    open val createdAt: LocalDateTime = utcTimeNow(),
     open val author: User,
 )
 
@@ -74,7 +74,7 @@ data class DatasourceExecutionRequest(
     val statement: String?,
     val readOnly: Boolean,
     override val executionStatus: String,
-    override val createdAt: LocalDateTime = LocalDateTime.now(),
+    override val createdAt: LocalDateTime = utcTimeNow(),
     override val author: User,
 ) : ExecutionRequest(id, connection, title, type, description, executionStatus, createdAt, author)
 
@@ -85,7 +85,7 @@ data class KubernetesExecutionRequest(
     override val type: RequestType,
     override val description: String?,
     override val executionStatus: String,
-    override val createdAt: LocalDateTime = LocalDateTime.now(),
+    override val createdAt: LocalDateTime = utcTimeNow(),
     override val author: User,
     val namespace: String?,
     val podName: String?,
@@ -129,11 +129,32 @@ data class ExecutionRequestDetails(
     }
 
     fun resolveExecutionStatus(): ExecutionStatus {
-        val executions = events.filter { it.type == EventType.EXECUTE }
-        if (executions.isEmpty()) {
-            return ExecutionStatus.NOT_EXECUTED
+        when (request.type) {
+            RequestType.SingleExecution -> {
+                val executions = events.filter { it.type == EventType.EXECUTE }
+                request.connection.maxExecutions?.let { maxExecutions ->
+                    if (maxExecutions == 0) { // magic number for unlimited executions
+                        return ExecutionStatus.EXECUTABLE
+                    }
+                    if (executions.size >= maxExecutions) {
+                        return ExecutionStatus.EXECUTED
+                    }
+                }
+                return ExecutionStatus.EXECUTABLE
+            }
+            RequestType.TemporaryAccess -> {
+                val executions = events.filter { it.type == EventType.EXECUTE }
+                if (executions.isEmpty()) {
+                    return ExecutionStatus.EXECUTABLE
+                }
+                val firstExecution = executions.minBy { it.createdAt }
+                return if (firstExecution.createdAt < utcTimeNow().minusMinutes(60)) {
+                    ExecutionStatus.EXECUTED
+                } else {
+                    ExecutionStatus.ACTIVE
+                }
+            }
         }
-        return ExecutionStatus.EXECUTED
     }
 
     override fun getId() = request.id.toString()

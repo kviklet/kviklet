@@ -33,6 +33,7 @@ import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewEvent
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.UpdateResultLog
+import dev.kviklet.kviklet.service.dto.utcTimeNow
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.DiscriminatorMapping
 import io.swagger.v3.oas.annotations.media.Schema
@@ -160,7 +161,7 @@ sealed class ExecutionRequestResponse(
         val readOnly: Boolean,
         val reviewStatus: ReviewStatus,
         val executionStatus: ExecutionStatus,
-        val createdAt: LocalDateTime = LocalDateTime.now(),
+        val createdAt: LocalDateTime = utcTimeNow(),
     ) : ExecutionRequestResponse(id = id)
 
     data class KubernetesExecutionRequestResponse(
@@ -172,7 +173,7 @@ sealed class ExecutionRequestResponse(
         val description: String?,
         val reviewStatus: ReviewStatus,
         val executionStatus: ExecutionStatus,
-        val createdAt: LocalDateTime = LocalDateTime.now(),
+        val createdAt: LocalDateTime = utcTimeNow(),
         val namespace: String?,
         val podName: String?,
         val containerName: String?,
@@ -237,7 +238,7 @@ data class DatasourceExecutionRequestDetailResponse(
     val readOnly: Boolean,
     val reviewStatus: ReviewStatus,
     val executionStatus: ExecutionStatus,
-    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val createdAt: LocalDateTime = utcTimeNow(),
     override val events: List<EventResponse>,
 ) : ExecutionRequestDetailResponse(
     id = id,
@@ -253,7 +254,7 @@ data class KubernetesExecutionRequestDetailResponse(
     val description: String?,
     val reviewStatus: ReviewStatus,
     val executionStatus: ExecutionStatus,
-    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val createdAt: LocalDateTime = utcTimeNow(),
     val namespace: String?,
     val podName: String?,
     val containerName: String?,
@@ -377,7 +378,7 @@ data class ErrorQueryResultResponse(
 )
 abstract class EventResponse(
     val type: EventType,
-    open val createdAt: LocalDateTime = LocalDateTime.now(),
+    open val createdAt: LocalDateTime = utcTimeNow(),
 ) {
     abstract val id: String
     abstract val author: UserResponse
@@ -429,7 +430,7 @@ abstract class EventResponse(
 data class CommentEventResponse(
     override val id: String,
     override val author: UserResponse,
-    override val createdAt: LocalDateTime = LocalDateTime.now(),
+    override val createdAt: LocalDateTime = utcTimeNow(),
     val comment: String,
 ) : EventResponse(EventType.COMMENT, createdAt)
 
@@ -437,7 +438,7 @@ data class CommentEventResponse(
 data class ReviewEventResponse(
     override val id: String,
     override val author: UserResponse,
-    override val createdAt: LocalDateTime = LocalDateTime.now(),
+    override val createdAt: LocalDateTime = utcTimeNow(),
     val comment: String,
     val action: ReviewAction,
 ) : EventResponse(EventType.REVIEW, createdAt)
@@ -446,7 +447,7 @@ data class ReviewEventResponse(
 data class EditEventResponse(
     override val id: String,
     override val author: UserResponse,
-    override val createdAt: LocalDateTime = LocalDateTime.now(),
+    override val createdAt: LocalDateTime = utcTimeNow(),
     val previousQuery: String? = null,
     val previousCommand: String? = null,
     val previousContainerName: String? = null,
@@ -458,7 +459,7 @@ data class EditEventResponse(
 data class ExecuteEventResponse(
     override val id: String,
     override val author: UserResponse,
-    override val createdAt: LocalDateTime = LocalDateTime.now(),
+    override val createdAt: LocalDateTime = utcTimeNow(),
     val query: String? = null,
     val results: List<ResultLogResponse> = emptyList(),
     val command: String? = null,

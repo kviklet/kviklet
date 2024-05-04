@@ -13,6 +13,7 @@ import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.KubernetesConnection
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.RequestType
+import dev.kviklet.kviklet.service.dto.utcTimeNow
 import jakarta.persistence.CascadeType
 import jakarta.persistence.Entity
 import jakarta.persistence.EntityManager
@@ -29,9 +30,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.Instant
 import java.time.LocalDateTime
-import java.time.ZoneOffset
 
 enum class ExecutionRequestType {
     DATASOURCE,
@@ -52,7 +51,7 @@ class ExecutionRequestEntity(
 
     var executionStatus: String,
 
-    private val createdAt: LocalDateTime = Instant.now().atZone(ZoneOffset.UTC).toLocalDateTime(),
+    private val createdAt: LocalDateTime = utcTimeNow(),
 
     @OneToMany(mappedBy = "executionRequest", cascade = [CascadeType.ALL])
     val events: MutableSet<EventEntity>,

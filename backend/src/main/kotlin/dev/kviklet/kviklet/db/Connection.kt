@@ -48,6 +48,8 @@ class ConnectionEntity(
     @OneToMany(mappedBy = "connection", cascade = [CascadeType.ALL])
     val executionRequests: Set<ExecutionRequestEntity> = emptySet(),
 
+    var maxExecutions: Int? = null,
+
     // Datasource Connection fields
     @Enumerated(EnumType.STRING)
     var authenticationType: AuthenticationType? = null,
@@ -75,6 +77,7 @@ class ConnectionEntity(
                     displayName = displayName,
                     authenticationType = authenticationType!!,
                     databaseName = databaseName,
+                    maxExecutions = maxExecutions,
                     username = username!!,
                     password = password!!,
                     description = description,
@@ -90,6 +93,7 @@ class ConnectionEntity(
                     displayName = displayName,
                     description = description,
                     reviewConfig = reviewConfig,
+                    maxExecutions = maxExecutions,
                 )
         }
     }
@@ -116,6 +120,7 @@ class ConnectionAdapter(
         displayName: String,
         authenticationType: AuthenticationType,
         databaseName: String?,
+        maxExecutions: Int?,
         username: String,
         password: String,
         description: String,
@@ -131,6 +136,7 @@ class ConnectionAdapter(
                 displayName = displayName,
                 authenticationType = authenticationType,
                 databaseName = databaseName,
+                maxExecutions = maxExecutions,
                 username = username,
                 password = password,
                 description = description,
@@ -150,6 +156,7 @@ class ConnectionAdapter(
         displayName: String,
         description: String,
         type: DatasourceType,
+        maxExecutions: Int?,
         hostname: String,
         port: Int,
         username: String,
@@ -170,6 +177,7 @@ class ConnectionAdapter(
         datasourceConnection.description = description
         datasourceConnection.datasourceType = type
         datasourceConnection.hostname = hostname
+        datasourceConnection.maxExecutions = maxExecutions
         datasourceConnection.port = port
         datasourceConnection.username = username
         datasourceConnection.password = password
@@ -185,6 +193,7 @@ class ConnectionAdapter(
         displayName: String,
         description: String,
         reviewConfig: ReviewConfig,
+        maxExecutions: Int?,
     ): Connection {
         val datasourceConnection = connectionRepository.findByIdOrNull(id.toString())
             ?: throw EntityNotFound(
@@ -197,6 +206,7 @@ class ConnectionAdapter(
         datasourceConnection.displayName = displayName
         datasourceConnection.description = description
         datasourceConnection.reviewConfig = reviewConfig
+        datasourceConnection.maxExecutions = maxExecutions
 
         return connectionRepository.save(datasourceConnection).toDto()
     }
@@ -207,6 +217,7 @@ class ConnectionAdapter(
         displayName: String,
         description: String,
         reviewConfig: ReviewConfig,
+        maxExecutions: Int?,
     ): Connection {
         return connectionRepository.save(
             ConnectionEntity(
@@ -215,6 +226,7 @@ class ConnectionAdapter(
                 description = description,
                 reviewConfig = reviewConfig,
                 connectionType = ConnectionType.KUBERNETES,
+                maxExecutions = maxExecutions,
             ),
         ).toDto()
     }

@@ -16,6 +16,7 @@ import dev.kviklet.kviklet.service.ExecutionRequestService
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.RequestType
+import dev.kviklet.kviklet.service.dto.utcTimeNow
 import io.kotest.matchers.equality.shouldBeEqualToIgnoringFields
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -24,7 +25,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
-import java.time.LocalDateTime
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -90,7 +90,7 @@ class DatasourceConnectionTest(
         requestDetails.events[0].shouldBeEqualToIgnoringFields(
             CommentEventResponse(
                 id = "id",
-                createdAt = LocalDateTime.now(),
+                createdAt = utcTimeNow(),
                 comment = "Comment with a \"quote\"!",
                 author = UserResponse(testUser),
             ),

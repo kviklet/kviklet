@@ -125,6 +125,7 @@ class ConnectionHelper(
             "Test Connection",
             AuthenticationType.USER_PASSWORD,
             container.databaseName,
+            1,
             container.username,
             container.password,
             "A test connection",
@@ -148,6 +149,7 @@ class ConnectionHelper(
             ReviewConfig(
                 numTotalRequired = 1,
             ),
+            1,
         )
     }
 
