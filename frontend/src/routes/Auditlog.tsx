@@ -16,6 +16,7 @@ import InitialBubble from "../components/InitialBubble";
 import { Link } from "react-router-dom";
 import { ExecutionLogResponse, getExecutions } from "../api/ExecutionsApi";
 import { useEffect, useState } from "react";
+import { timeSince } from "./Requests";
 
 function useExecutions() {
   const [executions, setExecutions] = useState<ExecutionLogResponse[]>([]);
@@ -96,7 +97,7 @@ function Item({ execution }: { execution: ExecutionLogResponse }) {
             <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
               Executed{" "}
               <time dateTime={execution.executionTime.toISOString()}>
-                {timeAgo(execution.executionTime)}
+                {timeSince(execution.executionTime)}
               </time>
             </p>
           </div>
@@ -108,28 +109,4 @@ function Item({ execution }: { execution: ExecutionLogResponse }) {
       </li>
     </Link>
   );
-}
-
-export function timeAgo(input: string | Date): string {
-  const now = new Date();
-  const past = input instanceof Date ? input : new Date(input);
-  const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000);
-
-  let result = "";
-
-  if (diffInSeconds < 60) {
-    result = `${diffInSeconds}s ago`;
-  } else if (diffInSeconds < 3600) {
-    result = `${Math.floor(diffInSeconds / 60)}m ago`;
-  } else if (diffInSeconds < 86400) {
-    result = `${Math.floor(diffInSeconds / 3600)}h ago`;
-  } else if (diffInSeconds < 2592000) {
-    result = `${Math.floor(diffInSeconds / 86400)}d ago`;
-  } else if (diffInSeconds < 31536000) {
-    result = `${Math.floor(diffInSeconds / 2592000)}mo ago`;
-  } else {
-    result = `${Math.floor(diffInSeconds / 31536000)}y ago`;
-  }
-
-  return result;
 }
