@@ -41,8 +41,8 @@ export default function CreateKubernetesConnectionForm(props: {
 
   return (
     <form onSubmit={(event) => void handleSubmit(onSubmit)(event)}>
-      <div className="flex flex-col w-2xl shadow px-10 py-5 bg-slate-50 border border-slate-300 dark:border-none dark:bg-slate-950 rounded-lg">
-        <h1 className="text-lg font-semibold p-2">
+      <div className="w-2xl flex flex-col rounded-lg border border-slate-300 bg-slate-50 px-10 py-5 shadow dark:border-none dark:bg-slate-950">
+        <h1 className="p-2 text-lg font-semibold">
           Add a new Kubernetes connection
         </h1>
         <div className="flex-col space-y-2">

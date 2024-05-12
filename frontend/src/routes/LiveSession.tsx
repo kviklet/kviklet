@@ -65,7 +65,6 @@ export default function LiveSession() {
       (selection && editor?.getModel()?.getValueInRange(selection)) ||
       editor?.getValue();
 
-    console.log("executing: " + text);
     setUpdatedRows(undefined);
     setExecutionError(undefined);
     setResults(undefined);
@@ -84,10 +83,10 @@ export default function LiveSession() {
   };
 
   return (
-    <div className="w-full flex h-full">
-      <div className="flex flex-col h-full mx-auto w-2/3">
-        <div className="my-5 overflow-auto resize-y h-32">
-          <div className="w-full h-full" ref={monacoEl}></div>
+    <div className="flex h-full w-full">
+      <div className="mx-auto flex h-full w-2/3 flex-col">
+        <div className="my-5 h-32 resize-y overflow-auto">
+          <div className="h-full w-full" ref={monacoEl}></div>
         </div>
         <div className="flex flex-row-reverse">
           <Button type="submit" onClick={() => void executeQuery()}>
@@ -100,7 +99,7 @@ export default function LiveSession() {
           <div className="text-slate-500">{updatedRows} rows updated</div>
         )}
         {executionError && <div className="text-red-500">{executionError}</div>}
-        <div className="flex justify-center h-full">
+        <div className="flex h-full justify-center">
           {(dataLoading && <Spinner></Spinner>) ||
             (results && <MultiResult resultList={results}></MultiResult>)}
         </div>

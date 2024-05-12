@@ -47,23 +47,23 @@ function ConnectionSettingsList(props: {
   ) => Promise<void>;
 }) {
   return (
-    <div className="pl-4 flex flex-col max-h-[calc(100vh-theme(spacing.52))] w-full border-l dark:border-slate-700  dark:bg-slate-950">
+    <div className="flex max-h-[calc(100vh-theme(spacing.52))] w-full flex-col border-l pl-4 dark:border-slate-700  dark:bg-slate-950">
       <div className="text-lg">Connections</div>
       <div className="flex-grow overflow-hidden">
-        <div className=" h-full flex flex-col justify-between">
-          <div className="overflow-y-auto flex-grow">
+        <div className=" flex h-full flex-col justify-between">
+          <div className="flex-grow overflow-y-auto">
             {props.connections.map((connection) => (
               <ConnectionCard key={connection.id} connection={connection} />
             ))}
           </div>
           <Button
-            className="ml-auto mx-2 my-1"
+            className="mx-2 my-1 ml-auto"
             onClick={props.addConnectionHandler}
           >
             Add connection
           </Button>
           <Button
-            className="ml-auto mx-2 my-1"
+            className="mx-2 my-1 ml-auto"
             onClick={props.addKubnernetesConnectionHandler}
           >
             Add Kubernetes connection
@@ -98,7 +98,7 @@ const ConnectionSettings = () => {
         <Spinner />
       ) : (
         <div className="">
-          <div className="flex w-full dark:bg-slate-950 h-full">
+          <div className="flex h-full w-full dark:bg-slate-950">
             <ConnectionSettingsList
               connections={connections}
               addConnectionHandler={() => {

@@ -33,7 +33,7 @@ export const ProtectedRoute = ({
 };
 function App() {
   return (
-    <div className="dark:text-slate-50 dark:bg-slate-950 text-slate-900 bg-slate-50 min-h-screen transition-colors">
+    <div className="min-h-screen bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-50">
       <UserStatusProvider>
         <ThemeStatusProvider>
           <Routes>

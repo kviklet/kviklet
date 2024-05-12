@@ -37,7 +37,7 @@ function ProfileSettings() {
             type="password"
             name="new-password"
             id="new-password"
-            className="block dark:bg-slate-900 w-full rounded-md border-0 py-1.5 pr-14 text-slate-900 dark:text-slate-50 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 px-3 my-3 pb-1.5 pt-2.5 dark:ring-slate-700 focus-visible:outline-none"
+            className="my-3 block w-full rounded-md border-0 px-3 py-1.5 pb-1.5 pr-14 pt-2.5 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus-visible:outline-none dark:bg-slate-900 dark:text-slate-50 dark:ring-slate-700 sm:text-sm sm:leading-6"
             autoComplete={undefined}
             value={newPassword}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -55,7 +55,7 @@ function ProfileSettings() {
           type="password"
           name="new-password-confirm"
           id="new-password-confirm"
-          className="block dark:bg-slate-900 w-full rounded-md border-0 py-1.5 pr-14 text-slate-900 dark:text-slate-50 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset sm:text-sm sm:leading-6 px-3 my-3 pb-1.5 pt-2.5 dark:ring-slate-700 focus-visible:outline-none"
+          className="my-3 block w-full rounded-md border-0 px-3 py-1.5 pb-1.5 pr-14 pt-2.5 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus-visible:outline-none dark:bg-slate-900 dark:text-slate-50 dark:ring-slate-700 sm:text-sm sm:leading-6"
           autoComplete={undefined}
           value={confirmNewPassowrd}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
@@ -63,7 +63,7 @@ function ProfileSettings() {
           }
         />
       </div>
-      <div className="flex justify-end mb-2">
+      <div className="mb-2 flex justify-end">
         <Button onClick={() => void changePassword()}>Save</Button>
       </div>
       {newPassword !== confirmNewPassowrd && (

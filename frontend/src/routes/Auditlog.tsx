@@ -1,10 +1,10 @@
 export default function Auditlog() {
   return (
     <div>
-      <div className="border-b border-slate-300 mb-3 dark:border-slate-700">
-        <h1 className="text-xl pl-1.5 w-3/4 m-5 mx-auto">Auditlog</h1>
+      <div className="mb-3 border-b border-slate-300 dark:border-slate-700">
+        <h1 className="m-5 mx-auto w-3/4 pl-1.5 text-xl">Auditlog</h1>
       </div>
-      <div className="max-w-7xl mx-auto">
+      <div className="mx-auto max-w-7xl">
         <List></List>
       </div>
     </div>
@@ -36,7 +36,7 @@ function useExecutions() {
 function List() {
   const { executions, loading } = useExecutions();
   return (
-    <div className="bg-white dark:bg-slate-900 shadow overflow-hidden sm:rounded-md">
+    <div className="overflow-hidden bg-white shadow dark:bg-slate-900 sm:rounded-md">
       <ul
         role="list"
         className="divide-y divide-slate-100 dark:divide-slate-800"
@@ -51,20 +51,20 @@ function List() {
 
 function ItemSkeleton() {
   return (
-    <li className="relative flex justify-between gap-x-6 py-5 animate-pulse">
+    <li className="relative flex animate-pulse justify-between gap-x-6 py-5">
       <div className="flex min-w-0 gap-x-4">
-        <div className="w-6 h-6 bg-slate-200 dark:bg-slate-800 rounded-full"></div>
+        <div className="h-6 w-6 rounded-full bg-slate-200 dark:bg-slate-800"></div>
         <div className="min-w-0 flex-auto space-y-2">
-          <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-3/4"></div>
-          <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded"></div>
+          <div className="h-4 w-3/4 rounded bg-slate-200 dark:bg-slate-800"></div>
+          <div className="h-4 rounded bg-slate-200 dark:bg-slate-800"></div>
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-x-4">
-        <div className="hidden sm:flex sm:flex-col sm:items-end space-y-2">
-          <div className="inline-flex flex-shrink-0 items-center rounded-full bg-green-50 dark:bg-green-400/10 dark:text-green-400 px-1.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 h-4"></div>
-          <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-16"></div>
+        <div className="hidden space-y-2 sm:flex sm:flex-col sm:items-end">
+          <div className="inline-flex h-4 flex-shrink-0 items-center rounded-full bg-green-50 px-1.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-400/10 dark:text-green-400"></div>
+          <div className="h-4 w-16 rounded bg-slate-200 dark:bg-slate-800"></div>
         </div>
-        <div className="h-5 w-5 bg-slate-200 dark:bg-slate-800 rounded-full"></div>
+        <div className="h-5 w-5 rounded-full bg-slate-200 dark:bg-slate-800"></div>
       </div>
     </li>
   );
@@ -84,14 +84,14 @@ function Item({ execution }: { execution: ExecutionLogResponse }) {
               <span className="absolute inset-x-0 -top-px bottom-0" />
               {execution.name}
             </p>
-            <p className="mt-1 flex text-xs leading-5 text-slate-500 dark:text-slate-400 relative truncate">
+            <p className="relative mt-1 flex truncate text-xs leading-5 text-slate-500 dark:text-slate-400">
               {execution.statement}
             </p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-x-4">
           <div className="hidden sm:flex sm:flex-col sm:items-end">
-            <span className="inline-flex flex-shrink-0 items-center rounded-full bg-green-50 dark:bg-green-400/10 dark:text-green-400 px-1.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+            <span className="inline-flex flex-shrink-0 items-center rounded-full bg-green-50 px-1.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-400/10 dark:text-green-400">
               {execution.connectionId}
             </span>
             <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">

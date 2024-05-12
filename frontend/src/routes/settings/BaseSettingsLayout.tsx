@@ -18,9 +18,9 @@ const Tab = (props: {
       <div
         onClick={props.onClick}
         className={
-          "pr-2 rounded hover:bg-slate-100 dark:hover:bg-slate-900 " +
+          "rounded pr-2 hover:bg-slate-100 dark:hover:bg-slate-900 " +
             (props.active &&
-              "bg-slate-200 hover:bg-slate-200 dark:bg-slate-900 rounded") || ""
+              "rounded bg-slate-200 hover:bg-slate-200 dark:bg-slate-900") || ""
         }
       >
         {props.children}
@@ -42,7 +42,7 @@ interface LayoutProps {
 
 function SettingsSidebar(props: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col mx-2">
+    <div className="mx-2 flex flex-col">
       <div className="flex flex-col divide-y-8 divide-slate-50 dark:divide-slate-950">
         {props.children}
       </div>
@@ -67,14 +67,14 @@ const BaseSettingsLayout = (props: LayoutProps) => {
   });
 
   return (
-    <div className="w-screen h-full dark:bg-slate-950">
-      <div className="border-b border-slate-300 mb-3 dark:border-slate-700">
-        <h1 className="text-xl pl-1.5 w-3/4 m-5 mx-auto">Settings</h1>
+    <div className="h-full w-screen dark:bg-slate-950">
+      <div className="mb-3 border-b border-slate-300 dark:border-slate-700">
+        <h1 className="m-5 mx-auto w-3/4 pl-1.5 text-xl">Settings</h1>
       </div>
-      <div className="mx-auto w-3/4 h-full">
-        <div className="flex w-full pt-4 h-full">
+      <div className="mx-auto h-full w-3/4">
+        <div className="flex h-full w-full pt-4">
           <SettingsSidebar>{tabs}</SettingsSidebar>
-          <div className="w-full ml-2 h-full">
+          <div className="ml-2 h-full w-full">
             <Routes>
               <Route path="/*" element={<ConnectionSettings />} />
               <Route path="databases" element={<ConnectionSettings />} />

@@ -39,7 +39,7 @@ function Button(props: {
         (props.type == "danger" && dangerStyle) ||
         defaultStyle
       }
-      leading-5 align-middle  rounded-md`}
+      rounded-md align-middle  leading-5`}
     >
       {props.children}
     </button>

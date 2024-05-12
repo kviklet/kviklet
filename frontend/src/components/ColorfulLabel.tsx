@@ -45,7 +45,7 @@ const ColorfulLabel = (props: {
       onClick={props.onClick}
       className={`${color} ${
         props.onClick && "cursor-pointer"
-      }  text-sm rounded-full px-2 py-1 m-1 border dark:border-none`}
+      }  m-1 rounded-full border px-2 py-1 text-sm dark:border-none`}
     >
       {capitalizeFirstLetter(props.text)}
 

@@ -42,6 +42,7 @@ import { AbsoluteInitialBubble as InitialBubble } from "../components/InitialBub
 import ShellResult from "../components/ShellResult";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import MenuDropDown from "../components/MenuDropdown";
 
 interface RequestReviewParams {
   requestId: string;
@@ -50,7 +51,6 @@ interface RequestReviewParams {
 const Highlighter = (props: { children: string }) => {
   const { currentTheme } = useContext<ThemeContext>(ThemeStatusContext);
   const style = currentTheme === "dark" ? a11yDark : a11yLight;
-  console.log("Switching theme because" + currentTheme);
 
   return (
     <SyntaxHighlighter
@@ -71,7 +71,7 @@ const componentMap = {
     return <Highlighter>{children as string}</Highlighter>;
   },
   ul: ({ children }: { children: ReactNode }) => (
-    <ul className="list-disc ml-4 mt-4">{children}</ul>
+    <ul className="ml-4 mt-4 list-disc">{children}</ul>
   ),
 };
 
@@ -203,13 +203,13 @@ function RequestReview() {
     <div>
       {(loading && <Spinner />) ||
         (request && (
-          <div className="max-w-3xl m-auto mt-10">
-            <h1 className="text-3xl my-2 w-full flex items-start">
+          <div className="m-auto mt-10 max-w-3xl">
+            <h1 className="my-2 flex w-full items-start text-3xl">
               <div className="mr-auto">{request?.title}</div>
               <div
                 className={` ${mapStatusToLabelColor(
                   mapStatus(request.reviewStatus, request.executionStatus),
-                )} w-min rounded-md px-2 py-1 mt-2 text-base font-medium ring-1 ring-inset `}
+                )} mt-2 w-min rounded-md px-2 py-1 text-base font-medium ring-1 ring-inset `}
               >
                 {mapStatus(request.reviewStatus, request.executionStatus)}
               </div>
@@ -242,7 +242,7 @@ function RequestReview() {
                       ></KubernetesRequestDisplay>
                     ) || <></>
                   ))}
-                <div className="w-full border-b dark:border-slate-700 border-slate-300 mt-3"></div>
+                <div className="mt-3 w-full border-b border-slate-300 dark:border-slate-700"></div>
                 <div className="mt-6">
                   <span>Activity</span>
                 </div>
@@ -310,10 +310,10 @@ function DatasourceRequestDisplay({
           (results && <MultiResult resultList={results}></MultiResult>)}
       </div>
       {executionError && (
-        <div className="text-red-500 my-4">{executionError}</div>
+        <div className="my-4 text-red-500">{executionError}</div>
       )}
       {proxyResponse && (
-        <div className="text-lime-500 my-4">
+        <div className="my-4 text-lime-500">
           Server started on {proxyResponse.port} with username{" "}
           <i>{proxyResponse.username}</i> and password{" "}
           <i>{proxyResponse.password}</i>
@@ -355,10 +355,10 @@ function KubernetesRequestDisplay({
           (results && <ShellResult {...results}></ShellResult>)}
       </div>
       {executionError && (
-        <div className="text-red-500 my-4">{executionError}</div>
+        <div className="my-4 text-red-500">{executionError}</div>
       )}
       {proxyResponse && (
-        <div className="text-lime-500 my-4">
+        <div className="my-4 text-lime-500">
           Server started on {proxyResponse.port} with username{" "}
           <i>{proxyResponse.username}</i> and password{" "}
           <i>{proxyResponse.password}</i>
@@ -383,6 +383,8 @@ const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
   const [editMode, setEditMode] = useState(false);
   const [command, setCommand] = useState(request?.command || "");
 
+  const navigate = useNavigate();
+
   useEffect(() => {
     setCommand(request?.command || "");
   }, [request?.command]);
@@ -395,9 +397,35 @@ const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
     setEditMode(false);
   };
 
+  const navigateCopy = () => {
+    navigate(`/new`, {
+      state: {
+        connectionId: request?.connection.id,
+        connectionType: "Kubernetes",
+        title: request?.title,
+        mode: request?.type,
+        description: request?.description,
+        command: request?.command,
+        namespace: request?.namespace,
+        podName: request?.podName,
+        containerName: request?.containerName,
+      },
+    });
+  };
+
+  const menuDropDownItems = [
+    {
+      onClick: () => {
+        void navigateCopy();
+      },
+      enabled: true,
+      text: "Copy Request",
+    },
+  ];
+
   return (
-    <div className="relative border-slate-500 dark:bg-slate-950 dark:border dark:border-slate-950">
-      <div className="text-slate-800 py-2 text-sm flex bg-slate-50 dark:bg-slate-950 dark:text-slate-50 dark:border-none">
+    <div className="relative border-slate-500 dark:border dark:border-slate-950 dark:bg-slate-950">
+      <div className="flex bg-slate-50 py-2 text-sm text-slate-800 dark:border-none dark:bg-slate-950 dark:text-slate-50">
         <div>
           {request?.author.fullName} wants to execute a Kubernetes command in:
           <span className="italic"> {request?.connection.displayName}</span>
@@ -406,8 +434,8 @@ const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
           {timeSince(new Date(request?.createdAt ?? ""))}
         </div>
       </div>
-      <div className="py-3 px-4">
-        <p className="text-slate-500 pb-6">{request?.description}</p>
+      <div className="px-4 py-3">
+        <p className="pb-6 text-slate-500">{request?.description}</p>
         <div className="text-slate-500">
           Namespace: <strong>{request?.namespace}</strong>
           <br />
@@ -418,7 +446,7 @@ const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
           Command:{" "}
           {editMode ? (
             <textarea
-              className="appearance-none block w-full text-gray-700 border border-gray-200 bg-slate-100 focus:bg-white dark:bg-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors dark:text-slate-50 p-1 rounded-md leading-normal mb-2 focus:outline-none focus:border-gray-500"
+              className="mb-2 block w-full appearance-none rounded-md border border-gray-200 bg-slate-100 p-1 leading-normal text-gray-700 transition-colors focus:border-gray-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-slate-500 dark:hover:border-slate-600 dark:focus:hover:border-slate-500"
               rows={3}
               onChange={(e) => setCommand(e.target.value)}
               value={command}
@@ -428,7 +456,7 @@ const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
           )}
         </div>
         {editMode ? (
-          <div className="flex justify-end mt-2">
+          <div className="mt-2 flex justify-end">
             <Button className="mr-2" onClick={() => setEditMode(false)}>
               Cancel
             </Button>
@@ -440,19 +468,21 @@ const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
           </Button>
         )}
       </div>
-      <div className="relative ml-4 flex justify-end">
+      <div className="relative mt-3 flex justify-end">
+        <MenuDropDown items={menuDropDownItems}></MenuDropDown>
         <Button
-          className="mt-3"
+          className=""
           id="runQuery"
           type={(request?.reviewStatus == "APPROVED" && "submit") || "disabled"}
           onClick={() => void runQuery(false)}
         >
           <div
-            className={`play-triangle inline-block w-2 h-3 mr-2 ${
+            className={`play-triangle mr-2 inline-block h-3 w-2 ${
               (request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
               "bg-slate-500"
             }`}
           ></div>
+
           {request?.type == "SingleExecution" ? "Run Command" : "Start Session"}
         </Button>
       </div>
@@ -472,6 +502,7 @@ function DatasourceRequestBox({
   updateRequest: (request: { statement?: string }) => Promise<void>;
 }) {
   const [editMode, setEditMode] = useState(false);
+  const navigate = useNavigate();
   const [statement, setStatement] = useState(request?.statement || "");
   const changeStatement = async (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
@@ -489,11 +520,58 @@ function DatasourceRequestBox({
       ? " wants to execute a statement on "
       : " wants to have access to ";
 
+  const navigateCopy = () => {
+    navigate(`/new`, {
+      state: {
+        connectionId: request?.connection.id,
+        connectionType: "Datasource",
+        title: request?.title,
+        mode: request?.type,
+        description: request?.description,
+        statement: request?.statement,
+      },
+    });
+  };
+
+  const menuDropDownItems = [
+    {
+      onClick: () => {
+        void navigateCopy();
+      },
+      enabled: true,
+      text: "Copy Request",
+    },
+    ...(request?.type == "SingleExecution"
+      ? [
+          {
+            onClick: () => {
+              void runQuery(true);
+            },
+            enabled:
+              request?.reviewStatus === "APPROVED" ||
+              request?.reviewStatus === "AWAITING_APPROVAL",
+            text: "Explain",
+          },
+        ]
+      : []),
+    ...(request?.type == "TemporaryAccess"
+      ? [
+          {
+            onClick: () => {
+              void startServer();
+            },
+            enabled: request?.reviewStatus === "APPROVED",
+            text: "Start Proxy",
+          },
+        ]
+      : []),
+  ];
+
   return (
     <div>
-      <div className="relative border-slate-500 dark:bg-slate-950 dark:border dark:border-slate-950">
+      <div className="relative border-slate-500 dark:border dark:border-slate-950 dark:bg-slate-950">
         <InitialBubble name={request?.author.fullName} />
-        <div className="text-slate-800 py-2 text-sm flex bg-slate-50 dark:bg-slate-950 dark:text-slate-50 dark:border-none">
+        <div className="flex bg-slate-50 py-2 text-sm text-slate-800 dark:border-none dark:bg-slate-950 dark:text-slate-50">
           <div>
             {request?.author?.fullName + questionText}
             <span className="italic">{request?.connection.displayName}</span>
@@ -503,12 +581,12 @@ function DatasourceRequestBox({
           </div>
         </div>
         <div className="py-3">
-          <p className="text-slate-500 pb-6">{request?.description}</p>
+          <p className="pb-6 text-slate-500">{request?.description}</p>
           {request?.type == "SingleExecution" ? (
             editMode ? (
               <div>
                 <textarea
-                  className="appearance-none block w-full text-gray-700 border border-gray-200 bg-slate-100 focus:bg-white dark:bg-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors dark:text-slate-50 p-1 rounded-md leading-normal mb-2 focus:outline-none focus:border-gray-500"
+                  className="mb-2 block w-full appearance-none rounded-md border border-gray-200 bg-slate-100 p-1 leading-normal text-gray-700 transition-colors focus:border-gray-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-slate-500 dark:hover:border-slate-600 dark:focus:hover:border-slate-500"
                   id="statement"
                   name="statement"
                   rows={4}
@@ -535,7 +613,7 @@ function DatasourceRequestBox({
               </div>
             ) : (
               <div
-                className="dark:bg-slate-950 border dark:border-slate-700 rounded border-slate-300 dark:hover:border-slate-500 transition-colors"
+                className="rounded border border-slate-300 transition-colors dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-500"
                 onClick={() => setEditMode(true)}
               >
                 <Highlighter>
@@ -548,46 +626,22 @@ function DatasourceRequestBox({
           )}
         </div>
       </div>
-      <div className="relative ml-4 flex justify-end">
+      <div className="relative mt-3 flex justify-end">
+        <MenuDropDown items={menuDropDownItems}></MenuDropDown>
         <Button
-          className="mt-3 mr-4"
-          id="runQuery"
-          type={
-            (request?.reviewStatus == "AWAITING_APPROVAL" && "submit") ||
-            (request?.reviewStatus == "APPROVED" && "submit") ||
-            "disabled"
-          }
-          onClick={() => void runQuery(true)}
-        >
-          Explain
-        </Button>
-        <Button
-          className="mt-3"
+          className=""
           id="runQuery"
           type={(request?.reviewStatus == "APPROVED" && "submit") || "disabled"}
           onClick={() => void runQuery()}
         >
           <div
-            className={`play-triangle inline-block w-2 h-3 mr-2 ${
+            className={`play-triangle mr-2 inline-block h-3 w-2 ${
               (request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
               "bg-slate-500"
             }`}
           ></div>
           {request?.type == "SingleExecution" ? "Run Query" : "Start Session"}
         </Button>
-        {(request?.type == "TemporaryAccess" && (
-          <Button
-            className="mt-3 ml-2"
-            id="startServer"
-            type={
-              (request?.reviewStatus == "APPROVED" && "submit") || "disabled"
-            }
-            onClick={() => void startServer()}
-          >
-            Start Proxy
-          </Button>
-        )) ||
-          ""}
       </div>
     </div>
   );
@@ -596,28 +650,28 @@ function DatasourceRequestBox({
 function EditEvent({ event, index }: { event: Edit; index: number }) {
   return (
     <div>
-      <div className="relative py-4 ml-4 flex">
+      <div className="relative ml-4 flex py-4">
         {(!(index === 0) && (
-          <div className="bg-slate-700 w-0.5 absolute block whitespace-pre left-0 top-0 bottom-0">
+          <div className="absolute bottom-0 left-0 top-0 block w-0.5 whitespace-pre bg-slate-700">
             {" "}
           </div>
         )) || (
-          <div className="bg-slate-700 w-0.5 absolute block whitespace-pre left-0 top-5 bottom-0">
+          <div className="absolute bottom-0 left-0 top-5 block w-0.5 whitespace-pre bg-slate-700">
             {" "}
           </div>
         )}
-        <div className="h-4 w-4 -ml-1 pb-6 mr-2 inline-block align-text-bottom items-center dark:bg-slate-950 bg-slate-50 fill-slate-950 dark:fill-slate-50 z-0">
-          <div className="inline pr-2 dark:text-slate-500 text-slate-900 text-xs">
+        <div className="z-0 -ml-1 mr-2 inline-block h-4 w-4 items-center bg-slate-50 fill-slate-950 pb-6 align-text-bottom dark:bg-slate-950 dark:fill-slate-50">
+          <div className="inline pr-2 text-xs text-slate-900 dark:text-slate-500">
             <FontAwesomeIcon icon={solid("pen")} />
           </div>
         </div>
-        <div className="text-slate-500 text-sm">
+        <div className="text-sm text-slate-500">
           {event?.author?.fullName} edited:
         </div>
       </div>
-      <div className="relative shadow-md dark:shadow-none dark:border-slate-700 rounded-md border">
+      <div className="relative rounded-md border shadow-md dark:border-slate-700 dark:shadow-none">
         <InitialBubble name={event?.author?.fullName} />
-        <p className="text-slate-500 dark:text-slate-500 px-4 pt-2 text-sm flex justify-between dark:bg-slate-900 rounded-t-md">
+        <p className="flex justify-between rounded-t-md px-4 pt-2 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-500">
           <div className="mr-4">
             {((event?.createdAt && timeSince(event.createdAt)) as
               | string
@@ -635,12 +689,12 @@ function EditEvent({ event, index }: { event: Edit; index: number }) {
           )}
         </p>
         {event?.previousQuery && (
-          <div className="py-3 px-4 dark:bg-slate-900 rounded-b-md">
+          <div className="rounded-b-md px-4 py-3 dark:bg-slate-900">
             <Highlighter>{event.previousQuery}</Highlighter>
           </div>
         )}
         {event?.previousCommand && (
-          <div className="py-3 px-4 dark:bg-slate-900 rounded-b-md">
+          <div className="rounded-b-md px-4 py-3 dark:bg-slate-900">
             <Highlighter>{event.previousCommand}</Highlighter>
           </div>
         )}
@@ -652,35 +706,35 @@ function EditEvent({ event, index }: { event: Edit; index: number }) {
 function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
   return (
     <div className="">
-      <div className="relative py-4 ml-4 flex">
+      <div className="relative ml-4 flex py-4">
         {(!(index === 0) && (
-          <div className="bg-slate-700 w-0.5 absolute block whitespace-pre left-0 top-0 bottom-0">
+          <div className="absolute bottom-0 left-0 top-0 block w-0.5 whitespace-pre bg-slate-700">
             {" "}
           </div>
         )) || (
-          <div className="bg-slate-700 w-0.5 absolute block whitespace-pre left-0 top-5 bottom-0">
+          <div className="absolute bottom-0 left-0 top-5 block w-0.5 whitespace-pre bg-slate-700">
             {" "}
           </div>
         )}
-        <div className="h-4 w-4 -ml-0.5 pb-6 mr-2 inline-block align-text-bottom items-center dark:bg-slate-950 bg-slate-50 fill-slate-950 dark:fill-slate-50 z-0">
-          <div className="inline pr-2 text-green-600 text-xs">
+        <div className="z-0 -ml-0.5 mr-2 inline-block h-4 w-4 items-center bg-slate-50 fill-slate-950 pb-6 align-text-bottom dark:bg-slate-950 dark:fill-slate-50">
+          <div className="inline pr-2 text-xs text-green-600">
             <FontAwesomeIcon icon={solid("play")} />
           </div>
         </div>
         {event?.query && (
-          <div className="text-slate-500 text-sm">
+          <div className="text-sm text-slate-500">
             {event?.author?.fullName} ran the following statement:
           </div>
         )}
         {event?.command && (
-          <div className="text-slate-500 text-sm">
+          <div className="text-sm text-slate-500">
             {event?.author?.fullName} ran the following command:
           </div>
         )}
       </div>
-      <div className="relative shadow-md dark:shadow-none dark:border-slate-700 rounded-md border dark:bg-slate-900">
+      <div className="relative rounded-md border shadow-md dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
         <InitialBubble name={event?.author?.fullName} />
-        <div className="text-slate-500 dark:text-slate-500 px-4 pt-2 text-sm flex justify-between dark:bg-slate-900 rounded-t-md">
+        <div className="flex justify-between rounded-t-md px-4 pt-2 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-500">
           <div className="mr-4">
             {((event?.createdAt && timeSince(event.createdAt)) as
               | string
@@ -688,13 +742,13 @@ function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
           </div>
         </div>
         {event?.query && (
-          <div className="py-3 px-4 dark:bg-slate-900 rounded-b-md">
+          <div className="rounded-b-md px-4 py-3 dark:bg-slate-900">
             <Highlighter>{event.query}</Highlighter>
           </div>
         )}
 
         {event?.command && (
-          <div className="py-3 px-4 dark:bg-slate-900 rounded-b-md">
+          <div className="rounded-b-md px-4 py-3 dark:bg-slate-900">
             <Highlighter>{event.command}</Highlighter>
           </div>
         )}
@@ -702,8 +756,8 @@ function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
           <Disclosure defaultOpen={true}>
             {({ open }) => (
               <>
-                <Disclosure.Button className="py-2 w-full ">
-                  <div className="flex flex-row justify-start w-full">
+                <Disclosure.Button className="w-full py-2 ">
+                  <div className="flex w-full flex-row justify-start">
                     <p className="text-xs">Results</p>
                     {open ? (
                       <ChevronDownIcon className="h-4 w-4 text-slate-400 dark:text-slate-500"></ChevronDownIcon>
@@ -713,10 +767,9 @@ function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
                   </div>
                 </Disclosure.Button>
                 <Disclosure.Panel>
-                  <div className="flex flex-col space-y-2 text-sm mb-2 dark:text-slate-300">
+                  <div className="mb-2 flex flex-col space-y-2 text-sm dark:text-slate-300">
                     {event.results.map((result, index) => {
                       const renderResult = () => {
-                        console.log(result);
                         if (result.type === "QUERY") {
                           return (
                             <div className="flex justify-between">
@@ -765,31 +818,30 @@ function Comment({
   event: Review | CommentEvent;
   index: number;
 }) {
-  console.log(event);
   return (
     <div>
-      <div className="relative py-4 ml-4 flex">
+      <div className="relative ml-4 flex py-4">
         {(!(index === 0) && (
-          <div className="bg-slate-700 w-0.5 absolute block whitespace-pre left-0 top-0 bottom-0">
+          <div className="absolute bottom-0 left-0 top-0 block w-0.5 whitespace-pre bg-slate-700">
             {" "}
           </div>
         )) || (
-          <div className="bg-slate-700 w-0.5 absolute block whitespace-pre left-0 top-5 bottom-0">
+          <div className="absolute bottom-0 left-0 top-5 block w-0.5 whitespace-pre bg-slate-700">
             {" "}
           </div>
         )}
         {event?._type === "COMMENT" ? (
-          <svg className="h-4 w-4 -ml-2 mr-2 mt-0.5 inline-block align-text-bottom items-center dark:bg-slate-950 bg-slate-50 fill-slate-950 dark:fill-slate-50 z-0">
+          <svg className="z-0 -ml-2 mr-2 mt-0.5 inline-block h-4 w-4 items-center bg-slate-50 fill-slate-950 align-text-bottom dark:bg-slate-950 dark:fill-slate-50">
             <path d="M11.93 8.5a4.002 4.002 0 0 1-7.86 0H.75a.75.75 0 0 1 0-1.5h3.32a4.002 4.002 0 0 1 7.86 0h3.32a.75.75 0 0 1 0 1.5Zm-1.43-.75a2.5 2.5 0 1 0-5 0 2.5 2.5 0 0 0 5 0Z"></path>
           </svg>
         ) : (
-          <div className="h-4 w-4 -ml-1 pb-6 mr-2 mt-0.5 inline-block align-text-bottom items-center dark:bg-slate-950 bg-slate-50 fill-slate-950 dark:fill-slate-50 z-0">
-            <div className="text-green-600 inline pr-2">
+          <div className="z-0 -ml-1 mr-2 mt-0.5 inline-block h-4 w-4 items-center bg-slate-50 fill-slate-950 pb-6 align-text-bottom dark:bg-slate-950 dark:fill-slate-50">
+            <div className="inline pr-2 text-green-600">
               <FontAwesomeIcon icon={solid("check")} />
             </div>
           </div>
         )}
-        <div className="text-slate-500 text-sm">
+        <div className="text-sm text-slate-500">
           {event?._type === "COMMENT" ? (
             <div>{`${event?.author?.fullName} commented:`}</div>
           ) : (
@@ -797,16 +849,16 @@ function Comment({
           )}
         </div>
       </div>
-      <div className="relative shadow-md dark:shadow-none dark:border-slate-700 rounded-md border">
+      <div className="relative rounded-md border shadow-md dark:border-slate-700 dark:shadow-none">
         <InitialBubble name={event?.author?.fullName} />
-        <p className="text-slate-500 dark:text-slate-500 px-4 pt-2 text-sm flex justify-between dark:bg-slate-900 rounded-t-md">
+        <p className="flex justify-between rounded-t-md px-4 pt-2 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-500">
           <div>
             {((event?.createdAt && timeSince(event.createdAt)) as
               | string
               | undefined) || ""}
           </div>
         </p>
-        <div className="py-3 px-4 dark:bg-slate-900 rounded-b-md">
+        <div className="rounded-b-md px-4 py-3 dark:bg-slate-900">
           <ReactMarkdown components={componentMap}>
             {event.comment}
           </ReactMarkdown>
@@ -844,25 +896,25 @@ function CommentBox({
     userContext.userStatus && userContext.userStatus?.id === userId;
   return (
     <div>
-      <div className="relative py-4 ml-4">
-        <div className="bg-slate-700 w-0.5 absolute block whitespace-pre left-0 top-0 bottom-0">
+      <div className="relative ml-4 py-4">
+        <div className="absolute bottom-0 left-0 top-0 block w-0.5 whitespace-pre bg-slate-700">
           {" "}
         </div>
       </div>
-      <div className=" dark:border-slate-700 rounded-md dark:border shadow-md relative mb-5">
+      <div className=" relative mb-5 rounded-md shadow-md dark:border dark:border-slate-700">
         <InitialBubble
           name={
             (userContext.userStatus && userContext.userStatus?.fullName) || ""
           }
         />
-        <div className="mb-2 border-b-slate-300 border dark:border-b dark:border-t-0 dark:border-l-0 dark:border-r-0 dark:bg-slate-900 dark:border-slate-700 rounded-t-md">
-          <div className="-mb-px z-10 overflow-auto">
+        <div className="mb-2 rounded-t-md border border-b-slate-300 dark:border-b dark:border-l-0 dark:border-r-0 dark:border-t-0 dark:border-slate-700 dark:bg-slate-900">
+          <div className="z-10 -mb-px overflow-auto">
             <button
-              className={`mt-2 ml-2 ${
+              className={`ml-2 mt-2 ${
                 commentFormVisible
-                  ? "border border-b-slate-50 bg-slate-50 dark:bg-slate-950 dark:text-slate-50 dark:border-slate-700 dark:border-b-slate-950"
+                  ? "border border-b-slate-50 bg-slate-50 dark:border-slate-700 dark:border-b-slate-950 dark:bg-slate-950 dark:text-slate-50"
                   : "dark:hover:bg-slate-800"
-              }  border-slate-300 px-4 py-2 text-sm text-slate-600 leading-6 rounded-t-md`}
+              }  rounded-t-md border-slate-300 px-4 py-2 text-sm leading-6 text-slate-600`}
               onClick={() => setCommentFormVisible(true)}
             >
               write
@@ -871,8 +923,8 @@ function CommentBox({
               className={`mt-2 ${
                 commentFormVisible
                   ? "dark:hover:bg-slate-800"
-                  : "border border-b-white bg-white dark:bg-slate-950 dark:text-slate-50 dark:border-slate-700 dark:border-b-slate-950"
-              } border-slate-300  px-4 py-2 text-sm text-slate-600 leading-6 rounded-t-md`}
+                  : "border border-b-white bg-white dark:border-slate-700 dark:border-b-slate-950 dark:bg-slate-950 dark:text-slate-50"
+              } rounded-t-md  border-slate-300 px-4 py-2 text-sm leading-6 text-slate-600`}
               onClick={() => setCommentFormVisible(false)}
             >
               preview
@@ -882,7 +934,7 @@ function CommentBox({
         <div className="px-3">
           {commentFormVisible ? (
             <textarea
-              className="appearance-none block w-full text-gray-700 border border-slate-100 shadow-sm bg-slate-50 focus:shadow-md p-1 rounded-md leading-normal mb-2 focus:outline-none dark:bg-slate-950 dark:border-slate-700 dark:text-slate-50 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors"
+              className="mb-2 block w-full appearance-none rounded-md border border-slate-100 bg-slate-50 p-1 leading-normal text-gray-700 shadow-sm transition-colors focus:shadow-md focus:outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50 dark:focus:border-slate-500 dark:hover:border-slate-600 dark:focus:hover:border-slate-500"
               id="comment"
               name="comment"
               rows={4}
@@ -892,14 +944,14 @@ function CommentBox({
             ></textarea>
           ) : (
             <ReactMarkdown
-              className="h-28 max-h-48 overflow-y-scroll scrollbar-thin scrollbar-track-slate-100  scrollbar-thumb-slate-300 scrollbar-thumb-rounded-md scrollbar-track-rounded-md border-r-slate-300 my-2"
+              className="my-2 h-28 max-h-48 overflow-y-scroll border-r-slate-300  scrollbar-thin scrollbar-track-slate-100 scrollbar-thumb-slate-300 scrollbar-track-rounded-md scrollbar-thumb-rounded-md"
               components={componentMap}
             >
               {comment}
             </ReactMarkdown>
           )}
           <div className="p-1">
-            <div className="flex justify-end mb-2">
+            <div className="mb-2 flex justify-end">
               <Button
                 className="mr-2"
                 id="addComment"

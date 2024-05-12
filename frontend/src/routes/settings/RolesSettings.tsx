@@ -38,7 +38,7 @@ const Tooltip = ({
     >
       {children}
       {hovered && (
-        <div className="absolute bottom-0 left-0 bg-slate-800 text-white text-xs rounded p-1">
+        <div className="absolute bottom-0 left-0 rounded bg-slate-800 p-1 text-xs text-white">
           {text}
         </div>
       )}
@@ -108,12 +108,12 @@ const Table = ({
   handleDeleteRole: (role: RoleResponse) => void;
 }) => {
   return (
-    <div className="flex flex-col w-full">
+    <div className="flex w-full flex-col">
       <div className="overflow-x-auto">
-        <div className="align-middle inline-block min-w-full">
-          <div className="shadow overflow-hidden border-b border-slate-200 sm:rounded-lg">
+        <div className="inline-block min-w-full align-middle">
+          <div className="overflow-hidden border-b border-slate-200 shadow sm:rounded-lg">
             <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50 dark:bg-slate-900 dark:text-slate-200 text-slate-700 text-left">
+              <thead className="bg-slate-50 text-left text-slate-700 dark:bg-slate-900 dark:text-slate-200">
                 <tr>
                   <th
                     scope="col"
@@ -141,10 +141,10 @@ const Table = ({
               <tbody>
                 {roles.map((role) => (
                   <tr key={role.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-50">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900 dark:text-slate-50">
                       {role.name}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-200">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-200">
                       {role.description}
                     </td>
                     <td>
@@ -158,11 +158,11 @@ const Table = ({
                         </div>
                       </Tooltip>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                       <div className="flex flex-row">
                         <button
                           onClick={() => handleEditRole(role)}
-                          className="text-slate-400 hover:text-slate-900 mr-2"
+                          className="mr-2 text-slate-400 hover:text-slate-900"
                         >
                           Edit
                         </button>
@@ -180,7 +180,7 @@ const Table = ({
             </table>
           </div>
           {roles.length === 0 && (
-            <div className="flex flex-row justify-center items-center p-5">
+            <div className="flex flex-row items-center justify-center p-5">
               <div className="text-slate-400">No roles found</div>
             </div>
           )}
@@ -263,8 +263,8 @@ function EditRoleForm(props: {
 
   return (
     <form method="post" onSubmit={handleEditRole}>
-      <div className="w-2xl shadow p-3 bg-white dark:bg-slate-950 rounded">
-        <div className="flex flex-col mb-3">
+      <div className="w-2xl rounded bg-white p-3 shadow dark:bg-slate-950">
+        <div className="mb-3 flex flex-col">
           <InputField
             id="name"
             label="Name"
@@ -274,7 +274,7 @@ function EditRoleForm(props: {
             }
           />
         </div>
-        <div className="flex flex-col mb-3">
+        <div className="mb-3 flex flex-col">
           <InputField
             id="description"
             label="Description"
@@ -285,14 +285,14 @@ function EditRoleForm(props: {
           />
         </div>
         <div>
-          <div className="text-slate-400 text-sm mb-2">Permissions</div>
+          <div className="mb-2 text-sm text-slate-400">Permissions</div>
         </div>
         {policies.map((permissionEntry) => (
           <div
             key={permissionEntry.action + permissionEntry.resource}
-            className="flex mb-3"
+            className="mb-3 flex"
           >
-            <div className="text-slate-400 text-sm">
+            <div className="text-sm text-slate-400">
               <ColorfulLabel
                 text={permissionText(permissionEntry)}
                 onDelete={() =>
@@ -307,7 +307,7 @@ function EditRoleForm(props: {
             </div>
           </div>
         ))}
-        <div className="flex mb-3 border-t">
+        <div className="mb-3 flex border-t">
           <div>
             <label
               htmlFor="permissions"
@@ -318,7 +318,7 @@ function EditRoleForm(props: {
             <select
               id="permission"
               name="permission"
-              className="mt-2 block w-full dark:bg-slate-900 rounded-md border-0 py-1.5 pl-3 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6 dark:text-slate-50"
+              className="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-indigo-600 dark:bg-slate-900 dark:text-slate-50 sm:text-sm sm:leading-6"
               defaultValue={permissions[0]}
               value={selectedPermissions}
               onChange={(e) => setSelectedPermission(e.target.value)}
@@ -340,7 +340,7 @@ function EditRoleForm(props: {
             Add Permission
           </Button>
         </div>
-        <div className="flex flex-col mb-3">
+        <div className="mb-3 flex flex-col">
           <Button type="submit" className="ml-auto">
             Save Permissions
           </Button>
@@ -364,8 +364,8 @@ function RoleForm(props: {
 
   return (
     <form method="post" onSubmit={saveRole}>
-      <div className="w-2xl shadow p-3 bg-white dark:bg-slate-950 rounded">
-        <div className="flex flex-col mb-3">
+      <div className="w-2xl rounded bg-white p-3 shadow dark:bg-slate-950">
+        <div className="mb-3 flex flex-col">
           <InputField
             id="name"
             label="Name"
@@ -375,7 +375,7 @@ function RoleForm(props: {
             }
           />
         </div>
-        <div className="flex flex-col mb-3">
+        <div className="mb-3 flex flex-col">
           <InputField
             id="description"
             label="Description"
@@ -385,7 +385,7 @@ function RoleForm(props: {
             }
           />
         </div>
-        <div className="flex flex-col mb-3">
+        <div className="mb-3 flex flex-col">
           <Button className="ml-auto" type="submit">
             Create
           </Button>
@@ -436,7 +436,7 @@ const RoleSettings = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center flex-col">
+      <div className="flex flex-col items-center justify-between">
         <Table
           roles={roles}
           handleEditRole={handleEditRole}

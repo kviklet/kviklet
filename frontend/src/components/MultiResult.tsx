@@ -22,9 +22,9 @@ const MultiResult: React.FC<{ resultList: ExecuteResponseResult[] }> = ({
 
   const selectedContent = resultList[currentIndex];
   return (
-    <div className="w-screen flex flex-col justify-center">
+    <div className="flex w-screen flex-col justify-center">
       <div className="flex justify-start space-x-2">
-        <div className="text-slate-700 dark:text-slate-400 my-1">
+        <div className="my-1 text-slate-700 dark:text-slate-400">
           {currentIndex + 1 + "/" + resultList.length}
         </div>
         <Button size="sm" onClick={handlePrevious}>

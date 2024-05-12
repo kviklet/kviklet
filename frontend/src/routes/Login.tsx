@@ -20,10 +20,10 @@ const StyledInput = (props: {
       name={props.name}
       value={props.value}
       onChange={props.onChange}
-      className="appearance-none block w-full px-3 py-2 rounded-md border 
-        border-slate-300 dark:bg-slate-900 hover:border-slate-400 focus:border-indigo-600 focus:hover:border-indigo-600
-        focus:outline-none dark:hover:border-slate-600 dark:hover:focus:border-gray-500 dark:border-slate-700
-         dark:focus:border-gray-500 sm:text-sm transition-colors"
+      className="block w-full appearance-none rounded-md border border-slate-300 px-3 
+        py-2 transition-colors focus:border-indigo-600 focus:outline-none hover:border-slate-400
+        focus:hover:border-indigo-600 dark:border-slate-700 dark:bg-slate-900 dark:focus:border-gray-500
+         dark:hover:border-slate-600 dark:hover:focus:border-gray-500 sm:text-sm"
       type={props.type}
     ></input>
   );
@@ -61,7 +61,7 @@ const Login = () => {
         return (
           <a
             href={`${baseUrl}/oauth2/authorization/google`}
-            className="w-full block mt-8"
+            className="mt-8 block w-full"
           >
             <GoogleButton type="light" className="m-auto"></GoogleButton>
           </a>
@@ -71,7 +71,7 @@ const Login = () => {
         return (
           <a
             href={`${baseUrl}/oauth2/authorization/keycloak`}
-            className="w-full block mt-8"
+            className="mt-8 block w-full"
           >
             <Button className="mx-auto w-full">Login with Keycloak</Button>
           </a>
@@ -85,15 +85,15 @@ const Login = () => {
   return (
     <div>
       {(loading && <Spinner></Spinner>) || (
-        <div className="max-w-sm mx-auto my-2 mt-6 dark:bg-slate-950">
+        <div className="mx-auto my-2 mt-6 max-w-sm dark:bg-slate-950">
           <div className="text-center">
             <img
               src={image}
               className="mx-auto h-24 w-auto invert dark:invert-0"
             />
           </div>
-          <div className="text-2xl text-center mb-6">Sign in to Kviklet</div>
-          <div className=" dark:bg-slate-900 p-6 rounded-md shadow-xl">
+          <div className="mb-6 text-center text-2xl">Sign in to Kviklet</div>
+          <div className=" rounded-md p-6 shadow-xl dark:bg-slate-900">
             <form onSubmit={(e) => void login(e)}>
               <div className="flex flex-col">
                 <label className="py-2 text-sm" htmlFor="email">
