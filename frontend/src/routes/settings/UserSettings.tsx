@@ -38,8 +38,8 @@ function UserForm(props: {
 
   return (
     <form method="post" onSubmit={saveUser}>
-      <div className="w-2xl shadow p-3 bg-white dark:bg-slate-950 rounded">
-        <div className="flex flex-col mb-3">
+      <div className="w-2xl rounded bg-white p-3 shadow dark:bg-slate-950">
+        <div className="mb-3 flex flex-col">
           <InputField
             id="email"
             label="Email"
@@ -49,7 +49,7 @@ function UserForm(props: {
             }
           />
         </div>
-        <div className="flex flex-col mb-3">
+        <div className="mb-3 flex flex-col">
           <InputField
             id="password"
             label="Password"
@@ -60,7 +60,7 @@ function UserForm(props: {
             }
           />
         </div>
-        <div className="flex flex-col mb-3">
+        <div className="mb-3 flex flex-col">
           <InputField
             id="fullName"
             label="Full Name"
@@ -70,7 +70,7 @@ function UserForm(props: {
             }
           />
         </div>
-        <div className="flex flex-col mb-3">
+        <div className="mb-3 flex flex-col">
           <Button className="ml-auto" type="submit">
             Create
           </Button>
@@ -167,14 +167,14 @@ const UserRow = (props: {
 
   return (
     <div className="flex flex-row">
-      <div className="flex flex-row justify-between w-full shadow-sm p-2">
-        <div className="flex flex-row w-1/3">
+      <div className="flex w-full flex-row justify-between p-2 shadow-sm">
+        <div className="flex w-1/3 flex-row">
           <div className="font-bold">{props.user.fullName}</div>
         </div>
-        <div className="flex flex-row text-slate-400 w-1/3">
+        <div className="flex w-1/3 flex-row text-slate-400">
           <div>{props.user.email}</div>
         </div>
-        <div className="flex flex-row w-1/3 flex-wrap justify-end">
+        <div className="flex w-1/3 flex-row flex-wrap justify-end">
           {props.user.roles.map((role) => {
             return (
               <ColorfulLabel
@@ -194,11 +194,11 @@ const UserRow = (props: {
           />
           {rolesDialogVisible && (
             <Modal setVisible={setRolesDialogVisible}>
-              <div className="w-2xl shadow p-3 bg-white dark:bg-slate-950 rounded">
-                <div className="flex flex-col mb-3">
+              <div className="w-2xl rounded bg-white p-3 shadow dark:bg-slate-950">
+                <div className="mb-3 flex flex-col">
                   <div className="font-bold">Add Role</div>
                 </div>
-                <div className="flex flex-col mb-3">
+                <div className="mb-3 flex flex-col">
                   <div className="flex flex-row flex-wrap">
                     {props.roles.map((role) => {
                       return (
@@ -240,17 +240,17 @@ const UserSettings = () => {
   return (
     <div>
       {error && (
-        <div className="my-4 mx-2 px-4 py-2">
+        <div className="mx-2 my-4 px-4 py-2">
           <Error>{error}</Error>
         </div>
       )}
       {success && (
-        <div className="my-4 mx-2 px-4 py-2">
+        <div className="mx-2 my-4 px-4 py-2">
           <Success>{success}</Success>
         </div>
       )}
-      <div className="flex flex-col justify-between w-2/3 mx-auto">
-        <div className="flex flex-col min-h-60">
+      <div className="mx-auto flex w-2/3 flex-col justify-between">
+        <div className="min-h-60 flex flex-col">
           {users.map((user) => (
             <UserRow
               user={user}
@@ -262,7 +262,7 @@ const UserSettings = () => {
         </div>
         <div className="flex">
           <Button
-            className="ml-auto my-2"
+            className="my-2 ml-auto"
             onClick={() => setShowCreateUserModal(true)}
           >
             Add User

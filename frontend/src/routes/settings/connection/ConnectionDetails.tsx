@@ -47,8 +47,8 @@ export default function ConnectionDetails() {
 
   return (
     <div>
-      <div className="flex flex-col w-full">
-        <div className="flex items-center justify-between w-full">
+      <div className="flex w-full flex-col">
+        <div className="flex w-full items-center justify-between">
           <div className="text-lg font-semibold dark:text-white">
             Connection Settings
           </div>
@@ -115,21 +115,21 @@ function UpdateDatasourceConnectionForm({
 
   return (
     <form onSubmit={(event) => void handleSubmit(onSubmit)(event)}>
-      <div className="flex flex-col w-full">
+      <div className="flex w-full flex-col">
         <div className="flex-col space-y-2">
-          <div className="flex justify-between w-full">
+          <div className="flex w-full justify-between">
             <label
               htmlFor="type"
-              className="my-auto text-sm font-medium text-slate-700 dark:text-slate-200 mr-auto"
+              className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
             >
               Database Type
             </label>
             <select
               {...register("type")}
-              className="basis-3/5 appearance-none block w-full px-3 py-2 rounded-md border 
-        border-slate-300 dark:bg-slate-900 hover:border-slate-400 focus:border-indigo-600 focus:hover:border-indigo-600
-        focus:outline-none dark:hover:border-slate-600 dark:hover:focus:border-gray-500 dark:border-slate-700
-         dark:focus:border-gray-500 text-sm transition-colors"
+              className="block w-full basis-3/5 appearance-none rounded-md border border-slate-300 px-3 
+        py-2 text-sm transition-colors focus:border-indigo-600 focus:outline-none
+        hover:border-slate-400 focus:hover:border-indigo-600 dark:border-slate-700 dark:bg-slate-900
+         dark:focus:border-gray-500 dark:hover:border-slate-600 dark:hover:focus:border-gray-500"
               defaultValue={DatabaseType.POSTGRES}
             >
               <option value={DatabaseType.POSTGRES}>Postgres</option>
@@ -289,7 +289,7 @@ function UpdateKubernetesConnectionForm({
   };
   return (
     <form onSubmit={(event) => void handleSubmit(onSubmit)(event)}>
-      <div className="flex flex-col w-full ">
+      <div className="flex w-full flex-col ">
         <div className="flex-col space-y-2">
           <InputField
             label="Connection name"
@@ -349,7 +349,7 @@ function UpdateKubernetesConnectionForm({
           </div>
           <Button
             type={isDirty ? "submit" : "disabled"}
-            className="mt-4 btn btn-primary"
+            className="btn btn-primary mt-4"
           >
             Save
           </Button>

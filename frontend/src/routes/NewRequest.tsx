@@ -8,7 +8,7 @@ import {
   CloudIcon,
   CommandLineIcon,
 } from "@heroicons/react/20/solid";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { addRequest } from "../api/ExecutionRequestApi";
@@ -70,6 +70,31 @@ type KubernetesExecutionRequest = z.infer<
 >;
 type ExecutionRequest = z.infer<typeof ExecutionRequestSchema>;
 
+interface PreConfiguredStateKubernetes {
+  connectionId: string;
+  mode: "SingleExecution" | "TemporaryAccess";
+  connectionType: "Kubernetes";
+  title: string;
+  description: string;
+  command: string;
+  namespace: string;
+  containerName: string;
+  podName: string;
+}
+
+interface PreConfiguredStateDatasource {
+  connectionId: string;
+  mode: "SingleExecution" | "TemporaryAccess";
+  connectionType: "Datasource";
+  title: string;
+  description: string;
+  statement: string;
+}
+
+type PreConfiguredState =
+  | PreConfiguredStateKubernetes
+  | PreConfiguredStateDatasource;
+
 export default function ConnectionChooser() {
   const { connections, loading } = useConnections();
   const [chosenConnection, setChosenConnection] = useState<
@@ -79,15 +104,29 @@ export default function ConnectionChooser() {
     "SingleExecution" | "TemporaryAccess" | undefined
   >(undefined);
 
+  const location = useLocation();
+
+  useEffect(() => {
+    const state = location.state as PreConfiguredState;
+
+    if (state) {
+      const connectionFromState = connections.find(
+        (c) => c.id === state.connectionId,
+      );
+      setChosenConnection(connectionFromState);
+      setChosenMode(state.mode);
+    }
+  }, [loading]);
+
   return (
     <div>
-      <div className=" border-b border-slate-300 bg-slate-50 dark:bg-slate-950 dark:border-slate-700">
-        <h1 className=" max-w-5xl mx-auto text-xl m-5 pl-1.5">
+      <div className=" border-b border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
+        <h1 className=" m-5 mx-auto max-w-5xl pl-1.5 text-xl">
           {" "}
           Request Access to a Database
         </h1>
       </div>
-      <div className="flex max-w-5xl mx-auto mt-5">
+      <div className="mx-auto mt-5 flex max-w-5xl">
         {loading ? (
           <Spinner></Spinner>
         ) : (
@@ -110,7 +149,7 @@ export default function ConnectionChooser() {
                       {chosenConnection && (
                         <div className="flex flex-row">
                           <div className="flex flex-row">
-                            <span className="inline-flex flex-shrink-0 items-center rounded-full bg-green-50 dark:bg-green-400/10 dark:text-green-400 px-1.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                            <span className="inline-flex flex-shrink-0 items-center rounded-full bg-green-50 px-1.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-400/10 dark:text-green-400">
                               {chosenConnection.id}
                             </span>
                           </div>
@@ -179,6 +218,8 @@ const DatasourceExecutionRequestForm = ({
 }) => {
   const navigate = useNavigate();
 
+  const location = useLocation();
+
   const {
     register,
     handleSubmit,
@@ -189,9 +230,15 @@ const DatasourceExecutionRequestForm = ({
   });
 
   useEffect(() => {
+    const state = location.state as PreConfiguredStateDatasource;
     setValue("connectionType", "DATASOURCE");
     setValue("connectionId", connection.id);
     setValue("type", mode);
+    if (state) {
+      setValue("title", state.title);
+      setValue("description", state.description);
+      setValue("statement", state.statement);
+    }
   }, [connection, mode]);
 
   const onSubmit: SubmitHandler<DatasourceExecutionRequest> = async (
@@ -204,15 +251,15 @@ const DatasourceExecutionRequestForm = ({
   return (
     <div className="mx-auto w-full">
       <form
-        className="w-full mx-auto"
+        className="mx-auto w-full"
         onSubmit={(event) => void handleSubmit(onSubmit)(event)}
       >
         <span
-          className={`inline-block w-min rounded-md px-2 py-1 mt-6 text-xs font-medium ring-1 ring-inset bg-yellow-50 text-yellow-600 ring-yellow-500/10 dark:bg-yellow-400/10 dark:text-yellow-500 dark:ring-yellow-400/20`}
+          className={`mt-6 inline-block w-min rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-600 ring-1 ring-inset ring-yellow-500/10 dark:bg-yellow-400/10 dark:text-yellow-500 dark:ring-yellow-400/20`}
         >
           {mode}
         </span>
-        <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+        <div className="my-3 rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
           <label
             htmlFor="connection-id"
             className="block text-xs font-medium text-slate-900 dark:text-slate-50"
@@ -223,13 +270,13 @@ const DatasourceExecutionRequestForm = ({
             type="text"
             readOnly
             id="connection-id"
-            className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+            className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
             value={connection.id}
             {...register("connectionId")}
           />
         </div>
         <input type="hidden" id="type" {...register("type")}></input>
-        <div className="rounded-md my-3  px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+        <div className="my-3 rounded-md  px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
           <label
             htmlFor="title-input"
             className="block text-xs font-medium text-slate-900 dark:text-slate-50"
@@ -237,19 +284,19 @@ const DatasourceExecutionRequestForm = ({
             Title
           </label>
           <input
-            className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+            className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
             id="title-input"
             type="text"
             placeholder="My query"
             {...register("title")}
           />
           {errors.title && (
-            <p className="text-xs italic text-red-500 mt-2">
+            <p className="mt-2 text-xs italic text-red-500">
               {errors.title?.message}
             </p>
           )}
         </div>
-        <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+        <div className="my-3 rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
           <label
             htmlFor="description-input"
             className="block text-xs font-medium text-slate-900 dark:text-slate-50"
@@ -257,7 +304,7 @@ const DatasourceExecutionRequestForm = ({
             Description
           </label>
           <textarea
-            className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+            className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
             id="description-input"
             placeholder={
               mode === "TemporaryAccess"
@@ -267,13 +314,13 @@ const DatasourceExecutionRequestForm = ({
             {...register("description")}
           ></textarea>
           {errors.description && (
-            <p className="text-xs italic text-red-500 mt-2">
+            <p className="mt-2 text-xs italic text-red-500">
               {errors.description?.message}
             </p>
           )}
         </div>
         {mode === "SingleExecution" && (
-          <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+          <div className="my-3 rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
             <label
               htmlFor="description-input"
               className="block text-xs font-medium text-slate-900 dark:text-slate-50"
@@ -281,20 +328,20 @@ const DatasourceExecutionRequestForm = ({
               SQL
             </label>
             <textarea
-              className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+              className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
               id="statement-input"
               placeholder="Select id from some_table;"
               {...register("statement")}
             ></textarea>
             {errors.statement && (
-              <p className="text-xs italic text-red-500 mt-2">
+              <p className="mt-2 text-xs italic text-red-500">
                 {errors.statement?.message}
               </p>
             )}
           </div>
         )}
-        <div className="flex flex-wrap -mx-3 mb-2">
-          <div className="px-3 mb-6 ml-auto">
+        <div className="-mx-3 mb-2 flex flex-wrap">
+          <div className="mb-6 ml-auto px-3">
             <Button type="submit">Submit</Button>
           </div>
         </div>
@@ -328,6 +375,8 @@ const KubernetesExecutionRequestForm = ({
 }) => {
   const navigate = useNavigate();
 
+  const location = useLocation();
+
   const {
     register,
     handleSubmit,
@@ -342,9 +391,18 @@ const KubernetesExecutionRequestForm = ({
   const [chosenPod, setChosenPod] = useState<Pod | undefined>(undefined);
 
   useEffect(() => {
+    const state = location.state as PreConfiguredStateKubernetes;
     setValue("connectionType", "KUBERNETES");
     setValue("connectionId", connection.id);
     setValue("type", mode);
+    if (state) {
+      setValue("title", state.title);
+      setValue("description", state.description);
+      setValue("command", state.command);
+      setValue("namespace", state.namespace);
+      setValue("podName", state.podName);
+      setValue("containerName", state.containerName);
+    }
   }, [connection, mode]);
 
   const choosePod = (id: string) => {
@@ -367,15 +425,15 @@ const KubernetesExecutionRequestForm = ({
     <div className="mx-auto w-full">
       {(loading && <Spinner></Spinner>) || (
         <form
-          className="w-full mx-auto"
+          className="mx-auto w-full"
           onSubmit={(event) => void handleSubmit(onSubmit)(event)}
         >
           <span
-            className={`inline-block w-min rounded-md px-2 py-1 mt-6 text-xs font-medium ring-1 ring-inset bg-yellow-50 text-yellow-600 ring-yellow-500/10 dark:bg-yellow-400/10 dark:text-yellow-500 dark:ring-yellow-400/20`}
+            className={`mt-6 inline-block w-min rounded-md bg-yellow-50 px-2 py-1 text-xs font-medium text-yellow-600 ring-1 ring-inset ring-yellow-500/10 dark:bg-yellow-400/10 dark:text-yellow-500 dark:ring-yellow-400/20`}
           >
             {mode}
           </span>
-          <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+          <div className="my-3 rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
             <label
               htmlFor="connection-id"
               className="block text-xs font-medium text-slate-900 dark:text-slate-50"
@@ -386,12 +444,12 @@ const KubernetesExecutionRequestForm = ({
               type="text"
               readOnly
               id="connection-id"
-              className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+              className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
               value={connection.id}
               {...register("connectionId")}
             />
           </div>
-          <div className="rounded-md my-3  px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+          <div className="my-3 rounded-md  px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
             <label
               htmlFor="title-input"
               className="block text-xs font-medium text-slate-900 dark:text-slate-50"
@@ -399,19 +457,19 @@ const KubernetesExecutionRequestForm = ({
               Title
             </label>
             <input
-              className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+              className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
               id="title-input"
               type="text"
               placeholder="My query"
               {...register("title")}
             />
             {errors.title && (
-              <p className="text-xs italic text-red-500 mt-2">
+              <p className="mt-2 text-xs italic text-red-500">
                 {errors.title?.message}
               </p>
             )}
           </div>
-          <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+          <div className="my-3 rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
             <label
               htmlFor="description-input"
               className="block text-xs font-medium text-slate-900 dark:text-slate-50"
@@ -419,7 +477,7 @@ const KubernetesExecutionRequestForm = ({
               Description
             </label>
             <textarea
-              className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+              className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
               id="description-input"
               placeholder={
                 mode === "TemporaryAccess"
@@ -429,12 +487,12 @@ const KubernetesExecutionRequestForm = ({
               {...register("description")}
             ></textarea>
             {errors.description && (
-              <p className="text-xs italic text-red-500 mt-2">
+              <p className="mt-2 text-xs italic text-red-500">
                 {errors.description?.message}
               </p>
             )}
           </div>
-          <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+          <div className="my-3 rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
             <label
               htmlFor="podName"
               className="block text-sm font-medium leading-6 text-slate-900 dark:text-slate-50"
@@ -442,7 +500,7 @@ const KubernetesExecutionRequestForm = ({
               Pod
             </label>
             <select
-              className="mt-2 block w-full dark:bg-slate-950 rounded-md border-0 pr-10 text-slate-900 sm:text-sm sm:leading-6 dark:text-slate-300 focus-visible:outline-none focus:ring-0"
+              className="mt-2 block w-full rounded-md border-0 pr-10 text-slate-900 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-300 sm:text-sm sm:leading-6"
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                 choosePod(e.target.value);
               }}
@@ -454,7 +512,7 @@ const KubernetesExecutionRequestForm = ({
           </div>
           <input type="hidden" id="type" {...register("type")}></input>
 
-          <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+          <div className="my-3 rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
             <label
               htmlFor="namespace-input"
               className="block text-xs font-medium text-slate-900 dark:text-slate-50"
@@ -462,7 +520,7 @@ const KubernetesExecutionRequestForm = ({
               Namespace
             </label>
             <input
-              className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+              className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
               id="namespace-input"
               type="text"
               readOnly
@@ -470,12 +528,12 @@ const KubernetesExecutionRequestForm = ({
               {...register("namespace")}
             />
             {errors.namespace && (
-              <p className="text-xs italic text-red-500 mt-2">
+              <p className="mt-2 text-xs italic text-red-500">
                 {errors.namespace?.message}
               </p>
             )}
           </div>
-          <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+          <div className="my-3 rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
             <label
               htmlFor="pod-name-input"
               className="block text-xs font-medium text-slate-900 dark:text-slate-50"
@@ -483,7 +541,7 @@ const KubernetesExecutionRequestForm = ({
               Pod Name
             </label>
             <input
-              className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+              className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
               id="pod-name-input"
               type="text"
               readOnly
@@ -491,12 +549,12 @@ const KubernetesExecutionRequestForm = ({
               {...register("podName")}
             />
             {errors.podName && (
-              <p className="text-xs italic text-red-500 mt-2">
+              <p className="mt-2 text-xs italic text-red-500">
                 {errors.podName?.message}
               </p>
             )}
           </div>
-          <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+          <div className="my-3 rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
             <label
               htmlFor="container-name-input"
               className="block text-xs font-medium text-slate-900 dark:text-slate-50"
@@ -504,7 +562,7 @@ const KubernetesExecutionRequestForm = ({
               Container Name
             </label>
             <select
-              className="mt-2 block w-full dark:bg-slate-950 rounded-md border-0 pr-10 text-slate-900 sm:text-sm sm:leading-6 dark:text-slate-300 focus-visible:outline-none focus:ring-0"
+              className="mt-2 block w-full rounded-md border-0 pr-10 text-slate-900 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-300 sm:text-sm sm:leading-6"
               {...register("containerName")}
             >
               {chosenPod?.containerNames.map((containerName) => (
@@ -512,13 +570,13 @@ const KubernetesExecutionRequestForm = ({
               ))}
             </select>
             {errors.containerName && (
-              <p className="text-xs italic text-red-500 mt-2">
+              <p className="mt-2 text-xs italic text-red-500">
                 {errors.containerName?.message}
               </p>
             )}
           </div>
           {mode === "SingleExecution" && (
-            <div className="rounded-md px-3 my-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-700 focus-within:ring-2 focus-within:ring-indigo-600">
+            <div className="my-3 rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
               <label
                 htmlFor="command-input"
                 className="block text-xs font-medium text-slate-900 dark:text-slate-50"
@@ -526,25 +584,25 @@ const KubernetesExecutionRequestForm = ({
                 Command
               </label>
               <div className="flex">
-                <span className="whitespace-nowrap text-slate-400 dark:text-slate-400 mr-3">
+                <span className="mr-3 whitespace-nowrap text-slate-400 dark:text-slate-400">
                   /bin/sh -c
                 </span>
                 <textarea
-                  className="block w-full ring-0 p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 sm:text-sm sm:leading-6 focus-visible:outline-none bg-slate-50 dark:bg-slate-950 dark:text-slate-50"
+                  className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
                   id="command-input"
                   placeholder="echo hello world"
                   {...register("command")}
                 ></textarea>
               </div>
               {errors.command && (
-                <p className="text-xs italic text-red-500 mt-2">
+                <p className="mt-2 text-xs italic text-red-500">
                   {errors.command?.message}
                 </p>
               )}
             </div>
           )}
-          <div className="flex flex-wrap -mx-3 mb-2">
-            <div className="px-3 mb-6 ml-auto">
+          <div className="-mx-3 mb-2 flex flex-wrap">
+            <div className="mb-6 ml-auto px-3">
               <Button type="submit">Submit</Button>
             </div>
           </div>
@@ -565,18 +623,18 @@ interface CardProps {
 
 const Card = (props: CardProps) => {
   return (
-    <li className="col-span-1 divide-y divide-slate-200 dark:divide-slate-700 rounded-lg bg-white dark:bg-slate-900 border dark:border-slate-700 shadow flex flex-col justify-between">
+    <li className="col-span-1 flex flex-col justify-between divide-y divide-slate-200 rounded-lg border bg-white shadow dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-900">
       <div className="flex w-full items-center justify-between space-x-6 p-6">
         <div className="flex-1">
           <div className="flex items-center space-x-3">
             <h3 className="truncate text-sm font-medium text-slate-900 dark:text-slate-50">
               {props.header}
             </h3>
-            <span className="inline-flex flex-shrink-0 items-center rounded-full bg-green-50 dark:bg-green-400/10 dark:text-green-400 px-1.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+            <span className="inline-flex flex-shrink-0 items-center rounded-full bg-green-50 px-1.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-400/10 dark:text-green-400">
               {props.label}
             </span>
           </div>
-          <p className="mt-1 break-normal line-clamp-3 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-1 line-clamp-3 break-normal text-sm text-slate-500 dark:text-slate-400">
             {props.subheader}
           </p>
         </div>
@@ -586,7 +644,7 @@ const Card = (props: CardProps) => {
           <div className="flex w-0 flex-1">
             <button
               onClick={props.clickQuery}
-              className="relative -mr-px inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-bl-lg border border-transparent py-4 text-sm font-semibold text-slate-900 dark:text-slate-50 dark:hover:bg-slate-800 hover:bg-slate-100"
+              className="relative -mr-px inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-bl-lg border border-transparent py-4 text-sm font-semibold text-slate-900 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-800"
             >
               {props.connectionType === "DATASOURCE" ? (
                 <CircleStackIcon
@@ -606,7 +664,7 @@ const Card = (props: CardProps) => {
             <div className="-ml-px flex w-0 flex-1">
               <button
                 onClick={props.clickAccess}
-                className="relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-br-lg border border-transparent py-4 text-sm font-semibold text-slate-900 dark:text-slate-50 dark:hover:bg-slate-800 hover:bg-slate-100"
+                className="relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-br-lg border border-transparent py-4 text-sm font-semibold text-slate-900 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-800"
               >
                 <CommandLineIcon
                   className="h-5 w-5 text-slate-400 dark:text-slate-500"

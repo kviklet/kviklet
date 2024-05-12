@@ -20,7 +20,7 @@ const InitialBubble = (props: { name?: string | null; className?: string }) => {
     <div
       className={`rounded-full ${colorFromText(
         props.name || "",
-      )} w-8 h-8 flex text-sm items-center justify-center ${
+      )} flex h-8 w-8 items-center justify-center text-sm ${
         props.className ?? ""
       }`}
     >

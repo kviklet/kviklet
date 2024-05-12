@@ -11,17 +11,17 @@ import { CircleStackIcon, CloudIcon } from "@heroicons/react/20/solid";
 const Toggle = (props: { active: boolean; onClick: () => void }) => {
   return (
     <label
-      className="relative inline-flex items-center cursor-pointer"
+      className="relative inline-flex cursor-pointer items-center"
       onClick={props.onClick}
     >
       <input
         type="checkbox"
         checked={props.active}
-        className="sr-only peer"
+        className="peer sr-only"
         readOnly
         onClick={(event) => event.stopPropagation()}
       />
-      <div className="w-11 h-6 bg-slate-200 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-800"></div>
+      <div className="peer h-6 w-11 rounded-full bg-slate-200 after:absolute after:left-[2px] after:top-0.5 after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-800 peer-checked:after:translate-x-full peer-checked:after:border-white dark:border-gray-600 dark:bg-slate-700"></div>
     </label>
   );
 };
@@ -102,17 +102,17 @@ function Requests() {
 
   return (
     <div className="h-full">
-      <div className=" border-b border-slate-300 bg-slate-50 dark:bg-slate-950 dark:border-slate-700">
-        <h1 className=" max-w-5xl mx-auto text-xl m-5 pl-1.5">
+      <div className=" border-b border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
+        <h1 className=" m-5 mx-auto max-w-5xl pl-1.5 text-xl">
           {" "}
           Open Requests
         </h1>
       </div>
       {(loading && <Spinner></Spinner>) || (
-        <div className="bg-slate-50 h-full dark:bg-slate-950">
-          <div className="max-w-5xl mx-auto ">
+        <div className="h-full bg-slate-50 dark:bg-slate-950">
+          <div className="mx-auto max-w-5xl ">
             <div className="flex flex-row">
-              <div className="ml-auto flex flex-row mb-2 mt-4 mr-2">
+              <div className="mb-2 ml-auto mr-2 mt-4 flex flex-row">
                 <label className="mr-2">Only show pending requests</label>
                 <Toggle
                   active={onlyPending}
@@ -122,32 +122,32 @@ function Requests() {
             </div>
 
             {visibleRequests.length === 0 && (
-              <div className="my-4 mx-2 px-4 py-2">
-                <h2 className="text-lg text-center">No open requests</h2>
+              <div className="mx-2 my-4 px-4 py-2">
+                <h2 className="text-center text-lg">No open requests</h2>
               </div>
             )}
             {sortedRequests.map((request) => {
               return (
                 <Link to={`/requests/${request.id}`}>
                   <div
-                    className="shadow-md border border-slate-200 bg-white my-4 mx-2 px-4 py-4 dark:bg-slate-900 dark:border dark:border-slate-700 dark:hover:bg-slate-800 hover:bg-slate-50 rounded-md transition-colors"
+                    className="mx-2 my-4 rounded-md border border-slate-200 bg-white px-4 py-4 shadow-md transition-colors hover:bg-slate-50 dark:border dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
                     key={request.id}
                   >
                     <div className="flex">
-                      <div className="flex mb-2 flex-col">
+                      <div className="mb-2 flex flex-col">
                         <h2 className="text-md">{request.title}</h2>
-                        <p className="dark:text-slate-400 text-slate-600">
+                        <p className="text-slate-600 dark:text-slate-400">
                           {request.description}
                         </p>
                         {(request._type === "DATASOURCE" && (
-                          <CircleStackIcon className="w-4 mt-auto dark:text-slate-600 text-slate-400"></CircleStackIcon>
+                          <CircleStackIcon className="mt-auto w-4 text-slate-400 dark:text-slate-600"></CircleStackIcon>
                         )) || (
-                          <CloudIcon className="w-4 mt-auto dark:text-slate-600 text-slate-400"></CloudIcon>
+                          <CloudIcon className="mt-auto w-4 text-slate-400 dark:text-slate-600"></CloudIcon>
                         )}
                       </div>
                       <div className="ml-auto flex flex-col items-end">
                         <div
-                          className="mb-2 text-sm dark:text-slate-400 text-slate-600"
+                          className="mb-2 text-sm text-slate-600 dark:text-slate-400"
                           title={
                             new Date(request.createdAt).toLocaleString() +
                             " UTC"
@@ -161,7 +161,7 @@ function Requests() {
                               request?.reviewStatus,
                               request?.executionStatus,
                             ),
-                          )} w-min rounded-md px-2 py-1 mt-2 text-xs font-medium ring-1 ring-inset`}
+                          )} mt-2 w-min rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset`}
                         >
                           {mapStatus(
                             request?.reviewStatus,
@@ -169,7 +169,7 @@ function Requests() {
                           )}
                         </span>
                         <span
-                          className={`w-min rounded-md px-2 py-1 mt-2 text-xs font-medium  ring-1 ring-inset bg-yellow-50 text-yellow-600 ring-yellow-500/10 dark:bg-yellow-400/10 dark:text-yellow-500 dark:ring-yellow-400/20`}
+                          className={`mt-2 w-min rounded-md bg-yellow-50 px-2 py-1 text-xs  font-medium text-yellow-600 ring-1 ring-inset ring-yellow-500/10 dark:bg-yellow-400/10 dark:text-yellow-500 dark:ring-yellow-400/20`}
                         >
                           {request.type}
                         </span>

@@ -33,7 +33,7 @@ export default function ComboBox({
       </Combobox.Label>
       <div className="relative mt-2">
         <Combobox.Input
-          className="w-full rounded-md border-0 bg-slate-50 dark:bg-slate-900 dark:text-slate-50 py-1.5 pl-3 pr-10 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+          className="w-full rounded-md border-0 bg-slate-50 py-1.5 pl-3 pr-10 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 dark:bg-slate-900 dark:text-slate-50 sm:text-sm sm:leading-6"
           onChange={(event) => setQuery(event.target.value)}
           displayValue={(option: { name: string; id: string }) => option?.name}
         />
@@ -45,7 +45,7 @@ export default function ComboBox({
         </Combobox.Button>
 
         {filteredOptions.length > 0 && (
-          <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-slate-50 dark:bg-slate-900 dark:text-slate-50 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+          <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-slate-50 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-slate-900 dark:text-slate-50 sm:text-sm">
             {filteredOptions.map((option) => (
               <Combobox.Option
                 key={option.id}

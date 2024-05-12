@@ -25,19 +25,19 @@ function TopBanner() {
   };
 
   return (
-    <div className="sticky h-16 top-0 z-40 w-full backdrop-blur flex-none transition-colors duration-500 supports-backdrop-blur:bg-white/95 border-b border-slate-900/10 dark:border-b-slate-700 mx-auto">
-      <div className="py-4 px-8 mx-4 mx-0">
+    <div className="supports-backdrop-blur:bg-white/95 sticky top-0 z-40 mx-auto h-16 w-full flex-none border-b border-slate-900/10 backdrop-blur transition-colors duration-500 dark:border-b-slate-700">
+      <div className="mx-0 mx-4 px-8 py-4">
         <div className="relative flex items-center">
           <Link to="/">
             <div className="flex">
               <img src={image} className="h-8 invert dark:invert-0" />
-              <h1 className="text-xl font-bold text-slate-700 dark:text-slate-50 ml-2">
+              <h1 className="ml-2 text-xl font-bold text-slate-700 dark:text-slate-50">
                 Kviklet
               </h1>
             </div>
           </Link>
-          <div className="relative flex items-center ml-auto">
-            <nav className="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200">
+          <div className="relative ml-auto flex items-center">
+            <nav className="text-sm font-semibold leading-6 text-slate-700 dark:text-slate-200">
               <ul className="flex space-x-8">
                 <li>
                   <Link
@@ -57,9 +57,9 @@ function TopBanner() {
                 </li>
               </ul>
             </nav>
-            <div className="flex items-center border-l border-slate-200 ml-6 pl-6 dark:border-slate-800">
+            <div className="ml-6 flex items-center border-l border-slate-200 pl-6 dark:border-slate-800">
               <Popover className="relative h-6">
-                <Popover.Button className="h-6 w-6 mr-4 dark:text-slate-500 text-slate-400 hover:text-slate-800 transition-colors dark:hover:text-slate-200">
+                <Popover.Button className="mr-4 h-6 w-6 text-slate-400 transition-colors hover:text-slate-800 dark:text-slate-500 dark:hover:text-slate-200">
                   <Cog6ToothIcon className="" />
                 </Popover.Button>
 
@@ -73,14 +73,14 @@ function TopBanner() {
                   leaveTo="opacity-0 translate-y-1"
                 >
                   <Popover.Panel className="absolute left-1/2 z-10 mt-5 flex w-screen max-w-min -translate-x-1/2 px-4">
-                    <div className="w-40 shrink rounded-xl bg-white dark:bg-slate-900 p-4 text-sm leading-6 shadow-lg ring-1 ring-slate-900/5 font-semibold dark:border dark:border-px dark:border-slate-700">
+                    <div className="dark:border-px w-40 shrink rounded-xl bg-white p-4 text-sm font-semibold leading-6 shadow-lg ring-1 ring-slate-900/5 dark:border dark:border-slate-700 dark:bg-slate-900">
                       <Link to="/settings">
-                        <p className="p-2 text-slate-900 dark:text-slate-50 hover:text-sky-500 dark:hover:text-sky-400">
+                        <p className="p-2 text-slate-900 hover:text-sky-500 dark:text-slate-50 dark:hover:text-sky-400">
                           Settings
                         </p>
                       </Link>
                       <Link to="/auditlog">
-                        <p className="p-2 text-slate-900 dark:text-slate-50 hover:text-sky-500 dark:hover:text-sky-400">
+                        <p className="p-2 text-slate-900 hover:text-sky-500 dark:text-slate-50 dark:hover:text-sky-400">
                           Auditlog
                         </p>
                       </Link>
@@ -96,15 +96,15 @@ function TopBanner() {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="w-6 h-6 group "
+                    className="group h-6 w-6 "
                   >
                     <path
                       d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-                      className="stroke-slate-400 dark:stroke-slate-500 group-hover:stroke-slate-800"
+                      className="stroke-slate-400 group-hover:stroke-slate-800 dark:stroke-slate-500"
                     ></path>
                     <path
                       d="M12 4v1M17.66 6.344l-.828.828M20.005 12.004h-1M17.66 17.664l-.828-.828M12 20.01V19M6.34 17.664l.835-.836M3.995 12.004h1.01M6 6l.835.836"
-                      className="stroke-slate-400 dark:stroke-slate-500 group-hover:stroke-slate-800"
+                      className="stroke-slate-400 group-hover:stroke-slate-800 dark:stroke-slate-500"
                     ></path>
                   </svg>
                 </span>
@@ -112,7 +112,7 @@ function TopBanner() {
                   <svg
                     viewBox="0 0 24 24"
                     fill="none"
-                    className="w-6 h-6 group"
+                    className="group h-6 w-6"
                   >
                     <path
                       fillRule="evenodd"
@@ -122,13 +122,13 @@ function TopBanner() {
                     ></path>
                     <path
                       d="m17.715 15.15.95.316a1 1 0 0 0-1.445-1.185l.495.869ZM9 6.035l.846.534a1 1 0 0 0-1.14-1.49L9 6.035Zm8.221 8.246a5.47 5.47 0 0 1-2.72.718v2a7.47 7.47 0 0 0 3.71-.98l-.99-1.738Zm-2.72.718A5.5 5.5 0 0 1 9 9.5H7a7.5 7.5 0 0 0 7.5 7.5v-2ZM9 9.5c0-1.079.31-2.082.845-2.93L8.153 5.5A7.47 7.47 0 0 0 7 9.5h2Zm-4 3.368C5 10.089 6.815 7.75 9.292 6.99L8.706 5.08C5.397 6.094 3 9.201 3 12.867h2Zm6.042 6.136C7.718 19.003 5 16.268 5 12.867H3c0 4.48 3.588 8.136 8.042 8.136v-2Zm5.725-4.17c-.81 2.433-3.074 4.17-5.725 4.17v2c3.552 0 6.553-2.327 7.622-5.537l-1.897-.632Z"
-                      className="fill-slate-400 dark:fill-slate-500 group-hover:fill-slate-200"
+                      className="fill-slate-400 group-hover:fill-slate-200 dark:fill-slate-500"
                     ></path>
                     <path
                       fillRule="evenodd"
                       clipRule="evenodd"
                       d="M17 3a1 1 0 0 1 1 1 2 2 0 0 0 2 2 1 1 0 1 1 0 2 2 2 0 0 0-2 2 1 1 0 1 1-2 0 2 2 0 0 0-2-2 1 1 0 1 1 0-2 2 2 0 0 0 2-2 1 1 0 0 1 1-1Z"
-                      className="fill-slate-400 dark:fill-slate-500 group-hover:fill-slate-200"
+                      className="fill-slate-400 group-hover:fill-slate-200 dark:fill-slate-500"
                     ></path>
                   </svg>
                 </span>
@@ -136,7 +136,7 @@ function TopBanner() {
               <a href="https://github.com/kviklet/kviklet">
                 <svg
                   viewBox="0 0 16 16"
-                  className="w-5 h-5 mr-6 ml-4"
+                  className="ml-4 mr-6 h-5 w-5"
                   fill="currentColor"
                   aria-hidden="true"
                 >

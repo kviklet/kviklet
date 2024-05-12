@@ -34,7 +34,7 @@ export const Editor: VFC = () => {
 
   return (
     <div className="resize">
-      <div className="w-full h-full" ref={monacoEl}></div>;
+      <div className="h-full w-full" ref={monacoEl}></div>;
     </div>
   );
 };

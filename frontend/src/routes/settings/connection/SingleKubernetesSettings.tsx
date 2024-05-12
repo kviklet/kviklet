@@ -31,7 +31,7 @@ export default function SingleKubernetesConnectionSettings(props: {
 
   // Main screen showing connection
   return (
-    <div className="my-4 mx-2 px-4 py-4 shadow-md border border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border dark:border-slate-700 rounded-md transition-colors">
+    <div className="mx-2 my-4 rounded-md border border-slate-200 bg-slate-50 px-4 py-4 shadow-md transition-colors dark:border dark:border-slate-700 dark:bg-slate-900">
       <div className="flex justify-between">
         <div className="text-md font-medium">
           {props.connection.displayName}
@@ -54,10 +54,10 @@ export default function SingleKubernetesConnectionSettings(props: {
               setNumTotalRequired(parseInt(e.target.value));
               setShowCheck(true);
             }}
-            className="w-32 sm:w-36 lg:w-auto rounded mx-1 py-2 px-3 appearance-none border border-slate-200 
-            hover:border-slate-300 focus:border-slate-500 focus:hover:border-slate-500 focus:shadow-outline focus:outline-none
-            text-slate-600 dark:text-slate-50 leading-tight
-            dark:bg-slate-900 dark:border-slate-700 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500 transition-colors"
+            className="focus:shadow-outline mx-1 w-32 appearance-none rounded border border-slate-200 px-3 py-2 leading-tight 
+            text-slate-600 transition-colors focus:border-slate-500 focus:outline-none hover:border-slate-300
+            focus:hover:border-slate-500 dark:border-slate-700 dark:bg-slate-900
+            dark:text-slate-50 dark:focus:border-slate-500 dark:hover:border-slate-600 dark:focus:hover:border-slate-500 sm:w-36 lg:w-auto"
           ></input>
         </div>
 
@@ -65,8 +65,8 @@ export default function SingleKubernetesConnectionSettings(props: {
         <div className="flex justify-end">
           <button
             onClick={() => void submit()}
-            className={`dark:bg-slate-800 mt-3 mr-1 px-5 rounded-md text-white-600 hover:text-sky-500 dark:hover:text-sky-400
-              shadow-sm border border-slate-300 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-colors ${
+            className={`text-white-600 mr-1 mt-3 rounded-md border border-slate-300 px-5 shadow-sm
+              transition-colors hover:border-slate-300 hover:text-sky-500 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:text-sky-400 ${
                 showCheck ? "visible" : "invisible"
               }`}
           >
