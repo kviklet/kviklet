@@ -1,7 +1,8 @@
 import { useParams } from "react-router-dom";
-import { useRole } from "../../hooks/roles";
+import { transformRole, useRole } from "../../hooks/roles";
 import { z } from "zod";
 import RoleForm from "./RoleForm";
+import Spinner from "../../components/Spinner";
 
 interface RoleDetailsParams {
   roleId: string;
@@ -19,7 +20,8 @@ export default function RoleDetailsView() {
         <h1 className="m-5 mx-auto w-3/4 pl-1.5 text-xl">RoleDetailsView</h1>
         <h2>{role && role.id}</h2>
       </div>
-      <RoleForm></RoleForm>
+      {loading && <Spinner></Spinner>}
+      {role && <RoleForm role={transformRole(role)}></RoleForm>}
       <div className="mx-auto max-w-7xl"></div>
     </div>
   );

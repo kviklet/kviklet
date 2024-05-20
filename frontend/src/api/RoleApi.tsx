@@ -12,7 +12,6 @@ const policyPatchSchema = policyResponseSchema.omit({
   id: true,
 });
 
-// Define the schema for the user response
 const roleResponseSchema = z.object({
   id: z.string(),
   name: z.string(),

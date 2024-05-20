@@ -2,42 +2,15 @@ import React from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PlusIcon, TrashIcon } from "@heroicons/react/20/solid";
-import { z } from "zod";
+import {
+  ConnectionPolicy,
+  Role,
+  RolePolicy,
+  RoleSchema,
+  UserPolicySchema,
+} from "../../hooks/roles";
 
-
-const UserPolicySchema = z.object({
-  read: z.boolean(),
-  create: z.boolean(),
-  editSelf: z.boolean(),
-  delete: z.boolean(),
-});
-
-const RolePolicy = z.object({
-  read: z.boolean(),
-  edit: z.boolean(),
-});
-
-const ConnectionPolicy = z.object({
-  selector: z.string(),
-  read: z.boolean(),
-  create: z.boolean(),
-  edit: z.boolean(),
-  execution_request_get: z.boolean(),
-  execution_request_edit: z.boolean(),
-  execution_request_execute: z.boolean(),
-});
-
-const RoleSchema = z.object({
-  name: z.string(),
-  description: z.string().nullable(),
-  userPolicy: UserPolicySchema,
-  rolePolicy: RolePolicy,
-  connectionPolicies: z.array(ConnectionPolicy),
-});
-
-type Role = z.infer<typeof RoleSchema>;
-
-const RoleForm = () => {
+const RoleForm = ({ role }: { role: Role }) => {
   const {
     control,
     handleSubmit,
@@ -45,31 +18,7 @@ const RoleForm = () => {
     formState: { errors },
   } = useForm<Role>({
     resolver: zodResolver(RoleSchema),
-    defaultValues: {
-      name: "",
-      description: null,
-      userPolicy: {
-        read: false,
-        create: false,
-        editSelf: false,
-        delete: false,
-      },
-      rolePolicy: {
-        read: false,
-        edit: false,
-      },
-      connectionPolicies: [
-        {
-          selector: "",
-          read: false,
-          create: false,
-          edit: false,
-          execution_request_get: false,
-          execution_request_edit: false,
-          execution_request_execute: false,
-        },
-      ],
-    },
+    defaultValues: role,
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -104,6 +53,11 @@ const RoleForm = () => {
           {...register("description")}
           className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm"
         />
+        {errors.description && (
+          <span className="text-sm text-red-500">
+            {errors.description.message}
+          </span>
+        )}
       </div>
 
       <fieldset className="mb-4">
@@ -119,7 +73,9 @@ const RoleForm = () => {
               <Controller
                 name={`userPolicy.${field}` as const}
                 control={control}
-                render={({ field }) => <input type="checkbox" {...field} />}
+                render={({ field }) => (
+                  <input type="checkbox" {...field} checked={field.value} />
+                )}
               />
             </div>
           ))}
@@ -139,7 +95,9 @@ const RoleForm = () => {
               <Controller
                 name={`rolePolicy.${field}` as const}
                 control={control}
-                render={({ field }) => <input type="checkbox" {...field} />}
+                render={({ field }) => (
+                  <input type="checkbox" {...field} checked={field.value} />
+                )}
               />
             </div>
           ))}
@@ -188,7 +146,9 @@ const RoleForm = () => {
                   <Controller
                     name={`connectionPolicies.${index}.${key}` as const}
                     control={control}
-                    render={({ field }) => <input type="checkbox" {...field} />}
+                    render={({ field }) => (
+                      <input type="checkbox" {...field} checked={field.value} />
+                    )}
                   />
                 </div>
               ))}
