@@ -53,6 +53,15 @@ const getRoles = async (): Promise<RoleResponse[]> => {
   return rolesResponseSchema.parse(data).roles;
 };
 
+const getRole = async (id: string): Promise<RoleResponse> => {
+  const response = await fetch(`${baseUrl}/roles/${id}`, {
+    method: "GET",
+    credentials: "include",
+  });
+  const data: unknown = await response.json();
+  return roleResponseSchema.parse(data);
+};
+
 const createRole = async (role: CreateRoleRequest): Promise<RoleResponse> => {
   const response = await fetch(`${baseUrl}/roles/`, {
     method: "POST",
@@ -90,7 +99,14 @@ const patchRole = async (
   return roleResponseSchema.parse(data);
 };
 
-export { roleResponseSchema, getRoles, createRole, patchRole, removeRole };
+export {
+  roleResponseSchema,
+  getRoles,
+  createRole,
+  patchRole,
+  removeRole,
+  getRole,
+};
 export type {
   RoleResponse,
   PolicyResponse,

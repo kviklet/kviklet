@@ -90,8 +90,8 @@ fun permissionsToPermissionString(policies: Set<Policy>): String {
 @RequestMapping("/roles")
 class RoleController(private val roleService: RoleService) {
 
-    @GetMapping("/:id")
-    fun getRole(id: String): RoleResponse {
+    @GetMapping("/{id}")
+    fun getRole(@PathVariable id: String): RoleResponse {
         val role = roleService.getRole(RoleId(id))
         return RoleResponse.fromDto(role)
     }
@@ -136,8 +136,8 @@ class RoleController(private val roleService: RoleService) {
         return RoleResponse.fromDto(updatedRole)
     }
 
-    @DeleteMapping("/:id")
-    fun deleteRole(id: String) {
+    @DeleteMapping("/{id}")
+    fun deleteRole(@PathVariable id: String) {
         roleService.deleteRole(RoleId(id))
     }
 }

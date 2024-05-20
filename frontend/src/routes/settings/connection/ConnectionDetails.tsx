@@ -15,7 +15,7 @@ import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import { getJDBCOptionsPlaceholder } from "./DatabaseConnectionForm";
 import Button from "../../../components/Button";
 
-interface RequestReviewParams {
+interface ConnectionDetailsParams {
   connectionId: string;
 }
 
@@ -40,7 +40,7 @@ const datasourceConnectionFormSchema = z
 type ConnectionForm = z.infer<typeof datasourceConnectionFormSchema>;
 
 export default function ConnectionDetails() {
-  const params = useParams() as unknown as RequestReviewParams;
+  const params = useParams() as unknown as ConnectionDetailsParams;
   const connectionId = params.connectionId;
 
   const { loading, connection, editConnection } = useConnection(connectionId);
