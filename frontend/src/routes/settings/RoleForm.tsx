@@ -10,7 +10,13 @@ import {
   UserPolicySchema,
 } from "../../hooks/roles";
 
-const RoleForm = ({ role }: { role: Role }) => {
+const RoleForm = ({
+  role,
+  onSubmit,
+}: {
+  role: Role;
+  onSubmit: (data: Role) => Promise<void>;
+}) => {
   const {
     control,
     handleSubmit,
@@ -26,12 +32,11 @@ const RoleForm = ({ role }: { role: Role }) => {
     name: "connectionPolicies",
   });
 
-  const onSubmit = (data: Role) => {
-    console.log(data);
-  };
-
   return (
-    <form onSubmit={void handleSubmit(onSubmit)} className="space-y-4">
+    <form
+      onSubmit={(event) => void handleSubmit(onSubmit)(event)}
+      className="space-y-4"
+    >
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700">
           Role Name

@@ -8,7 +8,7 @@ const policyResponseSchema = z.object({
   resource: z.string(),
 });
 
-const policyPatchSchema = policyResponseSchema.omit({
+const policyUpdatePayloadSchema = policyResponseSchema.omit({
   id: true,
 });
 
@@ -19,7 +19,7 @@ const roleResponseSchema = z.object({
   policies: z.array(policyResponseSchema),
 });
 
-type PolicyPatch = z.infer<typeof policyPatchSchema>;
+type PolicyUpdatePayload = z.infer<typeof policyUpdatePayloadSchema>;
 
 const createRoleRequestSchema = z.object({
   name: z.string(),
@@ -30,15 +30,15 @@ const rolesResponseSchema = z.object({
   roles: roleResponseSchema.array(),
 });
 
-const rolePatchSchema = z.object({
+const roleUpdatePayloadSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string().nullable(),
-  policies: z.array(policyPatchSchema),
+  policies: z.array(policyUpdatePayloadSchema),
 });
 
 type RoleResponse = z.infer<typeof roleResponseSchema>;
-type RolePatch = z.infer<typeof rolePatchSchema>;
+type RoleUpdatePayload = z.infer<typeof roleUpdatePayloadSchema>;
 type PolicyResponse = z.infer<typeof policyResponseSchema>;
 type CreateRoleRequest = z.infer<typeof createRoleRequestSchema>;
 
@@ -84,7 +84,7 @@ const removeRole = async (id: string): Promise<void> => {
 
 const patchRole = async (
   id: string,
-  role: RolePatch,
+  role: RoleUpdatePayload,
 ): Promise<RoleResponse> => {
   const response = await fetch(`${baseUrl}/roles/${id}`, {
     method: "PATCH",
@@ -106,10 +106,11 @@ export {
   removeRole,
   getRole,
 };
+
 export type {
   RoleResponse,
   PolicyResponse,
   CreateRoleRequest,
-  PolicyPatch,
-  RolePatch,
+  PolicyUpdatePayload,
+  RoleUpdatePayload,
 };

@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { RoleResponse, getRole } from "../api/RoleApi";
+import {
+  PolicyUpdatePayload,
+  RoleResponse,
+  RoleUpdatePayload,
+  getRole,
+} from "../api/RoleApi";
 import { z } from "zod";
 
 const UserPolicySchema = z.object({
@@ -25,6 +30,7 @@ const ConnectionPolicy = z.object({
 });
 
 const RoleSchema = z.object({
+  id: z.string(),
   name: z.string(),
   description: z.string().nullable(),
   userPolicy: UserPolicySchema,
@@ -38,7 +44,7 @@ const useRole = (id: string) => {
   const [role, setRole] = useState<RoleResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  async function request() {
+  async function reloadRole() {
     setLoading(true);
     const role = await getRole(id);
     setRole(role);
@@ -46,12 +52,13 @@ const useRole = (id: string) => {
   }
 
   useEffect(() => {
-    void request();
+    void reloadRole();
   }, [id]);
 
   return {
     loading,
     role,
+    reloadRole,
   };
 };
 
@@ -124,6 +131,7 @@ const transformRole = (role: RoleResponse): Role => {
   });
 
   return {
+    id: role.id,
     name: role.name,
     description: role.description,
     userPolicy,
@@ -132,9 +140,113 @@ const transformRole = (role: RoleResponse): Role => {
   };
 };
 
+const transformToPayload = (
+  role: z.infer<typeof RoleSchema>,
+): RoleUpdatePayload => {
+  const policies: PolicyUpdatePayload[] = [];
+
+  if (role.userPolicy.read) {
+    policies.push({
+      action: "user:get",
+      effect: "ALLOW",
+      resource: "*",
+    });
+  }
+  if (role.userPolicy.create) {
+    policies.push({
+      action: "user:create",
+      effect: "ALLOW",
+      resource: "*",
+    });
+  }
+  if (role.userPolicy.editSelf) {
+    policies.push({
+      action: "user:edit",
+      effect: "ALLOW",
+      resource: "*",
+    });
+  }
+  if (role.userPolicy.delete) {
+    policies.push({
+      action: "user:delete",
+      effect: "ALLOW",
+      resource: "*",
+    });
+  }
+
+  // Transform rolePolicy
+  if (role.rolePolicy.read) {
+    policies.push({
+      action: "role:get",
+      effect: "ALLOW",
+      resource: "*",
+    });
+  }
+  if (role.rolePolicy.edit) {
+    policies.push({
+      action: "role:edit",
+      effect: "ALLOW",
+      resource: "*",
+    });
+  }
+
+  role.connectionPolicies.forEach((policy) => {
+    if (policy.read) {
+      policies.push({
+        action: "datasource_connection:get",
+        effect: "ALLOW",
+        resource: policy.selector,
+      });
+    }
+    if (policy.create) {
+      policies.push({
+        action: "datasource_connection:create",
+        effect: "ALLOW",
+        resource: policy.selector,
+      });
+    }
+    if (policy.edit) {
+      policies.push({
+        action: "datasource_connection:edit",
+        effect: "ALLOW",
+        resource: policy.selector,
+      });
+    }
+    if (policy.execution_request_get) {
+      policies.push({
+        action: "execution_request:get",
+        effect: "ALLOW",
+        resource: policy.selector,
+      });
+    }
+    if (policy.execution_request_edit) {
+      policies.push({
+        action: "execution_request:edit",
+        effect: "ALLOW",
+        resource: policy.selector,
+      });
+    }
+    if (policy.execution_request_execute) {
+      policies.push({
+        action: "execution_request:execute",
+        effect: "ALLOW",
+        resource: policy.selector,
+      });
+    }
+  });
+
+  return {
+    id: role.id,
+    name: role.name,
+    description: role.description,
+    policies,
+  };
+};
+
 export {
   useRole,
   transformRole,
+  transformToPayload,
   RoleSchema,
   UserPolicySchema,
   RolePolicy,
