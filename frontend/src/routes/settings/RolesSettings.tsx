@@ -2,14 +2,8 @@ import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 import Button from "../../components/Button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useState } from "react";
-import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
-import {
-  RoleResponse,
-  createRole,
-  getRoles,
-  removeRole,
-} from "../../api/RoleApi";
+import { RoleResponse, getRoles, removeRole } from "../../api/RoleApi";
 import DeleteConfirm from "../../components/DeleteConfirm";
 import React from "react";
 import { Link } from "react-router-dom";
@@ -19,7 +13,6 @@ const useRoles = (): {
   isLoading: boolean;
   error: Error | null;
   deleteRole: (id: string) => Promise<void>;
-  addRole: (name: string, description: string) => Promise<void>;
 } => {
   const [roles, setRoles] = useState<RoleResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,17 +35,7 @@ const useRoles = (): {
     setRoles(newRoles);
   };
 
-  const addRole = async (name: string, description: string) => {
-    const role = await createRole({
-      name,
-      description,
-    });
-    const newRoles = [...roles, role];
-    setRoles(newRoles);
-  };
-
-
-  return { roles, isLoading, error, deleteRole, addRole };
+  return { roles, isLoading, error, deleteRole };
 };
 
 const Table = ({
@@ -126,68 +109,14 @@ const Table = ({
   );
 };
 
-function RoleForm(props: {
-  handleSaveRole: (name: string, description: string) => Promise<void>;
-  handleCancel: () => void;
-}) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-
-  const saveRole = (event: React.SyntheticEvent) => {
-    event.preventDefault();
-    void props.handleSaveRole(name, description);
-  };
-
-  return (
-    <form method="post" onSubmit={saveRole}>
-      <div className="w-2xl rounded bg-white p-3 shadow dark:bg-slate-950">
-        <div className="mb-3 flex flex-col">
-          <InputField
-            id="name"
-            label="Name"
-            value={name}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setName(e.target.value)
-            }
-          />
-        </div>
-        <div className="mb-3 flex flex-col">
-          <InputField
-            id="description"
-            label="Description"
-            value={description}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setDescription(e.target.value)
-            }
-          />
-        </div>
-        <div className="mb-3 flex flex-col">
-          <Button className="ml-auto" type="submit">
-            Create
-          </Button>
-        </div>
-      </div>
-    </form>
-  );
-}
-
 const RoleSettings = () => {
-  const { roles, isLoading, error, deleteRole, addRole } = useRoles();
+  const { roles, isLoading, error, deleteRole } = useRoles();
   const [selectedRole, setSelectedRole] = useState<RoleResponse | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
-
-  const handleAddRole = () => {
-    setShowAddModal(true);
-  };
 
   const handleDeleteRole = (role: RoleResponse) => {
     setSelectedRole(role);
     setShowDeleteModal(true);
-  };
-
-  const handleAddRoleCancel = () => {
-    setShowAddModal(false);
   };
 
   if (isLoading) {
@@ -202,24 +131,21 @@ const RoleSettings = () => {
     <div>
       <div className="flex flex-col items-center justify-between">
         <Table roles={roles} handleDeleteRole={handleDeleteRole} />
-        <Button type="primary" onClick={handleAddRole} className="ml-auto mt-2">
-          {"Add Role"}
-        </Button>
+        <Link to="/settings/roles/new" className="ml-auto">
+          <Button type="primary" className="  mt-2">
+            {"Add Role"}
+          </Button>
+        </Link>
       </div>
-      {showAddModal && (
-        <Modal setVisible={setShowAddModal}>
-          <RoleForm
-            handleSaveRole={addRole}
-            handleCancel={handleAddRoleCancel}
-          ></RoleForm>
-        </Modal>
-      )}
       {showDeleteModal && selectedRole && (
         <Modal setVisible={setShowDeleteModal}>
           <DeleteConfirm
             title="Delete Role"
             message={`Are you sure you want to delete role ${selectedRole.name}?`}
-            onConfirm={() => deleteRole(selectedRole.id)}
+            onConfirm={async () => {
+              await deleteRole(selectedRole.id);
+              setShowDeleteModal(false);
+            }}
             onCancel={() => setShowDeleteModal(false)}
           />
         </Modal>

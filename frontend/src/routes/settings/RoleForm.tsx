@@ -73,7 +73,8 @@ const connectionPolicyMetadata: Record<
   },
   execution_request_get: {
     label: "Get Execution Requests",
-    tooltip: "Allows seeing execution requests.",
+    tooltip:
+      "Allows seeing execution requests. This also allows Commenting and Reviewing.",
   },
   execution_request_edit: {
     label: "Edit Execution Requests",
@@ -113,7 +114,7 @@ const RoleForm = ({
       onSubmit={(event) => void handleSubmit(onSubmit)(event)}
       className="space-y-4"
     >
-      <legend className="text-base font-semibold leading-7 text-slate-700">
+      <legend className="text-base font-semibold leading-7 text-slate-700 dark:text-slate-100">
         General Settings
       </legend>
       <div className="mb-4">
@@ -136,14 +137,14 @@ const RoleForm = ({
 
       <div className="mb-4">
         <label
-          className="flex items-center text-sm font-medium text-slate-700"
+          className="flex items-center text-sm font-medium text-slate-700 dark:text-slate-100"
           title="Gives the role all permissions on every resource."
         >
           Is Admin
-          <QuestionMarkCircleIcon className="ml-1 h-4 text-gray-400" />
+          <QuestionMarkCircleIcon className="ml-1 h-4 text-slate-400" />
         </label>
         <input
-          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+          className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
           {...register("isAdmin")}
           type="checkbox"
         />
@@ -152,21 +153,21 @@ const RoleForm = ({
       {!watch("isAdmin") && (
         <>
           <fieldset className="mb-4">
-            <legend className="text-base font-semibold leading-7 text-slate-700">
+            <legend className="text-base font-semibold leading-7 text-slate-700 dark:text-slate-100">
               User Permissions
             </legend>
             <div className="flex space-x-4">
               {Object.keys(UserPolicySchema.shape).map((field) => (
                 <div key={field}>
                   <label
-                    className="flex items-center text-sm font-medium text-slate-700"
+                    className="flex items-center text-sm font-medium text-slate-700 dark:text-slate-300"
                     title={userPolicyMetadata[field].tooltip}
                   >
                     {userPolicyMetadata[field].label}
-                    <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-gray-400" />
+                    <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400" />
                   </label>
                   <input
-                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
                     {...register(
                       `userPolicy.${field}` as
                         | "userPolicy.read"
@@ -182,21 +183,21 @@ const RoleForm = ({
           </fieldset>
 
           <fieldset className="mb-4">
-            <legend className="text-base font-semibold leading-7 text-slate-700">
+            <legend className="text-base font-semibold leading-7 text-slate-700 dark:text-slate-100">
               Role Permissions
             </legend>
             <div className="flex space-x-4">
               {Object.keys(RolePolicy.shape).map((field) => (
                 <div key={field}>
                   <label
-                    className="flex items-center text-sm font-medium text-slate-700"
+                    className="flex items-center text-sm font-medium text-slate-700 dark:text-slate-300"
                     title={rolePolicyMetadata[field].tooltip}
                   >
                     {rolePolicyMetadata[field].label}
-                    <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-gray-400" />
+                    <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400" />
                   </label>
                   <input
-                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
                     {...register(
                       `rolePolicy.${field}` as
                         | "rolePolicy.read"
@@ -210,13 +211,13 @@ const RoleForm = ({
           </fieldset>
 
           <div>
-            <h2 className="text-base font-semibold leading-7 text-slate-900">
+            <h2 className="text-base font-semibold leading-7 text-slate-900 dark:text-slate-100">
               Connection Permissions
             </h2>
             {fields.map((field, index) => (
               <div
                 key={field.id}
-                className="mb-4 space-y-2 rounded-md border bg-white p-4 "
+                className="mb-4 space-y-2 rounded-md border bg-white p-4 dark:border-slate-600 dark:bg-slate-950"
               >
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-medium">
@@ -252,7 +253,7 @@ const RoleForm = ({
                     .map((key) => (
                       <div key={key}>
                         <label
-                          className="flex items-center text-sm font-medium text-slate-700"
+                          className="flex items-center text-sm font-medium text-slate-700 dark:text-slate-300"
                           title={
                             connectionPolicyMetadata[key as ConnectionPolicyKey]
                               .tooltip
@@ -262,10 +263,10 @@ const RoleForm = ({
                             connectionPolicyMetadata[key as ConnectionPolicyKey]
                               .label
                           }
-                          <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-gray-400" />
+                          <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400" />
                         </label>
                         <input
-                          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
+                          className="h-4 w-4 rounded border-slate-300 bg-transparent text-indigo-600 focus:ring-indigo-600"
                           type="checkbox"
                           {...register(
                             `connectionPolicies.${index}.${

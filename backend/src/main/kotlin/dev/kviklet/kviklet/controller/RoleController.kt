@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController
 data class CreateRoleRequest(
     val name: String,
     val description: String,
+    val policies: Set<PolicyPayload>?,
 )
 
 data class UpdateRoleRequest(
@@ -110,6 +111,14 @@ class RoleController(private val roleService: RoleService) {
         val savedRole = roleService.createRole(
             name = createRoleRequest.name,
             description = createRoleRequest.description,
+            policies = createRoleRequest.policies?.map {
+                Policy(
+                    id = it.id,
+                    action = it.action,
+                    effect = it.effect,
+                    resource = it.resource,
+                )
+            }?.toSet(),
         )
         return RoleResponse.fromDto(savedRole)
     }

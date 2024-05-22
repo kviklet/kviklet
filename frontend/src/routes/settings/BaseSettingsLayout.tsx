@@ -7,6 +7,7 @@ import React from "react";
 import ProfileSettings from "./ProfileSettings";
 import ConnectionDetails from "./connection/ConnectionDetails";
 import RoleDetailsView from "./RoleDetailsView";
+import NewRoleView from "./NewRoleView";
 
 const Tab = (props: {
   children: React.ReactNode;
@@ -85,6 +86,7 @@ const BaseSettingsLayout = (props: LayoutProps) => {
               />
               <Route path="users" element={<UserSettings />} />
               <Route path="roles" element={<RoleSettings />} />
+              <Route path="/roles/new" element={<NewRoleView />} />
               <Route path="/roles/:roleId" element={<RoleDetailsView />} />
               <Route path="profile" element={<ProfileSettings />} />
             </Routes>

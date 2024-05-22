@@ -77,6 +77,13 @@ class RoleAdapter(
             RoleEntity(
                 name = role.name,
                 description = role.description,
+                policies = role.policies.map {
+                    PolicyEntity(
+                        action = it.action,
+                        effect = it.effect,
+                        resource = it.resource,
+                    )
+                }.toMutableSet(),
             ),
         ).toDto()
     }

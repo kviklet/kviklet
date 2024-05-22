@@ -21,11 +21,6 @@ const roleResponseSchema = z.object({
 
 type PolicyUpdatePayload = z.infer<typeof policyUpdatePayloadSchema>;
 
-const createRoleRequestSchema = z.object({
-  name: z.string(),
-  description: z.string().nullable(),
-});
-
 const rolesResponseSchema = z.object({
   roles: roleResponseSchema.array(),
 });
@@ -35,6 +30,10 @@ const roleUpdatePayloadSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
   policies: z.array(policyUpdatePayloadSchema),
+});
+
+const createRoleRequestSchema = roleUpdatePayloadSchema.omit({
+  id: true,
 });
 
 type RoleResponse = z.infer<typeof roleResponseSchema>;

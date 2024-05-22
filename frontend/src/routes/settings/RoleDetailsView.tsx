@@ -23,6 +23,7 @@ export default function RoleDetailsView() {
     await patchRole(data.id, transformToPayload(data));
     await reloadRole();
   };
+
   return (
     <div>
       <div className="mb-3 border-b border-slate-300 dark:border-slate-700">
