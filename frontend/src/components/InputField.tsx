@@ -26,7 +26,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
           >
             {label}
             {props.tooltip && (
-              <QuestionMarkCircleIcon className="ml-1 h-4 text-gray-400" />
+              <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-gray-400" />
             )}
           </label>
 

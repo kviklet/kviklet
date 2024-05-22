@@ -163,7 +163,7 @@ const RoleForm = ({
                     title={userPolicyMetadata[field].tooltip}
                   >
                     {userPolicyMetadata[field].label}
-                    <QuestionMarkCircleIcon className="ml-1 h-4 text-gray-400" />
+                    <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-gray-400" />
                   </label>
                   <input
                     className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
@@ -193,7 +193,7 @@ const RoleForm = ({
                     title={rolePolicyMetadata[field].tooltip}
                   >
                     {rolePolicyMetadata[field].label}
-                    <QuestionMarkCircleIcon className="ml-1 h-4 text-gray-400" />
+                    <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-gray-400" />
                   </label>
                   <input
                     className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
@@ -262,7 +262,7 @@ const RoleForm = ({
                             connectionPolicyMetadata[key as ConnectionPolicyKey]
                               .label
                           }
-                          <QuestionMarkCircleIcon className="ml-1 h-4 text-gray-400" />
+                          <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-gray-400" />
                         </label>
                         <input
                           className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"

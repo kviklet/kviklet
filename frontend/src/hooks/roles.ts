@@ -87,7 +87,11 @@ const transformRole = (role: RoleResponse): Role => {
 
     switch (resourceType) {
       case "*":
-        if (resourceAction === "*" && policy.effect === "ALLOW" && policy.resource === "*") {
+        if (
+          resourceAction === "*" &&
+          policy.effect === "ALLOW" &&
+          policy.resource === "*"
+        ) {
           isAdmin = true;
         }
         break;
@@ -103,7 +107,24 @@ const transformRole = (role: RoleResponse): Role => {
         if (resourceAction === "edit") rolePolicy.edit = true;
         break;
 
-      case "datasource_connection":
+      case "datasource_connection": {
+        if (!connectionPoliciesMap[policy.resource]) {
+          connectionPoliciesMap[policy.resource] = {
+            selector: policy.resource,
+            read: false,
+            create: false,
+            edit: false,
+            execution_request_get: false,
+            execution_request_edit: false,
+            execution_request_execute: false,
+          };
+        }
+        const connectionPolicy = connectionPoliciesMap[policy.resource];
+        if (resourceAction === "get") connectionPolicy.read = true;
+        if (resourceAction === "create") connectionPolicy.create = true;
+        if (resourceAction === "edit") connectionPolicy.edit = true;
+        break;
+      }
       case "execution_request": {
         if (!connectionPoliciesMap[policy.resource]) {
           connectionPoliciesMap[policy.resource] = {
@@ -118,17 +139,12 @@ const transformRole = (role: RoleResponse): Role => {
         }
 
         const connectionPolicy = connectionPoliciesMap[policy.resource];
-        if (resourceAction === "get") connectionPolicy.read = true;
-        if (resourceAction === "create") connectionPolicy.create = true;
-        if (resourceAction === "edit") connectionPolicy.edit = true;
-        if (resourceType === "execution_request" && resourceAction === "get")
+
+        if (resourceAction === "get")
           connectionPolicy.execution_request_get = true;
-        if (resourceType === "execution_request" && resourceAction === "edit")
+        if (resourceAction === "edit")
           connectionPolicy.execution_request_edit = true;
-        if (
-          resourceType === "execution_request" &&
-          resourceAction === "execute"
-        )
+        if (resourceAction === "execute")
           connectionPolicy.execution_request_execute = true;
         break;
       }

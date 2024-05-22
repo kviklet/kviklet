@@ -5,16 +5,13 @@ import { useEffect, useState } from "react";
 import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
 import {
-  RolePatch,
   RoleResponse,
   createRole,
   getRoles,
-  patchRole,
   removeRole,
 } from "../../api/RoleApi";
 import DeleteConfirm from "../../components/DeleteConfirm";
 import React from "react";
-import useConnections from "../../hooks/connections";
 import { Link } from "react-router-dom";
 
 const useRoles = (): {
@@ -23,7 +20,6 @@ const useRoles = (): {
   error: Error | null;
   deleteRole: (id: string) => Promise<void>;
   addRole: (name: string, description: string) => Promise<void>;
-  editRole: (id: string, role: RolePatch) => Promise<void>;
 } => {
   const [roles, setRoles] = useState<RoleResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,18 +51,8 @@ const useRoles = (): {
     setRoles(newRoles);
   };
 
-  const editRole = async (id: string, role: RolePatch) => {
-    const newRole = await patchRole(id, role);
-    const newRoles = roles.map((role) => {
-      if (role.id === id) {
-        return newRole;
-      }
-      return role;
-    });
-    setRoles(newRoles);
-  };
 
-  return { roles, isLoading, error, deleteRole, addRole, editRole };
+  return { roles, isLoading, error, deleteRole, addRole };
 };
 
 const Table = ({
@@ -101,7 +87,7 @@ const Table = ({
                     <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900 dark:text-slate-50 ">
                       <Link
                         to={`/settings/roles/${role.id}`}
-                        className="hover:bg-slate-50 dark:hover:bg-slate-800"
+                        className="block hover:bg-slate-50 dark:hover:bg-slate-800"
                       >
                         {role.name}
                       </Link>
@@ -109,7 +95,7 @@ const Table = ({
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-200">
                       <Link
                         to={`/settings/roles/${role.id}`}
-                        className="hover:bg-slate-50 dark:hover:bg-slate-800"
+                        className="block hover:bg-slate-50 dark:hover:bg-slate-800"
                       >
                         {role.description}
                       </Link>
