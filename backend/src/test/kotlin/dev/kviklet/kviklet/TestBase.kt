@@ -52,7 +52,7 @@ open class TestBase {
         val role = RoleEntity(
             name = "Test Role",
             description = "This is a test role",
-            policies = setOf(policyEntity),
+            policies = mutableSetOf(policyEntity),
         )
         roleRepository.saveAndFlush(role)
 

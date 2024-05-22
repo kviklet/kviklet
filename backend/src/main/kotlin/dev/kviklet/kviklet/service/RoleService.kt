@@ -35,7 +35,7 @@ class RoleService(private val roleAdapter: RoleAdapter) {
     }
 
     @dev.kviklet.kviklet.security.Policy(Permission.ROLE_EDIT)
-    fun createRole(name: String, description: String, policies: Set<Policy>?): Role {
+    fun createRole(name: String, description: String, policies: Set<Policy>? = emptySet()): Role {
         val role = Role(
             name = name,
             description = description,
