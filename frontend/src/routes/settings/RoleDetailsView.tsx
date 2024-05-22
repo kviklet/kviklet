@@ -26,8 +26,7 @@ export default function RoleDetailsView() {
   return (
     <div>
       <div className="mb-3 border-b border-slate-300 dark:border-slate-700">
-        <h1 className="m-5 mx-auto w-3/4 pl-1.5 text-xl">RoleDetailsView</h1>
-        <h2>{role && role.id}</h2>
+        <h1 className="text-xl">{role && role.name}</h1>
       </div>
       {loading && <Spinner></Spinner>}
       {role && (

@@ -11,7 +11,7 @@ const UserPolicySchema = z.object({
   read: z.boolean(),
   create: z.boolean(),
   editSelf: z.boolean(),
-  delete: z.boolean(),
+  editRoles: z.boolean(),
 });
 
 const RolePolicy = z.object({
@@ -33,6 +33,7 @@ const RoleSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string().nullable(),
+  isAdmin: z.boolean(),
   userPolicy: UserPolicySchema,
   rolePolicy: RolePolicy,
   connectionPolicies: z.array(ConnectionPolicy),
@@ -67,7 +68,7 @@ const transformRole = (role: RoleResponse): Role => {
     read: false,
     create: false,
     editSelf: false,
-    delete: false,
+    editRoles: false,
   };
 
   const rolePolicy = {
@@ -79,15 +80,22 @@ const transformRole = (role: RoleResponse): Role => {
     [key: string]: z.infer<typeof ConnectionPolicy>;
   } = {};
 
+  let isAdmin = false;
+
   role.policies.forEach((policy) => {
     const [resourceType, resourceAction] = policy.action.split(":");
 
     switch (resourceType) {
+      case "*":
+        if (resourceAction === "*" && policy.effect === "ALLOW" && policy.resource === "*") {
+          isAdmin = true;
+        }
+        break;
       case "user":
         if (resourceAction === "get") userPolicy.read = true;
         if (resourceAction === "create") userPolicy.create = true;
         if (resourceAction === "edit") userPolicy.editSelf = true;
-        if (resourceAction === "delete") userPolicy.delete = true;
+        if (resourceAction === "edit_roles") userPolicy.editRoles = true;
         break;
 
       case "role":
@@ -134,6 +142,7 @@ const transformRole = (role: RoleResponse): Role => {
     id: role.id,
     name: role.name,
     description: role.description,
+    isAdmin,
     userPolicy,
     rolePolicy,
     connectionPolicies: Object.values(connectionPoliciesMap),
@@ -144,6 +153,21 @@ const transformToPayload = (
   role: z.infer<typeof RoleSchema>,
 ): RoleUpdatePayload => {
   const policies: PolicyUpdatePayload[] = [];
+
+  if (role.isAdmin) {
+    policies.push({
+      action: "*:*",
+      effect: "ALLOW",
+      resource: "*",
+    });
+
+    return {
+      id: role.id,
+      name: role.name,
+      description: role.description,
+      policies,
+    };
+  }
 
   if (role.userPolicy.read) {
     policies.push({
@@ -166,15 +190,14 @@ const transformToPayload = (
       resource: "*",
     });
   }
-  if (role.userPolicy.delete) {
+  if (role.userPolicy.editRoles) {
     policies.push({
-      action: "user:delete",
+      action: "user:edit_roles",
       effect: "ALLOW",
       resource: "*",
     });
   }
 
-  // Transform rolePolicy
   if (role.rolePolicy.read) {
     policies.push({
       action: "role:get",

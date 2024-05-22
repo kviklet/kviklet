@@ -5,8 +5,6 @@ import { useEffect, useState } from "react";
 import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
 import {
-  PolicyPatch,
-  PolicyResponse,
   RolePatch,
   RoleResponse,
   createRole,
@@ -14,37 +12,10 @@ import {
   patchRole,
   removeRole,
 } from "../../api/RoleApi";
-import ColorfulLabel from "../../components/ColorfulLabel";
-import { ConnectionResponse } from "../../api/DatasourceApi";
 import DeleteConfirm from "../../components/DeleteConfirm";
 import React from "react";
-import ComboBox from "../../components/ComboBox";
 import useConnections from "../../hooks/connections";
-
-const Tooltip = ({
-  children,
-  text,
-}: {
-  children: React.ReactNode;
-  text: string;
-}) => {
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <div
-      className="relative"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      {children}
-      {hovered && (
-        <div className="absolute bottom-0 left-0 rounded bg-slate-800 p-1 text-xs text-white">
-          {text}
-        </div>
-      )}
-    </div>
-  );
-};
+import { Link } from "react-router-dom";
 
 const useRoles = (): {
   roles: RoleResponse[];
@@ -100,11 +71,9 @@ const useRoles = (): {
 
 const Table = ({
   roles,
-  handleEditRole,
   handleDeleteRole,
 }: {
   roles: RoleResponse[];
-  handleEditRole: (role: RoleResponse) => void;
   handleDeleteRole: (role: RoleResponse) => void;
 }) => {
   return (
@@ -112,28 +81,16 @@ const Table = ({
       <div className="overflow-x-auto">
         <div className="inline-block min-w-full align-middle">
           <div className="overflow-hidden border-b border-slate-200 shadow sm:rounded-lg">
-            <table className="min-w-full divide-y divide-slate-200">
+            <table className="min-w-full table-auto divide-y divide-slate-200">
               <thead className="bg-slate-50 text-left text-slate-700 dark:bg-slate-900 dark:text-slate-200">
                 <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-xs font-medium uppercase tracking-wider"
-                  >
+                  <th className="px-6 py-3 text-xs font-medium uppercase tracking-wider">
                     Role Name
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-xs font-medium uppercase tracking-wider"
-                  >
+                  <th className="px-6 py-3 text-xs font-medium uppercase tracking-wider">
                     Description
                   </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-xs font-medium uppercase tracking-wider"
-                  >
-                    Permissions
-                  </th>
-                  <th scope="col" className="relative px-6 py-3">
+                  <th className="relative px-6 py-3">
                     <span className="sr-only">Edit</span>
                   </th>
                 </tr>
@@ -141,31 +98,24 @@ const Table = ({
               <tbody>
                 {roles.map((role) => (
                   <tr key={role.id}>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900 dark:text-slate-50">
-                      {role.name}
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900 dark:text-slate-50 ">
+                      <Link
+                        to={`/settings/roles/${role.id}`}
+                        className="hover:bg-slate-50 dark:hover:bg-slate-800"
+                      >
+                        {role.name}
+                      </Link>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-200">
-                      {role.description}
-                    </td>
-                    <td>
-                      <Tooltip
-                        text={role.policies
-                          .map((policy) => policy.action)
-                          .join(",")}
+                      <Link
+                        to={`/settings/roles/${role.id}`}
+                        className="hover:bg-slate-50 dark:hover:bg-slate-800"
                       >
-                        <div className="text-slate-400 hover:text-slate-900">
-                          <FontAwesomeIcon icon={solid("eye")} />
-                        </div>
-                      </Tooltip>
+                        {role.description}
+                      </Link>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                       <div className="flex flex-row">
-                        <button
-                          onClick={() => handleEditRole(role)}
-                          className="mr-2 text-slate-400 hover:text-slate-900"
-                        >
-                          Edit
-                        </button>
                         <button
                           onClick={() => handleDeleteRole(role)}
                           className="text-slate-400 hover:text-slate-900"
@@ -189,166 +139,6 @@ const Table = ({
     </div>
   );
 };
-function EditRoleForm(props: {
-  connections: ConnectionResponse[];
-  role: RoleResponse;
-  editRole: (role: RolePatch) => Promise<void>;
-}) {
-  const [policies, setPolicies] = useState<(PolicyPatch | PolicyResponse)[]>(
-    props.role.policies,
-  );
-  const [name, setName] = useState(props.role.name);
-  const [description, setDescription] = useState(props.role.description);
-  const [selectedPermissions, setSelectedPermission] =
-    useState("DATASOURCE_GET");
-
-  const permissions = [
-    "DATASOURCE_GET",
-    "DATASOURCE_EDIT",
-    "DATASOURCE_CREATE",
-    "DATASOURCE_CONNECTION_GET",
-    "DATASOURCE_CONNECTION_EDIT",
-    "DATASOURCE_CONNECTION_CREATE",
-    "EXECUTION_REQUEST_GET",
-    "EXECUTION_REQUEST_EDIT",
-    "EXECUTION_REQUEST_EXECUTE",
-  ];
-
-  const [selectedOption, setSelectedOption] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
-
-  const handleEditRole = (event: React.SyntheticEvent) => {
-    event.preventDefault();
-    void props.editRole({
-      id: props.role.id,
-      name,
-      description,
-      policies: policies,
-    });
-  };
-
-  const addPolicy = (event: React.SyntheticEvent) => {
-    event.preventDefault();
-    if (!selectedOption) {
-      return;
-    }
-    const newPolicy: PolicyPatch = {
-      effect: "ALLOW",
-      action: selectedPermissions,
-      resource: selectedOption.id,
-    };
-    setPolicies([...policies, newPolicy]);
-  };
-
-  const removePermission = (
-    connectionId: string,
-    permission: string,
-    effect: string,
-    resource: string,
-  ) => {
-    const newPermissions = policies.filter(
-      (p) =>
-        p.resource !== resource ||
-        p.action !== permission ||
-        p.effect !== effect,
-    );
-    setPolicies(newPermissions);
-  };
-
-  const permissionText = (policy: PolicyResponse | PolicyPatch): string => {
-    return `${policy.action} on ${policy.resource}`;
-  };
-
-  return (
-    <form method="post" onSubmit={handleEditRole}>
-      <div className="w-2xl rounded bg-white p-3 shadow dark:bg-slate-950">
-        <div className="mb-3 flex flex-col">
-          <InputField
-            id="name"
-            label="Name"
-            value={name}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setName(e.target.value)
-            }
-          />
-        </div>
-        <div className="mb-3 flex flex-col">
-          <InputField
-            id="description"
-            label="Description"
-            value={description || ""}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setDescription(e.target.value)
-            }
-          />
-        </div>
-        <div>
-          <div className="mb-2 text-sm text-slate-400">Permissions</div>
-        </div>
-        {policies.map((permissionEntry) => (
-          <div
-            key={permissionEntry.action + permissionEntry.resource}
-            className="mb-3 flex"
-          >
-            <div className="text-sm text-slate-400">
-              <ColorfulLabel
-                text={permissionText(permissionEntry)}
-                onDelete={() =>
-                  removePermission(
-                    permissionEntry.resource,
-                    permissionEntry.action,
-                    permissionEntry.effect,
-                    permissionEntry.resource,
-                  )
-                }
-              ></ColorfulLabel>
-            </div>
-          </div>
-        ))}
-        <div className="mb-3 flex border-t">
-          <div>
-            <label
-              htmlFor="permissions"
-              className="block text-sm font-medium leading-6 text-slate-900 dark:text-slate-50"
-            >
-              Permission
-            </label>
-            <select
-              id="permission"
-              name="permission"
-              className="mt-2 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-indigo-600 dark:bg-slate-900 dark:text-slate-50 sm:text-sm sm:leading-6"
-              defaultValue={permissions[0]}
-              value={selectedPermissions}
-              onChange={(e) => setSelectedPermission(e.target.value)}
-            >
-              {permissions.map((permission) => (
-                <option>{permission}</option>
-              ))}
-            </select>
-          </div>
-          <ComboBox
-            label="Resource"
-            options={props.connections.map((connection) => {
-              return { name: connection.displayName, id: connection.id };
-            })}
-            selectedOption={selectedOption}
-            setSelectedOption={setSelectedOption}
-          ></ComboBox>
-          <Button className="ml-auto" onClick={addPolicy}>
-            Add Permission
-          </Button>
-        </div>
-        <div className="mb-3 flex flex-col">
-          <Button type="submit" className="ml-auto">
-            Save Permissions
-          </Button>
-        </div>
-      </div>
-    </form>
-  );
-}
 
 function RoleForm(props: {
   handleSaveRole: (name: string, description: string) => Promise<void>;
@@ -396,25 +186,13 @@ function RoleForm(props: {
 }
 
 const RoleSettings = () => {
-  const { roles, isLoading, error, deleteRole, addRole, editRole } = useRoles();
+  const { roles, isLoading, error, deleteRole, addRole } = useRoles();
   const [selectedRole, setSelectedRole] = useState<RoleResponse | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const { connections } = useConnections();
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
 
   const handleAddRole = () => {
     setShowAddModal(true);
-  };
-
-  const handleEditRole = (role: RoleResponse) => {
-    setSelectedRole(role);
-    setShowEditModal(true);
-  };
-
-  const handleEditRoleConfirm = async (role: RolePatch) => {
-    await editRole(role.id, role);
-    setShowEditModal(false);
   };
 
   const handleDeleteRole = (role: RoleResponse) => {
@@ -437,24 +215,11 @@ const RoleSettings = () => {
   return (
     <div>
       <div className="flex flex-col items-center justify-between">
-        <Table
-          roles={roles}
-          handleEditRole={handleEditRole}
-          handleDeleteRole={handleDeleteRole}
-        />
+        <Table roles={roles} handleDeleteRole={handleDeleteRole} />
         <Button type="primary" onClick={handleAddRole} className="ml-auto mt-2">
           {"Add Role"}
         </Button>
       </div>
-      {showEditModal && selectedRole && (
-        <Modal setVisible={setShowEditModal}>
-          <EditRoleForm
-            connections={connections}
-            role={selectedRole}
-            editRole={handleEditRoleConfirm}
-          ></EditRoleForm>
-        </Modal>
-      )}
       {showAddModal && (
         <Modal setVisible={setShowAddModal}>
           <RoleForm

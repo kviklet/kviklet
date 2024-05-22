@@ -75,7 +75,7 @@ class UserService(
     }
 
     @Transactional
-    @Policy(Permission.USER_EDIT)
+    @Policy(Permission.USER_CREATE)
     fun deleteUser(userId: UserId) {
         userAdapter.deleteUser(userId.toString())
     }
