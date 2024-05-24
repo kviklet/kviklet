@@ -26,7 +26,7 @@ class InitialUserInitializer(
         val role = RoleEntity(
             name = "Admin role",
             description = "This role gives admin permissions on everything",
-            policies = setOf(
+            policies = mutableSetOf(
                 PolicyEntity(
                     action = "*",
                     effect = PolicyEffect.ALLOW,
@@ -43,7 +43,7 @@ class InitialUserInitializer(
         val role = RoleEntity(
             name = "Developer Role",
             description = "This role gives permission to create, review and execute requests",
-            policies = setOf(
+            policies = mutableSetOf(
                 PolicyEntity(
                     action = Permission.DATASOURCE_CONNECTION_GET.getPermissionString(),
                     effect = PolicyEffect.ALLOW,

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController
 data class CreateRoleRequest(
     val name: String,
     val description: String,
+    val policies: Set<PolicyPayload>?,
 )
 
 data class UpdateRoleRequest(
@@ -90,8 +91,8 @@ fun permissionsToPermissionString(policies: Set<Policy>): String {
 @RequestMapping("/roles")
 class RoleController(private val roleService: RoleService) {
 
-    @GetMapping("/:id")
-    fun getRole(id: String): RoleResponse {
+    @GetMapping("/{id}")
+    fun getRole(@PathVariable id: String): RoleResponse {
         val role = roleService.getRole(RoleId(id))
         return RoleResponse.fromDto(role)
     }
@@ -110,6 +111,14 @@ class RoleController(private val roleService: RoleService) {
         val savedRole = roleService.createRole(
             name = createRoleRequest.name,
             description = createRoleRequest.description,
+            policies = createRoleRequest.policies?.map {
+                Policy(
+                    id = it.id,
+                    action = it.action,
+                    effect = it.effect,
+                    resource = it.resource,
+                )
+            }?.toSet(),
         )
         return RoleResponse.fromDto(savedRole)
     }
@@ -136,8 +145,8 @@ class RoleController(private val roleService: RoleService) {
         return RoleResponse.fromDto(updatedRole)
     }
 
-    @DeleteMapping("/:id")
-    fun deleteRole(id: String) {
+    @DeleteMapping("/{id}")
+    fun deleteRole(@PathVariable id: String) {
         roleService.deleteRole(RoleId(id))
     }
 }

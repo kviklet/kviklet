@@ -25,15 +25,15 @@ class RoleEntity : BaseEntity {
     @Column(nullable = false)
     lateinit var description: String
 
-    @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)
     @JoinColumn(name = "role_id")
-    var policies: Set<PolicyEntity> = HashSet()
+    var policies: MutableSet<PolicyEntity> = HashSet()
 
     constructor(
         id: String? = null,
         name: String,
         description: String,
-        policies: Set<PolicyEntity> = emptySet<PolicyEntity>().toMutableSet(),
+        policies: MutableSet<PolicyEntity> = emptySet<PolicyEntity>().toMutableSet(),
     ) : this() {
         this.id = id
         this.name = name
@@ -77,6 +77,13 @@ class RoleAdapter(
             RoleEntity(
                 name = role.name,
                 description = role.description,
+                policies = role.policies.map {
+                    PolicyEntity(
+                        action = it.action,
+                        effect = it.effect,
+                        resource = it.resource,
+                    )
+                }.toMutableSet(),
             ),
         ).toDto()
     }
@@ -86,21 +93,46 @@ class RoleAdapter(
     }
 
     fun update(role: Role): Role {
-        val savedRole = roleRepository.save(
-            RoleEntity(
-                id = role.getId(),
-                name = role.name,
-                description = role.description,
-                policies = role.policies.map {
-                    PolicyEntity(
-                        id = it.id,
-                        action = it.action,
-                        effect = it.effect,
-                        resource = it.resource,
-                    )
-                }.toMutableSet(),
-            ),
-        )
+        val existingRoleEntity = roleRepository.findById(role.getId()!!).orElseThrow {
+            EntityNotFound(
+                "Role not found",
+                "Role with id ${role.getId()} does not exist",
+            )
+        }
+
+        existingRoleEntity.name = role.name
+        existingRoleEntity.description = role.description
+        // Create a map of existing policies based on their unique fields
+        val existingPoliciesMap = existingRoleEntity.policies.associateBy { Triple(it.action, it.effect, it.resource) }
+        val newPoliciesMap = role.policies.associateBy { Triple(it.action, it.effect, it.resource) }
+
+        // Identify policies to remove
+        val policiesToRemove = existingRoleEntity.policies.filter {
+            !newPoliciesMap.containsKey(Triple(it.action, it.effect, it.resource))
+        }
+
+        // Identify policies to add
+        val policiesToAdd = role.policies.filter {
+            !existingPoliciesMap.containsKey(
+                Triple(it.action, it.effect, it.resource),
+            )
+        }
+            .map {
+                PolicyEntity(
+                    id = it.id,
+                    action = it.action,
+                    effect = it.effect,
+                    resource = it.resource,
+                )
+            }
+
+        // Remove old policies
+        existingRoleEntity.policies.removeAll(policiesToRemove)
+
+        // Add new policies
+        existingRoleEntity.policies.addAll(policiesToAdd)
+
+        val savedRole = roleRepository.save(existingRoleEntity)
         return savedRole.toDto()
     }
 

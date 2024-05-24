@@ -64,7 +64,7 @@ class TestDataInitializer(
         val role = RoleEntity(
             name = "Test Role",
             description = "This is a test role",
-            policies = setOf(
+            policies = mutableSetOf(
                 PolicyEntity(
                     action = "*",
                     effect = PolicyEffect.ALLOW,
@@ -81,7 +81,7 @@ class TestDataInitializer(
         val role = RoleEntity(
             name = "Developer Role",
             description = "This role gives permission to create, review and execute requests",
-            policies = setOf(
+            policies = mutableSetOf(
                 PolicyEntity(
                     action = Permission.DATASOURCE_CONNECTION_GET.getPermissionString(),
                     effect = PolicyEffect.ALLOW,

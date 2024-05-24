@@ -167,14 +167,14 @@ const UserRow = (props: {
 
   return (
     <div className="flex flex-row">
-      <div className="flex w-full flex-row justify-between p-2 shadow-sm">
-        <div className="flex w-1/3 flex-row">
+      <div className="grid w-full grid-cols-2 p-2 shadow-sm md:grid-cols-3">
+        <div className="flex flex-row">
           <div className="font-bold">{props.user.fullName}</div>
         </div>
-        <div className="flex w-1/3 flex-row text-slate-400">
+        <div className="flex flex-row text-slate-400">
           <div>{props.user.email}</div>
         </div>
-        <div className="flex w-1/3 flex-row flex-wrap justify-end">
+        <div className="flex flex-row flex-wrap justify-end">
           {props.user.roles.map((role) => {
             return (
               <ColorfulLabel
@@ -249,8 +249,8 @@ const UserSettings = () => {
           <Success>{success}</Success>
         </div>
       )}
-      <div className="mx-auto flex w-2/3 flex-col justify-between">
-        <div className="min-h-60 flex flex-col">
+      <div className="mx-auto flex flex-col justify-between">
+        <div className="flex flex-col">
           {users.map((user) => (
             <UserRow
               user={user}

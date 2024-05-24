@@ -8,11 +8,10 @@ const policyResponseSchema = z.object({
   resource: z.string(),
 });
 
-const policyPatchSchema = policyResponseSchema.omit({
+const policyUpdatePayloadSchema = policyResponseSchema.omit({
   id: true,
 });
 
-// Define the schema for the user response
 const roleResponseSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -20,26 +19,25 @@ const roleResponseSchema = z.object({
   policies: z.array(policyResponseSchema),
 });
 
-type PolicyPatch = z.infer<typeof policyPatchSchema>;
-
-const createRoleRequestSchema = z.object({
-  name: z.string(),
-  description: z.string().nullable(),
-});
+type PolicyUpdatePayload = z.infer<typeof policyUpdatePayloadSchema>;
 
 const rolesResponseSchema = z.object({
   roles: roleResponseSchema.array(),
 });
 
-const rolePatchSchema = z.object({
+const roleUpdatePayloadSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string().nullable(),
-  policies: z.array(policyPatchSchema),
+  policies: z.array(policyUpdatePayloadSchema),
+});
+
+const createRoleRequestSchema = roleUpdatePayloadSchema.omit({
+  id: true,
 });
 
 type RoleResponse = z.infer<typeof roleResponseSchema>;
-type RolePatch = z.infer<typeof rolePatchSchema>;
+type RoleUpdatePayload = z.infer<typeof roleUpdatePayloadSchema>;
 type PolicyResponse = z.infer<typeof policyResponseSchema>;
 type CreateRoleRequest = z.infer<typeof createRoleRequestSchema>;
 
@@ -51,6 +49,15 @@ const getRoles = async (): Promise<RoleResponse[]> => {
 
   const data: unknown = await response.json();
   return rolesResponseSchema.parse(data).roles;
+};
+
+const getRole = async (id: string): Promise<RoleResponse> => {
+  const response = await fetch(`${baseUrl}/roles/${id}`, {
+    method: "GET",
+    credentials: "include",
+  });
+  const data: unknown = await response.json();
+  return roleResponseSchema.parse(data);
 };
 
 const createRole = async (role: CreateRoleRequest): Promise<RoleResponse> => {
@@ -76,7 +83,7 @@ const removeRole = async (id: string): Promise<void> => {
 
 const patchRole = async (
   id: string,
-  role: RolePatch,
+  role: RoleUpdatePayload,
 ): Promise<RoleResponse> => {
   const response = await fetch(`${baseUrl}/roles/${id}`, {
     method: "PATCH",
@@ -90,11 +97,19 @@ const patchRole = async (
   return roleResponseSchema.parse(data);
 };
 
-export { roleResponseSchema, getRoles, createRole, patchRole, removeRole };
+export {
+  roleResponseSchema,
+  getRoles,
+  createRole,
+  patchRole,
+  removeRole,
+  getRole,
+};
+
 export type {
   RoleResponse,
   PolicyResponse,
   CreateRoleRequest,
-  PolicyPatch,
-  RolePatch,
+  PolicyUpdatePayload,
+  RoleUpdatePayload,
 };
