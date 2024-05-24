@@ -14,11 +14,9 @@ export default function RoleDetailsView() {
       read: false,
       create: false,
       editSelf: false,
-      editRoles: false,
     },
     rolePolicy: {
       read: false,
-      edit: false,
     },
     connectionPolicies: [],
   };

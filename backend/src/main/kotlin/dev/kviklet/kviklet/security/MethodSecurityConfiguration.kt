@@ -211,7 +211,5 @@ class AuthorizationManagerInterceptor(
         } else {
             throw IllegalStateException("Only one SecuredDomainId is allowed per method.")
         }
-
-        //        this.eventPublisher.publishAuthorizationEvent<MethodInvocation>(this.authentication, mi, decision)
     }
 }
