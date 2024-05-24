@@ -39,11 +39,6 @@ const userPolicyMetadata: Record<string, { label: string; tooltip: string }> = {
     tooltip:
       "Allows editing own profile. Necessary to change password, email and displayName. Usually you want this permission on everyone. SSO Users cannot change their email and can't set a password.",
   },
-  editRoles: {
-    label: "Manage Roles",
-    tooltip:
-      "Allows managing user roles. This is equivalent to admin permissions, since the user can edit their own roles and give themselves the admin role.",
-  },
 };
 
 const rolePolicyMetadata: Record<string, { label: string; tooltip: string }> = {
@@ -172,8 +167,7 @@ const RoleForm = ({
                       `userPolicy.${field}` as
                         | "userPolicy.read"
                         | "userPolicy.create"
-                        | "userPolicy.editSelf"
-                        | "userPolicy.editRoles",
+                        | "userPolicy.editSelf",
                     )}
                     type="checkbox"
                   />
@@ -198,11 +192,7 @@ const RoleForm = ({
                   </label>
                   <input
                     className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
-                    {...register(
-                      `rolePolicy.${field}` as
-                        | "rolePolicy.read"
-                        | "rolePolicy.edit",
-                    )}
+                    {...register(`rolePolicy.${field}` as "rolePolicy.read")}
                     type="checkbox"
                   />
                 </div>

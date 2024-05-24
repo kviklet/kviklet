@@ -11,12 +11,10 @@ const UserPolicySchema = z.object({
   read: z.boolean(),
   create: z.boolean(),
   editSelf: z.boolean(),
-  editRoles: z.boolean(),
 });
 
 const RolePolicy = z.object({
   read: z.boolean(),
-  edit: z.boolean(),
 });
 
 const ConnectionPolicy = z.object({
@@ -68,12 +66,10 @@ const transformRole = (role: RoleResponse): Role => {
     read: false,
     create: false,
     editSelf: false,
-    editRoles: false,
   };
 
   const rolePolicy = {
     read: false,
-    edit: false,
   };
 
   const connectionPoliciesMap: {
@@ -99,12 +95,10 @@ const transformRole = (role: RoleResponse): Role => {
         if (resourceAction === "get") userPolicy.read = true;
         if (resourceAction === "create") userPolicy.create = true;
         if (resourceAction === "edit") userPolicy.editSelf = true;
-        if (resourceAction === "edit_roles") userPolicy.editRoles = true;
         break;
 
       case "role":
         if (resourceAction === "get") rolePolicy.read = true;
-        if (resourceAction === "edit") rolePolicy.edit = true;
         break;
 
       case "datasource_connection": {
@@ -206,24 +200,10 @@ const transformToPayload = (
       resource: "*",
     });
   }
-  if (role.userPolicy.editRoles) {
-    policies.push({
-      action: "user:edit_roles",
-      effect: "ALLOW",
-      resource: "*",
-    });
-  }
 
   if (role.rolePolicy.read) {
     policies.push({
       action: "role:get",
-      effect: "ALLOW",
-      resource: "*",
-    });
-  }
-  if (role.rolePolicy.edit) {
-    policies.push({
-      action: "role:edit",
       effect: "ALLOW",
       resource: "*",
     });

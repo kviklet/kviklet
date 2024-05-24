@@ -49,60 +49,53 @@ const Table = ({
     <div className="flex w-full flex-col">
       <div className="overflow-x-auto">
         <div className="inline-block min-w-full align-middle">
-          <div className="overflow-hidden border-b border-slate-200 shadow sm:rounded-lg">
-            <table className="min-w-full table-auto divide-y divide-slate-200">
-              <thead className="bg-slate-50 text-left text-slate-700 dark:bg-slate-900 dark:text-slate-200">
-                <tr>
-                  <th className="px-6 py-3 text-xs font-medium uppercase tracking-wider">
-                    Role Name
-                  </th>
-                  <th className="px-6 py-3 text-xs font-medium uppercase tracking-wider">
-                    Description
-                  </th>
-                  <th className="relative px-6 py-3">
-                    <span className="sr-only">Edit</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="overflow-hidden border-b border-slate-200 shadow dark:border-slate-800 sm:rounded-lg">
+            <div className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+              <div className="grid grid-cols-3 bg-slate-50 text-left text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                <div className="px-6 py-3 text-xs font-medium uppercase tracking-wider">
+                  Role Name
+                </div>
+                <div className="px-6 py-3 text-xs font-medium uppercase tracking-wider">
+                  Description
+                </div>
+                <div className="relative px-6 py-3">
+                  <span className="sr-only">Edit</span>
+                </div>
+              </div>
+              <div>
                 {roles.map((role) => (
-                  <tr key={role.id}>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900 dark:text-slate-50 ">
-                      <Link
-                        to={`/settings/roles/${role.id}`}
-                        className="block hover:bg-slate-50 dark:hover:bg-slate-800"
+                  <Link
+                    to={`/settings/roles/${role.id}`}
+                    key={role.id}
+                    className="group grid grid-cols-3 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    <div className="whitespace-nowrap px-6 py-4 text-sm font-medium text-slate-900 dark:text-slate-50">
+                      {role.name}
+                    </div>
+                    <div className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-200">
+                      {role.description}
+                    </div>
+                    <div className="flex items-center justify-end whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleDeleteRole(role);
+                        }}
+                        className="text-slate-400 hover:text-slate-900"
                       >
-                        {role.name}
-                      </Link>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-200">
-                      <Link
-                        to={`/settings/roles/${role.id}`}
-                        className="block hover:bg-slate-50 dark:hover:bg-slate-800"
-                      >
-                        {role.description}
-                      </Link>
-                    </td>
-                    <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                      <div className="flex flex-row">
-                        <button
-                          onClick={() => handleDeleteRole(role)}
-                          className="text-slate-400 hover:text-slate-900"
-                        >
-                          <FontAwesomeIcon icon={solid("trash")} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                        <FontAwesomeIcon icon={solid("trash")} />
+                      </button>
+                    </div>
+                  </Link>
                 ))}
-              </tbody>
-            </table>
-          </div>
-          {roles.length === 0 && (
-            <div className="flex flex-row items-center justify-center p-5">
-              <div className="text-slate-400">No roles found</div>
+              </div>
             </div>
-          )}
+            {roles.length === 0 && (
+              <div className="flex flex-row items-center justify-center p-5">
+                <div className="text-slate-400">No roles found</div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

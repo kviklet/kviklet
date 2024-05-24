@@ -1,7 +1,6 @@
-import { describe, it, expect } from "vitest"; // Adjust the path accordingly
+import { describe, it, expect } from "vitest";
 import { transformRole, transformToPayload } from "./roles";
 
-// Mock data for testing
 const mockRoleResponse = {
   id: "w66tvnQn2vHkyZ6xQBNLXj",
   name: "blabla",
@@ -43,11 +42,9 @@ const expectedTransformedRole = {
     read: false,
     create: false,
     editSelf: false,
-    editRoles: false,
   },
   rolePolicy: {
     read: true,
-    edit: false,
   },
   connectionPolicies: [
     {
@@ -71,11 +68,9 @@ const mockRole = {
     read: false,
     create: false,
     editSelf: false,
-    editRoles: false,
   },
   rolePolicy: {
     read: true,
-    edit: false,
   },
   connectionPolicies: [
     {
