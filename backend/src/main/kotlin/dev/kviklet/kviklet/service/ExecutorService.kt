@@ -1,6 +1,8 @@
 package dev.kviklet.kviklet.service
 
 import com.zaxxer.hikari.HikariDataSource
+import dev.kviklet.kviklet.security.Permission
+import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.security.Resource
 import dev.kviklet.kviklet.security.SecuredDomainObject
 import dev.kviklet.kviklet.service.dto.ErrorResultLog
@@ -71,6 +73,7 @@ data class ColumnInfo(
 @Service
 class ExecutorService() {
 
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
     fun execute(
         executionRequestId: ExecutionRequestId,
         connectionString: String,

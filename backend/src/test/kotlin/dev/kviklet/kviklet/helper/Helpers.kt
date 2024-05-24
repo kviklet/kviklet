@@ -7,8 +7,8 @@ import dev.kviklet.kviklet.db.ReviewPayload
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.db.UserId
-import dev.kviklet.kviklet.security.UserService
 import dev.kviklet.kviklet.service.RoleService
+import dev.kviklet.kviklet.service.UserService
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId

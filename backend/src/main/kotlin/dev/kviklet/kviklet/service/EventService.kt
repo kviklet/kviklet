@@ -7,6 +7,8 @@ import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.Payload
 import dev.kviklet.kviklet.db.QueryResultLogPayload
 import dev.kviklet.kviklet.db.UpdateResultLogPayload
+import dev.kviklet.kviklet.security.Permission
+import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.service.dto.ErrorResultLog
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventId
@@ -24,12 +26,14 @@ class EventService(
     private val eventAdapter: EventAdapter,
 ) {
 
+    @Policy(Permission.EXECUTION_REQUEST_GET)
     @Transactional
     fun saveEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Event {
         val (executionRequest, event) = executionRequestAdapter.addEvent(id, authorId, payload)
         return event
     }
 
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
     @Transactional
     fun addResultLogs(id: EventId, resultLogs: List<ResultLog>): Event {
         val event = eventAdapter.getEvent(id)
@@ -42,6 +46,7 @@ class EventService(
         return eventAdapter.updateEvent(id, updatedEvent.toPayload())
     }
 
+    @Policy(Permission.EXECUTION_REQUEST_GET)
     fun getAllExecutions(): List<ExecuteEvent> {
         return eventAdapter.getExecutions()
     }

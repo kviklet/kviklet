@@ -17,6 +17,7 @@ class RoleService(private val roleAdapter: RoleAdapter) {
         return savedRole
     }
 
+    @dev.kviklet.kviklet.security.Policy(Permission.ROLE_EDIT)
     @Transactional
     fun updateRole(
         id: RoleId,

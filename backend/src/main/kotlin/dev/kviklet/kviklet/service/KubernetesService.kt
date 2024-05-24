@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class KubernetesService(
-    val kubernetesApi: KubernetesApi,
+    private val kubernetesApi: KubernetesApi,
 ) {
 
     @Policy(Permission.EXECUTION_REQUEST_EDIT, checkIsPresentOnly = true)

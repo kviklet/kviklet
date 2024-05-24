@@ -50,10 +50,10 @@ import java.util.concurrent.CompletableFuture
 
 @Service
 class ExecutionRequestService(
-    val executionRequestAdapter: ExecutionRequestAdapter,
-    val executorService: ExecutorService,
-    val eventService: EventService,
-    val kubernetesApi: KubernetesApi,
+    private val executionRequestAdapter: ExecutionRequestAdapter,
+    private val executorService: ExecutorService,
+    private val eventService: EventService,
+    private val kubernetesApi: KubernetesApi,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val proxies = mutableListOf<ExecutionProxy>()
@@ -191,7 +191,7 @@ class ExecutionRequestService(
         CommentPayload(comment = request.comment),
     )
 
-    fun resolveReviewStatus(events: Set<Event>, reviewConfig: ReviewConfig): ReviewStatus {
+    private fun resolveReviewStatus(events: Set<Event>, reviewConfig: ReviewConfig): ReviewStatus {
         val numReviews = events.filter {
             it.type == EventType.REVIEW && it is ReviewEvent && it.action == ReviewAction.APPROVE
         }.groupBy { it.author.getId() }.count()
@@ -359,8 +359,8 @@ class ExecutionRequestService(
         }
     }
 
-    // @Policy(Permission.EXECUTION_REQUEST_GET)
     @Transactional
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
     fun proxy(executionRequestId: ExecutionRequestId, userDetails: UserDetailsWithId): ExecutionProxy {
         cleanUpProxies()
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(executionRequestId)
@@ -417,7 +417,7 @@ class ExecutionRequestService(
         return proxy
     }
 
-    fun generateRandomPassword(length: Int): String {
+    private fun generateRandomPassword(length: Int): String {
         val characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
         val secureRandom = SecureRandom()
         val password = StringBuilder(length)

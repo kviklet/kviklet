@@ -20,7 +20,7 @@ class EntityNotFound(override val message: String, val detail: String) : Excepti
 
 @Service
 class ConnectionService(
-    val connectionAdapter: ConnectionAdapter,
+    private val connectionAdapter: ConnectionAdapter,
 ) {
 
     @Transactional
