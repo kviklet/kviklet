@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.security
 
+import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.service.IdResolver
 import org.aopalliance.aop.Advice
 import org.aopalliance.intercept.MethodInterceptor
@@ -94,7 +95,9 @@ class MethodSecurityConfig(
 }
 
 @Component
-class MyAuthorizationManager {
+class MyAuthorizationManager(
+    val userAdapter: UserAdapter,
+) {
     fun check(
         authentication: Supplier<Authentication?>,
         invocation: MethodInvocation,
@@ -104,24 +107,30 @@ class MyAuthorizationManager {
         // If there is no SecurityContext the method has been called from within the application
         // or from tests without a request, therefore we allow it
         val auth = authentication.get() ?: return AuthorizationDecision(true)
-        val policies = auth.authorities.filterIsInstance<PolicyGrantedAuthority>()
 
         var permissionToCheck: Permission = policyAnnotation.permission
-        if (policyAnnotation.checkIsPresentOnly) {
-            if (policies.vote(permissionToCheck).isAllowed()) {
-                return AuthorizationDecision(true)
-            }
-        }
-        if ((returnObject !is SecuredDomainObject) && (returnObject != null)) {
-            throw Exception("Expected SecuredDomainObject, got $returnObject.")
-        }
-        var securedObject: SecuredDomainObject? = returnObject as SecuredDomainObject?
 
         val userDetailsWithId = when (auth.principal) {
             is UserDetailsWithId -> auth.principal as UserDetailsWithId
             is OidcUser -> (auth.principal as CustomOidcUser).getUserDetails()
             else -> throw RuntimeException("Unknown principal type: ${auth.principal.javaClass}")
         }
+
+        val user = userAdapter.findById(userDetailsWithId.id)
+
+        val policies = user.roles.map { role -> role.policies.map { PolicyGrantedAuthority(it) } }.flatten()
+
+        if (policyAnnotation.checkIsPresentOnly) {
+            if (policies.vote(permissionToCheck).isAllowed()) {
+                return AuthorizationDecision(true)
+            }
+        }
+
+        if ((returnObject !is SecuredDomainObject) && (returnObject != null)) {
+            throw Exception("Expected SecuredDomainObject, got $returnObject.")
+        }
+
+        var securedObject: SecuredDomainObject? = returnObject as SecuredDomainObject?
 
         do {
             if (!policies.vote(permissionToCheck, securedObject).isAllowed()) {

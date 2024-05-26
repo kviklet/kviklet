@@ -2,7 +2,7 @@ package dev.kviklet.kviklet.controller
 
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserId
-import dev.kviklet.kviklet.security.UserService
+import dev.kviklet.kviklet.service.UserService
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
@@ -95,7 +95,8 @@ class UserController(
 
     @GetMapping("/")
     fun getUsers(): UsersResponse {
-        return UsersResponse.fromUsers(userService.getUsers())
+        val users = userService.getUsers()
+        return UsersResponse.fromUsers(users)
     }
 
     @PatchMapping("/{id}")

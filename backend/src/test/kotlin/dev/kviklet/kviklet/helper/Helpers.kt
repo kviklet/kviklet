@@ -7,8 +7,8 @@ import dev.kviklet.kviklet.db.ReviewPayload
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.db.UserId
-import dev.kviklet.kviklet.security.UserService
 import dev.kviklet.kviklet.service.RoleService
+import dev.kviklet.kviklet.service.UserService
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
@@ -39,11 +39,12 @@ class UserHelper(
 
     @Transactional
     fun createUser(
-        permissions: List<String>,
+        permissions: List<String> = listOf("*"),
         resources: List<String>? = null,
         email: String? = null,
         password: String = "123456",
         fullName: String? = null,
+        policies: Set<Policy> = emptySet(),
     ): User {
         val userEmail = email ?: "user-$userCount@example.com"
         val userFullName = fullName ?: "User $userCount"
@@ -52,7 +53,13 @@ class UserHelper(
             password = password,
             fullName = userFullName,
         )
-        val role = roleHelper.createRole(permissions, resources, "$userFullName Role", "$userFullName users role")
+        val role = roleHelper.createRole(
+            permissions,
+            resources,
+            "$userFullName Role",
+            "$userFullName users role",
+            policies,
+        )
         val updatedUser = userService.updateUserWithRoles(UserId(user.getId()!!), roles = listOf(role.getId()!!))
         userCount++
         return updatedUser
@@ -93,13 +100,21 @@ class UserHelper(
 class RoleHelper(private val roleService: RoleService) {
     @Transactional
     fun createRole(
-        permissions: List<String>,
+        permissions: List<String> = listOf("*"),
         resources: List<String>? = null,
         name: String = "Test Role",
         description: String = "This is a test role",
+        policies: Set<Policy> = emptySet(),
     ): Role {
         val role = roleService.createRole(name, description)
-        val policies = permissions.mapIndexed { index, it ->
+        if (policies.isNotEmpty()) {
+            roleService.updateRole(
+                id = RoleId(role.getId()!!),
+                policies = policies,
+            )
+            return role
+        }
+        val mappedPolicies = permissions.mapIndexed { index, it ->
             Policy(
                 action = it,
                 effect = PolicyEffect.ALLOW,
@@ -108,7 +123,7 @@ class RoleHelper(private val roleService: RoleService) {
         }.toSet()
         roleService.updateRole(
             id = RoleId(role.getId()!!),
-            policies = policies,
+            policies = mappedPolicies,
         )
         return role
     }

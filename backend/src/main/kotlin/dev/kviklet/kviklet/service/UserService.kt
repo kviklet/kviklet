@@ -1,9 +1,11 @@
-package dev.kviklet.kviklet.security
+package dev.kviklet.kviklet.service
 
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.db.UserId
+import dev.kviklet.kviklet.security.Permission
+import dev.kviklet.kviklet.security.Policy
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional

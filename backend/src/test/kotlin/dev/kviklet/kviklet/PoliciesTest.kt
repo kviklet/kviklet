@@ -6,8 +6,8 @@ import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.security.Permission
-import dev.kviklet.kviklet.security.UserService
 import dev.kviklet.kviklet.service.RoleService
+import dev.kviklet.kviklet.service.UserService
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.RoleId

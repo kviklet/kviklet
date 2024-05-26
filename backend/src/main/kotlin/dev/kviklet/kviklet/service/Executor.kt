@@ -69,7 +69,7 @@ data class ColumnInfo(
 )
 
 @Service
-class ExecutorService() {
+class Executor() {
 
     fun execute(
         executionRequestId: ExecutionRequestId,
