@@ -167,8 +167,6 @@ class AuthorizationManagerInterceptor(
     override fun getPointcut(): Pointcut = this.pointcut
 
     override fun invoke(invocation: MethodInvocation): Any? {
-        println("Invoking...")
-        println("Invocation: ${invocation.method.name}")
         attemptPreAuthorization(invocation)
         val returnedObject = invocation.proceed()
         return attemptPostAuthorization(invocation, returnedObject)

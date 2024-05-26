@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.security
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import dev.kviklet.kviklet.TestFixtures.createDatasourceConnectionRequest
 import dev.kviklet.kviklet.TestFixtures.createExecutionRequestRequest
 import dev.kviklet.kviklet.TestFixtures.updateExecutionRequestRequest
@@ -9,61 +10,78 @@ import dev.kviklet.kviklet.controller.ExecutionRequestController
 import dev.kviklet.kviklet.controller.ExecutionRequestResponse
 import dev.kviklet.kviklet.db.ConnectionRepository
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
-import dev.kviklet.kviklet.db.UserEntity
+import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.dto.Policy
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.MvcResult
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.lang.reflect.Field
 import java.util.stream.Stream
 
 @ActiveProfiles("test")
+@SpringBootTest
+@AutoConfigureMockMvc
 class ExecutionRequestSecurityTest(
     @Autowired val connectionController: ConnectionController,
     @Autowired val executionRequestController: ExecutionRequestController,
     @Autowired val executionRequestRepository: ExecutionRequestRepository,
     @Autowired val connectionRepository: ConnectionRepository,
-) : SecurityTestBase() {
+) {
 
     private lateinit var executionRequest: ExecutionRequestResponse
 
-    @BeforeEach
-    fun setUp() {
-        asAdmin {
-            connectionController.createConnection(
-                createDatasourceConnectionRequest("db1-conn1"),
-            )
-            executionRequest = executionRequestController
-                .create(createExecutionRequestRequest("db1-conn1"), testUserDetails)
-        }
+    @Autowired
+    private lateinit var userHelper: UserHelper
+
+    @Autowired
+    lateinit var mockMvc: MockMvc
+
+    @Autowired
+    lateinit var objectMapper: ObjectMapper
+
+    fun setupConnectionAndRequest(userDetailsWithId: UserDetailsWithId) {
+        connectionController.createConnection(
+            createDatasourceConnectionRequest("db1-conn1"),
+        )
+        executionRequest = executionRequestController
+            .create(createExecutionRequestRequest("db1-conn1"), userDetailsWithId)
     }
 
     @AfterEach
     fun tearDown() {
         connectionRepository.deleteAllInBatch()
         executionRequestRepository.deleteAllInBatch()
+        userHelper.deleteAll()
     }
 
     @ParameterizedTest
     @MethodSource
-    fun testUpdateSuccessful(policies: List<Policy>, userId: String?) {
-        val request = updateExecutionRequestRequest("select 2")
+    fun testUpdateSuccessful(policies: List<Policy>) {
+        val testUser = userHelper.createUser(policies = policies.toSet())
         val userDetails = UserDetailsWithId(
-            id = userId ?: testUserDetails.id,
-            email = "user2@example.com",
-            password = "foobar",
+            id = testUser.getId()!!,
+            email = testUser.email,
+            password = testUser.password,
             authorities = emptyList(),
         )
+        val cookie = userHelper.login(mockMvc = mockMvc)
+        setupConnectionAndRequest(userDetails)
+        val request = updateExecutionRequestRequest("select 2")
 
         val response = mockMvc.perform(
-            patch("/execution-requests/${executionRequest.id}").content(request).withContext(policies, userDetails),
+            patch("/execution-requests/${executionRequest.id}").content(request).cookie(cookie),
         ).andExpect(status().isOk)
             .andReturn().parse<DatasourceExecutionRequestDetailResponse>()
 
@@ -79,23 +97,20 @@ class ExecutionRequestSecurityTest(
 
     @ParameterizedTest
     @MethodSource
-    fun testUpdateForbidden(policies: List<Policy>, userId: String?) {
-        val user = UserEntity(
-            email = "user2@example.com",
-            fullName = "User 2",
-            password = passwordEncoder.encode("foobar"),
-        )
-        val savedUser = userRepository.saveAndFlush(user)
-        val request = updateExecutionRequestRequest("select 2")
+    fun testUpdateForbidden(policies: List<Policy>) {
+        val testUser = userHelper.createUser(policies = policies.toSet())
         val userDetails = UserDetailsWithId(
-            id = savedUser.id!!,
-            email = "user2@example.com",
-            password = "foobar",
+            id = testUser.getId()!!,
+            email = testUser.email,
+            password = testUser.password,
             authorities = emptyList(),
         )
+        setupConnectionAndRequest(userDetails)
+        val cookie = userHelper.login(mockMvc = mockMvc)
+        val request = updateExecutionRequestRequest("select 2")
 
         mockMvc.perform(
-            patch("/execution-requests/${executionRequest.id}").content(request).withContext(policies, userDetails),
+            patch("/execution-requests/${executionRequest.id}").content(request).cookie(cookie),
         ).andExpect(status().isForbidden)
 
         executionRequestRepository.findById(executionRequest.id.toString()).get().statement shouldBe "select 1"
@@ -104,14 +119,13 @@ class ExecutionRequestSecurityTest(
     companion object {
         @JvmStatic
         fun testUpdateSuccessful(): Stream<Arguments> = Stream.of(
-            Arguments.of(listOf(allow("*", "*")), null),
+            Arguments.of(listOf(allow("*", "*"))),
             Arguments.of(
                 listOf(
                     allow("datasource_connection:get", "*"),
                     allow("execution_request:edit", "*"),
                     allow("execution_request:get", "*"),
                 ),
-                null,
             ),
             Arguments.of(
                 listOf(
@@ -119,16 +133,22 @@ class ExecutionRequestSecurityTest(
                     allow("execution_request:edit", "*"),
                     allow("execution_request:get", "*"),
                 ),
-                null,
             ),
         )
 
         @JvmStatic
         fun testUpdateForbidden(): Stream<Arguments> = Stream.of(
-            Arguments.of(listOf(allow("*", "*")), "userid2"),
-            Arguments.of(listOf(allow("datasource_connection:get", "db2-conn1"), allow("datasource:get", "db2")), null),
-            Arguments.of(listOf(allow("datasource_connection:get", "*"), allow("datasource:get", "db2")), null),
-            Arguments.of(listOf(allow("datasource_connection:get", "db2-conn1"), allow("datasource:get", "*")), null),
+            Arguments.of(listOf(allow("datasource_connection:get", "db2-conn1"), allow("datasource:get", "db2"))),
+            Arguments.of(listOf(allow("datasource_connection:get", "*"), allow("datasource:get", "db2"))),
+            Arguments.of(listOf(allow("datasource_connection:get", "db2-conn1"), allow("datasource:get", "*"))),
         )
     }
+
+    final inline fun <reified T> MvcResult.parse(): T {
+        return objectMapper.readValue(response.contentAsString, T::class.java)
+    }
+
+    final inline fun <reified T> MockHttpServletRequestBuilder.content(obj: T) =
+        this.contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(obj))
 }

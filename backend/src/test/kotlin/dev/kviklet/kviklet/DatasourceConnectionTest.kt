@@ -11,7 +11,8 @@ import dev.kviklet.kviklet.controller.UserResponse
 import dev.kviklet.kviklet.db.ConnectionRepository
 import dev.kviklet.kviklet.db.EventRepository
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
-import dev.kviklet.kviklet.security.WithAdminUser
+import dev.kviklet.kviklet.helper.UserHelper
+import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.ExecutionRequestService
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DatasourceType
@@ -28,7 +29,6 @@ import org.springframework.test.web.servlet.MockMvc
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@WithAdminUser
 @ActiveProfiles("test")
 class DatasourceConnectionTest(
     @Autowired val mockMvc: MockMvc,
@@ -38,17 +38,31 @@ class DatasourceConnectionTest(
     @Autowired val executionRequestController: ExecutionRequestController,
     @Autowired val datasourceConnectionController: ConnectionController,
     @Autowired val executionRequestService: ExecutionRequestService,
-) : TestBase() {
+
+) {
+
+    @Autowired
+    private lateinit var userHelper: UserHelper
 
     @AfterEach
     fun tearDownRequests() {
         eventRepository.deleteAllInBatch()
         executionRequestRepository.deleteAllInBatch()
         connectionRepository.deleteAllInBatch()
+        userHelper.deleteAll()
     }
 
     @Test
     fun `test full setup`() {
+        val testUser = userHelper.createUser(listOf("*"))
+
+        val testUserDetails = UserDetailsWithId(
+            id = testUser.getId()!!,
+            email = testUser.email,
+            password = testUser.password,
+            authorities = emptyList(),
+        )
+
         val connection = datasourceConnectionController.createConnection(
             CreateDatasourceConnectionRequest(
                 id = "db-conn",
@@ -73,7 +87,7 @@ class DatasourceConnectionTest(
                 readOnly = false,
                 type = RequestType.SingleExecution,
             ),
-            testUserDetails,
+            userDetails = testUserDetails,
         )
 
         executionRequestController.createComment(

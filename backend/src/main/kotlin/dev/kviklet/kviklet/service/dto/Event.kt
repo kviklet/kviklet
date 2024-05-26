@@ -48,7 +48,13 @@ abstract class Event(
 
     override fun getDomainObjectType(): Resource = Resource.EVENT
 
-    override fun getRelated(resource: Resource): SecuredDomainObject? = request
+    override fun getRelated(resource: Resource): SecuredDomainObject? {
+        return when (resource) {
+            Resource.EXECUTION_REQUEST -> request
+            Resource.DATASOURCE_CONNECTION -> request.request.connection
+            else -> null
+        }
+    }
     override fun hashCode() = Objects.hash(eventId)
 
     companion object {

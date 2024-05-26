@@ -51,7 +51,7 @@ import java.util.concurrent.CompletableFuture
 @Service
 class ExecutionRequestService(
     private val executionRequestAdapter: ExecutionRequestAdapter,
-    private val executorService: ExecutorService,
+    private val executor: Executor,
     private val eventService: EventService,
     private val kubernetesApi: KubernetesApi,
 ) {
@@ -228,7 +228,7 @@ class ExecutionRequestService(
             ),
         )
 
-        val result = executorService.execute(
+        val result = executor.execute(
             executionRequestId = id,
             connectionString = connection.getConnectionString(),
             username = connection.username,
@@ -333,7 +333,7 @@ class ExecutionRequestService(
             parsedStatements.joinToString(";") { "EXPLAIN $it" }
         }
 
-        val result = executorService.execute(
+        val result = executor.execute(
             executionRequestId = id,
             connectionString = connection.getConnectionString(),
             username = connection.username,

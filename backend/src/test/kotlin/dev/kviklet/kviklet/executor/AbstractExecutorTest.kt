@@ -2,7 +2,7 @@ package dev.kviklet.kviklet.executor
 
 import dev.kviklet.kviklet.service.ColumnInfo
 import dev.kviklet.kviklet.service.ErrorQueryResult
-import dev.kviklet.kviklet.service.ExecutorService
+import dev.kviklet.kviklet.service.Executor
 import dev.kviklet.kviklet.service.RecordsQueryResult
 import dev.kviklet.kviklet.service.UpdateQueryResult
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
@@ -19,7 +19,7 @@ import org.testcontainers.containers.JdbcDatabaseContainer
 @SpringBootTest
 @ActiveProfiles("test")
 abstract class AbstractExecutorTest(
-    @Autowired val executorService: ExecutorService,
+    @Autowired val executorService: Executor,
 ) {
 
     val executionRequestId = ExecutionRequestId("5Wb9WJxCxej5W1Rt6cTBV4")

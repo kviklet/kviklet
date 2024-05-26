@@ -2,7 +2,7 @@ package dev.kviklet.kviklet.executor
 
 import dev.kviklet.kviklet.service.ColumnInfo
 import dev.kviklet.kviklet.service.ErrorQueryResult
-import dev.kviklet.kviklet.service.ExecutorService
+import dev.kviklet.kviklet.service.Executor
 import dev.kviklet.kviklet.service.RecordsQueryResult
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import io.kotest.matchers.shouldBe
@@ -19,7 +19,7 @@ import org.testcontainers.utility.DockerImageName
 @SpringBootTest
 @ActiveProfiles("test")
 class MSSQLExecutorTest(
-    @Autowired override val executorService: ExecutorService,
+    @Autowired override val executorService: Executor,
 ) : AbstractExecutorTest(
     executorService = executorService,
 ) {
