@@ -1,6 +1,7 @@
 package dev.kviklet.kviklet.controller
 
 import dev.kviklet.kviklet.service.AlreadyExecutedException
+import dev.kviklet.kviklet.service.EmailAlreadyExistsException
 import dev.kviklet.kviklet.service.InvalidReviewException
 import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
@@ -40,6 +41,15 @@ class ExceptionHandlerController {
     ): ResponseEntity<Any> {
         logger.error("JSON parse error at ${request.requestURI}: ${ex.message}")
         return ResponseEntity(ErrorResponse("JSON parse error"), HttpStatus.BAD_REQUEST)
+    }
+
+    @ExceptionHandler(EmailAlreadyExistsException::class)
+    fun handleEmailAlreadyExistsException(
+        ex: EmailAlreadyExistsException,
+        request: HttpServletRequest,
+    ): ResponseEntity<Any> {
+        logger.error("Email already exists at ${request.requestURI}", ex)
+        return ResponseEntity(ErrorResponse(ex.message ?: "Email already exists"), HttpStatus.BAD_REQUEST)
     }
 
     @ExceptionHandler(AccessDeniedException::class)

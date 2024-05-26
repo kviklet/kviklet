@@ -75,6 +75,24 @@ class UserTest {
             .andExpect(jsonPath("$.password").doesNotExist())
     }
 
+    @Test
+    fun `cant create user with email that already exists`() {
+        val user = userHelper.createUser()
+        val cookie = userHelper.login(mockMvc = mockMvc)
+
+        mockMvc.perform(
+            post("/users/").cookie(cookie).content(
+                """
+                {
+                    "email": "${user.email}",
+                    "password": "123456",
+                    "fullName": "Some User"
+                }
+                """.trimIndent(),
+            ).contentType("application/json"),
+        ).andExpect(status().isBadRequest)
+    }
+
     fun failPermissions() = listOf(
         Arguments.of(listOf("user:get"), listOf("*")),
         Arguments.of(listOf("user:edit", "user:get"), listOf("*", "*")),
