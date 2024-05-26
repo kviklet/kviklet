@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.security
 
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.service.EmailAlreadyExistsException
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.transaction.Transactional
@@ -264,6 +265,10 @@ class CustomOidcUserService(
         var user = userAdapter.findBySubject(subject)
 
         if (user == null) {
+            userAdapter.findByEmail(email)?.let {
+                // This means a password user with the same email already exists
+                throw EmailAlreadyExistsException(email)
+            }
             // If the user is signing in for the first time, create a new user
             user = User(
                 subject = subject,

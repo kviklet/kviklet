@@ -20,6 +20,12 @@ class UserService(
     @Transactional
     @Policy(Permission.USER_CREATE)
     fun createUser(email: String, password: String, fullName: String): User {
+        val existingUser: User? = userAdapter.findByEmail(email)
+
+        if (existingUser != null) {
+            throw EmailAlreadyExistsException(email)
+        }
+
         val user = User(
             email = email,
             fullName = fullName,
@@ -82,3 +88,5 @@ class UserService(
         userAdapter.deleteUser(userId.toString())
     }
 }
+
+class EmailAlreadyExistsException(email: String) : Exception("User with email $email already exists")
