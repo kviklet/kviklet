@@ -45,7 +45,6 @@ const Login = () => {
   const login = async (event: FormEvent) => {
     event.preventDefault();
     const response = await attemptLogin(email, password);
-    console.log(response);
     if (isApiErrorResponse(response)) {
       addNotification({
         title: "Failed to login",
@@ -58,8 +57,6 @@ const Login = () => {
       navigate("/requests");
     }
   };
-
-  console.log(config);
 
   const oAuthButton = () => {
     if (config?.oauthProvider) {

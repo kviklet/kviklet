@@ -12,7 +12,6 @@ const useConfig = () => {
   const refreshConfig = async () => {
     setLoading(true);
     const response = await getConfig();
-    console.log(response);
     if (isApiErrorResponse(response)) {
       addNotification({
         title: "Error reaching backend",
