@@ -7,11 +7,13 @@ import { Link } from "react-router-dom";
 import Button from "../components/Button";
 import Spinner from "../components/Spinner";
 import { CircleStackIcon, CloudIcon } from "@heroicons/react/20/solid";
+import { isApiErrorResponse } from "../api/Errors";
+import useNotification from "../hooks/useNotification";
 
 const Toggle = (props: { active: boolean; onClick: () => void }) => {
   return (
     <label
-      className="relative inline-flex cursor-pointer items-center"
+      className="relative z-0 inline-flex cursor-pointer items-center"
       onClick={props.onClick}
     >
       <input
@@ -21,7 +23,12 @@ const Toggle = (props: { active: boolean; onClick: () => void }) => {
         readOnly
         onClick={(event) => event.stopPropagation()}
       />
-      <div className="peer h-6 w-11 rounded-full bg-slate-200 after:absolute after:left-[2px] after:top-0.5 after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-800 peer-checked:after:translate-x-full peer-checked:after:border-white dark:border-gray-600 dark:bg-slate-700"></div>
+      <div
+        className="peer h-6 w-11 rounded-full bg-slate-200
+      after:absolute after:left-[2px] after:top-0.5 after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] 
+      peer-checked:bg-indigo-800 peer-checked:after:translate-x-full peer-checked:after:border-white 
+      dark:border-gray-600 dark:bg-slate-700"
+      ></div>
     </label>
   );
 };
@@ -78,20 +85,36 @@ function mapStatusToLabelColor(status?: string) {
       return "dark:ring-gray-400/10 dark:text-gray-500 ring-gray-500/10 text-gray-600 bg-gray-50 dark:bg-gray-400/10";
   }
 }
-
-function Requests() {
+const useRequests = (onlyPending: boolean) => {
   const [requests, setRequests] = useState<ExecutionRequestResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+
+  const { addNotification } = useNotification();
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       const requests = await getRequests();
+      if (isApiErrorResponse(requests)) {
+        addNotification({
+          title: "Failed to fetch requests",
+          text: requests.message,
+          type: "info",
+        });
+        addNotification({
+          title: "Failed to fetch requests",
+          text: requests.message,
+          type: "error",
+        });
+        setLoading(false);
+        return;
+      }
       setRequests(requests);
       setLoading(false);
     };
     void fetchData();
   }, []);
-  const [onlyPending, setOnlyPending] = useState(false);
+
   const visibleRequests = onlyPending
     ? requests.filter((r) => r.reviewStatus === "AWAITING_APPROVAL")
     : requests;
@@ -99,6 +122,13 @@ function Requests() {
   const sortedRequests = [...visibleRequests].sort((a, b) => {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
+
+  return { requests: sortedRequests, loading };
+};
+
+function Requests() {
+  const [onlyPending, setOnlyPending] = useState(false);
+  const { requests, loading } = useRequests(onlyPending);
 
   return (
     <div className="h-full">
@@ -121,12 +151,12 @@ function Requests() {
               </div>
             </div>
 
-            {visibleRequests.length === 0 && (
+            {requests.length === 0 && (
               <div className="mx-2 my-4 px-4 py-2">
                 <h2 className="text-center text-lg">No open requests</h2>
               </div>
             )}
-            {sortedRequests.map((request) => {
+            {requests.map((request) => {
               return (
                 <Link to={`/requests/${request.id}`}>
                   <div

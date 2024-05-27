@@ -1,5 +1,6 @@
 import { z } from "zod";
 import baseUrl from "./base";
+import { ApiResponse, fetchWithErrorHandling } from "./Errors";
 
 // Define the Zod schema for ExecutionLogResponse
 const ExecutionLogResponseSchema = z.object({
@@ -7,11 +8,7 @@ const ExecutionLogResponseSchema = z.object({
   name: z.string(),
   statement: z.string(), // Ensure the field names are in camelCase for JavaScript
   connectionId: z.string(),
-  executionTime: z.preprocess((arg) => {
-    if (typeof arg === "string") {
-      return new Date(arg);
-    }
-  }, z.date()),
+  executionTime: z.coerce.date(),
 });
 
 // Define the Zod schema for ExecutionsResponse
@@ -23,15 +20,19 @@ const ExecutionsResponseSchema = z.object({
 type ExecutionLogResponse = z.infer<typeof ExecutionLogResponseSchema>;
 type ExecutionsResponse = z.infer<typeof ExecutionsResponseSchema>;
 
-const getExecutions = async (): Promise<ExecutionsResponse> => {
-  const response = await fetch(`${baseUrl}/executions/`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
+const getExecutions = async (): Promise<ApiResponse<ExecutionsResponse>> => {
+  const response = await fetchWithErrorHandling(
+    `${baseUrl}/executions/`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
     },
-    credentials: "include",
-  });
-  return ExecutionsResponseSchema.parse(await response.json());
+    ExecutionsResponseSchema,
+  );
+  return response;
 };
 
 export { getExecutions };

@@ -1,9 +1,8 @@
 import { z } from "zod";
 import { roleResponseSchema } from "./RoleApi";
 import baseUrl from "./base";
-import { ApiErrorResponse, ApiErrorResponseSchema } from "./Errors";
+import { ApiResponse, fetchWithErrorHandling } from "./Errors";
 
-// Define the schema for the user response
 const userResponseSchema = z.object({
   id: z.string(),
   email: z.string(),
@@ -11,7 +10,6 @@ const userResponseSchema = z.object({
   roles: roleResponseSchema.array(),
 });
 
-// Define the type for the user response
 type UserResponse = z.infer<typeof userResponseSchema>;
 
 const createUserRequestSchema = z.object({
@@ -32,48 +30,54 @@ const UpdateUserRequestSchema = z.object({
 });
 
 type UpdateUserRequest = z.infer<typeof UpdateUserRequestSchema>;
+type UsersResponse = z.infer<typeof usersResponseSchema>;
 
 type CreateUserRequest = z.infer<typeof createUserRequestSchema>;
 
-async function fetchUsers(): Promise<UserResponse[]> {
-  const response = await fetch(`${baseUrl}/users/`, {
-    method: "GET",
-    credentials: "include",
-  });
-
-  const data: unknown = await response.json();
-  return usersResponseSchema.parse(data).users;
+async function fetchUsers(): Promise<ApiResponse<UsersResponse>> {
+  return fetchWithErrorHandling(
+    `${baseUrl}/users/`,
+    {
+      method: "GET",
+      credentials: "include",
+    },
+    usersResponseSchema,
+  );
 }
 
 async function createUser(
   request: CreateUserRequest,
-): Promise<UserResponse | ApiErrorResponse> {
-  const response = await fetch(`${baseUrl}/users/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+): Promise<ApiResponse<UserResponse>> {
+  return fetchWithErrorHandling(
+    `${baseUrl}/users/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(request),
     },
-    credentials: "include",
-    body: JSON.stringify(request),
-  });
-  const data: unknown = await response.json();
-  return z.union([userResponseSchema, ApiErrorResponseSchema]).parse(data);
+    userResponseSchema,
+  );
 }
 
 async function updateUser(
   id: string,
   request: UpdateUserRequest,
-): Promise<UserResponse> {
-  const response = await fetch(`${baseUrl}/users/${id}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
+): Promise<ApiResponse<UserResponse>> {
+  return fetchWithErrorHandling(
+    `${baseUrl}/users/${id}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(request),
     },
-    credentials: "include",
-    body: JSON.stringify(request),
-  });
-  const data: unknown = await response.json();
-  return userResponseSchema.parse(data);
+    userResponseSchema,
+  );
 }
 
 export { fetchUsers, userResponseSchema, createUser, updateUser };

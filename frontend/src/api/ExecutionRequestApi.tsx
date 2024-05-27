@@ -2,7 +2,11 @@ import { z } from "zod";
 import { userResponseSchema } from "./UserApi";
 import { connectionResponseSchema } from "./DatasourceApi";
 import baseUrl from "./base";
-import { ApiErrorResponse, ApiErrorResponseSchema } from "./Errors";
+import {
+  ApiErrorResponse,
+  ApiResponse,
+  fetchWithErrorHandling,
+} from "./Errors";
 import { ExecutionRequest } from "../routes/NewRequest";
 
 const requestUrl = `${baseUrl}/execution-requests/`;
@@ -229,61 +233,67 @@ const postStartServer = async (id: string): Promise<ProxyResponse> => {
   return proxy;
 };
 
-const getRequests = async (): Promise<ExecutionRequestsResponse> => {
-  const response = await fetch(requestUrl, {
-    method: "GET",
-    credentials: "include",
-  });
-  const json: unknown = await response.json();
-  const requests = ExecutionRequestsResponseSchema.parse(json);
-  return requests;
+const getRequests = async (): Promise<
+  ApiResponse<ExecutionRequestsResponse>
+> => {
+  return fetchWithErrorHandling(
+    requestUrl,
+    {
+      method: "GET",
+      credentials: "include",
+    },
+    ExecutionRequestsResponseSchema,
+  );
 };
 
 const getSingleRequest = async (
   id: string,
-): Promise<ExecutionRequestResponseWithComments | undefined> => {
-  const response = await fetch(requestUrl + id, {
-    method: "GET",
-    credentials: "include",
-  });
-  if (response.status == 404) {
-    return undefined;
-  }
-  const json: unknown = await response.json();
-  const request = ExecutionRequestResponseWithCommentsSchema.parse(json);
-  return request;
+): Promise<ApiResponse<ExecutionRequestResponseWithComments>> => {
+  return fetchWithErrorHandling(
+    requestUrl + id,
+    {
+      method: "GET",
+      credentials: "include",
+    },
+    ExecutionRequestResponseWithCommentsSchema,
+  );
 };
 
-const addCommentToRequest = async (id: string, comment: string) => {
-  const response = await fetch(requestUrl + id + "/comments", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+const addCommentToRequest = async (
+  id: string,
+  comment: string,
+): Promise<ApiResponse<Event>> => {
+  return fetchWithErrorHandling(
+    requestUrl + id + "/comments",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ comment }),
     },
-    credentials: "include",
-    body: JSON.stringify({ comment }),
-  });
-  const json: unknown = await response.json();
-  const event = z.union([CommentEvent, ReviewEvent]).parse(json);
-  return event;
+    z.union([CommentEvent, ReviewEvent]),
+  );
 };
 
 const addReviewToRequest = async (
   id: string,
   review: string,
   action: string,
-) => {
-  const response = await fetch(requestUrl + id + "/reviews", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+): Promise<ApiResponse<void>> => {
+  return fetchWithErrorHandling(
+    requestUrl + id + "/reviews",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ comment: review, action }),
     },
-    credentials: "include",
-    body: JSON.stringify({ comment: review, action }),
-  });
-  await response.json();
-
-  return;
+    z.undefined(),
+  );
 };
 
 function withType<T, U extends string>(schema: z.ZodSchema<T>, typeValue: U) {
@@ -354,52 +364,39 @@ type QueryResult = {
   error?: ApiErrorResponse;
 };
 
-type KubernetesResponse = {
-  results?: KubernetesExecuteResponse;
-  error?: ApiErrorResponse;
-};
-
 const runQuery = async (
   id: string,
   query?: string,
   explain: boolean = false,
-): Promise<QueryResult> => {
-  const response = await fetch(requestUrl + id + "/execute", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+): Promise<ApiResponse<QueryResult>> => {
+  return fetchWithErrorHandling(
+    requestUrl + id + "/execute",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ query, explain }),
     },
-    credentials: "include",
-    body: JSON.stringify({ query, explain }),
-  });
-  const json: unknown = await response.json();
-  if (response.ok) {
-    const result = DBExecuteResponseSchema.parse(json);
-    return {
-      results: result.results,
-    };
-  } else {
-    const result = ApiErrorResponseSchema.parse(json);
-    return { error: result };
-  }
+    DBExecuteResponseSchema,
+  );
 };
 
-const executeCommand = async (id: string): Promise<KubernetesResponse> => {
-  const response = await fetch(requestUrl + id + "/execute", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+const executeCommand = async (
+  id: string,
+): Promise<ApiResponse<KubernetesExecuteResponse>> => {
+  return fetchWithErrorHandling(
+    requestUrl + id + "/execute",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
     },
-    credentials: "include",
-  });
-  const json: unknown = await response.json();
-  if (response.ok) {
-    const result = KubernetesExecuteResponseSchema.parse(json);
-    return { results: result };
-  } else {
-    const result = ApiErrorResponseSchema.parse(json);
-    return { error: result };
-  }
+    KubernetesExecuteResponseSchema,
+  );
 };
 
 export {

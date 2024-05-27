@@ -1,5 +1,6 @@
 import { z } from "zod";
 import baseUrl, { withType } from "./base";
+import { ApiResponse, fetchWithErrorHandling } from "./Errors";
 
 enum AuthenticationType {
   USER_PASSWORD = "USER_PASSWORD",
@@ -141,51 +142,67 @@ type KubernetesConnectionPayload = z.infer<
 
 const addConnection = async (
   payload: ConnectionPayload,
-): Promise<ConnectionResponse> => {
-  const response = await fetch(`${baseUrl}/connections/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+): Promise<ApiResponse<ConnectionResponse>> => {
+  return fetchWithErrorHandling(
+    `${baseUrl}/connections/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(payload),
     },
-    credentials: "include",
-    body: JSON.stringify(payload),
-  });
-  const connection = connectionResponseSchema.parse(await response.json());
-  return connection;
+    connectionResponseSchema,
+  );
 };
 
 const patchConnection = async (
   payload: PatchConnectionPayload,
   connectionId: string,
-): Promise<ConnectionResponse> => {
-  const response = await fetch(`${baseUrl}/connections/${connectionId}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
+): Promise<ApiResponse<ConnectionResponse>> => {
+  return fetchWithErrorHandling(
+    `${baseUrl}/connections/${connectionId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(payload),
     },
-    credentials: "include",
-    body: JSON.stringify(payload),
-  });
-  const connection = connectionResponseSchema.parse(await response.json());
-  return connection;
+    connectionResponseSchema,
+  );
 };
 
-const getConnections = async (): Promise<ConnectionResponse[]> => {
-  const response = await fetch(`${baseUrl}/connections/`, {
-    method: "GET",
-    credentials: "include",
-  });
-  const data: unknown = await response.json();
-  return z.array(connectionResponseSchema).parse(data);
+const getConnections = async (): Promise<ApiResponse<ConnectionResponse[]>> => {
+  return fetchWithErrorHandling(
+    `${baseUrl}/connections/`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    },
+    z.array(connectionResponseSchema),
+  );
 };
 
-const getConnection = async (id: string): Promise<ConnectionResponse> => {
-  const response = await fetch(`${baseUrl}/connections/${id}`, {
-    method: "GET",
-    credentials: "include",
-  });
-  const data: unknown = await response.json();
-  return connectionResponseSchema.parse(data);
+const getConnection = async (
+  id: string,
+): Promise<ApiResponse<ConnectionResponse>> => {
+  return fetchWithErrorHandling(
+    `${baseUrl}/connections/${id}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    },
+    connectionResponseSchema,
+  );
 };
 
 export {
