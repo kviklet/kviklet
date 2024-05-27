@@ -3,6 +3,8 @@ import Button from "../../components/Button";
 import { Error, Success } from "../../components/Alert";
 import { updateUser } from "../../api/UserApi";
 import { UserStatusContext } from "../../components/UserStatusProvider";
+import { isApiErrorResponse } from "../../api/Errors";
+import useNotification from "../../hooks/useNotification";
 
 function ProfileSettings() {
   const [newPassword, setNewPassword] = useState<string>("");
@@ -11,12 +13,20 @@ function ProfileSettings() {
   const [showSuccessBanner, setShowSuccessBanner] = useState<boolean>(false);
   const userContext = useContext(UserStatusContext);
 
+  const { addNotification } = useNotification();
+
   const changePassword = async () => {
     if (newPassword === confirmNewPassowrd && userContext.userStatus) {
-      const newUser = await updateUser(userContext.userStatus.id, {
+      const response = await updateUser(userContext.userStatus.id, {
         password: confirmNewPassowrd,
       });
-      if (newUser.id) {
+      if (isApiErrorResponse(response)) {
+        addNotification({
+          title: "Failed to change password",
+          text: response.message,
+          type: "error",
+        });
+      } else {
         setShowSuccessBanner(true);
       }
     }

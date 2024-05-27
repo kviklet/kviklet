@@ -7,6 +7,8 @@ import { RoleResponse, getRoles, removeRole } from "../../api/RoleApi";
 import DeleteConfirm from "../../components/DeleteConfirm";
 import React from "react";
 import { Link } from "react-router-dom";
+import { isApiErrorResponse } from "../../api/Errors";
+import useNotification from "../../hooks/useNotification";
 
 const useRoles = (): {
   roles: RoleResponse[];
@@ -18,9 +20,19 @@ const useRoles = (): {
   const [isLoading, setIsLoading] = useState(true);
   const [error] = useState<Error | null>(null);
 
+  const { addNotification } = useNotification();
+
   const loadRoles = async () => {
-    const loadedRoles = await getRoles();
-    setRoles(loadedRoles);
+    const response = await getRoles();
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to load Roles",
+        text: response.message,
+        type: "error",
+      });
+    } else {
+      setRoles(response.roles);
+    }
     setIsLoading(false);
   };
 

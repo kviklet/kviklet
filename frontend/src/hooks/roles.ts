@@ -6,6 +6,8 @@ import {
   getRole,
 } from "../api/RoleApi";
 import { z } from "zod";
+import { isApiErrorResponse } from "../api/Errors";
+import useNotification from "./useNotification";
 
 const UserPolicySchema = z.object({
   read: z.boolean(),
@@ -43,10 +45,20 @@ const useRole = (id: string) => {
   const [role, setRole] = useState<RoleResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  const { addNotification } = useNotification();
+
   async function reloadRole() {
     setLoading(true);
-    const role = await getRole(id);
-    setRole(role);
+    const response = await getRole(id);
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to load role",
+        text: response.message,
+        type: "error",
+      });
+    } else {
+      setRole(response);
+    }
     setLoading(false);
   }
 

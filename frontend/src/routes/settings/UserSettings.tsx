@@ -94,8 +94,12 @@ export const useUsers = () => {
 
   useEffect(() => {
     async function request() {
-      const apiUsers = await fetchUsers();
-      setUsers(apiUsers);
+      const response = await fetchUsers();
+      if (isApiErrorResponse(response)) {
+        setError(response.message);
+      } else {
+        setUsers(response.users);
+      }
     }
     void request();
   }, []);
@@ -105,10 +109,14 @@ export const useUsers = () => {
     if (!currentUser) {
       return;
     }
-    const newUser = await updateUser(userId, {
+    const response = await updateUser(userId, {
       roles: [...currentUser.roles.map((g) => g.id), roleId],
     });
-    setUsers(users.map((u) => (u.id === userId ? newUser : u)));
+    if (isApiErrorResponse(response)) {
+      setError(response.message);
+      return;
+    }
+    setUsers(users.map((u) => (u.id === userId ? response : u)));
     setSuccess("Role added");
   }
 
@@ -140,10 +148,14 @@ export const useUsers = () => {
     if (!currentUser) {
       return;
     }
-    const newUser = await updateUser(userId, {
+    const response = await updateUser(userId, {
       roles: currentUser.roles.filter((g) => g.id !== roleId).map((g) => g.id),
     });
-    setUsers(users.map((u) => (u.id === userId ? newUser : u)));
+    if (isApiErrorResponse(response)) {
+      setError(response.message);
+      return;
+    }
+    setUsers(users.map((u) => (u.id === userId ? response : u)));
     setSuccess("Role removed");
   }
 

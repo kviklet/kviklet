@@ -36,7 +36,12 @@ const handleStatusLoggedIn = rest.get(
 const handleLogin = rest.post(
   "http://localhost:8080/login",
   (req, res, ctx) => {
-    return res(ctx.status(200));
+    return res(
+      ctx.status(200),
+      ctx.json({
+        sessionId: "test",
+      }),
+    );
   },
 );
 

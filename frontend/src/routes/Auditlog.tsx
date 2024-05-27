@@ -17,6 +17,7 @@ import { Link } from "react-router-dom";
 import { ExecutionLogResponse, getExecutions } from "../api/ExecutionsApi";
 import { useEffect, useState } from "react";
 import { timeSince } from "./Requests";
+import { isApiErrorResponse } from "../api/Errors";
 
 function useExecutions() {
   const [executions, setExecutions] = useState<ExecutionLogResponse[]>([]);
@@ -24,8 +25,12 @@ function useExecutions() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const executions = await getExecutions();
-      setExecutions(executions.executions);
+      const response = await getExecutions();
+      if (isApiErrorResponse(response)) {
+        console.error(response);
+      } else {
+        setExecutions(response.executions);
+      }
       setLoading(false);
     };
     void fetchData();

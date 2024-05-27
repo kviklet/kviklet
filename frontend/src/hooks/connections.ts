@@ -9,37 +9,66 @@ import {
   getConnections,
   patchConnection,
 } from "../api/DatasourceApi";
+import useNotification from "./useNotification";
+import { isApiErrorResponse } from "../api/Errors";
 
 const useConnections = () => {
   const [connections, setConnections] = useState<ConnectionResponse[]>([]);
+  const { addNotification } = useNotification();
   const [loading, setLoading] = useState<boolean>(true);
   useEffect(() => {
     async function request() {
       const response = await getConnections();
-      setConnections(response);
+      if (isApiErrorResponse(response)) {
+        addNotification({
+          title: "Failed to load connections",
+          text: response.message,
+          type: "error",
+        });
+      } else {
+        setConnections(response);
+      }
       setLoading(false);
     }
     void request();
   }, []);
 
   const createConnection = async (connection: ConnectionPayload) => {
-    const newConnection = await addConnection(connection);
-    const newConnections = [...connections, newConnection];
-    setConnections(newConnections);
+    const response = await addConnection(connection);
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to create connection",
+        text: response.message,
+        type: "error",
+      });
+      return;
+    } else {
+      const newConnections = [...connections, response];
+      setConnections(newConnections);
+    }
   };
 
   const editConnection = async (
     connectionId: string,
     connection: PatchConnectionPayload,
   ) => {
-    const updatedConnection = await patchConnection(connection, connectionId);
-    const newConnections = connections.map((connection) => {
-      if (connection.id === updatedConnection.id) {
-        return updatedConnection;
-      }
-      return connection;
-    });
-    setConnections(newConnections);
+    const response = await patchConnection(connection, connectionId);
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to edit connection",
+        text: response.message,
+        type: "error",
+      });
+      return;
+    } else {
+      const newConnections = connections.map((connection) => {
+        if (connection.id === response.id) {
+          return response;
+        }
+        return connection;
+      });
+      setConnections(newConnections);
+    }
   };
 
   return {
@@ -54,10 +83,20 @@ const useConnection = (id: string) => {
   const [connection, setConnection] = useState<ConnectionResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  const { addNotification } = useNotification();
+
   async function request() {
     setLoading(true);
-    const connection = await getConnection(id);
-    setConnection(connection);
+    const response = await getConnection(id);
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to load connection",
+        text: response.message,
+        type: "error",
+      });
+    } else {
+      setConnection(response);
+    }
     setLoading(false);
   }
 
@@ -75,11 +114,16 @@ const useConnection = (id: string) => {
       return;
     }
     setLoading(true);
-    const updatedConnection = await patchConnection(
-      patchedConnection,
-      connection.id,
-    );
-    setConnection(updatedConnection);
+    const response = await patchConnection(patchedConnection, connection.id);
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to edit connection",
+        text: response.message,
+        type: "error",
+      });
+    } else {
+      setConnection(response);
+    }
     setLoading(false);
   };
 

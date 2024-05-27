@@ -1,4 +1,6 @@
 import { z } from "zod";
+import baseUrl from "./base";
+import { ApiResponse, fetchWithErrorHandling } from "./Errors";
 
 const PodSchema = z.object({
   id: z.string(),
@@ -31,23 +33,25 @@ type PodsResponse = z.infer<typeof PodsResponseSchema>;
 
 export type { Pod, PodsResponse };
 
-const getPods = async (): Promise<PodsResponse> => {
-  const response = await fetch("http://localhost:8080/kubernetes/pods", {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
+const getPods = async (): Promise<ApiResponse<PodsResponse>> => {
+  return fetchWithErrorHandling(
+    `${baseUrl}/kubernetes/pods`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
     },
-    credentials: "include",
-  });
-  const data = PodsResponseSchema.parse(await response.json());
-  return data;
+    PodsResponseSchema,
+  );
 };
 
 const executeCommand = async (
   command: CommandRequest,
-): Promise<CommandResponse> => {
-  const response = await fetch(
-    "http://localhost:8080/kubernetes/execute-command",
+): Promise<ApiResponse<CommandResponse>> => {
+  return fetchWithErrorHandling(
+    `${baseUrl}/kubernetes/execute-command`,
     {
       method: "POST",
       headers: {
@@ -56,9 +60,8 @@ const executeCommand = async (
       credentials: "include",
       body: JSON.stringify(command),
     },
+    CommandResposneSchema,
   );
-  const data = CommandResposneSchema.parse(await response.json());
-  return data;
 };
 
 export { getPods, executeCommand };

@@ -43,6 +43,8 @@ import ShellResult from "../components/ShellResult";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import MenuDropDown from "../components/MenuDropdown";
+import { isApiErrorResponse } from "../api/Errors";
+import useNotification from "../hooks/useNotification";
 
 interface RequestReviewParams {
   requestId: string;
@@ -84,14 +86,26 @@ const useRequest = (id: string) => {
     undefined,
   );
 
-  useEffect(() => {
-    async function request() {
-      setLoading(true);
-      const request = await getSingleRequest(id);
-      setRequest(request);
+  const { addNotification } = useNotification();
+
+  async function loadRequest() {
+    setLoading(true);
+    const request = await getSingleRequest(id);
+    if (isApiErrorResponse(request)) {
+      addNotification({
+        title: "Failed to fetch request",
+        text: request.message,
+        type: "error",
+      });
       setLoading(false);
+      return;
     }
-    void request();
+    setRequest(request);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    void loadRequest();
   }, []);
 
   const [results, setResults] = useState<ExecuteResponseResult[] | undefined>();
@@ -104,7 +118,16 @@ const useRequest = (id: string) => {
   );
 
   const addComment = async (comment: string) => {
-    const event = await addCommentToRequest(id, comment);
+    const response = await addCommentToRequest(id, comment);
+
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to add comment",
+        text: response.message,
+        type: "error",
+      });
+      return;
+    }
 
     // update the request with the new comment by updating the events propertiy with a new Comment
     setRequest((request) => {
@@ -113,43 +136,58 @@ const useRequest = (id: string) => {
       }
       return {
         ...request,
-        events: [...request.events, event],
+        events: [...request.events, response],
       };
     });
   };
 
-  const start = async (): Promise<ProxyResponse> => {
+  const start = async (): Promise<void> => {
     const response = await postStartServer(id);
-    setProxyResponse(response);
-    return response;
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to start proxy",
+        text: response.message,
+        type: "error",
+      });
+    } else {
+      setProxyResponse(response);
+    }
   };
 
   const updateRequest = async (request: ChangeExecutionRequestPayload) => {
-    const newRequest = await patchRequest(id, request);
-    setRequest(newRequest);
+    const response = await patchRequest(id, request);
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to update request",
+        text: response.message,
+        type: "error",
+      });
+      return;
+    } else {
+      setRequest(response);
+    }
   };
 
   const approve = async (comment: string) => {
     await addReviewToRequest(id, comment, "APPROVE");
-    const newRequest = await getSingleRequest(id);
-    setRequest(newRequest);
+    await loadRequest();
   };
 
   const execute = async (explain: boolean) => {
     setDataLoading(true);
     if (request?._type === "DATASOURCE") {
       const response = await runQuery(id, undefined, explain);
-      if (response.results) {
-        setResults(response.results);
+      if (isApiErrorResponse(response)) {
+        setExecutionError(response.message);
       } else {
-        setExecutionError(response.error?.message);
+        setResults(response.results);
       }
     } else if (request?._type === "KUBERNETES") {
       const response = await executeCommand(id);
-      if (response.results) {
-        setKubernetesResults(response.results);
+      if (isApiErrorResponse(response)) {
+        setExecutionError(response.message);
       } else {
-        setExecutionError(response.error?.message);
+        setKubernetesResults(response);
       }
     }
 
@@ -290,7 +328,7 @@ function DatasourceRequestDisplay({
 }: {
   request: DatasourceExecutionRequestResponseWithComments | undefined;
   run: (explain?: boolean) => Promise<void>;
-  start: () => Promise<ProxyResponse>;
+  start: () => Promise<void>;
   updateRequest: (request: { statement?: string }) => Promise<void>;
   results: ExecuteResponseResult[] | undefined;
   dataLoading: boolean;
@@ -335,7 +373,7 @@ function KubernetesRequestDisplay({
 }: {
   request: KubernetesExecutionRequestResponseWithComments;
   run: (explain?: boolean) => Promise<void>;
-  start: () => Promise<ProxyResponse>;
+  start: () => Promise<void>;
   updateRequest: (request: { command?: string }) => Promise<void>;
   results: KubernetesExecuteResponse | undefined;
   dataLoading: boolean;
@@ -371,7 +409,7 @@ function KubernetesRequestDisplay({
 interface KubernetesRequestBoxProps {
   request: KubernetesExecutionRequestResponseWithComments;
   runQuery: (explain?: boolean) => Promise<void>;
-  startServer: () => Promise<ProxyResponse>;
+  startServer: () => Promise<void>;
   updateRequest: (request: { command?: string }) => Promise<void>;
 }
 
@@ -498,7 +536,7 @@ function DatasourceRequestBox({
 }: {
   request: DatasourceExecutionRequestResponseWithComments | undefined;
   runQuery: (explain?: boolean) => Promise<void>;
-  startServer: () => Promise<ProxyResponse>;
+  startServer: () => Promise<void>;
   updateRequest: (request: { statement?: string }) => Promise<void>;
 }) {
   const [editMode, setEditMode] = useState(false);

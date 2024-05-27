@@ -1,5 +1,6 @@
 import { z } from "zod";
 import baseUrl from "./base";
+import { ApiResponse, fetchWithErrorHandling } from "./Errors";
 
 const policyResponseSchema = z.object({
   id: z.string(),
@@ -40,61 +41,74 @@ type RoleResponse = z.infer<typeof roleResponseSchema>;
 type RoleUpdatePayload = z.infer<typeof roleUpdatePayloadSchema>;
 type PolicyResponse = z.infer<typeof policyResponseSchema>;
 type CreateRoleRequest = z.infer<typeof createRoleRequestSchema>;
+type RolesResponse = z.infer<typeof rolesResponseSchema>;
 
-const getRoles = async (): Promise<RoleResponse[]> => {
-  const response = await fetch(`${baseUrl}/roles/`, {
-    method: "GET",
-    credentials: "include",
-  });
-
-  const data: unknown = await response.json();
-  return rolesResponseSchema.parse(data).roles;
-};
-
-const getRole = async (id: string): Promise<RoleResponse> => {
-  const response = await fetch(`${baseUrl}/roles/${id}`, {
-    method: "GET",
-    credentials: "include",
-  });
-  const data: unknown = await response.json();
-  return roleResponseSchema.parse(data);
-};
-
-const createRole = async (role: CreateRoleRequest): Promise<RoleResponse> => {
-  const response = await fetch(`${baseUrl}/roles/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+const getRoles = async (): Promise<ApiResponse<RolesResponse>> => {
+  return fetchWithErrorHandling(
+    `${baseUrl}/roles/`,
+    {
+      method: "GET",
+      credentials: "include",
     },
-    credentials: "include",
-    body: JSON.stringify(role),
-  });
-  const data: unknown = await response.json();
-  return roleResponseSchema.parse(data);
+    rolesResponseSchema,
+  );
 };
 
-const removeRole = async (id: string): Promise<void> => {
-  await fetch(`${baseUrl}/roles/${id}`, {
-    method: "DELETE",
-    credentials: "include",
-  });
-  return;
+const getRole = async (id: string): Promise<ApiResponse<RoleResponse>> => {
+  return fetchWithErrorHandling(
+    `${baseUrl}/roles/${id}`,
+    {
+      method: "GET",
+      credentials: "include",
+    },
+    roleResponseSchema,
+  );
+};
+
+const createRole = async (
+  role: CreateRoleRequest,
+): Promise<ApiResponse<RoleResponse>> => {
+  return fetchWithErrorHandling(
+    `${baseUrl}/roles/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(role),
+    },
+    roleResponseSchema,
+  );
+};
+
+const removeRole = async (id: string): Promise<ApiResponse<void>> => {
+  return fetchWithErrorHandling(
+    `${baseUrl}/roles/${id}`,
+    {
+      method: "DELETE",
+      credentials: "include",
+    },
+    z.undefined(),
+  );
 };
 
 const patchRole = async (
   id: string,
   role: RoleUpdatePayload,
-): Promise<RoleResponse> => {
-  const response = await fetch(`${baseUrl}/roles/${id}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
+): Promise<ApiResponse<RoleResponse>> => {
+  return fetchWithErrorHandling(
+    `${baseUrl}/roles/${id}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(role),
     },
-    credentials: "include",
-    body: JSON.stringify(role),
-  });
-  const data: unknown = await response.json();
-  return roleResponseSchema.parse(data);
+    roleResponseSchema,
+  );
 };
 
 export {

@@ -7,6 +7,9 @@ import image from "../logo.png";
 import baseUrl from "../api/base";
 import useConfig from "../hooks/config";
 import Spinner from "../components/Spinner";
+import { isApiErrorResponse } from "../api/Errors";
+import useNotification from "../hooks/useNotification";
+import { attemptLogin } from "../api/LoginApi";
 
 const StyledInput = (props: {
   name: string;
@@ -37,22 +40,22 @@ const Login = () => {
 
   const { config, loading } = useConfig();
 
+  const { addNotification } = useNotification();
+
   const login = async (event: FormEvent) => {
     event.preventDefault();
-    await fetch(baseUrl + "/login", {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: email,
-        password: password,
-      }),
-    });
-    await userContext.refreshState();
+    const response = await attemptLogin(email, password);
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to login",
+        text: response.message,
+        type: "error",
+      });
+    } else {
+      await userContext.refreshState();
 
-    navigate("/requests");
+      navigate("/requests");
+    }
   };
 
   const oAuthButton = () => {

@@ -10,6 +10,7 @@ import {
 import Spinner from "../components/Spinner";
 import { useParams } from "react-router-dom";
 import MultiResult from "../components/MultiResult";
+import { isApiErrorResponse } from "../api/Errors";
 
 interface SessionParams {
   requestId: string;
@@ -70,12 +71,9 @@ export default function LiveSession() {
     setResults(undefined);
     setDataLoading(true);
     const response = await runQuery(params.requestId, text);
-    if (response.error) {
-      setExecutionError(response.error.message);
-      setDataLoading(false);
-      return;
-    }
-    if (response.results && response.results.length > 0) {
+    if (isApiErrorResponse(response)) {
+      setExecutionError(response.message);
+    } else {
       setResults(response.results);
     }
 

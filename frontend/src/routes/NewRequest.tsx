@@ -17,6 +17,8 @@ import Button from "../components/Button";
 import { Disclosure } from "@headlessui/react";
 import { Pod, getPods } from "../api/KubernetesApi";
 import useConnections from "../hooks/connections";
+import useNotification from "../hooks/useNotification";
+import { isApiErrorResponse } from "../api/Errors";
 
 const DatasourceExecutionRequestSchema = z
   .object({
@@ -354,10 +356,20 @@ const usePods = () => {
   const [pods, setPods] = useState<Pod[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
+  const { addNotification } = useNotification();
+
   useEffect(() => {
     const fetchData = async () => {
       const response = await getPods();
-      setPods(response.pods);
+      if (isApiErrorResponse(response)) {
+        addNotification({
+          title: "Failed to load pods",
+          text: response.message,
+          type: "error",
+        });
+      } else {
+        setPods(response.pods);
+      }
       setLoading(false);
     };
     void fetchData();

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import baseUrl from "./base";
+import { ApiResponse, fetchWithErrorHandling } from "./Errors";
 
 const ConfigResponseSchema = z.object({
   oauthProvider: z.string().nullable().optional(),
@@ -7,14 +8,16 @@ const ConfigResponseSchema = z.object({
 
 export type ConfigResponse = z.infer<typeof ConfigResponseSchema>;
 
-export async function getConfig(): Promise<ConfigResponse> {
-  const response = await fetch(`${baseUrl}/config/`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
+export async function getConfig(): Promise<ApiResponse<ConfigResponse>> {
+  return fetchWithErrorHandling(
+    `${baseUrl}/config/`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
     },
-    credentials: "include",
-  });
-
-  return ConfigResponseSchema.parse(await response.json());
+    ConfigResponseSchema,
+  );
 }
