@@ -6,14 +6,16 @@ export const ApiErrorResponseSchema = z.object({
 
 export type ApiErrorResponse = z.infer<typeof ApiErrorResponseSchema>;
 
-// typeguard for ApiErrorResponse
 export function isApiErrorResponse(
   response: unknown,
 ): response is ApiErrorResponse {
   return ApiErrorResponseSchema.safeParse(response).success;
 }
 
-export const parseSchemaOrError = <T>(schema: ZodSchema<T>, data: unknown): T | ApiErrorResponse => {
+export const parseSchemaOrError = <T>(
+  schema: ZodSchema<T>,
+  data: unknown,
+): T | ApiErrorResponse => {
   const result = z.union([schema, ApiErrorResponseSchema]).safeParse(data);
   if (result.success) {
     return result.data;
@@ -21,7 +23,6 @@ export const parseSchemaOrError = <T>(schema: ZodSchema<T>, data: unknown): T | 
     return { message: "Invalid server response." };
   }
 };
-
 
 export type ApiResponse<T> = T | ApiErrorResponse;
 

@@ -55,6 +55,8 @@ const Login = () => {
     navigate("/requests");
   };
 
+  console.log(config);
+
   const oAuthButton = () => {
     if (config?.oauthProvider) {
       if (config.oauthProvider === "GOOGLE") {

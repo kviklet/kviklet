@@ -356,17 +356,17 @@ const usePods = () => {
   const [pods, setPods] = useState<Pod[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  const {addNotification} = useNotification();
+  const { addNotification } = useNotification();
 
   useEffect(() => {
     const fetchData = async () => {
       const response = await getPods();
-      if(isApiErrorResponse(response)){
+      if (isApiErrorResponse(response)) {
         addNotification({
           title: "Failed to load pods",
           text: response.message,
           type: "error",
-        })
+        });
       } else {
         setPods(response.pods);
       }

@@ -57,7 +57,7 @@ const useRole = (id: string) => {
         type: "error",
       });
     } else {
-      setRole(role);
+      setRole(response);
     }
     setLoading(false);
   }

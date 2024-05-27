@@ -43,8 +43,8 @@ import ShellResult from "../components/ShellResult";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import MenuDropDown from "../components/MenuDropdown";
-import { NotificationContext } from "../components/NotifcationStatusProvider";
 import { isApiErrorResponse } from "../api/Errors";
+import useNotification from "../hooks/useNotification";
 
 interface RequestReviewParams {
   requestId: string;
@@ -86,8 +86,7 @@ const useRequest = (id: string) => {
     undefined,
   );
 
-  const { addNotification } =
-    useContext<NotificationContext>(NotificationContext);
+  const { addNotification } = useNotification();
 
   async function loadRequest() {
     setLoading(true);
@@ -142,15 +141,31 @@ const useRequest = (id: string) => {
     });
   };
 
-  const start = async (): Promise<ProxyResponse> => {
+  const start = async (): Promise<void> => {
     const response = await postStartServer(id);
-    setProxyResponse(response);
-    return response;
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to start proxy",
+        text: response.message,
+        type: "error",
+      });
+    } else {
+      setProxyResponse(response);
+    }
   };
 
   const updateRequest = async (request: ChangeExecutionRequestPayload) => {
-    const newRequest = await patchRequest(id, request);
-    setRequest(newRequest);
+    const response = await patchRequest(id, request);
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to update request",
+        text: response.message,
+        type: "error",
+      });
+      return;
+    } else {
+      setRequest(response);
+    }
   };
 
   const approve = async (comment: string) => {
@@ -313,7 +328,7 @@ function DatasourceRequestDisplay({
 }: {
   request: DatasourceExecutionRequestResponseWithComments | undefined;
   run: (explain?: boolean) => Promise<void>;
-  start: () => Promise<ProxyResponse>;
+  start: () => Promise<void>;
   updateRequest: (request: { statement?: string }) => Promise<void>;
   results: ExecuteResponseResult[] | undefined;
   dataLoading: boolean;
@@ -358,7 +373,7 @@ function KubernetesRequestDisplay({
 }: {
   request: KubernetesExecutionRequestResponseWithComments;
   run: (explain?: boolean) => Promise<void>;
-  start: () => Promise<ProxyResponse>;
+  start: () => Promise<void>;
   updateRequest: (request: { command?: string }) => Promise<void>;
   results: KubernetesExecuteResponse | undefined;
   dataLoading: boolean;
@@ -394,7 +409,7 @@ function KubernetesRequestDisplay({
 interface KubernetesRequestBoxProps {
   request: KubernetesExecutionRequestResponseWithComments;
   runQuery: (explain?: boolean) => Promise<void>;
-  startServer: () => Promise<ProxyResponse>;
+  startServer: () => Promise<void>;
   updateRequest: (request: { command?: string }) => Promise<void>;
 }
 
@@ -521,7 +536,7 @@ function DatasourceRequestBox({
 }: {
   request: DatasourceExecutionRequestResponseWithComments | undefined;
   runQuery: (explain?: boolean) => Promise<void>;
-  startServer: () => Promise<ProxyResponse>;
+  startServer: () => Promise<void>;
   updateRequest: (request: { statement?: string }) => Promise<void>;
 }) {
   const [editMode, setEditMode] = useState(false);

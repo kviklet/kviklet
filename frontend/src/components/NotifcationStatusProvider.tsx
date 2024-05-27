@@ -26,7 +26,7 @@ export const NotificationContextProvider: React.FC<Props> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const addNotification = (notification: Notification) => {
-     setNotifications((notifications) => [...notifications, notification]);
+    setNotifications((notifications) => [...notifications, notification]);
   };
 
   const removeNotification = (notification: Notification) => {

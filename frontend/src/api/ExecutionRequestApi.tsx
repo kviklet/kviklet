@@ -195,42 +195,52 @@ type Execute = z.infer<typeof ExecuteEvent>;
 type Event = Edit | Review | Comment | Execute;
 type ProxyResponse = z.infer<typeof ProxyResponse>;
 
-const addRequest = async (payload: ExecutionRequest): Promise<boolean> => {
-  await fetch(requestUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+const addRequest = async (
+  payload: ExecutionRequest,
+): Promise<ApiResponse<boolean>> => {
+  return fetchWithErrorHandling(
+    requestUrl,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(payload),
     },
-    credentials: "include",
-    body: JSON.stringify(payload),
-  });
-  return true;
+    z.boolean(),
+  );
 };
 
 const patchRequest = async (
   id: string,
   payload: ChangeExecutionRequestPayload,
-): Promise<ExecutionRequestResponseWithComments> => {
-  const response = await fetch(requestUrl + id, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
+): Promise<ApiResponse<ExecutionRequestResponseWithComments>> => {
+  return fetchWithErrorHandling(
+    requestUrl + id,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(payload),
     },
-    credentials: "include",
-    body: JSON.stringify(payload),
-  });
-  const json: unknown = await response.json();
-  return ExecutionRequestResponseWithCommentsSchema.parse(json);
+    ExecutionRequestResponseWithCommentsSchema,
+  );
 };
 
-const postStartServer = async (id: string): Promise<ProxyResponse> => {
-  const response = await fetch(requestUrl + id + "/proxy", {
-    method: "POST",
-    credentials: "include",
-  });
-  const json: unknown = await response.json();
-  const proxy = ProxyResponse.parse(json);
-  return proxy;
+const postStartServer = async (
+  id: string,
+): Promise<ApiResponse<ProxyResponse>> => {
+  return fetchWithErrorHandling(
+    requestUrl + id + "/proxy",
+    {
+      method: "POST",
+      credentials: "include",
+    },
+    ProxyResponse,
+  );
 };
 
 const getRequests = async (): Promise<
