@@ -38,6 +38,7 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.DiscriminatorMapping
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
@@ -602,6 +603,22 @@ class ExecutionRequestController(
                 else -> executionRequestService.execute(executionRequestId, request?.query, userDetails.id)
             },
         )
+    }
+
+    @Operation(
+        summary = "Execute Execution Request and Download as CSV",
+        description = "Run the query and download results as CSV after the Execution Request has been approved.",
+    )
+    @GetMapping("/{executionRequestId}/download")
+    fun downloadCsv(
+        @PathVariable executionRequestId: ExecutionRequestId,
+        @CurrentUser userDetails: UserDetailsWithId,
+        response: HttpServletResponse,
+    ) {
+        response.contentType = "text/csv"
+        response.setHeader("Content-Disposition", "attachment; filename=\"results.csv\"")
+        val outputStream = response.outputStream
+        executionRequestService.streamResultsAsCsv(executionRequestId, userDetails.id, outputStream)
     }
 
     @Operation(

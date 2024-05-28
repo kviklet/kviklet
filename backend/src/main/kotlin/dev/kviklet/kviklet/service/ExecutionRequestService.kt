@@ -39,6 +39,7 @@ import dev.kviklet.kviklet.service.dto.ReviewEvent
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.utcTimeNow
 import dev.kviklet.kviklet.shell.KubernetesApi
+import jakarta.servlet.ServletOutputStream
 import jakarta.transaction.Transactional
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import org.slf4j.LoggerFactory
@@ -260,7 +261,6 @@ class ExecutionRequestService(
     private fun executeKubernetesRequest(
         id: ExecutionRequestId,
         executionRequest: ExecutionRequestDetails,
-        connection: KubernetesConnection,
         userId: String,
     ): KubernetesExecutionResult {
         if (executionRequest.request !is KubernetesExecutionRequest) {
@@ -308,8 +308,49 @@ class ExecutionRequestService(
                 executeDatasourceRequest(id, executionRequest, connection, query, userId)
             }
             is KubernetesConnection -> {
-                executeKubernetesRequest(id, executionRequest, connection, userId)
+                executeKubernetesRequest(id, executionRequest, userId)
             }
+        }
+    }
+
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
+    fun streamResultsAsCsv(id: ExecutionRequestId, userId: String, outputStream: ServletOutputStream) {
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
+        val connection = executionRequest.request.connection
+        if (connection !is DatasourceConnection || executionRequest.request !is DatasourceExecutionRequest) {
+            throw RuntimeException("Only Datasource Requests can be streamed as CSV")
+        }
+
+        val reviewStatus = resolveReviewStatus(executionRequest.events, connection.reviewConfig)
+        if (reviewStatus != ReviewStatus.APPROVED) {
+            throw InvalidReviewException("This request has not been approved yet!")
+        }
+
+        if (executionRequest.request.type != RequestType.SingleExecution) {
+            throw InvalidReviewException("Can only stream results for single queries!")
+        }
+
+        executionRequest.raiseIfAlreadyExecuted()
+
+        val queryToExecute = executionRequest.request.statement!!
+
+        eventService.saveEvent(
+            id,
+            userId,
+            ExecutePayload(
+                query = queryToExecute,
+                isDownload = true,
+            ),
+        )
+
+        executor.executeAndStreamDbResponse(
+            executionRequestId = id,
+            connectionString = connection.getConnectionString(),
+            username = connection.username,
+            password = connection.password,
+            query = queryToExecute,
+        ) { row ->
+            outputStream.println(row.joinToString(","))
         }
     }
 
