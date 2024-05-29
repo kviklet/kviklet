@@ -299,7 +299,7 @@ class ExecutionRequestService(
         }
     }
 
-    @Policy(Permission.EXECUTION_REQUEST_GET)
+    @Policy(Permission.EXECUTION_REQUEST_GET, checkIsPresentOnly = true)
     fun getCSVFileName(id: ExecutionRequestId): String {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
         val csvName = executionRequest.request.title.replace(" ", "_")
@@ -336,8 +336,19 @@ class ExecutionRequestService(
             password = connection.password,
             query = executionRequest.request.statement,
         ) { row ->
-            outputStream.println(row.joinToString(","))
+            outputStream.println(
+                row.joinToString(",") { field ->
+                    escapeCsvField(field)
+                },
+            )
         }
+    }
+
+    private fun escapeCsvField(field: String): String {
+        if (field.contains("\"") || field.contains(",") || field.contains("\n")) {
+            return "\"" + field.replace("\"", "\"\"") + "\""
+        }
+        return field
     }
 
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)

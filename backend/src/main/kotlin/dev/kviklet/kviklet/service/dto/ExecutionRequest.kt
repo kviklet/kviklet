@@ -206,8 +206,7 @@ data class ExecutionRequestDetails(
         if (statementCount > 1) {
             return Pair(false, "This request contains more than one statement!")
         }
-        val statementType = CCJSqlParserUtil.parseStatements(queryToExecute).first().javaClass.simpleName
-        if (statementType != "Select") {
+        if (CCJSqlParserUtil.parseStatements(queryToExecute).first() !is net.sf.jsqlparser.statement.select.Select) {
             return Pair(false, "Can only download results for select queries!")
         }
         return Pair(true, "")
