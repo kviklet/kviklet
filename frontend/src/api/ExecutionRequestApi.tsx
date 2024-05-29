@@ -100,7 +100,7 @@ const RawDatasourceRequestSchema = z.object({
   reviewStatus: z.string(),
   createdAt: z.coerce.date(),
   connectionName: z.string().optional(),
-  csvDownload: CSVDownloadSchema,
+  csvDownload: CSVDownloadSchema.optional(),
 });
 
 const RawKubernetesRequestSchema = z.object({
