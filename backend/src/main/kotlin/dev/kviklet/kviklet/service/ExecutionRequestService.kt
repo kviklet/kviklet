@@ -10,7 +10,6 @@ import dev.kviklet.kviklet.db.CommentPayload
 import dev.kviklet.kviklet.db.EditPayload
 import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
-import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.ReviewPayload
 import dev.kviklet.kviklet.proxy.PostgresProxy
 import dev.kviklet.kviklet.security.Permission
@@ -35,10 +34,10 @@ import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewAction
-import dev.kviklet.kviklet.service.dto.ReviewEvent
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.utcTimeNow
 import dev.kviklet.kviklet.shell.KubernetesApi
+import jakarta.servlet.ServletOutputStream
 import jakarta.transaction.Transactional
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import org.slf4j.LoggerFactory
@@ -191,18 +190,6 @@ class ExecutionRequestService(
         CommentPayload(comment = request.comment),
     )
 
-    private fun resolveReviewStatus(events: Set<Event>, reviewConfig: ReviewConfig): ReviewStatus {
-        val numReviews = events.filter {
-            it.type == EventType.REVIEW && it is ReviewEvent && it.action == ReviewAction.APPROVE
-        }.groupBy { it.author.getId() }.count()
-        val reviewStatus = if (numReviews >= reviewConfig.numTotalRequired) {
-            ReviewStatus.APPROVED
-        } else {
-            ReviewStatus.AWAITING_APPROVAL
-        }
-        return reviewStatus
-    }
-
     private fun executeDatasourceRequest(
         id: ExecutionRequestId,
         executionRequest: ExecutionRequestDetails,
@@ -260,7 +247,6 @@ class ExecutionRequestService(
     private fun executeKubernetesRequest(
         id: ExecutionRequestId,
         executionRequest: ExecutionRequestDetails,
-        connection: KubernetesConnection,
         userId: String,
     ): KubernetesExecutionResult {
         if (executionRequest.request !is KubernetesExecutionRequest) {
@@ -297,7 +283,7 @@ class ExecutionRequestService(
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
         val connection = executionRequest.request.connection
 
-        val reviewStatus = resolveReviewStatus(executionRequest.events, connection.reviewConfig)
+        val reviewStatus = executionRequest.resolveReviewStatus()
         if (reviewStatus != ReviewStatus.APPROVED) {
             throw InvalidReviewException("This request has not been approved yet!")
         }
@@ -308,8 +294,49 @@ class ExecutionRequestService(
                 executeDatasourceRequest(id, executionRequest, connection, query, userId)
             }
             is KubernetesConnection -> {
-                executeKubernetesRequest(id, executionRequest, connection, userId)
+                executeKubernetesRequest(id, executionRequest, userId)
             }
+        }
+    }
+
+    @Policy(Permission.EXECUTION_REQUEST_GET)
+    fun getCSVFileName(id: ExecutionRequestId): String {
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
+        val csvName = executionRequest.request.title.replace(" ", "_")
+        return "$csvName.csv"
+    }
+
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
+    fun streamResultsAsCsv(id: ExecutionRequestId, userId: String, outputStream: ServletOutputStream) {
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
+        val connection = executionRequest.request.connection
+        if (connection !is DatasourceConnection ||
+            executionRequest.request !is DatasourceExecutionRequest
+        ) {
+            throw RuntimeException("Only Datasource requests can be downloaded as CSV")
+        }
+        val downloadAllowedAndReason = executionRequest.csvDownloadAllowed()
+        if (!downloadAllowedAndReason.first) {
+            throw RuntimeException(downloadAllowedAndReason.second)
+        }
+
+        eventService.saveEvent(
+            id,
+            userId,
+            ExecutePayload(
+                query = executionRequest.request.statement!!,
+                isDownload = true,
+            ),
+        )
+
+        executor.executeAndStreamDbResponse(
+            executionRequestId = id,
+            connectionString = connection.getConnectionString(),
+            username = connection.username,
+            password = connection.password,
+            query = executionRequest.request.statement,
+        ) { row ->
+            outputStream.println(row.joinToString(","))
         }
     }
 
@@ -368,7 +395,7 @@ class ExecutionRequestService(
         if (connection !is DatasourceConnection) {
             throw RuntimeException("Only Datasource connections be proxied")
         }
-        val reviewStatus = resolveReviewStatus(executionRequest.events, connection.reviewConfig)
+        val reviewStatus = executionRequest.resolveReviewStatus()
         if (executionRequest.request.author.getId() != userDetails.id) {
             throw RuntimeException("Only the author of the request can proxy it!")
         }

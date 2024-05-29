@@ -38,6 +38,7 @@ import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.DiscriminatorMapping
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
@@ -205,6 +206,10 @@ sealed class ExecutionRequestDetailResponse(
                     createdAt = dto.request.createdAt,
                     events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
                     connection = ConnectionResponse.fromDto(dto.request.connection),
+                    csvDownload = CSVDownloadableResponse(
+                        allowed = dto.csvDownloadAllowed().first,
+                        reason = dto.csvDownloadAllowed().second,
+                    ),
                 )
                 is KubernetesExecutionRequest -> KubernetesExecutionRequestDetailResponse(
                     id = dto.request.id!!,
@@ -239,10 +244,16 @@ data class DatasourceExecutionRequestDetailResponse(
     val reviewStatus: ReviewStatus,
     val executionStatus: ExecutionStatus,
     val createdAt: LocalDateTime = utcTimeNow(),
+    val csvDownload: CSVDownloadableResponse,
     override val events: List<EventResponse>,
 ) : ExecutionRequestDetailResponse(
     id = id,
     events = events,
+)
+
+data class CSVDownloadableResponse(
+    val allowed: Boolean,
+    val reason: String,
 )
 
 data class KubernetesExecutionRequestDetailResponse(
@@ -602,6 +613,23 @@ class ExecutionRequestController(
                 else -> executionRequestService.execute(executionRequestId, request?.query, userDetails.id)
             },
         )
+    }
+
+    @Operation(
+        summary = "Execute Execution Request and Download as CSV",
+        description = "Run the query and download results as CSV after the Execution Request has been approved.",
+    )
+    @GetMapping("/{executionRequestId}/download")
+    fun downloadCsv(
+        @PathVariable executionRequestId: ExecutionRequestId,
+        @CurrentUser userDetails: UserDetailsWithId,
+        response: HttpServletResponse,
+    ) {
+        response.contentType = "text/csv"
+        val csvName = executionRequestService.getCSVFileName(executionRequestId)
+        response.setHeader("Content-Disposition", "attachment; filename=\"$csvName\"")
+        val outputStream = response.outputStream
+        executionRequestService.streamResultsAsCsv(executionRequestId, userDetails.id, outputStream)
     }
 
     @Operation(

@@ -83,6 +83,11 @@ const ExecuteEvent = withType(
   "EXECUTE",
 );
 
+const CSVDownloadSchema = z.object({
+  allowed: z.boolean(),
+  reason: z.string(),
+});
+
 const RawDatasourceRequestSchema = z.object({
   id: z.string(),
   type: z.enum(["TemporaryAccess", "SingleExecution"]),
@@ -95,6 +100,7 @@ const RawDatasourceRequestSchema = z.object({
   reviewStatus: z.string(),
   createdAt: z.coerce.date(),
   connectionName: z.string().optional(),
+  csvDownload: CSVDownloadSchema.optional(),
 });
 
 const RawKubernetesRequestSchema = z.object({

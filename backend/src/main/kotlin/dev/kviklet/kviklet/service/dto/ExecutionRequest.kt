@@ -8,6 +8,7 @@ import dev.kviklet.kviklet.security.SecuredDomainId
 import dev.kviklet.kviklet.security.SecuredDomainObject
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.QueryResult
+import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import java.io.Serializable
 import java.time.LocalDateTime
 
@@ -180,6 +181,36 @@ data class ExecutionRequestDetails(
 
     private fun isExecutable(): Boolean {
         return resolveReviewStatus() == ReviewStatus.APPROVED
+    }
+
+    fun csvDownloadAllowed(): Pair<Boolean, String> {
+        if (request.connection !is DatasourceConnection || request !is DatasourceExecutionRequest) {
+            return Pair(false, "Only Datasource Requests can be downloaded as CSV")
+        }
+
+        if (resolveReviewStatus() != ReviewStatus.APPROVED) {
+            return Pair(false, "This request has not been approved yet!")
+        }
+
+        if (request.type != RequestType.SingleExecution) {
+            return Pair(false, "Can only download results for single queries!")
+        }
+
+        if (resolveExecutionStatus() == ExecutionStatus.EXECUTED) {
+            return Pair(false, "This request has already been executed the maximum amount of times!")
+        }
+
+        val queryToExecute = request.statement!!
+
+        val statementCount = CCJSqlParserUtil.parseStatements(queryToExecute).size
+        if (statementCount > 1) {
+            return Pair(false, "This request contains more than one statement!")
+        }
+        val statementType = CCJSqlParserUtil.parseStatements(queryToExecute).first().javaClass.simpleName
+        if (statementType != "Select") {
+            return Pair(false, "Can only download results for select queries!")
+        }
+        return Pair(true, "")
     }
 }
 

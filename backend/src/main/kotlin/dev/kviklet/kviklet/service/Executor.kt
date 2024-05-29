@@ -90,7 +90,7 @@ class Executor() {
 
                     while (hasResults || statement.updateCount != -1) {
                         statement.resultSet?.use { resultSet ->
-                            queryResults.add(handleResultSet(resultSet, executionRequestId))
+                            queryResults.add(createRecordsQueryResult(executionRequestId, resultSet))
                         } ?: queryResults.add(UpdateQueryResult(statement.updateCount, executionRequestId))
 
                         hasResults = statement.moreResults
@@ -98,12 +98,45 @@ class Executor() {
                     return queryResults
                 }
             } catch (e: SQLException) {
-                return listOf(ErrorQueryResult(e.errorCode, e.message, executionRequestId))
+                var message = e.message
+                // adding all the cause messages to the original message as well
+                var cause = e.cause
+                while (cause != null) {
+                    message += "--> ${cause.javaClass}: ${cause.message} "
+                    cause = cause.cause
+                }
+                return listOf(ErrorQueryResult(e.errorCode, message, executionRequestId))
             }
         }
     }
 
-    private fun handleResultSet(resultSet: ResultSet, executionRequestId: ExecutionRequestId): QueryResult {
+    fun executeAndStreamDbResponse(
+        executionRequestId: ExecutionRequestId,
+        connectionString: String,
+        username: String,
+        password: String,
+        query: String,
+        callback: (List<String>) -> Unit,
+    ) {
+        createConnection(connectionString, username, password).use { dataSource: HikariDataSource ->
+            try {
+                dataSource.connection.createStatement().use { statement ->
+                    val hasResults = statement.execute(query)
+                    if (hasResults) {
+                        statement.resultSet?.use { resultSet ->
+                            streamResultSet(resultSet, callback)
+                        } ?: throw IllegalStateException("Can't stream a non-Select statement")
+                    } else {
+                        throw IllegalStateException("Can't stream a non-Select statement")
+                    }
+                }
+            } catch (e: SQLException) {
+                throw IllegalStateException("Error executing query", e)
+            }
+        }
+    }
+
+    private fun streamResultSet(resultSet: ResultSet, callback: (List<String>) -> Unit) {
         val metadata = resultSet.metaData
         val columns = (1..metadata.columnCount).map { i ->
             ColumnInfo(
@@ -113,9 +146,51 @@ class Executor() {
             )
         }
 
+        callback(columns.map { it.label })
+
+        iterateResultSet(resultSet, columns, forEachRow = { resultMap ->
+            callback(columns.map { resultMap[it.label] ?: "" })
+        })
+    }
+
+    private fun createRecordsQueryResult(
+        executionRequestId: ExecutionRequestId,
+        resultSet: ResultSet,
+    ): RecordsQueryResult {
         val results: MutableList<Map<String, String>> = mutableListOf()
+
+        val metadata = resultSet.metaData
+        val columns = (1..metadata.columnCount).map { i ->
+            ColumnInfo(
+                label = metadata.getColumnLabel(i),
+                typeName = metadata.getColumnTypeName(i),
+                typeClass = metadata.getColumnClassName(i),
+            )
+        }
+
+        iterateResultSet(
+            resultSet,
+            columns,
+            forEachRow = { resultMap ->
+                results.add(
+                    resultMap,
+                )
+            },
+        )
+        return RecordsQueryResult(
+            columns = columns,
+            data = results,
+            executionRequestId,
+        )
+    }
+
+    private fun iterateResultSet(
+        resultSet: ResultSet,
+        columns: List<ColumnInfo>,
+        forEachRow: (Map<String, String>) -> Unit,
+    ) {
         while (resultSet.next()) {
-            results.add(
+            forEachRow.invoke(
                 columns.associate {
                     if (it.typeClass == "[B") {
                         Pair(it.label, resultSet.getBytes(it.label)?.let { "0x" + HexFormat.of().formatHex(it) } ?: "")
@@ -125,11 +200,6 @@ class Executor() {
                 },
             )
         }
-        return RecordsQueryResult(
-            columns = columns,
-            data = results,
-            executionRequestId,
-        )
     }
 
     private fun createConnection(url: String, username: String, password: String): HikariDataSource {
