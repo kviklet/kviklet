@@ -575,8 +575,10 @@ function DatasourceRequestBox({
   const menuDropDownItems = [
     {
       onClick: () => {},
-      enabled: request?.csvDownload.allowed,
-      tooltip: !request?.csvDownload.allowed && request?.csvDownload.reason,
+      enabled: request?.csvDownload.allowed || false,
+      tooltip:
+        (!request?.csvDownload.allowed && request?.csvDownload.reason) ||
+        undefined,
       content: (
         <a href={`${baseUrl}/execution-requests/${request?.id}/download`}>
           Download as CSV
