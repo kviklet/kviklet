@@ -206,6 +206,10 @@ sealed class ExecutionRequestDetailResponse(
                     createdAt = dto.request.createdAt,
                     events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
                     connection = ConnectionResponse.fromDto(dto.request.connection),
+                    csvDownload = CSVDownloadableResponse(
+                        allowed = dto.csvDownloadAllowed().first,
+                        reason = dto.csvDownloadAllowed().second,
+                    ),
                 )
                 is KubernetesExecutionRequest -> KubernetesExecutionRequestDetailResponse(
                     id = dto.request.id!!,
@@ -240,10 +244,16 @@ data class DatasourceExecutionRequestDetailResponse(
     val reviewStatus: ReviewStatus,
     val executionStatus: ExecutionStatus,
     val createdAt: LocalDateTime = utcTimeNow(),
+    val csvDownload: CSVDownloadableResponse,
     override val events: List<EventResponse>,
 ) : ExecutionRequestDetailResponse(
     id = id,
     events = events,
+)
+
+data class CSVDownloadableResponse(
+    val allowed: Boolean,
+    val reason: String,
 )
 
 data class KubernetesExecutionRequestDetailResponse(
@@ -616,7 +626,8 @@ class ExecutionRequestController(
         response: HttpServletResponse,
     ) {
         response.contentType = "text/csv"
-        response.setHeader("Content-Disposition", "attachment; filename=\"results.csv\"")
+        val csvName = executionRequestService.getCSVFileName(executionRequestId)
+        response.setHeader("Content-Disposition", "attachment; filename=\"$csvName\"")
         val outputStream = response.outputStream
         executionRequestService.streamResultsAsCsv(executionRequestId, userDetails.id, outputStream)
     }

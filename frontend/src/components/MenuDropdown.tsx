@@ -2,14 +2,11 @@ import { Fragment } from "react";
 import { Menu, Transition } from "@headlessui/react";
 import { EllipsisVerticalIcon } from "@heroicons/react/20/solid";
 
-function classNames(...classes: (string | false | null | undefined)[]) {
-  return classes.filter(Boolean).join(" ");
-}
-
 interface MenuItem {
   onClick: () => void;
-  text: string;
+  content: string | JSX.Element;
   enabled: boolean;
+  tooltip?: string;
 }
 
 interface MenuDropDownProps {
@@ -17,6 +14,13 @@ interface MenuDropDownProps {
 }
 
 export default function MenuDropDown(props: MenuDropDownProps) {
+  const defaultButtonClasses =
+    "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-50 block w-full px-4 py-2 text-left text-sm" +
+    "hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-700 dark:hover:text-slate-50";
+
+  const disabledButtonStyles =
+    "bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-400 block w-full px-4 py-2 text-left text-sm cursor-not-allowed";
+
   return (
     <Menu as="div" className="mx-2">
       <Menu.Button
@@ -43,17 +47,16 @@ export default function MenuDropDown(props: MenuDropDownProps) {
         <Menu.Items className="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-slate-50 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-slate-800">
           <div className="py-1">
             {props.items.map((item) => (
-              <Menu.Item key={item.text}>
-                {({ active }) => (
+              <Menu.Item>
+                {() => (
                   <button
                     onClick={item.onClick}
-                    className={classNames(
-                      active ? "bg-slate-100 text-slate-900" : "text-slate-700",
-                      "dark:bg-slate-800 dark:text-slate-50",
-                      "block w-full px-4 py-2 text-left text-sm",
-                    )}
+                    title={item.tooltip}
+                    className={
+                      item.enabled ? defaultButtonClasses : disabledButtonStyles
+                    }
                   >
-                    {item.text}
+                    {item.content}
                   </button>
                 )}
               </Menu.Item>

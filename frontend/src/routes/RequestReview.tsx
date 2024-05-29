@@ -45,6 +45,7 @@ import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import MenuDropDown from "../components/MenuDropdown";
 import { isApiErrorResponse } from "../api/Errors";
 import useNotification from "../hooks/useNotification";
+import baseUrl from "../api/base";
 
 interface RequestReviewParams {
   requestId: string;
@@ -457,7 +458,7 @@ const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
         void navigateCopy();
       },
       enabled: true,
-      text: "Copy Request",
+      content: "Copy Request",
     },
   ];
 
@@ -573,11 +574,21 @@ function DatasourceRequestBox({
 
   const menuDropDownItems = [
     {
+      onClick: () => {},
+      enabled: request?.csvDownload.allowed,
+      tooltip: !request?.csvDownload.allowed && request?.csvDownload.reason,
+      content: (
+        <a href={`${baseUrl}/execution-requests/${request?.id}/download`}>
+          Download as CSV
+        </a>
+      ),
+    },
+    {
       onClick: () => {
         void navigateCopy();
       },
       enabled: true,
-      text: "Copy Request",
+      content: "Copy Request",
     },
     ...(request?.type == "SingleExecution"
       ? [
@@ -588,7 +599,7 @@ function DatasourceRequestBox({
             enabled:
               request?.reviewStatus === "APPROVED" ||
               request?.reviewStatus === "AWAITING_APPROVAL",
-            text: "Explain",
+            content: "Explain",
           },
         ]
       : []),
@@ -599,7 +610,7 @@ function DatasourceRequestBox({
               void startServer();
             },
             enabled: request?.reviewStatus === "APPROVED",
-            text: "Start Proxy",
+            content: "Start Proxy",
           },
         ]
       : []),
