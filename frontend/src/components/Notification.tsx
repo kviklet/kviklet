@@ -17,7 +17,10 @@ export default function Notification(props: { title: string; text: string }) {
       leaveTo="opacity-0"
       className="w-full"
     >
-      <div className="pointer-events-auto ml-auto w-full max-w-sm overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5">
+      <div
+        className="pointer-events-auto ml-auto w-full max-w-sm overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5
+      dark:border dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:shadow-none"
+      >
         <div className="p-4">
           <div className="flex items-start">
             <div className="flex-shrink-0">
@@ -27,13 +30,17 @@ export default function Notification(props: { title: string; text: string }) {
               />
             </div>
             <div className="ml-3 w-0 flex-1 pt-0.5">
-              <p className="text-sm font-medium text-gray-900">{props.title}</p>
-              <p className="mt-1 text-sm text-gray-500">{props.text}</p>
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                {props.title}
+              </p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                {props.text}
+              </p>
             </div>
             <div className="ml-4 flex flex-shrink-0">
               <button
                 type="button"
-                className="inline-flex rounded-md bg-white text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 hover:text-gray-500"
+                className="inline-flex rounded-md text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 hover:text-slate-500"
                 onClick={() => {
                   setShow(false);
                 }}
@@ -63,20 +70,27 @@ function ErrorNotification(props: { title: string; text: string }) {
       leaveTo="opacity-0"
       className="w-full"
     >
-      <div className="pointer-events-auto ml-auto w-full max-w-sm overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5">
+      <div
+        className="pointer-events-auto ml-auto w-full max-w-sm overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5
+      dark:border dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:shadow-none"
+      >
         <div className="p-4">
           <div className="flex items-start">
             <div className="flex-shrink-0">
               <XMarkIcon className="h-6 w-6 text-red-400" aria-hidden="true" />
             </div>
             <div className="ml-3 w-0 flex-1 pt-0.5">
-              <p className="text-sm font-medium text-gray-900">{props.title}</p>
-              <p className="mt-1 text-sm text-gray-500">{props.text}</p>
+              <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                {props.title}
+              </p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                {props.text}
+              </p>
             </div>
             <div className="ml-4 flex flex-shrink-0">
               <button
                 type="button"
-                className="inline-flex rounded-md bg-white text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 hover:text-gray-500"
+                className="inline-flex rounded-md text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 hover:text-slate-500"
                 onClick={() => {
                   setShow(false);
                 }}
