@@ -26,7 +26,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
           >
             {label}
             {props.tooltip && (
-              <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-gray-400" />
+              <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400" />
             )}
           </label>
 
@@ -50,9 +50,13 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
           <div className="flex w-full justify-between">
             <label
               htmlFor={props.id}
-              className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
+              className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+              title={props.tooltip || undefined}
             >
               {label}
+              {props.tooltip && (
+                <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400" />
+              )}
             </label>
             <input
               type={inputType || "text"}

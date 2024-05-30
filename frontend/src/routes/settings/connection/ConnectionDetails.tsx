@@ -177,6 +177,7 @@ function UpdateDatasourceConnectionForm({
           <InputField
             id="reviewConfig.numTotalRequired"
             label="Required reviews"
+            tooltip="The number of required approving reviews that's required before a request can be executed."
             placeholder="1"
             type="number"
             min="0"
@@ -230,6 +231,7 @@ function UpdateDatasourceConnectionForm({
                         id="maxExecutions"
                         label="Max executions"
                         placeholder="Max executions"
+                        tooltip="The maximum number of times each request can be executed after it has been approved, usually 1."
                         type="number"
                         {...register("maxExecutions")}
                         error={errors.maxExecutions?.message}
@@ -309,6 +311,7 @@ function UpdateKubernetesConnectionForm({
             label="Required reviews"
             id="numTotalRequired"
             placeholder="1"
+            tooltip="The number of required approving reviews that's required before a request can be executed."
             type="number"
             {...register("reviewConfig.numTotalRequired")}
             error={errors.reviewConfig?.numTotalRequired?.message}
@@ -337,6 +340,7 @@ function UpdateKubernetesConnectionForm({
                         label="Max executions"
                         id="maxExecutions"
                         placeholder="Max executions"
+                        tooltip="The maximum number of times each request can be executed after it has been approved, usually 1."
                         type="number"
                         {...register("maxExecutions")}
                         error={errors.maxExecutions?.message}
