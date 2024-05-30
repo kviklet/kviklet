@@ -429,6 +429,7 @@ abstract class EventResponse(
                 event.containerName,
                 event.podName,
                 event.namespace,
+                event.isDownload,
             )
             else -> {
                 throw IllegalStateException("Somehow found event of type ${event.type}")
@@ -477,6 +478,7 @@ data class ExecuteEventResponse(
     val containerName: String? = null,
     val podName: String? = null,
     val namespace: String? = null,
+    val isDownload: Boolean = false,
 ) : EventResponse(EventType.EXECUTE, createdAt)
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")

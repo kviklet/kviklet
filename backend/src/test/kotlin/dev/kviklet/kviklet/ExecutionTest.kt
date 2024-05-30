@@ -12,6 +12,7 @@ import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.RequestType
 import org.hamcrest.CoreMatchers.notNullValue
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -504,5 +505,58 @@ class ExecutionTest {
                 """.trimIndent(),
             ),
         )
+    }
+
+    @Test
+    fun `csv download`() {
+        val user = userHelper.createUser(permissions = listOf("*"))
+        val approver = userHelper.createUser(permissions = listOf("*"))
+        // Creates a new execution request with SELECT 1; as the statement
+        val executionRequest = executionRequestHelper.createApprovedRequest(
+            getDb(),
+            user,
+            approver,
+            sql = "SELECT * FROM foo.simple_table",
+        )
+        val cookie = userHelper.login(mockMvc = mockMvc)
+
+        val result = mockMvc.perform(
+            get("/execution-requests/${executionRequest.getId()}/download").cookie(cookie).contentType(
+                "application/json",
+            ),
+        ).andExpect(status().isOk).andReturn()
+        val responseContent = result.response.contentAsString
+
+        assertTrue(
+            responseContent.contains("col1,col2"),
+        )
+        assertTrue(
+            responseContent.contains("1,foo"),
+        )
+        assertTrue(
+            responseContent.contains("2,bar"),
+        )
+
+        mockMvc.perform(
+            get("/executions/").cookie(cookie).contentType(
+                "application/json",
+            ),
+        ).andExpect(status().isOk).andExpect(
+            content().json(
+                """
+                {
+                  "executions": [
+                    {
+                      "requestId": "${executionRequest.getId()}",
+                      "name": "${user.fullName}",
+                      "statement": "SELECT * FROM foo.simple_table",
+                      "connectionId": "${executionRequest.request.connection.id}"
+                      }
+                  ]
+                }
+                """.trimIndent(),
+            ),
+        )
+            .andExpect(jsonPath("$.executions[0].executionTime", notNullValue()))
     }
 }
