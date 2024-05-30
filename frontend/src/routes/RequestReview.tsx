@@ -755,6 +755,10 @@ function EditEvent({ event, index }: { event: Edit; index: number }) {
 }
 
 function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
+  const isDownload = event.isDownload || false;
+  const sqlStatementText = isDownload
+    ? "downloaded the results for the following statement:"
+    : "executed the following statement:";
   return (
     <div className="">
       <div className="relative ml-4 flex py-4">
@@ -774,7 +778,7 @@ function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
         </div>
         {event?.query && (
           <div className="text-sm text-slate-500">
-            {event?.author?.fullName} ran the following statement:
+            {event?.author?.fullName} {sqlStatementText}
           </div>
         )}
         {event?.command && (
@@ -803,60 +807,63 @@ function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
             <Highlighter>{event.command}</Highlighter>
           </div>
         )}
-        <div className="px-4 dark:bg-slate-900">
-          <Disclosure defaultOpen={true}>
-            {({ open }) => (
-              <>
-                <Disclosure.Button className="w-full py-2 ">
-                  <div className="flex w-full flex-row justify-start">
-                    <p className="text-xs">Results</p>
-                    {open ? (
-                      <ChevronDownIcon className="h-4 w-4 text-slate-400 dark:text-slate-500"></ChevronDownIcon>
-                    ) : (
-                      <ChevronRightIcon className="h-4 w-4 text-slate-400 dark:text-slate-500"></ChevronRightIcon>
-                    )}
-                  </div>
-                </Disclosure.Button>
-                <Disclosure.Panel>
-                  <div className="mb-2 flex flex-col space-y-2 text-sm dark:text-slate-300">
-                    {event.results.map((result, index) => {
-                      const renderResult = () => {
-                        if (result.type === "QUERY") {
-                          return (
-                            <div className="flex justify-between">
-                              <span>
-                                Returned {result.columnCount} Column(s) with{" "}
-                                {result.rowCount} row(s).
-                              </span>
-                            </div>
-                          );
-                        } else if (result.type === "ERROR") {
-                          return (
-                            <div className="flex justify-between text-red-500">
-                              <span>
-                                Query resulted in Error "{result.message}"" with
-                                code "{result.errorCode}"".
-                              </span>
-                            </div>
-                          );
-                        } else if (result.type === "UPDATE") {
-                          return (
-                            <div className="flex justify-between">
-                              <span>
-                                Statement affected {result.rowsUpdated} row(s).
-                              </span>
-                            </div>
-                          );
-                        }
-                      };
-                      return <div key={index}>{renderResult()}</div>;
-                    })}
-                  </div>
-                </Disclosure.Panel>
-              </>
-            )}
-          </Disclosure>
-        </div>
+        {event.results.length > 0 && (
+          <div className="px-4 dark:bg-slate-900">
+            <Disclosure defaultOpen={true}>
+              {({ open }) => (
+                <>
+                  <Disclosure.Button className="w-full py-2 ">
+                    <div className="flex w-full flex-row justify-start">
+                      <p className="text-xs">Results</p>
+                      {open ? (
+                        <ChevronDownIcon className="h-4 w-4 text-slate-400 dark:text-slate-500"></ChevronDownIcon>
+                      ) : (
+                        <ChevronRightIcon className="h-4 w-4 text-slate-400 dark:text-slate-500"></ChevronRightIcon>
+                      )}
+                    </div>
+                  </Disclosure.Button>
+                  <Disclosure.Panel>
+                    <div className="mb-2 flex flex-col space-y-2 text-sm dark:text-slate-300">
+                      {event.results.map((result, index) => {
+                        const renderResult = () => {
+                          if (result.type === "QUERY") {
+                            return (
+                              <div className="flex justify-between">
+                                <span>
+                                  Returned {result.columnCount} Column(s) with{" "}
+                                  {result.rowCount} row(s).
+                                </span>
+                              </div>
+                            );
+                          } else if (result.type === "ERROR") {
+                            return (
+                              <div className="flex justify-between text-red-500">
+                                <span>
+                                  Query resulted in Error "{result.message}""
+                                  with code "{result.errorCode}"".
+                                </span>
+                              </div>
+                            );
+                          } else if (result.type === "UPDATE") {
+                            return (
+                              <div className="flex justify-between">
+                                <span>
+                                  Statement affected {result.rowsUpdated}{" "}
+                                  row(s).
+                                </span>
+                              </div>
+                            );
+                          }
+                        };
+                        return <div key={index}>{renderResult()}</div>;
+                      })}
+                    </div>
+                  </Disclosure.Panel>
+                </>
+              )}
+            </Disclosure>
+          </div>
+        )}
       </div>
     </div>
   );
