@@ -164,6 +164,7 @@ export default function DatabaseConnectionForm(props: {
           <InputField
             id="reviewConfig.numTotalRequired"
             label="Required reviews"
+            tooltip="The number of required approving reviews that's required before a request can be executed."
             placeholder="1"
             type="number"
             min="0"
@@ -223,7 +224,8 @@ export default function DatabaseConnectionForm(props: {
                       <InputField
                         id="maxExecutions"
                         label="Max executions"
-                        placeholder="Max executions"
+                        placeholder="1"
+                        tooltip="The maximum number of times each request can be executed after it has been approved, usually 1."
                         type="number"
                         {...register("maxExecutions")}
                         error={errors.maxExecutions?.message}
