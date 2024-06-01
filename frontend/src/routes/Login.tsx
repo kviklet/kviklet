@@ -60,7 +60,7 @@ const Login = () => {
 
   const oAuthButton = () => {
     if (config?.oauthProvider) {
-      if (config.oauthProvider === "GOOGLE") {
+      if (config.oauthProvider === "google") {
         return (
           <a
             href={`${baseUrl}/oauth2/authorization/google`}
@@ -70,7 +70,7 @@ const Login = () => {
           </a>
         );
       }
-      if (config.oauthProvider === "KEYCLOAK") {
+      if (config.oauthProvider === "keycloak") {
         return (
           <a
             href={`${baseUrl}/oauth2/authorization/keycloak`}
@@ -80,7 +80,16 @@ const Login = () => {
           </a>
         );
       } else {
-        return <></>;
+        return (
+          <a
+            href={`${baseUrl}/oauth2/authorization/${config.oauthProvider}`}
+            className="mt-8 block w-full"
+          >
+            <Button className="mx-auto w-full">
+              Login with {config.oauthProvider}
+            </Button>
+          </a>
+        );
       }
     }
   };
