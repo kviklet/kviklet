@@ -183,7 +183,7 @@ data class ExecutionRequestDetails(
         return resolveReviewStatus() == ReviewStatus.APPROVED
     }
 
-    fun csvDownloadAllowed(): Pair<Boolean, String> {
+    fun csvDownloadAllowed(query: String? = null): Pair<Boolean, String> {
         if (request.connection !is DatasourceConnection || request !is DatasourceExecutionRequest) {
             return Pair(false, "Only Datasource Requests can be downloaded as CSV")
         }
@@ -192,15 +192,16 @@ data class ExecutionRequestDetails(
             return Pair(false, "This request has not been approved yet!")
         }
 
-        if (request.type != RequestType.SingleExecution) {
-            return Pair(false, "Can only download results for single queries!")
-        }
-
         if (resolveExecutionStatus() == ExecutionStatus.EXECUTED) {
             return Pair(false, "This request has already been executed the maximum amount of times!")
         }
 
-        val queryToExecute = request.statement!!
+        val queryToExecute = when (request.type) {
+            RequestType.SingleExecution -> request.statement!!.trim().removeSuffix(";")
+            RequestType.TemporaryAccess -> query?.trim()?.removeSuffix(
+                ";",
+            ) ?: return Pair(false, "Query can't be empty")
+        }
 
         val statementCount = CCJSqlParserUtil.parseStatements(queryToExecute).size
         if (statementCount > 1) {
