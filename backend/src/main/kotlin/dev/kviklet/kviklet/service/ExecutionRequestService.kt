@@ -307,7 +307,12 @@ class ExecutionRequestService(
     }
 
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
-    fun streamResultsAsCsv(id: ExecutionRequestId, userId: String, outputStream: ServletOutputStream) {
+    fun streamResultsAsCsv(
+        id: ExecutionRequestId,
+        userId: String,
+        outputStream: ServletOutputStream,
+        query: String? = null,
+    ) {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
         val connection = executionRequest.request.connection
         if (connection !is DatasourceConnection ||
@@ -315,7 +320,13 @@ class ExecutionRequestService(
         ) {
             throw RuntimeException("Only Datasource requests can be downloaded as CSV")
         }
-        val downloadAllowedAndReason = executionRequest.csvDownloadAllowed()
+        val downloadAllowedAndReason = executionRequest.csvDownloadAllowed(query)
+        val queryToExecute = when (executionRequest.request.type) {
+            RequestType.SingleExecution -> executionRequest.request.statement!!.trim().removeSuffix(";")
+            RequestType.TemporaryAccess -> query?.trim()?.removeSuffix(
+                ";",
+            ) ?: throw MissingQueryException("For temporary access requests a query to execute is required")
+        }
         if (!downloadAllowedAndReason.first) {
             throw RuntimeException(downloadAllowedAndReason.second)
         }
@@ -324,7 +335,7 @@ class ExecutionRequestService(
             id,
             userId,
             ExecutePayload(
-                query = executionRequest.request.statement!!,
+                query = queryToExecute,
                 isDownload = true,
             ),
         )
@@ -334,7 +345,7 @@ class ExecutionRequestService(
             connectionString = connection.getConnectionString(),
             username = connection.username,
             password = connection.password,
-            query = executionRequest.request.statement,
+            query = queryToExecute,
         ) { row ->
             outputStream.println(
                 row.joinToString(",") { field ->
