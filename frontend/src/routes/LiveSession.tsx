@@ -11,6 +11,7 @@ import Spinner from "../components/Spinner";
 import { useParams } from "react-router-dom";
 import MultiResult from "../components/MultiResult";
 import { isApiErrorResponse } from "../api/Errors";
+import baseUrl from "../api/base";
 
 interface SessionParams {
   requestId: string;
@@ -60,6 +61,22 @@ export default function LiveSession() {
   });
   monaco.editor.setTheme(theme);
 
+  const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+
+    const selection = editor?.getSelection();
+    const query =
+      (selection && editor?.getModel()?.getValueInRange(selection)) ||
+      editor?.getValue();
+
+    const downloadUrl = `${baseUrl}/execution-requests/${
+      params.requestId
+    }/download?query=${encodeURIComponent(query || "")}`;
+
+    console.log("Link clicked, downloading from:", downloadUrl);
+    window.location.href = downloadUrl;
+  };
+
   const executeQuery = async () => {
     const selection = editor?.getSelection();
     const text =
@@ -86,7 +103,10 @@ export default function LiveSession() {
         <div className="my-5 h-32 resize-y overflow-auto">
           <div className="h-full w-full" ref={monacoEl}></div>
         </div>
-        <div className="flex flex-row-reverse">
+        <div className="flex flex-row">
+          <a className="ml-auto mr-2" href="#" onClick={handleClick}>
+            <Button>Download as CSV</Button>
+          </a>
           <Button type="submit" onClick={() => void executeQuery()}>
             {" "}
             Run Query

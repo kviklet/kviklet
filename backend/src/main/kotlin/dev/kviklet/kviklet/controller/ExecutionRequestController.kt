@@ -47,6 +47,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDateTime
 
@@ -96,6 +97,10 @@ data class UpdateExecutionRequestRequest(
 data class ExecuteExecutionRequestRequest(
     val query: String?,
     val explain: Boolean = false,
+)
+
+data class DownloadCSVRequest(
+    val query: String?,
 )
 
 data class CreateReviewRequest(
@@ -626,12 +631,13 @@ class ExecutionRequestController(
         @PathVariable executionRequestId: ExecutionRequestId,
         @CurrentUser userDetails: UserDetailsWithId,
         response: HttpServletResponse,
+        @RequestParam query: String?,
     ) {
         response.contentType = "text/csv"
         val csvName = executionRequestService.getCSVFileName(executionRequestId)
         response.setHeader("Content-Disposition", "attachment; filename=\"$csvName\"")
         val outputStream = response.outputStream
-        executionRequestService.streamResultsAsCsv(executionRequestId, userDetails.id, outputStream)
+        executionRequestService.streamResultsAsCsv(executionRequestId, userDetails.id, outputStream, query)
     }
 
     @Operation(
