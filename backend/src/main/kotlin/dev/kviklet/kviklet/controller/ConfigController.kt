@@ -11,24 +11,8 @@ data class CreateConfigRequest(
     val licenseKey: String,
 )
 
-enum class OAuthProvider() {
-    GOOGLE,
-    KEYCLOAK,
-    ;
-
-    companion object {
-        fun fromString(string: String): OAuthProvider? {
-            return when (string) {
-                "google" -> GOOGLE
-                "keycloak" -> KEYCLOAK
-                else -> null
-            }
-        }
-    }
-}
-
 data class ConfigResponse(
-    val oAuthProvider: OAuthProvider?,
+    val oAuthProvider: String?,
 )
 
 @RestController
@@ -45,7 +29,7 @@ class ConfigController(
     @GetMapping("/")
     fun getConfig(): ConfigResponse {
         return ConfigResponse(
-            oAuthProvider = IdentityProviderProperties.type?.let { OAuthProvider.fromString(it) },
+            oAuthProvider = IdentityProviderProperties.type?.lowercase(),
         )
     }
 }
