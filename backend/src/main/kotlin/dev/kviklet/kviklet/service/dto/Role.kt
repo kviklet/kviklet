@@ -11,7 +11,11 @@ data class Role(
     val description: String,
     val policies: Set<Policy> = HashSet(),
 ) : SecuredDomainObject {
+    val isDefault: Boolean
+        get() = id == DEFAULT_ROLE_ID
     companion object {
+
+        val DEFAULT_ROLE_ID = RoleId("7WoJJYKT2hhrLp49YrT2yr")
         fun create(id: RoleId, name: String, description: String, policies: Set<Policy>): Role {
             return Role(
                 id = id,

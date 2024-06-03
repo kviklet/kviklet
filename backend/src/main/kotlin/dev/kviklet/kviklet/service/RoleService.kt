@@ -57,6 +57,10 @@ class RoleService(private val roleAdapter: RoleAdapter) {
 
     @dev.kviklet.kviklet.security.Policy(Permission.ROLE_EDIT)
     fun deleteRole(id: RoleId) {
+        val role = roleAdapter.findById(id)
+        if (role.isDefault) {
+            throw IllegalArgumentException("Cannot delete default role")
+        }
         roleAdapter.delete(id)
     }
 }

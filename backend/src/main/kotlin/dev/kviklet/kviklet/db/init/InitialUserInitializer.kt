@@ -1,7 +1,6 @@
 package dev.kviklet.kviklet.db.init
 
 import dev.kviklet.kviklet.db.PolicyEntity
-import dev.kviklet.kviklet.db.PolicyRepository
 import dev.kviklet.kviklet.db.RoleEntity
 import dev.kviklet.kviklet.db.RoleRepository
 import dev.kviklet.kviklet.db.UserEntity
@@ -19,7 +18,6 @@ import org.springframework.security.crypto.password.PasswordEncoder
 @Profile("!local & !e2e & !test")
 class InitialUserInitializer(
     private val roleRepository: RoleRepository,
-    private val policyRepository: PolicyRepository,
 ) {
 
     fun createAdminRole(savedUser: UserEntity) {
@@ -77,21 +75,20 @@ class InitialUserInitializer(
         @Value("\${initial.user.password}") password: String,
     ): ApplicationRunner {
         return ApplicationRunner { _ ->
-            if (userRepository.findAll().isNotEmpty()) {
-                return@ApplicationRunner
+            if (userRepository.findAll().isEmpty()) {
+                val user = UserEntity(
+                    email = email,
+                    fullName = "Admin User",
+                    password = passwordEncoder.encode(password),
+                )
+
+                val savedUser = userRepository.saveAndFlush(user)
+
+                createAdminRole(savedUser)
+                createDevRole()
+                userRepository.saveAndFlush(savedUser)
             }
-
-            val user = UserEntity(
-                email = email,
-                fullName = "Admin User",
-                password = passwordEncoder.encode(password),
-            )
-
-            val savedUser = userRepository.saveAndFlush(user)
-
-            createAdminRole(savedUser)
-            createDevRole()
-            userRepository.saveAndFlush(savedUser)
+            return@ApplicationRunner
         }
     }
 }

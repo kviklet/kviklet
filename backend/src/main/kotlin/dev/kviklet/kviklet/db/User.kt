@@ -151,6 +151,7 @@ class UserAdapter(
             password = user.password,
             subject = user.subject,
             email = user.email,
+            roles = roleRepository.findAllById(user.roles.map { it.getId() }.toSet()).toMutableSet(),
         )
         val savedUserEntity = userRepository.save(userEntity)
         return savedUserEntity.toDto()
@@ -168,6 +169,7 @@ class UserAdapter(
             userEntity.password = user.password
             userEntity.subject = user.subject
             userEntity.email = user.email
+            userEntity.roles = roleRepository.findAllById(user.roles.map { it.getId() }.toSet()).toMutableSet()
             val savedUserEntity = userRepository.save(userEntity)
             return savedUserEntity.toDto()
         }

@@ -60,7 +60,10 @@ class UserHelper(
             "$userFullName users role",
             policies,
         )
-        val updatedUser = userService.updateUserWithRoles(UserId(user.getId()!!), roles = listOf(role.getId()!!))
+        val updatedUser = userService.updateUserWithRoles(
+            UserId(user.getId()!!),
+            roles = listOf(role.getId()!!, Role.DEFAULT_ROLE_ID.toString()),
+        )
         userCount++
         return updatedUser
     }

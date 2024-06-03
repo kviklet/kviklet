@@ -6,6 +6,7 @@ import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
+import dev.kviklet.kviklet.service.dto.Role
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -25,11 +26,13 @@ class UserService(
         if (existingUser != null) {
             throw EmailAlreadyExistsException(email)
         }
+        val defaultRole = roleAdapter.findById(Role.DEFAULT_ROLE_ID)
 
         val user = User(
             email = email,
             fullName = fullName,
             password = passwordEncoder.encode(password),
+            roles = setOf(defaultRole),
         )
         return userAdapter.createUser(user)
     }
@@ -44,11 +47,15 @@ class UserService(
         roles: List<String>,
     ): User {
         val user = userAdapter.findById(userId.toString())
+        val newRoles = roleAdapter.findByIds(roles).toSet()
+        if (newRoles.none { it.isDefault }) {
+            throw Exception("Every User has to keep the default role")
+        }
         val updatedUser = user.copy(
             email = email ?: user.email,
             fullName = fullName ?: user.fullName,
             password = password?.let { passwordEncoder.encode(it) } ?: user.password,
-            roles = roleAdapter.findByIds(roles).toSet(),
+            roles = newRoles,
         )
         val savedUser = userAdapter.updateUser(updatedUser)
         return savedUser

@@ -19,6 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
@@ -180,5 +181,84 @@ class PoliciesTest {
 
         mockMvc.perform(get("/roles/"))
             .andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun createRole() {
+        val user = userHelper.createUser(
+            permissions = listOf(
+                Permission.ROLE_GET.getPermissionString(),
+                Permission.ROLE_EDIT.getPermissionString(),
+            ),
+        )
+        val cookie = userHelper.login(mockMvc = mockMvc)
+        mockMvc.perform(
+            post("/roles/")
+                .cookie(cookie)
+                .contentType("application/json")
+                .content(
+                    """
+                        {
+                            "name": "Role 1",
+                            "description": "Role 1 description",
+                            "policies": [
+                                {
+                                    "action": "role:get",
+                                    "effect": "ALLOW",
+                                    "resource": "*"
+                                }
+                            ]
+                        }
+                    """.trimIndent(),
+                ),
+        )
+
+        mockMvc.perform(get("/roles/").cookie(cookie))
+            .andExpect(status().isOk)
+            .andExpect(
+                content().json(
+                    """
+                    {
+                      "roles": [
+                        {
+                          "id": "7WoJJYKT2hhrLp49YrT2yr",
+                          "name": "Default Role",
+                          "description": "This is the default role and gives permission to read connections and requests",
+                          "policies": [
+                            {
+                              "action": "datasource_connection:get",
+                              "effect": "ALLOW",
+                              "resource": "*"
+                            },
+                            {
+                              "action": "execution_request:get",
+                              "effect": "ALLOW",
+                              "resource": "*"
+                            }
+                          ],
+                          "isDefault": true
+                        },
+                        {
+                          "name": "User 1 Role",
+                          "description": "User 1 users role",
+                          "isDefault": false
+                        },
+                        {
+                          "name": "Role 1",
+                          "description": "Role 1 description",
+                          "policies": [
+                            {
+                              "action": "role:get",
+                              "effect": "ALLOW",
+                              "resource": "*"
+                            }
+                          ],
+                          "isDefault": false
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+            )
     }
 }
