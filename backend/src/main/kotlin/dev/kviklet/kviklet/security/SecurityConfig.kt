@@ -1,8 +1,10 @@
 package dev.kviklet.kviklet.security
 
+import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.service.EmailAlreadyExistsException
+import dev.kviklet.kviklet.service.dto.Role
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.transaction.Transactional
@@ -252,6 +254,7 @@ class CustomOidcUser(
 @Service
 class CustomOidcUserService(
     private val userAdapter: UserAdapter,
+    private val roleAdapter: RoleAdapter,
 ) : OidcUserService() {
 
     @Transactional
@@ -269,11 +272,13 @@ class CustomOidcUserService(
                 // This means a password user with the same email already exists
                 throw EmailAlreadyExistsException(email)
             }
+            val defaultRole = roleAdapter.findById(Role.DEFAULT_ROLE_ID)
             // If the user is signing in for the first time, create a new user
             user = User(
                 subject = subject,
                 email = email,
                 fullName = name,
+                roles = setOf(defaultRole),
                 // Set default roles and other user properties here
             )
         } else {

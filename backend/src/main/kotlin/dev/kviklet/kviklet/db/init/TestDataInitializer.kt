@@ -7,7 +7,6 @@ import dev.kviklet.kviklet.db.ExecutionRequestEntity
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
 import dev.kviklet.kviklet.db.ExecutionRequestType
 import dev.kviklet.kviklet.db.PolicyEntity
-import dev.kviklet.kviklet.db.PolicyRepository
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.RoleEntity
 import dev.kviklet.kviklet.db.RoleRepository
@@ -31,7 +30,6 @@ class TestDataInitializer(
     private val connectionRepository: ConnectionRepository,
     private val executionRequestRepository: ExecutionRequestRepository,
     private val roleRepository: RoleRepository,
-    private val policyRepository: PolicyRepository,
 ) {
 
     // Helper function to generate an ExecutionRequestEntity
@@ -114,7 +112,7 @@ class TestDataInitializer(
                 ),
             ),
         )
-        val savedRole = roleRepository.saveAndFlush(role)
+        roleRepository.saveAndFlush(role)
     }
 
     @Bean

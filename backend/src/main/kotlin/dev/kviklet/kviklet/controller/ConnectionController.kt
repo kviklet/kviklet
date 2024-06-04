@@ -154,7 +154,6 @@ sealed class ConnectionResponse(
             return when (connection) {
                 is DatasourceConnection -> DatasourceConnectionResponse.fromDto(connection)
                 is KubernetesConnection -> KubernetesConnectionResponse.fromDto(connection)
-                else -> throw IllegalArgumentException("Unsupported connection type")
             }
         }
     }

@@ -31,6 +31,7 @@ const mockRoleResponse = {
       resource: "asdf",
     },
   ],
+  isDefault: false,
 };
 
 const expectedTransformedRole = {

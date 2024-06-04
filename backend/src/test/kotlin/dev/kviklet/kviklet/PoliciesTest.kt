@@ -1,16 +1,18 @@
 package dev.kviklet.kviklet
 
-import dev.kviklet.kviklet.db.RoleAdapter
+import com.fasterxml.jackson.databind.ObjectMapper
 import dev.kviklet.kviklet.db.User
-import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.db.UserId
+import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.service.RoleService
 import dev.kviklet.kviklet.service.UserService
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.PolicyEffect
+import dev.kviklet.kviklet.service.dto.Role
 import dev.kviklet.kviklet.service.dto.RoleId
+import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -18,7 +20,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
@@ -30,10 +34,7 @@ class PoliciesTest {
     private lateinit var userHelper: UserHelper
 
     @Autowired
-    private lateinit var roleAdapter: RoleAdapter
-
-    @Autowired
-    private lateinit var userAdapter: UserAdapter
+    private lateinit var roleHelper: RoleHelper
 
     @Autowired
     private lateinit var roleService: RoleService
@@ -44,10 +45,13 @@ class PoliciesTest {
     @Autowired
     lateinit var userService: UserService
 
+    @Autowired
+    private lateinit var objectMapper: ObjectMapper
+
     @AfterEach
     fun tearDown() {
         userHelper.deleteAll()
-        roleAdapter.deleteAll()
+        roleHelper.deleteAll()
     }
 
     fun createUser(permissions: List<String>, resources: List<String>? = null): User {
@@ -85,12 +89,13 @@ class PoliciesTest {
                     {
                         "roles": [
                             {
-                                "id": "${user.roles.first().getId()}",
+                                "name": "Default Role"
+                            },
+                            {
                                 "name": "User 1 Role",
                                 "description": "User 1 users role",
                                 "policies": [
                                     {
-                                        "id": "${user.roles.first().policies.first().id}",
                                         "action": "*",
                                         "effect": "ALLOW",
                                         "resource": "*"
@@ -105,7 +110,7 @@ class PoliciesTest {
     }
 
     @Test
-    fun canOnlyGetRoleWithCorrectPermissions() {
+    fun canGetOnlySpecificRoleWithCorrectPermission() {
         val role = roleService.createRole("Some-Role", "the users role")
         val user = userHelper.createUser(
             permissions = listOf(Permission.ROLE_GET.getPermissionString()),
@@ -121,7 +126,6 @@ class PoliciesTest {
                 {
                     "roles": [
                         {
-                            "id": "${role.getId()}",
                             "name": "Some-Role",
                             "description": "the users role",
                             "policies": []
@@ -146,12 +150,13 @@ class PoliciesTest {
                     {
                         "roles": [
                             {
-                                "id": "${user.roles.first().getId()}",
+                                "name": "Default Role"
+                            },
+                            {
                                 "name": "User 1 Role",
                                 "description": "User 1 users role",
                                 "policies": [
                                     {
-                                        "id": "${user.roles.first().policies.first().id}",
                                         "action": "role:get",
                                         "effect": "ALLOW",
                                         "resource": "*"
@@ -180,5 +185,150 @@ class PoliciesTest {
 
         mockMvc.perform(get("/roles/"))
             .andExpect(status().isUnauthorized)
+    }
+
+    @Test
+    fun createRole() {
+        val user = userHelper.createUser(
+            permissions = listOf(
+                Permission.ROLE_GET.getPermissionString(),
+                Permission.ROLE_EDIT.getPermissionString(),
+            ),
+        )
+        val cookie = userHelper.login(mockMvc = mockMvc)
+        mockMvc.perform(
+            post("/roles/")
+                .cookie(cookie)
+                .contentType("application/json")
+                .content(
+                    """
+                        {
+                            "name": "Role 1",
+                            "description": "Role 1 description",
+                            "policies": [
+                                {
+                                    "action": "role:get",
+                                    "effect": "ALLOW",
+                                    "resource": "*"
+                                }
+                            ]
+                        }
+                    """.trimIndent(),
+                ),
+        )
+
+        mockMvc.perform(get("/roles/").cookie(cookie))
+            .andExpect(status().isOk)
+            .andExpect(
+                content().json(
+                    """
+                    {
+                      "roles": [
+                        {
+                          "id": "7WoJJYKT2hhrLp49YrT2yr",
+                          "name": "Default Role",
+                          "description": "This is the default role and gives permission to read connections and requests",
+                          "policies": [
+                            {
+                              "action": "datasource_connection:get",
+                              "effect": "ALLOW",
+                              "resource": "*"
+                            },
+                            {
+                              "action": "execution_request:get",
+                              "effect": "ALLOW",
+                              "resource": "*"
+                            }
+                          ],
+                          "isDefault": true
+                        },
+                        {
+                          "name": "User 1 Role",
+                          "description": "User 1 users role",
+                          "isDefault": false
+                        },
+                        {
+                          "name": "Role 1",
+                          "description": "Role 1 description",
+                          "policies": [
+                            {
+                              "action": "role:get",
+                              "effect": "ALLOW",
+                              "resource": "*"
+                            }
+                          ],
+                          "isDefault": false
+                        }
+                      ]
+                    }
+                    """.trimIndent(),
+                ),
+            )
+    }
+
+    @Test
+    fun deleteRole() {
+        userHelper.createUser(
+            permissions = listOf(
+                Permission.ROLE_GET.getPermissionString(),
+                Permission.ROLE_EDIT.getPermissionString(),
+            ),
+        )
+        val cookie = userHelper.login(mockMvc = mockMvc)
+        val roleResponse = mockMvc.perform(
+            post("/roles/")
+                .cookie(cookie)
+                .contentType("application/json")
+                .content(
+                    """
+                        {
+                            "name": "Role 1",
+                            "description": "Role 1 description",
+                            "policies": [
+                                {
+                                    "action": "role:get",
+                                    "effect": "ALLOW",
+                                    "resource": "*"
+                                }
+                            ]
+                        }
+                    """.trimIndent(),
+                ),
+        ).andReturn()
+        val responseContent = roleResponse.response.contentAsString
+        val jsonNode = objectMapper.readTree(responseContent)
+        val roleId = jsonNode.get("id").asText()
+
+        roleService.getAllRoles().size shouldBe 3 // Default Role, users role, and the just created one
+
+        mockMvc.perform(
+            delete("/roles/$roleId")
+                .cookie(cookie)
+                .contentType("application/json"),
+        ).andExpect(status().isOk)
+
+        val roles = roleService.getAllRoles()
+        roles.size shouldBe 2
+        roles.find { it.getId() == roleId } shouldBe null
+    }
+
+    @Test
+    fun `deleting Default Role fails`() {
+        userHelper.createUser(
+            permissions = listOf(
+                Permission.ROLE_GET.getPermissionString(),
+                Permission.ROLE_EDIT.getPermissionString(),
+            ),
+        )
+        val cookie = userHelper.login(mockMvc = mockMvc)
+
+        mockMvc.perform(
+            delete("/roles/${Role.DEFAULT_ROLE_ID}")
+                .cookie(cookie)
+                .contentType("application/json"),
+        ).andExpect(status().isBadRequest)
+
+        val roles = roleService.getAllRoles()
+        roles.size shouldBe 2
     }
 }

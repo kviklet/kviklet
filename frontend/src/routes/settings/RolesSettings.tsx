@@ -87,17 +87,19 @@ const Table = ({
                     <div className="whitespace-nowrap px-6 py-4 text-sm text-slate-500 dark:text-slate-200">
                       {role.description}
                     </div>
-                    <div className="flex items-center justify-end whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleDeleteRole(role);
-                        }}
-                        className="text-slate-400 hover:text-slate-900"
-                      >
-                        <FontAwesomeIcon icon={solid("trash")} />
-                      </button>
-                    </div>
+                    {!role.isDefault && (
+                      <div className="flex items-center justify-end whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleDeleteRole(role);
+                          }}
+                          className="text-slate-400 hover:text-slate-900"
+                        >
+                          <FontAwesomeIcon icon={solid("trash")} />
+                        </button>
+                      </div>
+                    )}
                   </Link>
                 ))}
               </div>

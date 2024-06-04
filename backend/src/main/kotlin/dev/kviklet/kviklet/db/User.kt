@@ -43,13 +43,13 @@ class UserEntity(
     @Column(unique = true)
     var email: String = "",
 
-    @ManyToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    @ManyToMany(cascade = [CascadeType.PERSIST], fetch = FetchType.LAZY)
     @JoinTable(
         name = "user_role",
         joinColumns = [JoinColumn(name = "user_id")],
         inverseJoinColumns = [JoinColumn(name = "role_id")],
     )
-    var roles: Set<RoleEntity> = emptySet<RoleEntity>().toMutableSet(),
+    var roles: MutableSet<RoleEntity> = emptySet<RoleEntity>().toMutableSet(),
 ) : BaseEntity() {
     fun toDto() = User(
         id = id?.let { UserId(it) },
@@ -57,7 +57,7 @@ class UserEntity(
         password = password,
         subject = subject,
         email = email,
-        roles = roles.map { it.toDto() }.toSet(),
+        roles = roles.map { it.toDto() }.toMutableSet(),
     )
 }
 
@@ -151,6 +151,7 @@ class UserAdapter(
             password = user.password,
             subject = user.subject,
             email = user.email,
+            roles = roleRepository.findAllById(user.roles.map { it.getId() }.toSet()).toMutableSet(),
         )
         val savedUserEntity = userRepository.save(userEntity)
         return savedUserEntity.toDto()
@@ -168,6 +169,7 @@ class UserAdapter(
             userEntity.password = user.password
             userEntity.subject = user.subject
             userEntity.email = user.email
+            userEntity.roles = roleRepository.findAllById(user.roles.map { it.getId() }.toSet()).toMutableSet()
             val savedUserEntity = userRepository.save(userEntity)
             return savedUserEntity.toDto()
         }
@@ -201,6 +203,7 @@ class UserAdapter(
         userRepository.deleteAll()
     }
 
+    @Transactional(readOnly = true)
     fun listUsers(): List<User> {
         val userEntities = userRepository.findAll()
         return userEntities.map { it.toDto() }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import dev.kviklet.kviklet.TestFixtures.createDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.ConnectionController
 import dev.kviklet.kviklet.db.ConnectionRepository
+import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.Policy
@@ -44,6 +45,9 @@ class DatasourceConnectionSecurityTest(
 
     @Autowired
     lateinit var objectMapper: ObjectMapper
+
+    @Autowired
+    private lateinit var roleHelper: RoleHelper
 
     @BeforeEach
     fun setUp() {
@@ -93,6 +97,7 @@ class DatasourceConnectionSecurityTest(
     @MethodSource
     fun testUpdateForbidden(policies: List<Policy>) {
         userHelper.createUser(policies = policies.toSet())
+        roleHelper.removeDefaultRolePermissions()
         val cookie = userHelper.login(mockMvc = mockMvc)
         val request = dev.kviklet.kviklet.controller.UpdateDatasourceConnectionRequest(
             displayName = "new name",
@@ -121,6 +126,7 @@ class DatasourceConnectionSecurityTest(
     fun testCreateDatasourceConnectionForbidden(policies: List<Policy>) {
         userHelper.createUser(policies = policies.toSet())
         val cookie = userHelper.login(mockMvc = mockMvc)
+        roleHelper.removeDefaultRolePermissions()
         val request = createDatasourceConnectionRequest("db1-conn3")
         mockMvc.perform(post("/connections/").content(request).cookie(cookie))
             .andExpect(status().isForbidden)

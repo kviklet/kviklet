@@ -60,7 +60,10 @@ class UserHelper(
             "$userFullName users role",
             policies,
         )
-        val updatedUser = userService.updateUserWithRoles(UserId(user.getId()!!), roles = listOf(role.getId()!!))
+        val updatedUser = userService.updateUserWithRoles(
+            UserId(user.getId()!!),
+            roles = listOf(role.getId()!!, Role.DEFAULT_ROLE_ID.toString()),
+        )
         userCount++
         return updatedUser
     }
@@ -126,6 +129,28 @@ class RoleHelper(private val roleService: RoleService) {
             policies = mappedPolicies,
         )
         return role
+    }
+
+    @Transactional
+    fun deleteAll() {
+        roleService.getAllRoles().forEach {
+            if (!it.isDefault) {
+                roleService.deleteRole(RoleId(it.getId()!!))
+            }
+        }
+        roleService.updateRole(
+            id = Role.DEFAULT_ROLE_ID,
+            policies = Role.DEFAULT_ROLE_POLICIES,
+        )
+    }
+
+    @Transactional
+    fun removeDefaultRolePermissions() {
+        val defaultRole = roleService.getRole(Role.DEFAULT_ROLE_ID)
+        roleService.updateRole(
+            id = RoleId(defaultRole.getId()!!),
+            policies = emptySet(),
+        )
     }
 }
 

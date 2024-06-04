@@ -57,6 +57,7 @@ data class RoleResponse(
     val name: String,
     val description: String,
     val policies: List<PolicyResponse>,
+    val isDefault: Boolean = false,
 ) {
     companion object {
         fun fromDto(dto: Role): RoleResponse {
@@ -65,6 +66,7 @@ data class RoleResponse(
                 name = dto.name,
                 description = dto.description,
                 policies = dto.policies.map { PolicyResponse.fromDto(it) },
+                isDefault = dto.isDefault,
             )
         }
     }

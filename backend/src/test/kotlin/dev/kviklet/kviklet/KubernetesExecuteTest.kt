@@ -2,9 +2,9 @@ package dev.kviklet.kviklet
 
 import com.ninjasquad.springmockk.MockkBean
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
-import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.helper.ConnectionHelper
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper
+import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
@@ -30,7 +30,7 @@ class KubernetesExecuteTest() {
     private lateinit var kubernetesApi: KubernetesApi
 
     @Autowired
-    private lateinit var roleAdapter: RoleAdapter
+    private lateinit var roleHelper: RoleHelper
 
     @Autowired
     private lateinit var executionRequestAdapter: ExecutionRequestAdapter
@@ -75,7 +75,7 @@ class KubernetesExecuteTest() {
         executionRequestAdapter.deleteAll()
         connectionHelper.deleteAll()
         userHelper.deleteAll()
-        roleAdapter.deleteAll()
+        roleHelper.deleteAll()
     }
 
     @Test
