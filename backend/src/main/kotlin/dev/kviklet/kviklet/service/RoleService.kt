@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional
 class RoleService(private val roleAdapter: RoleAdapter) {
 
     @dev.kviklet.kviklet.security.Policy(Permission.ROLE_EDIT)
+    @Transactional
     fun updateRole(roleToUpdate: Role): Role {
         val savedRole = roleAdapter.update(roleToUpdate)
         return savedRole
@@ -36,6 +37,7 @@ class RoleService(private val roleAdapter: RoleAdapter) {
     }
 
     @dev.kviklet.kviklet.security.Policy(Permission.ROLE_EDIT)
+    @Transactional
     fun createRole(name: String, description: String, policies: Set<Policy>? = emptySet()): Role {
         val role = Role(
             name = name,
@@ -46,16 +48,19 @@ class RoleService(private val roleAdapter: RoleAdapter) {
     }
 
     @dev.kviklet.kviklet.security.Policy(Permission.ROLE_GET)
+    @Transactional(readOnly = true)
     fun getAllRoles(): List<Role> {
         return roleAdapter.findAll()
     }
 
     @dev.kviklet.kviklet.security.Policy(Permission.ROLE_GET)
+    @Transactional(readOnly = true)
     fun getRole(id: RoleId): Role {
         return roleAdapter.findById(id)
     }
 
     @dev.kviklet.kviklet.security.Policy(Permission.ROLE_EDIT)
+    @Transactional
     fun deleteRole(id: RoleId) {
         val role = roleAdapter.findById(id)
         if (role.isDefault) {

@@ -49,7 +49,7 @@ class UserService(
         val user = userAdapter.findById(userId.toString())
         val newRoles = roleAdapter.findByIds(roles).toSet()
         if (newRoles.none { it.isDefault }) {
-            throw Exception("Every User has to keep the default role")
+            throw IllegalArgumentException("Every User has to keep the default role")
         }
         val updatedUser = user.copy(
             email = email ?: user.email,

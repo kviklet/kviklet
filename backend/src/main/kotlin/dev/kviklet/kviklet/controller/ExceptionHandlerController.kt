@@ -28,11 +28,15 @@ class ExceptionHandlerController {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
-    fun handleNotValidblabla(ex: MethodArgumentNotValidException, request: HttpServletRequest): ResponseEntity<Any> {
-        // Log the exception details
+    fun handleNotValid(ex: MethodArgumentNotValidException, request: HttpServletRequest): ResponseEntity<Any> {
         logger.error("Validation error at ${request.requestURI}: ${ex.message}")
-        // Return a meaningful response or handle it as required
         return ResponseEntity("Validation error", HttpStatus.BAD_REQUEST)
+    }
+
+    @ExceptionHandler(IllegalArgumentException::class)
+    fun handleIllegalArgumentException(ex: IllegalArgumentException, request: HttpServletRequest): ResponseEntity<Any> {
+        logger.error("Illegal argument at ${request.requestURI}: ${ex.message}")
+        return ResponseEntity(ErrorResponse(ex.message ?: "Illegal argument"), HttpStatus.BAD_REQUEST)
     }
 
     @ExceptionHandler(HttpMessageNotReadableException::class)

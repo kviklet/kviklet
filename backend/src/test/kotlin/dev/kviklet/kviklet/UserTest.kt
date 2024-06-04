@@ -67,7 +67,7 @@ class UserTest {
             .andExpect(jsonPath("$.id", notNullValue()))
             .andExpect(jsonPath("$.email", `is`("someemail@email.de")))
             .andExpect(jsonPath("$.fullName", `is`("Some User")))
-            .andExpect(jsonPath("$.roles.length()", `is`(1)))
+            .andExpect(jsonPath("$.roles.length()", `is`(1))) // Should already have the default role
             .andExpect(jsonPath("$.permissionString", notNullValue()))
             .andExpect(jsonPath("$.password").doesNotExist())
     }
@@ -208,6 +208,30 @@ class UserTest {
                 """.trimIndent(),
             ).contentType("application/json"),
         ).andExpect(status().isOk)
+    }
+
+    @Test
+    fun `editing roles does not allow removing the default role`() {
+        val testUser = userHelper.createUser(listOf("user:edit", "user:get", "user:edit_roles"), listOf("*", "*", "*"))
+        val cookie = userHelper.login(mockMvc = mockMvc)
+        val user = userHelper.createUser(
+            permissions = listOf("*"),
+            email = "secondUser@email.de",
+            password = "123456",
+            fullName = "Second User",
+        )
+        val role = roleHelper.createRole(listOf("*"), name = "bla")
+
+        mockMvc.perform(
+            patch("/users/${user.getId()}").cookie(cookie).content(
+                """
+                {
+                    "email": "newemail@email.de",
+                    "roles": ["${role.getId()}"]
+                }
+                """.trimIndent(),
+            ).contentType("application/json"),
+        ).andExpect(status().isBadRequest)
     }
 
     @Test

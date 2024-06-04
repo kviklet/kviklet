@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.helper.RoleHelper
@@ -9,7 +10,9 @@ import dev.kviklet.kviklet.service.RoleService
 import dev.kviklet.kviklet.service.UserService
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.PolicyEffect
+import dev.kviklet.kviklet.service.dto.Role
 import dev.kviklet.kviklet.service.dto.RoleId
+import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -17,6 +20,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
@@ -40,6 +44,9 @@ class PoliciesTest {
 
     @Autowired
     lateinit var userService: UserService
+
+    @Autowired
+    private lateinit var objectMapper: ObjectMapper
 
     @AfterEach
     fun tearDown() {
@@ -257,5 +264,71 @@ class PoliciesTest {
                     """.trimIndent(),
                 ),
             )
+    }
+
+    @Test
+    fun deleteRole() {
+        userHelper.createUser(
+            permissions = listOf(
+                Permission.ROLE_GET.getPermissionString(),
+                Permission.ROLE_EDIT.getPermissionString(),
+            ),
+        )
+        val cookie = userHelper.login(mockMvc = mockMvc)
+        val roleResponse = mockMvc.perform(
+            post("/roles/")
+                .cookie(cookie)
+                .contentType("application/json")
+                .content(
+                    """
+                        {
+                            "name": "Role 1",
+                            "description": "Role 1 description",
+                            "policies": [
+                                {
+                                    "action": "role:get",
+                                    "effect": "ALLOW",
+                                    "resource": "*"
+                                }
+                            ]
+                        }
+                    """.trimIndent(),
+                ),
+        ).andReturn()
+        val responseContent = roleResponse.response.contentAsString
+        val jsonNode = objectMapper.readTree(responseContent)
+        val roleId = jsonNode.get("id").asText()
+
+        roleService.getAllRoles().size shouldBe 3 // Default Role, users role, and the just created one
+
+        mockMvc.perform(
+            delete("/roles/$roleId")
+                .cookie(cookie)
+                .contentType("application/json"),
+        ).andExpect(status().isOk)
+
+        val roles = roleService.getAllRoles()
+        roles.size shouldBe 2
+        roles.find { it.getId() == roleId } shouldBe null
+    }
+
+    @Test
+    fun `deleting Default Role fails`() {
+        userHelper.createUser(
+            permissions = listOf(
+                Permission.ROLE_GET.getPermissionString(),
+                Permission.ROLE_EDIT.getPermissionString(),
+            ),
+        )
+        val cookie = userHelper.login(mockMvc = mockMvc)
+
+        mockMvc.perform(
+            delete("/roles/${Role.DEFAULT_ROLE_ID}")
+                .cookie(cookie)
+                .contentType("application/json"),
+        ).andExpect(status().isBadRequest)
+
+        val roles = roleService.getAllRoles()
+        roles.size shouldBe 2
     }
 }
