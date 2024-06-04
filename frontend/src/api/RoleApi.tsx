@@ -18,6 +18,7 @@ const roleResponseSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
   policies: z.array(policyResponseSchema),
+  isDefault: z.boolean(),
 });
 
 type PolicyUpdatePayload = z.infer<typeof policyUpdatePayloadSchema>;

@@ -190,9 +190,13 @@ const UserRow = (props: {
           {props.user.roles.map((role) => {
             return (
               <ColorfulLabel
-                onDelete={() => {
-                  void props.removeRoleFromUser(props.user.id, role.id);
-                }}
+                onDelete={
+                  role.isDefault
+                    ? undefined
+                    : () => {
+                        void props.removeRoleFromUser(props.user.id, role.id);
+                      }
+                }
                 text={role.name}
               />
             );

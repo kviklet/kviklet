@@ -203,6 +203,7 @@ class UserAdapter(
         userRepository.deleteAll()
     }
 
+    @Transactional(readOnly = true)
     fun listUsers(): List<User> {
         val userEntities = userRepository.findAll()
         return userEntities.map { it.toDto() }
