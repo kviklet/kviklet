@@ -14,4 +14,4 @@ spring:
   h2:
     console.enabled: true
 app:
-  name: "Execution Gate"
+  name: "Kviklet"

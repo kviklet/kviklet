@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.service.dto
 
+import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Resource
 import dev.kviklet.kviklet.security.SecuredDomainId
 import dev.kviklet.kviklet.security.SecuredDomainObject
@@ -16,6 +17,19 @@ data class Role(
     companion object {
 
         val DEFAULT_ROLE_ID = RoleId("7WoJJYKT2hhrLp49YrT2yr")
+
+        val DEFAULT_ROLE_POLICIES = setOf(
+            Policy(
+                action = Permission.DATASOURCE_CONNECTION_GET.getPermissionString(),
+                effect = PolicyEffect.ALLOW,
+                resource = "*",
+            ),
+            Policy(
+                action = Permission.EXECUTION_REQUEST_GET.getPermissionString(),
+                effect = PolicyEffect.ALLOW,
+                resource = "*",
+            ),
+        )
         fun create(id: RoleId, name: String, description: String, policies: Set<Policy>): Role {
             return Role(
                 id = id,

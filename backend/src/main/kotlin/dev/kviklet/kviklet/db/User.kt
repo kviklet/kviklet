@@ -43,13 +43,13 @@ class UserEntity(
     @Column(unique = true)
     var email: String = "",
 
-    @ManyToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
+    @ManyToMany(cascade = [CascadeType.PERSIST], fetch = FetchType.LAZY)
     @JoinTable(
         name = "user_role",
         joinColumns = [JoinColumn(name = "user_id")],
         inverseJoinColumns = [JoinColumn(name = "role_id")],
     )
-    var roles: Set<RoleEntity> = emptySet<RoleEntity>().toMutableSet(),
+    var roles: MutableSet<RoleEntity> = emptySet<RoleEntity>().toMutableSet(),
 ) : BaseEntity() {
     fun toDto() = User(
         id = id?.let { UserId(it) },
@@ -57,7 +57,7 @@ class UserEntity(
         password = password,
         subject = subject,
         email = email,
-        roles = roles.map { it.toDto() }.toSet(),
+        roles = roles.map { it.toDto() }.toMutableSet(),
     )
 }
 

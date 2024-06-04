@@ -112,7 +112,7 @@ class TestDataInitializer(
                 ),
             ),
         )
-        val savedRole = roleRepository.saveAndFlush(role)
+        roleRepository.saveAndFlush(role)
     }
 
     @Bean

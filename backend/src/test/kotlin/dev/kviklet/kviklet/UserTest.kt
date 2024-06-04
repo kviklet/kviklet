@@ -1,8 +1,8 @@
 package dev.kviklet.kviklet
 
-import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
+import dev.kviklet.kviklet.service.dto.Role
 import org.hamcrest.CoreMatchers.`is`
 import org.hamcrest.CoreMatchers.notNullValue
 import org.junit.jupiter.api.AfterEach
@@ -28,13 +28,10 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 class UserTest {
 
     @Autowired
-    private lateinit var roleAdapter: RoleAdapter
+    private lateinit var roleHelper: RoleHelper
 
     @Autowired
     private lateinit var userHelper: UserHelper
-
-    @Autowired
-    private lateinit var roleHelper: RoleHelper
 
     @Autowired
     lateinit var mockMvc: MockMvc
@@ -42,7 +39,7 @@ class UserTest {
     @AfterEach
     fun tearDown() {
         userHelper.deleteAll()
-        roleAdapter.deleteAll()
+        roleHelper.deleteAll()
     }
 
     fun successPermissions() = listOf(
@@ -70,7 +67,7 @@ class UserTest {
             .andExpect(jsonPath("$.id", notNullValue()))
             .andExpect(jsonPath("$.email", `is`("someemail@email.de")))
             .andExpect(jsonPath("$.fullName", `is`("Some User")))
-            .andExpect(jsonPath("$.roles.length()", `is`(0)))
+            .andExpect(jsonPath("$.roles.length()", `is`(1)))
             .andExpect(jsonPath("$.permissionString", notNullValue()))
             .andExpect(jsonPath("$.password").doesNotExist())
     }
@@ -140,7 +137,7 @@ class UserTest {
             .andExpect(jsonPath("$.id", `is`(user.getId())))
             .andExpect(jsonPath("$.email", `is`("newemail@email.de")))
             .andExpect(jsonPath("$.fullName", `is`(user.fullName)))
-            .andExpect(jsonPath("$.roles.length()", `is`(1)))
+            .andExpect(jsonPath("$.roles.length()", `is`(2)))
             .andExpect(jsonPath("$.permissionString", notNullValue()))
             .andExpect(jsonPath("$.password").doesNotExist())
     }
@@ -206,7 +203,7 @@ class UserTest {
                 """
                 {
                     "email": "newemail@email.de",
-                    "roles": ["${role.getId()}"]
+                    "roles": ["${role.getId()}", "${Role.DEFAULT_ROLE_ID}"]
                 }
                 """.trimIndent(),
             ).contentType("application/json"),

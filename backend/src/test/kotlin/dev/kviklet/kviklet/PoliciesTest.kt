@@ -1,9 +1,8 @@
 package dev.kviklet.kviklet
 
-import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.User
-import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.db.UserId
+import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.service.RoleService
@@ -31,10 +30,7 @@ class PoliciesTest {
     private lateinit var userHelper: UserHelper
 
     @Autowired
-    private lateinit var roleAdapter: RoleAdapter
-
-    @Autowired
-    private lateinit var userAdapter: UserAdapter
+    private lateinit var roleHelper: RoleHelper
 
     @Autowired
     private lateinit var roleService: RoleService
@@ -48,7 +44,7 @@ class PoliciesTest {
     @AfterEach
     fun tearDown() {
         userHelper.deleteAll()
-        roleAdapter.deleteAll()
+        roleHelper.deleteAll()
     }
 
     fun createUser(permissions: List<String>, resources: List<String>? = null): User {
@@ -86,12 +82,13 @@ class PoliciesTest {
                     {
                         "roles": [
                             {
-                                "id": "${user.roles.first().getId()}",
+                                "name": "Default Role"
+                            },
+                            {
                                 "name": "User 1 Role",
                                 "description": "User 1 users role",
                                 "policies": [
                                     {
-                                        "id": "${user.roles.first().policies.first().id}",
                                         "action": "*",
                                         "effect": "ALLOW",
                                         "resource": "*"
@@ -106,7 +103,7 @@ class PoliciesTest {
     }
 
     @Test
-    fun canOnlyGetRoleWithCorrectPermissions() {
+    fun canGetOnlySpecificRoleWithCorrectPermission() {
         val role = roleService.createRole("Some-Role", "the users role")
         val user = userHelper.createUser(
             permissions = listOf(Permission.ROLE_GET.getPermissionString()),
@@ -122,7 +119,6 @@ class PoliciesTest {
                 {
                     "roles": [
                         {
-                            "id": "${role.getId()}",
                             "name": "Some-Role",
                             "description": "the users role",
                             "policies": []
@@ -147,12 +143,13 @@ class PoliciesTest {
                     {
                         "roles": [
                             {
-                                "id": "${user.roles.first().getId()}",
+                                "name": "Default Role"
+                            },
+                            {
                                 "name": "User 1 Role",
                                 "description": "User 1 users role",
                                 "policies": [
                                     {
-                                        "id": "${user.roles.first().policies.first().id}",
                                         "action": "role:get",
                                         "effect": "ALLOW",
                                         "resource": "*"

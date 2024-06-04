@@ -9,7 +9,7 @@ import java.util.*
 class IdGenerator : IdentifierGenerator {
 
     override fun generate(sharedSessionContractImplementor: SharedSessionContractImplementor, obj: Any): Serializable {
-        if (obj is BaseEntity && obj.id != null) {
+        if (obj is BaseEntity && obj.id != null && obj.id!!.length == 22) {
             return obj.id!!
         }
         return generateId()

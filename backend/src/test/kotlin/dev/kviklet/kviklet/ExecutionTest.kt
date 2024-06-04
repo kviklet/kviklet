@@ -3,8 +3,8 @@ package dev.kviklet.kviklet
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.ReviewConfig
-import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper
+import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.ConnectionId
@@ -40,13 +40,13 @@ class ExecutionTest {
     private lateinit var datasourceConnectionAdapter: ConnectionAdapter
 
     @Autowired
-    private lateinit var roleAdapter: RoleAdapter
-
-    @Autowired
     private lateinit var executionRequestAdapter: ExecutionRequestAdapter
 
     @Autowired
     private lateinit var userHelper: UserHelper
+
+    @Autowired
+    private lateinit var roleHelper: RoleHelper
 
     @Autowired
     private lateinit var executionRequestHelper: ExecutionRequestHelper
@@ -80,7 +80,7 @@ class ExecutionTest {
     fun tearDown() {
         executionRequestAdapter.deleteAll()
         userHelper.deleteAll()
-        roleAdapter.deleteAll()
+        roleHelper.deleteAll()
     }
 
     @Test
@@ -190,12 +190,13 @@ class ExecutionTest {
                                 "email": "${user.email}",
                                 "roles": [
                                     {
-                                        "id": "${user.roles.first().getId()}",
+                                        "name": "Default Role"
+                                    },
+                                    {
                                         "name": "User 1 Role",
                                         "description": "User 1 users role",
                                         "policies": [
                                             {
-                                                "id": "${user.roles.first().policies.first().id}",
                                                 "action": "*",
                                                 "effect": "ALLOW",
                                                 "resource": "*"
@@ -224,12 +225,13 @@ class ExecutionTest {
                                     "email": ${user.email},
                                     "roles": [
                                         {
-                                            "id": "${user.roles.first().getId()}",
+                                            "name": "Default Role"
+                                        },
+                                        {
                                             "name": "User 1 Role",
                                             "description": "User 1 users role",
                                             "policies": [
                                                 {
-                                                    "id": "${user.roles.first().policies.first().id}",
                                                     "action": "*",
                                                     "effect": "ALLOW",
                                                     "resource": "*"

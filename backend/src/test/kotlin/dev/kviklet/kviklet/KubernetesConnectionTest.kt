@@ -1,8 +1,8 @@
 package dev.kviklet.kviklet
 
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
-import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.helper.ConnectionHelper
+import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.security.Permission
 import org.junit.jupiter.api.AfterEach
@@ -22,7 +22,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers
 class KubernetesConnectionTest {
 
     @Autowired
-    private lateinit var roleAdapter: RoleAdapter
+    private lateinit var roleHelper: RoleHelper
 
     @Autowired
     private lateinit var executionRequestAdapter: ExecutionRequestAdapter
@@ -45,7 +45,7 @@ class KubernetesConnectionTest {
         executionRequestAdapter.deleteAll()
         connectionHelper.deleteAll()
         userHelper.deleteAll()
-        roleAdapter.deleteAll()
+        roleHelper.deleteAll()
     }
 
     @Test

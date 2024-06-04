@@ -4,12 +4,12 @@ import dev.kviklet.kviklet.db.PolicyEntity
 import dev.kviklet.kviklet.db.RoleEntity
 import dev.kviklet.kviklet.db.RoleRepository
 import dev.kviklet.kviklet.db.UserAdapter
-import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.Role
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.transaction.annotation.Transactional
 
 @Configuration
 class DefaultRoleInitializer(
@@ -22,18 +22,13 @@ class DefaultRoleInitializer(
             id = Role.DEFAULT_ROLE_ID.toString(),
             name = "Default Role",
             description = "This is the default role and gives permission to read connections and requests",
-            policies = mutableSetOf(
+            policies = Role.DEFAULT_ROLE_POLICIES.map {
                 PolicyEntity(
-                    action = Permission.DATASOURCE_CONNECTION_GET.getPermissionString(),
+                    action = it.action,
                     effect = PolicyEffect.ALLOW,
-                    resource = "*",
-                ),
-                PolicyEntity(
-                    action = Permission.EXECUTION_REQUEST_GET.getPermissionString(),
-                    effect = PolicyEffect.ALLOW,
-                    resource = "*",
-                ),
-            ),
+                    resource = it.resource,
+                )
+            }.toMutableSet(),
         )
         return roleRepository.saveAndFlush(role).toDto()
     }
@@ -49,7 +44,8 @@ class DefaultRoleInitializer(
     }
 
     @Bean
-    fun initializer(): ApplicationRunner {
+    @Transactional
+    fun initDefaultRole(): ApplicationRunner {
         return ApplicationRunner { _ ->
             if (roleRepository.findById(Role.DEFAULT_ROLE_ID.toString()).isEmpty) {
                 val role = createDefaultRole()
