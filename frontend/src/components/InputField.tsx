@@ -15,6 +15,8 @@ type InputFieldProps = {
 const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
   ({ label, ...props }: InputFieldProps, ref) => {
     const inputType = props.type === "passwordlike" ? "password" : props.type;
+    const type = props.type;
+    delete props.type;
 
     if (props.stacked) {
       return (
@@ -65,7 +67,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
         hover:border-slate-400 focus:hover:border-indigo-600 dark:border-slate-700 dark:bg-slate-900
          dark:focus:border-gray-500 dark:hover:border-slate-600 dark:hover:focus:border-gray-500 ${props.className}`}
               autoComplete={
-                props.type === "passwordlike" ? "new-password" : undefined
+                type === "passwordlike" ? "new-password" : undefined
               }
               {...props}
               ref={ref}
