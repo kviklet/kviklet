@@ -14,6 +14,7 @@ import {
   UserPolicySchema,
 } from "../../hooks/roles";
 import InputField from "../../components/InputField";
+import ConnectionSelector from "./ConnectionSelector";
 
 type ConnectionPolicyKey =
   | "create"
@@ -222,6 +223,7 @@ const RoleForm = ({
                   </button>
                 </div>
                 <div>
+                  <ConnectionSelector></ConnectionSelector>
                   <InputField
                     stacked={true}
                     tooltip={
