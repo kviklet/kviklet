@@ -31,6 +31,7 @@ enum class Resource(val resourceName: String) {
     EVENT("event"),
     ROLE("role"),
     USER("user"),
+    CONFIGURATION("configuration"),
 }
 
 enum class Permission(
@@ -39,6 +40,9 @@ enum class Permission(
     val action: String?,
     val requiredPermission: Permission?,
 ) {
+    CONFIGURATION_GET(Resource.CONFIGURATION, "get", null),
+    CONFIGURATION_EDIT(Resource.CONFIGURATION, "edit", CONFIGURATION_GET),
+
     DATASOURCE_CONNECTION_GET(Resource.DATASOURCE_CONNECTION, "get", null),
     DATASOURCE_CONNECTION_EDIT(Resource.DATASOURCE_CONNECTION, "edit", DATASOURCE_CONNECTION_GET),
     DATASOURCE_CONNECTION_CREATE(Resource.DATASOURCE_CONNECTION, "create", DATASOURCE_CONNECTION_GET),

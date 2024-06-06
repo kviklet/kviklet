@@ -41,6 +41,7 @@ import jakarta.servlet.ServletOutputStream
 import jakarta.transaction.Transactional
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
 import java.security.SecureRandom
@@ -53,6 +54,7 @@ class ExecutionRequestService(
     private val executor: Executor,
     private val eventService: EventService,
     private val kubernetesApi: KubernetesApi,
+    private val applicationEventPublisher: ApplicationEventPublisher,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val proxies = mutableListOf<ExecutionProxy>()
@@ -64,7 +66,7 @@ class ExecutionRequestService(
         request: CreateExecutionRequestRequest,
         userId: String,
     ): ExecutionRequestDetails {
-        return when (request) {
+        val executionRequestDetails = when (request) {
             is CreateDatasourceExecutionRequestRequest -> {
                 createDatasourceRequest(connectionId, request, userId)
             }
@@ -72,6 +74,10 @@ class ExecutionRequestService(
                 createKubernetesRequest(connectionId, request, userId)
             }
         }
+        RequestCreatedEvent.fromRequest(executionRequestDetails).let {
+            applicationEventPublisher.publishEvent(it)
+        }
+        return executionRequestDetails
     }
 
     private fun createDatasourceRequest(
@@ -175,11 +181,15 @@ class ExecutionRequestService(
         if (executionRequest.request.author.getId() == authorId && request.action == ReviewAction.APPROVE) {
             throw InvalidReviewException("A user can't approve their own request!")
         }
-        return eventService.saveEvent(
+        val reviewEvent = eventService.saveEvent(
             id,
             authorId,
             ReviewPayload(comment = request.comment, action = request.action),
         )
+        ReviewStatusUpdatedEvent.fromReviewEvent(reviewEvent).let {
+            applicationEventPublisher.publishEvent(it)
+        }
+        return reviewEvent
     }
 
     @Transactional
