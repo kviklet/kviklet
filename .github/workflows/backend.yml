@@ -33,3 +33,4 @@ jobs:
           github_token: ${{ secrets.github_token }}
           reporter: github-pr-review # Change reporter
           fail_on_error: true
+          ktlint_version: 1.2.1
