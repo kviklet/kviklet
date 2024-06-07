@@ -79,15 +79,15 @@ If you want to setup SSO for your Kviklet instance (which makes a lot of sense s
 You need to setup these 3 environment variables:
 
 ```
-KVIKLET_IDENTITY_PROVIDER_CLIENT_ID
-KVIKLET_IDENTITY_PROVIDER_CLIENT_SECRET
-KVIKLET_IDENTITY_PROVIDER_TYPE=google
+KVIKLET_IDENTITYPROVIDER_CLIENTID
+KVIKLET_IDENTITYPROVIDER_CLIENTSECRET
+KVIKLET_IDENTITYPROVIDER_TYPE=google
 ```
 
 The google client id and secret you can easily get by following google instructions here:
 https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid
 
-For valid redirect URIs, you should configure: http://[kviklet_host]/api/login/oauth2/code/google
+For valid redirect URIs, you should configure: https://[kviklet_host]/api/login/oauth2/code/google
 For Allowed Origins, simply your hosted kviklet url.
 
 After setting those environment variables everyone in your organization can login with the sign in with google button. But they wont have any permissions by default, you will have to assign them a role after they log in once.
@@ -97,17 +97,22 @@ After setting those environment variables everyone in your organization can logi
 If you want to setup SSO with Keycloak instead you need to set these 4 environment variables:
 
 ```
-KVIKLET_IDENTITY_PROVIDER_CLIENT_ID
-KVIKLET_IDENTITY_PROVIDER_CLIENT_SECRET
-KVIKLET_IDENTITY_PROVIDER_TYPE=keycloak
-KVIKLET_IDENTITY_PROVIDER_ISSUER_URI=http://[host]:[port]/realms/[realm]
+KVIKLET_IDENTITYPROVIDER_CLIENTID
+KVIKLET_IDENTITYPROVIDER_CLIENTSECRET
+KVIKLET_IDENTITYPROVIDER_TYPE=keycloak
+KVIKLET_IDENTITYPROVIDER_ISSUERURI=http://[host]:[port]/realms/[realm]
 ```
 
 You get the client id and secret when you create an application in keycloack.
-For valid redirect URIs, you should configure: http://[kviklet_host]/api/login/oauth2/code/google
+For valid redirect URIs, you should configure: https://[kviklet_host]/api/login/oauth2/code/keycloak
 For Allowed Origins, simply your hosted kviklet url.
 
 After setting those environment variables the login page should show a Login with Keycloak button that redirects to your keycloak instance. We do currently not support role sync yet so you will have to manage roles directly in kviklet manually for now.
+
+### Other OIDC providers
+
+Other OIDC providers should work similarly to Keycloak, note that the `redirect URI` will change depending on they type you choose, so if you choose `gitlab` it will be `https://[kviklet_host]/api/login/oauth2/code/gitlab`.
+If you run into issues feel free to create an issue, we have not tried every single OIDC provider out there (yet) and there might be slight differences in the implementation that might require updates on Kviklets side.
 
 ### Kubernetes Exec
 
@@ -167,5 +172,6 @@ To configure Teams notifications you need to create a Teams App and get a Webhoo
 To enable the notifications, simply set the Webhook URL in the Notification Settings and click save.
 
 Currently there is Notifactions for:
+
 - New Requests, that need approvals
 - New approvals on requests
