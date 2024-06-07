@@ -14,7 +14,9 @@ test("Create Connection", async ({ page }) => {
   await page.waitForSelector('[id="headlessui-popover-button-\\:r0\\:"]');
   await page.locator('[id="headlessui-popover-button-\\:r0\\:"]').click();
   await page.getByRole("link", { name: "Settings" }).click();
-  await page.waitForURL("**/settings");
+  await page.waitForURL("**/settings/");
+  await page.getByRole("link", { name: "databases" }).click();
+  await page.waitForURL("**/settings/databases");
   await page.getByRole("button", { name: "Add Connection" }).click();
 
   await page.getByPlaceholder("Connection Name").click();
