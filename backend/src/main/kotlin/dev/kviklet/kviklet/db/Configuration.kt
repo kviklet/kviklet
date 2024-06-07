@@ -1,7 +1,5 @@
 package dev.kviklet.kviklet.db
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import dev.kviklet.kviklet.service.dto.Configuration
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -36,7 +34,7 @@ class ConfigurationAdapter(
     }
 
     fun getConfiguration(): Configuration {
-        return configurationRepository.findAll().toDto(jacksonObjectMapper())
+        return configurationRepository.findAll().toDto()
     }
 
     fun setConfiguration(configuration: Configuration): Configuration {
@@ -46,13 +44,13 @@ class ConfigurationAdapter(
                 configuration.slackUrl?.let { ConfigurationEntity("slackUrl", it) },
             ),
         )
-        return configurationEntities.toDto(objectMapper = jacksonObjectMapper())
+        return configurationEntities.toDto()
     }
 }
 
-fun List<ConfigurationEntity>.toDto(objectMapper: ObjectMapper): Configuration {
+fun List<ConfigurationEntity>.toDto(): Configuration {
     return Configuration(
-        teamsUrl = this.find { it.key == "teamsUrl" }?.value as? String,
-        slackUrl = this.find { it.key == "slackUrl" }?.value as? String,
+        teamsUrl = this.find { it.key == "teamsUrl" }?.value,
+        slackUrl = this.find { it.key == "slackUrl" }?.value,
     )
 }
