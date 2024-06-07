@@ -63,7 +63,7 @@ function timeSince(date: Date) {
 }
 
 function mapStatus(reviewStatus: string, executionStatus: string) {
-  if (reviewStatus === "AWAITING_APPROVAL" && executionStatus === "EXECUTED")
+  if (reviewStatus === "AWAITING_APPROVAL" && executionStatus !== "EXECUTED")
     return "Pending";
   else if (executionStatus === "EXECUTABLE") return "Ready";
   else if (executionStatus === "ACTIVE") return "Active";
@@ -199,7 +199,7 @@ function Requests() {
                           )}
                         </span>
                         <span
-                          className={`mt-2 w-min rounded-md bg-yellow-50 px-2 py-1 text-xs  font-medium text-yellow-600 ring-1 ring-inset ring-yellow-500/10 dark:bg-yellow-400/10 dark:text-yellow-500 dark:ring-yellow-400/20`}
+                          className={`mt-2 w-min rounded-md bg-cyan-50 px-2 py-1 text-xs  font-medium text-cyan-600 ring-1 ring-inset ring-cyan-500/10 dark:bg-cyan-400/10 dark:text-cyan-500 dark:ring-cyan-400/20`}
                         >
                           {request.type}
                         </span>

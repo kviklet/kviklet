@@ -1,0 +1,19 @@
+databaseChangeLog:
+  - changeSet:
+      id: 016-add-configuration-table
+      author: jascha
+      changes:
+        - createTable:
+            tableName: configuration
+            columns:
+              - column:
+                  name: key
+                  type: VARCHAR(255)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: value
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false

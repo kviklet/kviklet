@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.security
 
+import dev.kviklet.kviklet.controller.ServerUrlInterceptor
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
@@ -9,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.transaction.Transactional
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpStatus
@@ -45,6 +47,7 @@ import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import org.springframework.web.filter.ForwardedHeaderFilter
 import org.springframework.web.method.support.HandlerMethodArgumentResolver
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 import java.io.Serializable
 
@@ -163,6 +166,13 @@ class SecurityConfig(
 class MvcConfig : WebMvcConfigurer {
     override fun addArgumentResolvers(resolvers: MutableList<HandlerMethodArgumentResolver>) {
         resolvers.add(CurrentUserArgumentResolver())
+    }
+
+    @Autowired
+    private lateinit var serverUrlInterceptor: ServerUrlInterceptor
+
+    override fun addInterceptors(registry: InterceptorRegistry) {
+        registry.addInterceptor(serverUrlInterceptor)
     }
 }
 
