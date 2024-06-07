@@ -2,6 +2,7 @@ package dev.kviklet.kviklet
 
 import dev.kviklet.kviklet.db.ConfigurationAdapter
 import dev.kviklet.kviklet.service.dto.Configuration
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -13,6 +14,16 @@ class ConfigurationTest() {
 
     @Autowired
     private lateinit var configurationAdapter: ConfigurationAdapter
+
+    @AfterEach
+    fun tearDown() {
+        configurationAdapter.setConfiguration(
+            Configuration(
+                teamsUrl = "",
+                slackUrl = "",
+            ),
+        )
+    }
 
     @Test
     fun `test serialization and deserialization`() {
