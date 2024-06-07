@@ -60,6 +60,12 @@ class NotificationTest {
         executionRequestAdapter.deleteAll()
         userHelper.deleteAll()
         roleHelper.deleteAll()
+        configService.setConfiguration(
+            Configuration(
+                "",
+                "",
+            ),
+        )
     }
 
     @BeforeEach
