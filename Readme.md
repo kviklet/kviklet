@@ -163,15 +163,15 @@ You can configure Kviklet to send notifications to a channel in Slack or Teams. 
 
 #### Slack
 
-To configure Slack notifications you need to create a Slack App and get a Webhook URL. You can follow the instructions here: https://api.slack.com/messaging/webhooks
+To configure Slack notifications you need to create a Slack App and enable webhooks for it. You can follow the instructions here: https://api.slack.com/messaging/webhooks
 
 #### Teams
 
-To configure Teams notifications you need to create a Teams App and get a Webhook URL. You can follow the instructions here: https://docs.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook
+To configure Teams notifications you need to add a Webhook connector to your channel. The official microsoft docs on that are here: https://docs.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook
 
-To enable the notifications, simply set the Webhook URL in the Notification Settings and click save.
+To enable the notifications, simply set the Webhook URL in the Kviklet Notification Settings and click save.
 
-Currently there is Notifactions for:
+Currently there are notifications for:
 
 - New Requests, that need approvals
 - New approvals on requests
