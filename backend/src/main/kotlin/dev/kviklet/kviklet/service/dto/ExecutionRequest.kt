@@ -114,12 +114,7 @@ data class ExecutionRequestDetails(
 
     fun resolveReviewStatus(): ReviewStatus {
         val reviewConfig = request.connection.reviewConfig
-        val latestEdit = events.filter { it.type == EventType.EDIT }.sortedBy { it.createdAt }.lastOrNull()
-        val latestEditTimeStamp = latestEdit?.createdAt ?: LocalDateTime.MIN
-        val numReviews = events.filter {
-            it.type == EventType.REVIEW && it is ReviewEvent && it.action == ReviewAction.APPROVE &&
-                it.createdAt > latestEditTimeStamp
-        }.groupBy { it.author.getId() }.count()
+        val numReviews = getApprovalCount()
         val reviewStatus = if (numReviews >= reviewConfig.numTotalRequired) {
             ReviewStatus.APPROVED
         } else {
@@ -127,6 +122,16 @@ data class ExecutionRequestDetails(
         }
 
         return reviewStatus
+    }
+
+    fun getApprovalCount(): Int {
+        val latestEdit = events.filter { it.type == EventType.EDIT }.sortedBy { it.createdAt }.lastOrNull()
+        val latestEditTimeStamp = latestEdit?.createdAt ?: LocalDateTime.MIN
+        val numReviews = events.filter {
+            it.type == EventType.REVIEW && it is ReviewEvent && it.action == ReviewAction.APPROVE &&
+                it.createdAt > latestEditTimeStamp
+        }.groupBy { it.author.getId() }.count()
+        return numReviews
     }
 
     fun resolveExecutionStatus(): ExecutionStatus {

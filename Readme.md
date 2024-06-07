@@ -151,3 +151,21 @@ Kviklet ships with 2 default roles, Admins and Developers.
 - Developers can create Requests as well as approve and comment on them and ofcourse execute the actual statements.
 
 You can completely customize Roles and e.g. give a role only access to a specific connection or a group of db connections. The UI for this is a bit clunky right now, but we are working on improving this for 0.4.0.
+
+### Notifications
+
+You can configure Kviklet to send notifications to a channel in Slack or Teams. This is useful to notify your team about new requests that need to be reviewed. You can configure this in Settings -> General -> Notification Settings.
+
+#### Slack
+
+To configure Slack notifications you need to create a Slack App and get a Webhook URL. You can follow the instructions here: https://api.slack.com/messaging/webhooks
+
+#### Teams
+
+To configure Teams notifications you need to create a Teams App and get a Webhook URL. You can follow the instructions here: https://docs.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook
+
+To enable the notifications, simply set the Webhook URL in the Notification Settings and click save.
+
+Currently there is Notifactions for:
+- New Requests, that need approvals
+- New approvals on requests

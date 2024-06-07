@@ -4,6 +4,7 @@ import dev.kviklet.kviklet.security.IdentityProviderProperties
 import dev.kviklet.kviklet.service.ConfigService
 import dev.kviklet.kviklet.service.dto.Configuration
 import io.swagger.v3.oas.annotations.tags.Tag
+import org.springframework.security.access.AccessDeniedException
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PutMapping
@@ -16,14 +17,12 @@ open class PublicConfigResponse(
 )
 
 data class ConfigRequest(
-    val host: String?,
     val teamsUrl: String?,
     val slackUrl: String?,
 )
 
 data class ConfigResponse(
     override val oAuthProvider: String?,
-    val host: String?,
     val teamsUrl: String?,
     val slackUrl: String?,
 ) : PublicConfigResponse(oAuthProvider) {
@@ -31,7 +30,6 @@ data class ConfigResponse(
         fun fromConfiguration(configuration: Configuration, oAuthProvider: String?): ConfigResponse {
             return ConfigResponse(
                 oAuthProvider = oAuthProvider,
-                host = configuration.host,
                 teamsUrl = configuration.teamsUrl,
                 slackUrl = configuration.slackUrl,
             )
@@ -44,7 +42,7 @@ data class ConfigResponse(
 @RequestMapping("/config")
 @Tag(
     name = "Controller",
-    description = "Configure Kviklet as a whole",
+    description = "Configure Kviklet in general.",
 )
 class ConfigController(
     val identityProviderProperties: IdentityProviderProperties,
@@ -56,7 +54,7 @@ class ConfigController(
         try {
             val config = configService.getConfiguration()
             return ConfigResponse.fromConfiguration(config, identityProviderProperties.type?.lowercase())
-        } catch (e: Exception) { // FIXME: Use a more specific exception
+        } catch (e: AccessDeniedException) {
             return PublicConfigResponse(
                 oAuthProvider = identityProviderProperties.type?.lowercase(),
             )
@@ -67,7 +65,6 @@ class ConfigController(
     fun createConfig(@RequestBody request: ConfigRequest): ConfigResponse {
         val config = configService.setConfiguration(
             Configuration(
-                host = request.host,
                 teamsUrl = request.teamsUrl,
                 slackUrl = request.slackUrl,
             ),

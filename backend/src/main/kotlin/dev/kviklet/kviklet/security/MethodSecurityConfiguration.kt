@@ -117,6 +117,7 @@ class MyAuthorizationManager(
         val userDetailsWithId = when (auth.principal) {
             is UserDetailsWithId -> auth.principal as UserDetailsWithId
             is OidcUser -> (auth.principal as CustomOidcUser).getUserDetails()
+            is String -> return AuthorizationDecision(false) // anonymous user
             else -> throw RuntimeException("Unknown principal type: ${auth.principal.javaClass}")
         }
 

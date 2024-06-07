@@ -6,10 +6,9 @@ import dev.kviklet.kviklet.security.SecuredDomainObject
 data class Configuration(
     val teamsUrl: String?,
     val slackUrl: String?,
-    val host: String?,
 ) : SecuredDomainObject {
     override fun getId(): String? {
-        return null
+        return "configuration"
     }
 
     override fun getDomainObjectType(): Resource {

@@ -1,6 +1,9 @@
 package dev.kviklet.kviklet.db
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import dev.kviklet.kviklet.service.dto.Configuration
+import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
@@ -11,7 +14,10 @@ import org.springframework.stereotype.Service
 @Table(name = "configuration")
 data class ConfigurationEntity(
     @Id
+    @Column(name = "`key`")
     val key: String,
+
+    @Column(name = "`value`")
     val value: String,
 )
 
@@ -21,7 +27,7 @@ interface ConfigurationRepository : JpaRepository<ConfigurationEntity, String>
 class ConfigurationAdapter(
     private val configurationRepository: ConfigurationRepository,
 ) {
-    fun getConfiguration(key: String): String? {
+    fun getConfiguration(key: String): Any? {
         return configurationRepository.findById(key).map { it.value }.orElse(null)
     }
 
@@ -30,7 +36,7 @@ class ConfigurationAdapter(
     }
 
     fun getConfiguration(): Configuration {
-        return configurationRepository.findAll().toDto()
+        return configurationRepository.findAll().toDto(jacksonObjectMapper())
     }
 
     fun setConfiguration(configuration: Configuration): Configuration {
@@ -38,17 +44,15 @@ class ConfigurationAdapter(
             listOfNotNull(
                 configuration.teamsUrl?.let { ConfigurationEntity("teamsUrl", it) },
                 configuration.slackUrl?.let { ConfigurationEntity("slackUrl", it) },
-                configuration.host?.let { ConfigurationEntity("host", it) },
             ),
         )
-        return configurationEntities.toDto()
+        return configurationEntities.toDto(objectMapper = jacksonObjectMapper())
     }
 }
 
-fun List<ConfigurationEntity>.toDto(): Configuration {
+fun List<ConfigurationEntity>.toDto(objectMapper: ObjectMapper): Configuration {
     return Configuration(
-        teamsUrl = this.find { it.key == "teamsUrl" }?.value,
-        slackUrl = this.find { it.key == "slackUrl" }?.value,
-        host = this.find { it.key == "host" }?.value,
+        teamsUrl = this.find { it.key == "teamsUrl" }?.value as? String,
+        slackUrl = this.find { it.key == "slackUrl" }?.value as? String,
     )
 }

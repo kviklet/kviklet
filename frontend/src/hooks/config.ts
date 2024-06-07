@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { ConfigResponse, getConfig } from "../api/ConfigApi";
+import {
+  ConfigPayload,
+  ConfigResponse,
+  getConfig,
+  putConfig,
+} from "../api/ConfigApi";
 import { isApiErrorResponse } from "../api/Errors";
 import useNotification from "./useNotification";
 
@@ -24,11 +29,26 @@ const useConfig = () => {
     setLoading(false);
   };
 
+  const updateConfig = async (config: ConfigPayload) => {
+    setLoading(true);
+    const response = await putConfig(config);
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Error updating config",
+        text: response.message,
+        type: "error",
+      });
+    } else {
+      setConfig(response);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
     void refreshConfig();
   }, []);
 
-  return { config, loading, refreshConfig };
+  return { config, loading, refreshConfig, updateConfig };
 };
 
 export default useConfig;

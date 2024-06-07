@@ -9,13 +9,13 @@ import org.springframework.web.client.RestTemplate
 @Component
 class SlackApiClient(private val restTemplate: RestTemplate) {
 
-    fun sendMessage(webhookUrl: String, message: String): Boolean {
+    fun sendMessage(webhookUrl: String, message: String) {
         val headers = HttpHeaders()
         headers.contentType = MediaType.APPLICATION_JSON
         val payload = mapOf("text" to message)
         val request = HttpEntity(payload, headers)
 
-        val response = restTemplate.exchange(webhookUrl, HttpMethod.POST, request, String::class.java)
-        return response.statusCode.is2xxSuccessful
+        restTemplate.exchange(webhookUrl, HttpMethod.POST, request, String::class.java)
+        return
     }
 }
