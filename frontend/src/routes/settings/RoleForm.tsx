@@ -1,5 +1,10 @@
 import React from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import {
+  useForm,
+  useFieldArray,
+  ControllerRenderProps,
+  Controller,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   PlusIcon,
@@ -15,14 +20,9 @@ import {
 } from "../../hooks/roles";
 import InputField from "../../components/InputField";
 import ConnectionSelector from "./ConnectionSelector";
+import Button from "../../components/Button";
 
-type ConnectionPolicyKey =
-  | "create"
-  | "edit"
-  | "read"
-  | "execution_request_get"
-  | "execution_request_edit"
-  | "execution_request_execute";
+type ConnectionPolicyKey = "execution_request_read" | "execution_request_write";
 
 const userPolicyMetadata: Record<string, { label: string; tooltip: string }> = {
   read: {
@@ -55,30 +55,14 @@ const connectionPolicyMetadata: Record<
   ConnectionPolicyKey,
   { label: string; tooltip: string }
 > = {
-  read: {
-    label: "Read Connections",
-    tooltip: "Allows seeing this connection.",
+  execution_request_read: {
+    label: "Read",
+    tooltip: "Allows seeing requests on this selector.",
   },
-  create: {
-    label: "Create Connections",
-    tooltip: "Allows creating new connections.",
-  },
-  edit: {
-    label: "Edit Connections",
-    tooltip: "Allows editing connections.",
-  },
-  execution_request_get: {
-    label: "Get Execution Requests",
+  execution_request_write: {
+    label: "Write",
     tooltip:
-      "Allows seeing execution requests. This also allows Commenting and Reviewing.",
-  },
-  execution_request_edit: {
-    label: "Edit Execution Requests",
-    tooltip: "Allows Creating and editing execution requests.",
-  },
-  execution_request_execute: {
-    label: "Execute Requests",
-    tooltip: "Allows executing execution requests.",
+      "Allows creating, reviewing and executing requests on this selector.",
   },
 };
 
@@ -104,6 +88,11 @@ const RoleForm = ({
     control,
     name: "connectionPolicies",
   });
+
+  type ConnectionSelectorField = ControllerRenderProps<
+    Role,
+    `connectionPolicies.${number}.selector`
+  >;
 
   return (
     <form
@@ -210,10 +199,31 @@ const RoleForm = ({
                 key={field.id}
                 className="mb-4 space-y-2 rounded-md border bg-white p-4 dark:border-slate-600 dark:bg-slate-950"
               >
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium">
-                    Connection Policy {index + 1}
-                  </h3>
+                <div className="flex items-start justify-between">
+                  <div className="basis-3/4">
+                    <legend
+                      className="flex items-center text-base leading-7 text-slate-700 dark:text-slate-100"
+                      title="The selector used for this policy. The selector is used to match connectionIds to which this policy applies to. If you just want to match one specific connection, sepcify it's ID, but you can also use wildcards like 'my-connection-*' to match all connections starting with 'my-connection-'."
+                    >
+                      Selector
+                      <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400" />
+                    </legend>
+
+                    <Controller
+                      name={`connectionPolicies.${index}.selector`}
+                      control={control}
+                      render={({
+                        field,
+                      }: {
+                        field: ConnectionSelectorField;
+                      }) => (
+                        <ConnectionSelector
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      )}
+                    ></Controller>
+                  </div>
                   <button
                     type="button"
                     onClick={() => remove(index)}
@@ -221,23 +231,6 @@ const RoleForm = ({
                   >
                     <TrashIcon className="h-5 w-5" />
                   </button>
-                </div>
-                <div>
-                  <ConnectionSelector></ConnectionSelector>
-                  <InputField
-                    stacked={true}
-                    tooltip={
-                      "Specify either a concrete id or use a wildcard (*) to match all connections." +
-                      "You can also combine prefixes with wildcards, e.g. 'k8s-*' to match all Kubernetes connections."
-                    }
-                    label="Selector"
-                    error={
-                      errors.connectionPolicies?.[index]?.selector?.message
-                    }
-                    {...register(
-                      `connectionPolicies.${index}.selector` as const,
-                    )}
-                  />
                 </div>
                 <div className="grid grid-cols-3">
                   {Object.keys(ConnectionPolicy.shape)
@@ -276,15 +269,11 @@ const RoleForm = ({
               onClick={() =>
                 append({
                   selector: "",
-                  read: false,
-                  create: false,
-                  edit: false,
-                  execution_request_get: false,
-                  execution_request_edit: false,
-                  execution_request_execute: false,
+                  execution_request_read: false,
+                  execution_request_write: false,
                 })
               }
-              className="mt-2 flex items-center text-blue-500"
+              className="mt-2 flex items-center text-indigo-500"
             >
               <PlusIcon className="mr-1 h-5 w-5" /> Add Connection Policy
             </button>
@@ -292,12 +281,7 @@ const RoleForm = ({
         </>
       )}
 
-      <button
-        type="submit"
-        className="rounded-md bg-blue-500 px-4 py-2 text-white"
-      >
-        Submit
-      </button>
+      <Button type="submit">Submit</Button>
     </form>
   );
 };

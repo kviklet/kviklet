@@ -1,24 +1,25 @@
-import { useState } from "react";
 import { useConnections } from "./connection/ConnectionSettings";
-import {
-  ChevronUpDownIcon,
-  QuestionMarkCircleIcon,
-} from "@heroicons/react/20/solid";
+import { ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { Combobox } from "@headlessui/react";
 
-export default function ConnectionSelector() {
+export default function ConnectionSelector({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
   const { connections } = useConnections();
   const options = connections.map((connection) => {
     return { name: connection.displayName, id: connection.id };
   });
-  const [selector, setSelector] = useState<string>("");
 
   return (
     <ComboBox
       label={""}
       options={options}
-      query={selector}
-      setQuery={setSelector}
+      query={value}
+      setQuery={onChange}
     ></ComboBox>
   );
 }
@@ -68,9 +69,9 @@ function ComboBox({
         <Combobox.Label className="block text-sm font-medium leading-6 text-slate-900 dark:text-slate-50">
           {label}
         </Combobox.Label>
-        <div className="relative mt-2">
+        <div className="relative">
           <Combobox.Input
-            className="w-full rounded-md border-0 bg-slate-50 py-1.5 pl-3 pr-10 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 dark:bg-slate-900 dark:text-slate-50 sm:text-sm sm:leading-6"
+            className="w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-slate-900 ring-1 ring-slate-300 focus:outline-none focus:ring-slate-400 dark:bg-slate-900 dark:text-slate-50 dark:ring-slate-700 focus:dark:ring-slate-500 sm:text-sm sm:leading-6"
             onChange={(event) => setQuery(event.target.value)}
             displayValue={() => query}
           />
@@ -111,48 +112,21 @@ function ComboBox({
       </Combobox>
       {query !== "" && (
         <span className="my-auto mr-auto mt-1 flex items-center text-sm font-medium text-slate-700 dark:text-slate-200">
-          This selector matches {filteredOptions.length} of {options.length}{" "}
-          Connections.
-          <QuestionMarkCircleIcon
-            className="ml-1 h-4 w-4 text-slate-400"
+          This selector matches&nbsp;
+          <span
+            className="hover:font-semibold"
             title={
-              filteredOptions.map((option) => option.name).join(", ") ||
-              "No matches"
+              filteredOptions.length > 0
+                ? `Connections matched: ${filteredOptions
+                    .map((option) => option.name)
+                    .join(", ")}`
+                : "No matches"
             }
-          />
+          >
+            {filteredOptions.length} of {options.length} Connections.{" "}
+          </span>
         </span>
       )}
-    </div>
-  );
-}
-
-function SelectorInfo({
-  filteredOptions,
-  options,
-}: {
-  filteredOptions: { name: string; id: string }[];
-  options: { name: string; id: string }[];
-}) {
-  return (
-    <div className="flex flex-col">
-      <div className="flex w-full justify-between">
-        <label className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200">
-          Selected Connection
-        </label>
-        <input
-          type="text"
-          className={`block w-full basis-3/5 appearance-none rounded-md border border-slate-300 px-3 
-        py-2 text-sm transition-colors focus:border-indigo-600 focus:outline-none
-        hover:border-slate-400 focus:hover:border-indigo-600 dark:border-slate-700 dark:bg-slate-900
-         dark:focus:border-gray-500 dark:hover:border-slate-600 dark:hover:focus:border-gray-500`}
-          autoComplete="new-password"
-          value={filteredOptions.length > 0 ? filteredOptions[0].name : ""}
-          readOnly
-        />
-      </div>
-      <p className="float-right text-sm text-red-500 dark:text-red-400">
-        {filteredOptions.length === 0 && "No matches found"}
-      </p>
     </div>
   );
 }
