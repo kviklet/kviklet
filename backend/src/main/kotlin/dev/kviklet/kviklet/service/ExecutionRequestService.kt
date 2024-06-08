@@ -60,7 +60,7 @@ class ExecutionRequestService(
     private val proxies = mutableListOf<ExecutionProxy>()
 
     @Transactional
-    @Policy(Permission.EXECUTION_REQUEST_GET)
+    @Policy(Permission.EXECUTION_REQUEST_EDIT)
     fun create(
         connectionId: ConnectionId,
         request: CreateExecutionRequestRequest,
@@ -175,7 +175,7 @@ class ExecutionRequestService(
     fun get(id: ExecutionRequestId): ExecutionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
 
     @Transactional
-    @Policy(Permission.EXECUTION_REQUEST_GET)
+    @Policy(Permission.EXECUTION_REQUEST_EDIT)
     fun createReview(id: ExecutionRequestId, request: CreateReviewRequest, authorId: String): Event {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
         if (executionRequest.request.author.getId() == authorId && request.action == ReviewAction.APPROVE) {

@@ -21,12 +21,8 @@ const RolePolicy = z.object({
 
 const ConnectionPolicy = z.object({
   selector: z.string(),
-  read: z.boolean(),
-  create: z.boolean(),
-  edit: z.boolean(),
-  execution_request_get: z.boolean(),
-  execution_request_edit: z.boolean(),
-  execution_request_execute: z.boolean(),
+  execution_request_read: z.boolean(),
+  execution_request_write: z.boolean(),
 });
 
 const RoleSchema = z.object({
@@ -117,41 +113,27 @@ const transformRole = (role: RoleResponse): Role => {
         if (!connectionPoliciesMap[policy.resource]) {
           connectionPoliciesMap[policy.resource] = {
             selector: policy.resource,
-            read: false,
-            create: false,
-            edit: false,
-            execution_request_get: false,
-            execution_request_edit: false,
-            execution_request_execute: false,
+            execution_request_read: false,
+            execution_request_write: false,
           };
         }
-        const connectionPolicy = connectionPoliciesMap[policy.resource];
-        if (resourceAction === "get") connectionPolicy.read = true;
-        if (resourceAction === "create") connectionPolicy.create = true;
-        if (resourceAction === "edit") connectionPolicy.edit = true;
         break;
       }
       case "execution_request": {
         if (!connectionPoliciesMap[policy.resource]) {
           connectionPoliciesMap[policy.resource] = {
             selector: policy.resource,
-            read: false,
-            create: false,
-            edit: false,
-            execution_request_get: false,
-            execution_request_edit: false,
-            execution_request_execute: false,
+            execution_request_read: false,
+            execution_request_write: false,
           };
         }
 
         const connectionPolicy = connectionPoliciesMap[policy.resource];
 
         if (resourceAction === "get")
-          connectionPolicy.execution_request_get = true;
+          connectionPolicy.execution_request_read = true;
         if (resourceAction === "edit")
-          connectionPolicy.execution_request_edit = true;
-        if (resourceAction === "execute")
-          connectionPolicy.execution_request_execute = true;
+          connectionPolicy.execution_request_write = true;
         break;
       }
 
@@ -222,42 +204,24 @@ const transformToPayload = (
   }
 
   role.connectionPolicies.forEach((policy) => {
-    if (policy.read) {
-      policies.push({
-        action: "datasource_connection:get",
-        effect: "ALLOW",
-        resource: policy.selector,
-      });
-    }
-    if (policy.create) {
-      policies.push({
-        action: "datasource_connection:create",
-        effect: "ALLOW",
-        resource: policy.selector,
-      });
-    }
-    if (policy.edit) {
-      policies.push({
-        action: "datasource_connection:edit",
-        effect: "ALLOW",
-        resource: policy.selector,
-      });
-    }
-    if (policy.execution_request_get) {
+    policies.push({
+      action: "datasource_connection:get",
+      effect: "ALLOW",
+      resource: policy.selector,
+    });
+    if (policy.execution_request_read || policy.execution_request_write) {
       policies.push({
         action: "execution_request:get",
         effect: "ALLOW",
         resource: policy.selector,
       });
     }
-    if (policy.execution_request_edit) {
+    if (policy.execution_request_write) {
       policies.push({
         action: "execution_request:edit",
         effect: "ALLOW",
         resource: policy.selector,
       });
-    }
-    if (policy.execution_request_execute) {
       policies.push({
         action: "execution_request:execute",
         effect: "ALLOW",
