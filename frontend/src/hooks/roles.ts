@@ -121,11 +121,11 @@ const transformRole = (role: RoleResponse): Role => {
       }
       case "execution_request": {
         if (!connectionPoliciesMap[policy.resource]) {
-           connectionPoliciesMap[policy.resource] = {
-             selector: policy.resource,
-             execution_request_read: false,
-             execution_request_write: false,
-           };
+          connectionPoliciesMap[policy.resource] = {
+            selector: policy.resource,
+            execution_request_read: false,
+            execution_request_write: false,
+          };
         }
 
         const connectionPolicy = connectionPoliciesMap[policy.resource];
@@ -209,7 +209,7 @@ const transformToPayload = (
       effect: "ALLOW",
       resource: policy.selector,
     });
-    if (policy.execution_request_read) {
+    if (policy.execution_request_read || policy.execution_request_write) {
       policies.push({
         action: "execution_request:get",
         effect: "ALLOW",

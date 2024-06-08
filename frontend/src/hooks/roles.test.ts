@@ -25,6 +25,12 @@ const mockRoleResponse = {
       resource: "asdf",
     },
     {
+      id: "p61GMnqHX59yAcU6DpdBzB",
+      action: "execution_request:execute",
+      effect: "ALLOW",
+      resource: "asdf",
+    },
+    {
       id: "mK57KDGh1azk4RNcAiQFMu",
       action: "execution_request:get",
       effect: "ALLOW",
@@ -50,12 +56,8 @@ const expectedTransformedRole = {
   connectionPolicies: [
     {
       selector: "asdf",
-      read: true,
-      create: false,
-      edit: false,
-      execution_request_get: true,
-      execution_request_edit: true,
-      execution_request_execute: false,
+      execution_request_read: true,
+      execution_request_write: true,
     },
   ],
 };
@@ -76,12 +78,8 @@ const mockRole = {
   connectionPolicies: [
     {
       selector: "asdf",
-      read: true,
-      create: false,
-      edit: false,
-      execution_request_get: true,
-      execution_request_edit: true,
-      execution_request_execute: false,
+      execution_request_read: true,
+      execution_request_write: true,
     },
   ],
 };
@@ -108,6 +106,11 @@ const expectedPayload = {
     },
     {
       action: "execution_request:edit",
+      effect: "ALLOW",
+      resource: "asdf",
+    },
+    {
+      action: "execution_request:execute",
       effect: "ALLOW",
       resource: "asdf",
     },
