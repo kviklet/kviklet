@@ -35,9 +35,10 @@ sealed class Connection(
     override fun getId() = id.toString()
     override fun getDomainObjectType() = Resource.DATASOURCE_CONNECTION
 
-    override fun getRelated(resource: Resource): SecuredDomainObject {
+    override fun getRelated(resource: Resource): SecuredDomainObject? {
         return when (resource) {
             Resource.DATASOURCE_CONNECTION -> this
+            Resource.EXECUTION_REQUEST -> null
             else -> throw IllegalStateException("Unexpected resource: $resource")
         }
     }

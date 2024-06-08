@@ -168,6 +168,7 @@ data class ExecutionRequestDetails(
     override fun getDomainObjectType() = Resource.EXECUTION_REQUEST
 
     override fun getRelated(resource: Resource) = when (resource) {
+        Resource.EXECUTION_REQUEST -> this
         Resource.DATASOURCE_CONNECTION -> request.connection
         else -> null
     }
