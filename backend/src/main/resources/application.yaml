@@ -11,7 +11,5 @@ spring:
       hibernate:
         auto_quote_keyword: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
-  h2:
-    console.enabled: true
 app:
   name: "Kviklet"
