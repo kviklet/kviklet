@@ -2,17 +2,18 @@
 
 [Kviklet.dev](https://kviklet.dev) | [Release Notes](https://github.com/kviklet/kviklet/releases)
 
+Secure access to production environments without impairing developer productivity.
+
 <p align="center">
 <img src="https://github.com/kviklet/kviklet/raw/main/images/ExecutionRequest.png" width="700px">
 </p>
 
-Secure access to production environments without impairing developer productivity.
 
 Kviklet utilizes the **Four-Eyes Principle** and a high level of configurability, to allow a **Pull Request-like Review and Approval** flow for individual SQL statements or Database sessions. This allows engineering teams to self regulate on who gets access to what data and when.
 
 Kviklet is a self hosted docker container, that provides you with a Single Page Web app that you can login to create your SQL requests or approve the ones of others.
 
-We currently support **Postgres**, **MySQL** and **MS SQL Server**. Additionally we have a kubernetes shell integration that allows to run `kubectl exec` commands on pods.
+We currently support **Postgres**, **MySQL** and **MS SQL Server**. 
 
 ## Features
 
@@ -33,6 +34,14 @@ Kviklet ships with a variety of features that an engineering team needs to manag
 Kviklet ships as a simple docker container.
 You can find the available verions under [Releases](https://github.com/kviklet/kviklet/releases). We recommend to regularly update the version you are using as we continue to build new features.  
 The latest one currently is `ghcr.io/kviklet/kviklet:0.3.0`, you can also use `:main` but it might happen every now and then that we accidentally merge something buggy alhtough we try to avoid that.
+
+### Quick Start
+
+If you just want to try out how it works:
+1. Fork the repository (or copy the `docker-compose.yml` and `sample_data.sql`)
+2. Run the `docker-compose.yml` via `docker-compose up -d`. Kviklet should spin up on port 80 so just got to `localhost` and play around. The admin login is admin@admin.com with admin as password.
+3. The docker-compose contains an extra postgres database for which you can setup a connection in Kviklet. This database contains a sample `Locations` table if you want to run a test query.
+
 
 ### DB Setup
 
@@ -73,7 +82,9 @@ docker run \
 ghcr.io/kviklet/kviklet:main
 ```
 
-### Google SSO
+### SSO
+
+#### Google
 
 If you want to setup SSO for your Kviklet instance (which makes a lot of sense since otherwise you have to manage passwords again).
 You need to setup these 3 environment variables:
@@ -92,7 +103,7 @@ For Allowed Origins, simply your hosted kviklet url.
 
 After setting those environment variables everyone in your organization can login with the sign in with google button. But they wont have any permissions by default, you will have to assign them a role after they log in once.
 
-### Keycloak SSO
+#### Keycloak
 
 If you want to setup SSO with Keycloak instead you need to set these 4 environment variables:
 
@@ -109,32 +120,10 @@ For Allowed Origins, simply your hosted kviklet url.
 
 After setting those environment variables the login page should show a Login with Keycloak button that redirects to your keycloak instance. We do currently not support role sync yet so you will have to manage roles directly in kviklet manually for now.
 
-### Other OIDC providers
+#### Other OIDC providers
 
 Other OIDC providers should work similarly to Keycloak, note that the `redirect URI` will change depending on they type you choose, so if you choose `gitlab` it will be `https://[kviklet_host]/api/login/oauth2/code/gitlab`.
 If you run into issues feel free to create an issue, we have not tried every single OIDC provider out there (yet) and there might be slight differences in the implementation that might require updates on Kviklets side.
-
-### Kubernetes Exec
-
-<p align="center">
-<img src= "https://github.com/kviklet/kviklet/raw/main/images/KubernetesExec.png" width="700px">
-</p>
-
-If you want to use the Kubernetes Exec feature you have to create a separate kubernetes connection. Kviklet will use the user of the deployed pod to execute the command. So make sure that the user has the necessary permissions to execute commands on the pods that you want to access.
-
-Kviklet also uses /bin/sh to execute the command, so you will need to make sure your pods have a shell or at least a symlink in /bin/sh. If this bothers you feel free to open an issue, we can potentially make this configurable or find another solution.
-
-Kubernetes commands only wait for 5 seconds for output if the command takes longer than that Kviklet will wait for up to an hour before timing out the command. This is a a provisional solution, we are looking into websockets to make this more responsive and potentially enable terminal sessions.
-
-### Proxy (Beta), Postgres only
-
-If you create requests for temporary access. You can instead of using the web interface to run queries also enable a proxy and use the DB client of your choice.
-For this the container uses ports 5438-6000 so you need to expose those.
-The user can then create a temp access request, and click "Start Proxy" once it's been approved. They will get a port and a user + temporary password. With this they can login to the database. Kviklet validates the temp user and password and proxies all requests to the underlying user on the database. Any executed statements are logged in the auditlog as if they were run via the web interface.
-
-<p align="center">
-<img src="https://github.com/kviklet/kviklet/raw/main/images/Proxy.png" width="700px">
-</p>
 
 ## Configuration
 
@@ -150,12 +139,32 @@ Here you can configure how many reviews are required to run Requests on this con
 
 ### Roles
 
-Kviklet ships with 2 default roles, Admins and Developers.
+Kviklet ships with 3 roles, Default, Admins and Developers.
 
+- The default role provides Read access to all connections, and Requests. This role is assigned to every user and cannot be removed. You can however alter the permissions of this role however you like.
 - Admins have the permission to create and edit connections, as well as adding new Users and setting their permissions.
-- Developers can create Requests as well as approve and comment on them and ofcourse execute the actual statements.
+- Developers can create Requests as well as approve and comment on them and of course execute the actual statements.
 
-You can completely customize Roles and e.g. give a role only access to a specific connection or a group of db connections. The UI for this is a bit clunky right now, but we are working on improving this for 0.4.0.
+You can customize Roles and e.g. give a role only access to a specific connection or a group of DB connections.
+This is useful e.g. if you have different teams with different databases and want to controll access to those more granularly.
+
+#### Creating a new Role
+
+Creating a new role works as follows. Go to Settings -> Roles -> Add Role.
+
+<p align="center">
+<img src="https://github.com/kviklet/kviklet/raw/main/images/NewRole.png" width="700px">
+</p>
+
+The default settings are not as relevant for most roles and you can just give User Read and RoleView Access and leave it at that.
+
+<p align="center">
+<img src="https://github.com/kviklet/kviklet/raw/main/images/ConnectionSelector.png" width="400px">
+</p>
+
+More interesting is the adding of individual permissions for Connections. Here you first add a selector to select specific connections. This can either be a specific id or you use wildcards with `*` to match multiple connections. E.g. if you want to have a role that has access to all dev databases (in case you also manage acces to those with kviklet) you'd use a selector like `dev-*` and ensure the ids of the connections are set correctly.
+
+You can of course also make up a system that you use for your different teams inside of your organization.
 
 ### Notifications
 
@@ -175,3 +184,41 @@ Currently there are notifications for:
 
 - New Requests, that need approvals
 - New approvals on requests
+
+## Experimental Features
+
+There is two few experimental Features. That were build mostly on community/customer feedback. Feel free to try these out and leave any input that you might have. We hope to develop into this further in the future and make it work well with the core approval flow.
+
+### Kubernetes Exec
+
+<p align="center">
+<img src= "https://github.com/kviklet/kviklet/raw/main/images/KubernetesExec.png" width="700px">
+</p>
+
+If you want to use the Kubernetes Exec feature you have to create a separate kubernetes connection. Kviklet will use the user of the deployed pod to execute the command. So make sure that the user has the necessary permissions to execute commands on the pods that you want to access.
+
+Kviklet also uses /bin/sh to execute the command, so you will need to make sure your pods have a shell or at least a symlink in /bin/sh. If this bothers you feel free to open an issue, we can potentially make this configurable or find another solution.
+
+Kubernetes commands only wait for 5 seconds for output if the command takes longer than that Kviklet will wait for up to an hour before timing out the command. This is a a provisional solution, we are looking into websockets to make this more responsive and potentially enable terminal sessions.
+
+### Proxy, Postgres only
+
+If you create requests for temporary access. You can instead of using the web interface to run queries also enable a proxy and use the DB client of your choice.
+For this the container uses ports 5438-6000 so you need to expose those.
+The user can then create a temp access request, and click "Start Proxy" once it's been approved. They will get a port and a user + temporary password. With this they can login to the database. Kviklet validates the temp user and password and proxies all requests to the underlying user on the database. Any executed statements are logged in the auditlog as if they were run via the web interface.
+
+<p align="center">
+<img src="https://github.com/kviklet/kviklet/raw/main/images/Proxy.png" width="700px">
+</p>
+
+
+## Questions? Contributions?
+
+If you have any questions, feel free to create a github issue I try to answer within a reasonable amount of time and am also happy to develop feature for your use case if it fits the general vision of the tool.
+Kviklet is currently fully open-source and although I dream of making it pay my bills eventually there is currently no concrete plans on how to approach this.
+
+
+If you want to contribute, feel free to fork and create PRs for small things. If you plan bigger features, I'd appreciate some discussion upfront in a github issue or similar.
+
+
+You can also contact me at jascha@kviklet.dev.
