@@ -15,7 +15,6 @@ export default function Notification(props: { title: string; text: string }) {
       leave="transition ease-in duration-100"
       leaveFrom="opacity-100"
       leaveTo="opacity-0"
-      className="w-full"
     >
       <div
         className="pointer-events-auto ml-auto w-full max-w-sm overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5
@@ -68,7 +67,6 @@ function ErrorNotification(props: { title: string; text: string }) {
       leave="transition ease-in duration-100"
       leaveFrom="opacity-100"
       leaveTo="opacity-0"
-      className="w-full"
     >
       <div
         className="pointer-events-auto ml-auto w-full max-w-sm overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5

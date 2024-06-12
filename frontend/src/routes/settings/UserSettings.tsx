@@ -107,7 +107,7 @@ export const useUsers = () => {
   async function setRoles(userId: string, roles: RoleResponse[]) {
     const currentUser = users.find((u) => u.id === userId);
     if (!currentUser) {
-      return;
+      return false;
     }
     const response = await updateUser(userId, {
       roles: roles.map((g) => g.id),
