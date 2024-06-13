@@ -7,7 +7,7 @@ WORKDIR /home/gradle/src
 # Copy the source code to the container
 COPY --chown=gradle:gradle ./backend .
 
-# Build the application
+# Build the applications
 RUN gradle build  -x kaptTestKotlin -x compileTestKotlin -x test --no-daemon
 
 FROM node:20 as build-frontend
@@ -20,7 +20,6 @@ RUN npm run build
 # Stage 2: Run the application
 FROM amazoncorretto:21
 
-# Set the working directory
 WORKDIR /app
 
 # Install nginx
@@ -34,12 +33,7 @@ COPY --from=build /home/gradle/src/build/libs/*.jar app.jar
 
 COPY --chmod=755 ./run.sh .
 
-# Expose the application on port 8080
 EXPOSE 80
-EXPOSE 443
-EXPOSE 8080
 
 # Start the application
 CMD ["/usr/bin/sh", "./run.sh"]
-
-#CMD ["java", "-jar", "app.jar"]
