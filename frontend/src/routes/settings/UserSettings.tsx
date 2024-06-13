@@ -10,9 +10,9 @@ import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
 import { useRoles } from "./RolesSettings";
 import { RoleResponse } from "../../api/RoleApi";
-import ColorfulLabel from "../../components/ColorfulLabel";
 import { isApiErrorResponse } from "../../api/Errors";
 import { Error, Success } from "../../components/Alert";
+import RoleComboBox from "./RoleComboBox";
 
 function UserForm(props: {
   disableModal: () => void;
@@ -104,20 +104,21 @@ export const useUsers = () => {
     void request();
   }, []);
 
-  async function addRoleToUser(userId: string, roleId: string) {
+  async function setRoles(userId: string, roles: RoleResponse[]) {
     const currentUser = users.find((u) => u.id === userId);
     if (!currentUser) {
-      return;
+      return false;
     }
     const response = await updateUser(userId, {
-      roles: [...currentUser.roles.map((g) => g.id), roleId],
+      roles: roles.map((g) => g.id),
     });
     if (isApiErrorResponse(response)) {
       setError(response.message);
-      return;
+      return false;
     }
     setUsers(users.map((u) => (u.id === userId ? response : u)));
-    setSuccess("Role added");
+    setSuccess("Roles updated");
+    return true;
   }
 
   async function createNewUser(
@@ -143,27 +144,10 @@ export const useUsers = () => {
     clearNotifications();
   }
 
-  async function removeRoleFromUser(userId: string, roleId: string) {
-    const currentUser = users.find((u) => u.id === userId);
-    if (!currentUser) {
-      return;
-    }
-    const response = await updateUser(userId, {
-      roles: currentUser.roles.filter((g) => g.id !== roleId).map((g) => g.id),
-    });
-    if (isApiErrorResponse(response)) {
-      setError(response.message);
-      return;
-    }
-    setUsers(users.map((u) => (u.id === userId ? response : u)));
-    setSuccess("Role removed");
-  }
-
   return {
-    addRoleToUser,
     users,
     createNewUser,
-    removeRoleFromUser,
+    setRoles,
     error,
     success,
   };
@@ -172,11 +156,8 @@ export const useUsers = () => {
 const UserRow = (props: {
   user: UserResponse;
   roles: RoleResponse[];
-  addRoleToUser: (userId: string, roleId: string) => Promise<void>;
-  removeRoleFromUser: (userId: string, roleId: string) => Promise<void>;
+  setRoles: (roles: RoleResponse[]) => Promise<boolean>;
 }) => {
-  const [rolesDialogVisible, setRolesDialogVisible] = useState(false);
-
   return (
     <div className="flex flex-row">
       <div className="grid w-full grid-cols-2 p-2 shadow-sm md:grid-cols-3">
@@ -187,53 +168,11 @@ const UserRow = (props: {
           <div>{props.user.email}</div>
         </div>
         <div className="flex flex-row flex-wrap justify-end">
-          {props.user.roles.map((role) => {
-            return (
-              <ColorfulLabel
-                onDelete={
-                  role.isDefault
-                    ? undefined
-                    : () => {
-                        void props.removeRoleFromUser(props.user.id, role.id);
-                      }
-                }
-                text={role.name}
-              />
-            );
-          })}
-          <ColorfulLabel
-            text="Add Role"
-            onClick={() => {
-              setRolesDialogVisible(true);
-            }}
-            color="dark:bg-slate-700 border border-slate-400"
-          />
-          {rolesDialogVisible && (
-            <Modal setVisible={setRolesDialogVisible}>
-              <div className="w-2xl rounded bg-white p-3 shadow dark:bg-slate-950">
-                <div className="mb-3 flex flex-col">
-                  <div className="font-bold">Add Role</div>
-                </div>
-                <div className="mb-3 flex flex-col">
-                  <div className="flex flex-row flex-wrap">
-                    {props.roles.map((role) => {
-                      return (
-                        <ColorfulLabel
-                          onClick={() =>
-                            void (async () => {
-                              await props.addRoleToUser(props.user.id, role.id);
-                              setRolesDialogVisible(false);
-                            })()
-                          }
-                          text={role.name}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </Modal>
-          )}
+          <RoleComboBox
+            roles={props.user.roles}
+            setRoles={props.setRoles}
+            availableRoles={props.roles}
+          ></RoleComboBox>
         </div>
       </div>
     </div>
@@ -242,14 +181,7 @@ const UserRow = (props: {
 
 const UserSettings = () => {
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
-  const {
-    addRoleToUser,
-    users,
-    createNewUser,
-    removeRoleFromUser,
-    error,
-    success,
-  } = useUsers();
+  const { users, createNewUser, error, success, setRoles } = useUsers();
 
   const { roles } = useRoles();
 
@@ -271,8 +203,9 @@ const UserSettings = () => {
             <UserRow
               user={user}
               roles={roles}
-              addRoleToUser={addRoleToUser}
-              removeRoleFromUser={removeRoleFromUser}
+              setRoles={(roles) => {
+                return setRoles(user.id, roles);
+              }}
             />
           ))}
         </div>

@@ -7,7 +7,7 @@
     "@fortawesome/free-regular-svg-icons": "^6.3.0",
     "@fortawesome/free-solid-svg-icons": "^6.3.0",
     "@fortawesome/react-fontawesome": "^0.2.0",
-    "@headlessui/react": "^1.7.17",
+    "@headlessui/react": "^2",
     "@heroicons/react": "^2.0.18",
     "@hookform/resolvers": "^3.0.0",
     "@monaco-editor/react": "^4.6.0",
