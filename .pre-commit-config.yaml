@@ -1,8 +1,0 @@
-repos:
-  -   repo: local
-      hooks:
-        -   id: ktlint
-            name: ktlint
-            entry: ktlint -F
-            language: system
-            types: [kotlin]
