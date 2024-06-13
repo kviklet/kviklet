@@ -1,6 +1,13 @@
 import { useConnections } from "./connection/ConnectionSettings";
 import { ChevronUpDownIcon } from "@heroicons/react/20/solid";
-import { Combobox } from "@headlessui/react";
+import {
+  Combobox,
+  ComboboxButton,
+  ComboboxInput,
+  ComboboxOption,
+  ComboboxOptions,
+  Label,
+} from "@headlessui/react";
 
 export default function ConnectionSelector({
   value,
@@ -55,7 +62,7 @@ function ComboBox({
       ? options
       : options.filter((option) => {
           const matcher = createAntPathMatcher(query);
-          return matcher.test(option.name);
+          return matcher.test(option.id);
         });
 
   const onSelect = (option: string | null) => {
@@ -66,26 +73,28 @@ function ComboBox({
   return (
     <div>
       <Combobox as="div" value={query} onChange={onSelect}>
-        <Combobox.Label className="block text-sm font-medium leading-6 text-slate-900 dark:text-slate-50">
+        <Label className="block text-sm font-medium leading-6 text-slate-900 dark:text-slate-50">
           {label}
-        </Combobox.Label>
+        </Label>
         <div className="relative">
-          <Combobox.Input
+          <ComboboxInput
             className="w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-slate-900 ring-1 ring-slate-300 focus:outline-none focus:ring-slate-400 dark:bg-slate-900 dark:text-slate-50 dark:ring-slate-700 focus:dark:ring-slate-500 sm:text-sm sm:leading-6"
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+              setQuery(event.target.value)
+            }
             displayValue={() => query}
           />
-          <Combobox.Button className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
+          <ComboboxButton className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
             <ChevronUpDownIcon
               className="h-5 w-5 text-slate-400"
               aria-hidden="true"
             />
-          </Combobox.Button>
+          </ComboboxButton>
 
           {filteredOptions.length > 0 && (
-            <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-slate-50 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-slate-900 dark:text-slate-50 sm:text-sm">
+            <ComboboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-slate-50 py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-slate-900 dark:text-slate-50 sm:text-sm">
               {filteredOptions.map((option) => (
-                <Combobox.Option
+                <ComboboxOption
                   key={option.id}
                   value={option.name}
                   className={({ active }) =>
@@ -100,13 +109,13 @@ function ComboBox({
                   {() => (
                     <>
                       <span className={classNames("block truncate")}>
-                        {option.name}
+                        {option.id}
                       </span>
                     </>
                   )}
-                </Combobox.Option>
+                </ComboboxOption>
               ))}
-            </Combobox.Options>
+            </ComboboxOptions>
           )}
         </div>
       </Combobox>
