@@ -7,7 +7,12 @@ import {
 import image from "../logo.png";
 import { Cog6ToothIcon } from "@heroicons/react/20/solid";
 import { Fragment } from "react";
-import { Popover, Transition } from "@headlessui/react";
+import {
+  Popover,
+  PopoverButton,
+  PopoverPanel,
+  Transition,
+} from "@headlessui/react";
 
 function TopBanner() {
   const themeContext = useContext<ThemeContext>(ThemeStatusContext);
@@ -59,9 +64,10 @@ function TopBanner() {
             </nav>
             <div className="ml-6 flex items-center border-l border-slate-200 pl-6 dark:border-slate-800">
               <Popover className="relative h-6">
-                <Popover.Button className="mr-4 h-6 w-6 text-slate-400 transition-colors hover:text-slate-800 dark:text-slate-500 dark:hover:text-slate-200">
+                <PopoverButton className="mr-4 h-6 w-6 text-slate-400 transition-colors hover:text-slate-800 dark:text-slate-500 dark:hover:text-slate-200">
+                  <span className="sr-only">Settings Drop Down</span>
                   <Cog6ToothIcon className="" />
-                </Popover.Button>
+                </PopoverButton>
 
                 <Transition
                   as={Fragment}
@@ -72,20 +78,20 @@ function TopBanner() {
                   leaveFrom="opacity-100 translate-y-0"
                   leaveTo="opacity-0 translate-y-1"
                 >
-                  <Popover.Panel className="absolute left-1/2 z-10 mt-5 flex w-screen max-w-min -translate-x-1/2 px-4">
+                  <PopoverPanel className="absolute left-1/2 z-10 mt-5 flex w-screen max-w-min -translate-x-1/2 px-4">
                     <div className="dark:border-px w-40 shrink rounded-xl bg-white p-4 text-sm font-semibold leading-6 shadow-lg ring-1 ring-slate-900/5 dark:border dark:border-slate-700 dark:bg-slate-900">
-                      <Popover.Button as={Link} to="/settings">
+                      <PopoverButton as={Link} to="/settings">
                         <p className="p-2 text-slate-900 hover:text-sky-500 dark:text-slate-50 dark:hover:text-sky-400">
                           Settings
                         </p>
-                      </Popover.Button>
-                      <Popover.Button as={Link} to="/auditlog">
+                      </PopoverButton>
+                      <PopoverButton as={Link} to="/auditlog">
                         <p className="p-2 text-slate-900 hover:text-sky-500 dark:text-slate-50 dark:hover:text-sky-400">
                           Auditlog
                         </p>
-                      </Popover.Button>
+                      </PopoverButton>
                     </div>
-                  </Popover.Panel>
+                  </PopoverPanel>
                 </Transition>
               </Popover>
               <button onClick={switchTheme}>
