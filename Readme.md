@@ -9,7 +9,7 @@ Secure access to production environments without impairing developer productivit
 </p>
 
 
-Kviklet utilizes the **Four-Eyes Principle** and a high level of configurability, to allow a **Pull Request-like Review and Approval** flow for individual SQL statements or Database sessions. This allows engineering teams to self regulate on who gets access to what data and when.
+Kviklet embraces the **Four-Eyes Principle** and a high level of configurability, to allow a **Pull Request-like Review and Approval** flow for individual SQL statements or Database sessions. This allows engineering teams to self regulate on who gets access to what data and when. This allow your organization to stay secure and compliant while still allowing for modern empowering true to DevOps workflows.
 
 Kviklet is a self hosted docker container, that provides you with a Single Page Web app that you can login to create your SQL requests or approve the ones of others.
 
@@ -33,7 +33,7 @@ Kviklet ships with a variety of features that an engineering team needs to manag
 
 Kviklet ships as a simple docker container.
 You can find the available verions under [Releases](https://github.com/kviklet/kviklet/releases). We recommend to regularly update the version you are using as we continue to build new features.  
-The latest one currently is `ghcr.io/kviklet/kviklet:0.3.0`, you can also use `:main` but it might happen every now and then that we accidentally merge something buggy alhtough we try to avoid that.
+The latest one currently is `ghcr.io/kviklet/kviklet:0.4.0`, you can also use `:main` but it might happen every now and then that we accidentally merge something buggy alhtough we try to avoid that.
 
 ### Quick Start
 
