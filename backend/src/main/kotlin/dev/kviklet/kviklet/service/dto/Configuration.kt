@@ -7,7 +7,7 @@ data class Configuration(
     val teamsUrl: String?,
     val slackUrl: String?,
 ) : SecuredDomainObject {
-    override fun getId(): String? {
+    override fun getSecuredObjectId(): String? {
         return "configuration"
     }
 

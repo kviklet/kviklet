@@ -47,24 +47,24 @@ sealed class ExecutionRequest(
     open val author: User,
 )
 
-sealed class ExecutionResult(open val executionRequestId: ExecutionRequestId) : SecuredDomainObject {
-    override fun getId() = executionRequestId.toString()
-    override fun getDomainObjectType() = Resource.EXECUTION_REQUEST
-    override fun getRelated(resource: Resource) = null
+sealed class ExecutionResult(open val executionRequest: ExecutionRequestDetails) : SecuredDomainObject {
+    override fun getSecuredObjectId() = executionRequest.getSecuredObjectId()
+    override fun getDomainObjectType() = executionRequest.getDomainObjectType()
+    override fun getRelated(resource: Resource) = executionRequest.getRelated(resource)
 }
 
 data class DBExecutionResult(
-    override val executionRequestId: ExecutionRequestId,
+    override val executionRequest: ExecutionRequestDetails,
     val results: List<QueryResult>,
-) : ExecutionResult(executionRequestId)
+) : ExecutionResult(executionRequest)
 
 data class KubernetesExecutionResult(
-    override val executionRequestId: ExecutionRequestId,
+    override val executionRequest: ExecutionRequestDetails,
     val errors: List<String>,
     val messages: List<String>,
     val finished: Boolean = true,
     val exitCode: Int? = 0,
-) : ExecutionResult(executionRequestId)
+) : ExecutionResult(executionRequest)
 
 data class DatasourceExecutionRequest(
     override val id: ExecutionRequestId?,
@@ -163,7 +163,9 @@ data class ExecutionRequestDetails(
         }
     }
 
-    override fun getId() = request.id.toString()
+    fun getId() = request.id.toString()
+
+    override fun getSecuredObjectId() = request.connection.getSecuredObjectId()
 
     override fun getDomainObjectType() = Resource.EXECUTION_REQUEST
 
@@ -227,7 +229,7 @@ data class ExecutionProxy(
     val password: String,
     val startTime: LocalDateTime,
 ) : SecuredDomainObject {
-    override fun getId() = request.id.toString()
+    override fun getSecuredObjectId() = request.connection.id.toString()
 
     override fun getDomainObjectType() = Resource.EXECUTION_REQUEST
 

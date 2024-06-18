@@ -110,7 +110,6 @@ class MysqlExecutorTest(
                     "json_column" to "{\"key\": \"value\"}",
                 ),
             ),
-            executionRequestId,
         )
     }
 }

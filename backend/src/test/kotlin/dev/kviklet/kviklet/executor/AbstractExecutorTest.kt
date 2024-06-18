@@ -33,7 +33,7 @@ abstract class AbstractExecutorTest(
         url: String = getDb().jdbcUrl,
         username: String = getDb().username,
         password: String = getDb().password,
-    ) = executorService.execute(executionRequestId, url, username, password, query).get(0)
+    ) = executorService.execute(url, username, password, query).get(0)
 
     @BeforeEach
     fun setup() {
@@ -44,14 +44,13 @@ abstract class AbstractExecutorTest(
     @Test
     fun testDatabaseError() {
         executeQuery("SELECT * FROM foo.non_existent_table;") shouldBe
-            ErrorQueryResult(1146, "Table 'foo.non_existent_table' doesn't exist", executionRequestId)
+            ErrorQueryResult(1146, "Table 'foo.non_existent_table' doesn't exist")
 
         executeQuery("FOOBAR") shouldBe
             ErrorQueryResult(
                 1064,
                 "You have an error in your SQL syntax; check the manual that " +
                     "corresponds to your MySQL server version for the right syntax to use near 'FOOBAR' at line 1",
-                executionRequestId,
             )
     }
 
@@ -61,20 +60,18 @@ abstract class AbstractExecutorTest(
             ErrorQueryResult(
                 1045,
                 "Access denied for user 'root'@'172.17.0.1' (using password: YES)",
-                executionRequestId,
             )
     }
 
     @Test
     fun testDdlQuery() {
-        executeQuery("CREATE TABLE foo.temp (col INT);") shouldBe UpdateQueryResult(0, executionRequestId)
+        executeQuery("CREATE TABLE foo.temp (col INT);") shouldBe UpdateQueryResult(0)
     }
 
     @Test
     fun testInsert() {
         executeQuery("INSERT INTO foo.simple_table VALUES (1, 'foo');") shouldBe UpdateQueryResult(
             1,
-            executionRequestId,
         )
     }
 
@@ -83,12 +80,10 @@ abstract class AbstractExecutorTest(
         // col1=1 exists, 1 row is updated
         executeQuery("UPDATE foo.simple_table SET col2='foobar' WHERE col1 = 1;") shouldBe UpdateQueryResult(
             1,
-            executionRequestId,
         )
         // col1=3 does not exist, so nothing is updated:
         executeQuery("UPDATE foo.simple_table SET col2='foobar' WHERE col1 = 3;") shouldBe UpdateQueryResult(
             0,
-            executionRequestId,
         )
     }
 
@@ -100,7 +95,6 @@ abstract class AbstractExecutorTest(
                 ColumnInfo("col2", "VARCHAR", "java.lang.String"),
             ),
             data = listOf(mapOf("col1" to "1", "col2" to "2")),
-            executionRequestId,
         )
     }
 }

@@ -70,7 +70,7 @@ interface SecuredDomainId {
 }
 
 interface SecuredDomainObject {
-    fun getId(): String?
+    fun getSecuredObjectId(): String?
     fun getDomainObjectType(): Resource
     fun getRelated(resource: Resource): SecuredDomainObject?
     fun auth(permission: Permission, userDetails: UserDetailsWithId, policies: List<PolicyGrantedAuthority>): Boolean =
