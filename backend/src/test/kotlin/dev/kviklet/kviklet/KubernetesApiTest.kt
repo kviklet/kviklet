@@ -1,5 +1,4 @@
 package dev.kviklet.kviklet
-import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.shell.KubernetesApi
 import io.kubernetes.client.Exec
 import io.kubernetes.client.openapi.ApiClient
@@ -94,13 +93,11 @@ class KubernetesApiTest {
 
         val kubernetesApi = KubernetesApi(mockCoreV1Api)
 
-        val executionRequestId = ExecutionRequestId("req1")
         val namespace = "default"
         val podName = "pod1"
         val command = "echo 'Hello, World!'"
 
         val result = kubernetesApi.executeCommandOnPod(
-            executionRequestId,
             namespace,
             podName,
             command = command,
@@ -134,7 +131,6 @@ class KubernetesApiTest {
         every { mockProcess.exitValue() } returns 0
 
         // Define test data
-        val executionRequestId = ExecutionRequestId("req1")
         val namespace = "default"
         val podName = "pod1"
 
@@ -155,7 +151,6 @@ class KubernetesApiTest {
         val containerName = "container1"
 
         val result = kubernetesApi.executeCommandOnPod(
-            executionRequestId,
             namespace,
             podName,
             containerName,
@@ -182,7 +177,6 @@ class KubernetesApiTest {
         every { mockProcess.inputStream } returns ByteArrayInputStream(commandOutput)
         every { mockProcess.errorStream } returns ByteArrayInputStream("".toByteArray())
 
-        val executionRequestId = ExecutionRequestId("req1")
         val namespace = "default"
         val podName = "pod1"
 
@@ -205,7 +199,6 @@ class KubernetesApiTest {
         val kubernetesApi = KubernetesApi(mockCoreV1Api)
 
         val result = kubernetesApi.executeCommandOnPod(
-            executionRequestId,
             namespace,
             podName,
             command = command,

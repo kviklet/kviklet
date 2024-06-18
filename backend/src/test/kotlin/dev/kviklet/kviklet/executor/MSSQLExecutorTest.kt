@@ -4,7 +4,6 @@ import dev.kviklet.kviklet.service.ColumnInfo
 import dev.kviklet.kviklet.service.ErrorQueryResult
 import dev.kviklet.kviklet.service.Executor
 import dev.kviklet.kviklet.service.RecordsQueryResult
-import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.instanceOf
@@ -47,7 +46,6 @@ class MSSQLExecutorTest(
                 ColumnInfo("col2", "varchar", "java.lang.String"),
             ),
             data = listOf(mapOf("col1" to "1", "col2" to "2")),
-            executionRequestId = ExecutionRequestId("5Wb9WJxCxej5W1Rt6cTBV4"),
         )
     }
 
@@ -57,14 +55,12 @@ class MSSQLExecutorTest(
             ErrorQueryResult(
                 208,
                 "Invalid object name 'foo.non_existent_table'.",
-                ExecutionRequestId("5Wb9WJxCxej5W1Rt6cTBV4"),
             )
 
         executeQuery("FOOBAR") shouldBe
             ErrorQueryResult(
                 2812,
                 "Could not find stored procedure 'FOOBAR'.",
-                ExecutionRequestId("5Wb9WJxCxej5W1Rt6cTBV4"),
             )
     }
 
@@ -75,7 +71,6 @@ class MSSQLExecutorTest(
         result as ErrorQueryResult
         result.errorCode shouldBe 18456
         result.message shouldStartWith "Login failed for user 'root'."
-        result.executionRequestId shouldBe ExecutionRequestId("5Wb9WJxCxej5W1Rt6cTBV4")
     }
 
     @Test
@@ -164,7 +159,6 @@ class MSSQLExecutorTest(
                     "json_column" to "{\"key\": \"value\"}",
                 ),
             ),
-            executionRequestId,
         )
     }
 }

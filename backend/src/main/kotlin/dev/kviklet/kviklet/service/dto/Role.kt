@@ -40,7 +40,11 @@ data class Role(
         }
     }
 
-    override fun getId() = id?.toString()
+    override fun getSecuredObjectId() = id?.toString()
+
+    fun getId(): String? {
+        return id?.toString()
+    }
 
     override fun getDomainObjectType(): Resource {
         return Resource.ROLE

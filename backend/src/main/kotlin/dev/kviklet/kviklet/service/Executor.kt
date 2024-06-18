@@ -1,10 +1,7 @@
 package dev.kviklet.kviklet.service
 
 import com.zaxxer.hikari.HikariDataSource
-import dev.kviklet.kviklet.security.Resource
-import dev.kviklet.kviklet.security.SecuredDomainObject
 import dev.kviklet.kviklet.service.dto.ErrorResultLog
-import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.QueryResultLog
 import dev.kviklet.kviklet.service.dto.ResultLog
 import dev.kviklet.kviklet.service.dto.UpdateResultLog
@@ -14,10 +11,7 @@ import java.sql.ResultSet
 import java.sql.SQLException
 import java.util.*
 
-sealed class QueryResult(open val executionRequestId: ExecutionRequestId) : SecuredDomainObject {
-    override fun getId() = executionRequestId.toString()
-    override fun getDomainObjectType() = Resource.EXECUTION_REQUEST
-    override fun getRelated(resource: Resource) = null
+sealed class QueryResult() {
 
     abstract fun toResultLog(): ResultLog
 }
@@ -25,8 +19,7 @@ sealed class QueryResult(open val executionRequestId: ExecutionRequestId) : Secu
 data class RecordsQueryResult(
     val columns: List<ColumnInfo>,
     val data: List<Map<String, String>>,
-    override val executionRequestId: ExecutionRequestId,
-) : QueryResult(executionRequestId) {
+) : QueryResult() {
     override fun toResultLog(): QueryResultLog {
         return QueryResultLog(
             columnCount = columns.size,
@@ -37,8 +30,7 @@ data class RecordsQueryResult(
 
 data class UpdateQueryResult(
     val rowsUpdated: Int,
-    override val executionRequestId: ExecutionRequestId,
-) : QueryResult(executionRequestId) {
+) : QueryResult() {
 
     override fun toResultLog(): UpdateResultLog {
         return UpdateResultLog(
@@ -50,8 +42,7 @@ data class UpdateQueryResult(
 data class ErrorQueryResult(
     val errorCode: Int,
     val message: String?,
-    override val executionRequestId: ExecutionRequestId,
-) : QueryResult(executionRequestId) {
+) : QueryResult() {
     override fun toResultLog(): ResultLog {
         return ErrorResultLog(
             errorCode = errorCode,
@@ -72,7 +63,6 @@ data class ColumnInfo(
 class Executor() {
 
     fun execute(
-        executionRequestId: ExecutionRequestId,
         connectionString: String,
         username: String,
         password: String,
@@ -90,8 +80,8 @@ class Executor() {
 
                     while (hasResults || statement.updateCount != -1) {
                         statement.resultSet?.use { resultSet ->
-                            queryResults.add(createRecordsQueryResult(executionRequestId, resultSet))
-                        } ?: queryResults.add(UpdateQueryResult(statement.updateCount, executionRequestId))
+                            queryResults.add(createRecordsQueryResult(resultSet))
+                        } ?: queryResults.add(UpdateQueryResult(statement.updateCount))
 
                         hasResults = statement.moreResults
                     }
@@ -105,13 +95,12 @@ class Executor() {
                     message += "--> ${cause.javaClass}: ${cause.message} "
                     cause = cause.cause
                 }
-                return listOf(ErrorQueryResult(e.errorCode, message, executionRequestId))
+                return listOf(ErrorQueryResult(e.errorCode, message))
             }
         }
     }
 
     fun executeAndStreamDbResponse(
-        executionRequestId: ExecutionRequestId,
         connectionString: String,
         username: String,
         password: String,
@@ -153,10 +142,7 @@ class Executor() {
         })
     }
 
-    private fun createRecordsQueryResult(
-        executionRequestId: ExecutionRequestId,
-        resultSet: ResultSet,
-    ): RecordsQueryResult {
+    private fun createRecordsQueryResult(resultSet: ResultSet): RecordsQueryResult {
         val results: MutableList<Map<String, String>> = mutableListOf()
 
         val metadata = resultSet.metaData
@@ -180,7 +166,6 @@ class Executor() {
         return RecordsQueryResult(
             columns = columns,
             data = results,
-            executionRequestId,
         )
     }
 

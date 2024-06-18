@@ -6,9 +6,8 @@ import dev.kviklet.kviklet.helper.ConnectionHelper
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper
 import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
-import dev.kviklet.kviklet.service.dto.ExecutionRequestId
-import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
 import dev.kviklet.kviklet.shell.KubernetesApi
+import dev.kviklet.kviklet.shell.KubernetesResult
 import io.mockk.every
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -49,8 +48,7 @@ class KubernetesExecuteTest() {
 
     @BeforeEach
     fun setup() {
-        val mockExecuteResponse = KubernetesExecutionResult(
-            ExecutionRequestId("123"),
+        val mockExecuteResponse = KubernetesResult(
             errors = listOf("some-error"),
             messages = listOf("some-message"),
             finished = true,
@@ -59,7 +57,6 @@ class KubernetesExecuteTest() {
 
         every {
             kubernetesApi.executeCommandOnPod(
-                any(),
                 any(),
                 any(),
                 any(),

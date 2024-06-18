@@ -4,7 +4,6 @@ import dev.kviklet.kviklet.service.ColumnInfo
 import dev.kviklet.kviklet.service.ErrorQueryResult
 import dev.kviklet.kviklet.service.Executor
 import dev.kviklet.kviklet.service.RecordsQueryResult
-import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -46,7 +45,6 @@ class PostgresExecutorTest(
                 ColumnInfo("col2", "text", "java.lang.String"),
             ),
             data = listOf(mapOf("col1" to "1", "col2" to "2")),
-            executionRequestId = ExecutionRequestId("5Wb9WJxCxej5W1Rt6cTBV4"),
         )
     }
 
@@ -56,14 +54,12 @@ class PostgresExecutorTest(
             ErrorQueryResult(
                 0,
                 "ERROR: relation \"foo.non_existent_table\" does not exist\n  Position: 15",
-                ExecutionRequestId("5Wb9WJxCxej5W1Rt6cTBV4"),
             )
 
         executeQuery("FOOBAR") shouldBe
             ErrorQueryResult(
                 0,
                 "ERROR: syntax error at or near \"FOOBAR\"\n  Position: 1",
-                ExecutionRequestId("5Wb9WJxCxej5W1Rt6cTBV4"),
             )
     }
 
@@ -73,7 +69,6 @@ class PostgresExecutorTest(
             ErrorQueryResult(
                 0,
                 "FATAL: password authentication failed for user \"root\"",
-                ExecutionRequestId("5Wb9WJxCxej5W1Rt6cTBV4"),
             )
     }
 
@@ -246,7 +241,6 @@ class PostgresExecutorTest(
                     "tsquery_column" to "'simple'",
                 ),
             ),
-            executionRequestId,
         )
     }
 }

@@ -226,7 +226,6 @@ class ExecutionRequestService(
         )
 
         val result = executor.execute(
-            executionRequestId = id,
             connectionString = connection.getConnectionString(),
             username = connection.username,
             password = connection.password,
@@ -249,7 +248,7 @@ class ExecutionRequestService(
         eventService.addResultLogs(event.eventId!!, resultLogs)
 
         return DBExecutionResult(
-            executionRequestId = id,
+            executionRequest = executionRequest,
             results = result,
         )
     }
@@ -278,14 +277,19 @@ class ExecutionRequestService(
         val containerName = executionRequest.request.containerName?.takeIf { it.isNotBlank() }
 
         val result = kubernetesApi.executeCommandOnPod(
-            executionRequestId = id,
             namespace = executionRequest.request.namespace!!,
             podName = executionRequest.request.podName!!,
             command = executionRequest.request.command,
             containerName = containerName,
             timeout = 60,
         )
-        return result
+        return KubernetesExecutionResult(
+            executionRequest = executionRequest,
+            errors = result.errors,
+            messages = result.messages,
+            finished = result.finished,
+            exitCode = result.exitCode,
+        )
     }
 
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
@@ -351,7 +355,6 @@ class ExecutionRequestService(
         )
 
         executor.executeAndStreamDbResponse(
-            executionRequestId = id,
             connectionString = connection.getConnectionString(),
             username = connection.username,
             password = connection.password,
@@ -393,7 +396,6 @@ class ExecutionRequestService(
         }
 
         val result = executor.execute(
-            executionRequestId = id,
             connectionString = connection.getConnectionString(),
             username = connection.username,
             password = connection.password,
@@ -401,7 +403,7 @@ class ExecutionRequestService(
             MSSQLexplain = connection.type == DatasourceType.MSSQL,
         )
 
-        return DBExecutionResult(results = result, executionRequestId = id)
+        return DBExecutionResult(results = result, executionRequest = executionRequest)
     }
 
     @Transactional

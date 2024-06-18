@@ -1,7 +1,5 @@
 package dev.kviklet.kviklet.shell
 
-import dev.kviklet.kviklet.service.dto.ExecutionRequestId
-import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
 import io.kubernetes.client.Exec
 import io.kubernetes.client.openapi.apis.CoreV1Api
 import io.kubernetes.client.openapi.models.V1Pod
@@ -28,14 +26,13 @@ class KubernetesApi(
     }
 
     fun executeCommandOnPod(
-        executionRequestId: ExecutionRequestId,
         namespace: String,
         podName: String,
         containerName: String? = null,
         command: String,
         timeout: Long = 5,
         exec: Exec = Exec(Config.defaultClient()),
-    ): KubernetesExecutionResult {
+    ): KubernetesResult {
         val commands = arrayOf("/bin/sh", "-c", command)
         val process = when (containerName != null) {
             true -> exec.exec(namespace, podName, commands, containerName, true, false)
@@ -68,8 +65,7 @@ class KubernetesApi(
                 process.destroy()
             }
         }
-        return KubernetesExecutionResult(
-            executionRequestId = executionRequestId,
+        return KubernetesResult(
             errors = errorLines,
             messages = outputLines,
             finished = completed,
@@ -87,3 +83,10 @@ class KubernetesConfig {
         return CoreV1Api()
     }
 }
+
+data class KubernetesResult(
+    val errors: List<String>,
+    val messages: List<String>,
+    val finished: Boolean = true,
+    val exitCode: Int? = 0,
+)
