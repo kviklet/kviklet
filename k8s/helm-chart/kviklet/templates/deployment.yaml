@@ -21,12 +21,6 @@ spec:
       labels:
         app: {{ .Release.Name | quote }}
     spec:
-      {{- if .Values.imagePullSecrets }}
-      imagePullSecrets: {{- toYaml .Values.imagePullSecrets | nindent 8 }}
-      {{- else if .Values.imagePullSecret }}
-      imagePullSecrets:
-        - name: {{ .Values.imagePullSecret }}
-      {{- end }}
       containers:
         - name: {{ .Release.Name | quote }}
           image: {{ .Values.image }}
