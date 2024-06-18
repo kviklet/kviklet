@@ -204,7 +204,7 @@ type ProxyResponse = z.infer<typeof ProxyResponse>;
 
 const addRequest = async (
   payload: ExecutionRequest,
-): Promise<ApiResponse<boolean>> => {
+): Promise<ApiResponse<ExecutionRequestResponse>> => {
   return fetchWithErrorHandling(
     requestUrl,
     {
@@ -215,7 +215,7 @@ const addRequest = async (
       credentials: "include",
       body: JSON.stringify(payload),
     },
-    z.boolean(),
+    ExecutionRequestResponseSchema,
   );
 };
 
