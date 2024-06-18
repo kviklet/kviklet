@@ -9,6 +9,8 @@ import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DatasourceType
+import dev.kviklet.kviklet.service.dto.Policy
+import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.RequestType
 import org.hamcrest.CoreMatchers.notNullValue
 import org.junit.jupiter.api.AfterEach
@@ -121,6 +123,136 @@ class ExecutionTest {
                 """.trimIndent(),
             ).contentType("application/json"),
         ).andExpect(status().isOk)
+    }
+
+    @Test
+    fun `create ExecutionRequest with specific connection permissions test`() {
+        val connection = datasourceConnectionAdapter.createDatasourceConnection(
+            ConnectionId("ds-conn-test"),
+            "Test Connection",
+            AuthenticationType.USER_PASSWORD,
+            "test",
+            1,
+            "username",
+            "password",
+            "A test connection",
+            ReviewConfig(
+                numTotalRequired = 1,
+            ),
+
+            3306,
+            "postgres",
+            DatasourceType.POSTGRESQL,
+            additionalJDBCOptions = "",
+        )
+        roleHelper.removeDefaultRolePermissions()
+        val userPolicies: List<Policy> = listOf(
+            Policy(
+                resource = connection.id.toString(),
+                action = "datasource_connection:get",
+                effect = PolicyEffect.ALLOW,
+            ),
+            Policy(
+                resource = connection.id.toString(),
+                action = "execution_request:get",
+                effect = PolicyEffect.ALLOW,
+            ),
+            Policy(
+                resource = connection.id.toString(),
+                action = "execution_request:edit",
+                effect = PolicyEffect.ALLOW,
+            ),
+        )
+        val user = userHelper.createUser(policies = userPolicies.toSet())
+        val cookie = userHelper.login(mockMvc = mockMvc)
+        mockMvc.perform(
+            post("/execution-requests/").cookie(cookie).content(
+                """
+                {
+                    "connectionId": "${connection.id}",
+                    "title": "Test Execution",
+                    "type": "SingleExecution",
+                    "statement": "SELECT * FROM test",
+                    "description": "A test execution request",
+                    "readOnly": true,
+                    "connectionType": "DATASOURCE"
+                }
+                """.trimIndent(),
+            ).contentType("application/json"),
+        ).andExpect(status().isOk)
+        mockMvc.perform(
+            get("/execution-requests/").cookie(cookie).contentType(
+                "application/json",
+            ),
+        ).andExpect(status().isOk).andExpect(
+            content().json(
+                """
+                [
+                  {
+                    "title": "Test Execution",
+                    "type": "SingleExecution",
+                    "author": {
+                      "email": "user-1@example.com",
+                      "fullName": "User 1",
+                      "permissionString": "",
+                      "roles": [
+                        {
+                          "name": "Default Role",
+                          "description": "This is the default role and gives permission to read connections and requests",
+                          "policies": [],
+                          "isDefault": true
+                        },
+                        {
+                          "name": "User 1 Role",
+                          "description": "User 1 users role",
+                          "policies": [
+                            {
+                              "action": "datasource_connection:get",
+                              "effect": "ALLOW",
+                              "resource": "ds-conn-test"
+                            },
+                            {
+                              "action": "execution_request:get",
+                              "effect": "ALLOW",
+                              "resource": "ds-conn-test"
+                            },
+                            {
+                              "action": "execution_request:edit",
+                              "effect": "ALLOW",
+                              "resource": "ds-conn-test"
+                            }
+                          ],
+                          "isDefault": false
+                        }
+                      ]
+                    },
+                    "connection": {
+                      "id": "ds-conn-test",
+                      "authenticationType": "USER_PASSWORD",
+                      "type": "POSTGRESQL",
+                      "maxExecutions": 1,
+                      "displayName": "Test Connection",
+                      "databaseName": "test",
+                      "username": "username",
+                      "hostname": "postgres",
+                      "port": 3306,
+                      "description": "A test connection",
+                      "reviewConfig": {
+                        "numTotalRequired": 1
+                      },
+                      "additionalJDBCOptions": "",
+                      "connectionType": "DATASOURCE"
+                    },
+                    "description": "A test execution request",
+                    "statement": "SELECT * FROM test",
+                    "readOnly": true,
+                    "reviewStatus": "AWAITING_APPROVAL",
+                    "executionStatus": "EXECUTABLE"
+                  }
+                ]
+                """.trimIndent(),
+            ),
+        )
     }
 
     @Test
