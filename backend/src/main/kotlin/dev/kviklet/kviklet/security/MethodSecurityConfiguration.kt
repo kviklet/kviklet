@@ -28,7 +28,6 @@ import java.util.function.Supplier
 enum class Resource(val resourceName: String) {
     DATASOURCE_CONNECTION("datasource_connection"),
     EXECUTION_REQUEST("execution_request"),
-    EVENT("event"),
     ROLE("role"),
     USER("user"),
     CONFIGURATION("configuration"),
