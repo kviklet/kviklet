@@ -1,0 +1,66 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    app: {{ .Release.Name | quote }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name | quote }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name | quote }}
+    spec:
+      containers:
+        - name: {{ .Release.Name | quote }}
+          image: {{ .Values.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          env: 
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}
+                  key: datasource-username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}
+                  key: datasource-password
+            - name: SPRING_DATASOURCE_URL
+              value: {{ .Values.dataSourceUrl }}
+            - name: INITIAL_USER_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}
+                  key: initialUser-email
+            - name: INITIAL_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}
+                  key: initialUser-password
+            {{- if .Values.oidc.enabled }}
+            - name: KVIKLET_IDENTITYPROVIDER_CLIENTID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}
+                  key: oidc-clientId
+            - name: KVIKLET_IDENTITYPROVIDER_CLIENTSECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}
+                  key: oidc-clientSecret
+            - name: KVIKLET_IDENTITYPROVIDER_TYPE
+              value: {{ .Values.oidc.provider }}
+            - name: KVIKLET_IDENTITYPROVIDER_ISSUERURI
+              value: {{ .Values.oidc.issuer }}
+            {{- end }}
