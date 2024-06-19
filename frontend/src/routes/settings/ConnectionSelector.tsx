@@ -96,7 +96,7 @@ function ComboBox({
               {filteredOptions.map((option) => (
                 <ComboboxOption
                   key={option.id}
-                  value={option.name}
+                  value={option.id}
                   className={({ active }) =>
                     classNames(
                       "relative cursor-default select-none py-2 pl-3 pr-9",
