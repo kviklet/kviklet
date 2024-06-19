@@ -8,6 +8,7 @@ import dev.kviklet.kviklet.security.SecuredDomainId
 import dev.kviklet.kviklet.security.SecuredDomainObject
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.QueryResult
+import net.sf.jsqlparser.JSQLParserException
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import java.io.Serializable
 import java.time.LocalDateTime
@@ -210,15 +211,21 @@ data class ExecutionRequestDetails(
                 ";",
             ) ?: return Pair(false, "Query can't be empty")
         }
-
-        val statementCount = CCJSqlParserUtil.parseStatements(queryToExecute).size
-        if (statementCount > 1) {
-            return Pair(false, "This request contains more than one statement!")
+        try {
+            val statementCount = CCJSqlParserUtil.parseStatements(queryToExecute).size
+            if (statementCount > 1) {
+                return Pair(false, "This request contains more than one statement!")
+            }
+            if (CCJSqlParserUtil.parseStatements(
+                    queryToExecute,
+                ).first() !is net.sf.jsqlparser.statement.select.Select
+            ) {
+                return Pair(false, "Can only download results for select queries!")
+            }
+            return Pair(true, "")
+        } catch (e: JSQLParserException) {
+            return Pair(false, "Error parsing query: ${e.message}")
         }
-        if (CCJSqlParserUtil.parseStatements(queryToExecute).first() !is net.sf.jsqlparser.statement.select.Select) {
-            return Pair(false, "Can only download results for select queries!")
-        }
-        return Pair(true, "")
     }
 }
 

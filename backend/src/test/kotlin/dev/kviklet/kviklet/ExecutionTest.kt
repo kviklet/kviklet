@@ -693,4 +693,24 @@ class ExecutionTest {
         )
             .andExpect(jsonPath("$.executions[0].executionTime", notNullValue()))
     }
+
+    @Test
+    fun `test even wrong sql can be executed`() {
+        val user = userHelper.createUser(permissions = listOf("*"))
+        val approver = userHelper.createUser(permissions = listOf("*"))
+        // Creates a new execution request with SELECT 1; as the statement
+        val executionRequest = executionRequestHelper.createApprovedRequest(
+            getDb(),
+            user,
+            approver,
+            sql = "test",
+        )
+        val cookie = userHelper.login(mockMvc = mockMvc)
+
+        val result = mockMvc.perform(
+            get("/execution-requests/${executionRequest.getId()}").cookie(cookie).contentType(
+                "application/json",
+            ),
+        ).andExpect(status().isOk).andReturn()
+    }
 }
