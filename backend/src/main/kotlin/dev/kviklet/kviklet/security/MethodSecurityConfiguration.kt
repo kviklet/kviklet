@@ -28,7 +28,6 @@ import java.util.function.Supplier
 enum class Resource(val resourceName: String) {
     DATASOURCE_CONNECTION("datasource_connection"),
     EXECUTION_REQUEST("execution_request"),
-    EVENT("event"),
     ROLE("role"),
     USER("user"),
     CONFIGURATION("configuration"),
@@ -70,7 +69,7 @@ interface SecuredDomainId {
 }
 
 interface SecuredDomainObject {
-    fun getId(): String?
+    fun getSecuredObjectId(): String?
     fun getDomainObjectType(): Resource
     fun getRelated(resource: Resource): SecuredDomainObject?
     fun auth(permission: Permission, userDetails: UserDetailsWithId, policies: List<PolicyGrantedAuthority>): Boolean =

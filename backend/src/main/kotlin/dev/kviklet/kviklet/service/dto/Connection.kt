@@ -32,7 +32,9 @@ sealed class Connection(
     open val reviewConfig: ReviewConfig,
     open val maxExecutions: Int?,
 ) : SecuredDomainObject {
-    override fun getId() = id.toString()
+
+    fun getId() = id.toString()
+    override fun getSecuredObjectId() = id.toString()
     override fun getDomainObjectType() = Resource.DATASOURCE_CONNECTION
 
     override fun getRelated(resource: Resource): SecuredDomainObject? {

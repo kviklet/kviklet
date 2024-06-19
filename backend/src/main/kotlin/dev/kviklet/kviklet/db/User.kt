@@ -84,7 +84,11 @@ data class User(
         return allPolicies
     }
 
-    override fun getId(): String? {
+    fun getId(): String? {
+        return id?.toString()
+    }
+
+    override fun getSecuredObjectId(): String? {
         return id?.toString()
     }
 

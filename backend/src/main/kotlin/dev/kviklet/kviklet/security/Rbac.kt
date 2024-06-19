@@ -41,7 +41,7 @@ class PolicyGrantedAuthority(
 
     private fun matchesId(domainObject: SecuredDomainObject?): Boolean {
         if (domainObject == null) return true
-        return AntPathMatcher().match(policy.resource, domainObject.getId()!!)
+        return AntPathMatcher().match(policy.resource, domainObject.getSecuredObjectId()!!)
     }
 
     private fun matchesAction(action: String): Boolean {

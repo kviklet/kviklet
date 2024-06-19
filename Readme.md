@@ -33,7 +33,7 @@ Kviklet ships with a variety of features that an engineering team needs to manag
 
 Kviklet ships as a simple docker container.
 You can find the available verions under [Releases](https://github.com/kviklet/kviklet/releases). We recommend to regularly update the version you are using as we continue to build new features.  
-The latest one currently is `ghcr.io/kviklet/kviklet:0.4.0`, you can also use `:main` but it might happen every now and then that we accidentally merge something buggy alhtough we try to avoid that.
+The latest one currently is `ghcr.io/kviklet/kviklet:0.4.1`, you can also use `:main` but it might happen every now and then that we accidentally merge something buggy alhtough we try to avoid that.
 
 ### Quick Start
 

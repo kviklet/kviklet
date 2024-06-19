@@ -222,6 +222,8 @@ const DatasourceExecutionRequestForm = ({
 
   const location = useLocation();
 
+  const { addNotification } = useNotification();
+
   const {
     register,
     handleSubmit,
@@ -246,8 +248,16 @@ const DatasourceExecutionRequestForm = ({
   const onSubmit: SubmitHandler<DatasourceExecutionRequest> = async (
     data: DatasourceExecutionRequest,
   ) => {
-    await addRequest(data);
-    navigate("/requests");
+    const response = await addRequest(data);
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to create request",
+        text: response.message,
+        type: "error",
+      });
+    } else {
+      navigate("/requests");
+    }
   };
 
   return (
@@ -389,6 +399,8 @@ const KubernetesExecutionRequestForm = ({
 
   const location = useLocation();
 
+  const { addNotification } = useNotification();
+
   const {
     register,
     handleSubmit,
@@ -429,8 +441,16 @@ const KubernetesExecutionRequestForm = ({
   const onSubmit: SubmitHandler<KubernetesExecutionRequest> = async (
     data: KubernetesExecutionRequest,
   ) => {
-    await addRequest(data);
-    navigate("/requests");
+    const response = await addRequest(data);
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to create request",
+        text: response.message,
+        type: "error",
+      });
+    } else {
+      navigate("/requests");
+    }
   };
 
   return (

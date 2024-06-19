@@ -44,17 +44,12 @@ abstract class Event(
     abstract val eventId: EventId?
     abstract val author: User
 
-    override fun getId(): String? = eventId.toString()
+    fun getId(): String? = eventId?.toString()
+    override fun getSecuredObjectId(): String? = request.getSecuredObjectId()
 
-    override fun getDomainObjectType(): Resource = Resource.EVENT
+    override fun getDomainObjectType(): Resource = request.getDomainObjectType()
 
-    override fun getRelated(resource: Resource): SecuredDomainObject? {
-        return when (resource) {
-            Resource.EXECUTION_REQUEST -> request
-            Resource.DATASOURCE_CONNECTION -> request.request.connection
-            else -> null
-        }
-    }
+    override fun getRelated(resource: Resource) = request.getRelated(resource)
     override fun hashCode() = Objects.hash(eventId)
 
     companion object {
