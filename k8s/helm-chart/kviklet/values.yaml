@@ -1,0 +1,30 @@
+#### image
+## kviklet Image
+image: ghcr.io/kviklet/kviklet:0.4.0
+
+#### imagePullPolicy
+## Pull Policy for Kubernetes Deployment
+imagePullPolicy: IfNotPresent
+
+#### port
+## Service port of the kviklet
+port: 80
+
+### Database Kviklet
+dataSourceUrl: jdbc:postgresql://localhost:5432/kviklet
+ 
+oidc:
+  enabled: false 
+  provider: "gitlab"
+  issuer: ""
+
+#### resources
+## Deployment Resource
+## Used when kind is Single
+resources:
+  limits:
+    cpu: 200m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
