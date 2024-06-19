@@ -38,7 +38,7 @@ The latest one currently is `ghcr.io/kviklet/kviklet:0.4.2`, you can also use `:
 ### Quick Start
 
 If you just want to try out how it works:
-1. Fork the repository (or copy the `docker-compose.yml` and `sample_data.sql`)
+1. Clone the repository (or copy the `docker-compose.yml` and `sample_data.sql`)
 2. Run the `docker-compose.yml` via `docker-compose up -d`. Kviklet should spin up on port 80 so just got to `localhost` and play around. The admin login is admin@admin.com with admin as password.
 3. The docker-compose contains an extra postgres database for which you can setup a connection in Kviklet. This database contains a sample `Locations` table if you want to run a test query.
 
