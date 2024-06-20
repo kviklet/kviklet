@@ -14,13 +14,16 @@ import java.io.Serializable
 import java.time.LocalDateTime
 
 @JvmInline
-value class ExecutionRequestId(private val id: String) : Serializable, SecuredDomainId {
+value class ExecutionRequestId(private val id: String) :
+    Serializable,
+    SecuredDomainId {
     override fun toString() = id
 }
 
 enum class ReviewStatus {
     AWAITING_APPROVAL,
     APPROVED,
+    REJECTED,
 }
 
 enum class ExecutionStatus {
@@ -46,7 +49,17 @@ sealed class ExecutionRequest(
     open val executionStatus: String,
     open val createdAt: LocalDateTime = utcTimeNow(),
     open val author: User,
-)
+) : SecuredDomainObject {
+    fun getId() = id.toString()
+    override fun getSecuredObjectId() = connection.getSecuredObjectId()
+    override fun getDomainObjectType() = Resource.EXECUTION_REQUEST
+
+    override fun getRelated(resource: Resource) = when (resource) {
+        Resource.EXECUTION_REQUEST -> this
+        Resource.DATASOURCE_CONNECTION -> connection
+        else -> null
+    }
+}
 
 sealed class ExecutionResult(open val executionRequest: ExecutionRequestDetails) : SecuredDomainObject {
     override fun getSecuredObjectId() = executionRequest.getSecuredObjectId()
@@ -54,10 +67,8 @@ sealed class ExecutionResult(open val executionRequest: ExecutionRequestDetails)
     override fun getRelated(resource: Resource) = executionRequest.getRelated(resource)
 }
 
-data class DBExecutionResult(
-    override val executionRequest: ExecutionRequestDetails,
-    val results: List<QueryResult>,
-) : ExecutionResult(executionRequest)
+data class DBExecutionResult(override val executionRequest: ExecutionRequestDetails, val results: List<QueryResult>) :
+    ExecutionResult(executionRequest)
 
 data class KubernetesExecutionResult(
     override val executionRequest: ExecutionRequestDetails,
@@ -103,10 +114,8 @@ data class KubernetesExecutionRequest(
     author,
 )
 
-data class ExecutionRequestDetails(
-    val request: ExecutionRequest,
-    val events: MutableSet<Event>,
-) : SecuredDomainObject {
+data class ExecutionRequestDetails(val request: ExecutionRequest, val events: MutableSet<Event>) :
+    SecuredDomainObject {
     fun addEvent(event: Event): ExecutionRequestDetails {
         events.add(event)
         return this
@@ -115,6 +124,14 @@ data class ExecutionRequestDetails(
     fun resolveReviewStatus(): ReviewStatus {
         val reviewConfig = request.connection.reviewConfig
         val numReviews = getApprovalCount()
+
+        if (isRejected()) {
+            return ReviewStatus.REJECTED
+        }
+
+        if (activeRequestedChanges() > 0) {
+            return ReviewStatus.AWAITING_APPROVAL
+        }
         val reviewStatus = if (numReviews >= reviewConfig.numTotalRequired) {
             ReviewStatus.APPROVED
         } else {
@@ -124,14 +141,40 @@ data class ExecutionRequestDetails(
         return reviewStatus
     }
 
+    fun isRejected(): Boolean {
+        val rejectedReview = events.filter { it.type == EventType.REVIEW }
+            .mapNotNull { it as? ReviewEvent }
+            .find { it.action == ReviewAction.REJECT }
+
+        return rejectedReview != null
+    }
+
     fun getApprovalCount(): Int {
         val latestEdit = events.filter { it.type == EventType.EDIT }.sortedBy { it.createdAt }.lastOrNull()
         val latestEditTimeStamp = latestEdit?.createdAt ?: LocalDateTime.MIN
         val numReviews = events.filter {
-            it.type == EventType.REVIEW && it is ReviewEvent && it.action == ReviewAction.APPROVE &&
+            it.type == EventType.REVIEW &&
+                it is ReviewEvent &&
+                it.action == ReviewAction.APPROVE &&
                 it.createdAt > latestEditTimeStamp
         }.groupBy { it.author.getId() }.count()
         return numReviews
+    }
+
+    fun activeRequestedChanges(): Int {
+        val changesRequested = events.filter { it.type == EventType.REVIEW }
+            .mapNotNull { it as? ReviewEvent }
+            .filter { it.action == ReviewAction.REQUEST_CHANGE }
+
+        val approvals = events.filter { it.type == EventType.REVIEW }
+            .mapNotNull { it as? ReviewEvent }
+            .filter { it.action == ReviewAction.APPROVE }
+
+        val openChangeRequests = changesRequested.filter { requestChange ->
+            approvals.none { it.author == requestChange.author && it.createdAt.isAfter(requestChange.createdAt) }
+        }
+
+        return openChangeRequests.size
     }
 
     fun resolveExecutionStatus(): ExecutionStatus {
@@ -163,33 +206,25 @@ data class ExecutionRequestDetails(
         }
     }
 
-    fun getId() = request.id.toString()
+    fun getId() = request.getId()
 
-    override fun getSecuredObjectId() = request.connection.getSecuredObjectId()
+    override fun getSecuredObjectId() = request.getSecuredObjectId()
 
-    override fun getDomainObjectType() = Resource.EXECUTION_REQUEST
+    override fun getDomainObjectType() = request.getDomainObjectType()
 
-    override fun getRelated(resource: Resource) = when (resource) {
-        Resource.EXECUTION_REQUEST -> this
-        Resource.DATASOURCE_CONNECTION -> request.connection
-        else -> null
-    }
+    override fun getRelated(resource: Resource) = request.getRelated(resource)
 
     override fun auth(
         permission: Permission,
         userDetails: UserDetailsWithId,
         policies: List<PolicyGrantedAuthority>,
-    ): Boolean {
-        return when (permission) {
-            Permission.EXECUTION_REQUEST_EDIT -> request.author.getId() == userDetails.id
-            Permission.EXECUTION_REQUEST_EXECUTE -> request.author.getId() == userDetails.id && isExecutable()
-            else -> true
-        }
+    ): Boolean = when (permission) {
+        Permission.EXECUTION_REQUEST_EDIT -> request.author.getId() == userDetails.id
+        Permission.EXECUTION_REQUEST_EXECUTE -> request.author.getId() == userDetails.id && isExecutable()
+        else -> true
     }
 
-    private fun isExecutable(): Boolean {
-        return resolveReviewStatus() == ReviewStatus.APPROVED
-    }
+    private fun isExecutable(): Boolean = resolveReviewStatus() == ReviewStatus.APPROVED
 
     fun csvDownloadAllowed(query: String? = null): Pair<Boolean, String> {
         if (request.connection !is DatasourceConnection || request !is DatasourceExecutionRequest) {

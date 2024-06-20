@@ -29,8 +29,8 @@ enum class EventType {
 
 enum class ReviewAction {
     APPROVE,
-    COMMENT,
     REQUEST_CHANGE,
+    REJECT,
 }
 
 /**
@@ -39,7 +39,7 @@ enum class ReviewAction {
 abstract class Event(
     val type: EventType,
     open val createdAt: LocalDateTime = utcTimeNow(),
-    open val request: ExecutionRequestDetails,
+    open val request: ExecutionRequest,
 ) : SecuredDomainObject {
     abstract val eventId: EventId?
     abstract val author: User
@@ -55,7 +55,7 @@ abstract class Event(
     companion object {
         fun create(
             id: EventId?,
-            request: ExecutionRequestDetails,
+            request: ExecutionRequest,
             author: User,
             createdAt: LocalDateTime,
             payload: Payload,
@@ -86,7 +86,7 @@ abstract class Event(
 
 data class CommentEvent(
     override val eventId: EventId?,
-    override val request: ExecutionRequestDetails,
+    override val request: ExecutionRequest,
     override val author: User,
     override val createdAt: LocalDateTime = utcTimeNow(),
     val comment: String,
@@ -96,7 +96,7 @@ data class CommentEvent(
 
 data class ReviewEvent(
     override val eventId: EventId?,
-    override val request: ExecutionRequestDetails,
+    override val request: ExecutionRequest,
     override val author: User,
     override val createdAt: LocalDateTime = utcTimeNow(),
     val comment: String,
@@ -107,7 +107,7 @@ data class ReviewEvent(
 
 data class EditEvent(
     override val eventId: EventId?,
-    override val request: ExecutionRequestDetails,
+    override val request: ExecutionRequest,
     override val author: User,
     override val createdAt: LocalDateTime = utcTimeNow(),
     val previousQuery: String? = null,
@@ -121,7 +121,7 @@ data class EditEvent(
 
 data class ExecuteEvent(
     override val eventId: EventId?,
-    override val request: ExecutionRequestDetails,
+    override val request: ExecutionRequest,
     override val author: User,
     override val createdAt: LocalDateTime = utcTimeNow(),
     val query: String? = null,
@@ -141,20 +141,10 @@ enum class ResultType {
     QUERY,
 }
 
-sealed class ResultLog(
-    val type: ResultType,
-)
+sealed class ResultLog(val type: ResultType)
 
-data class ErrorResultLog(
-    val errorCode: Int,
-    val message: String,
-) : ResultLog(ResultType.ERROR)
+data class ErrorResultLog(val errorCode: Int, val message: String) : ResultLog(ResultType.ERROR)
 
-data class UpdateResultLog(
-    val rowsUpdated: Int,
-) : ResultLog(ResultType.UPDATE)
+data class UpdateResultLog(val rowsUpdated: Int) : ResultLog(ResultType.UPDATE)
 
-data class QueryResultLog(
-    val columnCount: Int,
-    val rowCount: Int,
-) : ResultLog(ResultType.QUERY)
+data class QueryResultLog(val columnCount: Int, val rowCount: Int) : ResultLog(ResultType.QUERY)

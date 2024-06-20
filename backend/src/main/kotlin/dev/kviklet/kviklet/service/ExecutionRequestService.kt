@@ -84,36 +84,32 @@ class ExecutionRequestService(
         connectionId: ConnectionId,
         request: CreateDatasourceExecutionRequestRequest,
         userId: String,
-    ): ExecutionRequestDetails {
-        return executionRequestAdapter.createExecutionRequest(
-            connectionId = connectionId,
-            title = request.title,
-            type = request.type,
-            description = request.description,
-            statement = request.statement,
-            executionStatus = "PENDING",
-            authorId = userId,
-        )
-    }
+    ): ExecutionRequestDetails = executionRequestAdapter.createExecutionRequest(
+        connectionId = connectionId,
+        title = request.title,
+        type = request.type,
+        description = request.description,
+        statement = request.statement,
+        executionStatus = "PENDING",
+        authorId = userId,
+    )
 
     private fun createKubernetesRequest(
         connectionId: ConnectionId,
         request: CreateKubernetesExecutionRequestRequest,
         userId: String,
-    ): ExecutionRequestDetails {
-        return executionRequestAdapter.createExecutionRequest(
-            connectionId = connectionId,
-            title = request.title,
-            type = request.type,
-            description = request.description,
-            executionStatus = "PENDING",
-            authorId = userId,
-            namespace = request.namespace,
-            podName = request.podName,
-            containerName = request.containerName,
-            command = request.command,
-        )
-    }
+    ): ExecutionRequestDetails = executionRequestAdapter.createExecutionRequest(
+        connectionId = connectionId,
+        title = request.title,
+        type = request.type,
+        description = request.description,
+        executionStatus = "PENDING",
+        authorId = userId,
+        namespace = request.namespace,
+        podName = request.podName,
+        containerName = request.containerName,
+        command = request.command,
+    )
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_EDIT)
@@ -184,7 +180,8 @@ class ExecutionRequestService(
             authorId,
             ReviewPayload(comment = request.comment, action = request.action),
         )
-        ReviewStatusUpdatedEvent.fromReviewEvent(reviewEvent).let {
+        val updatedExecutionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
+        ReviewStatusUpdatedEvent.from(updatedExecutionRequestDetails, reviewEvent).let {
             applicationEventPublisher.publishEvent(it)
         }
         return reviewEvent
@@ -405,9 +402,7 @@ class ExecutionRequestService(
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
-    fun getExecutions(): List<ExecuteEvent> {
-        return eventService.getAllExecutions()
-    }
+    fun getExecutions(): List<ExecuteEvent> = eventService.getAllExecutions()
 
     private fun cleanUpProxies() {
         val now = utcTimeNow()
@@ -501,24 +496,22 @@ class ExecutionRequestService(
         executionRequest: ExecutionRequest,
         userId: String,
         startTime: LocalDateTime,
-    ): CompletableFuture<Void>? {
-        return CompletableFuture.runAsync {
-            PostgresProxy(
-                hostname,
-                port,
-                databaseName,
-                username,
-                password,
-                eventService,
-                executionRequest,
-                userId,
-            ).startServer(
-                mappedPort,
-                email,
-                tempPassword,
-                startTime,
-            )
-        }
+    ): CompletableFuture<Void>? = CompletableFuture.runAsync {
+        PostgresProxy(
+            hostname,
+            port,
+            databaseName,
+            username,
+            password,
+            eventService,
+            executionRequest,
+            userId,
+        ).startServer(
+            mappedPort,
+            email,
+            tempPassword,
+            startTime,
+        )
     }
 }
 

@@ -10,7 +10,7 @@ import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventId
 import dev.kviklet.kviklet.service.dto.EventType
 import dev.kviklet.kviklet.service.dto.ExecuteEvent
-import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
+import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import dev.kviklet.kviklet.service.dto.ResultType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.utcTimeNow
@@ -30,20 +30,13 @@ import java.time.LocalDateTime
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "foobar", visible = false)
-sealed class Payload(
-    val type: EventType,
-)
+sealed class Payload(val type: EventType)
 
 @JsonTypeName("COMMENT")
-data class CommentPayload(
-    val comment: String,
-) : Payload(EventType.COMMENT)
+data class CommentPayload(val comment: String) : Payload(EventType.COMMENT)
 
 @JsonTypeName("REVIEW")
-data class ReviewPayload(
-    val comment: String,
-    val action: ReviewAction,
-) : Payload(EventType.REVIEW)
+data class ReviewPayload(val comment: String, val action: ReviewAction) : Payload(EventType.REVIEW)
 
 @JsonTypeName("EDIT")
 data class EditPayload(
@@ -77,23 +70,13 @@ data class ExecutePayload(
     JsonSubTypes.Type(value = UpdateResultLogPayload::class, name = "UPDATE"),
     JsonSubTypes.Type(value = QueryResultLogPayload::class, name = "QUERY"),
 )
-sealed class ResultLogPayload(
-    val type: ResultType,
-)
+sealed class ResultLogPayload(val type: ResultType)
 
-data class ErrorResultLogPayload(
-    val errorCode: Int,
-    val message: String,
-) : ResultLogPayload(ResultType.ERROR)
+data class ErrorResultLogPayload(val errorCode: Int, val message: String) : ResultLogPayload(ResultType.ERROR)
 
-data class UpdateResultLogPayload(
-    val rowsUpdated: Int,
-) : ResultLogPayload(ResultType.UPDATE)
+data class UpdateResultLogPayload(val rowsUpdated: Int) : ResultLogPayload(ResultType.UPDATE)
 
-data class QueryResultLogPayload(
-    val columnCount: Int,
-    val rowCount: Int,
-) : ResultLogPayload(ResultType.QUERY)
+data class QueryResultLogPayload(val columnCount: Int, val rowCount: Int) : ResultLogPayload(ResultType.QUERY)
 
 @Entity(name = "event")
 class EventEntity(
@@ -116,13 +99,11 @@ class EventEntity(
     var createdAt: LocalDateTime = utcTimeNow(),
 ) : BaseEntity() {
 
-    override fun toString(): String {
-        return ToStringBuilder(this, SHORT_PREFIX_STYLE)
-            .append("id", id)
-            .toString()
-    }
+    override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
+        .append("id", id)
+        .toString()
 
-    fun toDto(request: ExecutionRequestDetails? = null): Event {
+    fun toDto(request: ExecutionRequest? = null): Event {
         if (request == null) {
             val executionDetails = executionRequest.toDetailDto()
             return executionDetails.events.find { it.eventId.toString() == id }!!
@@ -142,9 +123,7 @@ interface EventRepository : JpaRepository<EventEntity, String> {
 }
 
 @Service
-class EventAdapter(
-    private val eventRepository: EventRepository,
-) {
+class EventAdapter(private val eventRepository: EventRepository) {
     fun getExecutions(): List<ExecuteEvent> {
         val events = eventRepository.findByType(EventType.EXECUTE)
         return events.map { it.toDto() }.filterIsInstance<ExecuteEvent>()
