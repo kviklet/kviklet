@@ -68,7 +68,6 @@ class UserTest {
             .andExpect(jsonPath("$.email", `is`("someemail@email.de")))
             .andExpect(jsonPath("$.fullName", `is`("Some User")))
             .andExpect(jsonPath("$.roles.length()", `is`(1))) // Should already have the default role
-            .andExpect(jsonPath("$.permissionString", notNullValue()))
             .andExpect(jsonPath("$.password").doesNotExist())
     }
 
@@ -138,7 +137,6 @@ class UserTest {
             .andExpect(jsonPath("$.email", `is`("newemail@email.de")))
             .andExpect(jsonPath("$.fullName", `is`(user.fullName)))
             .andExpect(jsonPath("$.roles.length()", `is`(2)))
-            .andExpect(jsonPath("$.permissionString", notNullValue()))
             .andExpect(jsonPath("$.password").doesNotExist())
     }
 

@@ -37,61 +37,43 @@ data class EditUserRequest(
     @field:Size(min = 1, max = 50)
     val fullName: String? = null,
 
-    @field:Size(min = 1, max = 50)
-    val permissionString: String? = null,
-
     val roles: List<String>? = null,
 
     @field:Size(min = 6, max = 50)
     val password: String?,
 )
 
-data class UserResponse(
-    val id: String,
-    val email: String,
-    val fullName: String?,
-    val permissionString: String,
-    val roles: List<RoleResponse>,
-) {
+data class UserResponse(val id: String, val email: String, val fullName: String?, val roles: List<RoleResponse>) {
     constructor(user: User) : this(
         id = user.getId()!!,
         email = user.email,
         fullName = user.fullName,
-        permissionString = permissionsToPermissionString(user.policies),
         roles = user.roles.map { RoleResponse.fromDto(it) },
     )
 }
 
-data class UsersResponse(
-    val users: List<UserResponse>,
-) {
+data class UsersResponse(val users: List<UserResponse>) {
     companion object {
-        fun fromUsers(users: List<User>): UsersResponse {
-            return UsersResponse(users.map { UserResponse(it) })
-        }
+        fun fromUsers(users: List<User>): UsersResponse = UsersResponse(users.map { UserResponse(it) })
     }
 }
 
 @RestController()
 @Validated
 @RequestMapping("/users")
-class UserController(
-    private val userService: UserService,
-) {
+class UserController(private val userService: UserService) {
 
     @PostMapping("/")
     fun createUser(
         @RequestBody @Valid
         userRequest: CreateUserRequest,
-    ): UserResponse {
-        return UserResponse(
-            userService.createUser(
-                email = userRequest.email,
-                password = userRequest.password,
-                fullName = userRequest.fullName,
-            ),
-        )
-    }
+    ): UserResponse = UserResponse(
+        userService.createUser(
+            email = userRequest.email,
+            password = userRequest.password,
+            fullName = userRequest.fullName,
+        ),
+    )
 
     @GetMapping("/")
     fun getUsers(): UsersResponse {

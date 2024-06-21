@@ -12,7 +12,6 @@ import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.security.isAllowed
 import dev.kviklet.kviklet.security.vote
 import dev.kviklet.kviklet.service.EntityNotFound
-import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.Role
 import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
@@ -62,7 +61,9 @@ class UserEntity(
 }
 
 data class UserId
-@JsonCreator constructor(private val id: String) : Serializable, SecuredDomainId {
+@JsonCreator constructor(private val id: String) :
+    Serializable,
+    SecuredDomainId {
     @JsonValue
     override fun toString() = id
 }
@@ -74,33 +75,18 @@ data class User(
     val password: String? = null,
     val subject: String? = null,
     val email: String = "",
-    val policies: Set<Policy> = HashSet(),
     val roles: Set<Role> = HashSet(),
 ) : SecuredDomainObject {
-    fun getAllPolicies(): Set<Policy> {
-        val allPolicies = HashSet<Policy>()
-        allPolicies.addAll(policies)
-        roles.forEach { allPolicies.addAll(it.policies) }
-        return allPolicies
-    }
 
-    fun getId(): String? {
-        return id?.toString()
-    }
+    fun getId(): String? = id?.toString()
 
-    override fun getSecuredObjectId(): String? {
-        return id?.toString()
-    }
+    override fun getSecuredObjectId(): String? = id?.toString()
 
-    override fun getDomainObjectType(): Resource {
-        return Resource.USER
-    }
+    override fun getDomainObjectType(): Resource = Resource.USER
 
-    override fun getRelated(resource: Resource): SecuredDomainObject? {
-        return when (resource) {
-            Resource.USER -> this
-            else -> null
-        }
+    override fun getRelated(resource: Resource): SecuredDomainObject? = when (resource) {
+        Resource.USER -> this
+        else -> null
     }
 
     override fun auth(
@@ -127,10 +113,7 @@ interface UserRepository : JpaRepository<UserEntity, String> {
 }
 
 @Service
-class UserAdapter(
-    private val userRepository: UserRepository,
-    private val roleRepository: RoleRepository,
-) {
+class UserAdapter(private val userRepository: UserRepository, private val roleRepository: RoleRepository) {
     fun findByEmail(email: String): User? {
         val userEntity = userRepository.findByEmail(email) ?: return null
         return userEntity.toDto()

@@ -16,11 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
-data class CreateRoleRequest(
-    val name: String,
-    val description: String,
-    val policies: Set<PolicyPayload>?,
-)
+data class CreateRoleRequest(val name: String, val description: String, val policies: Set<PolicyPayload>?)
 
 data class UpdateRoleRequest(
     val id: String,
@@ -29,19 +25,9 @@ data class UpdateRoleRequest(
     val policies: Set<PolicyPayload>?,
 )
 
-data class PolicyPayload(
-    val id: String?,
-    val action: String,
-    val effect: PolicyEffect,
-    val resource: String,
-)
+data class PolicyPayload(val id: String?, val action: String, val effect: PolicyEffect, val resource: String)
 
-data class PolicyResponse(
-    val id: String,
-    val action: String,
-    val effect: PolicyEffect,
-    val resource: String,
-) {
+data class PolicyResponse(val id: String, val action: String, val effect: PolicyEffect, val resource: String) {
     companion object {
         fun fromDto(policy: Policy) = PolicyResponse(
             id = policy.id!!,
@@ -60,32 +46,22 @@ data class RoleResponse(
     val isDefault: Boolean = false,
 ) {
     companion object {
-        fun fromDto(dto: Role): RoleResponse {
-            return RoleResponse(
-                id = dto.getId()!!,
-                name = dto.name,
-                description = dto.description,
-                policies = dto.policies.map { PolicyResponse.fromDto(it) },
-                isDefault = dto.isDefault,
-            )
-        }
+        fun fromDto(dto: Role): RoleResponse = RoleResponse(
+            id = dto.getId()!!,
+            name = dto.name,
+            description = dto.description,
+            policies = dto.policies.map { PolicyResponse.fromDto(it) },
+            isDefault = dto.isDefault,
+        )
     }
 }
 
-data class RolesResponse(
-    val roles: List<RoleResponse>,
-) {
+data class RolesResponse(val roles: List<RoleResponse>) {
     companion object {
-        fun fromRoles(roles: List<Role>): RolesResponse {
-            return RolesResponse(
-                roles = roles.map { RoleResponse.fromDto(it) },
-            )
-        }
+        fun fromRoles(roles: List<Role>): RolesResponse = RolesResponse(
+            roles = roles.map { RoleResponse.fromDto(it) },
+        )
     }
-}
-
-fun permissionsToPermissionString(policies: Set<Policy>): String {
-    return policies.map { "${it.effect}:${it.action} on ${it.resource}" }.joinToString { ";" }
 }
 
 @RestController()
