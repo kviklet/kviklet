@@ -69,7 +69,6 @@ data class CreateDatasourceExecutionRequestRequest(
     override val type: RequestType,
     override val description: String,
     val statement: String?,
-    val readOnly: Boolean,
 ) : CreateExecutionRequestRequest(connectionId, title, type, description)
 
 data class CreateKubernetesExecutionRequestRequest(
@@ -87,7 +86,6 @@ data class UpdateExecutionRequestRequest(
     val title: String?,
     val description: String?,
     val statement: String? = null,
-    val readOnly: Boolean?,
     val namespace: String? = null,
     val podName: String? = null,
     val containerName: String? = null,
@@ -127,7 +125,6 @@ sealed class ExecutionRequestResponse(
                     title = dto.request.title,
                     description = dto.request.description,
                     statement = dto.request.statement,
-                    readOnly = dto.request.readOnly,
                     reviewStatus = dto.resolveReviewStatus(),
                     executionStatus = dto.resolveExecutionStatus(),
                     createdAt = dto.request.createdAt,
@@ -164,7 +161,6 @@ sealed class ExecutionRequestResponse(
         val connection: ConnectionResponse,
         val description: String?,
         val statement: String?,
-        val readOnly: Boolean,
         val reviewStatus: ReviewStatus,
         val executionStatus: ExecutionStatus,
         val createdAt: LocalDateTime = utcTimeNow(),
@@ -205,7 +201,6 @@ sealed class ExecutionRequestDetailResponse(
                     title = dto.request.title,
                     description = dto.request.description,
                     statement = dto.request.statement,
-                    readOnly = dto.request.readOnly,
                     reviewStatus = dto.resolveReviewStatus(),
                     executionStatus = dto.resolveExecutionStatus(),
                     createdAt = dto.request.createdAt,
@@ -245,7 +240,6 @@ data class DatasourceExecutionRequestDetailResponse(
     val connection: ConnectionResponse,
     val description: String?,
     val statement: String?,
-    val readOnly: Boolean,
     val reviewStatus: ReviewStatus,
     val executionStatus: ExecutionStatus,
     val createdAt: LocalDateTime = utcTimeNow(),

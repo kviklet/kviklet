@@ -1,0 +1,8 @@
+databaseChangeLog:
+  - changeSet:
+      id: 017-drop-readonly-column
+      author: Jascha
+      changes:
+        - dropColumn:
+            tableName: execution_request
+            columnName: read_only

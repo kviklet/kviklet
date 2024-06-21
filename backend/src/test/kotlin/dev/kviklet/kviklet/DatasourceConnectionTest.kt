@@ -84,7 +84,6 @@ class DatasourceConnectionTest(
                 title = "My Request",
                 description = "Request description",
                 statement = "SELECT 1",
-                readOnly = false,
                 type = RequestType.SingleExecution,
             ),
             userDetails = testUserDetails,

@@ -218,7 +218,6 @@ class ExecutionRequestHelper(
             type = RequestType.SingleExecution,
             description = "A test execution request",
             statement = sql,
-            readOnly = true,
             executionStatus = "PENDING",
             authorId = author.getId()!!,
         )

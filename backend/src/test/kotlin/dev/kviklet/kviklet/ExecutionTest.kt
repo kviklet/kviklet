@@ -117,7 +117,6 @@ class ExecutionTest {
                     "type": "SingleExecution",
                     "statement": "SELECT * FROM test",
                     "description": "A test execution request",
-                    "readOnly": true,
                     "connectionType": "DATASOURCE"
                 }
                 """.trimIndent(),
@@ -174,7 +173,6 @@ class ExecutionTest {
                     "type": "SingleExecution",
                     "statement": "SELECT * FROM test",
                     "description": "A test execution request",
-                    "readOnly": true,
                     "connectionType": "DATASOURCE"
                 }
                 """.trimIndent(),
@@ -245,7 +243,6 @@ class ExecutionTest {
                     },
                     "description": "A test execution request",
                     "statement": "SELECT * FROM test",
-                    "readOnly": true,
                     "reviewStatus": "AWAITING_APPROVAL",
                     "executionStatus": "EXECUTABLE"
                   }
@@ -282,7 +279,6 @@ class ExecutionTest {
             type = RequestType.SingleExecution,
             description = "A test execution request",
             statement = "SELECT * FROM test",
-            readOnly = true,
             executionStatus = "PENDING",
             authorId = user.getId()!!,
         )
@@ -314,7 +310,6 @@ class ExecutionTest {
                             "type": "SingleExecution",
                             "description": "A test execution request",
                             "statement": "SELECT * FROM test",
-                            "readOnly": true,
                             "reviewStatus": "AWAITING_APPROVAL",
                             "executionStatus": "EXECUTABLE",
                             "author": {

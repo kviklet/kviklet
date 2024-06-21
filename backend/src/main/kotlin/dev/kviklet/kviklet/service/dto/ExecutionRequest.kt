@@ -74,7 +74,6 @@ data class DatasourceExecutionRequest(
     override val type: RequestType,
     override val description: String?,
     val statement: String?,
-    val readOnly: Boolean,
     override val executionStatus: String,
     override val createdAt: LocalDateTime = utcTimeNow(),
     override val author: User,
