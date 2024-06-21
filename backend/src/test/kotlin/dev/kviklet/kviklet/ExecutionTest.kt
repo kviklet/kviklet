@@ -192,7 +192,6 @@ class ExecutionTest {
                     "author": {
                       "email": "user-1@example.com",
                       "fullName": "User 1",
-                      "permissionString": "",
                       "roles": [
                         {
                           "name": "Default Role",
