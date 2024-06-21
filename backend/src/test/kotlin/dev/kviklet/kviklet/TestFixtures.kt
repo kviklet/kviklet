@@ -27,7 +27,6 @@ object TestFixtures {
         title = "title",
         description = "description",
         statement = statement,
-        readOnly = false,
     )
 
     fun createExecutionRequestRequest(db: String) = CreateDatasourceExecutionRequestRequest(
@@ -35,7 +34,6 @@ object TestFixtures {
         title = "title",
         description = "description",
         statement = "select 1",
-        readOnly = false,
         type = RequestType.SingleExecution,
     )
 }

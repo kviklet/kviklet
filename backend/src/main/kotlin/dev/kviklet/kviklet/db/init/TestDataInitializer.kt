@@ -42,7 +42,6 @@ class TestDataInitializer(
         val title = "$titlePrefix Execution Request $index"
         val description = "Description of the $titlePrefix execution request $index"
         val statement = "Select * from test;"
-        val readOnly = ThreadLocalRandom.current().nextBoolean()
         val executionStatus = if (ThreadLocalRandom.current().nextBoolean()) "SUCCESS" else "PENDING"
         return ExecutionRequestEntity(
             connection = connection,
@@ -50,7 +49,6 @@ class TestDataInitializer(
             executionType = RequestType.SingleExecution,
             description = description,
             statement = statement,
-            readOnly = readOnly,
             executionStatus = executionStatus,
             author = author,
             events = mutableSetOf(),

@@ -66,7 +66,6 @@ class ExecutionRequestEntity(
 
     // Datsource Request specific fields
     var statement: String?,
-    var readOnly: Boolean?,
 
     // Kubernetes Request specific fields
     var namespace: String? = "",
@@ -91,7 +90,6 @@ class ExecutionRequestEntity(
                 type = executionType,
                 description = description,
                 statement = statement,
-                readOnly = readOnly!!,
                 executionStatus = executionStatus,
                 createdAt = createdAt,
                 author = author.toDto(),
@@ -188,7 +186,6 @@ class ExecutionRequestAdapter(
         type: RequestType,
         description: String,
         statement: String? = null,
-        readOnly: Boolean? = null,
         executionStatus: String,
         authorId: String,
         namespace: String? = null,
@@ -210,7 +207,7 @@ class ExecutionRequestAdapter(
         }
 
         if (connection.connectionType == ConnectionType.KUBERNETES &&
-            (statement != null || readOnly != null)
+            (statement != null)
         ) {
             throw IllegalArgumentException(
                 "Cannot create Datasource specific fields for a Kubernetes Execution Request",
@@ -224,7 +221,6 @@ class ExecutionRequestAdapter(
                 executionType = type,
                 description = description,
                 statement = statement,
-                readOnly = readOnly,
                 executionStatus = executionStatus,
                 events = mutableSetOf(),
                 author = authorEntity,
@@ -245,7 +241,6 @@ class ExecutionRequestAdapter(
         title: String? = null,
         description: String? = null,
         statement: String? = null,
-        readOnly: Boolean? = null,
         executionStatus: String? = null,
         namespace: String? = null,
         podName: String? = null,
@@ -263,7 +258,7 @@ class ExecutionRequestAdapter(
         }
 
         if (executionRequestEntity.executionRequestType == ExecutionRequestType.KUBERNETES &&
-            (statement != null || readOnly != null)
+            (statement != null)
         ) {
             throw IllegalArgumentException(
                 "Cannot update Datasource specific fields for a Kubernetes Execution Request",
@@ -273,7 +268,6 @@ class ExecutionRequestAdapter(
         title?.let { executionRequestEntity.title = it }
         description?.let { executionRequestEntity.description = it }
         statement?.let { executionRequestEntity.statement = it }
-        readOnly?.let { executionRequestEntity.readOnly = it }
         executionStatus?.let { executionRequestEntity.executionStatus = it }
 
         namespace?.let { executionRequestEntity.namespace = it }

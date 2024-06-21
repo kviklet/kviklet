@@ -44,3 +44,6 @@ databaseChangeLog:
   - include:
       file: 016-add-configuration-table.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 017-drop-readonly-column.yaml
+      relativeToChangelogFile: true

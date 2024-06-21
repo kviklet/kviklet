@@ -91,7 +91,6 @@ class ExecutionRequestService(
             type = request.type,
             description = request.description,
             statement = request.statement,
-            readOnly = request.readOnly,
             executionStatus = "PENDING",
             authorId = userId,
         )
@@ -157,7 +156,6 @@ class ExecutionRequestService(
             title = request.title,
             description = request.description,
             statement = request.statement,
-            readOnly = request.readOnly,
             executionStatus = executionRequestDetails.request.executionStatus,
             namespace = request.namespace,
             podName = request.podName,
@@ -238,7 +236,6 @@ class ExecutionRequestService(
                 title = executionRequest.request.title,
                 description = executionRequest.request.description,
                 statement = executionRequest.request.statement,
-                readOnly = executionRequest.request.readOnly,
                 executionStatus = "EXECUTED",
             )
         }

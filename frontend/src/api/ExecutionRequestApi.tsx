@@ -131,7 +131,6 @@ const ChangeExecutionRequestPayloadSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().optional(),
   statement: z.string().optional(),
-  readOnly: z.boolean().optional(),
   command: z.string().optional(),
   podName: z.string().optional(),
   namespace: z.string().optional(),
