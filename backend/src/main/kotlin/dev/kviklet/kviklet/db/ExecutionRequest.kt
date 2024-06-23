@@ -64,9 +64,8 @@ class ExecutionRequestEntity(
 
     var description: String,
 
-    // Datsource Request specific fields
+    // Datasource Request specific fields
     var statement: String?,
-    var readOnly: Boolean?,
 
     // Kubernetes Request specific fields
     var namespace: String? = "",
@@ -91,7 +90,7 @@ class ExecutionRequestEntity(
             executionStatus = executionStatus,
             createdAt = createdAt,
             author = author.toDto(),
-            )
+        )
 
         ExecutionRequestType.KUBERNETES -> KubernetesExecutionRequest(
             id = ExecutionRequestId(id!!),

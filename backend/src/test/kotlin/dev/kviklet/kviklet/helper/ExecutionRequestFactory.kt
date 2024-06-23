@@ -86,7 +86,22 @@ class EventFactory : Factory() {
         author = author ?: userFactory.createUser(),
         createdAt = createdAt,
         comment = comment,
-        action = ReviewAction.REJECTED,
+        action = ReviewAction.REJECT,
+    )
+
+    fun createReviewRequestedChangeEvent(
+        id: EventId = EventId("test-event " + nextId()),
+        request: ExecutionRequest? = null,
+        createdAt: LocalDateTime = utcTimeNow(),
+        author: User? = null,
+        comment: String = "requested change",
+    ): ReviewEvent = ReviewEvent(
+        eventId = id,
+        request = request ?: executionRequestFactory.createDatasourceExecutionRequest(),
+        author = author ?: userFactory.createUser(),
+        createdAt = createdAt,
+        comment = comment,
+        action = ReviewAction.REQUEST_CHANGE,
     )
 }
 
