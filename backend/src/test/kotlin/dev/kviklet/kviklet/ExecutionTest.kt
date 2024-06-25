@@ -13,6 +13,7 @@ import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.RequestType
 import org.hamcrest.CoreMatchers.notNullValue
+import org.hamcrest.Matchers.hasSize
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -25,6 +26,7 @@ import org.springframework.jdbc.datasource.init.ScriptUtils
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -374,6 +376,158 @@ class ExecutionTest {
                     """.trimIndent(),
                 ),
             )
+    }
+
+    @Test
+    fun `Request is locked from further events after rejection`() {
+        val user = userHelper.createUser(permissions = listOf("*"))
+        val reviewer = userHelper.createUser(permissions = listOf("*"))
+        val executionRequest = executionRequestHelper.createExecutionRequest(getDb(), user)
+        val cookie = userHelper.login(mockMvc = mockMvc, email = reviewer.email, password = "123456")
+
+        mockMvc.perform(
+            post("/execution-requests/${executionRequest.getId()}/reviews")
+                .cookie(cookie)
+                .content(
+                    """
+                    {
+                        "comment": "Something is very wrong here.",
+                        "action": "REJECT"
+                    }
+                    """.trimIndent(),
+                )
+                .contentType("application/json"),
+        ).andExpect(status().isOk)
+
+        // Verify the request is rejected
+        mockMvc.perform(
+            get("/execution-requests/${executionRequest.getId()}")
+                .cookie(cookie),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.reviewStatus").value("REJECTED"))
+
+        mockMvc.perform(
+            post("/execution-requests/${executionRequest.getId()}/comments")
+                .cookie(cookie)
+                .content("""{"comment": "This comment should not be added"}""")
+                .contentType("application/json"),
+        ).andExpect(status().is4xxClientError)
+
+        // Try to approve after rejection
+        mockMvc.perform(
+            post("/execution-requests/${executionRequest.getId()}/reviews")
+                .cookie(cookie)
+                .content(
+                    """
+                    {
+                        "comment": "This comment should not be added",
+                        "action": "APPROVE"
+                    }
+                    """.trimIndent(),
+                )
+                .contentType("application/json"),
+        ).andExpect(status().is4xxClientError)
+
+        mockMvc.perform(
+            post("/execution-requests/${executionRequest.getId()}/execute")
+                .cookie(cookie)
+                .contentType("application/json"),
+        ).andExpect(status().is4xxClientError)
+
+        // Verify that no new events were added after rejection
+        mockMvc.perform(
+            get("/execution-requests/${executionRequest.getId()}")
+                .cookie(cookie),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.events", hasSize<Collection<*>>(1)))
+            .andExpect(jsonPath("$.events[0].type").value("REVIEW"))
+            .andExpect(jsonPath("$.events[0].action").value("REJECT"))
+    }
+
+    @Test
+    fun `Request changes functionality`() {
+        val user = userHelper.createUser(permissions = listOf("*"))
+        val reviewer = userHelper.createUser(permissions = listOf("*"))
+        val executionRequest = executionRequestHelper.createExecutionRequest(getDb(), user)
+        val cookie = userHelper.login(mockMvc = mockMvc, email = reviewer.email, password = "123456")
+
+        // Request changes
+        mockMvc.perform(
+            post("/execution-requests/${executionRequest.getId()}/reviews")
+                .cookie(cookie)
+                .content(
+                    """
+                {
+                    "comment": "Please modify the query to include additional conditions.",
+                    "action": "REQUEST_CHANGE"
+                }
+                    """.trimIndent(),
+                )
+                .contentType("application/json"),
+        ).andExpect(status().isOk)
+
+        // Verify the request status
+        mockMvc.perform(
+            get("/execution-requests/${executionRequest.getId()}")
+                .cookie(cookie),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.reviewStatus").value("AWAITING_APPROVAL"))
+            .andExpect(jsonPath("$.events", hasSize<Collection<*>>(1)))
+            .andExpect(jsonPath("$.events[0].type").value("REVIEW"))
+            .andExpect(jsonPath("$.events[0].action").value("REQUEST_CHANGE"))
+            .andExpect(
+                jsonPath("$.events[0].comment").value("Please modify the query to include additional conditions."),
+            )
+
+        // Simulate user updating the request
+        val updatedStatement = "SELECT * FROM users WHERE active = true;"
+        mockMvc.perform(
+            patch("/execution-requests/${executionRequest.getId()}")
+                .cookie(userHelper.login(mockMvc = mockMvc, email = user.email, password = "123456"))
+                .content(
+                    """
+                {
+                    "statement": "$updatedStatement"
+                }
+                    """.trimIndent(),
+                )
+                .contentType("application/json"),
+        ).andExpect(status().isOk)
+
+        // Verify the updated request
+        mockMvc.perform(
+            get("/execution-requests/${executionRequest.getId()}")
+                .cookie(cookie),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.statement").value(updatedStatement))
+            .andExpect(jsonPath("$.reviewStatus").value("AWAITING_APPROVAL"))
+            .andExpect(jsonPath("$.events", hasSize<Collection<*>>(2)))
+            .andExpect(jsonPath("$.events[1].type").value("EDIT"))
+
+        // Approve the updated request
+        mockMvc.perform(
+            post("/execution-requests/${executionRequest.getId()}/reviews")
+                .cookie(cookie)
+                .content(
+                    """
+                {
+                    "comment": "Changes look good. Approved.",
+                    "action": "APPROVE"
+                }
+                    """.trimIndent(),
+                )
+                .contentType("application/json"),
+        ).andExpect(status().isOk)
+
+        // Final verification
+        mockMvc.perform(
+            get("/execution-requests/${executionRequest.getId()}")
+                .cookie(cookie),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.reviewStatus").value("APPROVED"))
+            .andExpect(jsonPath("$.events", hasSize<Collection<*>>(3)))
+            .andExpect(jsonPath("$.events[2].type").value("REVIEW"))
+            .andExpect(jsonPath("$.events[2].action").value("APPROVE"))
     }
 
     @Test
