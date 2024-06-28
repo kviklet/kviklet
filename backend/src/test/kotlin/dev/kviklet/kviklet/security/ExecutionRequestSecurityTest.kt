@@ -144,9 +144,7 @@ class ExecutionRequestSecurityTest(
         )
     }
 
-    final inline fun <reified T> MvcResult.parse(): T {
-        return objectMapper.readValue(response.contentAsString, T::class.java)
-    }
+    final inline fun <reified T> MvcResult.parse(): T = objectMapper.readValue(response.contentAsString, T::class.java)
 
     final inline fun <reified T> MockHttpServletRequestBuilder.content(obj: T) =
         this.contentType(MediaType.APPLICATION_JSON)

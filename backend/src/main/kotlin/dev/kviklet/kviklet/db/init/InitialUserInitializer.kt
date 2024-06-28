@@ -16,9 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder
 
 @Configuration
 @Profile("!local & !e2e & !test")
-class InitialUserInitializer(
-    private val roleRepository: RoleRepository,
-) {
+class InitialUserInitializer(private val roleRepository: RoleRepository) {
 
     fun createAdminRole(savedUser: UserEntity) {
         val role = RoleEntity(

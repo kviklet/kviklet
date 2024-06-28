@@ -15,11 +15,10 @@ import org.testcontainers.utility.DockerImageName
 
 @SpringBootTest
 @ActiveProfiles("test")
-class PostgresExecutorTest(
-    @Autowired override val executorService: Executor,
-) : AbstractExecutorTest(
-    executorService = executorService,
-) {
+class PostgresExecutorTest(@Autowired override val executorService: Executor) :
+    AbstractExecutorTest(
+        executorService = executorService,
+    ) {
 
     companion object {
         val db: PostgreSQLContainer<*> = PostgreSQLContainer(DockerImageName.parse("postgres:11.1"))
@@ -210,7 +209,8 @@ class PostgresExecutorTest(
                     "decimal_column" to "1.23",
                     "numeric_column" to "1.23",
                     "boolean_column" to "t",
-                    "char_column" to "char                                                                                                                                                                                                                                                           ",
+                    "char_column" to
+                        "char                                                                                                                                                                                                                                                           ",
                     "varchar_column" to "varchar",
                     "text_column" to "text",
                     "name_column" to "name",

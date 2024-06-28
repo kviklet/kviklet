@@ -75,6 +75,4 @@ data class LoginCredentials(
     val password: String,
 )
 
-data class LoginResponse(
-    val sessionId: String,
-)
+data class LoginResponse(val sessionId: String)

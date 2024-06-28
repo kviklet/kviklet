@@ -18,9 +18,7 @@ import org.testcontainers.containers.JdbcDatabaseContainer
 
 @SpringBootTest
 @ActiveProfiles("test")
-abstract class AbstractExecutorTest(
-    @Autowired val executorService: Executor,
-) {
+abstract class AbstractExecutorTest(@Autowired val executorService: Executor) {
 
     val executionRequestId = ExecutionRequestId("5Wb9WJxCxej5W1Rt6cTBV4")
 

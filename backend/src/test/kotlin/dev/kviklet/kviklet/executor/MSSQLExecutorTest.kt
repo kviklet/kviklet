@@ -17,11 +17,10 @@ import org.testcontainers.utility.DockerImageName
 
 @SpringBootTest
 @ActiveProfiles("test")
-class MSSQLExecutorTest(
-    @Autowired override val executorService: Executor,
-) : AbstractExecutorTest(
-    executorService = executorService,
-) {
+class MSSQLExecutorTest(@Autowired override val executorService: Executor) :
+    AbstractExecutorTest(
+        executorService = executorService,
+    ) {
 
     companion object {
         val db: MSSQLServerContainer<*> = MSSQLServerContainer(

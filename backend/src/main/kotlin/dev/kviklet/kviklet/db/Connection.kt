@@ -24,9 +24,7 @@ import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
-data class ReviewConfig(
-    val numTotalRequired: Int,
-)
+data class ReviewConfig(val numTotalRequired: Int)
 
 enum class ConnectionType {
     DATASOURCE,
@@ -69,50 +67,45 @@ class ConnectionEntity(
         .append("name", displayName)
         .toString()
 
-    fun toDto(): Connection {
-        return when (connectionType) {
-            ConnectionType.DATASOURCE ->
-                DatasourceConnection(
-                    id = ConnectionId(id),
-                    displayName = displayName,
-                    authenticationType = authenticationType!!,
-                    databaseName = databaseName,
-                    maxExecutions = maxExecutions,
-                    username = username!!,
-                    password = password!!,
-                    description = description,
-                    reviewConfig = reviewConfig,
-                    port = port!!,
-                    hostname = hostname!!,
-                    type = datasourceType!!,
-                    additionalJDBCOptions = additionalJDBCOptions ?: "",
-                )
-            ConnectionType.KUBERNETES ->
-                KubernetesConnection(
-                    id = ConnectionId(id),
-                    displayName = displayName,
-                    description = description,
-                    reviewConfig = reviewConfig,
-                    maxExecutions = maxExecutions,
-                )
-        }
+    fun toDto(): Connection = when (connectionType) {
+        ConnectionType.DATASOURCE ->
+            DatasourceConnection(
+                id = ConnectionId(id),
+                displayName = displayName,
+                authenticationType = authenticationType!!,
+                databaseName = databaseName,
+                maxExecutions = maxExecutions,
+                username = username!!,
+                password = password!!,
+                description = description,
+                reviewConfig = reviewConfig,
+                port = port!!,
+                hostname = hostname!!,
+                type = datasourceType!!,
+                additionalJDBCOptions = additionalJDBCOptions ?: "",
+            )
+        ConnectionType.KUBERNETES ->
+            KubernetesConnection(
+                id = ConnectionId(id),
+                displayName = displayName,
+                description = description,
+                reviewConfig = reviewConfig,
+                maxExecutions = maxExecutions,
+            )
     }
 }
 
 interface ConnectionRepository : JpaRepository<ConnectionEntity, String>
 
 @Service
-class ConnectionAdapter(
-    val connectionRepository: ConnectionRepository,
-) {
+class ConnectionAdapter(val connectionRepository: ConnectionRepository) {
 
-    fun getConnection(connectionId: ConnectionId): Connection {
-        return connectionRepository.findByIdOrNull(connectionId.toString())?.toDto()
+    fun getConnection(connectionId: ConnectionId): Connection =
+        connectionRepository.findByIdOrNull(connectionId.toString())?.toDto()
             ?: throw EntityNotFound(
                 "Datasource Connection Not Found",
                 "Datasource Connection $$connectionId does not exist.",
             )
-    }
 
     @Transactional
     fun createDatasourceConnection(
@@ -129,27 +122,25 @@ class ConnectionAdapter(
         hostname: String,
         type: DatasourceType,
         additionalJDBCOptions: String,
-    ): Connection {
-        return connectionRepository.save(
-            ConnectionEntity(
-                id = connectionId.toString(),
-                displayName = displayName,
-                authenticationType = authenticationType,
-                databaseName = databaseName,
-                maxExecutions = maxExecutions,
-                username = username,
-                password = password,
-                description = description,
-                reviewConfig = reviewConfig,
-                executionRequests = emptySet(),
-                port = port,
-                hostname = hostname,
-                datasourceType = type,
-                connectionType = ConnectionType.DATASOURCE,
-                additionalJDBCOptions = additionalJDBCOptions,
-            ),
-        ).toDto()
-    }
+    ): Connection = connectionRepository.save(
+        ConnectionEntity(
+            id = connectionId.toString(),
+            displayName = displayName,
+            authenticationType = authenticationType,
+            databaseName = databaseName,
+            maxExecutions = maxExecutions,
+            username = username,
+            password = password,
+            description = description,
+            reviewConfig = reviewConfig,
+            executionRequests = emptySet(),
+            port = port,
+            hostname = hostname,
+            datasourceType = type,
+            connectionType = ConnectionType.DATASOURCE,
+            additionalJDBCOptions = additionalJDBCOptions,
+        ),
+    ).toDto()
 
     fun updateDatasourceConnection(
         id: ConnectionId,
@@ -218,26 +209,22 @@ class ConnectionAdapter(
         description: String,
         reviewConfig: ReviewConfig,
         maxExecutions: Int?,
-    ): Connection {
-        return connectionRepository.save(
-            ConnectionEntity(
-                id = connectionId.toString(),
-                displayName = displayName,
-                description = description,
-                reviewConfig = reviewConfig,
-                connectionType = ConnectionType.KUBERNETES,
-                maxExecutions = maxExecutions,
-            ),
-        ).toDto()
-    }
+    ): Connection = connectionRepository.save(
+        ConnectionEntity(
+            id = connectionId.toString(),
+            displayName = displayName,
+            description = description,
+            reviewConfig = reviewConfig,
+            connectionType = ConnectionType.KUBERNETES,
+            maxExecutions = maxExecutions,
+        ),
+    ).toDto()
 
     fun deleteConnection(id: ConnectionId) {
         connectionRepository.deleteById(id.toString())
     }
 
-    fun listConnections(): List<Connection> {
-        return connectionRepository.findAll().map { it.toDto() }
-    }
+    fun listConnections(): List<Connection> = connectionRepository.findAll().map { it.toDto() }
 
     fun deleteAll() {
         connectionRepository.deleteAll()

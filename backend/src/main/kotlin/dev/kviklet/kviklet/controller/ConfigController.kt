@@ -12,28 +12,18 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
-open class PublicConfigResponse(
-    open val oAuthProvider: String?,
-)
+open class PublicConfigResponse(open val oAuthProvider: String?)
 
-data class ConfigRequest(
-    val teamsUrl: String?,
-    val slackUrl: String?,
-)
+data class ConfigRequest(val teamsUrl: String?, val slackUrl: String?)
 
-data class ConfigResponse(
-    override val oAuthProvider: String?,
-    val teamsUrl: String?,
-    val slackUrl: String?,
-) : PublicConfigResponse(oAuthProvider) {
+data class ConfigResponse(override val oAuthProvider: String?, val teamsUrl: String?, val slackUrl: String?) :
+    PublicConfigResponse(oAuthProvider) {
     companion object {
-        fun fromConfiguration(configuration: Configuration, oAuthProvider: String?): ConfigResponse {
-            return ConfigResponse(
-                oAuthProvider = oAuthProvider,
-                teamsUrl = configuration.teamsUrl,
-                slackUrl = configuration.slackUrl,
-            )
-        }
+        fun fromConfiguration(configuration: Configuration, oAuthProvider: String?): ConfigResponse = ConfigResponse(
+            oAuthProvider = oAuthProvider,
+            teamsUrl = configuration.teamsUrl,
+            slackUrl = configuration.slackUrl,
+        )
     }
 }
 
@@ -44,10 +34,7 @@ data class ConfigResponse(
     name = "Controller",
     description = "Configure Kviklet in general.",
 )
-class ConfigController(
-    val identityProviderProperties: IdentityProviderProperties,
-    val configService: ConfigService,
-) {
+class ConfigController(val identityProviderProperties: IdentityProviderProperties, val configService: ConfigService) {
 
     @GetMapping("/")
     fun getConfig(): PublicConfigResponse {

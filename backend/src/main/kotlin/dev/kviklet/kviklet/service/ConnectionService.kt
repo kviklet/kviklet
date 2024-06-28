@@ -19,15 +19,11 @@ import org.springframework.stereotype.Service
 class EntityNotFound(override val message: String, val detail: String) : Exception(message)
 
 @Service
-class ConnectionService(
-    private val connectionAdapter: ConnectionAdapter,
-) {
+class ConnectionService(private val connectionAdapter: ConnectionAdapter) {
 
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_GET)
-    fun listConnections(): List<Connection> {
-        return connectionAdapter.listConnections()
-    }
+    fun listConnections(): List<Connection> = connectionAdapter.listConnections()
 
     private fun updateDatasourceConnection(
         connectionId: ConnectionId,
@@ -109,25 +105,23 @@ class ConnectionService(
         hostname: String,
         type: DatasourceType,
         additionalJDBCOptions: String,
-    ): Connection {
-        return connectionAdapter.createDatasourceConnection(
-            connectionId,
-            displayName,
-            AuthenticationType.USER_PASSWORD,
-            databaseName,
-            maxExecutions,
-            username,
-            password,
-            description,
-            ReviewConfig(
-                numTotalRequired = reviewsRequired,
-            ),
-            port,
-            hostname,
-            type,
-            additionalJDBCOptions,
-        )
-    }
+    ): Connection = connectionAdapter.createDatasourceConnection(
+        connectionId,
+        displayName,
+        AuthenticationType.USER_PASSWORD,
+        databaseName,
+        maxExecutions,
+        username,
+        password,
+        description,
+        ReviewConfig(
+            numTotalRequired = reviewsRequired,
+        ),
+        port,
+        hostname,
+        type,
+        additionalJDBCOptions,
+    )
 
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_CREATE)
@@ -137,17 +131,15 @@ class ConnectionService(
         description: String,
         reviewsRequired: Int,
         maxExecutions: Int?,
-    ): Connection {
-        return connectionAdapter.createKubernetesConnection(
-            connectionId,
-            displayName,
-            description,
-            ReviewConfig(
-                numTotalRequired = reviewsRequired,
-            ),
-            maxExecutions,
-        )
-    }
+    ): Connection = connectionAdapter.createKubernetesConnection(
+        connectionId,
+        displayName,
+        description,
+        ReviewConfig(
+            numTotalRequired = reviewsRequired,
+        ),
+        maxExecutions,
+    )
 
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_EDIT)
@@ -157,9 +149,7 @@ class ConnectionService(
 
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_GET)
-    fun getDatasourceConnection(connectionId: ConnectionId): Connection {
-        return connectionAdapter.getConnection(
-            connectionId = connectionId,
-        )
-    }
+    fun getDatasourceConnection(connectionId: ConnectionId): Connection = connectionAdapter.getConnection(
+        connectionId = connectionId,
+    )
 }

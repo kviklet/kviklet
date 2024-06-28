@@ -92,27 +92,15 @@ data class UpdateExecutionRequestRequest(
     val command: String? = null,
 )
 
-data class ExecuteExecutionRequestRequest(
-    val query: String?,
-    val explain: Boolean = false,
-)
+data class ExecuteExecutionRequestRequest(val query: String?, val explain: Boolean = false)
 
-data class DownloadCSVRequest(
-    val query: String?,
-)
+data class DownloadCSVRequest(val query: String?)
 
-data class CreateReviewRequest(
-    val comment: String,
-    val action: ReviewAction,
-)
+data class CreateReviewRequest(val comment: String, val action: ReviewAction)
 
-data class CreateCommentRequest(
-    val comment: String,
-)
+data class CreateCommentRequest(val comment: String)
 
-sealed class ExecutionRequestResponse(
-    open val id: ExecutionRequestId,
-) {
+sealed class ExecutionRequestResponse(open val id: ExecutionRequestId) {
     companion object {
         fun fromDto(dto: ExecutionRequestDetails): ExecutionRequestResponse {
             val userResponse = UserResponse(dto.request.author)
@@ -186,48 +174,43 @@ sealed class ExecutionRequestResponse(
 /**
  * A DTO for the {@link dev.kviklet.kviklet.db.ExecutionRequestEntity} entity
  */
-sealed class ExecutionRequestDetailResponse(
-    open val id: ExecutionRequestId,
-    open val events: List<EventResponse>,
-) {
+sealed class ExecutionRequestDetailResponse(open val id: ExecutionRequestId, open val events: List<EventResponse>) {
 
     companion object {
-        fun fromDto(dto: ExecutionRequestDetails): ExecutionRequestDetailResponse {
-            return when (dto.request) {
-                is DatasourceExecutionRequest -> DatasourceExecutionRequestDetailResponse(
-                    id = dto.request.id!!,
-                    author = UserResponse(dto.request.author),
-                    type = dto.request.type,
-                    title = dto.request.title,
-                    description = dto.request.description,
-                    statement = dto.request.statement,
-                    reviewStatus = dto.resolveReviewStatus(),
-                    executionStatus = dto.resolveExecutionStatus(),
-                    createdAt = dto.request.createdAt,
-                    events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
-                    connection = ConnectionResponse.fromDto(dto.request.connection),
-                    csvDownload = CSVDownloadableResponse(
-                        allowed = dto.csvDownloadAllowed().first,
-                        reason = dto.csvDownloadAllowed().second,
-                    ),
-                )
-                is KubernetesExecutionRequest -> KubernetesExecutionRequestDetailResponse(
-                    id = dto.request.id!!,
-                    author = UserResponse(dto.request.author),
-                    type = dto.request.type,
-                    title = dto.request.title,
-                    description = dto.request.description,
-                    reviewStatus = dto.resolveReviewStatus(),
-                    executionStatus = dto.resolveExecutionStatus(),
-                    createdAt = dto.request.createdAt,
-                    namespace = dto.request.namespace,
-                    podName = dto.request.podName,
-                    containerName = dto.request.containerName,
-                    command = dto.request.command,
-                    events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
-                    connection = ConnectionResponse.fromDto(dto.request.connection),
-                )
-            }
+        fun fromDto(dto: ExecutionRequestDetails): ExecutionRequestDetailResponse = when (dto.request) {
+            is DatasourceExecutionRequest -> DatasourceExecutionRequestDetailResponse(
+                id = dto.request.id!!,
+                author = UserResponse(dto.request.author),
+                type = dto.request.type,
+                title = dto.request.title,
+                description = dto.request.description,
+                statement = dto.request.statement,
+                reviewStatus = dto.resolveReviewStatus(),
+                executionStatus = dto.resolveExecutionStatus(),
+                createdAt = dto.request.createdAt,
+                events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
+                connection = ConnectionResponse.fromDto(dto.request.connection),
+                csvDownload = CSVDownloadableResponse(
+                    allowed = dto.csvDownloadAllowed().first,
+                    reason = dto.csvDownloadAllowed().second,
+                ),
+            )
+            is KubernetesExecutionRequest -> KubernetesExecutionRequestDetailResponse(
+                id = dto.request.id!!,
+                author = UserResponse(dto.request.author),
+                type = dto.request.type,
+                title = dto.request.title,
+                description = dto.request.description,
+                reviewStatus = dto.resolveReviewStatus(),
+                executionStatus = dto.resolveExecutionStatus(),
+                createdAt = dto.request.createdAt,
+                namespace = dto.request.namespace,
+                podName = dto.request.podName,
+                containerName = dto.request.containerName,
+                command = dto.request.command,
+                events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
+                connection = ConnectionResponse.fromDto(dto.request.connection),
+            )
         }
     }
 }
@@ -250,10 +233,7 @@ data class DatasourceExecutionRequestDetailResponse(
     events = events,
 )
 
-data class CSVDownloadableResponse(
-    val allowed: Boolean,
-    val reason: String,
-)
+data class CSVDownloadableResponse(val allowed: Boolean, val reason: String)
 
 data class KubernetesExecutionRequestDetailResponse(
     override val id: ExecutionRequestId,
@@ -288,42 +268,34 @@ data class KubernetesExecutionRequestDetailResponse(
         DiscriminatorMapping(value = "ERROR", schema = ErrorQueryResultResponse::class),
     ],
 )
-sealed class ExecutionResultResponse(
-    val type: ExecutionResultType,
-) {
+sealed class ExecutionResultResponse(val type: ExecutionResultType) {
 
     companion object {
-        fun fromDto(dto: QueryResult): ExecutionResultResponse {
-            return when (dto) {
-                is RecordsQueryResult -> RecordsQueryResultResponse.fromDto(dto)
-                is UpdateQueryResult -> UpdateQueryResultResponse.fromDto(dto)
-                is ErrorQueryResult -> ErrorQueryResultResponse.fromDto(dto)
-            }
+        fun fromDto(dto: QueryResult): ExecutionResultResponse = when (dto) {
+            is RecordsQueryResult -> RecordsQueryResultResponse.fromDto(dto)
+            is UpdateQueryResult -> UpdateQueryResultResponse.fromDto(dto)
+            is ErrorQueryResult -> ErrorQueryResultResponse.fromDto(dto)
         }
     }
 }
 
-sealed class ExecutionResponse() {
+sealed class ExecutionResponse {
     companion object {
-        fun fromDto(results: ExecutionResult): ExecutionResponse {
-            return when (results) {
-                is DBExecutionResult -> DatasourceExecutionResponse(
-                    results.results.map { it -> ExecutionResultResponse.fromDto(it) },
-                )
+        fun fromDto(results: ExecutionResult): ExecutionResponse = when (results) {
+            is DBExecutionResult -> DatasourceExecutionResponse(
+                results.results.map { it -> ExecutionResultResponse.fromDto(it) },
+            )
 
-                is KubernetesExecutionResult -> KubernetesExecutionResponse(
-                    errors = results.errors,
-                    messages = results.messages,
-                    finished = results.finished,
-                    exitCode = results.exitCode,
-                )
-            }
+            is KubernetesExecutionResult -> KubernetesExecutionResponse(
+                errors = results.errors,
+                messages = results.messages,
+                finished = results.finished,
+                exitCode = results.exitCode,
+            )
         }
     }
 
-    data class DatasourceExecutionResponse(
-        val results: List<ExecutionResultResponse>,
-    ) : ExecutionResponse()
+    data class DatasourceExecutionResponse(val results: List<ExecutionResultResponse>) : ExecutionResponse()
 
     data class KubernetesExecutionResponse(
         val errors: List<String>,
@@ -339,12 +311,10 @@ enum class ExecutionResultType {
     ERROR,
 }
 
-data class RecordsQueryResultResponse(
-    val columns: List<ColumnInfo>,
-    val data: List<Map<String, String>>,
-) : ExecutionResultResponse(
-    type = ExecutionResultType.RECORDS,
-) {
+data class RecordsQueryResultResponse(val columns: List<ColumnInfo>, val data: List<Map<String, String>>) :
+    ExecutionResultResponse(
+        type = ExecutionResultType.RECORDS,
+    ) {
     companion object {
         fun fromDto(dto: RecordsQueryResult) = RecordsQueryResultResponse(
             columns = dto.columns,
@@ -353,11 +323,10 @@ data class RecordsQueryResultResponse(
     }
 }
 
-data class UpdateQueryResultResponse(
-    val rowsUpdated: Int,
-) : ExecutionResultResponse(
-    type = ExecutionResultType.UPDATE_COUNT,
-) {
+data class UpdateQueryResultResponse(val rowsUpdated: Int) :
+    ExecutionResultResponse(
+        type = ExecutionResultType.UPDATE_COUNT,
+    ) {
     companion object {
         fun fromDto(dto: UpdateQueryResult) = UpdateQueryResultResponse(
             rowsUpdated = dto.rowsUpdated,
@@ -365,12 +334,10 @@ data class UpdateQueryResultResponse(
     }
 }
 
-data class ErrorQueryResultResponse(
-    val errorCode: Int,
-    val message: String?,
-) : ExecutionResultResponse(
-    type = ExecutionResultType.ERROR,
-) {
+data class ErrorQueryResultResponse(val errorCode: Int, val message: String?) :
+    ExecutionResultResponse(
+        type = ExecutionResultType.ERROR,
+    ) {
 
     companion object {
         fun fromDto(dto: ErrorQueryResult) = ErrorQueryResultResponse(
@@ -386,10 +353,7 @@ data class ErrorQueryResultResponse(
     JsonSubTypes.Type(value = ReviewEventResponse::class, name = "REVIEW"),
     JsonSubTypes.Type(value = EditEventResponse::class, name = "EDIT"),
 )
-abstract class EventResponse(
-    val type: EventType,
-    open val createdAt: LocalDateTime = utcTimeNow(),
-) {
+abstract class EventResponse(val type: EventType, open val createdAt: LocalDateTime = utcTimeNow()) {
     abstract val id: String
     abstract val author: UserResponse
 
@@ -486,47 +450,31 @@ data class ExecuteEventResponse(
     JsonSubTypes.Type(value = UpdateResultLogResponse::class, name = "UPDATE"),
     JsonSubTypes.Type(value = QueryResultLogResponse::class, name = "QUERY"),
 )
-abstract class ResultLogResponse(
-    val type: ResultType,
-) {
+abstract class ResultLogResponse(val type: ResultType) {
     companion object {
-        fun fromDto(dto: dev.kviklet.kviklet.service.dto.ResultLog): ResultLogResponse {
-            return when (dto) {
-                is ErrorResultLog -> ErrorResultLogResponse(
-                    errorCode = dto.errorCode,
-                    message = dto.message,
-                )
-                is UpdateResultLog -> UpdateResultLogResponse(
-                    rowsUpdated = dto.rowsUpdated,
-                )
-                is QueryResultLog -> QueryResultLogResponse(
-                    columnCount = dto.columnCount,
-                    rowCount = dto.rowCount,
-                )
-            }
+        fun fromDto(dto: dev.kviklet.kviklet.service.dto.ResultLog): ResultLogResponse = when (dto) {
+            is ErrorResultLog -> ErrorResultLogResponse(
+                errorCode = dto.errorCode,
+                message = dto.message,
+            )
+            is UpdateResultLog -> UpdateResultLogResponse(
+                rowsUpdated = dto.rowsUpdated,
+            )
+            is QueryResultLog -> QueryResultLogResponse(
+                columnCount = dto.columnCount,
+                rowCount = dto.rowCount,
+            )
         }
     }
 }
 
-data class ErrorResultLogResponse(
-    val errorCode: Int,
-    val message: String,
-) : ResultLogResponse(ResultType.ERROR)
+data class ErrorResultLogResponse(val errorCode: Int, val message: String) : ResultLogResponse(ResultType.ERROR)
 
-data class UpdateResultLogResponse(
-    val rowsUpdated: Int,
-) : ResultLogResponse(ResultType.UPDATE)
+data class UpdateResultLogResponse(val rowsUpdated: Int) : ResultLogResponse(ResultType.UPDATE)
 
-data class QueryResultLogResponse(
-    val columnCount: Int,
-    val rowCount: Int,
-) : ResultLogResponse(ResultType.QUERY)
+data class QueryResultLogResponse(val columnCount: Int, val rowCount: Int) : ResultLogResponse(ResultType.QUERY)
 
-data class ProxyResponse(
-    val port: Int,
-    val username: String,
-    val password: String,
-)
+data class ProxyResponse(val port: Int, val username: String, val password: String)
 
 @RestController()
 @Validated
@@ -535,9 +483,7 @@ data class ProxyResponse(
     name = "Execution Requests",
     description = "Run queries against a datasource by interacting with Execution Requests",
 )
-class ExecutionRequestController(
-    val executionRequestService: ExecutionRequestService,
-) {
+class ExecutionRequestController(val executionRequestService: ExecutionRequestService) {
 
     @Operation(summary = "Create Execution Request")
     @PostMapping("/")
@@ -552,14 +498,15 @@ class ExecutionRequestController(
 
     @Operation(summary = "Get Execution Request")
     @GetMapping("/{executionRequestId}")
-    fun get(@PathVariable executionRequestId: ExecutionRequestId): ExecutionRequestDetailResponse {
-        return executionRequestService.get(executionRequestId).let { ExecutionRequestDetailResponse.fromDto(it) }
-    }
+    fun get(@PathVariable executionRequestId: ExecutionRequestId): ExecutionRequestDetailResponse =
+        executionRequestService.get(executionRequestId).let {
+            ExecutionRequestDetailResponse.fromDto(it)
+        }
 
     @Operation(summary = "List Execution Requests")
     @GetMapping("/")
-    fun list(): List<ExecutionRequestResponse> {
-        return executionRequestService.list().map { ExecutionRequestResponse.fromDto(it) }
+    fun list(): List<ExecutionRequestResponse> = executionRequestService.list().map {
+        ExecutionRequestResponse.fromDto(it)
     }
 
     @Operation(summary = "Review Execution Request", description = "Approve or disapprove an execution request.")
@@ -569,11 +516,9 @@ class ExecutionRequestController(
         @Valid @RequestBody
         request: CreateReviewRequest,
         @CurrentUser userDetails: UserDetailsWithId,
-    ): EventResponse {
-        return EventResponse.fromEvent(
-            executionRequestService.createReview(executionRequestId, request, userDetails.id),
-        )
-    }
+    ): EventResponse = EventResponse.fromEvent(
+        executionRequestService.createReview(executionRequestId, request, userDetails.id),
+    )
 
     @PatchMapping("/{id}")
     fun update(
@@ -593,10 +538,8 @@ class ExecutionRequestController(
         @Valid @RequestBody
         request: CreateCommentRequest,
         @CurrentUser userDetails: UserDetailsWithId,
-    ): EventResponse {
-        return EventResponse
-            .fromEvent(executionRequestService.createComment(executionRequestId, request, userDetails.id))
-    }
+    ): EventResponse = EventResponse
+        .fromEvent(executionRequestService.createComment(executionRequestId, request, userDetails.id))
 
     @Operation(
         summary = "Execute Execution Request",
@@ -607,14 +550,12 @@ class ExecutionRequestController(
         @PathVariable executionRequestId: ExecutionRequestId,
         @RequestBody(required = false) request: ExecuteExecutionRequestRequest?,
         @CurrentUser userDetails: UserDetailsWithId,
-    ): ExecutionResponse {
-        return ExecutionResponse.fromDto(
-            when (request?.explain) {
-                true -> executionRequestService.explain(executionRequestId, request.query, userDetails.id)
-                else -> executionRequestService.execute(executionRequestId, request?.query, userDetails.id)
-            },
-        )
-    }
+    ): ExecutionResponse = ExecutionResponse.fromDto(
+        when (request?.explain) {
+            true -> executionRequestService.explain(executionRequestId, request.query, userDetails.id)
+            else -> executionRequestService.execute(executionRequestId, request?.query, userDetails.id)
+        },
+    )
 
     @Operation(
         summary = "Execute Execution Request and Download as CSV",

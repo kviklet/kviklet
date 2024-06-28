@@ -19,9 +19,8 @@ data class ErrorResponse(val message: String)
 @ControllerAdvice
 class ExceptionHandlerController {
     @ExceptionHandler(InvalidReviewException::class)
-    fun handleInvalidRequest(ex: InvalidReviewException): ResponseEntity<ErrorResponse> {
-        return ResponseEntity(ErrorResponse(ex.message ?: "Unknown Error"), HttpStatus.BAD_REQUEST)
-    }
+    fun handleInvalidRequest(ex: InvalidReviewException): ResponseEntity<ErrorResponse> =
+        ResponseEntity(ErrorResponse(ex.message ?: "Unknown Error"), HttpStatus.BAD_REQUEST)
 
     companion object {
         private val logger = LoggerFactory.getLogger(ExceptionHandlerController::class.java)

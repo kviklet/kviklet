@@ -9,9 +9,4 @@ class MyProperties {
     lateinit var name: String
 }
 
-data class ErrorResponse(
-    val code: Int,
-    val type: String,
-    val message: String,
-    val detail: String? = null,
-)
+data class ErrorResponse(val code: Int, val type: String, val message: String, val detail: String? = null)

@@ -445,7 +445,7 @@ class ExecutionTest {
     }
 
     @Test
-    fun `verify user cant request changes on own request`()  {
+    fun `verify user cant request changes on own request`() {
         val user = userHelper.createUser(permissions = listOf("*"))
         val executionRequest = executionRequestHelper.createExecutionRequest(getDb(), user)
         val cookie = loginUser(user.email)

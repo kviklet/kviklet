@@ -3,17 +3,10 @@ package dev.kviklet.kviklet.service.dto
 import dev.kviklet.kviklet.security.Resource
 import dev.kviklet.kviklet.security.SecuredDomainObject
 
-data class Configuration(
-    val teamsUrl: String?,
-    val slackUrl: String?,
-) : SecuredDomainObject {
-    override fun getSecuredObjectId(): String? {
-        return "configuration"
-    }
+data class Configuration(val teamsUrl: String?, val slackUrl: String?) : SecuredDomainObject {
+    override fun getSecuredObjectId(): String? = "configuration"
 
-    override fun getDomainObjectType(): Resource {
-        return Resource.CONFIGURATION
-    }
+    override fun getDomainObjectType(): Resource = Resource.CONFIGURATION
 
     override fun getRelated(resource: Resource): SecuredDomainObject? {
         if (resource == Resource.CONFIGURATION) {

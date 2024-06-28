@@ -14,11 +14,10 @@ import org.testcontainers.utility.DockerImageName
 
 @SpringBootTest
 @ActiveProfiles("test")
-class MysqlExecutorTest(
-    @Autowired override val executorService: Executor,
-) : AbstractExecutorTest(
-    executorService = executorService,
-) {
+class MysqlExecutorTest(@Autowired override val executorService: Executor) :
+    AbstractExecutorTest(
+        executorService = executorService,
+    ) {
 
     companion object {
         val db: MySQLContainer<*> = MySQLContainer(DockerImageName.parse("mysql:8.2"))

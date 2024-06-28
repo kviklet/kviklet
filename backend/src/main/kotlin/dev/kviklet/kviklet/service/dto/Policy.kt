@@ -7,20 +7,14 @@ enum class PolicyEffect {
     DENY,
 }
 
-data class Policy(
-    val id: String? = null,
-    val action: String,
-    val effect: PolicyEffect,
-    val resource: String,
-) : Serializable {
+data class Policy(val id: String? = null, val action: String, val effect: PolicyEffect, val resource: String) :
+    Serializable {
     companion object {
-        fun create(id: String?, action: String, effect: PolicyEffect, resource: String): Policy {
-            return Policy(
-                id = id,
-                action = action,
-                effect = effect,
-                resource = resource,
-            )
-        }
+        fun create(id: String?, action: String, effect: PolicyEffect, resource: String): Policy = Policy(
+            id = id,
+            action = action,
+            effect = effect,
+            resource = resource,
+        )
     }
 }

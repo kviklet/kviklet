@@ -59,9 +59,7 @@ enum class Permission(
     USER_EDIT_ROLES(Resource.USER, "edit_roles", USER_GET),
     ;
 
-    fun getPermissionString(): String {
-        return "${this.resource.resourceName}:${this.action}"
-    }
+    fun getPermissionString(): String = "${this.resource.resourceName}:${this.action}"
 }
 
 interface SecuredDomainId {
@@ -82,25 +80,20 @@ annotation class Policy(val permission: Permission, val checkIsPresentOnly: Bool
 
 @Configuration
 @EnableMethodSecurity(prePostEnabled = true)
-class MethodSecurityConfig(
-    private val idResolver: IdResolver,
-) {
+class MethodSecurityConfig(private val idResolver: IdResolver) {
 
     @Bean
     @Role(ROLE_INFRASTRUCTURE)
-    fun authorizationManagerBeforeMethodInterception(manager: MyAuthorizationManager): Advisor {
-        return AuthorizationManagerInterceptor(
+    fun authorizationManagerBeforeMethodInterception(manager: MyAuthorizationManager): Advisor =
+        AuthorizationManagerInterceptor(
             AnnotationMatchingPointcut(null, Policy::class.java, true),
             manager,
             idResolver,
         )
-    }
 }
 
 @Component
-class MyAuthorizationManager(
-    val userAdapter: UserAdapter,
-) {
+class MyAuthorizationManager(val userAdapter: UserAdapter) {
     fun check(
         authentication: Supplier<Authentication?>,
         invocation: MethodInvocation,
@@ -158,7 +151,10 @@ class AuthorizationManagerInterceptor(
     private val pointcut: Pointcut,
     private val authorizationManager: MyAuthorizationManager,
     private val idResolver: IdResolver,
-) : Ordered, MethodInterceptor, PointcutAdvisor, AopInfrastructureBean {
+) : Ordered,
+    MethodInterceptor,
+    PointcutAdvisor,
+    AopInfrastructureBean {
 
     private val authentication: Supplier<Authentication?> = Supplier {
         SecurityContextHolder.getContextHolderStrategy().context.authentication
@@ -176,8 +172,8 @@ class AuthorizationManagerInterceptor(
         return attemptPostAuthorization(invocation, returnedObject)
     }
 
-    private fun attemptPostAuthorization(invocation: MethodInvocation, returnedObject: Any?): Any? {
-        return when (returnedObject) {
+    private fun attemptPostAuthorization(invocation: MethodInvocation, returnedObject: Any?): Any? =
+        when (returnedObject) {
             is Collection<*> -> {
                 filterCollection(invocation, returnedObject as MutableCollection<*>)
             }
@@ -193,7 +189,6 @@ class AuthorizationManagerInterceptor(
                 returnedObject
             }
         }
-    }
 
     private fun <T> filterCollection(
         invocation: MethodInvocation,

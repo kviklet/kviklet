@@ -11,7 +11,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 @Entity
 @Table(name = "policy")
-class PolicyEntity() : BaseEntity() {
+class PolicyEntity : BaseEntity() {
     lateinit var action: String
 
     @Enumerated(EnumType.STRING)

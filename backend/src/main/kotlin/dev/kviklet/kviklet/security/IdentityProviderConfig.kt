@@ -31,16 +31,12 @@ class IdentityProviderProperties {
     var clientSecret: String? = null
     var issuerUri: String? = null
 
-    fun isOauth2Enabled(): Boolean {
-        return type != null && clientId != null && clientSecret != null
-    }
+    fun isOauth2Enabled(): Boolean = type != null && clientId != null && clientSecret != null
 
-    fun getIssuer(): String {
-        return if (type == "google") {
-            "https://accounts.google.com"
-        } else {
-            issuerUri!!
-        }
+    fun getIssuer(): String = if (type == "google") {
+        "https://accounts.google.com"
+    } else {
+        issuerUri!!
     }
 }
 
@@ -82,17 +78,12 @@ data class IdentityProviderConfig(
     @Bean
     fun authorizedClientService(
         clientRegistrationRepository: ClientRegistrationRepository,
-    ): OAuth2AuthorizedClientService {
-        return InMemoryOAuth2AuthorizedClientService(clientRegistrationRepository)
-    }
+    ): OAuth2AuthorizedClientService = InMemoryOAuth2AuthorizedClientService(clientRegistrationRepository)
 
     @Bean
-    fun accessTokenResponseClient(): OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> {
-        return DefaultAuthorizationCodeTokenResponseClient()
-    }
+    fun accessTokenResponseClient(): OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> =
+        DefaultAuthorizationCodeTokenResponseClient()
 
     @Bean
-    fun oauth2UserService(): OAuth2UserService<OAuth2UserRequest, OAuth2User> {
-        return DefaultOAuth2UserService()
-    }
+    fun oauth2UserService(): OAuth2UserService<OAuth2UserRequest, OAuth2User> = DefaultOAuth2UserService()
 }

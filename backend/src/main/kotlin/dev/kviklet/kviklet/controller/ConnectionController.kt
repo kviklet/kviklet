@@ -133,28 +133,20 @@ data class UpdateKubernetesConnectionRequest(
     val maxExecutions: Int? = null,
 ) : UpdateConnectionRequest()
 
-data class ReviewConfigRequest(
-    val numTotalRequired: Int = 0,
-)
+data class ReviewConfigRequest(val numTotalRequired: Int = 0)
 
-data class ReviewConfigResponse(
-    val numTotalRequired: Int = 0,
-)
+data class ReviewConfigResponse(val numTotalRequired: Int = 0)
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
 @JsonSubTypes(
     JsonSubTypes.Type(value = UpdateDatasourceConnectionRequest::class, name = "DATASOURCE"),
     JsonSubTypes.Type(value = UpdateKubernetesConnectionRequest::class, name = "KUBERNETES"),
 )
-sealed class ConnectionResponse(
-    val connectionType: ConnectionType,
-) {
+sealed class ConnectionResponse(val connectionType: ConnectionType) {
     companion object {
-        fun fromDto(connection: Connection): ConnectionResponse {
-            return when (connection) {
-                is DatasourceConnection -> DatasourceConnectionResponse.fromDto(connection)
-                is KubernetesConnection -> KubernetesConnectionResponse.fromDto(connection)
-            }
+        fun fromDto(connection: Connection): ConnectionResponse = when (connection) {
+            is DatasourceConnection -> DatasourceConnectionResponse.fromDto(connection)
+            is KubernetesConnection -> KubernetesConnectionResponse.fromDto(connection)
         }
     }
 }
@@ -219,9 +211,7 @@ data class KubernetesConnectionResponse(
 @Tag(
     name = "Datasource Connections",
 )
-class ConnectionController(
-    val connectionService: ConnectionService,
-) {
+class ConnectionController(val connectionService: ConnectionService) {
 
     @GetMapping("/{connectionId}")
     fun getConnection(@PathVariable connectionId: String): ConnectionResponse {
@@ -237,8 +227,8 @@ class ConnectionController(
         return datasourceConnections.map { ConnectionResponse.fromDto(it) }
     }
 
-    private fun createDatasourceConnection(request: CreateDatasourceConnectionRequest): Connection {
-        return connectionService.createDatasourceConnection(
+    private fun createDatasourceConnection(request: CreateDatasourceConnectionRequest): Connection =
+        connectionService.createDatasourceConnection(
             connectionId = ConnectionId(request.id),
             displayName = request.displayName,
             databaseName = request.databaseName,
@@ -252,17 +242,15 @@ class ConnectionController(
             additionalJDBCOptions = request.additionalJDBCOptions,
             maxExecutions = request.maxExecutions,
         )
-    }
 
-    private fun createKubernetesConnection(request: CreateKubernetesConnectionRequest): Connection {
-        return connectionService.createKubernetesConnection(
+    private fun createKubernetesConnection(request: CreateKubernetesConnectionRequest): Connection =
+        connectionService.createKubernetesConnection(
             connectionId = ConnectionId(request.id),
             displayName = request.displayName,
             description = request.description,
             reviewsRequired = request.reviewConfig.numTotalRequired,
             maxExecutions = request.maxExecutions,
         )
-    }
 
     @PostMapping("/")
     fun createConnection(

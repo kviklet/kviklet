@@ -16,16 +16,14 @@ class IdResolver(
     private val executionRequestAdapter: ExecutionRequestAdapter,
     private val userAdapter: UserAdapter,
 ) {
-    fun resolve(id: SecuredDomainId): SecuredDomainObject? {
-        return try {
-            when (id) {
-                is ConnectionId -> connectionAdapter.getConnection(id)
-                is ExecutionRequestId -> executionRequestAdapter.getExecutionRequestDetails(id)
-                is UserId -> userAdapter.findById(id.toString())
-                else -> throw IllegalArgumentException("Unknown id type: ${id::class}")
-            }
-        } catch (e: EntityNotFound) {
-            null
+    fun resolve(id: SecuredDomainId): SecuredDomainObject? = try {
+        when (id) {
+            is ConnectionId -> connectionAdapter.getConnection(id)
+            is ExecutionRequestId -> executionRequestAdapter.getExecutionRequestDetails(id)
+            is UserId -> userAdapter.findById(id.toString())
+            else -> throw IllegalArgumentException("Unknown id type: ${id::class}")
         }
+    } catch (e: EntityNotFound) {
+        null
     }
 }

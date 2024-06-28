@@ -12,10 +12,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.transaction.annotation.Transactional
 
 @Configuration
-class DefaultRoleInitializer(
-    private val roleRepository: RoleRepository,
-    private val userAdapter: UserAdapter,
-) {
+class DefaultRoleInitializer(private val roleRepository: RoleRepository, private val userAdapter: UserAdapter) {
 
     fun createDefaultRole(): Role {
         val role = RoleEntity(
