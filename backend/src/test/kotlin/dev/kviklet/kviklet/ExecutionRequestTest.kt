@@ -76,6 +76,6 @@ class ExecutionRequestTest {
             request = request,
             events = events,
         )
-        assert(details.resolveReviewStatus() == ReviewStatus.AWAITING_APPROVAL)
+        assert(details.resolveReviewStatus() == ReviewStatus.CHANGE_REQUESTED)
     }
 }

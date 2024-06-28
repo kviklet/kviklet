@@ -33,7 +33,6 @@ import dev.kviklet.kviklet.service.dto.KubernetesConnection
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
 import dev.kviklet.kviklet.service.dto.RequestType
-import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.utcTimeNow
 import dev.kviklet.kviklet.shell.KubernetesApi
@@ -172,8 +171,8 @@ class ExecutionRequestService(
     @Policy(Permission.EXECUTION_REQUEST_EDIT)
     fun createReview(id: ExecutionRequestId, request: CreateReviewRequest, authorId: String): Event {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
-        if (executionRequest.request.author.getId() == authorId && request.action == ReviewAction.APPROVE) {
-            throw InvalidReviewException("A user can't approve their own request!")
+        if (executionRequest.request.author.getId() == authorId) {
+            throw InvalidReviewException("A user can't review their own request!")
         }
         if (executionRequest.resolveReviewStatus() == ReviewStatus.REJECTED) {
             throw InvalidReviewException("Can't review an already rejected request!")

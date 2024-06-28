@@ -78,6 +78,13 @@ const componentMap = {
   ),
 };
 
+enum ReviewTypes {
+  Comment = "comment",
+  Approve = "approve",
+  RequestChange = "request_change",
+  Reject = "reject",
+}
+
 const useRequest = (id: string) => {
   const [request, setRequest] = useState<
     ExecutionRequestResponseWithComments | undefined
@@ -169,8 +176,21 @@ const useRequest = (id: string) => {
     }
   };
 
-  const approve = async (comment: string) => {
-    await addReviewToRequest(id, comment, "APPROVE");
+  const sendReview = async (comment: string, type: ReviewTypes) => {
+    switch (type) {
+      case ReviewTypes.Approve:
+        await addReviewToRequest(id, comment, "APPROVE");
+        break;
+      case ReviewTypes.Comment:
+        await addComment(comment);
+        break;
+      case ReviewTypes.RequestChange:
+        await addReviewToRequest(id, comment, "REQUEST_CHANGE");
+        break;
+      case ReviewTypes.Reject:
+        await addReviewToRequest(id, comment, "REJECT");
+        break;
+    }
     await loadRequest();
   };
 
@@ -197,8 +217,7 @@ const useRequest = (id: string) => {
 
   return {
     request,
-    addComment,
-    approve,
+    sendReview,
     execute,
     start,
     updateRequest,
@@ -215,8 +234,7 @@ function RequestReview() {
   const params = useParams() as unknown as RequestReviewParams;
   const {
     request,
-    addComment,
-    approve,
+    sendReview,
     execute,
     start,
     updateRequest,
@@ -248,7 +266,7 @@ function RequestReview() {
               <div
                 className={` ${mapStatusToLabelColor(
                   mapStatus(request.reviewStatus, request.executionStatus),
-                )} mt-2 w-min rounded-md px-2 py-1 text-base font-medium ring-1 ring-inset `}
+                )} mt-2 rounded-md px-2 py-1 text-base font-medium ring-1 ring-inset `}
               >
                 {mapStatus(request.reviewStatus, request.executionStatus)}
               </div>
@@ -300,12 +318,20 @@ function RequestReview() {
                               index={index}
                             ></ExecuteEvent>
                           );
-
-                        return <Comment event={event} index={index}></Comment>;
+                        if (event?._type === "COMMENT")
+                          return (
+                            <Comment event={event} index={index}></Comment>
+                          );
+                        if (event?._type === "REVIEW")
+                          return (
+                            <ReviewEvent
+                              event={event}
+                              index={index}
+                            ></ReviewEvent>
+                          );
                       })}
                   <CommentBox
-                    addComment={addComment}
-                    approve={approve}
+                    sendReview={sendReview}
                     userId={request?.author?.id}
                   ></CommentBox>
                 </div>
@@ -926,32 +952,149 @@ function Comment({
   );
 }
 
+function ReviewEvent({ event, index }: { event: Review; index: number }) {
+  const notificationText = (): JSX.Element => {
+    switch (event.action) {
+      case "APPROVE":
+        return (
+          <div className="text-sm text-slate-500">
+            {event.author?.fullName} approved
+          </div>
+        );
+      case "REJECT":
+        return (
+          <div className="text-sm text-red-500">
+            {event.author?.fullName} rejected
+          </div>
+        );
+      case "REQUEST_CHANGE":
+        return (
+          <div className="text-sm text-red-500">
+            {event.author?.fullName} requested changes
+          </div>
+        );
+    }
+  };
+
+  const notificationIcon = (): JSX.Element => {
+    switch (event.action) {
+      case "APPROVE":
+        return (
+          <div className="z-0 -ml-1 mr-2 inline-block h-4 w-4 items-center bg-slate-50 fill-slate-950 pb-6 align-text-bottom dark:bg-slate-950 dark:fill-slate-50">
+            <div className="inline pr-2 text-green-600">
+              <FontAwesomeIcon icon={solid("check")} />
+            </div>
+          </div>
+        );
+      case "REJECT":
+        return (
+          <div className="z-0 -ml-1 mr-2 inline-block h-4 w-4 items-center bg-slate-50 fill-slate-950 pb-6 dark:bg-slate-950 dark:fill-slate-50">
+            <div className="inline pr-2 text-red-500">
+              <FontAwesomeIcon icon={solid("times")} />
+            </div>
+          </div>
+        );
+      case "REQUEST_CHANGE":
+        return (
+          <div className="z-0 -ml-1 mr-2 inline-block h-4 w-4 items-center bg-slate-50 fill-slate-950 pb-6 dark:bg-slate-950 dark:fill-slate-50">
+            <div className="inline pr-2 text-red-500">
+              <FontAwesomeIcon icon={solid("pen")} />
+            </div>
+          </div>
+        );
+    }
+  };
+  return (
+    <div>
+      <div className="relative ml-4 flex py-4">
+        {(!(index === 0) && (
+          <div className="absolute bottom-0 left-0 top-0 block w-0.5 whitespace-pre bg-slate-700">
+            {" "}
+          </div>
+        )) || (
+          <div className="absolute bottom-0 left-0 top-5 block w-0.5 whitespace-pre bg-slate-700">
+            {" "}
+          </div>
+        )}
+        <div className="flex justify-center align-middle">
+          {notificationIcon()}
+          {notificationText()}
+        </div>
+      </div>
+      <div className="relative rounded-md border shadow-md dark:border-slate-700 dark:shadow-none">
+        <InitialBubble name={event?.author?.fullName} />
+        <p className="flex justify-between rounded-t-md px-4 pt-2 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-500">
+          <div>
+            {((event?.createdAt && timeSince(event.createdAt)) as
+              | string
+              | undefined) || ""}
+          </div>
+        </p>
+        <div className="rounded-b-md px-4 py-3 dark:bg-slate-900">
+          <ReactMarkdown components={componentMap}>
+            {event.comment}
+          </ReactMarkdown>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CommentBox({
-  addComment,
-  approve,
+  sendReview,
   userId,
 }: {
-  addComment: (comment: string) => Promise<void>;
-  approve: (comment: string) => Promise<void>;
+  sendReview: (comment: string, type: ReviewTypes) => Promise<void>;
   userId?: string;
 }) {
   const [commentFormVisible, setCommentFormVisible] = useState<boolean>(true);
   const [comment, setComment] = useState<string>("");
 
+  const [chosenReviewType, setChosenReviewType] = useState<ReviewTypes>(
+    ReviewTypes.Comment,
+  );
+
   const userContext = useContext(UserStatusContext);
 
-  const handleAddComment = async () => {
-    await addComment(comment);
-    setComment("");
-  };
-
-  const handleApprove = async () => {
-    await approve(comment);
+  const handleReview = async () => {
+    await sendReview(comment, chosenReviewType);
     setComment("");
   };
 
   const isOwnRequest =
     userContext.userStatus && userContext.userStatus?.id === userId;
+
+  const reviewTypes = [
+    {
+      id: ReviewTypes.Comment,
+      title: "Comment",
+      description: "Submit a general comment without explicit approval",
+      enabled: true,
+      danger: false,
+    },
+    {
+      id: ReviewTypes.Approve,
+      title: "Approve",
+      description: "Give your approval to execute this request",
+      enabled: !isOwnRequest,
+      danger: false,
+    },
+    {
+      id: ReviewTypes.RequestChange,
+      title: "Request Changes",
+      description:
+        "Request a change on this Request, you can later approve it again",
+      enabled: !isOwnRequest,
+      danger: true,
+    },
+    {
+      id: ReviewTypes.Reject,
+      title: "Reject",
+      description: "Reject this request from ever executing",
+      enabled: !isOwnRequest,
+      danger: true,
+    },
+  ];
   return (
     <div>
       <div className="relative ml-4 py-4">
@@ -1009,21 +1152,21 @@ function CommentBox({
             </ReactMarkdown>
           )}
           <div className="p-1">
-            <div className="mb-2 flex justify-end">
-              <Button
-                className="mr-2"
-                id="addComment"
-                onClick={() => void handleAddComment()}
-              >
-                Add Comment
-              </Button>
-              <Button
-                id="approve"
-                type={`${isOwnRequest ? "disabled" : "submit"}`}
-                onClick={() => void handleApprove()}
-              >
-                Approve
-              </Button>
+            <div className="center mb-2 flex flex-col">
+              <ReviewRadioBox
+                reviewTypes={reviewTypes}
+                setChosenReviewType={setChosenReviewType}
+                chosenType={chosenReviewType}
+              ></ReviewRadioBox>
+              <div className="mb-2 flex justify-end">
+                <Button
+                  id="submit"
+                  type="submit"
+                  onClick={() => void handleReview()}
+                >
+                  Review
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -1031,5 +1174,71 @@ function CommentBox({
     </div>
   );
 }
-
+function ReviewRadioBox({
+  reviewTypes,
+  setChosenReviewType,
+  chosenType,
+}: {
+  reviewTypes: {
+    id: ReviewTypes;
+    title: string;
+    description: string;
+    enabled: boolean;
+    danger: boolean;
+  }[];
+  setChosenReviewType: (reviewType: ReviewTypes) => void;
+  chosenType: ReviewTypes;
+}) {
+  return (
+    <fieldset>
+      <legend className="text-sm font-semibold leading-6 text-slate-900 dark:text-slate-50">
+        Review
+      </legend>
+      <div className="mt-3 space-y-3">
+        {reviewTypes.map((reviewType) => (
+          <div key={reviewType.id} className="flex items-center">
+            <input
+              id={reviewType.id}
+              name="review-type"
+              type="radio"
+              defaultChecked={reviewType.id === chosenType}
+              className={`h-4 w-4 border-slate-300 focus:ring-indigo-600 disabled:cursor-not-allowed disabled:opacity-50 ${
+                reviewType.danger ? "text-red-600" : "text-indigo-600"
+              }`}
+              onChange={() => setChosenReviewType(reviewType.id)}
+              disabled={!reviewType.enabled}
+            />
+            <span className="ml-3 block">
+              <label
+                htmlFor={reviewType.id}
+                className={`text-sm font-medium leading-6 ${
+                  reviewType.enabled
+                    ? reviewType.danger
+                      ? "text-red-600 dark:text-red-400"
+                      : "text-slate-900 dark:text-slate-50"
+                    : "text-slate-400 dark:text-slate-500"
+                }`}
+              >
+                {reviewType.title}
+              </label>
+              <span>
+                <p
+                  className={`text-xs ${
+                    reviewType.enabled
+                      ? reviewType.danger
+                        ? "text-red-500 dark:text-red-400"
+                        : "text-slate-500 dark:text-slate-400"
+                      : "text-slate-400 dark:text-slate-500"
+                  }`}
+                >
+                  {reviewType.description}
+                </p>
+              </span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
 export default RequestReview;

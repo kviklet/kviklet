@@ -24,6 +24,7 @@ enum class ReviewStatus {
     AWAITING_APPROVAL,
     APPROVED,
     REJECTED,
+    CHANGE_REQUESTED,
 }
 
 enum class ExecutionStatus {
@@ -130,7 +131,7 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         }
 
         if (activeRequestedChanges() > 0) {
-            return ReviewStatus.AWAITING_APPROVAL
+            return ReviewStatus.CHANGE_REQUESTED
         }
         val reviewStatus = if (numReviews >= reviewConfig.numTotalRequired) {
             ReviewStatus.APPROVED
