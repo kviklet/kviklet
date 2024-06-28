@@ -49,15 +49,11 @@ class RoleService(private val roleAdapter: RoleAdapter) {
 
     @dev.kviklet.kviklet.security.Policy(Permission.ROLE_GET)
     @Transactional(readOnly = true)
-    fun getAllRoles(): List<Role> {
-        return roleAdapter.findAll()
-    }
+    fun getAllRoles(): List<Role> = roleAdapter.findAll()
 
     @dev.kviklet.kviklet.security.Policy(Permission.ROLE_GET)
     @Transactional(readOnly = true)
-    fun getRole(id: RoleId): Role {
-        return roleAdapter.findById(id)
-    }
+    fun getRole(id: RoleId): Role = roleAdapter.findById(id)
 
     @dev.kviklet.kviklet.security.Policy(Permission.ROLE_EDIT)
     @Transactional

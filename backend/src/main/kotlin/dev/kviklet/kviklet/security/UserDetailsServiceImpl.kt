@@ -11,9 +11,7 @@ import org.springframework.stereotype.Service
 import java.io.Serializable
 
 @Service
-class UserDetailsServiceImpl(
-    private val userAdapter: UserAdapter,
-) : UserDetailsService {
+class UserDetailsServiceImpl(private val userAdapter: UserAdapter) : UserDetailsService {
 
     override fun loadUserByUsername(email: String): UserDetails {
         val user = userAdapter.findByEmail(email)
@@ -25,12 +23,9 @@ class UserDetailsServiceImpl(
     }
 }
 
-class UserDetailsWithId(
-    val id: String,
-    email: String,
-    password: String?,
-    authorities: Collection<GrantedAuthority>,
-) : User(email, password, authorities), Serializable {
+class UserDetailsWithId(val id: String, email: String, password: String?, authorities: Collection<GrantedAuthority>) :
+    User(email, password, authorities),
+    Serializable {
     companion object {
         private const val serialVersionUID = 1L // Serializable version UID
     }

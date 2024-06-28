@@ -20,7 +20,9 @@ enum class AuthenticationType {
 }
 
 data class ConnectionId
-@JsonCreator constructor(private val id: String) : Serializable, SecuredDomainId {
+@JsonCreator constructor(private val id: String) :
+    Serializable,
+    SecuredDomainId {
     @JsonValue
     override fun toString() = id
 }
@@ -37,12 +39,10 @@ sealed class Connection(
     override fun getSecuredObjectId() = id.toString()
     override fun getDomainObjectType() = Resource.DATASOURCE_CONNECTION
 
-    override fun getRelated(resource: Resource): SecuredDomainObject? {
-        return when (resource) {
-            Resource.DATASOURCE_CONNECTION -> this
-            Resource.EXECUTION_REQUEST -> null
-            else -> throw IllegalStateException("Unexpected resource: $resource")
-        }
+    override fun getRelated(resource: Resource): SecuredDomainObject? = when (resource) {
+        Resource.DATASOURCE_CONNECTION -> this
+        Resource.EXECUTION_REQUEST -> null
+        else -> throw IllegalStateException("Unexpected resource: $resource")
     }
 }
 
@@ -61,21 +61,19 @@ data class DatasourceConnection(
     val type: DatasourceType,
     val additionalJDBCOptions: String,
 ) : Connection(id, displayName, description, reviewConfig, maxExecutions) {
-    fun getConnectionString(): String {
-        return when (type) {
-            DatasourceType.POSTGRESQL ->
-                "jdbc:postgresql://$hostname:$port/" +
-                    databaseName +
-                    additionalJDBCOptions
-            DatasourceType.MYSQL ->
-                "jdbc:mysql://$hostname:$port/" +
-                    databaseName +
-                    additionalJDBCOptions
-            DatasourceType.MSSQL ->
-                "jdbc:sqlserver://$hostname:$port" +
-                    (databaseName?.takeIf { it.isNotBlank() }?.let { ";databaseName=$databaseName" } ?: "") +
-                    additionalJDBCOptions
-        }
+    fun getConnectionString(): String = when (type) {
+        DatasourceType.POSTGRESQL ->
+            "jdbc:postgresql://$hostname:$port/" +
+                databaseName +
+                additionalJDBCOptions
+        DatasourceType.MYSQL ->
+            "jdbc:mysql://$hostname:$port/" +
+                databaseName +
+                additionalJDBCOptions
+        DatasourceType.MSSQL ->
+            "jdbc:sqlserver://$hostname:$port" +
+                (databaseName?.takeIf { it.isNotBlank() }?.let { ";databaseName=$databaseName" } ?: "") +
+                additionalJDBCOptions
     }
 }
 

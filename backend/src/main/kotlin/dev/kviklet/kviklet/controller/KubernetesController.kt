@@ -15,20 +15,11 @@ data class Pod(
     val containerNames: List<String>,
 )
 
-data class PodList(
-    val pods: List<Pod>,
-)
+data class PodList(val pods: List<Pod>)
 
-data class CommandRequest(
-    val namespace: String,
-    val podName: String,
-    val command: String,
-)
+data class CommandRequest(val namespace: String, val podName: String, val command: String)
 
-data class CommandResponse(
-    val output: List<String>,
-    val error: List<String>,
-)
+data class CommandResponse(val output: List<String>, val error: List<String>)
 
 @RestController
 @Validated
@@ -37,22 +28,18 @@ data class CommandResponse(
     name = "Kubernetes",
     description = "Interact with a kubernetes cluster",
 )
-class KubernetesController(
-    private val kubernetesService: KubernetesService,
-) {
+class KubernetesController(private val kubernetesService: KubernetesService) {
 
     @GetMapping("/pods")
-    fun getPods(): PodList {
-        return PodList(
-            pods = kubernetesService.listPods().map {
-                Pod(
-                    id = it.metadata?.uid ?: "",
-                    name = it.metadata?.name ?: "",
-                    namespace = it.metadata?.namespace ?: "",
-                    status = it.status?.phase ?: "",
-                    containerNames = it.spec?.containers?.map { container -> container.name } ?: emptyList(),
-                )
-            },
-        )
-    }
+    fun getPods(): PodList = PodList(
+        pods = kubernetesService.listPods().map {
+            Pod(
+                id = it.metadata?.uid ?: "",
+                name = it.metadata?.name ?: "",
+                namespace = it.metadata?.namespace ?: "",
+                status = it.status?.phase ?: "",
+                containerNames = it.spec?.containers?.map { container -> container.name } ?: emptyList(),
+            )
+        },
+    )
 }

@@ -11,44 +11,30 @@ import java.sql.ResultSet
 import java.sql.SQLException
 import java.util.*
 
-sealed class QueryResult() {
+sealed class QueryResult {
 
     abstract fun toResultLog(): ResultLog
 }
 
-data class RecordsQueryResult(
-    val columns: List<ColumnInfo>,
-    val data: List<Map<String, String>>,
-) : QueryResult() {
-    override fun toResultLog(): QueryResultLog {
-        return QueryResultLog(
-            columnCount = columns.size,
-            rowCount = data.size,
-        )
-    }
+data class RecordsQueryResult(val columns: List<ColumnInfo>, val data: List<Map<String, String>>) : QueryResult() {
+    override fun toResultLog(): QueryResultLog = QueryResultLog(
+        columnCount = columns.size,
+        rowCount = data.size,
+    )
 }
 
-data class UpdateQueryResult(
-    val rowsUpdated: Int,
-) : QueryResult() {
+data class UpdateQueryResult(val rowsUpdated: Int) : QueryResult() {
 
-    override fun toResultLog(): UpdateResultLog {
-        return UpdateResultLog(
-            rowsUpdated = rowsUpdated,
-        )
-    }
+    override fun toResultLog(): UpdateResultLog = UpdateResultLog(
+        rowsUpdated = rowsUpdated,
+    )
 }
 
-data class ErrorQueryResult(
-    val errorCode: Int,
-    val message: String?,
-) : QueryResult() {
-    override fun toResultLog(): ResultLog {
-        return ErrorResultLog(
-            errorCode = errorCode,
-            message = message ?: "",
-        )
-    }
+data class ErrorQueryResult(val errorCode: Int, val message: String?) : QueryResult() {
+    override fun toResultLog(): ResultLog = ErrorResultLog(
+        errorCode = errorCode,
+        message = message ?: "",
+    )
 }
 
 data class ColumnInfo(
@@ -60,7 +46,7 @@ data class ColumnInfo(
 )
 
 @Service
-class Executor() {
+class Executor {
 
     fun execute(
         connectionString: String,

@@ -10,7 +10,7 @@ import org.springframework.test.context.ActiveProfiles
 
 @SpringBootTest
 @ActiveProfiles("test")
-class ConfigurationTest() {
+class ConfigurationTest {
 
     @Autowired
     private lateinit var configurationAdapter: ConfigurationAdapter

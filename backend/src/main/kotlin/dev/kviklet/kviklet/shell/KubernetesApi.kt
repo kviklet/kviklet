@@ -12,9 +12,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
 @Service
-class KubernetesApi(
-    private val coreV1Api: CoreV1Api,
-) {
+class KubernetesApi(private val coreV1Api: CoreV1Api) {
     fun getActivePods(): List<V1Pod> {
         try {
             val pods: V1PodList = coreV1Api.listPodForAllNamespaces().execute()

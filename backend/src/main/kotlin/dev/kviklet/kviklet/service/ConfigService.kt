@@ -8,19 +8,14 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
-class ConfigService(
-    private val configurationAdapter: ConfigurationAdapter,
-) {
+class ConfigService(private val configurationAdapter: ConfigurationAdapter) {
 
     @Policy(Permission.CONFIGURATION_GET)
     @Transactional(readOnly = true)
-    fun getConfiguration(): Configuration {
-        return configurationAdapter.getConfiguration()
-    }
+    fun getConfiguration(): Configuration = configurationAdapter.getConfiguration()
 
     @Policy(Permission.CONFIGURATION_EDIT)
     @Transactional
-    fun setConfiguration(configuration: Configuration): Configuration {
-        return configurationAdapter.setConfiguration(configuration)
-    }
+    fun setConfiguration(configuration: Configuration): Configuration =
+        configurationAdapter.setConfiguration(configuration)
 }

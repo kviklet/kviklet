@@ -11,7 +11,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 @Entity
 @Table(name = "policy")
-class PolicyEntity() : BaseEntity() {
+class PolicyEntity constructor() : BaseEntity() {
     lateinit var action: String
 
     @Enumerated(EnumType.STRING)
@@ -23,7 +23,7 @@ class PolicyEntity() : BaseEntity() {
         action: String,
         effect: PolicyEffect,
         resource: String,
-    ) : this() {
+    ) : this () {
         this.id = id
         this.action = action
         this.effect = effect

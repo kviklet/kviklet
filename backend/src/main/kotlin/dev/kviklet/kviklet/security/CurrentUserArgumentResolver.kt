@@ -11,10 +11,9 @@ import org.springframework.web.method.support.ModelAndViewContainer
 
 class CurrentUserArgumentResolver : HandlerMethodArgumentResolver {
 
-    override fun supportsParameter(parameter: MethodParameter): Boolean {
-        return parameter.getParameterAnnotation(CurrentUser::class.java) != null &&
+    override fun supportsParameter(parameter: MethodParameter): Boolean =
+        parameter.getParameterAnnotation(CurrentUser::class.java) != null &&
             parameter.parameterType == UserDetailsWithId::class.java
-    }
 
     override fun resolveArgument(
         parameter: MethodParameter,

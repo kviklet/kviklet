@@ -54,39 +54,29 @@ class RoleEntity : BaseEntity {
 interface RoleRepository : JpaRepository<RoleEntity, String>
 
 @Service
-class RoleAdapter(
-    private val roleRepository: RoleRepository,
-) {
-    fun findById(id: RoleId): Role {
-        return roleRepository.findByIdOrNull(id.toString())?.toDto() ?: throw EntityNotFound(
-            "Role not found",
-            "Role with id $id does not exist",
-        )
-    }
+class RoleAdapter(private val roleRepository: RoleRepository) {
+    fun findById(id: RoleId): Role = roleRepository.findByIdOrNull(id.toString())?.toDto() ?: throw EntityNotFound(
+        "Role not found",
+        "Role with id $id does not exist",
+    )
 
-    fun findByIds(ids: List<String>): List<Role> {
-        return roleRepository.findAllById(ids).map { it.toDto() }
-    }
+    fun findByIds(ids: List<String>): List<Role> = roleRepository.findAllById(ids).map { it.toDto() }
 
-    fun findAll(): List<Role> {
-        return roleRepository.findAll().map { it.toDto() }
-    }
+    fun findAll(): List<Role> = roleRepository.findAll().map { it.toDto() }
 
-    fun create(role: Role): Role {
-        return roleRepository.save(
-            RoleEntity(
-                name = role.name,
-                description = role.description,
-                policies = role.policies.map {
-                    PolicyEntity(
-                        action = it.action,
-                        effect = it.effect,
-                        resource = it.resource,
-                    )
-                }.toMutableSet(),
-            ),
-        ).toDto()
-    }
+    fun create(role: Role): Role = roleRepository.save(
+        RoleEntity(
+            name = role.name,
+            description = role.description,
+            policies = role.policies.map {
+                PolicyEntity(
+                    action = it.action,
+                    effect = it.effect,
+                    resource = it.resource,
+                )
+            }.toMutableSet(),
+        ),
+    ).toDto()
 
     fun delete(id: RoleId) {
         roleRepository.deleteById(id.toString())

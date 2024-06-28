@@ -8,10 +8,7 @@ import org.springframework.web.client.RestTemplate
 import org.springframework.web.client.exchange
 
 @Service
-class TeamsApiClient(
-    private val restTemplate: RestTemplate,
-    private val objectMapper: ObjectMapper,
-) {
+class TeamsApiClient(private val restTemplate: RestTemplate, private val objectMapper: ObjectMapper) {
 
     fun sendMessage(webhookUrl: String, title: String, message: String) {
         val formattedMessage = formatMessageWithLinksAndLineBreaks(message)
@@ -42,13 +39,6 @@ class TeamsApiClient(
     }
 }
 
-data class TeamsNotification(
-    val summary: String,
-    val sections: List<Section>,
-)
+data class TeamsNotification(val summary: String, val sections: List<Section>)
 
-data class Section(
-    val title: String,
-    val text: String,
-    val markdown: Boolean = true,
-)
+data class Section(val title: String, val text: String, val markdown: Boolean = true)

@@ -5,9 +5,7 @@ import dev.kviklet.kviklet.service.dto.PolicyEffect
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.util.AntPathMatcher
 
-class PolicyGrantedAuthority(
-    private val policy: Policy,
-) : GrantedAuthority {
+class PolicyGrantedAuthority(private val policy: Policy) : GrantedAuthority {
 
     override fun getAuthority() = null
 
@@ -44,9 +42,7 @@ class PolicyGrantedAuthority(
         return AntPathMatcher().match(policy.resource, domainObject.getSecuredObjectId()!!)
     }
 
-    private fun matchesAction(action: String): Boolean {
-        return AntPathMatcher().match(policy.action, action)
-    }
+    private fun matchesAction(action: String): Boolean = AntPathMatcher().match(policy.action, action)
 }
 
 enum class VoteResult {
@@ -63,6 +59,4 @@ fun List<PolicyGrantedAuthority>.vote(permission: Permission, obj: SecuredDomain
     return this.map { it.vote(permission, obj) }
 }
 
-fun List<VoteResult>.isAllowed(): Boolean {
-    return this.any { it == VoteResult.ALLOW } && this.none { it == VoteResult.DENY }
-}
+fun List<VoteResult>.isAllowed(): Boolean = this.any { it == VoteResult.ALLOW } && this.none { it == VoteResult.DENY }

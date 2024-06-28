@@ -54,9 +54,7 @@ import java.io.Serializable
 @Configuration
 class PasswordEncoderConfig {
     @Bean
-    fun passwordEncoder(): PasswordEncoder {
-        return BCryptPasswordEncoder()
-    }
+    fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
 }
 
 @Configuration
@@ -203,10 +201,8 @@ class CustomAuthenticationEntryPoint : AuthenticationEntryPoint {
 }
 
 @Service
-class CustomAuthenticationProvider(
-    val userAdapter: UserAdapter,
-    val passwordEncoder: PasswordEncoder,
-) : AuthenticationProvider {
+class CustomAuthenticationProvider(val userAdapter: UserAdapter, val passwordEncoder: PasswordEncoder) :
+    AuthenticationProvider {
 
     override fun authenticate(authentication: Authentication?): Authentication? {
         val email = authentication?.name!!
@@ -230,16 +226,16 @@ class CustomAuthenticationProvider(
         )
     }
 
-    override fun supports(authentication: Class<*>): Boolean {
-        return authentication == UsernamePasswordAuthenticationToken::class.java
-    }
+    override fun supports(authentication: Class<*>): Boolean =
+        authentication == UsernamePasswordAuthenticationToken::class.java
 }
 
 class CustomOidcUser(
     private val oidcUser: OidcUser,
     private val userDetails: UserDetailsWithId,
     private val authorities: Collection<GrantedAuthority>,
-) : OidcUser, Serializable {
+) : OidcUser,
+    Serializable {
 
     override fun getClaims(): Map<String, Any> = oidcUser.claims
 
@@ -262,10 +258,8 @@ class CustomOidcUser(
 }
 
 @Service
-class CustomOidcUserService(
-    private val userAdapter: UserAdapter,
-    private val roleAdapter: RoleAdapter,
-) : OidcUserService() {
+class CustomOidcUserService(private val userAdapter: UserAdapter, private val roleAdapter: RoleAdapter) :
+    OidcUserService() {
 
     @Transactional
     override fun loadUser(userRequest: OidcUserRequest): OidcUser {
@@ -314,7 +308,7 @@ class CustomOidcUserService(
 }
 
 @Component
-class OAuth2LoginSuccessHandler() : SimpleUrlAuthenticationSuccessHandler() {
+class OAuth2LoginSuccessHandler : SimpleUrlAuthenticationSuccessHandler() {
 
     @Transactional
     override fun onAuthenticationSuccess(

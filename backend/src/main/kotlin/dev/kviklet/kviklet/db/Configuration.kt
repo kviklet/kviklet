@@ -22,20 +22,14 @@ data class ConfigurationEntity(
 interface ConfigurationRepository : JpaRepository<ConfigurationEntity, String>
 
 @Service
-class ConfigurationAdapter(
-    private val configurationRepository: ConfigurationRepository,
-) {
-    fun getConfiguration(key: String): Any? {
-        return configurationRepository.findById(key).map { it.value }.orElse(null)
-    }
+class ConfigurationAdapter(private val configurationRepository: ConfigurationRepository) {
+    fun getConfiguration(key: String): Any? = configurationRepository.findById(key).map { it.value }.orElse(null)
 
     fun setConfiguration(key: String, value: String) {
         configurationRepository.save(ConfigurationEntity(key, value))
     }
 
-    fun getConfiguration(): Configuration {
-        return configurationRepository.findAll().toDto()
-    }
+    fun getConfiguration(): Configuration = configurationRepository.findAll().toDto()
 
     fun setConfiguration(configuration: Configuration): Configuration {
         val configurationEntities = configurationRepository.saveAll(
@@ -48,9 +42,7 @@ class ConfigurationAdapter(
     }
 }
 
-fun List<ConfigurationEntity>.toDto(): Configuration {
-    return Configuration(
-        teamsUrl = this.find { it.key == "teamsUrl" }?.value,
-        slackUrl = this.find { it.key == "slackUrl" }?.value,
-    )
-}
+fun List<ConfigurationEntity>.toDto(): Configuration = Configuration(
+    teamsUrl = this.find { it.key == "teamsUrl" }?.value,
+    slackUrl = this.find { it.key == "slackUrl" }?.value,
+)

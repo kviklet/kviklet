@@ -78,10 +78,7 @@ class NotificationHandler(
     }
 }
 
-data class Message(
-    val title: String,
-    val text: String,
-)
+data class Message(val title: String, val text: String)
 
 data class RequestCreatedEvent(
     val requestId: String,
@@ -91,14 +88,12 @@ data class RequestCreatedEvent(
 ) : ApplicationEvent(requestId) {
 
     companion object {
-        fun fromRequest(request: ExecutionRequestDetails): RequestCreatedEvent {
-            return RequestCreatedEvent(
-                requestId = request.request.id.toString(),
-                title = request.request.title,
-                author = request.request.author.fullName ?: "",
-                necessaryReviews = request.request.connection.reviewConfig.numTotalRequired,
-            )
-        }
+        fun fromRequest(request: ExecutionRequestDetails): RequestCreatedEvent = RequestCreatedEvent(
+            requestId = request.request.id.toString(),
+            title = request.request.title,
+            author = request.request.author.fullName ?: "",
+            necessaryReviews = request.request.connection.reviewConfig.numTotalRequired,
+        )
     }
 }
 
@@ -111,15 +106,13 @@ data class ReviewStatusUpdatedEvent(
     val reviewer: String,
 ) : ApplicationEvent(requestId) {
     companion object {
-        fun fromReviewEvent(event: Event): ReviewStatusUpdatedEvent {
-            return ReviewStatusUpdatedEvent(
-                requestId = event.request.request.id.toString(),
-                title = event.request.request.title,
-                status = event.request.resolveReviewStatus(),
-                requiredReviews = event.request.request.connection.reviewConfig.numTotalRequired,
-                approvals = event.request.getApprovalCount(),
-                reviewer = event.author.fullName ?: "",
-            )
-        }
+        fun from(request: ExecutionRequestDetails, event: Event): ReviewStatusUpdatedEvent = ReviewStatusUpdatedEvent(
+            requestId = event.request.id.toString(),
+            title = event.request.title,
+            status = request.resolveReviewStatus(),
+            requiredReviews = event.request.connection.reviewConfig.numTotalRequired,
+            approvals = request.getApprovalCount(),
+            reviewer = event.author.fullName ?: "",
+        )
     }
 }

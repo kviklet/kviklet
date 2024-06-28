@@ -285,9 +285,7 @@ class Connection(
         }
     }
 
-    private fun parseResponse(byteArray: ByteArray): Pair<ByteArray, String> {
-        return byteArray to "Not handled"
-    }
+    private fun parseResponse(byteArray: ByteArray): Pair<ByteArray, String> = byteArray to "Not handled"
 }
 
 class Statement(
@@ -296,10 +294,9 @@ class Statement(
     val parameterTypes: List<Int> = mutableListOf(),
     val boundParams: List<ByteArray> = mutableListOf(),
 ) {
-    override fun toString(): String {
-        return "Statement(query='$query', parameterFormatCodes=$parameterFormatCodes, boundParams=$boundParams)," +
+    override fun toString(): String =
+        "Statement(query='$query', parameterFormatCodes=$parameterFormatCodes, boundParams=$boundParams)," +
             "interpolated query: ${interpolateQuery()}"
-    }
 
     fun interpolateQuery(): String {
         var interpolatedQuery = query
@@ -529,18 +526,10 @@ class PGTypeStringifier(
     }
 }
 
-open class ParsedMessage(
-    open val header: Char,
-    open val length: Int,
-    open val originalContent: ByteArray,
-) {
-    override fun toString(): String {
-        return "ParsedMessage(header=$header, length=$length)"
-    }
+open class ParsedMessage(open val header: Char, open val length: Int, open val originalContent: ByteArray) {
+    override fun toString(): String = "ParsedMessage(header=$header, length=$length)"
 
-    fun isTermination(): Boolean {
-        return header == 'X'
-    }
+    fun isTermination(): Boolean = header == 'X'
 
     open fun toByteArray(): ByteArray {
         val buffer = ByteBuffer.allocate(5)
@@ -580,23 +569,14 @@ open class ParsedMessage(
     }
 }
 
-class TerminationMessage(
-    header: Char = 'X',
-    length: Int = 4,
-    originalContent: ByteArray,
-) : ParsedMessage(header, length, originalContent) {
+class TerminationMessage(header: Char = 'X', length: Int = 4, originalContent: ByteArray) :
+    ParsedMessage(header, length, originalContent) {
     companion object {
-        fun fromBytes(length: Int, bytes: ByteArray): TerminationMessage {
-            return TerminationMessage('X', length, bytes)
-        }
+        fun fromBytes(length: Int, bytes: ByteArray): TerminationMessage = TerminationMessage('X', length, bytes)
     }
 }
 
-class MessageOrBytes(
-    val message: ParsedMessage?,
-    val bytes: ByteArray?,
-    val response: ByteArray? = null,
-)
+class MessageOrBytes(val message: ParsedMessage?, val bytes: ByteArray?, val response: ByteArray? = null)
 
 class QueryMessage(
     override val header: Char = 'Q',
@@ -739,14 +719,10 @@ class BindMessage(
      */
 }
 
-class SyncMessage(
-    override val header: Char = 'S',
-    override val length: Int,
-) : ParsedMessage(header, length, ByteArray(0)) {
+class SyncMessage(override val header: Char = 'S', override val length: Int) :
+    ParsedMessage(header, length, ByteArray(0)) {
     companion object {
-        fun fromBytes(length: Int): SyncMessage {
-            return SyncMessage('S', length)
-        }
+        fun fromBytes(length: Int): SyncMessage = SyncMessage('S', length)
     }
 }
 

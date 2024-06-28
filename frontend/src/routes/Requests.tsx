@@ -65,9 +65,11 @@ function timeSince(date: Date) {
 function mapStatus(reviewStatus: string, executionStatus: string) {
   if (reviewStatus === "AWAITING_APPROVAL" && executionStatus !== "EXECUTED")
     return "Pending";
-  else if (executionStatus === "EXECUTABLE") return "Ready";
-  else if (executionStatus === "ACTIVE") return "Active";
   else if (executionStatus === "EXECUTED") return "Executed";
+  else if (executionStatus === "ACTIVE") return "Active";
+  else if (reviewStatus === "CHANGE_REQUESTED") return "Change Requested";
+  else if (reviewStatus === "REJECTED") return "Rejected";
+  else if (executionStatus === "EXECUTABLE") return "Ready";
   else return "Unknown";
 }
 
@@ -81,6 +83,10 @@ function mapStatusToLabelColor(status?: string) {
       return "dark:ring-sky-400/10 dark:text-sky-500 ring-sky-500/10 text-sky-600 bg-sky-50 dark:bg-sky-400/10";
     case "Executed":
       return "dark:ring-lime-400/10 dark:text-lime-500 ring-lime-500/10 text-lime-600 bg-lime-50 dark:bg-lime-400/10";
+    case "Change Requested":
+      return "dark:ring-red-400/10 dark:text-red-500 ring-red-500/10 text-red-600 bg-red-50 dark:bg-red-400/10";
+    case "Rejected":
+      return "dark:ring-red-400/10 dark:text-red-500 ring-red-500/10 text-red-600 bg-red-50 dark:bg-red-400/10";
     default:
       return "dark:ring-gray-400/10 dark:text-gray-500 ring-gray-500/10 text-gray-600 bg-gray-50 dark:bg-gray-400/10";
   }
@@ -191,7 +197,7 @@ function Requests() {
                               request?.reviewStatus,
                               request?.executionStatus,
                             ),
-                          )} mt-2 w-min rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset`}
+                          )} mt-2 rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset`}
                         >
                           {mapStatus(
                             request?.reviewStatus,

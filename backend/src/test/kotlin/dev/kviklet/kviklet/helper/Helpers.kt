@@ -155,12 +155,10 @@ class RoleHelper(private val roleService: RoleService) {
 }
 
 @Component
-class ConnectionHelper(
-    private val connectionAdapter: ConnectionAdapter,
-) {
+class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
     @Transactional
-    fun createPostgresConnection(container: JdbcDatabaseContainer<*>): Connection {
-        return connectionAdapter.createDatasourceConnection(
+    fun createPostgresConnection(container: JdbcDatabaseContainer<*>): Connection =
+        connectionAdapter.createDatasourceConnection(
             ConnectionId("ds-conn-test"),
             "Test Connection",
             AuthenticationType.USER_PASSWORD,
@@ -178,20 +176,17 @@ class ConnectionHelper(
             DatasourceType.POSTGRESQL,
             additionalJDBCOptions = "",
         )
-    }
 
     @Transactional
-    fun createKubernetesConnection(): Connection {
-        return connectionAdapter.createKubernetesConnection(
-            ConnectionId("k8s-conn-test"),
-            "Test Kubernetes Connection",
-            "A test kubernetes connection",
-            ReviewConfig(
-                numTotalRequired = 1,
-            ),
-            1,
-        )
-    }
+    fun createKubernetesConnection(): Connection = connectionAdapter.createKubernetesConnection(
+        ConnectionId("k8s-conn-test"),
+        "Test Kubernetes Connection",
+        "A test kubernetes connection",
+        ReviewConfig(
+            numTotalRequired = 1,
+        ),
+        1,
+    )
 
     @Transactional
     fun deleteAll() {
@@ -204,6 +199,25 @@ class ExecutionRequestHelper(
     private val executionRequestAdapter: ExecutionRequestAdapter,
     private val connectionHelper: ConnectionHelper,
 ) {
+
+    @Transactional
+    fun createExecutionRequest(
+        dbcontainer: JdbcDatabaseContainer<*>,
+        author: User,
+        sql: String = "SELECT 1;",
+    ): ExecutionRequestDetails {
+        val connection = connectionHelper.createPostgresConnection(dbcontainer)
+        return executionRequestAdapter.createExecutionRequest(
+            connectionId = connection.id,
+            title = "Test Execution",
+            type = RequestType.SingleExecution,
+            description = "A test execution request",
+            statement = sql,
+            executionStatus = "PENDING",
+            authorId = author.getId()!!,
+        )
+    }
+
     @Transactional
     fun createApprovedRequest(
         dbcontainer: JdbcDatabaseContainer<*>,

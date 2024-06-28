@@ -64,7 +64,7 @@ class ExecutionRequestEntity(
 
     var description: String,
 
-    // Datsource Request specific fields
+    // Datasource Request specific fields
     var statement: String?,
 
     // Kubernetes Request specific fields
@@ -75,41 +75,37 @@ class ExecutionRequestEntity(
 
 ) : BaseEntity() {
 
-    override fun toString(): String {
-        return ToStringBuilder(this, SHORT_PREFIX_STYLE)
-            .append("id", id)
-            .toString()
-    }
+    override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
+        .append("id", id)
+        .toString()
 
-    fun toDto(): ExecutionRequest {
-        return when (executionRequestType) {
-            ExecutionRequestType.DATASOURCE -> DatasourceExecutionRequest(
-                id = ExecutionRequestId(id!!),
-                connection = connection.toDto() as DatasourceConnection,
-                title = title,
-                type = executionType,
-                description = description,
-                statement = statement,
-                executionStatus = executionStatus,
-                createdAt = createdAt,
-                author = author.toDto(),
-            )
+    fun toDto(): ExecutionRequest = when (executionRequestType) {
+        ExecutionRequestType.DATASOURCE -> DatasourceExecutionRequest(
+            id = ExecutionRequestId(id!!),
+            connection = connection.toDto() as DatasourceConnection,
+            title = title,
+            type = executionType,
+            description = description,
+            statement = statement,
+            executionStatus = executionStatus,
+            createdAt = createdAt,
+            author = author.toDto(),
+        )
 
-            ExecutionRequestType.KUBERNETES -> KubernetesExecutionRequest(
-                id = ExecutionRequestId(id!!),
-                connection = connection.toDto() as KubernetesConnection,
-                title = title,
-                type = executionType,
-                description = description,
-                executionStatus = executionStatus,
-                createdAt = createdAt,
-                author = author.toDto(),
-                namespace = namespace,
-                podName = podName,
-                containerName = containerName,
-                command = command,
-            )
-        }
+        ExecutionRequestType.KUBERNETES -> KubernetesExecutionRequest(
+            id = ExecutionRequestId(id!!),
+            connection = connection.toDto() as KubernetesConnection,
+            title = title,
+            type = executionType,
+            description = description,
+            executionStatus = executionStatus,
+            createdAt = createdAt,
+            author = author.toDto(),
+            namespace = namespace,
+            podName = podName,
+            containerName = containerName,
+            command = command,
+        )
     }
 
     fun toDetailDto(): ExecutionRequestDetails {
@@ -117,32 +113,32 @@ class ExecutionRequestEntity(
             request = toDto(),
             events = mutableSetOf<Event>(),
         )
-        details.events.addAll(events.map { it.toDto(details) }.toSet())
+        details.events.addAll(events.map { it.toDto(details.request) }.toSet())
         return details
     }
 }
 
-interface ExecutionRequestRepository : JpaRepository<ExecutionRequestEntity, String>, CustomExecutionRequestRepository
+interface ExecutionRequestRepository :
+    JpaRepository<ExecutionRequestEntity, String>,
+    CustomExecutionRequestRepository
 
 interface CustomExecutionRequestRepository {
     fun findByIdWithDetails(id: ExecutionRequestId): ExecutionRequestEntity?
 }
 
-class CustomExecutionRequestRepositoryImpl(
-    private val entityManager: EntityManager,
-) : CustomExecutionRequestRepository {
+class CustomExecutionRequestRepositoryImpl(private val entityManager: EntityManager) :
+    CustomExecutionRequestRepository {
 
     private val qExecutionRequestEntity: QExecutionRequestEntity = QExecutionRequestEntity.executionRequestEntity
 
-    override fun findByIdWithDetails(id: ExecutionRequestId): ExecutionRequestEntity? {
-        return JPAQuery<ExecutionRequestEntity>(entityManager).from(qExecutionRequestEntity)
+    override fun findByIdWithDetails(id: ExecutionRequestId): ExecutionRequestEntity? =
+        JPAQuery<ExecutionRequestEntity>(entityManager).from(qExecutionRequestEntity)
             .where(qExecutionRequestEntity.id.eq(id.toString()))
             .leftJoin(qExecutionRequestEntity.events)
             .fetchJoin()
             .fetch()
             .toSet()
             .firstOrNull()
-    }
 }
 
 @Service
@@ -172,7 +168,7 @@ class ExecutionRequestAdapter(
         val details = executionRequestEntity.toDetailDto()
         entityManager.refresh(event)
 
-        return Pair(details, event.toDto(details))
+        return Pair(details, event.toDto(details.request))
     }
 
     fun deleteAll() {

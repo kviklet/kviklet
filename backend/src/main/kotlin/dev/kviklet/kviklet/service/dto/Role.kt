@@ -30,32 +30,26 @@ data class Role(
                 resource = "*",
             ),
         )
-        fun create(id: RoleId, name: String, description: String, policies: Set<Policy>): Role {
-            return Role(
-                id = id,
-                name = name,
-                description = description,
-                policies = policies,
-            )
-        }
+        fun create(id: RoleId, name: String, description: String, policies: Set<Policy>): Role = Role(
+            id = id,
+            name = name,
+            description = description,
+            policies = policies,
+        )
     }
 
     override fun getSecuredObjectId() = id?.toString()
 
-    fun getId(): String? {
-        return id?.toString()
-    }
+    fun getId(): String? = id?.toString()
 
-    override fun getDomainObjectType(): Resource {
-        return Resource.ROLE
-    }
+    override fun getDomainObjectType(): Resource = Resource.ROLE
 
-    override fun getRelated(resource: Resource): SecuredDomainObject? {
-        return null
-    }
+    override fun getRelated(resource: Resource): SecuredDomainObject? = null
 }
 
 @JvmInline
-value class RoleId(private val id: String) : Serializable, SecuredDomainId {
+value class RoleId(private val id: String) :
+    Serializable,
+    SecuredDomainId {
     override fun toString() = id
 }

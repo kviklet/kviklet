@@ -23,7 +23,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class KubernetesExecuteTest() {
+class KubernetesExecuteTest {
 
     @MockkBean
     private lateinit var kubernetesApi: KubernetesApi

@@ -27,7 +27,7 @@ const ReviewEvent = withType(
     author: userResponseSchema.optional(),
     comment: z.string(),
     createdAt: z.coerce.date(),
-    action: z.enum(["APPROVE", "COMMENT", "REQUEST_CHANGE"]),
+    action: z.enum(["APPROVE", "REQUEST_CHANGE", "REJECT"]),
     id: z.string(),
   }),
   "REVIEW",

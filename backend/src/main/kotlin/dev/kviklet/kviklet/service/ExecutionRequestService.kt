@@ -33,7 +33,6 @@ import dev.kviklet.kviklet.service.dto.KubernetesConnection
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
 import dev.kviklet.kviklet.service.dto.RequestType
-import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.utcTimeNow
 import dev.kviklet.kviklet.shell.KubernetesApi
@@ -84,36 +83,32 @@ class ExecutionRequestService(
         connectionId: ConnectionId,
         request: CreateDatasourceExecutionRequestRequest,
         userId: String,
-    ): ExecutionRequestDetails {
-        return executionRequestAdapter.createExecutionRequest(
-            connectionId = connectionId,
-            title = request.title,
-            type = request.type,
-            description = request.description,
-            statement = request.statement,
-            executionStatus = "PENDING",
-            authorId = userId,
-        )
-    }
+    ): ExecutionRequestDetails = executionRequestAdapter.createExecutionRequest(
+        connectionId = connectionId,
+        title = request.title,
+        type = request.type,
+        description = request.description,
+        statement = request.statement,
+        executionStatus = "PENDING",
+        authorId = userId,
+    )
 
     private fun createKubernetesRequest(
         connectionId: ConnectionId,
         request: CreateKubernetesExecutionRequestRequest,
         userId: String,
-    ): ExecutionRequestDetails {
-        return executionRequestAdapter.createExecutionRequest(
-            connectionId = connectionId,
-            title = request.title,
-            type = request.type,
-            description = request.description,
-            executionStatus = "PENDING",
-            authorId = userId,
-            namespace = request.namespace,
-            podName = request.podName,
-            containerName = request.containerName,
-            command = request.command,
-        )
-    }
+    ): ExecutionRequestDetails = executionRequestAdapter.createExecutionRequest(
+        connectionId = connectionId,
+        title = request.title,
+        type = request.type,
+        description = request.description,
+        executionStatus = "PENDING",
+        authorId = userId,
+        namespace = request.namespace,
+        podName = request.podName,
+        containerName = request.containerName,
+        command = request.command,
+    )
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_EDIT)
@@ -176,15 +171,19 @@ class ExecutionRequestService(
     @Policy(Permission.EXECUTION_REQUEST_EDIT)
     fun createReview(id: ExecutionRequestId, request: CreateReviewRequest, authorId: String): Event {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
-        if (executionRequest.request.author.getId() == authorId && request.action == ReviewAction.APPROVE) {
-            throw InvalidReviewException("A user can't approve their own request!")
+        if (executionRequest.request.author.getId() == authorId) {
+            throw InvalidReviewException("A user can't review their own request!")
+        }
+        if (executionRequest.resolveReviewStatus() == ReviewStatus.REJECTED) {
+            throw InvalidReviewException("Can't review an already rejected request!")
         }
         val reviewEvent = eventService.saveEvent(
             id,
             authorId,
             ReviewPayload(comment = request.comment, action = request.action),
         )
-        ReviewStatusUpdatedEvent.fromReviewEvent(reviewEvent).let {
+        val updatedExecutionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
+        ReviewStatusUpdatedEvent.from(updatedExecutionRequestDetails, reviewEvent).let {
             applicationEventPublisher.publishEvent(it)
         }
         return reviewEvent
@@ -192,11 +191,17 @@ class ExecutionRequestService(
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
-    fun createComment(id: ExecutionRequestId, request: CreateCommentRequest, authorId: String) = eventService.saveEvent(
-        id,
-        authorId,
-        CommentPayload(comment = request.comment),
-    )
+    fun createComment(id: ExecutionRequestId, request: CreateCommentRequest, authorId: String): Event {
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
+        if (executionRequest.resolveReviewStatus() == ReviewStatus.REJECTED) {
+            throw InvalidReviewException("Can't comment on a rejected request!")
+        }
+        return eventService.saveEvent(
+            id,
+            authorId,
+            CommentPayload(comment = request.comment),
+        )
+    }
 
     private fun executeDatasourceRequest(
         id: ExecutionRequestId,
@@ -405,9 +410,7 @@ class ExecutionRequestService(
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
-    fun getExecutions(): List<ExecuteEvent> {
-        return eventService.getAllExecutions()
-    }
+    fun getExecutions(): List<ExecuteEvent> = eventService.getAllExecutions()
 
     private fun cleanUpProxies() {
         val now = utcTimeNow()
@@ -501,24 +504,22 @@ class ExecutionRequestService(
         executionRequest: ExecutionRequest,
         userId: String,
         startTime: LocalDateTime,
-    ): CompletableFuture<Void>? {
-        return CompletableFuture.runAsync {
-            PostgresProxy(
-                hostname,
-                port,
-                databaseName,
-                username,
-                password,
-                eventService,
-                executionRequest,
-                userId,
-            ).startServer(
-                mappedPort,
-                email,
-                tempPassword,
-                startTime,
-            )
-        }
+    ): CompletableFuture<Void>? = CompletableFuture.runAsync {
+        PostgresProxy(
+            hostname,
+            port,
+            databaseName,
+            username,
+            password,
+            eventService,
+            executionRequest,
+            userId,
+        ).startServer(
+            mappedPort,
+            email,
+            tempPassword,
+            startTime,
+        )
     }
 }
 

@@ -7,12 +7,8 @@ import io.kubernetes.client.openapi.models.V1Pod
 import org.springframework.stereotype.Service
 
 @Service
-class KubernetesService(
-    private val kubernetesApi: KubernetesApi,
-) {
+class KubernetesService(private val kubernetesApi: KubernetesApi) {
 
     @Policy(Permission.EXECUTION_REQUEST_EDIT, checkIsPresentOnly = true)
-    fun listPods(): List<V1Pod> {
-        return kubernetesApi.getActivePods()
-    }
+    fun listPods(): List<V1Pod> = kubernetesApi.getActivePods()
 }

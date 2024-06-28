@@ -47,24 +47,20 @@ class EventService(
     }
 
     @Policy(Permission.EXECUTION_REQUEST_GET)
-    fun getAllExecutions(): List<ExecuteEvent> {
-        return eventAdapter.getExecutions()
-    }
+    fun getAllExecutions(): List<ExecuteEvent> = eventAdapter.getExecutions()
 }
 
-fun ExecuteEvent.toPayload(): Payload {
-    return ExecutePayload(
-        query = query,
-        command = command,
-        containerName = containerName,
-        podName = podName,
-        namespace = namespace,
-        results = results.map {
-            when (it) {
-                is ErrorResultLog -> ErrorResultLogPayload(it.errorCode, it.message)
-                is UpdateResultLog -> UpdateResultLogPayload(it.rowsUpdated)
-                is QueryResultLog -> QueryResultLogPayload(it.columnCount, it.rowCount)
-            }
-        },
-    )
-}
+fun ExecuteEvent.toPayload(): Payload = ExecutePayload(
+    query = query,
+    command = command,
+    containerName = containerName,
+    podName = podName,
+    namespace = namespace,
+    results = results.map {
+        when (it) {
+            is ErrorResultLog -> ErrorResultLogPayload(it.errorCode, it.message)
+            is UpdateResultLog -> UpdateResultLogPayload(it.rowsUpdated)
+            is QueryResultLog -> QueryResultLogPayload(it.columnCount, it.rowCount)
+        }
+    },
+)

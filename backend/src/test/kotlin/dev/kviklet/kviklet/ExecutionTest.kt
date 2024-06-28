@@ -12,7 +12,9 @@ import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.RequestType
+import jakarta.servlet.http.Cookie
 import org.hamcrest.CoreMatchers.notNullValue
+import org.hamcrest.Matchers.hasSize
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -25,6 +27,7 @@ import org.springframework.jdbc.datasource.init.ScriptUtils
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -377,6 +380,85 @@ class ExecutionTest {
     }
 
     @Test
+    fun `Request is locked from further events after rejection`() {
+        val user = userHelper.createUser(permissions = listOf("*"))
+        val reviewer = userHelper.createUser(permissions = listOf("*"))
+        val executionRequest = executionRequestHelper.createExecutionRequest(getDb(), user)
+        val cookie = userHelper.login(mockMvc = mockMvc, email = reviewer.email, password = "123456")
+
+        rejectRequest(executionRequest.getId(), "This request is too sensitive.", cookie)
+            .andExpect(status().isOk)
+        verifyRequestStatus(executionRequest.getId(), "REJECTED", cookie)
+
+        performCommentAction(executionRequest.getId(), "This comment should not be added", cookie)
+            .andExpect(status().is4xxClientError)
+        approveRequest(executionRequest.getId(), "This should also not work.", cookie)
+            .andExpect(status().is4xxClientError)
+        executeRequest(executionRequest.getId(), cookie)
+            .andExpect(status().is4xxClientError)
+
+        // Verify that no new events were added after rejection
+        verifyRequestEvents(executionRequest.getId(), 1, cookie)
+        verifyLatestEvent(executionRequest.getId(), "REVIEW", "REJECT", cookie)
+    }
+
+    @Test
+    fun `request changes functionality`() {
+        val user = userHelper.createUser(permissions = listOf("*"))
+        val reviewer = userHelper.createUser(permissions = listOf("*"))
+        val executionRequest = executionRequestHelper.createExecutionRequest(getDb(), user)
+
+        val reviewerCookie = loginUser(reviewer.email)
+        val userCookie = loginUser(user.email)
+
+        // Request changes
+        requestChanges(
+            executionRequest.getId(),
+            "Please modify the query to include additional conditions.",
+            reviewerCookie,
+        )
+            .andExpect(status().isOk)
+
+        // Verify the request status
+        verifyRequestStatus(executionRequest.getId(), "CHANGE_REQUESTED", reviewerCookie)
+        verifyRequestEvents(executionRequest.getId(), 1, reviewerCookie)
+        verifyLatestEvent(executionRequest.getId(), "REVIEW", "REQUEST_CHANGE", reviewerCookie)
+
+        // Simulate user updating the request
+        val updatedStatement = "SELECT * FROM users WHERE active = true;"
+        updateExecutionRequest(executionRequest.getId(), updatedStatement, userCookie)
+            .andExpect(status().isOk)
+
+        // Verify the updated request
+        verifyRequestStatus(executionRequest.getId(), "CHANGE_REQUESTED", reviewerCookie)
+        verifyRequestEvents(executionRequest.getId(), 2, reviewerCookie)
+        verifyLatestEvent(executionRequest.getId(), "EDIT", null, reviewerCookie)
+
+        // Approve the updated request
+        approveRequest(executionRequest.getId(), "Changes look good. Approved.", reviewerCookie)
+            .andExpect(status().isOk)
+
+        // Final verification
+        verifyRequestStatus(executionRequest.getId(), "APPROVED", reviewerCookie)
+        verifyRequestEvents(executionRequest.getId(), 3, reviewerCookie)
+        verifyLatestEvent(executionRequest.getId(), "REVIEW", "APPROVE", reviewerCookie)
+    }
+
+    @Test
+    fun `verify user cant request changes on own request`() {
+        val user = userHelper.createUser(permissions = listOf("*"))
+        val executionRequest = executionRequestHelper.createExecutionRequest(getDb(), user)
+        val cookie = loginUser(user.email)
+
+        requestChanges(
+            executionRequest.getId(),
+            "Please modify the query to include additional conditions.",
+            cookie,
+        )
+            .andExpect(status().is4xxClientError)
+    }
+
+    @Test
     fun `execute simple query`() {
         val user = userHelper.createUser(permissions = listOf("*"))
         val approver = userHelper.createUser(permissions = listOf("*"))
@@ -707,4 +789,94 @@ class ExecutionTest {
             ),
         ).andExpect(status().isOk).andReturn()
     }
+
+    private fun requestChanges(executionRequestId: String, comment: String, cookie: Cookie) =
+        performReviewAction(executionRequestId, "REQUEST_CHANGE", comment, cookie)
+
+    private fun approveRequest(executionRequestId: String, comment: String, cookie: Cookie) =
+        performReviewAction(executionRequestId, "APPROVE", comment, cookie)
+
+    private fun rejectRequest(executionRequestId: String, comment: String, cookie: Cookie) =
+        performReviewAction(executionRequestId, "REJECT", comment, cookie)
+
+    private fun performReviewAction(executionRequestId: String, action: String, comment: String, cookie: Cookie) =
+        mockMvc.perform(
+            post("/execution-requests/$executionRequestId/reviews")
+                .cookie(cookie)
+                .content(
+                    """
+                {
+                    "comment": "$comment",
+                    "action": "$action"
+                }
+                    """.trimIndent(),
+                )
+                .contentType("application/json"),
+        )
+
+    private fun executeRequest(executionRequestId: String, cookie: Cookie) = mockMvc.perform(
+        post("/execution-requests/$executionRequestId/execute")
+            .cookie(cookie)
+            .contentType("application/json"),
+    )
+
+    private fun performCommentAction(executionRequestId: String, comment: String, cookie: Cookie) = mockMvc.perform(
+        post("/execution-requests/$executionRequestId/comments")
+            .cookie(cookie)
+            .content(
+                """
+                {
+                    "comment": "$comment"
+                }
+                """.trimIndent(),
+            )
+            .contentType("application/json"),
+    )
+
+    private fun updateExecutionRequest(executionRequestId: String, updatedStatement: String, cookie: Cookie) =
+        mockMvc.perform(
+            patch("/execution-requests/$executionRequestId")
+                .cookie(cookie)
+                .content(
+                    """
+                {
+                    "statement": "$updatedStatement"
+                }
+                    """.trimIndent(),
+                )
+                .contentType("application/json"),
+        )
+
+    private fun verifyRequestStatus(executionRequestId: String, expectedStatus: String, cookie: Cookie) =
+        mockMvc.perform(
+            get("/execution-requests/$executionRequestId")
+                .cookie(cookie),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.reviewStatus").value(expectedStatus))
+
+    private fun verifyRequestEvents(executionRequestId: String, expectedEventCount: Int, cookie: Cookie) =
+        mockMvc.perform(
+            get("/execution-requests/$executionRequestId")
+                .cookie(cookie),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.events", hasSize<Collection<*>>(expectedEventCount)))
+
+    private fun verifyLatestEvent(
+        executionRequestId: String,
+        expectedType: String,
+        expectedAction: String?,
+        cookie: Cookie,
+    ) {
+        val response = mockMvc.perform(
+            get("/execution-requests/$executionRequestId")
+                .cookie(cookie),
+        ).andExpect(status().isOk)
+        response.andExpect(jsonPath("$.events[-1].type").value(expectedType))
+        if (expectedAction != null) {
+            response.andExpect(jsonPath("$.events[-1].action").value(expectedAction))
+        }
+    }
+
+    private fun loginUser(email: String, password: String = "123456"): Cookie =
+        userHelper.login(mockMvc = mockMvc, email = email, password = password)
 }

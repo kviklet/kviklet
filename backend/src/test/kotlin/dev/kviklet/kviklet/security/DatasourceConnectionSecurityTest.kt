@@ -215,9 +215,7 @@ class DatasourceConnectionSecurityTest(
         )
     }
 
-    final inline fun <reified T> MvcResult.parse(): T {
-        return objectMapper.readValue(response.contentAsString, T::class.java)
-    }
+    final inline fun <reified T> MvcResult.parse(): T = objectMapper.readValue(response.contentAsString, T::class.java)
 
     final inline fun <reified T> MockHttpServletRequestBuilder.content(obj: T) =
         this.contentType(MediaType.APPLICATION_JSON)
@@ -227,6 +225,4 @@ class DatasourceConnectionSecurityTest(
 fun allow(action: String, resource: String) = Policy(generateRandomId(), action, PolicyEffect.ALLOW, resource)
 fun deny(action: String, resource: String) = Policy(generateRandomId(), action, PolicyEffect.DENY, resource)
 
-fun generateRandomId(): String {
-    return UUID.randomUUID().toString()
-}
+fun generateRandomId(): String = UUID.randomUUID().toString()

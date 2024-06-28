@@ -6,7 +6,7 @@ import { ApiResponse, fetchWithErrorHandling } from "./Errors";
 const ExecutionLogResponseSchema = z.object({
   requestId: z.string(),
   name: z.string(),
-  statement: z.string(), // Ensure the field names are in camelCase for JavaScript
+  statement: z.string(),
   connectionId: z.string(),
   executionTime: z.coerce.date(),
 });

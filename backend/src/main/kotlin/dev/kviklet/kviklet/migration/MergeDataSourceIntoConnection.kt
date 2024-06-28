@@ -39,9 +39,7 @@ class MergeDataSourceIntoConnection : CustomTaskChange {
         this.resourceAccessor = resourceAccessor
     }
 
-    override fun getConfirmationMessage(): String {
-        return "Merged datasource into connection"
-    }
+    override fun getConfirmationMessage(): String = "Merged datasource into connection"
 
     override fun setUp() {
     }

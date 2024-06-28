@@ -79,15 +79,11 @@ class UserService(
 
     @Transactional(readOnly = true)
     @Policy(Permission.USER_GET)
-    fun getUsers(): List<User> {
-        return userAdapter.listUsers()
-    }
+    fun getUsers(): List<User> = userAdapter.listUsers()
 
     @Transactional(readOnly = true)
     @Policy(Permission.USER_GET)
-    fun getUser(id: UserId): User {
-        return userAdapter.findById(id.toString())
-    }
+    fun getUser(id: UserId): User = userAdapter.findById(id.toString())
 
     @Transactional
     @Policy(Permission.USER_CREATE)

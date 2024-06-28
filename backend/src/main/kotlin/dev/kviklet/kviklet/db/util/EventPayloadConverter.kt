@@ -14,9 +14,7 @@ abstract class PayloadConverter<T> : AttributeConverter<T, String> {
     @Autowired
     lateinit var objectMapper: ObjectMapper
 
-    override fun convertToDatabaseColumn(payload: T): String {
-        return objectMapper.writeValueAsString(payload)
-    }
+    override fun convertToDatabaseColumn(payload: T): String = objectMapper.writeValueAsString(payload)
 
     override fun convertToEntityAttribute(payloadJson: String): T {
         val unquoteJson = if (payloadJson.startsWith("\"")) {

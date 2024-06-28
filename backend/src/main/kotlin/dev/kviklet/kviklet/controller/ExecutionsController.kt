@@ -16,9 +16,7 @@ data class ExecutionLogResponse(
     val executionTime: LocalDateTime,
 )
 
-data class ExecutionsResponse(
-    val executions: List<ExecutionLogResponse>,
-)
+data class ExecutionsResponse(val executions: List<ExecutionLogResponse>)
 
 @RestController()
 @Validated
@@ -27,9 +25,7 @@ data class ExecutionsResponse(
     name = "Executions",
     description = "List all exections that have been run",
 )
-class ExecutionsController(
-    private val executionRequestService: ExecutionRequestService,
-) {
+class ExecutionsController(private val executionRequestService: ExecutionRequestService) {
     @GetMapping("/")
     fun getExecutions(): ExecutionsResponse {
         val executions = executionRequestService.getExecutions()
@@ -39,7 +35,7 @@ class ExecutionsController(
                     requestId = it.request.getId(),
                     name = it.author.fullName ?: "",
                     Statement = it.query ?: it.command ?: "",
-                    connectionId = it.request.request.connection.getId(),
+                    connectionId = it.request.connection.getId(),
                     executionTime = it.createdAt,
                 )
             },
