@@ -80,7 +80,7 @@ class SecurityConfig(
     @Bean
     fun ldapAuthenticationProvider(): LdapAuthenticationProvider {
         val userSearch = FilterBasedLdapUserSearch(
-            "ou=people",
+            "ou=${ldapProperties.userOu}",
             "(${ldapProperties.uniqueIdentifierAttribute}={0})",
             contextSource,
         )

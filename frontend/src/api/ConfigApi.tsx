@@ -4,6 +4,7 @@ import { ApiResponse, fetchWithErrorHandling } from "./Errors";
 
 const ConfigResponseSchema = z.object({
   oauthProvider: z.string().nullable().optional(),
+  ldapEnabled: z.boolean(),
   teamsUrl: z.string().nullable().optional(),
   slackUrl: z.string().nullable().optional(),
 });

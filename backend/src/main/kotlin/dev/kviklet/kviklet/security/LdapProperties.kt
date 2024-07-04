@@ -9,6 +9,7 @@ import org.springframework.ldap.core.support.LdapContextSource
 @ConfigurationProperties(prefix = "ldap")
 @Configuration
 class LdapProperties {
+    var userOu: String = "people"
     var uniqueIdentifierAttribute: String = "uid"
     var emailAttribute: String = "mail"
     var fullNameAttribute: String = "cn"
