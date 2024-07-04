@@ -81,7 +81,7 @@ class SecurityConfig(
     fun ldapAuthenticationProvider(): LdapAuthenticationProvider {
         val userSearch = FilterBasedLdapUserSearch(
             "ou=people",
-            "(uid={0})",
+            "(${ldapProperties.uniqueIdentifierAttribute}={0})",
             contextSource,
         )
 
@@ -95,7 +95,7 @@ class SecurityConfig(
                     ctx: DirContextOperations,
                     username: String,
                     authorities: MutableCollection<out GrantedAuthority>,
-                ): UserDetails = userDetailsService.loadUserByUsername(username)
+                ): UserDetails = userDetailsService.loadUserByLdapIdentifier(username)
 
                 override fun mapUserToContext(user: UserDetails, ctx: DirContextAdapter) {
                     // This method is typically used when writing back to LDAP.

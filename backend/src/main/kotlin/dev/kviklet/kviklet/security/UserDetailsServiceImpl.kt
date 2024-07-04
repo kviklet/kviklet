@@ -23,15 +23,29 @@ class UserDetailsServiceImpl(
 ) : UserDetailsService {
 
     override fun loadUserByUsername(username: String): UserDetails {
-        val user = if (ldapProperties.enabled && isLdapAuthentication()) {
-            loadLdapUser(username)
-        } else {
-            loadDatabaseUser(username)
-        }
+        val user = loadDatabaseUser(username)
 
         val authorities = user.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
 
-        return UserDetailsWithId(user.getId()!!, user.email, user.password, authorities)
+        return UserDetailsWithId(
+            user.getId()!!,
+            user.email,
+            user.password ?: "a random password since spring somehow requires one",
+            authorities,
+        )
+    }
+
+    fun loadUserByLdapIdentifier(ldapIdentifier: String): UserDetails {
+        val user = loadLdapUser(ldapIdentifier)
+
+        val authorities = user.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
+
+        return UserDetailsWithId(
+            user.getId()!!,
+            user.email,
+            user.password ?: "a random password since spring somehow requires one",
+            authorities,
+        )
     }
 
     private fun loadDatabaseUser(email: String): dev.kviklet.kviklet.db.User = userAdapter.findByEmail(email)

@@ -12,7 +12,6 @@ class LdapProperties {
     var uniqueIdentifierAttribute: String = "uid"
     var emailAttribute: String = "mail"
     var fullNameAttribute: String = "cn"
-    var userDnPattern: String = "uid={0},ou=people"
     var base: String = "dc=kviklet,dc=dev"
     var url: String = "ldap://localhost:389"
     var enabled: Boolean = false

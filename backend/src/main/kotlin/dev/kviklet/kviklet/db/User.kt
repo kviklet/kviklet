@@ -146,6 +146,7 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
 
     fun createUser(user: User): User {
         val userEntity = UserEntity(
+            ldapIdentifier = user.ldapIdentifier,
             fullName = user.fullName,
             password = user.password,
             subject = user.subject,
