@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 018-add-ldap-identifier-column
+      author: Jascha
+      changes:
+        - addColumn:
+            tableName: user
+            columns:
+              - column:
+                  name: ldap_identifier
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: true
+                    unique: true

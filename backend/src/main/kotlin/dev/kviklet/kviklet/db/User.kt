@@ -40,6 +40,9 @@ class UserEntity(
     var subject: String? = null,
 
     @Column(unique = true)
+    var ldapIdentifier: String? = null,
+
+    @Column(unique = true)
     var email: String = "",
 
     @ManyToMany(cascade = [CascadeType.PERSIST], fetch = FetchType.LAZY)
@@ -55,6 +58,7 @@ class UserEntity(
         fullName = fullName,
         password = password,
         subject = subject,
+        ldapIdentifier = ldapIdentifier,
         email = email,
         roles = roles.map { it.toDto() }.toMutableSet(),
     )
@@ -74,6 +78,7 @@ data class User(
     val fullName: String? = null,
     val password: String? = null,
     val subject: String? = null,
+    val ldapIdentifier: String? = null,
     val email: String = "",
     val roles: Set<Role> = HashSet(),
 ) : SecuredDomainObject {
@@ -110,12 +115,19 @@ data class User(
 interface UserRepository : JpaRepository<UserEntity, String> {
     fun findByEmail(email: String): UserEntity?
     fun findBySubject(subject: String): UserEntity?
+
+    fun findByLdapIdentifier(ldapIdentifier: String): UserEntity?
 }
 
 @Service
 class UserAdapter(private val userRepository: UserRepository, private val roleRepository: RoleRepository) {
     fun findByEmail(email: String): User? {
         val userEntity = userRepository.findByEmail(email) ?: return null
+        return userEntity.toDto()
+    }
+
+    fun findByLdapIdentifier(ldapIdentifier: String): User? {
+        val userEntity = userRepository.findByLdapIdentifier(ldapIdentifier) ?: return null
         return userEntity.toDto()
     }
 
@@ -152,6 +164,7 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
         if (userEntity == null) {
             return createUser(user)
         } else {
+            userEntity.ldapIdentifier = user.ldapIdentifier
             userEntity.fullName = user.fullName
             userEntity.password = user.password
             userEntity.subject = user.subject
