@@ -47,6 +47,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
     implementation("org.springframework.session:spring-session-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-websocket")
+    implementation("org.springframework.security:spring-security-ldap")
+    implementation("org.springframework.ldap:spring-ldap-core")
 
     implementation("org.springframework.security:spring-security-acl")
     implementation("org.springframework.security:spring-security-config")

@@ -172,6 +172,7 @@ class UserFactory : Factory() {
         fullName: String? = "Test User " + nextId(),
         password: String? = "password",
         subject: String? = null,
+        ldapIdentifier: String? = null,
         email: String = "test" + nextId() + "@user.com",
         roles: Set<Role>? = null,
     ): User = User(
@@ -179,6 +180,7 @@ class UserFactory : Factory() {
         fullName,
         password,
         subject,
+        ldapIdentifier,
         email,
         roles ?: setOf(roleFactory.createRole()),
     )

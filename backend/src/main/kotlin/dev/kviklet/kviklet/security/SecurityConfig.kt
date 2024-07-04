@@ -14,6 +14,9 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpStatus
+import org.springframework.ldap.core.DirContextAdapter
+import org.springframework.ldap.core.DirContextOperations
+import org.springframework.ldap.core.support.LdapContextSource
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.AuthenticationProvider
@@ -27,8 +30,13 @@ import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.AuthenticationException
 import org.springframework.security.core.GrantedAuthority
+import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.security.ldap.authentication.BindAuthenticator
+import org.springframework.security.ldap.authentication.LdapAuthenticationProvider
+import org.springframework.security.ldap.search.FilterBasedLdapUserSearch
+import org.springframework.security.ldap.userdetails.UserDetailsContextMapper
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService
 import org.springframework.security.oauth2.core.oidc.OidcIdToken
@@ -64,12 +72,45 @@ class SecurityConfig(
     private val customAuthenticationProvider: CustomAuthenticationProvider,
     private val customOidcUserService: CustomOidcUserService,
     private val idpProperties: IdentityProviderProperties,
+    private val ldapProperties: LdapProperties,
+    private val contextSource: LdapContextSource,
+    private val userDetailsService: UserDetailsServiceImpl,
 ) {
+
+    @Bean
+    fun ldapAuthenticationProvider(): LdapAuthenticationProvider {
+        val userSearch = FilterBasedLdapUserSearch(
+            "ou=${ldapProperties.userOu}",
+            "(${ldapProperties.uniqueIdentifierAttribute}={0})",
+            contextSource,
+        )
+
+        val authenticator = BindAuthenticator(contextSource).apply {
+            setUserSearch(userSearch)
+        }
+
+        return LdapAuthenticationProvider(authenticator).apply {
+            setUserDetailsContextMapper(object : UserDetailsContextMapper {
+                override fun mapUserFromContext(
+                    ctx: DirContextOperations,
+                    username: String,
+                    authorities: MutableCollection<out GrantedAuthority>,
+                ): UserDetails = userDetailsService.loadUserByLdapIdentifier(username)
+
+                override fun mapUserToContext(user: UserDetails, ctx: DirContextAdapter) {
+                    // This method is typically used when writing back to LDAP.
+                    // We don't need to implement it for our use case.
+                }
+            })
+        }
+    }
 
     @Bean
     fun authManager(http: HttpSecurity): AuthenticationManager {
         val authenticationManagerBuilder = http.getSharedObject(AuthenticationManagerBuilder::class.java)
-        authenticationManagerBuilder.authenticationProvider(customAuthenticationProvider)
+        val builder = authenticationManagerBuilder
+            .authenticationProvider(customAuthenticationProvider)
+        if (ldapProperties.enabled) builder.authenticationProvider(ldapAuthenticationProvider())
         return authenticationManagerBuilder.build()
     }
 

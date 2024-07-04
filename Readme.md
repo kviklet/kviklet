@@ -20,6 +20,7 @@ We currently support **Postgres**, **MySQL** and **MS SQL Server**.
 Kviklet ships with a variety of features that an engineering team needs to manage their production database access in a **simple but secure** manner:
 
 - **SSO (Google)**: Log into Kviklet without the need for a username or password. No more shared credentials for DB access.
+- **Or LDAP Support**: Log into Kviklet with your LDAP credentials.
 - **Review/Approval Flow**: Leave Comments and Suggestions on other developers data requests.
 - **Temporary Access (1h)**: Execute any statement on a db for 1h after having been approved
 - **Single Query**: Execute a singular statement. Allows the reviewer to review your query before execution.
@@ -124,6 +125,37 @@ After setting those environment variables the login page should show a Login wit
 
 Other OIDC providers should work similarly to Keycloak, note that the `redirect URI` will change depending on they type you choose, so if you choose `gitlab` it will be `https://[kviklet_host]/api/login/oauth2/code/gitlab`.
 If you run into issues feel free to create an issue, we have not tried every single OIDC provider out there (yet) and there might be slight differences in the implementation that might require updates on Kviklets side.
+
+### LDAP
+
+Kviklet supports LDAP authentication. To enable and configure LDAP, you need to set the following environment variables:
+
+```
+LDAP_ENABLED=true
+LDAP_URL=ldap://your-ldap-server:389
+LDAP_BASE=dc=your,dc=domain,dc=com
+LDAP_PRINCIPAL=cn=admin,dc=your,dc=domain,dc=com
+LDAP_PASSWORD=your-admin-password
+LDAP_UNIQUE_IDENTIFIER_ATTRIBUTE=uid
+LDAP_EMAIL_ATTRIBUTE=mail
+LDAP_FULL_NAME_ATTRIBUTE=cn
+LDAP_USER_OU=people
+```
+
+Here's what each setting means:
+
+- `LDAP_ENABLED`: Set to `true` to enable LDAP authentication.
+- `LDAP_URL`: The URL of your LDAP server.
+- `LDAP_BASE`: The base DN for LDAP searches.
+- `LDAP_PRINCIPAL`: The DN of the admin user for binding to the LDAP server.
+- `LDAP_PASSWORD`: The password for the admin user.
+- `LDAP_UNIQUE_IDENTIFIER_ATTRIBUTE`: The LDAP attribute used as the unique identifier for users (default: "uid").
+- `LDAP_EMAIL_ATTRIBUTE`: The LDAP attribute that contains the user's email address (default: "mail").
+- `LDAP_FULL_NAME_ATTRIBUTE`: The LDAP attribute that contains the user's full name (default: "cn").
+- `LDAP_USER_OU`: The Organizational Unit (OU) where user accounts are stored (default: "people").
+
+You can customize these attributes to match your LDAP schema. After configuring LDAP, users will be able to log in using their LDAP credentials. The first time an LDAP user logs in, a corresponding user account will be created in Kviklet with default permissions. An admin will need to assign appropriate roles to these users after their first login.
+
 
 ## Configuration
 

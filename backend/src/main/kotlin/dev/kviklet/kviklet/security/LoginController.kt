@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContext
 import org.springframework.security.core.context.SecurityContextHolder
@@ -20,7 +21,7 @@ import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 @RestController
-class LoginController(private val customAuthenticationProvider: CustomAuthenticationProvider) {
+class LoginController(private val authenticationManager: AuthenticationManager) {
 
     private val securityContextHolderStrategy = SecurityContextHolder
         .getContextHolderStrategy()
@@ -37,16 +38,18 @@ class LoginController(private val customAuthenticationProvider: CustomAuthentica
         // This handles username/password authentication. For Oauth see CustomOidcUserService
         try {
             val authenticationToken = UsernamePasswordAuthenticationToken(credentials.email, credentials.password)
-            val authentication = customAuthenticationProvider.authenticate(authenticationToken)
-
-            val session = request.getSession(true)
-            val sessionId = session?.id ?: throw IllegalStateException("Session was not created")
-            val context: SecurityContext = this.securityContextHolderStrategy.createEmptyContext()
-            context.authentication = authentication
-            this.securityContextHolderStrategy.context = context
-            this.securityContextRepository.saveContext(context, request, response)
-
-            return ResponseEntity.ok(LoginResponse(Base64.encode(sessionId.toByteArray())))
+            val authentication = authenticationManager.authenticate(authenticationToken)
+            if (authentication.isAuthenticated) {
+                val session = request.getSession(true)
+                val sessionId = session?.id ?: throw IllegalStateException("Session was not created")
+                val context: SecurityContext = this.securityContextHolderStrategy.createEmptyContext()
+                context.authentication = authentication
+                this.securityContextHolderStrategy.context = context
+                this.securityContextRepository.saveContext(context, request, response)
+                return ResponseEntity.ok(LoginResponse(Base64.encode(sessionId.toByteArray())))
+            } else {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+            }
         } catch (e: AuthenticationException) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
         }
