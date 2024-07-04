@@ -109,7 +109,7 @@ const Login = () => {
             <form onSubmit={(e) => void login(e)}>
               <div className="flex flex-col">
                 <label className="py-2 text-sm" htmlFor="email">
-                  {config?.ldapEnabled && "LDAP login" || "Email"}
+                  {(config?.ldapEnabled && "LDAP login") || "Email"}
                 </label>
                 <StyledInput
                   name="email"
