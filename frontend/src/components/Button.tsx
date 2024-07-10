@@ -27,8 +27,8 @@ function Button(props: {
   const submit = props.type == "submit" ? "submit" : undefined;
 
   const size = props.size == "sm" ? "px-2 py-1" : "px-4 py-2";
-
-  const textSize = (props.textSize || props.size) == "sm" ? "text-sm" : "text-base";
+  const textSize =
+    (props.textSize || props.size) == "sm" ? "text-sm" : "text-base";
 
   return (
     <button
