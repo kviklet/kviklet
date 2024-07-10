@@ -1,12 +1,28 @@
 import { z } from "zod";
-import { ConnectionPayload, DatabaseType } from "../../../api/DatasourceApi";
-import { useForm } from "react-hook-form";
+import {
+  ConnectionPayload,
+  DatabaseType,
+  TestConnectionResponse,
+  testConnection,
+} from "../../../api/DatasourceApi";
+import { UseFormHandleSubmit, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import InputField, { TextField } from "../../../components/InputField";
 import Button from "../../../components/Button";
-import { Disclosure } from "@headlessui/react";
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import {
+  Disclosure,
+  DisclosureButton,
+  DisclosurePanel,
+} from "@headlessui/react";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  QuestionMarkCircleIcon,
+} from "@heroicons/react/20/solid";
+import { isApiErrorResponse } from "../../../api/Errors";
+import useNotification from "../../../hooks/useNotification";
+import Spinner from "../../../components/Spinner";
 
 const connectionFormSchema = z
   .object({
@@ -42,8 +58,15 @@ const getJDBCOptionsPlaceholder = (type: DatabaseType) => {
   return "";
 };
 
+function convertToAlphanumericDash(input: string): string {
+  const lowercased = input.toLowerCase();
+  const converted = lowercased.replace(/[^a-zA-Z0-9-]+/g, "-");
+  return converted.replace(/^-+|-+$/g, "");
+}
+
 export default function DatabaseConnectionForm(props: {
-  handleCreateConnection: (connection: ConnectionPayload) => Promise<void>;
+  createConnection: (payload: ConnectionPayload) => Promise<void>;
+  closeModal: () => void;
 }) {
   const {
     register,
@@ -68,9 +91,9 @@ export default function DatabaseConnectionForm(props: {
   }, [watchId]);
 
   useEffect(() => {
-    const lowerCasedString = watchDisplayName?.toLowerCase() || "";
+    const converted = convertToAlphanumericDash(watchDisplayName || "");
     if (!touchedFields.id) {
-      setValue("id", lowerCasedString.replace(/\s+/g, "-"));
+      setValue("id", converted);
     }
   }, [watchDisplayName]);
 
@@ -96,11 +119,14 @@ export default function DatabaseConnectionForm(props: {
   }, [watchType]);
 
   const onSubmit = async (data: ConnectionForm) => {
-    await props.handleCreateConnection(data);
+    await props.createConnection(data);
+    props.closeModal();
   };
 
+  const handleSubmitCreate = handleSubmit(onSubmit);
+
   return (
-    <form onSubmit={(event) => void handleSubmit(onSubmit)(event)}>
+    <form>
       <div className="w-2xl flex flex-col rounded-lg border border-slate-300 bg-slate-50 p-5 shadow dark:border-none dark:bg-slate-950">
         <h1 className="text-lg font-semibold">Add a new connection</h1>
         <div className="flex-col space-y-2">
@@ -176,7 +202,7 @@ export default function DatabaseConnectionForm(props: {
             <Disclosure defaultOpen={false}>
               {({ open }) => (
                 <>
-                  <Disclosure.Button className="py-2">
+                  <DisclosureButton className="py-2">
                     <div className="flex flex-row justify-between">
                       <div className="flex flex-row">
                         <div>Advanced Options</div>
@@ -189,8 +215,8 @@ export default function DatabaseConnectionForm(props: {
                         )}
                       </div>
                     </div>
-                  </Disclosure.Button>
-                  <Disclosure.Panel unmount={false}>
+                  </DisclosureButton>
+                  <DisclosurePanel unmount={false}>
                     <div className="flex-col space-y-2">
                       <InputField
                         id="id"
@@ -230,17 +256,148 @@ export default function DatabaseConnectionForm(props: {
                         {...register("maxExecutions")}
                         error={errors.maxExecutions?.message}
                       />
+                      <TestingConnectionFragment
+                        handleSubmit={handleSubmit}
+                        type={watchType}
+                        createConnection={props.createConnection}
+                        closeModal={props.closeModal}
+                      />
                     </div>
-                  </Disclosure.Panel>
+                  </DisclosurePanel>
                 </>
               )}
             </Disclosure>
           </div>
-          <Button type="submit">Create Connection</Button>
+          <div className="flex">
+            <Button
+              type="submit"
+              className="ml-auto"
+              onClick={(event) => void handleSubmitCreate(event)}
+            >
+              Create Connection
+            </Button>
+          </div>
         </div>
       </div>
     </form>
   );
 }
+
+const TestingConnectionFragment = (props: {
+  handleSubmit: UseFormHandleSubmit<ConnectionForm>;
+  type: DatabaseType;
+  createConnection: (connection: ConnectionPayload) => Promise<void>;
+  closeModal: () => void;
+}) => {
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [testConnectionResponse, setTestConnectionResponse] =
+    useState<TestConnectionResponse | null>(null);
+
+  useEffect(() => {
+    console.log("resetting response");
+    setTestConnectionResponse(null);
+  }, [props.type]);
+
+  const { addNotification } = useNotification();
+
+  const handleSubmitTest = props.handleSubmit(async (data: ConnectionForm) => {
+    setIsTestingConnection(true);
+    const response = await testConnection(data);
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to test connection",
+        text: response.message,
+        type: "error",
+      });
+    } else {
+      setTestConnectionResponse(response);
+    }
+    setIsTestingConnection(false);
+  });
+
+  const handleSubmitCreateMultiple = props.handleSubmit(
+    async (data: ConnectionForm) => {
+      setIsTestingConnection(true);
+      if (testConnectionResponse?.accessibleDatabases) {
+        const baseDisplayName = data.displayName;
+        for (const db of testConnectionResponse.accessibleDatabases) {
+          data.displayName = `${baseDisplayName} - ${db}`;
+          data.id = convertToAlphanumericDash(`${data.id}-${db}`);
+          data.databaseName = db;
+          await props.createConnection({ ...data });
+        }
+      } else {
+        addNotification({
+          title: "Failed to create connections",
+          text: "No accessible databases found",
+          type: "error",
+        });
+      }
+      setIsTestingConnection(false);
+      props.closeModal();
+    },
+  );
+
+  return (
+    <div className="flex-col">
+      {isTestingConnection && <Spinner />}
+      {!isTestingConnection && testConnectionResponse && (
+        <div className="flex flex-col space-y-2">
+          <div>
+            <div className="text-sm font-semibold">Connection Status</div>
+            <div>
+              {testConnectionResponse.success ? (
+                <div className="flex justify-between">
+                  <span className="text-green-500">Success</span>
+                  {testConnectionResponse?.accessibleDatabases &&
+                    testConnectionResponse?.accessibleDatabases.length > 0 && (
+                      <span
+                        title={testConnectionResponse?.accessibleDatabases.join(
+                          ", ",
+                        )}
+                        className="flex items-center"
+                      >
+                        {testConnectionResponse?.accessibleDatabases.length}{" "}
+                        databases
+                        <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
+                      </span>
+                    )}
+                </div>
+              ) : (
+                <span className="text-red-500">Failed</span>
+              )}
+            </div>
+          </div>
+          {!testConnectionResponse.success && (
+            <div>
+              <div className="text-sm font-semibold">Error</div>
+              <div>{testConnectionResponse.details}</div>
+            </div>
+          )}
+        </div>
+      )}
+      <div className="flex justify-between">
+        <Button
+          size="md"
+          className="my-2"
+          onClick={(event) => void handleSubmitTest(event)}
+        >
+          Test Connection
+        </Button>
+        {testConnectionResponse?.accessibleDatabases &&
+          testConnectionResponse?.accessibleDatabases.length > 0 && (
+            <Button
+              size="md"
+              textSize="sm"
+              className="my-2"
+              onClick={(event) => void handleSubmitCreateMultiple(event)}
+            >
+              Create For Each DB
+            </Button>
+          )}
+      </div>
+    </div>
+  );
+};
 
 export { getJDBCOptionsPlaceholder };

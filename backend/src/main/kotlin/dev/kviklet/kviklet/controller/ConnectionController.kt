@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import dev.kviklet.kviklet.db.ConnectionType
 import dev.kviklet.kviklet.service.ConnectionService
+import dev.kviklet.kviklet.service.TestConnectionResult
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
@@ -205,6 +206,8 @@ data class KubernetesConnectionResponse(
     }
 }
 
+data class TestConnectionResponse(val success: Boolean, val details: String, val accessibleDatabases: List<String>)
+
 @RestController()
 @Validated
 @RequestMapping("/connections")
@@ -243,6 +246,22 @@ class ConnectionController(val connectionService: ConnectionService) {
             maxExecutions = request.maxExecutions,
         )
 
+    private fun testDatabaseConnection(request: CreateDatasourceConnectionRequest): TestConnectionResult =
+        connectionService.testDatabaseConnection(
+            connectionId = ConnectionId(request.id),
+            displayName = request.displayName,
+            databaseName = request.databaseName,
+            username = request.username,
+            password = request.password,
+            description = request.description,
+            reviewsRequired = request.reviewConfig.numTotalRequired,
+            port = request.port,
+            hostname = request.hostname,
+            type = request.type,
+            additionalJDBCOptions = request.additionalJDBCOptions,
+            maxExecutions = request.maxExecutions,
+        )
+
     private fun createKubernetesConnection(request: CreateKubernetesConnectionRequest): Connection =
         connectionService.createKubernetesConnection(
             connectionId = ConnectionId(request.id),
@@ -263,6 +282,19 @@ class ConnectionController(val connectionService: ConnectionService) {
         }
 
         return ConnectionResponse.fromDto(connection)
+    }
+
+    @PostMapping("/test")
+    fun testConnection(
+        @Valid @RequestBody
+        datasourceConnection: CreateDatasourceConnectionRequest,
+    ): TestConnectionResponse {
+        val result = testDatabaseConnection(datasourceConnection)
+        return TestConnectionResponse(
+            success = result.success,
+            details = result.message,
+            accessibleDatabases = result.accessibleDatabases,
+        )
     }
 
     @DeleteMapping("/{connectionId}")

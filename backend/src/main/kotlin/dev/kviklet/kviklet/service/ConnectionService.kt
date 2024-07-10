@@ -18,8 +18,14 @@ import org.springframework.stereotype.Service
 
 class EntityNotFound(override val message: String, val detail: String) : Exception(message)
 
+data class TestConnectionResult(
+    val success: Boolean,
+    val message: String,
+    val accessibleDatabases: List<String> = emptyList(),
+)
+
 @Service
-class ConnectionService(private val connectionAdapter: ConnectionAdapter) {
+class ConnectionService(private val connectionAdapter: ConnectionAdapter, private val executor: Executor) {
 
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_GET)
@@ -122,6 +128,45 @@ class ConnectionService(private val connectionAdapter: ConnectionAdapter) {
         type,
         additionalJDBCOptions,
     )
+
+    @Policy(Permission.DATASOURCE_CONNECTION_CREATE, checkIsPresentOnly = true)
+    fun testDatabaseConnection(
+        connectionId: ConnectionId,
+        displayName: String,
+        databaseName: String?,
+        maxExecutions: Int?,
+        username: String,
+        password: String,
+        description: String,
+        reviewsRequired: Int,
+        port: Int,
+        hostname: String,
+        type: DatasourceType,
+        additionalJDBCOptions: String,
+    ): TestConnectionResult {
+        val accessibleDatabases = mutableListOf<String>()
+        if (!databaseName.isNullOrBlank()) {
+            accessibleDatabases.add(databaseName)
+        }
+        val credentialsResult = executor.testCredentials(
+            connectionString = "jdbc:${type.schema}://$hostname:$port/$databaseName",
+            username = username,
+            password = password,
+        )
+        if (type == DatasourceType.POSTGRESQL && credentialsResult.success) {
+            val databases = executor.getAccessibleDatabasesPostgres(
+                connectionString = "jdbc:${type.schema}://$hostname:$port/$databaseName",
+                username = username,
+                password = password,
+            )
+            accessibleDatabases.addAll(databases)
+        }
+        return TestConnectionResult(
+            success = credentialsResult.success,
+            message = credentialsResult.message,
+            accessibleDatabases = accessibleDatabases,
+        )
+    }
 
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_CREATE)
