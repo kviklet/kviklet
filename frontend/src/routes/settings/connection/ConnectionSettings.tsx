@@ -115,7 +115,8 @@ const ConnectionSettings = () => {
           {showAddConnectionModal && (
             <Modal setVisible={setShowAddConnectionModal}>
               <DatabaseConnectionForm
-                handleCreateConnection={handleCreateConnection}
+                createConnection={createConnection}
+                closeModal={() => setShowAddConnectionModal(false)}
               />
             </Modal>
           )}

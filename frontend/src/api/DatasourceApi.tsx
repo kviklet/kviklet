@@ -50,6 +50,12 @@ const connectionResponseSchema = z.union([
   kubernetesConnectionResponseSchema,
 ]);
 
+const testConnectionResponseSchema = z.object({
+  success: z.boolean(),
+  details: z.string(),
+  accessibleDatabases: z.array(z.string()),
+});
+
 const databaseConnectionPayloadSchema = z
   .object({
     displayName: z.coerce.string(),
@@ -140,6 +146,8 @@ type KubernetesConnectionPayload = z.infer<
   typeof kubernetesConnectionPayloadSchema
 >;
 
+type TestConnectionResponse = z.infer<typeof testConnectionResponseSchema>;
+
 const addConnection = async (
   payload: ConnectionPayload,
 ): Promise<ApiResponse<ConnectionResponse>> => {
@@ -154,6 +162,23 @@ const addConnection = async (
       body: JSON.stringify(payload),
     },
     connectionResponseSchema,
+  );
+};
+
+const testConnection = async (
+  payload: ConnectionPayload,
+): Promise<ApiResponse<TestConnectionResponse>> => {
+  return fetchWithErrorHandling(
+    `${baseUrl}/connections/test`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(payload),
+    },
+    testConnectionResponseSchema,
   );
 };
 
@@ -207,6 +232,7 @@ const getConnection = async (
 
 export {
   addConnection,
+  testConnection,
   connectionResponseSchema,
   AuthenticationType,
   patchConnection,
@@ -217,6 +243,7 @@ export {
 };
 
 export type {
+  TestConnectionResponse,
   ConnectionResponse,
   ConnectionPayload,
   PatchConnectionPayload,

@@ -30,12 +30,14 @@ data class UpdateQueryResult(val rowsUpdated: Int) : QueryResult() {
     )
 }
 
-data class ErrorQueryResult(val errorCode: Int, val message: String?) : QueryResult() {
+data class ErrorQueryResult(val errorCode: Int, val message: String) : QueryResult() {
     override fun toResultLog(): ResultLog = ErrorResultLog(
         errorCode = errorCode,
-        message = message ?: "",
+        message = message,
     )
 }
+
+data class TestCredentialsResult(val success: Boolean, val message: String)
 
 data class ColumnInfo(
     val label: String,
@@ -47,6 +49,10 @@ data class ColumnInfo(
 
 @Service
 class Executor {
+
+    companion object {
+        val DEFAULT_POSTGRES_DATABASES = listOf("template0", "template1")
+    }
 
     fun execute(
         connectionString: String,
@@ -74,14 +80,59 @@ class Executor {
                     return queryResults
                 }
             } catch (e: SQLException) {
-                var message = e.message
-                // adding all the cause messages to the original message as well
-                var cause = e.cause
-                while (cause != null) {
-                    message += "--> ${cause.javaClass}: ${cause.message} "
-                    cause = cause.cause
+                return listOf(sqlExecptionToResult(e))
+            }
+        }
+    }
+
+    private fun sqlExecptionToResult(e: SQLException): ErrorQueryResult {
+        var message = e.message ?: ""
+        // adding all the cause messages to the original message as well
+        var cause = e.cause
+        while (cause != null) {
+            message += "--> ${cause.javaClass}: ${cause.message} "
+            cause = cause.cause
+        }
+        return ErrorQueryResult(e.errorCode, message)
+    }
+
+    fun testCredentials(connectionString: String, username: String, password: String): TestCredentialsResult {
+        try {
+            val datasource = createConnection(connectionString, username, password)
+            datasource.connection.use { connection ->
+                connection.isValid(5)
+            }
+            return TestCredentialsResult(success = true, message = "Connection successful")
+        } catch (e: SQLException) {
+            val result = sqlExecptionToResult(e)
+            return TestCredentialsResult(success = false, message = result.message)
+        }
+    }
+
+    fun getAccessibleDatabasesPostgres(connectionString: String, username: String, password: String): List<String> {
+        createConnection(connectionString, username, password).use { dataSource: HikariDataSource ->
+            try {
+                dataSource.connection.createStatement().use { statement ->
+                    val query = """
+                    SELECT d.datname 
+                    FROM pg_catalog.pg_database d
+                    WHERE pg_catalog.has_database_privilege(current_user, d.datname, 'CONNECT')
+                """
+
+                    val resultSet = statement.executeQuery(query)
+                    val accessibleDatabases = mutableListOf<String>()
+
+                    while (resultSet.next()) {
+                        val databaseName = resultSet.getString("datname")
+                        if (!DEFAULT_POSTGRES_DATABASES.contains(databaseName)) {
+                            accessibleDatabases.add(databaseName)
+                        }
+                    }
+
+                    return accessibleDatabases
                 }
-                return listOf(ErrorQueryResult(e.errorCode, message))
+            } catch (e: SQLException) {
+                return emptyList()
             }
         }
     }
