@@ -8,12 +8,11 @@ Secure access to production environments without impairing developer productivit
 <img src="https://github.com/kviklet/kviklet/raw/main/images/ExecutionRequest.png" width="700px">
 </p>
 
-
 Kviklet embraces the **Four-Eyes Principle** and a high level of configurability, to allow a **Pull Request-like Review and Approval** flow for individual SQL statements or Database sessions. This allows engineering teams to self regulate on who gets access to what data and when. This allow your organization to stay secure and compliant while still allowing for modern empowering true to DevOps workflows.
 
 Kviklet is a self hosted docker container, that provides you with a Single Page Web app that you can login to create your SQL requests or approve the ones of others.
 
-We currently support **Postgres**, **MySQL** and **MS SQL Server**. 
+We currently support **Postgres**, **MySQL** and **MS SQL Server**.
 
 ## Features
 
@@ -39,17 +38,17 @@ The latest one currently is `ghcr.io/kviklet/kviklet:0.4.2`, you can also use `:
 ### Quick Start
 
 If you just want to try out how it works:
-1. Clone the repository (or copy the `docker-compose.yml` and `sample_data.sql`)
-2. Run the `docker-compose.yml` via `docker-compose up -d`. Kviklet should spin up on port 80 so just got to `localhost` and play around. The admin login is admin@admin.com with admin as password.
-3. The docker-compose contains an extra postgres database for which you can setup a connection in Kviklet. This database contains a sample `Locations` table if you want to run a test query.
 
+1. Clone the repository (or copy the `docker-compose.yml` and `sample_data.sql`)
+2. Run the `docker-compose.yml` via `docker-compose up -d`. Kviklet should spin up on port 80 so just got to `localhost` and play around. The admin login is admin@admin.com with `admin` as password.
+3. The docker-compose contains an extra postgres database for which you can setup a connection in Kviklet. This database contains a sample `Locations` table if you want to run a test query.
 
 ### DB Setup
 
-Kviklet needs it's own database (or at least schema) to save metadata about queries, connections, approvals, etc.
-In theory you can setup a MySQL or Postgres DB for this purpose, we internally only use postgres though, so this is the recommended path.
+Kviklet needs it's own postgres database (or at least schema) to save metadata about queries, connections, approvals, etc.
+You can find their official image here: https://hub.docker.com/_/postgres, or use a cloud hosted version by your cloud provider of choice.
 
-When starting the container you then need to set these three environment variables:
+When starting the kviklet container you will then need to set these three environment variables accordingly:
 
 ```
 SPRING_DATASOURCE_PASSWORD = password
@@ -156,7 +155,6 @@ Here's what each setting means:
 
 You can customize these attributes to match your LDAP schema. After configuring LDAP, users will be able to log in using their LDAP credentials. The first time an LDAP user logs in, a corresponding user account will be created in Kviklet with default permissions. An admin will need to assign appropriate roles to these users after their first login.
 
-
 ## Configuration
 
 ### Connections
@@ -243,14 +241,11 @@ The user can then create a temp access request, and click "Start Proxy" once it'
 <img src="https://github.com/kviklet/kviklet/raw/main/images/Proxy.png" width="700px">
 </p>
 
-
 ## Questions? Contributions?
 
 If you have any questions, feel free to create a github issue I try to answer within a reasonable amount of time and am also happy to develop feature for your use case if it fits the general vision of the tool.
 Kviklet is currently fully open-source and although I dream of making it pay my bills eventually there is currently no concrete plans on how to approach this.
 
-
 If you want to contribute, feel free to fork and create PRs for small things. If you plan bigger features, I'd appreciate some discussion upfront in a github issue or similar.
-
 
 You can also contact me at jascha@kviklet.dev.
