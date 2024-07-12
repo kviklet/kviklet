@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - changeSet:
+      id: 019-split-edit-into-edit-and-review
+      author: jascha
+      changes:
+        - customChange:
+            class: dev.kviklet.kviklet.migration.SplitEditIntoEditAndReview

@@ -168,7 +168,7 @@ class ExecutionRequestService(
     fun get(id: ExecutionRequestId): ExecutionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
 
     @Transactional
-    @Policy(Permission.EXECUTION_REQUEST_EDIT)
+    @Policy(Permission.EXECUTION_REQUEST_REVIEW)
     fun createReview(id: ExecutionRequestId, request: CreateReviewRequest, authorId: String): Event {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
         if (executionRequest.request.author.getId() == authorId) {

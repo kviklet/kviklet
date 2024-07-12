@@ -23,6 +23,7 @@ const ConnectionPolicy = z.object({
   selector: z.string(),
   execution_request_read: z.boolean(),
   execution_request_write: z.boolean(),
+  execution_request_review: z.boolean(),
 });
 
 const RoleSchema = z.object({
@@ -115,6 +116,7 @@ const transformRole = (role: RoleResponse): Role => {
             selector: policy.resource,
             execution_request_read: false,
             execution_request_write: false,
+            execution_request_review: false,
           };
         }
         break;
@@ -125,6 +127,7 @@ const transformRole = (role: RoleResponse): Role => {
             selector: policy.resource,
             execution_request_read: false,
             execution_request_write: false,
+            execution_request_review: false,
           };
         }
 
@@ -134,6 +137,8 @@ const transformRole = (role: RoleResponse): Role => {
           connectionPolicy.execution_request_read = true;
         if (resourceAction === "edit")
           connectionPolicy.execution_request_write = true;
+        if (resourceAction === "review")
+          connectionPolicy.execution_request_review = true;
         break;
       }
 
@@ -209,13 +214,26 @@ const transformToPayload = (
       effect: "ALLOW",
       resource: policy.selector,
     });
-    if (policy.execution_request_read || policy.execution_request_write) {
+    if (
+      policy.execution_request_read ||
+      policy.execution_request_write ||
+      policy.execution_request_review
+    ) {
       policies.push({
         action: "execution_request:get",
         effect: "ALLOW",
         resource: policy.selector,
       });
     }
+
+    if (policy.execution_request_review) {
+      policies.push({
+        action: "execution_request:review",
+        effect: "ALLOW",
+        resource: policy.selector,
+      });
+    }
+
     if (policy.execution_request_write) {
       policies.push({
         action: "execution_request:edit",
