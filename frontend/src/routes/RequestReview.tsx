@@ -176,22 +176,35 @@ const useRequest = (id: string) => {
     }
   };
 
-  const sendReview = async (comment: string, type: ReviewTypes) => {
+  const sendReview = async (
+    comment: string,
+    type: ReviewTypes,
+  ): Promise<boolean> => {
+    let response;
     switch (type) {
       case ReviewTypes.Approve:
-        await addReviewToRequest(id, comment, "APPROVE");
+        response = await addReviewToRequest(id, comment, "APPROVE");
         break;
       case ReviewTypes.Comment:
-        await addComment(comment);
+        response = await addComment(comment);
         break;
       case ReviewTypes.RequestChange:
-        await addReviewToRequest(id, comment, "REQUEST_CHANGE");
+        response = await addReviewToRequest(id, comment, "REQUEST_CHANGE");
         break;
       case ReviewTypes.Reject:
-        await addReviewToRequest(id, comment, "REJECT");
+        response = await addReviewToRequest(id, comment, "REJECT");
         break;
     }
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to add review",
+        text: response.message,
+        type: "error",
+      });
+      return false;
+    }
     await loadRequest();
+    return true;
   };
 
   const execute = async (explain: boolean) => {
@@ -1044,7 +1057,7 @@ function CommentBox({
   sendReview,
   userId,
 }: {
-  sendReview: (comment: string, type: ReviewTypes) => Promise<void>;
+  sendReview: (comment: string, type: ReviewTypes) => Promise<boolean>;
   userId?: string;
 }) {
   const [commentFormVisible, setCommentFormVisible] = useState<boolean>(true);
@@ -1057,8 +1070,10 @@ function CommentBox({
   const userContext = useContext(UserStatusContext);
 
   const handleReview = async () => {
-    await sendReview(comment, chosenReviewType);
-    setComment("");
+    const result = await sendReview(comment, chosenReviewType);
+    if (result) {
+      setComment("");
+    }
   };
 
   const isOwnRequest =

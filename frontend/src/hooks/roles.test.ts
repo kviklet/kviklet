@@ -36,6 +36,12 @@ const mockRoleResponse = {
       effect: "ALLOW",
       resource: "asdf",
     },
+    {
+      id: "mK57KDGh1azk4RNcAiQFMv",
+      action: "execution_request:review",
+      effect: "ALLOW",
+      resource: "asdf",
+    },
   ],
   isDefault: false,
 };
@@ -58,6 +64,7 @@ const expectedTransformedRole = {
       selector: "asdf",
       execution_request_read: true,
       execution_request_write: true,
+      execution_request_review: true,
     },
   ],
 };
@@ -80,6 +87,7 @@ const mockRole = {
       selector: "asdf",
       execution_request_read: true,
       execution_request_write: true,
+      execution_request_review: true,
     },
   ],
 };
@@ -101,6 +109,11 @@ const expectedPayload = {
     },
     {
       action: "execution_request:get",
+      effect: "ALLOW",
+      resource: "asdf",
+    },
+    {
+      action: "execution_request:review",
       effect: "ALLOW",
       resource: "asdf",
     },

@@ -445,6 +445,38 @@ class ExecutionTest {
     }
 
     @Test
+    fun `test review permissions`() {
+        val user = userHelper.createUser(permissions = listOf("*"))
+        val reviewerWithReviewPermissions = userHelper.createUser(
+            permissions = listOf("execution_request:get", "execution_request:review"),
+            resources = listOf("*", "*"),
+        )
+        val reviewerWithoutReviewPermissions = userHelper.createUser(
+            permissions = listOf("execution_request:get"),
+            resources = listOf("*"),
+        )
+        val executionRequest = executionRequestHelper.createExecutionRequest(getDb(), user)
+        val reviewerWithReviewPermissionsCookie = loginUser(reviewerWithReviewPermissions.email)
+        val reviewerWithoutReviewPermissionsCookie = loginUser(reviewerWithoutReviewPermissions.email)
+
+        // Request changes
+        requestChanges(
+            executionRequest.getId(),
+            "Please modify the query to include additional conditions.",
+            reviewerWithReviewPermissionsCookie,
+        )
+            .andExpect(status().isOk)
+
+        // Request changes
+        requestChanges(
+            executionRequest.getId(),
+            "Please modify the query to include additional conditions.",
+            reviewerWithoutReviewPermissionsCookie,
+        )
+            .andExpect(status().isForbidden)
+    }
+
+    @Test
     fun `verify user cant request changes on own request`() {
         val user = userHelper.createUser(permissions = listOf("*"))
         val executionRequest = executionRequestHelper.createExecutionRequest(getDb(), user)
