@@ -29,4 +29,11 @@ const attemptLogin = async (
   );
 };
 
-export { attemptLogin };
+const logout = async (): Promise<void> => {
+  await fetch(`${baseUrl}/logout`, {
+    method: "POST",
+    credentials: "include",
+  });
+};
+
+export { attemptLogin, logout };
