@@ -64,7 +64,7 @@ const expectedTransformedRole = {
       selector: "asdf",
       execution_request_read: true,
       execution_request_write: true,
-      execution_request_review: true
+      execution_request_review: true,
     },
   ],
 };
@@ -113,17 +113,17 @@ const expectedPayload = {
       resource: "asdf",
     },
     {
+      action: "execution_request:review",
+      effect: "ALLOW",
+      resource: "asdf",
+    },
+    {
       action: "execution_request:edit",
       effect: "ALLOW",
       resource: "asdf",
     },
     {
       action: "execution_request:execute",
-      effect: "ALLOW",
-      resource: "asdf",
-    },
-    {
-      action: "execution_request:review",
       effect: "ALLOW",
       resource: "asdf",
     },
