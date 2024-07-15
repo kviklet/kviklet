@@ -229,6 +229,10 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
     private fun isExecutable(): Boolean = resolveReviewStatus() == ReviewStatus.APPROVED
 
     fun csvDownloadAllowed(query: String? = null): Pair<Boolean, String> {
+        if (request.type === RequestType.GetSQLDump) {
+            return Pair(false, "CSV download is not available for GetSQLDump")
+        }
+
         if (request.connection !is DatasourceConnection || request !is DatasourceExecutionRequest) {
             return Pair(false, "Only Datasource Requests can be downloaded as CSV")
         }
