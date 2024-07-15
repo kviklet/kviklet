@@ -1,3 +1,5 @@
+    Not a valid Kotlin file (4:1 expecting a top level declaration)
+Now, trying to read the input as Kotlin Script.
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.springframework.boot.gradle.tasks.run.BootRun
 
@@ -50,6 +52,10 @@ dependencies {
     implementation("org.springframework.security:spring-security-ldap")
     implementation("org.springframework.ldap:spring-ldap-core")
     implementation("org.springframework.boot:spring-boot-devtools")
+    implementation("org.springframework.boot:spring-boot-starter-webflux")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
+    implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
 
     implementation("org.springframework.security:spring-security-acl")
     implementation("org.springframework.security:spring-security-config")
