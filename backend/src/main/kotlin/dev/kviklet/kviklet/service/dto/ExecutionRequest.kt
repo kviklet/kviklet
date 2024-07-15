@@ -11,6 +11,7 @@ import net.sf.jsqlparser.JSQLParserException
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import java.io.Serializable
 import java.time.LocalDateTime
+import org.springframework.core.io.InputStreamResource
 
 @JvmInline
 value class ExecutionRequestId(private val id: String) :
@@ -35,6 +36,7 @@ enum class ExecutionStatus {
 enum class RequestType {
     SingleExecution,
     TemporaryAccess,
+    GetSQLDump,
 }
 
 /**
@@ -179,7 +181,7 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
 
     fun resolveExecutionStatus(): ExecutionStatus {
         when (request.type) {
-            RequestType.SingleExecution -> {
+            RequestType.SingleExecution, RequestType.GetSQLDump -> {
                 val executions = events.filter { it.type == EventType.EXECUTE }
                 request.connection.maxExecutions?.let { maxExecutions ->
                     if (maxExecutions == 0) { // magic number for unlimited executions
@@ -244,7 +246,7 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         }
 
         val queryToExecute = when (request.type) {
-            RequestType.SingleExecution -> request.statement!!.trim().removeSuffix(";")
+            RequestType.SingleExecution, RequestType.GetSQLDump -> request.statement!!.trim().removeSuffix(";")
             RequestType.TemporaryAccess -> query?.trim()?.removeSuffix(
                 ";",
             ) ?: return Pair(false, "Query can't be empty")
@@ -277,6 +279,17 @@ data class ExecutionProxy(
     override fun getSecuredObjectId() = request.connection.id.toString()
 
     override fun getDomainObjectType() = Resource.EXECUTION_REQUEST
+
+    override fun getRelated(resource: Resource): SecuredDomainObject? = null
+}
+
+data class SQLDumpResponse(
+    val resource: InputStreamResource,
+    val fileName: String
+) : SecuredDomainObject {
+    override fun getSecuredObjectId(): String? { return fileName }
+
+    override fun getDomainObjectType(): Resource { return Resource.EXECUTION_REQUEST }
 
     override fun getRelated(resource: Resource): SecuredDomainObject? = null
 }
