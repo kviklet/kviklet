@@ -12,6 +12,8 @@ import {
   KubernetesExecutionRequestResponseWithComments,
   DatasourceExecutionRequestResponseWithComments,
   KubernetesExecuteResponse,
+  getSQLDumpRequest,
+  getSQLDumpStreamedRequest,
 } from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
 import { mapStatus, mapStatusToLabelColor, timeSince } from "./Requests";
@@ -40,6 +42,9 @@ import useRequest, {
   ReviewTypes,
   isRelationalDatabase,
 } from "../hooks/request";
+import Modal from "../components/Modal";
+import SQLDumpConfirm from "../components/SQLDumpConfirm";
+import { ConnectionResponse } from "../api/DatasourceApi";
 
 interface RequestReviewParams {
   requestId: string;
@@ -422,6 +427,10 @@ function DatasourceRequestBox({
   updateRequest: (request: { statement?: string }) => Promise<void>;
 }) {
   const [editMode, setEditMode] = useState(false);
+  const [showSQLDumpModal, setShowSQLDumpModal] = useState(false);
+  const [chosenConnection, setChosenConnection] = useState<
+    ConnectionResponse | undefined
+  >(undefined);
   const navigate = useNavigate();
   const [statement, setStatement] = useState(request?.statement || "");
   const changeStatement = async (
@@ -438,7 +447,9 @@ function DatasourceRequestBox({
   const questionText =
     request?.type == "SingleExecution"
       ? " wants to execute a statement on "
-      : " wants to have access to ";
+      : request?.type == "TemporaryAccess"
+      ? " wants to have access to "
+      : " wants to get a SQL dump from ";
 
   const navigateCopy = () => {
     navigate(`/new`, {
@@ -498,7 +509,117 @@ function DatasourceRequestBox({
           },
         ]
       : []),
+    ...(request?.type == "GetSQLDump"
+      ? [
+          {
+            onClick: () => {
+              setChosenConnection(request.connection);
+              setShowSQLDumpModal(true);
+            },
+            enabled: request?.reviewStatus === "APPROVED",
+            text: "Get SQL Dump",
+          },
+        ]
+      : []),
   ];
+
+  const getFileHandle = async (connectionId: string) => {
+    try {
+      // Use the Save File Picker to get a file handle
+      const fileHandle = await (window as any).showSaveFilePicker({
+        suggestedName: `${connectionId}.sql`,
+        types: [
+          {
+            description: "SQL Files",
+            accept: {
+              "text/sql": [".sql"],
+            },
+          },
+        ],
+      });
+      return fileHandle;
+    } catch (error) {
+      console.error("Error getting file handle:", error);
+      throw error;
+    }
+  };
+
+  const handleStreamSQLDump = async (connectionId: string) => {
+    try {
+      // Get file handle using the utility function
+      const fileHandle = await getFileHandle(connectionId);
+
+      // Fetch and handle SQL dump data
+      const combinedSQL = await getSQLDumpStreamedRequest(connectionId);
+
+      // Create a writable stream for the file
+      const writableStream = await fileHandle.createWritable();
+
+      // Write the combined SQL content to the file
+      await writableStream.write(
+        new Blob([combinedSQL], { type: "text/plain" }),
+      );
+
+      // Close the file and release the stream
+      await writableStream.close();
+
+      console.log("File saved successfully.");
+    } catch (error) {
+      console.error("Error:", error);
+    } finally {
+      setShowSQLDumpModal(false);
+    }
+  };
+
+  const handleSQLDump = async (connectionId: string) => {
+    try {
+      // Get file handle using the utility function
+      const fileHandle = await getFileHandle(connectionId);
+
+      // Get the writable stream to write the SQL dump
+      const writableStream = await fileHandle.createWritable();
+
+      // Fetch SQL dump data
+      const sqlBlob = await getSQLDumpRequest(connectionId);
+
+      // Convert Blob to ArrayBuffer
+      const arrayBuffer = await sqlBlob.arrayBuffer();
+
+      // Write ArrayBuffer to the writable stream
+      await writableStream.write(arrayBuffer);
+
+      // Close the writable stream
+      await writableStream.close();
+    } catch (error) {
+      console.error("Error fetching or saving SQL dump:", error);
+    } finally {
+      setShowSQLDumpModal(false);
+    }
+  };
+
+  const SQLDumpModal = () => {
+    if (!showSQLDumpModal || !chosenConnection) return null;
+    return (
+      <Modal setVisible={setShowSQLDumpModal}>
+        <SQLDumpConfirm
+          title="Get SQL Dump"
+          message={`Are you sure you want to get sql dump from database ${chosenConnection?.displayName}?`}
+          onConfirm={() => handleStreamSQLDump(chosenConnection.id)} //Export Databse Request Streamed
+          // onConfirm={() => handleSQLDump(chosenConnection.id)} //Export Databse Request At Once
+          onCancel={() => setShowSQLDumpModal(false)}
+        />
+      </Modal>
+    );
+  };
+
+  const handleButtonClick = () => {
+    if (request?.type === "GetSQLDump") {
+      setChosenConnection(request.connection);
+      setShowSQLDumpModal(true);
+    } else {
+      void runQuery();
+    }
+  };
 
   return (
     <div>
@@ -561,41 +682,26 @@ function DatasourceRequestBox({
       </div>
       <div className="relative mt-3 flex justify-end">
         <MenuDropDown items={menuDropDownItems}></MenuDropDown>
-        {isRelationalDatabase(request) ? (
-          <LoadingCancelButton
-            className=""
-            id="runQuery"
-            type="submit"
-            disabled={request?.reviewStatus !== "APPROVED"}
-            onClick={runQuery}
-            onCancel={() => void cancelQuery()}
-          >
-            <div
-              className={`play-triangle mr-2 inline-block h-3 w-2 ${
-                (request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
-                "bg-slate-500"
-              }`}
-            ></div>
-            {request?.type == "SingleExecution" ? "Run Query" : "Start Session"}
-          </LoadingCancelButton>
-        ) : (
-          <Button
-            className=""
-            id="runQuery"
-            type={
-              (request?.reviewStatus == "APPROVED" && "submit") || "disabled"
-            }
-            onClick={() => void runQuery()}
-          >
-            <div
-              className={`play-triangle mr-2 inline-block h-3 w-2 ${
-                (request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
-                "bg-slate-500"
-              }`}
-            ></div>
-            {request?.type == "SingleExecution" ? "Run Query" : "Start Session"}
-          </Button>
-        )}
+        <Button
+          className=""
+          id="runQuery"
+          type={request?.reviewStatus === "APPROVED" ? "submit" : "disabled"}
+          onClick={handleButtonClick}
+        >
+          <div
+            className={`play-triangle mr-2 inline-block h-3 w-2 ${
+              request?.reviewStatus === "APPROVED"
+                ? "bg-slate-50"
+                : "bg-slate-500"
+            }`}
+          ></div>
+          {request?.type === "SingleExecution"
+            ? "Run Query"
+            : request?.type === "TemporaryAccess"
+            ? "Start Session"
+            : "Get SQL Dump"}
+        </Button>
+        {SQLDumpModal()}
       </div>
     </div>
   );

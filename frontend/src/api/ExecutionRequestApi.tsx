@@ -94,7 +94,7 @@ const CSVDownloadSchema = z.object({
 
 const RawDatasourceRequestSchema = z.object({
   id: z.string(),
-  type: z.enum(["TemporaryAccess", "SingleExecution"]),
+  type: z.enum(["TemporaryAccess", "SingleExecution", "GetSQLDump"]),
   author: userResponseSchema,
   title: z.string().min(1),
   description: z.string(),
@@ -315,6 +315,49 @@ const addReviewToRequest = async (
   );
 };
 
+const getSQLDumpStreamedRequest = async (
+  connectionId: string,
+): Promise<string> => {
+  const response = await fetch(`${requestUrl}stream-sql-dump/${connectionId}`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch SQL dump: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  const encodedStrings: string[] = await response.json();
+  const sqlStrings: string[] = [];
+
+  encodedStrings.forEach((encodedString) => {
+    // Decode the base64 string
+    const decodedString = atob(encodedString);
+    // Push decoded SQL to array
+    sqlStrings.push(decodedString);
+  });
+
+  // Combine all SQL strings into one
+  return sqlStrings.join("");
+};
+
+const getSQLDumpRequest = async (connectionId: string): Promise<Blob> => {
+  const response = await fetch(`${requestUrl}sql-dump/${connectionId}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error("Network response was not ok");
+  }
+  return await response.blob();
+};
+
 function withType<T, U extends string>(schema: z.ZodSchema<T>, typeValue: U) {
   return schema.transform((data) => ({
     ...data,
@@ -459,6 +502,8 @@ export {
   patchRequest,
   postStartServer,
   executeCommand,
+  getSQLDumpStreamedRequest,
+  getSQLDumpRequest,
 };
 export type {
   DBExecuteResponseResult as ExecuteResponseResult,
