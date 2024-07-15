@@ -1,4 +1,4 @@
-backend/src/main/resources/application-local.properties
+backend/src/main/resources/application-local.yaml
 postgres-data
 kviklet-postgres-data*
 mysql-data
