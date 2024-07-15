@@ -32,6 +32,7 @@ import dev.kviklet.kviklet.service.dto.ExecutionStatus
 import dev.kviklet.kviklet.service.dto.KubernetesConnection
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
+import dev.kviklet.kviklet.service.dto.SQLDumpResponse
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.utcTimeNow
@@ -46,6 +47,18 @@ import org.springframework.stereotype.Service
 import java.security.SecureRandom
 import java.time.LocalDateTime
 import java.util.concurrent.CompletableFuture
+import org.springframework.core.io.InputStreamResource
+import java.io.File
+import java.io.FileInputStream
+import dev.kviklet.kviklet.service.ConnectionService
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.reactor.asFlux
+import reactor.core.publisher.Flux
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.BufferedInputStream
+import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 @Service
 class ExecutionRequestService(
@@ -55,6 +68,7 @@ class ExecutionRequestService(
     private val kubernetesApi: KubernetesApi,
     private val applicationEventPublisher: ApplicationEventPublisher,
     private val mongoDBExecutor: MongoDBExecutor,
+    private val connectionService: ConnectionService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val proxies = mutableListOf<ExecutionProxy>()
@@ -110,6 +124,156 @@ class ExecutionRequestService(
         containerName = request.containerName,
         command = request.command,
     )
+
+    /**
+    * Constructs a command list for dumping a SQL database based on the connection type.
+    *
+    * @param connection The DatasourceConnection object containing connection details.
+    * @param outputFile An optional file path where the SQL dump will be saved.
+    * @return A list of strings representing the command to execute.
+    * @throws IllegalArgumentException If the database type is unsupported.
+    */
+    private fun constructSQLDumpCommand(
+        connection: DatasourceConnection, 
+        outputFile: String? = null
+    ): List<String> {
+        return when (connection.type) {
+            DatasourceType.MYSQL -> {
+                val sqlDumpCommand = listOfNotNull(
+                    "mysqldump",
+                    "-u${connection.username}",
+                    "-p${connection.password}",
+                    "-h${connection.hostname}",
+                    "-P${connection.port}",
+                    "--databases",
+                    connection.databaseName,
+                    outputFile?.let { "--result-file=$it" }
+                )
+                sqlDumpCommand
+            }
+            DatasourceType.POSTGRESQL -> {
+                val sqlDumpCommand = listOfNotNull(
+                    "pg_dump",
+                    "-U${connection.username}",
+                    "-h${connection.hostname}",
+                    "-p${connection.port}",
+                    "-d", connection.databaseName,
+                    outputFile?.let { "--file=$it" }
+                )
+                sqlDumpCommand
+            }
+            else -> {
+                throw IllegalArgumentException("Unsupported database type: ${connection.type}")
+            }
+        }
+    }
+
+    /**
+    * Streams SQL dump data in real-time for a given datasource connection without having to save any temp files in memory.
+    *
+    * @param connectionId The ID of the datasource connection.
+    * @return A Flux emitting chunks of SQL dump data as byte arrays.
+    */
+    @Transactional
+    fun streamSQLDump(connectionId: String): Flux<ByteArray> {
+        return Flux.create { sink ->
+            var inputStream: BufferedInputStream? = null
+            var process: Process? = null
+            try {
+                val connection = connectionService.getDatasourceConnection(ConnectionId(connectionId))
+
+                if (connection is DatasourceConnection) {
+                    // Construct SQL dump command
+                    val command = constructSQLDumpCommand(connection)
+
+                    // Execute the SQL dump 
+                    process = Runtime.getRuntime().exec(command.toTypedArray())
+                    inputStream = BufferedInputStream(process.inputStream)
+
+                    // Buffer to read chunks of data from the process input stream
+                    val buffer = ByteArray(8192)
+                    var bytesRead: Int
+
+                    // Read from the input stream in chunks and send each chunk to the Flux sink
+                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                        sink.next(buffer.copyOf(bytesRead))
+                        logger.info("Read and sent ${bytesRead} bytes")
+                    }
+
+                    // Wait for the process to complete and check the exit code
+                    val exitCode = process.waitFor()
+                    if (exitCode != 0) {
+                        // If the process failed, send an error to the Flux sink
+                        val errorStream = process.errorStream.bufferedReader().use { it.readText() }
+                        sink.error(Exception("SQL dump command failed: $errorStream"))
+                    } else {
+                        sink.complete()
+                    }
+                } else {
+                    // If the connection type is invalid, send an error to the Flux sink
+                    sink.error(Exception("Invalid connection type for connectionId: $connectionId"))
+                }
+            } catch (e: Exception) {
+                sink.error(Exception("Unexpected error occurred: ${e.message}"))
+            } finally {
+                // Ensure the input stream is closed properly
+                try {
+                    inputStream?.close()
+                } catch (e: IOException) {
+                    throw Exception("Error closing inputStream: ${e.message}")
+                }
+                process?.destroy()
+            }
+        }.onBackpressureBuffer()
+    }
+
+    /**
+    * Generates an SQL dump file for a given datasource connection.
+    *
+    * @param connectionId The ID of the datasource connection.
+    * @return An SQLDumpResponse containing the SQL dump file.
+    */
+    @Transactional
+    @Policy(Permission.EXECUTION_REQUEST_GET)
+    fun generateSQLDump(connectionId: String): SQLDumpResponse {
+        try {
+            // Get the db connection information
+            val connection = connectionService.getDatasourceConnection(ConnectionId(connectionId))
+
+            if (connection is DatasourceConnection) {
+                // Create a temporary file for SQL dump output
+                val tempFile = File.createTempFile(connectionId, ".sql")
+
+                // Construct SQL dump command
+                val command = constructSQLDumpCommand(connection, tempFile.absolutePath)
+
+                // Execute SQL dump
+                val processBuilder = ProcessBuilder(command)
+                processBuilder.redirectErrorStream(true)
+                val process = processBuilder.start()
+
+                // Wait for the process to finish with a timeout of 60 seconds
+                val success = process.waitFor(60, TimeUnit.SECONDS)
+
+                // Check if the process completed successfully within the timeout
+                if (success && process.exitValue() == 0) {
+                    // If successful, prepare response entity with the SQL dump as input stream
+                    val resource = InputStreamResource(tempFile.inputStream())
+                    val fileName = "${connectionId}.sql"
+                    return SQLDumpResponse(resource, fileName)
+                } else {
+                    // If the process did not complete successfully, destroy the process
+                    process.destroy()
+                    val errorStream = process.inputStream.bufferedReader().use { it.readText() }
+                    throw Exception("SQL dump command failed or timed out: $errorStream")
+                }
+            } else {
+                throw Exception("Invalid connection type for connectionId: $connectionId")
+            }
+        } catch (e: Exception) {
+            throw Exception("Other unexpected error occurred: ${e.message}")
+        }
+    }
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_EDIT)
@@ -216,7 +380,7 @@ class ExecutionRequestService(
         }
 
         val queryToExecute = when (executionRequest.request.type) {
-            RequestType.SingleExecution -> executionRequest.request.statement!!
+            RequestType.SingleExecution, RequestType.GetSQLDump -> executionRequest.request.statement!!
             RequestType.TemporaryAccess -> query ?: throw MissingQueryException(
                 "For temporary access requests the query param is required",
             )
@@ -367,7 +531,7 @@ class ExecutionRequestService(
         }
         val downloadAllowedAndReason = executionRequest.csvDownloadAllowed(query)
         val queryToExecute = when (executionRequest.request.type) {
-            RequestType.SingleExecution -> executionRequest.request.statement!!.trim().removeSuffix(";")
+            RequestType.SingleExecution, RequestType.GetSQLDump -> executionRequest.request.statement!!.trim().removeSuffix(";")
             RequestType.TemporaryAccess -> query?.trim()?.removeSuffix(
                 ";",
             ) ?: throw MissingQueryException("For temporary access requests a query to execute is required")
@@ -556,7 +720,7 @@ class ExecutionRequestService(
 fun ExecutionRequestDetails.raiseIfAlreadyExecuted() {
     if (resolveExecutionStatus() == ExecutionStatus.EXECUTED) {
         when (request.type) {
-            RequestType.SingleExecution ->
+            RequestType.SingleExecution, RequestType.GetSQLDump ->
                 throw AlreadyExecutedException(
                     "This request has already been executed, can only execute a configured amount of times!",
                 )
