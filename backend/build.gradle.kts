@@ -95,6 +95,7 @@ dependencies {
     implementation("org.mariadb.jdbc:mariadb-java-client:3.1.4")
     implementation("com.mysql:mysql-connector-j:8.3.0")
     implementation("com.microsoft.sqlserver:mssql-jdbc:12.6.1.jre11")
+    implementation("org.mongodb:mongodb-driver-sync:5.1.2")
 }
 
 tasks.withType<KotlinCompile> {

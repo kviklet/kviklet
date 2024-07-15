@@ -82,7 +82,7 @@ class ConnectionEntity(
                 port = port!!,
                 hostname = hostname!!,
                 type = datasourceType!!,
-                additionalJDBCOptions = additionalJDBCOptions ?: "",
+                additionalOptions = additionalJDBCOptions ?: "",
             )
         ConnectionType.KUBERNETES ->
             KubernetesConnection(

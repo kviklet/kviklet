@@ -30,7 +30,7 @@ import org.springframework.test.web.servlet.MockMvc
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-class DatasourceConnectionTest(
+class ConnectionTest(
     @Autowired val mockMvc: MockMvc,
     @Autowired val connectionRepository: ConnectionRepository,
     @Autowired val executionRequestRepository: ExecutionRequestRepository,
@@ -73,6 +73,66 @@ class DatasourceConnectionTest(
                     numTotalRequired = 1,
                 ),
                 type = DatasourceType.MYSQL,
+                hostname = "localhost",
+                port = 3306,
+            ),
+        )
+
+        val request = executionRequestController.create(
+            CreateDatasourceExecutionRequestRequest(
+                connectionId = ConnectionId("db-conn"),
+                title = "My Request",
+                description = "Request description",
+                statement = "SELECT 1",
+                type = RequestType.SingleExecution,
+            ),
+            userDetails = testUserDetails,
+        )
+
+        executionRequestController.createComment(
+            request.id,
+            CreateCommentRequest(
+                comment = """Comment with a "quote"!""",
+            ),
+            userDetails = testUserDetails,
+        )
+
+        val requestDetails = executionRequestController.get(request.id)
+        val executionRequest = executionRequestService.get(request.id)
+
+        requestDetails.events[0].shouldBeEqualToIgnoringFields(
+            CommentEventResponse(
+                id = "id",
+                createdAt = utcTimeNow(),
+                comment = "Comment with a \"quote\"!",
+                author = UserResponse(testUser),
+            ),
+            false,
+            CommentEventResponse::createdAt,
+            CommentEventResponse::id,
+        )
+    }
+
+    fun `test create MongoDB Connection`()  {
+        val testUser = userHelper.createUser(listOf("*"))
+
+        val testUserDetails = UserDetailsWithId(
+            id = testUser.getId()!!,
+            email = testUser.email,
+            password = testUser.password,
+            authorities = emptyList(),
+        )
+
+        val connection = datasourceConnectionController.createConnection(
+            CreateDatasourceConnectionRequest(
+                id = "db-conn",
+                displayName = "My Connection",
+                username = "root",
+                password = "root",
+                reviewConfig = ReviewConfigRequest(
+                    numTotalRequired = 1,
+                ),
+                type = DatasourceType.MONGODB,
                 hostname = "localhost",
                 port = 3306,
             ),

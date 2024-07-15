@@ -181,7 +181,7 @@ data class DatasourceConnectionResponse(
             reviewConfig = ReviewConfigResponse(
                 datasourceConnection.reviewConfig.numTotalRequired,
             ),
-            additionalJDBCOptions = datasourceConnection.additionalJDBCOptions,
+            additionalJDBCOptions = datasourceConnection.additionalOptions,
         )
     }
 }

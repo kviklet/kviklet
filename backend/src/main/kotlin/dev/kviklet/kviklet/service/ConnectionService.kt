@@ -55,7 +55,7 @@ class ConnectionService(private val connectionAdapter: ConnectionAdapter, privat
                     it.numTotalRequired,
                 )
             } ?: connection.reviewConfig,
-            request.additionalJDBCOptions ?: connection.additionalJDBCOptions,
+            request.additionalJDBCOptions ?: connection.additionalOptions,
         )
     }
 

@@ -13,6 +13,14 @@ services:
       - ./postgres-data:/var/lib/postgresql/data
       - ./sample_data.sql:/docker-entrypoint-initdb.d/init.sql
 
+  mongodb:
+    image: mongo:jammy
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongodb-data:/data/db
+
   #mysql:
   #  image: mysql:8
   #  restart: always

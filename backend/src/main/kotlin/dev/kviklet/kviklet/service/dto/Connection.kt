@@ -12,6 +12,7 @@ enum class DatasourceType(val schema: String) {
     POSTGRESQL("postgresql"),
     MYSQL("mysql"),
     MSSQL("sqlserver"),
+    MONGODB("mongodb"),
 }
 
 enum class AuthenticationType {
@@ -59,21 +60,25 @@ data class DatasourceConnection(
     val port: Int,
     val hostname: String,
     val type: DatasourceType,
-    val additionalJDBCOptions: String,
+    val additionalOptions: String,
 ) : Connection(id, displayName, description, reviewConfig, maxExecutions) {
     fun getConnectionString(): String = when (type) {
         DatasourceType.POSTGRESQL ->
             "jdbc:postgresql://$hostname:$port/" +
                 databaseName +
-                additionalJDBCOptions
+                additionalOptions
         DatasourceType.MYSQL ->
             "jdbc:mysql://$hostname:$port/" +
                 databaseName +
-                additionalJDBCOptions
+                additionalOptions
         DatasourceType.MSSQL ->
             "jdbc:sqlserver://$hostname:$port" +
                 (databaseName?.takeIf { it.isNotBlank() }?.let { ";databaseName=$databaseName" } ?: "") +
-                additionalJDBCOptions
+                additionalOptions
+        DatasourceType.MONGODB ->
+            "mongodb://$hostname:$port/" +
+                databaseName +
+                additionalOptions
     }
 }
 
