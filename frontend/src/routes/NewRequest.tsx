@@ -657,12 +657,15 @@ const Card = (props: CardProps) => {
   return (
     <li className="col-span-1 flex flex-col justify-between divide-y divide-slate-200 rounded-lg border bg-white shadow dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-900">
       <div className="flex w-full items-center justify-between space-x-6 p-6">
-        <div className="flex-1">
-          <div className="flex items-center space-x-3">
-            <h3 className="truncate text-sm font-medium text-slate-900 dark:text-slate-50">
+        <div className="w-full flex-1">
+          <div className="flex w-full items-center justify-between space-x-2">
+            <span className="line-clamp-1 max-w-[50%] whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-50">
               {props.header}
-            </h3>
-            <span className="inline-flex flex-shrink-0 items-center rounded-full bg-green-50 px-1.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-400/10 dark:text-green-400">
+            </span>
+            <span
+              className=" line-clamp-1 max-w-[50%] whitespace-nowrap rounded-full bg-green-50 px-1.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-400/10 dark:text-green-400"
+              title={props.label}
+            >
               {props.label}
             </span>
           </div>
