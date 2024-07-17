@@ -2,10 +2,10 @@ import { z } from "zod";
 import {
   ConnectionPayload,
   DatabaseType,
-  TestConnectionResponse,
   testConnection,
+  TestConnectionResponse,
 } from "../../../api/DatasourceApi";
-import { UseFormHandleSubmit, useForm } from "react-hook-form";
+import { useForm, UseFormHandleSubmit } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import InputField, { TextField } from "../../../components/InputField";
@@ -139,7 +139,7 @@ export default function DatabaseConnectionForm(props: {
             </label>
             <select
               {...register("type")}
-              className="block w-full basis-3/5 appearance-none rounded-md border border-slate-300 px-3 
+              className="block w-full basis-3/5 appearance-none rounded-md border border-slate-300 px-3
         py-2 text-sm transition-colors focus:border-indigo-600 focus:outline-none
         hover:border-slate-400 focus:hover:border-indigo-600 dark:border-slate-700 dark:bg-slate-900
          dark:focus:border-gray-500 dark:hover:border-slate-600 dark:hover:focus:border-gray-500"
@@ -321,10 +321,12 @@ const TestingConnectionFragment = (props: {
       if (testConnectionResponse?.accessibleDatabases) {
         const baseDisplayName = data.displayName;
         for (const db of testConnectionResponse.accessibleDatabases) {
-          data.displayName = `${baseDisplayName} - ${db}`;
-          data.id = convertToAlphanumericDash(`${data.id}-${db}`);
-          data.databaseName = db;
-          await props.createConnection({ ...data });
+          await props.createConnection({
+            ...data,
+            displayName: `${baseDisplayName} - ${db}`,
+            id: convertToAlphanumericDash(`${data.id}-${db}`),
+            databaseName: db,
+          });
         }
       } else {
         addNotification({
