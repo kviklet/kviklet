@@ -1,12 +1,25 @@
 import { z } from "zod";
-import { ConnectionPayload, DatabaseType, testConnection, TestConnectionResponse } from "../../../api/DatasourceApi";
+import {
+  ConnectionPayload,
+  DatabaseType,
+  testConnection,
+  TestConnectionResponse,
+} from "../../../api/DatasourceApi";
 import { useForm, UseFormHandleSubmit } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import InputField, { TextField } from "../../../components/InputField";
 import Button from "../../../components/Button";
-import { Disclosure, DisclosureButton, DisclosurePanel } from "@headlessui/react";
-import { ChevronDownIcon, ChevronRightIcon, QuestionMarkCircleIcon } from "@heroicons/react/20/solid";
+import {
+  Disclosure,
+  DisclosureButton,
+  DisclosurePanel,
+} from "@headlessui/react";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  QuestionMarkCircleIcon,
+} from "@heroicons/react/20/solid";
 import { isApiErrorResponse } from "../../../api/Errors";
 import useNotification from "../../../hooks/useNotification";
 import Spinner from "../../../components/Spinner";
@@ -23,10 +36,10 @@ const connectionFormSchema = z
     password: z.string().min(1),
     databaseName: z.string(),
     reviewConfig: z.object({
-      numTotalRequired: z.coerce.number()
+      numTotalRequired: z.coerce.number(),
     }),
     additionalJDBCOptions: z.string(),
-    maxExecutions: z.coerce.number().nullable()
+    maxExecutions: z.coerce.number().nullable(),
   })
   .transform((data) => ({ ...data, connectionType: "DATASOURCE" }));
 
@@ -61,9 +74,9 @@ export default function DatabaseConnectionForm(props: {
     formState: { errors, touchedFields },
     watch,
     resetField,
-    setValue
+    setValue,
   } = useForm<ConnectionForm>({
-    resolver: zodResolver(connectionFormSchema)
+    resolver: zodResolver(connectionFormSchema),
   });
 
   const watchDisplayName = watch("displayName");
@@ -294,7 +307,7 @@ const TestingConnectionFragment = (props: {
       addNotification({
         title: "Failed to test connection",
         text: response.message,
-        type: "error"
+        type: "error",
       });
     } else {
       setTestConnectionResponse(response);
@@ -312,19 +325,19 @@ const TestingConnectionFragment = (props: {
             ...data,
             displayName: `${baseDisplayName} - ${db}`,
             id: convertToAlphanumericDash(`${data.id}-${db}`),
-            databaseName: db
+            databaseName: db,
           });
         }
       } else {
         addNotification({
           title: "Failed to create connections",
           text: "No accessible databases found",
-          type: "error"
+          type: "error",
         });
       }
       setIsTestingConnection(false);
       props.closeModal();
-    }
+    },
   );
 
   return (
@@ -342,7 +355,7 @@ const TestingConnectionFragment = (props: {
                     testConnectionResponse?.accessibleDatabases.length > 0 && (
                       <span
                         title={testConnectionResponse?.accessibleDatabases.join(
-                          ", "
+                          ", ",
                         )}
                         className="flex items-center"
                       >
