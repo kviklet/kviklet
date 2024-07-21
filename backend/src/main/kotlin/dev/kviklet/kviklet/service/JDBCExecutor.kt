@@ -48,7 +48,7 @@ data class ColumnInfo(
 )
 
 @Service
-class Executor {
+class JDBCExecutor {
 
     companion object {
         val DEFAULT_POSTGRES_DATABASES = listOf("template0", "template1")

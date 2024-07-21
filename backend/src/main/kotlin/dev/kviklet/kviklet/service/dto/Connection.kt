@@ -13,6 +13,21 @@ enum class DatasourceType(val schema: String) {
     MYSQL("mysql"),
     MSSQL("sqlserver"),
     MONGODB("mongodb"),
+
+    fun toProtocol(): DatabaseProtocol = when (this) {
+        POSTGRESQL -> DatabaseProtocol.POSTGRESQL
+        MYSQL -> DatabaseProtocol.MYSQL
+        MSSQL -> DatabaseProtocol.MSSQL
+        MONGODB -> DatabaseProtocol.MONGODB
+    }
+}
+
+enum class DatabaseProtocol(val uriString: String) {
+    POSTGRESQL("postgresql"),
+    MYSQL("mysql"),
+    MSSQL("sqlserver"),
+    MONGODB("mongodb"),
+    MONGODB_SRV("mongodb+srv"),
 }
 
 enum class AuthenticationType {

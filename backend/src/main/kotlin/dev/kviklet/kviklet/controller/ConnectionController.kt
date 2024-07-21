@@ -8,6 +8,7 @@ import dev.kviklet.kviklet.service.TestConnectionResult
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
+import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.KubernetesConnection
@@ -78,6 +79,9 @@ data class CreateDatasourceConnectionRequest(
     val reviewConfig: ReviewConfigRequest,
 
     val type: DatasourceType,
+
+    val protocol: DatabaseProtocol? = null,
+
     val hostname: String,
     val port: Int,
     val additionalJDBCOptions: String = "",
@@ -242,6 +246,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             port = request.port,
             hostname = request.hostname,
             type = request.type,
+            protocol = request.protocol ?: request.type.toProtocol(),
             additionalJDBCOptions = request.additionalJDBCOptions,
             maxExecutions = request.maxExecutions,
         )
@@ -258,6 +263,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             port = request.port,
             hostname = request.hostname,
             type = request.type,
+            protocol = request.protocol ?: request.type.toProtocol(),
             additionalJDBCOptions = request.additionalJDBCOptions,
             maxExecutions = request.maxExecutions,
         )

@@ -10,6 +10,7 @@ import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
+import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.KubernetesConnection
@@ -25,7 +26,7 @@ data class TestConnectionResult(
 )
 
 @Service
-class ConnectionService(private val connectionAdapter: ConnectionAdapter, private val executor: Executor) {
+class ConnectionService(private val connectionAdapter: ConnectionAdapter, private val JDBCExecutor: JDBCExecutor) {
 
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_GET)
@@ -110,6 +111,7 @@ class ConnectionService(private val connectionAdapter: ConnectionAdapter, privat
         port: Int,
         hostname: String,
         type: DatasourceType,
+        protocol: DatabaseProtocol,
         additionalJDBCOptions: String,
     ): Connection = connectionAdapter.createDatasourceConnection(
         connectionId,
@@ -142,20 +144,21 @@ class ConnectionService(private val connectionAdapter: ConnectionAdapter, privat
         port: Int,
         hostname: String,
         type: DatasourceType,
+        protocol: DatabaseProtocol,
         additionalJDBCOptions: String,
     ): TestConnectionResult {
         val accessibleDatabases = mutableListOf<String>()
         if (!databaseName.isNullOrBlank()) {
             accessibleDatabases.add(databaseName)
         }
-        val credentialsResult = executor.testCredentials(
-            connectionString = "jdbc:${type.schema}://$hostname:$port/$databaseName",
+        val credentialsResult = JDBCExecutor.testCredentials(
+            connectionString = "jdbc:${protocol.uriString}://$hostname:$port/$databaseName",
             username = username,
             password = password,
         )
         if (type == DatasourceType.POSTGRESQL && credentialsResult.success) {
-            val databases = executor.getAccessibleDatabasesPostgres(
-                connectionString = "jdbc:${type.schema}://$hostname:$port/$databaseName",
+            val databases = JDBCExecutor.getAccessibleDatabasesPostgres(
+                connectionString = "jdbc:${protocol.uriString}://$hostname:$port/$databaseName",
                 username = username,
                 password = password,
             )

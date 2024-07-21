@@ -50,7 +50,7 @@ import java.util.concurrent.CompletableFuture
 @Service
 class ExecutionRequestService(
     private val executionRequestAdapter: ExecutionRequestAdapter,
-    private val executor: Executor,
+    private val JDBCExecutor: JDBCExecutor,
     private val eventService: EventService,
     private val kubernetesApi: KubernetesApi,
     private val applicationEventPublisher: ApplicationEventPublisher,
@@ -228,7 +228,7 @@ class ExecutionRequestService(
             ),
         )
 
-        val result = executor.execute(
+        val result = JDBCExecutor.execute(
             connectionString = connection.getConnectionString(),
             username = connection.username,
             password = connection.password,
@@ -356,7 +356,7 @@ class ExecutionRequestService(
             ),
         )
 
-        executor.executeAndStreamDbResponse(
+        JDBCExecutor.executeAndStreamDbResponse(
             connectionString = connection.getConnectionString(),
             username = connection.username,
             password = connection.password,
@@ -397,7 +397,7 @@ class ExecutionRequestService(
             parsedStatements.joinToString(";") { "EXPLAIN $it" }
         }
 
-        val result = executor.execute(
+        val result = JDBCExecutor.execute(
             connectionString = connection.getConnectionString(),
             username = connection.username,
             password = connection.password,
