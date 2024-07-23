@@ -653,18 +653,6 @@ function DatasourceRequestBox({
           },
         ]
       : []),
-    ...(request?.type == "GetSQLDump"
-      ? [
-          {
-            onClick: () => {
-              setChosenConnection(request.connection);
-              setShowSQLDumpModal(true);
-            },
-            enabled: request?.reviewStatus === "APPROVED",
-            text: "Get SQL Dump",
-          },
-        ]
-      : []),
   ];
 
   const getFileHandle = async (connectionId: string) => {

@@ -203,7 +203,8 @@ export default function ConnectionChooser() {
                 ></DatasourceExecutionRequestForm>
               )) ||
               (chosenConnection &&
-                chosenMode &&
+                (chosenMode === "SingleExecution" ||
+                  chosenMode === "TemporaryAccess") &&
                 chosenConnection._type == "KUBERNETES" && (
                   <KubernetesExecutionRequestForm
                     connection={chosenConnection}
