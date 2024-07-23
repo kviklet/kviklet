@@ -9,9 +9,9 @@ import dev.kviklet.kviklet.security.SecuredDomainObject
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import net.sf.jsqlparser.JSQLParserException
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
+import org.springframework.core.io.InputStreamResource
 import java.io.Serializable
 import java.time.LocalDateTime
-import org.springframework.core.io.InputStreamResource
 
 @JvmInline
 value class ExecutionRequestId(private val id: String) :
@@ -287,13 +287,10 @@ data class ExecutionProxy(
     override fun getRelated(resource: Resource): SecuredDomainObject? = null
 }
 
-data class SQLDumpResponse(
-    val resource: InputStreamResource,
-    val fileName: String
-) : SecuredDomainObject {
-    override fun getSecuredObjectId(): String? { return fileName }
+data class SQLDumpResponse(val resource: InputStreamResource, val fileName: String) : SecuredDomainObject {
+    override fun getSecuredObjectId(): String? = fileName
 
-    override fun getDomainObjectType(): Resource { return Resource.EXECUTION_REQUEST }
+    override fun getDomainObjectType(): Resource = Resource.EXECUTION_REQUEST
 
     override fun getRelated(resource: Resource): SecuredDomainObject? = null
 }

@@ -41,7 +41,10 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
-import org.bson.Document
+import org.springframework.core.io.InputStreamResource
+import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
@@ -51,12 +54,8 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import java.time.LocalDateTime
-import org.springframework.http.ResponseEntity
-import org.springframework.http.MediaType
-import org.springframework.http.HttpHeaders
-import org.springframework.core.io.InputStreamResource
 import reactor.core.publisher.Flux
+import java.time.LocalDateTime
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
 @JsonSubTypes(
@@ -506,13 +505,19 @@ data class CancelQueryResponse(val success: Boolean)
     description = "Run queries against a datasource by interacting with Execution Requests",
 )
 class ExecutionRequestController(val executionRequestService: ExecutionRequestService) {
-    @Operation(summary = "Export Databse Request Streamed", description = "Exports database data incrementally by sending small portions continuously, avoiding the need to save any temporary file in memory.")
+    @Operation(
+        summary = "Export Databse Request Streamed",
+        description = """
+    Exports database data incrementally by sending small portions continuously,
+     avoiding the need to save any temporary file in memory.
+    """,
+    )
     @GetMapping("/stream-sql-dump/{connectionId}")
     fun streamSQLDump(@PathVariable connectionId: String): ResponseEntity<Flux<ByteArray>> {
         val responseFlux = executionRequestService.streamSQLDump(connectionId)
 
         return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"${connectionId}.sql\"")
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"$connectionId.sql\"")
             .contentType(MediaType.APPLICATION_OCTET_STREAM)
             .body(responseFlux)
     }
