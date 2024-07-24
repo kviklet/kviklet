@@ -498,7 +498,8 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
     )
     @GetMapping("/stream-sql-dump/{connectionId}")
     fun streamSQLDump(@PathVariable connectionId: String): ResponseEntity<Flux<ByteArray>> {
-        val responseFlux = executionRequestService.streamSQLDump(connectionId)
+        val securedFlux = executionRequestService.streamSQLDump(connectionId)
+        val responseFlux = securedFlux.toFlux()
 
         return ResponseEntity.ok()
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"$connectionId.sql\"")

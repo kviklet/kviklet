@@ -14,6 +14,7 @@ import dev.kviklet.kviklet.db.ReviewPayload
 import dev.kviklet.kviklet.proxy.PostgresProxy
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
+import dev.kviklet.kviklet.security.Resource
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DBExecutionResult
@@ -35,6 +36,7 @@ import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.SQLDumpResponse
+import dev.kviklet.kviklet.service.dto.SecuredFlux
 import dev.kviklet.kviklet.service.dto.utcTimeNow
 import dev.kviklet.kviklet.shell.KubernetesApi
 import jakarta.servlet.ServletOutputStream
@@ -165,55 +167,60 @@ class ExecutionRequestService(
      * @return A Flux emitting chunks of SQL dump data as byte arrays.
      */
     @Transactional
-    fun streamSQLDump(connectionId: String): Flux<ByteArray> = Flux.create { sink ->
-        var inputStream: BufferedInputStream? = null
-        var process: Process? = null
-        try {
-            val connection = connectionService.getDatasourceConnection(ConnectionId(connectionId))
-
-            if (connection is DatasourceConnection) {
-                // Construct SQL dump command
-                val command = constructSQLDumpCommand(connection)
-
-                // Execute the SQL dump
-                process = Runtime.getRuntime().exec(command.toTypedArray())
-                inputStream = BufferedInputStream(process.inputStream)
-
-                // Buffer to read chunks of data from the process input stream
-                val buffer = ByteArray(8192)
-                var bytesRead: Int
-
-                // Read from the input stream in chunks and send each chunk to the Flux sink
-                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                    sink.next(buffer.copyOf(bytesRead))
-                    logger.info("Read and sent $bytesRead bytes")
-                }
-
-                // Wait for the process to complete and check the exit code
-                val exitCode = process.waitFor()
-                if (exitCode != 0) {
-                    // If the process failed, send an error to the Flux sink
-                    val errorStream = process.errorStream.bufferedReader().use { it.readText() }
-                    sink.error(Exception("SQL dump command failed: $errorStream"))
-                } else {
-                    sink.complete()
-                }
-            } else {
-                // If the connection type is invalid, send an error to the Flux sink
-                sink.error(Exception("Invalid connection type for connectionId: $connectionId"))
-            }
-        } catch (e: Exception) {
-            sink.error(Exception("Unexpected error occurred: ${e.message}"))
-        } finally {
-            // Ensure the input stream is closed properly
+    @Policy(Permission.EXECUTION_REQUEST_GET)
+    fun streamSQLDump(connectionId: String): SecuredFlux {
+        val flux = Flux.create<ByteArray> { sink ->
+            var inputStream: BufferedInputStream? = null
+            var process: Process? = null
             try {
-                inputStream?.close()
-            } catch (e: IOException) {
-                throw Exception("Error closing inputStream: ${e.message}")
+                val connection = connectionService.getDatasourceConnection(ConnectionId(connectionId))
+
+                if (connection is DatasourceConnection) {
+                    // Construct SQL dump command
+                    val command = constructSQLDumpCommand(connection)
+
+                    // Execute the SQL dump
+                    process = Runtime.getRuntime().exec(command.toTypedArray())
+                    inputStream = BufferedInputStream(process.inputStream)
+
+                    // Buffer to read chunks of data from the process input stream
+                    val buffer = ByteArray(8192)
+                    var bytesRead: Int
+
+                    // Read from the input stream in chunks and send each chunk to the Flux sink
+                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                        sink.next(buffer.copyOf(bytesRead))
+                        logger.info("Read and sent $bytesRead bytes")
+                    }
+
+                    // Wait for the process to complete and check the exit code
+                    val exitCode = process.waitFor()
+                    if (exitCode != 0) {
+                        // If the process failed, send an error to the Flux sink
+                        val errorStream = process.errorStream.bufferedReader().use { it.readText() }
+                        sink.error(Exception("SQL dump command failed: $errorStream"))
+                    } else {
+                        sink.complete()
+                    }
+                } else {
+                    // If the connection type is invalid, send an error to the Flux sink
+                    sink.error(Exception("Invalid connection type for connectionId: $connectionId"))
+                }
+            } catch (e: Exception) {
+                sink.error(Exception("Unexpected error occurred: ${e.message}"))
+            } finally {
+                // Ensure the input stream is closed properly
+                try {
+                    inputStream?.close()
+                } catch (e: IOException) {
+                    throw Exception("Error closing inputStream: ${e.message}")
+                }
+                process?.destroy()
             }
-            process?.destroy()
-        }
-    }.onBackpressureBuffer()
+        }.onBackpressureBuffer()
+
+        return SecuredFlux(flux, connectionId, Resource.EXECUTION_REQUEST)
+    }
 
     /**
      * Generates an SQL dump file for a given datasource connection.
