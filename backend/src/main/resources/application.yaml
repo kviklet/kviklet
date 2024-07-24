@@ -16,5 +16,5 @@ app:
 
 initial:
   user:
-    email: initialUser@gmail.com
-    password: initialUserPassword
+    email: admin@admin.com
+    password: admin
