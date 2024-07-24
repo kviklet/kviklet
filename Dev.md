@@ -85,6 +85,9 @@ To use `application-local.yaml`, run:
 
 ```
 ./gradlew test
+
+# Clear the cache and run the test
+./gradlew clean test
 ```
 
 - Run test class:
