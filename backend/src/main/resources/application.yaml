@@ -13,3 +13,8 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 app:
   name: "Kviklet"
+
+initial:
+  user:
+    email: initialUser@gmail.com
+    password: initialUserPassword
