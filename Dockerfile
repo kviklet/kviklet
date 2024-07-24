@@ -5,8 +5,7 @@ COPY --chown=gradle:gradle ./backend .
 
 RUN gradle build  -x kaptTestKotlin -x compileTestKotlin -x test --no-daemon
 
-FROM node:20 as build-frontend
-
+FROM node:22 as build-frontend
 WORKDIR /app
 COPY ./frontend/package-lock.json ./frontend/package.json ./
 RUN npm ci --production
@@ -24,6 +23,10 @@ USER root
 
 RUN ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log
+
+RUN amazon-linux-extras enable mariadb10.5 && \
+    yum clean metadata && \
+    yum install -y mariadb
 
 COPY --from=javaruntime /usr/lib/jvm/java-21-amazon-corretto /usr/lib/jvm/java-21-amazon-corretto
 
