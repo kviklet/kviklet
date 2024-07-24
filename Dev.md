@@ -1,13 +1,13 @@
-## Dev Setup
+# Dev Setup
 
-### Run the app in containers:
+## Run the app in containers:
 
 ```
 docker compose build --no-cache kviklet
 docker-compose up -d kviklet kviklet-postgres mysql
 ```
 
-#### Steps to create new request
+### Steps to create new request
 
 1. Go to localhost and login with default Admin user:
    User: testUser@example.com
@@ -18,23 +18,23 @@ docker-compose up -d kviklet kviklet-postgres mysql
    Note: The Hostname should be the mysql container's IP
    Get container IP: docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' <container_id>
 
-### Run frontend container:
+## Run frontend container:
 
 ```
 docker build --no-cache -t frontend .
 docker run --name frontend -d -p 8888:8888 frontend
 ```
 
-### Run the app locally (MacOS):
+## Run the app locally (MacOS):
 
-#### Prerequisites:
+### Prerequisites:
 
 - MySQL
 - PostgreSQL
 - Node.js
 - Java
 
-#### Steps:
+### Steps:
 
 1. Start a mysql server
 
@@ -76,4 +76,38 @@ To use `application-local.yaml`, run:
 
 ```
 ./gradlew bootRun -Dspring.profiles.active=local
+```
+
+---
+
+## Tests and checks
+
+- Backend local build:
+
+```
+./gradlew build
+```
+
+- Run all tests:
+
+```
+./gradlew test
+```
+
+- Run test class:
+
+```
+./gradlew test --tests "com.yourpackage.YourTestClass"
+```
+
+- Run ktlint:
+
+```
+ktlint
+```
+
+- Autocorrect ktlint errors run:
+
+```
+ktlint --format
 ```
