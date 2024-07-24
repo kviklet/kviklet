@@ -12,6 +12,7 @@ import dev.kviklet.kviklet.security.UserDetailsWithId
 import net.sf.jsqlparser.JSQLParserException
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import org.springframework.core.io.InputStreamResource
+import reactor.core.publisher.Flux
 import java.io.Serializable
 import java.time.LocalDateTime
 
@@ -296,4 +297,19 @@ data class SQLDumpResponse(val resource: InputStreamResource, val fileName: Stri
     override fun getDomainObjectType(): Resource = Resource.EXECUTION_REQUEST
 
     override fun getRelated(resource: Resource): SecuredDomainObject? = null
+}
+
+class SecuredFlux(
+    private val flux: Flux<ByteArray>,
+    private val securedObjectId: String,
+    private val domainObjectType: Resource,
+) : SecuredDomainObject {
+
+    override fun getSecuredObjectId(): String? = securedObjectId
+
+    override fun getDomainObjectType(): Resource = domainObjectType
+
+    override fun getRelated(resource: Resource): SecuredDomainObject? = null
+
+    fun toFlux(): Flux<ByteArray> = flux
 }
