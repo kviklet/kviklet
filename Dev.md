@@ -13,17 +13,10 @@ docker-compose up -d kviklet kviklet-postgres mysql
    User: testUser@example.com
    Password: testPassword
 
-2. Create new user via the Settings
+2. Create new user via the `Settings`
 3. Create new database connection
    Note: The Hostname should be the mysql container's IP
    Get container IP: docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' <container_id>
-
-## Run frontend container:
-
-```
-docker build --no-cache -t frontend .
-docker run --name frontend -d -p 8888:8888 frontend
-```
 
 ## Run the app locally (MacOS):
 
