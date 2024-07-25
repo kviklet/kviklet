@@ -12,7 +12,6 @@ import {
   KubernetesExecutionRequestResponseWithComments,
   DatasourceExecutionRequestResponseWithComments,
   KubernetesExecuteResponse,
-  getSQLDumpRequest,
   getSQLDumpStreamedRequest,
 } from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
@@ -511,9 +510,11 @@ function DatasourceRequestBox({
       : []),
   ];
 
-  const getFileHandle = async (connectionId: string) => {
+  /* eslint-disable @typescript-eslint/no-unsafe-call */
+  const fileHandler = async (connectionId: string) => {
     try {
       // Create a handle for the file the user wants to save
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const fileHandle = await (window as any).showSaveFilePicker({
         suggestedName: `${connectionId}.sql`,
         types: [
@@ -535,7 +536,7 @@ function DatasourceRequestBox({
   const handleStreamSQLDump = async (connectionId: string) => {
     try {
       // Get file handle using the utility function
-      const fileHandle = await getFileHandle(connectionId);
+      const fileHandle = await fileHandler(connectionId);
 
       // Fetch and handle SQL dump data
       const combinedSQL = await getSQLDumpStreamedRequest(connectionId);
@@ -558,32 +559,7 @@ function DatasourceRequestBox({
       setShowSQLDumpModal(false);
     }
   };
-
-  const handleSQLDump = async (connectionId: string) => {
-    try {
-      // Get file handle using the utility function
-      const fileHandle = await getFileHandle(connectionId);
-
-      // Get the writable stream to write the SQL dump
-      const writableStream = await fileHandle.createWritable();
-
-      // Fetch SQL dump data
-      const sqlBlob = await getSQLDumpRequest(connectionId);
-
-      // Convert Blob to ArrayBuffer
-      const arrayBuffer = await sqlBlob.arrayBuffer();
-
-      // Write ArrayBuffer to the writable stream
-      await writableStream.write(arrayBuffer);
-
-      // Close the writable stream
-      await writableStream.close();
-    } catch (error) {
-      console.error("Error fetching or saving SQL dump:", error);
-    } finally {
-      setShowSQLDumpModal(false);
-    }
-  };
+  /* eslint-enable @typescript-eslint/no-unsafe-call */
 
   const SQLDumpModal = () => {
     if (!showSQLDumpModal || !chosenConnection) return null;
@@ -593,7 +569,6 @@ function DatasourceRequestBox({
           title="Get SQL Dump"
           message={`Are you sure you want to get sql dump from database ${chosenConnection?.displayName}?`}
           onConfirm={() => handleStreamSQLDump(chosenConnection.id)} //Export Databse Request Streamed
-          // onConfirm={() => handleSQLDump(chosenConnection.id)} //Export Databse Request At Once
           onCancel={() => setShowSQLDumpModal(false)}
         />
       </Modal>
