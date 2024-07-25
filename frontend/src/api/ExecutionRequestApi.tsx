@@ -343,21 +343,6 @@ const getSQLDumpStreamedRequest = async (
   return sqlStrings.join("");
 };
 
-const getSQLDumpRequest = async (connectionId: string): Promise<Blob> => {
-  const response = await fetch(`${requestUrl}sql-dump/${connectionId}`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    throw new Error("Network response was not ok");
-  }
-  return await response.blob();
-};
-
 function withType<T, U extends string>(schema: z.ZodSchema<T>, typeValue: U) {
   return schema.transform((data) => ({
     ...data,
@@ -503,7 +488,6 @@ export {
   postStartServer,
   executeCommand,
   getSQLDumpStreamedRequest,
-  getSQLDumpRequest,
 };
 export type {
   DBExecuteResponseResult as ExecuteResponseResult,
