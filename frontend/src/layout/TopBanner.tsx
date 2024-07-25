@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ThemeContext,
   ThemeStatusContext,
@@ -13,9 +13,13 @@ import {
   PopoverPanel,
   Transition,
 } from "@headlessui/react";
+import { logout } from "../api/LoginApi";
+import { UserStatusContext } from "../components/UserStatusProvider";
 
 function TopBanner() {
   const themeContext = useContext<ThemeContext>(ThemeStatusContext);
+
+  const userContext = useContext(UserStatusContext);
 
   const switchTheme = () => {
     if (themeContext.currentTheme === "light") {
@@ -28,6 +32,15 @@ function TopBanner() {
       document.documentElement.classList.remove("dark");
     }
   };
+
+  const navigate = useNavigate();
+
+  const logoutHandler = async () => {
+    await logout();
+    navigate("/login");
+  };
+
+  const loggedIn = userContext.userStatus !== undefined;
 
   return (
     <div className="supports-backdrop-blur:bg-white/95 sticky top-0 z-40 mx-auto h-16 w-full flex-none border-b border-slate-900/10 backdrop-blur transition-colors duration-500 dark:border-b-slate-700">
@@ -90,6 +103,13 @@ function TopBanner() {
                           Auditlog
                         </p>
                       </PopoverButton>
+                      {loggedIn && (
+                        <PopoverButton onClick={() => void logoutHandler()}>
+                          <p className="p-2 text-slate-900 hover:text-sky-500 dark:text-slate-50 dark:hover:text-sky-400">
+                            Logout
+                          </p>
+                        </PopoverButton>
+                      )}
                     </div>
                   </PopoverPanel>
                 </Transition>

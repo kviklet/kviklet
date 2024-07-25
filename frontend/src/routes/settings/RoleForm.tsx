@@ -22,7 +22,10 @@ import InputField from "../../components/InputField";
 import ConnectionSelector from "./ConnectionSelector";
 import Button from "../../components/Button";
 
-type ConnectionPolicyKey = "execution_request_read" | "execution_request_write";
+type ConnectionPolicyKey =
+  | "execution_request_read"
+  | "execution_request_write"
+  | "execution_request_review";
 
 const userPolicyMetadata: Record<string, { label: string; tooltip: string }> = {
   read: {
@@ -62,7 +65,11 @@ const connectionPolicyMetadata: Record<
   execution_request_write: {
     label: "Write",
     tooltip:
-      "Allows creating, reviewing and executing requests on this selector.",
+      "Allows creating, commenting and executing (your own) requests on this selector.",
+  },
+  execution_request_review: {
+    label: "Review",
+    tooltip: "Allows reviewing/approving requests on this selector.",
   },
 };
 
@@ -271,6 +278,7 @@ const RoleForm = ({
                   selector: "",
                   execution_request_read: false,
                   execution_request_write: false,
+                  execution_request_review: false,
                 })
               }
               className="mt-2 flex items-center text-indigo-500"
