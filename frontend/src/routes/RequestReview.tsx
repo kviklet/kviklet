@@ -657,7 +657,7 @@ function DatasourceRequestBox({
 
   const getFileHandle = async (connectionId: string) => {
     try {
-      // Use the Save File Picker to get a file handle
+      // Create a handle for the file the user wants to save
       const fileHandle = await (window as any).showSaveFilePicker({
         suggestedName: `${connectionId}.sql`,
         types: [
@@ -684,7 +684,7 @@ function DatasourceRequestBox({
       // Fetch and handle SQL dump data
       const combinedSQL = await getSQLDumpStreamedRequest(connectionId);
 
-      // Create a writable stream for the file
+      // Create a writable stream that writes the blob to the file
       const writableStream = await fileHandle.createWritable();
 
       // Write the combined SQL content to the file
