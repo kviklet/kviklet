@@ -75,6 +75,7 @@ dependencies {
     testImplementation("org.testcontainers:mysql:$testcontainersVersion")
     testImplementation("org.testcontainers:postgresql:$testcontainersVersion")
     testImplementation("org.testcontainers:mssqlserver:$testcontainersVersion")
+    testImplementation("org.testcontainers:mongodb:$testcontainersVersion")
 
     testImplementation("io.kotest:kotest-assertions-core:5.5.5")
     testImplementation("io.mockk:mockk:1.13.4")
@@ -96,6 +97,7 @@ dependencies {
     implementation("com.mysql:mysql-connector-j:8.3.0")
     implementation("com.microsoft.sqlserver:mssql-jdbc:12.6.1.jre11")
     implementation("org.mongodb:mongodb-driver-sync:5.1.2")
+    implementation("org.mongodb:mongodb-driver-core:5.1.2")
 }
 
 tasks.withType<KotlinCompile> {

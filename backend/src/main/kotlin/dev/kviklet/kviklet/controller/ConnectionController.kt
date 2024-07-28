@@ -104,6 +104,8 @@ data class UpdateDatasourceConnectionRequest(
 
     val type: DatasourceType? = null,
 
+    val protocol: DatabaseProtocol? = null,
+
     val maxExecutions: Int? = null,
 
     val hostname: String? = null,
@@ -160,6 +162,7 @@ data class DatasourceConnectionResponse(
     val id: ConnectionId,
     val authenticationType: AuthenticationType,
     val type: DatasourceType,
+    val protocol: DatabaseProtocol,
     val maxExecutions: Int?,
     val displayName: String,
     val databaseName: String?,
@@ -176,6 +179,7 @@ data class DatasourceConnectionResponse(
             authenticationType = datasourceConnection.authenticationType,
             displayName = datasourceConnection.displayName,
             type = datasourceConnection.type,
+            protocol = datasourceConnection.protocol,
             databaseName = datasourceConnection.databaseName,
             maxExecutions = datasourceConnection.maxExecutions,
             username = datasourceConnection.username,

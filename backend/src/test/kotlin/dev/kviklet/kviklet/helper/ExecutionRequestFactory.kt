@@ -5,6 +5,7 @@ import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.ConnectionId
+import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
 import dev.kviklet.kviklet.service.dto.DatasourceType
@@ -146,6 +147,7 @@ class ConnectionFactory : Factory() {
         port: Int = 3306,
         hostname: String = "localhost",
         type: DatasourceType = DatasourceType.MYSQL,
+        protocol: DatabaseProtocol = DatabaseProtocol.MYSQL,
         additionalJDBCOptions: String = "",
     ): DatasourceConnection = DatasourceConnection(
         id,
@@ -160,6 +162,7 @@ class ConnectionFactory : Factory() {
         port,
         hostname,
         type,
+        protocol,
         additionalJDBCOptions,
     )
 }

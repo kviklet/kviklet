@@ -5,8 +5,10 @@ import dev.kviklet.kviklet.controller.ConnectionController
 import dev.kviklet.kviklet.controller.CreateCommentRequest
 import dev.kviklet.kviklet.controller.CreateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
+import dev.kviklet.kviklet.controller.DatasourceConnectionResponse
 import dev.kviklet.kviklet.controller.ExecutionRequestController
 import dev.kviklet.kviklet.controller.ReviewConfigRequest
+import dev.kviklet.kviklet.controller.UpdateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.UserResponse
 import dev.kviklet.kviklet.db.ConnectionRepository
 import dev.kviklet.kviklet.db.EventRepository
@@ -15,10 +17,13 @@ import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.ExecutionRequestService
 import dev.kviklet.kviklet.service.dto.ConnectionId
+import dev.kviklet.kviklet.service.dto.DatabaseProtocol
+import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.utcTimeNow
 import io.kotest.matchers.equality.shouldBeEqualToIgnoringFields
+import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -113,7 +118,76 @@ class ConnectionTest(
         )
     }
 
-    fun `test create MongoDB Connection`()  {
+    @Test
+    fun `test create MongoDB Connection`() {
+        val connection = datasourceConnectionController.createConnection(
+            CreateDatasourceConnectionRequest(
+                id = "mongo-connection",
+                displayName = "Mongo Connection",
+                username = "root",
+                password = "root",
+                reviewConfig = ReviewConfigRequest(
+                    numTotalRequired = 1,
+                ),
+                type = DatasourceType.MONGODB,
+                protocol = DatabaseProtocol.MONGODB,
+                hostname = "localhost",
+                port = 27017,
+            ),
+        )
+
+        datasourceConnectionController.getConnection("mongo-connection").shouldBe(
+            connection,
+        )
+    }
+
+    @Test
+    fun `edit MongoDB Connection`() {
+        val connection = datasourceConnectionController.createConnection(
+            CreateDatasourceConnectionRequest(
+                id = "mongo-connection",
+                displayName = "Mongo Connection",
+                username = "root",
+                password = "root",
+                reviewConfig = ReviewConfigRequest(
+                    numTotalRequired = 1,
+                ),
+                type = DatasourceType.MONGODB,
+                protocol = DatabaseProtocol.MONGODB,
+                hostname = "localhost",
+                port = 27017,
+            ),
+        )
+
+        val editedConnection = datasourceConnectionController.updateConnection(
+            "mongo-connection",
+            UpdateDatasourceConnectionRequest(
+                displayName = "Mongo Connection",
+                username = "root",
+                password = "root",
+                reviewConfig = ReviewConfigRequest(
+                    numTotalRequired = 1,
+                ),
+                type = DatasourceType.MONGODB,
+                protocol = DatabaseProtocol.MONGODB_SRV,
+                hostname = "localhost",
+                port = 27017,
+            ),
+        )
+
+        datasourceConnectionController.getConnection("mongo-connection").shouldBe(
+            editedConnection,
+        )
+
+        (
+            datasourceConnectionController.getConnection(
+                "mongo-connection",
+            ) as DatasourceConnectionResponse
+            ).protocol.shouldBe(DatabaseProtocol.MONGODB_SRV)
+    }
+
+    @Test
+    fun `add MongoDB execution Request to Mongo Connection`() {
         val testUser = userHelper.createUser(listOf("*"))
 
         val testUserDetails = UserDetailsWithId(
@@ -125,25 +199,35 @@ class ConnectionTest(
 
         val connection = datasourceConnectionController.createConnection(
             CreateDatasourceConnectionRequest(
-                id = "db-conn",
-                displayName = "My Connection",
+                id = "mongo-connection",
+                displayName = "Mongo Connection",
                 username = "root",
                 password = "root",
                 reviewConfig = ReviewConfigRequest(
                     numTotalRequired = 1,
                 ),
                 type = DatasourceType.MONGODB,
+                protocol = DatabaseProtocol.MONGODB,
                 hostname = "localhost",
-                port = 3306,
+                port = 27017,
             ),
         )
 
+        val mongoQuery = """
+        {
+            find: "users",
+            filter: { age: { ${"$"}gte: 18 } },
+            sort: { name: 1 },
+            limit: 10
+        }
+        """.trimIndent()
+
         val request = executionRequestController.create(
             CreateDatasourceExecutionRequestRequest(
-                connectionId = ConnectionId("db-conn"),
-                title = "My Request",
-                description = "Request description",
-                statement = "SELECT 1",
+                connectionId = ConnectionId("mongo-connection"),
+                title = "Find Adult Users",
+                description = "Retrieve users aged 18 and above, sorted by name",
+                statement = mongoQuery,
                 type = RequestType.SingleExecution,
             ),
             userDetails = testUserDetails,
@@ -152,7 +236,7 @@ class ConnectionTest(
         executionRequestController.createComment(
             request.id,
             CreateCommentRequest(
-                comment = """Comment with a "quote"!""",
+                comment = """Comment on MongoDB query: This finds users 18 and older.""",
             ),
             userDetails = testUserDetails,
         )
@@ -164,12 +248,19 @@ class ConnectionTest(
             CommentEventResponse(
                 id = "id",
                 createdAt = utcTimeNow(),
-                comment = "Comment with a \"quote\"!",
+                comment = "Comment on MongoDB query: This finds users 18 and older.",
                 author = UserResponse(testUser),
             ),
             false,
             CommentEventResponse::createdAt,
             CommentEventResponse::id,
         )
+
+        val updatedRequest = executionRequest.request as DatasourceExecutionRequest
+
+        // Additional assertions specific to MongoDB
+        updatedRequest.statement shouldBe mongoQuery
+        updatedRequest.title shouldBe "Find Adult Users"
+        updatedRequest.description shouldBe "Retrieve users aged 18 and above, sorted by name"
     }
 }

@@ -5,6 +5,7 @@ import dev.kviklet.kviklet.service.EntityNotFound
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
+import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.KubernetesConnection
@@ -56,6 +57,8 @@ class ConnectionEntity(
     var password: String? = null,
     @Enumerated(EnumType.STRING)
     var datasourceType: DatasourceType? = null,
+    @Enumerated(EnumType.STRING)
+    var protocol: DatabaseProtocol? = null,
     var hostname: String? = null,
     var port: Int? = null,
     @Column(name = "additional_jdbc_options")
@@ -82,6 +85,7 @@ class ConnectionEntity(
                 port = port!!,
                 hostname = hostname!!,
                 type = datasourceType!!,
+                protocol = protocol ?: datasourceType!!.toProtocol(),
                 additionalOptions = additionalJDBCOptions ?: "",
             )
         ConnectionType.KUBERNETES ->
@@ -121,6 +125,7 @@ class ConnectionAdapter(val connectionRepository: ConnectionRepository) {
         port: Int,
         hostname: String,
         type: DatasourceType,
+        protocol: DatabaseProtocol,
         additionalJDBCOptions: String,
     ): Connection = connectionRepository.save(
         ConnectionEntity(
@@ -147,6 +152,7 @@ class ConnectionAdapter(val connectionRepository: ConnectionRepository) {
         displayName: String,
         description: String,
         type: DatasourceType,
+        protocol: DatabaseProtocol,
         maxExecutions: Int?,
         hostname: String,
         port: Int,
@@ -167,6 +173,7 @@ class ConnectionAdapter(val connectionRepository: ConnectionRepository) {
         datasourceConnection.displayName = displayName
         datasourceConnection.description = description
         datasourceConnection.datasourceType = type
+        datasourceConnection.protocol = protocol
         datasourceConnection.hostname = hostname
         datasourceConnection.maxExecutions = maxExecutions
         datasourceConnection.port = port

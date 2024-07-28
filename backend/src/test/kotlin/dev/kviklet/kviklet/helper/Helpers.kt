@@ -12,6 +12,7 @@ import dev.kviklet.kviklet.service.UserService
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
+import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
@@ -174,6 +175,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             container.getMappedPort(5432),
             container.host,
             DatasourceType.POSTGRESQL,
+            DatabaseProtocol.POSTGRESQL,
             additionalJDBCOptions = "",
         )
 

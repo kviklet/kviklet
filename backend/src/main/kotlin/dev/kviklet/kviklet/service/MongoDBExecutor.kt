@@ -1,5 +1,7 @@
 package dev.kviklet.kviklet.service
 
+import com.mongodb.ConnectionString
+import com.mongodb.MongoClientSettings
 import com.mongodb.MongoException
 import com.mongodb.client.MongoClients
 import dev.kviklet.kviklet.service.dto.ErrorResultLog
@@ -8,6 +10,7 @@ import dev.kviklet.kviklet.service.dto.ResultLog
 import dev.kviklet.kviklet.service.dto.UpdateResultLog
 import org.bson.Document
 import org.springframework.stereotype.Service
+import java.util.concurrent.TimeUnit
 
 sealed class MongoQueryResult {
     abstract fun toResultLog(): ResultLog
@@ -40,7 +43,16 @@ class MongoDBExecutor {
 
     fun execute(connectionString: String, databaseName: String, query: String): List<MongoQueryResult> {
         try {
-            MongoClients.create(connectionString).use { client ->
+            val settings = MongoClientSettings.builder()
+                .applyConnectionString(ConnectionString(connectionString))
+                .applyToClusterSettings { builder ->
+                    builder.serverSelectionTimeout(3, TimeUnit.SECONDS)
+                }
+                .applyToSocketSettings { builder ->
+                    builder.connectTimeout(3, TimeUnit.SECONDS)
+                }
+                .build()
+            MongoClients.create(settings).use { client ->
                 val database = client.getDatabase(databaseName)
                 val command = Document.parse(query)
 

@@ -8,6 +8,7 @@ import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.ConnectionId
+import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.PolicyEffect
@@ -106,6 +107,7 @@ class ExecutionTest {
             3306,
             "postgres",
             DatasourceType.POSTGRESQL,
+            DatabaseProtocol.POSTGRESQL,
             additionalJDBCOptions = "",
         )
         userHelper.createUser(permissions = listOf("*"))
@@ -145,6 +147,7 @@ class ExecutionTest {
             3306,
             "postgres",
             DatasourceType.POSTGRESQL,
+            DatabaseProtocol.POSTGRESQL,
             additionalJDBCOptions = "",
         )
         roleHelper.removeDefaultRolePermissions()
@@ -273,6 +276,7 @@ class ExecutionTest {
             3306,
             "postgres",
             DatasourceType.POSTGRESQL,
+            DatabaseProtocol.POSTGRESQL,
             additionalJDBCOptions = "",
         )
         val executionRequest = executionRequestAdapter.createExecutionRequest(

@@ -10,6 +10,7 @@ import dev.kviklet.kviklet.service.ConfigService
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Configuration
 import dev.kviklet.kviklet.service.dto.ConnectionId
+import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.notifications.SlackApiClient
 import dev.kviklet.kviklet.service.notifications.TeamsApiClient
@@ -97,6 +98,7 @@ class NotificationTest {
             3306,
             "postgres",
             DatasourceType.POSTGRESQL,
+            DatabaseProtocol.POSTGRESQL,
             additionalJDBCOptions = "",
         )
         userHelper.createUser(permissions = listOf("*"))

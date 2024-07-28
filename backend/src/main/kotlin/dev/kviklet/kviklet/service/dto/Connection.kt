@@ -13,6 +13,7 @@ enum class DatasourceType(val schema: String) {
     MYSQL("mysql"),
     MSSQL("sqlserver"),
     MONGODB("mongodb"),
+    ;
 
     fun toProtocol(): DatabaseProtocol = when (this) {
         POSTGRESQL -> DatabaseProtocol.POSTGRESQL
@@ -75,6 +76,7 @@ data class DatasourceConnection(
     val port: Int,
     val hostname: String,
     val type: DatasourceType,
+    val protocol: DatabaseProtocol,
     val additionalOptions: String,
 ) : Connection(id, displayName, description, reviewConfig, maxExecutions) {
     fun getConnectionString(): String = when (type) {
@@ -91,7 +93,7 @@ data class DatasourceConnection(
                 (databaseName?.takeIf { it.isNotBlank() }?.let { ";databaseName=$databaseName" } ?: "") +
                 additionalOptions
         DatasourceType.MONGODB ->
-            "mongodb://$hostname:$port/" +
+            "$protocol://$hostname:$port/" +
                 databaseName +
                 additionalOptions
     }

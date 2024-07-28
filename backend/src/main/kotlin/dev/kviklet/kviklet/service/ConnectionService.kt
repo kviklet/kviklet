@@ -45,6 +45,7 @@ class ConnectionService(private val connectionAdapter: ConnectionAdapter, privat
             request.displayName ?: connection.displayName,
             request.description ?: connection.description,
             request.type ?: connection.type,
+            request.protocol ?: connection.protocol,
             request.maxExecutions ?: connection.maxExecutions,
             request.hostname ?: connection.hostname,
             request.port ?: connection.port,
@@ -128,6 +129,7 @@ class ConnectionService(private val connectionAdapter: ConnectionAdapter, privat
         port,
         hostname,
         type,
+        protocol,
         additionalJDBCOptions,
     )
 
