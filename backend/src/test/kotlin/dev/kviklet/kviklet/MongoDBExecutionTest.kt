@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet
 
+import com.mongodb.client.MongoClients
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.helper.ConnectionHelper
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper
@@ -62,6 +63,9 @@ class MongoDBExecutionTest {
 
     @AfterEach
     fun tearDown() {
+        MongoClients.create(mongoDb.connectionString).use { client ->
+            client.getDatabase("db").drop()
+        }
         executionRequestHelper.deleteAll()
         connectionHelper.deleteAll()
         userHelper.deleteAll()
