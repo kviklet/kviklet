@@ -10,6 +10,15 @@ enum DatabaseType {
   POSTGRES = "POSTGRESQL",
   MYSQL = "MYSQL",
   MSSQL = "MSSQL",
+  MONGODB = "MONGODB",
+}
+
+enum DatabaseProtocol {
+  POSTGRESQL = "POSTGRESQL",
+  MYSQL = "MYSQL",
+  MSSQL = "MSSQL",
+  MONGODB = "MONGODB",
+  MONGODB_SRV = "MONGODB_SRV",
 }
 
 const databaseConnectionResponseSchema = withType(
@@ -17,6 +26,7 @@ const databaseConnectionResponseSchema = withType(
     id: z.coerce.string(),
     displayName: z.coerce.string(),
     type: z.nativeEnum(DatabaseType),
+    protocol: z.nativeEnum(DatabaseProtocol),
     maxExecutions: z.coerce.number().nullable(),
     authenticationType: z.nativeEnum(AuthenticationType),
     username: z.coerce.string(),
@@ -69,6 +79,7 @@ const databaseConnectionPayloadSchema = z
       numTotalRequired: z.number(),
     }),
     type: z.nativeEnum(DatabaseType),
+    protocol: z.nativeEnum(DatabaseProtocol),
     hostname: z.string(),
     port: z.number(),
     additionalJDBCOptions: z.string().optional(),
@@ -95,6 +106,7 @@ const connectionPayloadSchema = z.union([
 const patchDatabaseConnectionPayloadSchema = z
   .object({
     displayName: z.coerce.string().optional(),
+    protocol: z.nativeEnum(DatabaseProtocol).optional(),
     username: z.string().optional(),
     password: z.string().optional(),
     description: z.string().optional(),
@@ -239,6 +251,7 @@ export {
   getConnections,
   getConnection,
   DatabaseType,
+  DatabaseProtocol,
   kubernetesConnectionPayloadSchema,
 };
 

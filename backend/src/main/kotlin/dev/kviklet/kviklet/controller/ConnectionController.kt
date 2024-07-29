@@ -67,11 +67,11 @@ data class CreateDatasourceConnectionRequest(
     val maxExecutions: Int? = null,
 
     @Schema(example = "root")
-    @field:Size(min = 1, max = 255, message = "Maximum length 255")
+    @field:Size(min = 0, max = 255, message = "Maximum length 255")
     val username: String,
 
     @Schema(example = "root")
-    @field:Size(min = 1, max = 255, message = "Maximum length 255")
+    @field:Size(min = 0, max = 255, message = "Maximum length 255")
     val password: String,
 
     val description: String = "",
@@ -116,11 +116,11 @@ data class UpdateDatasourceConnectionRequest(
     val databaseName: String? = null,
 
     @Schema(example = "root")
-    @field:Size(min = 1, max = 255, message = "Maximum length 255")
+    @field:Size(min = 0, max = 255, message = "Maximum length 255")
     val username: String? = null,
 
     @Schema(example = "password")
-    @field:Size(min = 1, max = 255, message = "Maximum length 255")
+    @field:Size(min = 0, max = 255, message = "Maximum length 255")
     val password: String? = null,
 
     val reviewConfig: ReviewConfigRequest? = null,

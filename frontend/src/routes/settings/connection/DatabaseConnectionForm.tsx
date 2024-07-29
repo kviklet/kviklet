@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   ConnectionPayload,
+  DatabaseProtocol,
   DatabaseType,
   testConnection,
   TestConnectionResponse,
@@ -30,10 +31,11 @@ const connectionFormSchema = z
     description: z.string(),
     id: z.string().min(3).min(3),
     type: z.nativeEnum(DatabaseType),
+    protocol: z.nativeEnum(DatabaseProtocol),
     hostname: z.string().min(1),
     port: z.coerce.number(),
-    username: z.string().min(1),
-    password: z.string().min(1),
+    username: z.string().min(0),
+    password: z.string().min(0),
     databaseName: z.string(),
     reviewConfig: z.object({
       numTotalRequired: z.coerce.number(),
@@ -79,6 +81,10 @@ export default function DatabaseConnectionForm(props: {
     resolver: zodResolver(connectionFormSchema),
   });
 
+  const [protocolOptions, setProtocolOptions] = useState<DatabaseProtocol[]>(
+    [],
+  );
+
   const watchDisplayName = watch("displayName");
   const watchId = watch("id");
 
@@ -104,17 +110,31 @@ export default function DatabaseConnectionForm(props: {
     setValue("maxExecutions", 1);
   }, []);
 
-  useEffect(() => {
+  const updatePortIfNotTouched = (port: number) => {
     if (!touchedFields.port) {
-      if (watchType === DatabaseType.POSTGRES) {
-        setValue("port", 5432);
-      }
-      if (watchType === DatabaseType.MYSQL) {
-        setValue("port", 3306);
-      }
-      if (watchType === DatabaseType.MSSQL) {
-        setValue("port", 1433);
-      }
+      setValue("port", port);
+    }
+  };
+
+  useEffect(() => {
+    if (watchType === DatabaseType.POSTGRES) {
+      setProtocolOptions([DatabaseProtocol.POSTGRESQL]);
+      updatePortIfNotTouched(5432);
+    }
+    if (watchType === DatabaseType.MYSQL) {
+      setProtocolOptions([DatabaseProtocol.MYSQL]);
+      updatePortIfNotTouched(3306);
+    }
+    if (watchType === DatabaseType.MSSQL) {
+      setProtocolOptions([DatabaseProtocol.MSSQL]);
+      updatePortIfNotTouched(1433);
+    }
+    if (watchType === DatabaseType.MONGODB) {
+      setProtocolOptions([
+        DatabaseProtocol.MONGODB,
+        DatabaseProtocol.MONGODB_SRV,
+      ]);
+      updatePortIfNotTouched(27017);
     }
   }, [watchType]);
 
@@ -148,6 +168,31 @@ export default function DatabaseConnectionForm(props: {
               <option value={DatabaseType.POSTGRES}>Postgres</option>
               <option value={DatabaseType.MYSQL}>MySQL</option>
               <option value={DatabaseType.MSSQL}>MS SQL</option>
+              <option value={DatabaseType.MONGODB}>MongoDB</option>
+            </select>
+          </div>
+
+          <div className="flex w-full justify-between">
+            <label
+              htmlFor="type"
+              className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
+            >
+              Database Protocol
+            </label>
+            <select
+              {...register("protocol")}
+              className="block w-full basis-3/5 appearance-none rounded-md border border-slate-300 px-3
+        py-2 text-sm transition-colors focus:border-indigo-600 focus:outline-none
+        hover:border-slate-400 focus:hover:border-indigo-600 dark:border-slate-700 dark:bg-slate-900
+         dark:focus:border-gray-500 dark:hover:border-slate-600 dark:hover:focus:border-gray-500"
+              defaultValue={protocolOptions[0]}
+              disabled={protocolOptions.length === 1}
+            >
+              {protocolOptions.map((protocol) => (
+                <option key={protocol} value={protocol}>
+                  {protocol}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -242,7 +287,7 @@ export default function DatabaseConnectionForm(props: {
                       />
                       <InputField
                         id="additionalJDBCOptions"
-                        label="Additional JDBC options"
+                        label="Additional options"
                         placeholder={getJDBCOptionsPlaceholder(watchType)}
                         {...register("additionalJDBCOptions")}
                         error={errors.additionalJDBCOptions?.message}
