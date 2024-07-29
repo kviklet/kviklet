@@ -56,8 +56,7 @@ services:
       - ./kviklet-postgres-data:/var/lib/postgresql/data
 
   kviklet:
-    # image: ghcr.io/kviklet/kviklet:main
-    build: .
+    image: ghcr.io/kviklet/kviklet:main
     ports:
       - "80:80"
     environment:
