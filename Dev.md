@@ -41,11 +41,26 @@ mysql.server start --port=3307
 brew services start postgresql@16
 ```
 
-3. Copy `application.yaml` and rename it to `application-local.yaml`. Then configure `application-local.yaml` with your datasource and initial user settings
+3. Create an `application-local.properties` file in the `src/main/resources` directory with the appropriate configuration settings. For example:
 
-4. Create a PostgreSQL database and set the database owner to the initial user specified in `application-local.yaml`.
+```
+spring.liquibase.change-log=classpath:changelog/000-changelog.yaml
+spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/kviklet
+spring.datasource.username=postgres
+spring.datasource.password=postgres
+spring.datasource.driverClassName=org.postgresql.Driver
+spring.jpa.properties.hibernate.auto_quote_keyword=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
 
-5. Run the frontend:
+app.name=Kviklet
+
+initial.user.email=admin@admin.com
+initial.user.password=admin
+```
+
+4. Create a PostgreSQL database and set the database owner to the initial user specified in `application-local.properties`.
+
+5. Start the dev frontend server:
 
 ```
    cd frontend/
@@ -53,22 +68,11 @@ brew services start postgresql@16
    npm run start
 ```
 
-6. run the backend:
+6. Start the dev backend server:
 
 ```
    cd backend/
-```
-
-Use the configuration in `application-local.yaml` and run:
-
-```
-   ./gradlew bootRun
-```
-
-To use `application-local.yaml`, run:
-
-```
-./gradlew bootRun -Dspring.profiles.active=local
+   ./gradlew bootRun --args='--spring.profiles.active=local'
 ```
 
 ---
