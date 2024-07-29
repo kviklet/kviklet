@@ -15,8 +15,3 @@ server:
   port: 8081
 app:
   name: "Kviklet"
-
-initial:
-  user:
-    email: admin@admin.com
-    password: admin
