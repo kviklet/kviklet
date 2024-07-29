@@ -2,8 +2,8 @@ package dev.kviklet.kviklet.executor
 
 import com.mongodb.client.MongoClients
 import dev.kviklet.kviklet.service.MongoDBExecutor
-import dev.kviklet.kviklet.service.MongoErrorQueryResult
-import dev.kviklet.kviklet.service.MongoRecordsQueryResult
+import dev.kviklet.kviklet.service.dto.ErrorQueryResult
+import dev.kviklet.kviklet.service.dto.MongoRecordsQueryResult
 import dev.kviklet.kviklet.service.dto.UpdateResultLog
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -96,8 +96,8 @@ class MongoDBExecutorTest(@Autowired val mongoDBExecutor: MongoDBExecutor) {
             databaseName,
             "{ invalidCommand: 'test_collection' }",
         )
-        (result.first() as MongoErrorQueryResult).errorCode shouldBe 59
-        (result.first() as MongoErrorQueryResult).message shouldStartWith
+        (result.first() as ErrorQueryResult).errorCode shouldBe 59
+        (result.first() as ErrorQueryResult).message shouldStartWith
             "Command failed with error 59 (CommandNotFound):"
     }
 
@@ -109,7 +109,7 @@ class MongoDBExecutorTest(@Autowired val mongoDBExecutor: MongoDBExecutor) {
             databaseName,
             "{ find: 'test_collection', filter: {} }",
         )
-        (result.first() as MongoErrorQueryResult).message shouldContain "invalidhost"
+        (result.first() as ErrorQueryResult).message shouldContain "invalidhost"
     }
 
     @Test

@@ -93,8 +93,8 @@ data class DatasourceConnection(
                 (databaseName?.takeIf { it.isNotBlank() }?.let { ";databaseName=$databaseName" } ?: "") +
                 additionalOptions
         DatasourceType.MONGODB ->
-            "$protocol://$hostname:$port/" +
-                databaseName +
+            "${protocol.uriString}://$hostname:$port/" +
+                (databaseName ?: "") +
                 additionalOptions
     }
 }

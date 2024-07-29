@@ -4,44 +4,20 @@ import com.mongodb.ConnectionString
 import com.mongodb.MongoClientSettings
 import com.mongodb.MongoException
 import com.mongodb.client.MongoClients
-import dev.kviklet.kviklet.service.dto.ErrorResultLog
-import dev.kviklet.kviklet.service.dto.QueryResultLog
-import dev.kviklet.kviklet.service.dto.ResultLog
-import dev.kviklet.kviklet.service.dto.UpdateResultLog
+import dev.kviklet.kviklet.service.dto.ErrorQueryResult
+import dev.kviklet.kviklet.service.dto.MongoRecordsQueryResult
+import dev.kviklet.kviklet.service.dto.QueryResult
+import dev.kviklet.kviklet.service.dto.UpdateQueryResult
 import org.bson.Document
 import org.springframework.stereotype.Service
 import java.util.concurrent.TimeUnit
-
-sealed class MongoQueryResult {
-    abstract fun toResultLog(): ResultLog
-}
-
-data class MongoRecordsQueryResult(val documents: List<Document>) : MongoQueryResult() {
-    override fun toResultLog(): QueryResultLog = QueryResultLog(
-        columnCount = documents.firstOrNull()?.keys?.size ?: 0,
-        rowCount = documents.size,
-    )
-}
-
-data class MongoUpdateQueryResult(val modifiedCount: Int) : MongoQueryResult() {
-    override fun toResultLog(): UpdateResultLog = UpdateResultLog(
-        rowsUpdated = modifiedCount,
-    )
-}
-
-data class MongoErrorQueryResult(val errorCode: Int, val message: String) : MongoQueryResult() {
-    override fun toResultLog(): ResultLog = ErrorResultLog(
-        errorCode = errorCode,
-        message = message,
-    )
-}
 
 data class MongoTestCredentialsResult(val success: Boolean, val message: String)
 
 @Service
 class MongoDBExecutor {
 
-    fun execute(connectionString: String, databaseName: String, query: String): List<MongoQueryResult> {
+    fun execute(connectionString: String, databaseName: String, query: String): List<QueryResult> {
         try {
             val settings = MongoClientSettings.builder()
                 .applyConnectionString(ConnectionString(connectionString))
@@ -55,7 +31,6 @@ class MongoDBExecutor {
             MongoClients.create(settings).use { client ->
                 val database = client.getDatabase(databaseName)
                 val command = Document.parse(query)
-
                 val result = database.runCommand(command)
                 return listOf(processResult(result))
             }
@@ -64,22 +39,22 @@ class MongoDBExecutor {
         }
     }
 
-    private fun processResult(result: Document): MongoQueryResult = when {
+    private fun processResult(result: Document): QueryResult = when {
         result.containsKey("cursor") -> {
             val cursor = result.get("cursor", Document::class.java)
             val documents = cursor.getList("firstBatch", Document::class.java)
             MongoRecordsQueryResult(documents)
         }
         result.containsKey("n") -> {
-            MongoUpdateQueryResult(result.getInteger("n"))
+            UpdateQueryResult(result.getInteger("n"))
         }
         else -> {
             MongoRecordsQueryResult(listOf(result))
         }
     }
 
-    private fun mongoExceptionToResult(e: MongoException): MongoErrorQueryResult =
-        MongoErrorQueryResult(e.code, e.message ?: "Unknown MongoDB error")
+    private fun mongoExceptionToResult(e: MongoException): ErrorQueryResult =
+        ErrorQueryResult(e.code, e.message ?: "Unknown MongoDB error")
 
     fun testCredentials(connectionString: String): MongoTestCredentialsResult = try {
         MongoClients.create(connectionString).use { client ->

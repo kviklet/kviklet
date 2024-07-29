@@ -29,6 +29,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers
 import org.springframework.transaction.annotation.Transactional
 import org.testcontainers.containers.JdbcDatabaseContainer
+import org.testcontainers.containers.MongoDBContainer
 
 @Component
 class UserHelper(
@@ -180,6 +181,27 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
         )
 
     @Transactional
+    fun createMongoDBConnection(container: MongoDBContainer, databaseName: String = "db"): Connection =
+        connectionAdapter.createDatasourceConnection(
+            ConnectionId("ds-conn-test"),
+            "Test Connection",
+            AuthenticationType.USER_PASSWORD,
+            databaseName,
+            1,
+            "",
+            "",
+            "A test connection",
+            ReviewConfig(
+                numTotalRequired = 1,
+            ),
+            container.getMappedPort(27017),
+            container.host,
+            DatasourceType.MONGODB,
+            DatabaseProtocol.MONGODB,
+            additionalJDBCOptions = "",
+        )
+
+    @Transactional
     fun createKubernetesConnection(): Connection = connectionAdapter.createKubernetesConnection(
         ConnectionId("k8s-conn-test"),
         "Test Kubernetes Connection",
@@ -204,17 +226,18 @@ class ExecutionRequestHelper(
 
     @Transactional
     fun createExecutionRequest(
-        dbcontainer: JdbcDatabaseContainer<*>,
+        dbcontainer: JdbcDatabaseContainer<*>? = null,
         author: User,
-        sql: String = "SELECT 1;",
+        statement: String = "SELECT 1;",
+        connection: Connection? = null,
     ): ExecutionRequestDetails {
-        val connection = connectionHelper.createPostgresConnection(dbcontainer)
+        val requestConnection = connection ?: connectionHelper.createPostgresConnection(dbcontainer!!)
         return executionRequestAdapter.createExecutionRequest(
-            connectionId = connection.id,
+            connectionId = requestConnection.id,
             title = "Test Execution",
             type = RequestType.SingleExecution,
             description = "A test execution request",
-            statement = sql,
+            statement = statement,
             executionStatus = "PENDING",
             authorId = author.getId()!!,
         )
@@ -278,5 +301,10 @@ class ExecutionRequestHelper(
         return executionRequestAdapter.getExecutionRequestDetails(
             ExecutionRequestId(executionRequestDetails.getId()),
         )
+    }
+
+    @Transactional
+    fun deleteAll() {
+        executionRequestAdapter.deleteAll()
     }
 }

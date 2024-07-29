@@ -1,25 +1,24 @@
 package dev.kviklet.kviklet
 
-import dev.kviklet.kviklet.db.ConnectionAdapter
-import dev.kviklet.kviklet.db.ExecutionRequestAdapter
-import dev.kviklet.kviklet.db.ReviewConfig
+import dev.kviklet.kviklet.db.User
+import dev.kviklet.kviklet.helper.ConnectionHelper
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper
 import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
-import dev.kviklet.kviklet.service.dto.AuthenticationType
-import dev.kviklet.kviklet.service.dto.ConnectionId
-import dev.kviklet.kviklet.service.dto.DatabaseProtocol
-import dev.kviklet.kviklet.service.dto.DatasourceType
+import dev.kviklet.kviklet.service.dto.Connection
+import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.PolicyEffect
-import dev.kviklet.kviklet.service.dto.RequestType
 import jakarta.servlet.http.Cookie
-import org.hamcrest.CoreMatchers.notNullValue
+import org.hamcrest.Matchers.containsString
 import org.hamcrest.Matchers.hasSize
+import org.hamcrest.Matchers.notNullValue
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
@@ -30,10 +29,8 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
-import org.testcontainers.containers.JdbcDatabaseContainer
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 
@@ -42,788 +39,446 @@ import org.testcontainers.utility.DockerImageName
 @ActiveProfiles("test")
 class ExecutionTest {
 
-    @Autowired
-    private lateinit var datasourceConnectionAdapter: ConnectionAdapter
+    @Autowired private lateinit var mockMvc: MockMvc
 
-    @Autowired
-    private lateinit var executionRequestAdapter: ExecutionRequestAdapter
+    @Autowired private lateinit var userHelper: UserHelper
 
-    @Autowired
-    private lateinit var userHelper: UserHelper
+    @Autowired private lateinit var roleHelper: RoleHelper
 
-    @Autowired
-    private lateinit var roleHelper: RoleHelper
+    @Autowired private lateinit var connectionHelper: ConnectionHelper
 
-    @Autowired
-    private lateinit var executionRequestHelper: ExecutionRequestHelper
+    @Autowired private lateinit var executionRequestHelper: ExecutionRequestHelper
 
-    @Autowired
-    lateinit var mockMvc: MockMvc
+    private lateinit var testUser: User
+    private lateinit var testReviewer: User
+    private lateinit var testConnection: Connection
 
     companion object {
         val db: PostgreSQLContainer<*> = PostgreSQLContainer(DockerImageName.parse("postgres:11.1"))
             .withUsername("root")
             .withPassword("root")
             .withReuse(true)
-            .withDatabaseName("")
+            .withDatabaseName("test_db")
 
         init {
             db.start()
         }
     }
 
-    val initScript: String = "psql_init.sql"
-
-    fun getDb(): JdbcDatabaseContainer<*> = db
-
     @BeforeEach
     fun setup() {
-        val initScript = this::class.java.classLoader.getResource(initScript)!!
-        ScriptUtils.executeSqlScript(getDb().createConnection(""), FileUrlResource(initScript))
+        val initScript = this::class.java.classLoader.getResource("psql_init.sql")!!
+        ScriptUtils.executeSqlScript(db.createConnection(""), FileUrlResource(initScript))
+
+        testUser = userHelper.createUser(permissions = listOf("*"))
+        testReviewer = userHelper.createUser(permissions = listOf("*"))
+        testConnection = connectionHelper.createPostgresConnection(db)
     }
 
     @AfterEach
     fun tearDown() {
-        executionRequestAdapter.deleteAll()
+        executionRequestHelper.deleteAll()
+        connectionHelper.deleteAll()
         userHelper.deleteAll()
         roleHelper.deleteAll()
     }
 
-    @Test
-    fun createExecutionRequest() {
-        val connection = datasourceConnectionAdapter.createDatasourceConnection(
-            ConnectionId("ds-conn-test"),
-            "Test Connection",
-            AuthenticationType.USER_PASSWORD,
-            "test",
-            1,
-            "username",
-            "password",
-            "A test connection",
-            ReviewConfig(
-                numTotalRequired = 1,
-            ),
+    @Nested
+    inner class ExecutionRequestCreationTests {
+        @Test
+        fun `creating execution request returns 200`() {
+            val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            createExecutionRequestAndAssert(cookie)
+        }
 
-            3306,
-            "postgres",
-            DatasourceType.POSTGRESQL,
-            DatabaseProtocol.POSTGRESQL,
-            additionalJDBCOptions = "",
-        )
-        userHelper.createUser(permissions = listOf("*"))
-        val cookie = userHelper.login(mockMvc = mockMvc)
+        @Test
+        fun `creating execution request with specific connection permissions`() {
+            roleHelper.removeDefaultRolePermissions()
+            val userWithSpecificPermissions = createUserWithSpecificPermissions()
+            val cookie = userHelper.login(email = userWithSpecificPermissions.email, mockMvc = mockMvc)
 
-        mockMvc.perform(
-            post("/execution-requests/").cookie(cookie).content(
-                """
-                {
-                    "connectionId": "${connection.id}",
-                    "title": "Test Execution",
-                    "type": "SingleExecution",
-                    "statement": "SELECT * FROM test",
-                    "description": "A test execution request",
-                    "connectionType": "DATASOURCE"
-                }
-                """.trimIndent(),
-            ).contentType("application/json"),
-        ).andExpect(status().isOk)
+            createExecutionRequestAndAssert(cookie)
+            verifyExecutionRequestList(cookie)
+        }
     }
 
-    @Test
-    fun `create ExecutionRequest with specific connection permissions test`() {
-        val connection = datasourceConnectionAdapter.createDatasourceConnection(
-            ConnectionId("ds-conn-test"),
-            "Test Connection",
-            AuthenticationType.USER_PASSWORD,
-            "test",
-            1,
-            "username",
-            "password",
-            "A test connection",
-            ReviewConfig(
-                numTotalRequired = 1,
-            ),
+    @Nested
+    inner class ReviewActionTests {
 
-            3306,
-            "postgres",
-            DatasourceType.POSTGRESQL,
-            DatabaseProtocol.POSTGRESQL,
-            additionalJDBCOptions = "",
-        )
-        roleHelper.removeDefaultRolePermissions()
-        val userPolicies: List<Policy> = listOf(
-            Policy(
-                resource = connection.id.toString(),
-                action = "datasource_connection:get",
-                effect = PolicyEffect.ALLOW,
-            ),
-            Policy(
-                resource = connection.id.toString(),
-                action = "execution_request:get",
-                effect = PolicyEffect.ALLOW,
-            ),
-            Policy(
-                resource = connection.id.toString(),
-                action = "execution_request:edit",
-                effect = PolicyEffect.ALLOW,
-            ),
-        )
-        val user = userHelper.createUser(policies = userPolicies.toSet())
-        val cookie = userHelper.login(mockMvc = mockMvc)
-        mockMvc.perform(
-            post("/execution-requests/").cookie(cookie).content(
-                """
-                {
-                    "connectionId": "${connection.id}",
-                    "title": "Test Execution",
-                    "type": "SingleExecution",
-                    "statement": "SELECT * FROM test",
-                    "description": "A test execution request",
-                    "connectionType": "DATASOURCE"
-                }
-                """.trimIndent(),
-            ).contentType("application/json"),
-        ).andExpect(status().isOk)
-        mockMvc.perform(
-            get("/execution-requests/").cookie(cookie).contentType(
-                "application/json",
-            ),
-        ).andExpect(status().isOk).andExpect(
-            content().json(
-                """
-                [
-                  {
-                    "title": "Test Execution",
-                    "type": "SingleExecution",
-                    "author": {
-                      "email": "user-1@example.com",
-                      "fullName": "User 1",
-                      "roles": [
-                        {
-                          "name": "Default Role",
-                          "description": "This is the default role and gives permission to read connections and requests",
-                          "policies": [],
-                          "isDefault": true
-                        },
-                        {
-                          "name": "User 1 Role",
-                          "description": "User 1 users role",
-                          "policies": [
-                            {
-                              "action": "datasource_connection:get",
-                              "effect": "ALLOW",
-                              "resource": "ds-conn-test"
-                            },
-                            {
-                              "action": "execution_request:get",
-                              "effect": "ALLOW",
-                              "resource": "ds-conn-test"
-                            },
-                            {
-                              "action": "execution_request:edit",
-                              "effect": "ALLOW",
-                              "resource": "ds-conn-test"
-                            }
-                          ],
-                          "isDefault": false
-                        }
-                      ]
-                    },
-                    "connection": {
-                      "id": "ds-conn-test",
-                      "authenticationType": "USER_PASSWORD",
-                      "type": "POSTGRESQL",
-                      "maxExecutions": 1,
-                      "displayName": "Test Connection",
-                      "databaseName": "test",
-                      "username": "username",
-                      "hostname": "postgres",
-                      "port": 3306,
-                      "description": "A test connection",
-                      "reviewConfig": {
-                        "numTotalRequired": 1
-                      },
-                      "additionalJDBCOptions": "",
-                      "connectionType": "DATASOURCE"
-                    },
-                    "description": "A test execution request",
-                    "statement": "SELECT * FROM test",
-                    "reviewStatus": "AWAITING_APPROVAL",
-                    "executionStatus": "EXECUTABLE"
-                  }
-                ]
-                """.trimIndent(),
-            ),
-        )
-    }
+        private lateinit var testExecutionRequest: ExecutionRequestDetails
 
-    @Test
-    fun addComment() {
-        val user = userHelper.createUser(permissions = listOf("*"))
-        val connection = datasourceConnectionAdapter.createDatasourceConnection(
-            ConnectionId("ds-conn-test"),
-            "Test Connection",
-            AuthenticationType.USER_PASSWORD,
-            "test",
-            1,
-            "username",
-            "password",
-            "A test connection",
-            ReviewConfig(
-                numTotalRequired = 1,
-            ),
+        @BeforeEach
+        fun `setup execution request`() {
+            testExecutionRequest =
+                executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+        }
 
-            3306,
-            "postgres",
-            DatasourceType.POSTGRESQL,
-            DatabaseProtocol.POSTGRESQL,
-            additionalJDBCOptions = "",
-        )
-        val executionRequest = executionRequestAdapter.createExecutionRequest(
-            connectionId = connection.id,
-            title = "Test Execution",
-            type = RequestType.SingleExecution,
-            description = "A test execution request",
-            statement = "SELECT * FROM test",
-            executionStatus = "PENDING",
-            authorId = user.getId()!!,
-        )
-        val cookie = userHelper.login(mockMvc = mockMvc)
+        @ParameterizedTest
+        @ValueSource(strings = ["APPROVE", "REJECT", "REQUEST_CHANGE"])
+        fun `when performing review action then update request status`(action: String) {
+            val cookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
 
-        mockMvc.perform(
-            post("/execution-requests/${executionRequest.getId()}/comments").cookie(cookie).content(
-                """
-                {
-                    "comment": "Test Comment"
-                }
-                """.trimIndent(),
-            ).contentType("application/json"),
-        ).andExpect(status().isOk)
+            performReviewActionAndAssert(testExecutionRequest.getId(), action, "Test comment", cookie)
 
-        val refreshedExecutionRequest = executionRequestAdapter.getExecutionRequestDetails(
-            executionRequest.request.id!!,
-        )
+            val expectedStatus = when (action) {
+                "APPROVE" -> "APPROVED"
+                "REJECT" -> "REJECTED"
+                "REQUEST_CHANGE" -> "CHANGE_REQUESTED"
+                else -> throw IllegalArgumentException("Invalid action")
+            }
+            verifyRequestStatus(testExecutionRequest.getId(), expectedStatus, cookie)
+        }
 
-        mockMvc.perform(
-            get("/execution-requests/${executionRequest.getId()}").cookie(cookie),
-        ).andExpect(status().isOk)
-            .andExpect(
-                content().json(
-                    """
-                    {
-                            "id": "${executionRequest.getId()}",
-                            "title": "Test Execution",
-                            "type": "SingleExecution",
-                            "description": "A test execution request",
-                            "statement": "SELECT * FROM test",
-                            "reviewStatus": "AWAITING_APPROVAL",
-                            "executionStatus": "EXECUTABLE",
-                            "author": {
-                                "id": "${user.getId()}",
-                                "email": "${user.email}",
-                                "roles": [
-                                    {
-                                        "name": "Default Role"
-                                    },
-                                    {
-                                        "name": "User 1 Role",
-                                        "description": "User 1 users role",
-                                        "policies": [
-                                            {
-                                                "action": "*",
-                                                "effect": "ALLOW",
-                                                "resource": "*"
-                                            }
-                                        ]
-                                    }
-                                ]
-                            },
-                            "connection": {
-                                "id": "ds-conn-test",
-                                "authenticationType": "USER_PASSWORD",
-                                "displayName": "Test Connection",
-                                "databaseName": "test",
-                                "username": "username",
-                                "description": "A test connection",
-                                "reviewConfig": {
-                                  "numTotalRequired": 1
-                                }
-                              },
-                            "events": [
-                            {
-                                "id": "${refreshedExecutionRequest.events.first().getId()}",
-                                "type": "COMMENT",
-                                "author": {
-                                    "id": "${user.getId()}",
-                                    "email": ${user.email},
-                                    "roles": [
-                                        {
-                                            "name": "Default Role"
-                                        },
-                                        {
-                                            "name": "User 1 Role",
-                                            "description": "User 1 users role",
-                                            "policies": [
-                                                {
-                                                    "action": "*",
-                                                    "effect": "ALLOW",
-                                                    "resource": "*"
-                                                }
-                                            ]
-                                        }
-                                    ]
-                                },
-                                "comment": "Test Comment"
-                            }
-                        ]
-                      }
-                   }    
-                    """.trimIndent(),
-                ),
+        @Test
+        fun `Users cant request changes on own requests`() {
+            val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+            requestChanges(testExecutionRequest.getId(), "Test comment", cookie)
+                .andExpect(status().is4xxClientError)
+        }
+
+        @Test
+        fun `Request is locked from further events after rejection`() {
+            val cookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+            rejectRequest(testExecutionRequest.getId(), "This request is too sensitive.", cookie)
+                .andExpect(status().isOk)
+            verifyRequestStatus(testExecutionRequest.getId(), "REJECTED", cookie)
+
+            performCommentAction(testExecutionRequest.getId(), "This comment should not be added", cookie)
+                .andExpect(status().is4xxClientError)
+            approveRequest(testExecutionRequest.getId(), "This should also not work.", cookie)
+                .andExpect(status().is4xxClientError)
+            executeRequest(testExecutionRequest.getId(), cookie)
+                .andExpect(status().is4xxClientError)
+
+            // Verify that no new events were added after rejection
+            verifyRequestEvents(testExecutionRequest.getId(), 1, cookie)
+            verifyLatestEvent(testExecutionRequest.getId(), "REVIEW", "REJECT", cookie)
+        }
+
+        @Test
+        fun `General Request changes functionality test`() {
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+            val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+            // Request changes
+            requestChanges(
+                testExecutionRequest.getId(),
+                "Please modify the query to include additional conditions.",
+                reviewerCookie,
             )
+                .andExpect(status().isOk)
+
+            // Verify the request status is CHANGE_REQUESTED
+            verifyRequestStatus(testExecutionRequest.getId(), "CHANGE_REQUESTED", reviewerCookie)
+            verifyRequestEvents(testExecutionRequest.getId(), 1, reviewerCookie)
+            verifyLatestEvent(testExecutionRequest.getId(), "REVIEW", "REQUEST_CHANGE", reviewerCookie)
+
+            // Simulate user updating the request
+            val updatedStatement = "SELECT * FROM users WHERE active = true;"
+            updateExecutionRequest(testExecutionRequest.getId(), updatedStatement, userCookie)
+                .andExpect(status().isOk)
+
+            // Verify events and status is still CHANGE_REQUESTED
+            verifyRequestStatus(testExecutionRequest.getId(), "CHANGE_REQUESTED", reviewerCookie)
+            verifyRequestEvents(testExecutionRequest.getId(), 2, reviewerCookie)
+            verifyLatestEvent(testExecutionRequest.getId(), "EDIT", null, reviewerCookie)
+
+            // Approve the updated request
+            approveRequest(testExecutionRequest.getId(), "Changes look good. Approved.", reviewerCookie)
+                .andExpect(status().isOk)
+
+            // Verify is approved now
+            verifyRequestStatus(testExecutionRequest.getId(), "APPROVED", reviewerCookie)
+            verifyRequestEvents(testExecutionRequest.getId(), 3, reviewerCookie)
+            verifyLatestEvent(testExecutionRequest.getId(), "REVIEW", "APPROVE", reviewerCookie)
+        }
+
+        @Test
+        fun `Review permissions are necessary for reviews`() {
+            val reviewerWithReviewPermissions = userHelper.createUser(
+                permissions = listOf("execution_request:get", "execution_request:review"),
+                resources = listOf("*", "*"),
+            )
+            val reviewerWithoutReviewPermissions = userHelper.createUser(
+                permissions = listOf("execution_request:get"),
+                resources = listOf("*"),
+            )
+            val reviewerWithReviewPermissionsCookie = userHelper.login(
+                reviewerWithReviewPermissions.email,
+                mockMvc = mockMvc,
+            )
+            val reviewerWithoutReviewPermissionsCookie = userHelper.login(
+                reviewerWithoutReviewPermissions.email,
+                mockMvc = mockMvc,
+            )
+
+            // Request changes
+            requestChanges(
+                testExecutionRequest.getId(),
+                "Please modify the query to include additional conditions.",
+                reviewerWithReviewPermissionsCookie,
+            )
+                .andExpect(status().isOk)
+
+            // Request changes
+            requestChanges(
+                testExecutionRequest.getId(),
+                "Please modify the query to include additional conditions.",
+                reviewerWithoutReviewPermissionsCookie,
+            )
+                .andExpect(status().isForbidden)
+        }
+    }
+
+    @Nested
+    inner class ExecutionTests {
+
+        private lateinit var testExecutionRequest: ExecutionRequestDetails
+
+        @BeforeEach
+        fun `setup execution request`() {
+            testExecutionRequest =
+                executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+        }
+
+        @Test
+        fun `when executing simple query then succeed`() {
+            val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+            approveRequest(testExecutionRequest.getId(), "Approved", reviewerCookie)
+
+            executeRequestAndAssert(testExecutionRequest.getId(), userCookie)
+            verifyExecutionsList(testExecutionRequest.getId(), userCookie)
+            verifyExecutionRequestDetails(testExecutionRequest.getId(), userCookie)
+        }
+
+        @Test
+        fun `when executing simple insert then succeed`() {
+            val insertRequest = executionRequestHelper.createExecutionRequest(
+                db,
+                testUser,
+                "INSERT INTO foo.simple_table VALUES (1, 'test');",
+            )
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+            val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            approveRequest(insertRequest.getId(), "Approved", reviewerCookie)
+
+            executeInsertAndAssert(insertRequest.getId(), userCookie)
+            verifyExecutionsList(insertRequest.getId(), userCookie)
+            verifyExecutionRequestDetails(insertRequest.getId(), userCookie)
+        }
+
+        @Test
+        fun `when execution errors then handle gracefully`() {
+            val errorRequest = executionRequestHelper.createExecutionRequest(
+                db,
+                testUser,
+                "INSERT INTO non_existent_table VALUES (1, 'test');",
+            )
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+            val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            approveRequest(errorRequest.getId(), "Approved", reviewerCookie)
+
+            executeErrorRequestAndAssert(errorRequest.getId(), userCookie)
+            verifyExecutionsList(errorRequest.getId(), userCookie)
+            verifyErrorExecutionRequestDetails(errorRequest.getId(), userCookie)
+        }
     }
 
     @Test
-    fun `Request is locked from further events after rejection`() {
-        val user = userHelper.createUser(permissions = listOf("*"))
-        val reviewer = userHelper.createUser(permissions = listOf("*"))
-        val executionRequest = executionRequestHelper.createExecutionRequest(getDb(), user)
-        val cookie = userHelper.login(mockMvc = mockMvc, email = reviewer.email, password = "123456")
-
-        rejectRequest(executionRequest.getId(), "This request is too sensitive.", cookie)
-            .andExpect(status().isOk)
-        verifyRequestStatus(executionRequest.getId(), "REJECTED", cookie)
-
-        performCommentAction(executionRequest.getId(), "This comment should not be added", cookie)
-            .andExpect(status().is4xxClientError)
-        approveRequest(executionRequest.getId(), "This should also not work.", cookie)
-            .andExpect(status().is4xxClientError)
-        executeRequest(executionRequest.getId(), cookie)
-            .andExpect(status().is4xxClientError)
-
-        // Verify that no new events were added after rejection
-        verifyRequestEvents(executionRequest.getId(), 1, cookie)
-        verifyLatestEvent(executionRequest.getId(), "REVIEW", "REJECT", cookie)
-    }
-
-    @Test
-    fun `request changes functionality`() {
-        val user = userHelper.createUser(permissions = listOf("*"))
-        val reviewer = userHelper.createUser(permissions = listOf("*"))
-        val executionRequest = executionRequestHelper.createExecutionRequest(getDb(), user)
-
-        val reviewerCookie = loginUser(reviewer.email)
-        val userCookie = loginUser(user.email)
-
-        // Request changes
-        requestChanges(
-            executionRequest.getId(),
-            "Please modify the query to include additional conditions.",
-            reviewerCookie,
+    fun `when downloading CSV then succeed`() {
+        val csvRequest = executionRequestHelper.createApprovedRequest(
+            db,
+            testUser,
+            testReviewer,
+            "SELECT * FROM foo.simple_table",
         )
-            .andExpect(status().isOk)
+        val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
 
-        // Verify the request status
-        verifyRequestStatus(executionRequest.getId(), "CHANGE_REQUESTED", reviewerCookie)
-        verifyRequestEvents(executionRequest.getId(), 1, reviewerCookie)
-        verifyLatestEvent(executionRequest.getId(), "REVIEW", "REQUEST_CHANGE", reviewerCookie)
-
-        // Simulate user updating the request
-        val updatedStatement = "SELECT * FROM users WHERE active = true;"
-        updateExecutionRequest(executionRequest.getId(), updatedStatement, userCookie)
-            .andExpect(status().isOk)
-
-        // Verify the updated request
-        verifyRequestStatus(executionRequest.getId(), "CHANGE_REQUESTED", reviewerCookie)
-        verifyRequestEvents(executionRequest.getId(), 2, reviewerCookie)
-        verifyLatestEvent(executionRequest.getId(), "EDIT", null, reviewerCookie)
-
-        // Approve the updated request
-        approveRequest(executionRequest.getId(), "Changes look good. Approved.", reviewerCookie)
-            .andExpect(status().isOk)
-
-        // Final verification
-        verifyRequestStatus(executionRequest.getId(), "APPROVED", reviewerCookie)
-        verifyRequestEvents(executionRequest.getId(), 3, reviewerCookie)
-        verifyLatestEvent(executionRequest.getId(), "REVIEW", "APPROVE", reviewerCookie)
-    }
-
-    @Test
-    fun `test review permissions`() {
-        val user = userHelper.createUser(permissions = listOf("*"))
-        val reviewerWithReviewPermissions = userHelper.createUser(
-            permissions = listOf("execution_request:get", "execution_request:review"),
-            resources = listOf("*", "*"),
-        )
-        val reviewerWithoutReviewPermissions = userHelper.createUser(
-            permissions = listOf("execution_request:get"),
-            resources = listOf("*"),
-        )
-        val executionRequest = executionRequestHelper.createExecutionRequest(getDb(), user)
-        val reviewerWithReviewPermissionsCookie = loginUser(reviewerWithReviewPermissions.email)
-        val reviewerWithoutReviewPermissionsCookie = loginUser(reviewerWithoutReviewPermissions.email)
-
-        // Request changes
-        requestChanges(
-            executionRequest.getId(),
-            "Please modify the query to include additional conditions.",
-            reviewerWithReviewPermissionsCookie,
-        )
-            .andExpect(status().isOk)
-
-        // Request changes
-        requestChanges(
-            executionRequest.getId(),
-            "Please modify the query to include additional conditions.",
-            reviewerWithoutReviewPermissionsCookie,
-        )
-            .andExpect(status().isForbidden)
-    }
-
-    @Test
-    fun `verify user cant request changes on own request`() {
-        val user = userHelper.createUser(permissions = listOf("*"))
-        val executionRequest = executionRequestHelper.createExecutionRequest(getDb(), user)
-        val cookie = loginUser(user.email)
-
-        requestChanges(
-            executionRequest.getId(),
-            "Please modify the query to include additional conditions.",
-            cookie,
-        )
-            .andExpect(status().is4xxClientError)
-    }
-
-    @Test
-    fun `execute simple query`() {
-        val user = userHelper.createUser(permissions = listOf("*"))
-        val approver = userHelper.createUser(permissions = listOf("*"))
-        // Creates a new execution request with SELECT 1; as the statement
-        val executionRequest = executionRequestHelper.createApprovedRequest(getDb(), user, approver)
-        val cookie = userHelper.login(mockMvc = mockMvc)
-
-        mockMvc.perform(
-            post("/execution-requests/${executionRequest.getId()}/execute").cookie(cookie).contentType(
-                "application/json",
-            ),
-        ).andExpect(status().isOk).andExpect(
-            content().json(
-                """
-                {
-                  "results": [
-                    {
-                      "columns": [
-                        {
-                          "label": "?column?",
-                          "typeName": "int4",
-                          "typeClass": "java.lang.Integer"
-                        }
-                      ],
-                      "data": [
-                        {
-                          "?column?": "1"
-                        }
-                      ],
-                      "type": "RECORDS"
-                    }
-                  ]
-                }
-                """.trimIndent(),
-            ),
-        )
-
-        mockMvc.perform(
-            get("/executions/").cookie(cookie).contentType(
-                "application/json",
-            ),
-        ).andExpect(status().isOk).andExpect(
-            content().json(
-                """
-                {
-                  "executions": [
-                    {
-                      "requestId": "${executionRequest.getId()}",
-                      "name": "${user.fullName}",
-                      "statement": "SELECT 1;",
-                      "connectionId": "${executionRequest.request.connection.id}"
-                      }
-                  ]
-                }
-                """.trimIndent(),
-            ),
-        )
-            .andExpect(jsonPath("$.executions[0].executionTime", notNullValue()))
-
-        mockMvc.perform(
-            get("/execution-requests/${executionRequest.getId()}").cookie(cookie).contentType(
-                "application/json",
-            ),
-        ).andExpect(status().isOk).andExpect(
-            content().json(
-                """
-                   {
-                    "id": "${executionRequest.getId()}",
-                    "executionStatus": "EXECUTED",
-                    "reviewStatus": "APPROVED",
-                    "events": [
-                    {
-                        "type": "REVIEW"
-                    },
-                    {
-                        "type": "EXECUTE",
-                        "results": [
-                         {
-                          "type": "QUERY",
-                          "columnCount": 1,
-                          "rowCount": 1
-                          }
-                       ]
-                    }
-                    ]
-              }
-                """.trimIndent(),
-            ),
-        )
-    }
-
-    @Test
-    fun `execute simple insert`() {
-        val user = userHelper.createUser(permissions = listOf("*"))
-        val approver = userHelper.createUser(permissions = listOf("*"))
-        // Creates a new execution request with SELECT 1; as the statement
-        val executionRequest = executionRequestHelper.createApprovedRequest(
-            getDb(),
-            user,
-            approver,
-            sql = "INSERT INTO foo.simple_table VALUES (1, 'test');",
-        )
-        val cookie = userHelper.login(mockMvc = mockMvc)
-
-        mockMvc.perform(
-            post("/execution-requests/${executionRequest.getId()}/execute").cookie(cookie).contentType(
-                "application/json",
-            ),
-        ).andExpect(status().isOk).andExpect(
-            content().json(
-                """
-                {
-                  "results": [{"rowsUpdated":1,"type":"UPDATE_COUNT"}]
-                }
-                """.trimIndent(),
-            ),
-        )
-
-        mockMvc.perform(
-            get("/executions/").cookie(cookie).contentType(
-                "application/json",
-            ),
-        ).andExpect(status().isOk).andExpect(
-            content().json(
-                """
-                {
-                  "executions": [
-                    {
-                      "requestId": "${executionRequest.getId()}",
-                      "name": "${user.fullName}",
-                      "statement": "INSERT INTO foo.simple_table VALUES (1, 'test');",
-                      "connectionId": "${executionRequest.request.connection.id}"
-                      }
-                  ]
-                }
-                """.trimIndent(),
-            ),
-        )
-            .andExpect(jsonPath("$.executions[0].executionTime", notNullValue()))
-
-        mockMvc.perform(
-            get("/execution-requests/${executionRequest.getId()}").cookie(cookie).contentType(
-                "application/json",
-            ),
-        ).andExpect(status().isOk).andExpect(
-            content().json(
-                """
-                   {
-                    "id": "${executionRequest.getId()}",
-                    "executionStatus": "EXECUTED",
-                    "reviewStatus": "APPROVED",
-                    "events": [
-                    {
-                        "type": "REVIEW"
-                    },
-                    {
-                        "type": "EXECUTE",
-                        "results": [
-                         {
-                            "type":"UPDATE",
-                            "rowsUpdated":1
-                         }
-                       ]
-                    }
-                    ]
-              }
-                """.trimIndent(),
-            ),
-        )
-    }
-
-    @Test
-    fun `execution error`() {
-        val user = userHelper.createUser(permissions = listOf("*"))
-        val approver = userHelper.createUser(permissions = listOf("*"))
-        // Creates a new execution request with SELECT 1; as the statement
-        val executionRequest = executionRequestHelper.createApprovedRequest(
-            getDb(),
-            user,
-            approver,
-            sql = "INSERT INTO non_existent_table VALUES (1, 'test');",
-        )
-        val cookie = userHelper.login(mockMvc = mockMvc)
-
-        mockMvc.perform(
-            post("/execution-requests/${executionRequest.getId()}/execute").cookie(cookie).contentType(
-                "application/json",
-            ),
-        ).andExpect(status().isOk).andExpect(
-            content().json(
-                """
-                {
-                  "results": [
-                  {
-                      "errorCode": 0,
-                      "message": "ERROR: relation \"non_existent_table\" does not exist\n  Position: 13",
-                      "type": "ERROR"
-                  }
-                 ]
-                }
-                """.trimIndent(),
-            ),
-        )
-
-        mockMvc.perform(
-            get("/executions/").cookie(cookie).contentType(
-                "application/json",
-            ),
-        ).andExpect(status().isOk).andExpect(
-            content().json(
-                """
-                {
-                  "executions": [
-                    {
-                      "requestId": "${executionRequest.getId()}",
-                      "name": "${user.fullName}",
-                      "statement": "INSERT INTO non_existent_table VALUES (1, 'test');",
-                      "connectionId": "${executionRequest.request.connection.id}"
-                      }
-                  ]
-                }
-                """.trimIndent(),
-            ),
-        )
-            .andExpect(jsonPath("$.executions[0].executionTime", notNullValue()))
-
-        mockMvc.perform(
-            get("/execution-requests/${executionRequest.getId()}").cookie(cookie).contentType(
-                "application/json",
-            ),
-        ).andExpect(status().isOk).andExpect(
-            content().json(
-                """
-                   {
-                    "id": "${executionRequest.getId()}",
-                    "executionStatus": "EXECUTED",
-                    "reviewStatus": "APPROVED",
-                    "events": [
-                    {
-                        "type": "REVIEW"
-                    },
-                    {
-                        "type": "EXECUTE",
-                        "results": [
-                        {
-                         "errorCode": 0,
-                         "message": "ERROR: relation \"non_existent_table\" does not exist\n  Position: 13",
-                         "type": "ERROR"
-                        }
-                       ]
-                    }
-                    ]
-              }
-                """.trimIndent(),
-            ),
-        )
-    }
-
-    @Test
-    fun `csv download`() {
-        val user = userHelper.createUser(permissions = listOf("*"))
-        val approver = userHelper.createUser(permissions = listOf("*"))
-        // Creates a new execution request with SELECT 1; as the statement
-        val executionRequest = executionRequestHelper.createApprovedRequest(
-            getDb(),
-            user,
-            approver,
-            sql = "SELECT * FROM foo.simple_table",
-        )
-        val cookie = userHelper.login(mockMvc = mockMvc)
-
-        val result = mockMvc.perform(
-            get("/execution-requests/${executionRequest.getId()}/download").cookie(cookie).contentType(
-                "application/json",
-            ),
-        ).andExpect(status().isOk).andReturn()
-        val responseContent = result.response.contentAsString
-
-        assertTrue(
-            responseContent.contains("col1,col2"),
-        )
-        assertTrue(
-            responseContent.contains("1,foo"),
-        )
-        assertTrue(
-            responseContent.contains("2,bar"),
-        )
-
-        mockMvc.perform(
-            get("/executions/").cookie(cookie).contentType(
-                "application/json",
-            ),
-        ).andExpect(status().isOk).andExpect(
-            content().json(
-                """
-                {
-                  "executions": [
-                    {
-                      "requestId": "${executionRequest.getId()}",
-                      "name": "${user.fullName}",
-                      "statement": "SELECT * FROM foo.simple_table",
-                      "connectionId": "${executionRequest.request.connection.id}"
-                      }
-                  ]
-                }
-                """.trimIndent(),
-            ),
-        )
-            .andExpect(jsonPath("$.executions[0].executionTime", notNullValue()))
+        val response = downloadCSV(csvRequest.getId(), userCookie)
+        verifyCSVContent(response)
+        verifyExecutionsList(csvRequest.getId(), userCookie)
     }
 
     @Test
     fun `test even wrong sql can be executed`() {
-        val user = userHelper.createUser(permissions = listOf("*"))
-        val approver = userHelper.createUser(permissions = listOf("*"))
-        // Creates a new execution request with SELECT 1; as the statement
         val executionRequest = executionRequestHelper.createApprovedRequest(
-            getDb(),
-            user,
-            approver,
+            db,
+            testUser,
+            testReviewer,
             sql = "test",
         )
         val cookie = userHelper.login(mockMvc = mockMvc)
 
-        val result = mockMvc.perform(
+        mockMvc.perform(
             get("/execution-requests/${executionRequest.getId()}").cookie(cookie).contentType(
                 "application/json",
             ),
         ).andExpect(status().isOk).andReturn()
+    }
+
+    private fun createUserWithSpecificPermissions(): User {
+        val userPolicies = listOf(
+            Policy(
+                resource = testConnection.id.toString(),
+                action = "datasource_connection:get",
+                effect = PolicyEffect.ALLOW,
+            ),
+            Policy(
+                resource = testConnection.id.toString(),
+                action = "execution_request:get",
+                effect = PolicyEffect.ALLOW,
+            ),
+            Policy(
+                resource = testConnection.id.toString(),
+                action = "execution_request:edit",
+                effect = PolicyEffect.ALLOW,
+            ),
+        )
+        return userHelper.createUser(policies = userPolicies.toSet())
+    }
+
+    private fun createExecutionRequestAndAssert(cookie: Cookie) {
+        mockMvc.perform(
+            post("/execution-requests/")
+                .cookie(cookie)
+                .content(
+                    """
+                    {
+                        "connectionId": "${testConnection.id}",
+                        "title": "Test Execution",
+                        "type": "SingleExecution",
+                        "statement": "SELECT * FROM test",
+                        "description": "A test execution request",
+                        "connectionType": "DATASOURCE"
+                    }
+                    """.trimIndent(),
+                )
+                .contentType("application/json"),
+        ).andExpect(status().isOk)
+    }
+
+    private fun verifyExecutionRequestList(cookie: Cookie) {
+        mockMvc.perform(
+            get("/execution-requests/").cookie(cookie),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$[0].title").value("Test Execution"))
+            .andExpect(jsonPath("$[0].type").value("SingleExecution"))
+            .andExpect(jsonPath("$[0].description").value("A test execution request"))
+            .andExpect(jsonPath("$[0].statement").value("SELECT * FROM test"))
+    }
+
+    private fun performReviewActionAndAssert(
+        executionRequestId: String,
+        action: String,
+        comment: String,
+        cookie: Cookie,
+    ) {
+        mockMvc.perform(
+            post("/execution-requests/$executionRequestId/reviews")
+                .cookie(cookie)
+                .content(
+                    """
+                    {
+                        "comment": "$comment",
+                        "action": "$action"
+                    }
+                    """.trimIndent(),
+                )
+                .contentType("application/json"),
+        ).andExpect(status().isOk)
+    }
+
+    private fun verifyRequestStatus(executionRequestId: String, expectedStatus: String, cookie: Cookie) {
+        mockMvc.perform(
+            get("/execution-requests/$executionRequestId")
+                .cookie(cookie),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.reviewStatus").value(expectedStatus))
+    }
+
+    private fun executeRequestAndAssert(executionRequestId: String, cookie: Cookie) {
+        mockMvc.perform(
+            post("/execution-requests/$executionRequestId/execute")
+                .cookie(cookie)
+                .contentType("application/json"),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.results[0].columns[0].label").value("?column?"))
+            .andExpect(jsonPath("$.results[0].data[0]['?column?']").value("1"))
+    }
+
+    private fun executeInsertAndAssert(executionRequestId: String, cookie: Cookie) {
+        mockMvc.perform(
+            post("/execution-requests/$executionRequestId/execute")
+                .cookie(cookie)
+                .contentType("application/json"),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.results[0].rowsUpdated").value(1))
+            .andExpect(jsonPath("$.results[0].type").value("UPDATE_COUNT"))
+    }
+
+    private fun executeErrorRequestAndAssert(executionRequestId: String, cookie: Cookie) {
+        mockMvc.perform(
+            post("/execution-requests/$executionRequestId/execute")
+                .cookie(cookie)
+                .contentType("application/json"),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.results[0].errorCode").value(0))
+            .andExpect(
+                jsonPath(
+                    "$.results[0].message",
+                ).value(containsString("relation \"non_existent_table\" does not exist")),
+            )
+            .andExpect(jsonPath("$.results[0].type").value("ERROR"))
+    }
+
+    private fun verifyExecutionsList(executionRequestId: String, cookie: Cookie) {
+        mockMvc.perform(
+            get("/executions/").cookie(cookie),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.executions[0].requestId").value(executionRequestId))
+            .andExpect(jsonPath("$.executions[0].name").value(testUser.fullName))
+            .andExpect(jsonPath("$.executions[0].connectionId").value(testConnection.id.toString()))
+            .andExpect(jsonPath("$.executions[0].executionTime", notNullValue()))
+    }
+
+    private fun verifyExecutionRequestDetails(executionRequestId: String, cookie: Cookie) {
+        mockMvc.perform(
+            get("/execution-requests/$executionRequestId").cookie(cookie),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.executionStatus").value("EXECUTED"))
+            .andExpect(jsonPath("$.reviewStatus").value("APPROVED"))
+            .andExpect(jsonPath("$.events", hasSize<Collection<*>>(2)))
+            .andExpect(jsonPath("$.events[0].type").value("REVIEW"))
+            .andExpect(jsonPath("$.events[1].type").value("EXECUTE"))
+    }
+
+    private fun verifyErrorExecutionRequestDetails(executionRequestId: String, cookie: Cookie) {
+        mockMvc.perform(
+            get("/execution-requests/$executionRequestId").cookie(cookie),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.executionStatus").value("EXECUTED"))
+            .andExpect(jsonPath("$.reviewStatus").value("APPROVED"))
+            .andExpect(jsonPath("$.events", hasSize<Collection<*>>(2)))
+            .andExpect(jsonPath("$.events[0].type").value("REVIEW"))
+            .andExpect(jsonPath("$.events[1].type").value("EXECUTE"))
+            .andExpect(jsonPath("$.events[1].results[0].type").value("ERROR"))
+    }
+
+    private fun downloadCSV(executionRequestId: String, cookie: Cookie): String {
+        val result = mockMvc.perform(
+            get("/execution-requests/$executionRequestId/download")
+                .cookie(cookie)
+                .contentType("application/json"),
+        ).andExpect(status().isOk).andReturn()
+        return result.response.contentAsString
+    }
+
+    private fun verifyCSVContent(content: String) {
+        assert(content.contains("col1,col2"))
+        assert(content.contains("1,foo"))
+        assert(content.contains("2,bar"))
     }
 
     private fun requestChanges(executionRequestId: String, comment: String, cookie: Cookie) =
@@ -883,13 +538,6 @@ class ExecutionTest {
                 .contentType("application/json"),
         )
 
-    private fun verifyRequestStatus(executionRequestId: String, expectedStatus: String, cookie: Cookie) =
-        mockMvc.perform(
-            get("/execution-requests/$executionRequestId")
-                .cookie(cookie),
-        ).andExpect(status().isOk)
-            .andExpect(jsonPath("$.reviewStatus").value(expectedStatus))
-
     private fun verifyRequestEvents(executionRequestId: String, expectedEventCount: Int, cookie: Cookie) =
         mockMvc.perform(
             get("/execution-requests/$executionRequestId")
@@ -912,7 +560,4 @@ class ExecutionTest {
             response.andExpect(jsonPath("$.events[-1].action").value(expectedAction))
         }
     }
-
-    private fun loginUser(email: String, password: String = "123456"): Cookie =
-        userHelper.login(mockMvc = mockMvc, email = email, password = password)
 }

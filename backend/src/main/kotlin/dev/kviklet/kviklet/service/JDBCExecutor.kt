@@ -1,41 +1,15 @@
 package dev.kviklet.kviklet.service
 
 import com.zaxxer.hikari.HikariDataSource
-import dev.kviklet.kviklet.service.dto.ErrorResultLog
-import dev.kviklet.kviklet.service.dto.QueryResultLog
-import dev.kviklet.kviklet.service.dto.ResultLog
-import dev.kviklet.kviklet.service.dto.UpdateResultLog
+import dev.kviklet.kviklet.service.dto.ErrorQueryResult
+import dev.kviklet.kviklet.service.dto.QueryResult
+import dev.kviklet.kviklet.service.dto.RecordsQueryResult
+import dev.kviklet.kviklet.service.dto.UpdateQueryResult
 import org.springframework.boot.jdbc.DataSourceBuilder
 import org.springframework.stereotype.Service
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.util.*
-
-sealed class QueryResult {
-
-    abstract fun toResultLog(): ResultLog
-}
-
-data class RecordsQueryResult(val columns: List<ColumnInfo>, val data: List<Map<String, String>>) : QueryResult() {
-    override fun toResultLog(): QueryResultLog = QueryResultLog(
-        columnCount = columns.size,
-        rowCount = data.size,
-    )
-}
-
-data class UpdateQueryResult(val rowsUpdated: Int) : QueryResult() {
-
-    override fun toResultLog(): UpdateResultLog = UpdateResultLog(
-        rowsUpdated = rowsUpdated,
-    )
-}
-
-data class ErrorQueryResult(val errorCode: Int, val message: String) : QueryResult() {
-    override fun toResultLog(): ResultLog = ErrorResultLog(
-        errorCode = errorCode,
-        message = message,
-    )
-}
 
 data class TestCredentialsResult(val success: Boolean, val message: String)
 
