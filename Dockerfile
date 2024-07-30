@@ -26,7 +26,8 @@ RUN ln -sf /dev/stdout /var/log/nginx/access.log \
 
 RUN amazon-linux-extras enable mariadb10.5 && \
     yum clean metadata && \
-    yum install -y mariadb
+    yum install -y mariadb && \
+    yum install -y postgresql
 
 COPY --from=javaruntime /usr/lib/jvm/java-21-amazon-corretto /usr/lib/jvm/java-21-amazon-corretto
 
