@@ -56,7 +56,7 @@ const DatasourceExecutionRequestSchema = z
   .object({
     connectionType: z.literal("DATASOURCE"),
     title: z.string().min(1, { message: "Title is required" }),
-    type: z.enum(["TemporaryAccess", "SingleExecution", "GetSQLDump"]),
+    type: z.enum(["TemporaryAccess", "SingleExecution", "SQLDump"]),
     description: z.string(),
     statement: z.string().optional(),
     connectionId: z.string().min(1),
@@ -64,7 +64,7 @@ const DatasourceExecutionRequestSchema = z
   .refine(
     (data) =>
       data.type === "TemporaryAccess" ||
-      "GetSQLDump" ||
+      "SQLDump" ||
       (!!data.statement && data.type === "SingleExecution"),
     {
       message: "If you create a query request an SQL statement is rquired",
@@ -119,7 +119,7 @@ interface PreConfiguredStateKubernetes {
 
 interface PreConfiguredStateDatasource {
   connectionId: string;
-  mode: "SingleExecution" | "TemporaryAccess" | "GetSQLDump";
+  mode: "SingleExecution" | "TemporaryAccess" | "SQLDump";
   connectionType: "Datasource";
   title: string;
   description: string;
@@ -136,7 +136,7 @@ export default function ConnectionChooser() {
     ConnectionResponse | undefined
   >(undefined);
   const [chosenMode, setChosenMode] = useState<
-    "SingleExecution" | "TemporaryAccess" | "GetSQLDump" | undefined
+    "SingleExecution" | "TemporaryAccess" | "SQLDump" | undefined
   >(undefined);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -230,7 +230,7 @@ export default function ConnectionChooser() {
                           }}
                           clickSQLDump={() => {
                             setChosenConnection(connection);
-                            setChosenMode("GetSQLDump");
+                            setChosenMode("SQLDump");
                             close();
                           }}
                           connectionType={connection._type}
@@ -270,7 +270,7 @@ const DatasourceExecutionRequestForm = ({
   mode,
 }: {
   connection: ConnectionResponse;
-  mode: "SingleExecution" | "TemporaryAccess" | "GetSQLDump";
+  mode: "SingleExecution" | "TemporaryAccess" | "SQLDump";
 }) => {
   const navigate = useNavigate();
 
@@ -354,7 +354,7 @@ const DatasourceExecutionRequestForm = ({
             id="title-input"
             type="text"
             placeholder={
-              mode === "GetSQLDump" ? "Give the request a title" : "My query"
+              mode === "SQLDump" ? "Give the request a title" : "My query"
             }
             {...register("title")}
           />
