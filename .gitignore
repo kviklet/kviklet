@@ -3,3 +3,5 @@ postgres-data
 kviklet-postgres-data*
 mysql-data
 mssql-data
+mongodb-data
+lib

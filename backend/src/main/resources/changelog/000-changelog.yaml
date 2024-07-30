@@ -53,3 +53,6 @@ databaseChangeLog:
   - include:
       file: 019-split-edit-into-edit-and-review.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 020-add-protocol-column.yaml
+      relativeToChangelogFile: true

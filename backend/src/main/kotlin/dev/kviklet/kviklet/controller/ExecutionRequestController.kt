@@ -6,16 +6,13 @@ import com.fasterxml.jackson.annotation.JsonTypeName
 import dev.kviklet.kviklet.security.CurrentUser
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.ColumnInfo
-import dev.kviklet.kviklet.service.ErrorQueryResult
 import dev.kviklet.kviklet.service.ExecutionRequestService
-import dev.kviklet.kviklet.service.QueryResult
-import dev.kviklet.kviklet.service.RecordsQueryResult
-import dev.kviklet.kviklet.service.UpdateQueryResult
 import dev.kviklet.kviklet.service.dto.CommentEvent
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DBExecutionResult
 import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
 import dev.kviklet.kviklet.service.dto.EditEvent
+import dev.kviklet.kviklet.service.dto.ErrorQueryResult
 import dev.kviklet.kviklet.service.dto.ErrorResultLog
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventType
@@ -26,12 +23,16 @@ import dev.kviklet.kviklet.service.dto.ExecutionResult
 import dev.kviklet.kviklet.service.dto.ExecutionStatus
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
+import dev.kviklet.kviklet.service.dto.MongoRecordsQueryResult
+import dev.kviklet.kviklet.service.dto.QueryResult
 import dev.kviklet.kviklet.service.dto.QueryResultLog
+import dev.kviklet.kviklet.service.dto.RecordsQueryResult
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ResultType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewEvent
 import dev.kviklet.kviklet.service.dto.ReviewStatus
+import dev.kviklet.kviklet.service.dto.UpdateQueryResult
 import dev.kviklet.kviklet.service.dto.UpdateResultLog
 import dev.kviklet.kviklet.service.dto.utcTimeNow
 import io.swagger.v3.oas.annotations.Operation
@@ -40,6 +41,7 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
+import org.bson.Document
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
@@ -275,6 +277,7 @@ sealed class ExecutionResultResponse(val type: ExecutionResultType) {
             is RecordsQueryResult -> RecordsQueryResultResponse.fromDto(dto)
             is UpdateQueryResult -> UpdateQueryResultResponse.fromDto(dto)
             is ErrorQueryResult -> ErrorQueryResultResponse.fromDto(dto)
+            is MongoRecordsQueryResult -> MongoRecordsQueryResultResponse.fromDto(dto)
         }
     }
 }
@@ -306,6 +309,7 @@ sealed class ExecutionResponse {
 }
 
 enum class ExecutionResultType {
+    DOCUMENTS,
     RECORDS,
     UPDATE_COUNT,
     ERROR,
@@ -319,6 +323,17 @@ data class RecordsQueryResultResponse(val columns: List<ColumnInfo>, val data: L
         fun fromDto(dto: RecordsQueryResult) = RecordsQueryResultResponse(
             columns = dto.columns,
             data = dto.data,
+        )
+    }
+}
+
+data class MongoRecordsQueryResultResponse(val documents: List<Document>) :
+    ExecutionResultResponse(
+        type = ExecutionResultType.DOCUMENTS,
+    ) {
+    companion object {
+        fun fromDto(dto: MongoRecordsQueryResult) = MongoRecordsQueryResultResponse(
+            documents = dto.documents,
         )
     }
 }

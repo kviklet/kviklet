@@ -50,10 +50,11 @@ import java.util.concurrent.CompletableFuture
 @Service
 class ExecutionRequestService(
     private val executionRequestAdapter: ExecutionRequestAdapter,
-    private val executor: Executor,
+    private val JDBCExecutor: JDBCExecutor,
     private val eventService: EventService,
     private val kubernetesApi: KubernetesApi,
     private val applicationEventPublisher: ApplicationEventPublisher,
+    private val mongoDBExecutor: MongoDBExecutor,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val proxies = mutableListOf<ExecutionProxy>()
@@ -228,12 +229,23 @@ class ExecutionRequestService(
             ),
         )
 
-        val result = executor.execute(
-            connectionString = connection.getConnectionString(),
-            username = connection.username,
-            password = connection.password,
-            query = queryToExecute,
-        )
+        val result = when (connection.type) {
+            DatasourceType.MONGODB -> {
+                mongoDBExecutor.execute(
+                    connectionString = connection.getConnectionString(),
+                    databaseName = connection.databaseName ?: "db",
+                    query = queryToExecute,
+                )
+            }
+            else -> {
+                JDBCExecutor.execute(
+                    connectionString = connection.getConnectionString(),
+                    username = connection.username,
+                    password = connection.password,
+                    query = queryToExecute,
+                )
+            }
+        }
 
         if (executionRequest.request.type == RequestType.SingleExecution) {
             executionRequestAdapter.updateExecutionRequest(
@@ -356,7 +368,7 @@ class ExecutionRequestService(
             ),
         )
 
-        executor.executeAndStreamDbResponse(
+        JDBCExecutor.executeAndStreamDbResponse(
             connectionString = connection.getConnectionString(),
             username = connection.username,
             password = connection.password,
@@ -397,7 +409,7 @@ class ExecutionRequestService(
             parsedStatements.joinToString(";") { "EXPLAIN $it" }
         }
 
-        val result = executor.execute(
+        val result = JDBCExecutor.execute(
             connectionString = connection.getConnectionString(),
             username = connection.username,
             password = connection.password,

@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { z } from "zod";
 import {
   DatabaseConnectionResponse,
+  DatabaseProtocol,
   DatabaseType,
   KubernetesConnectionResponse,
 } from "../../../api/DatasourceApi";
@@ -14,6 +15,7 @@ import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import { getJDBCOptionsPlaceholder } from "./DatabaseConnectionForm";
 import Button from "../../../components/Button";
+import { useEffect, useState } from "react";
 
 interface ConnectionDetailsParams {
   connectionId: string;
@@ -24,9 +26,10 @@ const datasourceConnectionFormSchema = z
     displayName: z.string().min(3),
     description: z.string(),
     type: z.nativeEnum(DatabaseType),
+    protocol: z.nativeEnum(DatabaseProtocol),
     hostname: z.string().min(1),
     port: z.coerce.number(),
-    username: z.string().min(1),
+    username: z.string(),
     password: z.string(),
     databaseName: z.string(),
     maxExecutions: z.coerce.number().nullable(),
@@ -83,9 +86,30 @@ function UpdateDatasourceConnectionForm({
   connection,
   editConnection,
 }: UpdateDatasourceFormProps) {
+  const getProtocolOptions = (type: DatabaseType) => {
+    if (type === DatabaseType.POSTGRES) {
+      return [DatabaseProtocol.POSTGRESQL];
+    }
+    if (type === DatabaseType.MYSQL) {
+      return [DatabaseProtocol.MYSQL];
+    }
+    if (type === DatabaseType.MSSQL) {
+      return [DatabaseProtocol.MSSQL];
+    }
+    if (type === DatabaseType.MONGODB) {
+      return [DatabaseProtocol.MONGODB, DatabaseProtocol.MONGODB_SRV];
+    }
+    return [];
+  };
+
+  const [protocolOptions, setProtocolOptions] = useState<DatabaseProtocol[]>(
+    getProtocolOptions(connection.type),
+  );
+
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isDirty },
     watch,
   } = useForm<ConnectionForm>({
@@ -94,6 +118,7 @@ function UpdateDatasourceConnectionForm({
       displayName: connection.displayName,
       description: connection.description,
       type: connection.type,
+      protocol: connection.protocol,
       hostname: connection.hostname,
       port: connection.port,
       username: connection.username,
@@ -112,6 +137,13 @@ function UpdateDatasourceConnectionForm({
   };
 
   const watchType = watch("type");
+  useEffect(() => {
+    const protocolOptions = getProtocolOptions(watchType);
+    if (!protocolOptions.includes(connection.protocol)) {
+      setValue("protocol", protocolOptions[0]);
+    }
+    setProtocolOptions(protocolOptions);
+  }, [watchType]);
 
   return (
     <form onSubmit={(event) => void handleSubmit(onSubmit)(event)}>
@@ -135,6 +167,31 @@ function UpdateDatasourceConnectionForm({
               <option value={DatabaseType.POSTGRES}>Postgres</option>
               <option value={DatabaseType.MYSQL}>MySQL</option>
               <option value={DatabaseType.MSSQL}>MS SQL</option>
+              <option value={DatabaseType.MONGODB}>MongoDB</option>
+            </select>
+          </div>
+
+          <div className="flex w-full justify-between">
+            <label
+              htmlFor="protocol"
+              className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
+            >
+              Database Protocol
+            </label>
+            <select
+              className="block w-full basis-3/5 appearance-none rounded-md border border-slate-300 px-3
+        py-2 text-sm transition-colors focus:border-indigo-600 focus:outline-none
+        hover:border-slate-400 focus:hover:border-indigo-600 dark:border-slate-700 dark:bg-slate-900
+         dark:focus:border-gray-500 dark:hover:border-slate-600 dark:hover:focus:border-gray-500"
+              defaultValue={protocolOptions[0]}
+              disabled={protocolOptions.length === 1}
+              {...register("protocol")}
+            >
+              {protocolOptions.map((protocol) => (
+                <option key={protocol} value={protocol}>
+                  {protocol}
+                </option>
+              ))}
             </select>
           </div>
 

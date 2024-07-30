@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ConnectionResponse } from "../api/DatasourceApi";
+import { ConnectionResponse, DatabaseType } from "../api/DatasourceApi";
 import Spinner from "../components/Spinner";
 import {
   ChevronDownIcon,
@@ -19,6 +19,18 @@ import { Pod, getPods } from "../api/KubernetesApi";
 import useConnections from "../hooks/connections";
 import useNotification from "../hooks/useNotification";
 import { isApiErrorResponse } from "../api/Errors";
+
+const languageString = (connection: ConnectionResponse): string => {
+  if (connection._type === "DATASOURCE") {
+    if (connection.type === DatabaseType.MONGODB) {
+      return "MQL";
+    } else {
+      return "SQL";
+    }
+  } else {
+    return "Command";
+  }
+};
 
 const DatasourceExecutionRequestSchema = z
   .object({
@@ -334,10 +346,10 @@ const DatasourceExecutionRequestForm = ({
         {mode === "SingleExecution" && (
           <div className="my-3 rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
             <label
-              htmlFor="description-input"
+              htmlFor="statement-input"
               className="block text-xs font-medium text-slate-900 dark:text-slate-50"
             >
-              SQL
+              {languageString(connection)}
             </label>
             <textarea
               className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"

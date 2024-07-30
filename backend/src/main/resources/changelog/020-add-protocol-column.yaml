@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 020-add-protocol-column
+      author: Jascha
+      changes:
+        - addColumn:
+            tableName: connection
+            columns:
+              - column:
+                  name: protocol
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: true

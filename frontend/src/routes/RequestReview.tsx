@@ -51,20 +51,26 @@ interface RequestReviewParams {
   requestId: string;
 }
 
-const Highlighter = (props: { children: string }) => {
+const Highlighter = ({
+  children,
+  language = "sql",
+}: {
+  children: string;
+  language?: string;
+}) => {
   const { currentTheme } = useContext<ThemeContext>(ThemeStatusContext);
   const style = currentTheme === "dark" ? a11yDark : a11yLight;
 
   return (
     <SyntaxHighlighter
       style={style}
-      language="sql"
+      language={language}
       customStyle={{
         background: "transparent",
       }}
       PreTag={"div"}
     >
-      {props.children}
+      {children}
     </SyntaxHighlighter>
   );
 };

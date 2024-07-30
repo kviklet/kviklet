@@ -1,9 +1,9 @@
 package dev.kviklet.kviklet.executor
 
 import dev.kviklet.kviklet.service.ColumnInfo
-import dev.kviklet.kviklet.service.ErrorQueryResult
-import dev.kviklet.kviklet.service.Executor
-import dev.kviklet.kviklet.service.RecordsQueryResult
+import dev.kviklet.kviklet.service.JDBCExecutor
+import dev.kviklet.kviklet.service.dto.ErrorQueryResult
+import dev.kviklet.kviklet.service.dto.RecordsQueryResult
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -15,9 +15,9 @@ import org.testcontainers.utility.DockerImageName
 
 @SpringBootTest
 @ActiveProfiles("test")
-class PostgresExecutorTest(@Autowired override val executorService: Executor) :
-    AbstractExecutorTest(
-        executorService = executorService,
+class PostgresJDBCExecutorTest(@Autowired override val JDBCExecutorService: JDBCExecutor) :
+    AbstractJDBCExecutorTest(
+        JDBCExecutorService = JDBCExecutorService,
     ) {
 
     companion object {

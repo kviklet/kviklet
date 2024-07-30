@@ -348,10 +348,18 @@ const ErrorResponseSchema = withType(
   "error",
 );
 
+const DocumentsResponseSchema = withType(
+  z.object({
+    documents: z.array(z.record(z.unknown())),
+  }),
+  "documents",
+);
+
 const DBExecuteResponseResultSchema = z.union([
   UpdateExecuteResponseSchema,
   SelectExecuteResponseSchema,
   ErrorResponseSchema,
+  DocumentsResponseSchema,
 ]);
 
 const DBExecuteResponseSchema = z.object({

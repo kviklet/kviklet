@@ -8,6 +8,7 @@ import dev.kviklet.kviklet.service.TestConnectionResult
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
+import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.KubernetesConnection
@@ -66,11 +67,11 @@ data class CreateDatasourceConnectionRequest(
     val maxExecutions: Int? = null,
 
     @Schema(example = "root")
-    @field:Size(min = 1, max = 255, message = "Maximum length 255")
+    @field:Size(min = 0, max = 255, message = "Maximum length 255")
     val username: String,
 
     @Schema(example = "root")
-    @field:Size(min = 1, max = 255, message = "Maximum length 255")
+    @field:Size(min = 0, max = 255, message = "Maximum length 255")
     val password: String,
 
     val description: String = "",
@@ -78,6 +79,9 @@ data class CreateDatasourceConnectionRequest(
     val reviewConfig: ReviewConfigRequest,
 
     val type: DatasourceType,
+
+    val protocol: DatabaseProtocol? = null,
+
     val hostname: String,
     val port: Int,
     val additionalJDBCOptions: String = "",
@@ -100,6 +104,8 @@ data class UpdateDatasourceConnectionRequest(
 
     val type: DatasourceType? = null,
 
+    val protocol: DatabaseProtocol? = null,
+
     val maxExecutions: Int? = null,
 
     val hostname: String? = null,
@@ -110,11 +116,11 @@ data class UpdateDatasourceConnectionRequest(
     val databaseName: String? = null,
 
     @Schema(example = "root")
-    @field:Size(min = 1, max = 255, message = "Maximum length 255")
+    @field:Size(min = 0, max = 255, message = "Maximum length 255")
     val username: String? = null,
 
     @Schema(example = "password")
-    @field:Size(min = 1, max = 255, message = "Maximum length 255")
+    @field:Size(min = 0, max = 255, message = "Maximum length 255")
     val password: String? = null,
 
     val reviewConfig: ReviewConfigRequest? = null,
@@ -156,6 +162,7 @@ data class DatasourceConnectionResponse(
     val id: ConnectionId,
     val authenticationType: AuthenticationType,
     val type: DatasourceType,
+    val protocol: DatabaseProtocol,
     val maxExecutions: Int?,
     val displayName: String,
     val databaseName: String?,
@@ -172,6 +179,7 @@ data class DatasourceConnectionResponse(
             authenticationType = datasourceConnection.authenticationType,
             displayName = datasourceConnection.displayName,
             type = datasourceConnection.type,
+            protocol = datasourceConnection.protocol,
             databaseName = datasourceConnection.databaseName,
             maxExecutions = datasourceConnection.maxExecutions,
             username = datasourceConnection.username,
@@ -181,7 +189,7 @@ data class DatasourceConnectionResponse(
             reviewConfig = ReviewConfigResponse(
                 datasourceConnection.reviewConfig.numTotalRequired,
             ),
-            additionalJDBCOptions = datasourceConnection.additionalJDBCOptions,
+            additionalJDBCOptions = datasourceConnection.additionalOptions,
         )
     }
 }
@@ -242,6 +250,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             port = request.port,
             hostname = request.hostname,
             type = request.type,
+            protocol = request.protocol ?: request.type.toProtocol(),
             additionalJDBCOptions = request.additionalJDBCOptions,
             maxExecutions = request.maxExecutions,
         )
@@ -258,6 +267,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             port = request.port,
             hostname = request.hostname,
             type = request.type,
+            protocol = request.protocol ?: request.type.toProtocol(),
             additionalJDBCOptions = request.additionalJDBCOptions,
             maxExecutions = request.maxExecutions,
         )

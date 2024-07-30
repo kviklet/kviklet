@@ -1,11 +1,11 @@
 package dev.kviklet.kviklet.executor
 
 import dev.kviklet.kviklet.service.ColumnInfo
-import dev.kviklet.kviklet.service.ErrorQueryResult
-import dev.kviklet.kviklet.service.Executor
-import dev.kviklet.kviklet.service.RecordsQueryResult
-import dev.kviklet.kviklet.service.UpdateQueryResult
+import dev.kviklet.kviklet.service.JDBCExecutor
+import dev.kviklet.kviklet.service.dto.ErrorQueryResult
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
+import dev.kviklet.kviklet.service.dto.RecordsQueryResult
+import dev.kviklet.kviklet.service.dto.UpdateQueryResult
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -18,7 +18,7 @@ import org.testcontainers.containers.JdbcDatabaseContainer
 
 @SpringBootTest
 @ActiveProfiles("test")
-abstract class AbstractExecutorTest(@Autowired val executorService: Executor) {
+abstract class AbstractJDBCExecutorTest(@Autowired val JDBCExecutorService: JDBCExecutor) {
 
     val executionRequestId = ExecutionRequestId("5Wb9WJxCxej5W1Rt6cTBV4")
 
@@ -31,7 +31,7 @@ abstract class AbstractExecutorTest(@Autowired val executorService: Executor) {
         url: String = getDb().jdbcUrl,
         username: String = getDb().username,
         password: String = getDb().password,
-    ) = executorService.execute(url, username, password, query).get(0)
+    ) = JDBCExecutorService.execute(url, username, password, query).get(0)
 
     @BeforeEach
     fun setup() {
