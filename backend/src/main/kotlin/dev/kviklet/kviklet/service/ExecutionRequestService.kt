@@ -36,7 +36,7 @@ import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.SQLDumpResponse
-import dev.kviklet.kviklet.service.dto.SecuredFlux
+import dev.kviklet.kviklet.service.dto.StreamedSQLDump
 import dev.kviklet.kviklet.service.dto.utcTimeNow
 import dev.kviklet.kviklet.shell.KubernetesApi
 import jakarta.servlet.ServletOutputStream
@@ -150,7 +150,6 @@ class ExecutionRequestService(
                     "-U${connection.username}",
                     "-h${connection.hostname}",
                     "-p${connection.port}",
-                    "-d",
                     connection.databaseName,
                     outputFile?.let { "--file=$it" },
                 )
@@ -168,8 +167,8 @@ class ExecutionRequestService(
      * @return A Flux emitting chunks of SQL dump data as byte arrays.
      */
     @Transactional
-    @Policy(Permission.EXECUTION_REQUEST_GET)
-    fun streamSQLDump(connectionId: String): SecuredFlux {
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
+    fun streamSQLDump(connectionId: String): StreamedSQLDump {
         val flux = Flux.create<ByteArray> { sink ->
             var inputStream: BufferedInputStream? = null
             var process: Process? = null
@@ -180,8 +179,17 @@ class ExecutionRequestService(
                     // Construct SQL dump command
                     val command = constructSQLDumpCommand(connection)
 
+                    // Set the PGPASSWORD environment variable if PostgreSQL
+                    val env = System.getenv().toMutableMap()
+                    if (connection.type == DatasourceType.POSTGRESQL) {
+                        env["PGPASSWORD"] = connection.password
+                    }
+
                     // Execute the SQL dump
-                    process = Runtime.getRuntime().exec(command.toTypedArray())
+                    process = ProcessBuilder(command).apply {
+                        environment().putAll(env)
+                    }.start()
+
                     inputStream = BufferedInputStream(process.inputStream)
 
                     // Buffer to read chunks of data from the process input stream
@@ -220,7 +228,7 @@ class ExecutionRequestService(
             }
         }.onBackpressureBuffer()
 
-        return SecuredFlux(flux, connectionId, Resource.EXECUTION_REQUEST)
+        return StreamedSQLDump(flux, connectionId, Resource.EXECUTION_REQUEST)
     }
 
     /**
@@ -230,7 +238,7 @@ class ExecutionRequestService(
      * @return An SQLDumpResponse containing the SQL dump file.
      */
     @Transactional
-    @Policy(Permission.EXECUTION_REQUEST_GET)
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
     fun generateSQLDump(connectionId: String): SQLDumpResponse {
         try {
             // Get the db connection information
