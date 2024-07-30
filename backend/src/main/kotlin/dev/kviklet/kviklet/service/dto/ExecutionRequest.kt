@@ -40,7 +40,7 @@ enum class ExecutionStatus {
 enum class RequestType {
     SingleExecution,
     TemporaryAccess,
-    GetSQLDump,
+    SQLDump,
 }
 
 /**
@@ -185,7 +185,7 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
 
     fun resolveExecutionStatus(): ExecutionStatus {
         when (request.type) {
-            RequestType.SingleExecution, RequestType.GetSQLDump -> {
+            RequestType.SingleExecution, RequestType.SQLDump -> {
                 val executions = events.filter { it.type == EventType.EXECUTE }
                 request.connection.maxExecutions?.let { maxExecutions ->
                     if (maxExecutions == 0) { // magic number for unlimited executions
@@ -233,8 +233,8 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
     private fun isExecutable(): Boolean = resolveReviewStatus() == ReviewStatus.APPROVED
 
     fun csvDownloadAllowed(query: String? = null): Pair<Boolean, String> {
-        if (request.type === RequestType.GetSQLDump) {
-            return Pair(false, "CSV download is not available for GetSQLDump")
+        if (request.type === RequestType.SQLDump) {
+            return Pair(false, "CSV download is not available for SQLDump")
         }
 
         if (request.connection !is DatasourceConnection || request !is DatasourceExecutionRequest) {
@@ -254,7 +254,7 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         }
 
         val queryToExecute = when (request.type) {
-            RequestType.SingleExecution, RequestType.GetSQLDump -> request.statement!!.trim().removeSuffix(";")
+            RequestType.SingleExecution, RequestType.SQLDump -> request.statement!!.trim().removeSuffix(";")
             RequestType.TemporaryAccess -> query?.trim()?.removeSuffix(
                 ";",
             ) ?: return Pair(false, "Query can't be empty")
