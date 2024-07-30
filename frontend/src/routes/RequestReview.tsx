@@ -21,7 +21,7 @@ import {
   DatasourceExecutionRequestResponseWithComments,
   executeCommand,
   KubernetesExecuteResponse,
-  getSQLDumpStreamedRequest,
+  SQLDumpRequest,
 } from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
 import { mapStatus, mapStatusToLabelColor, timeSince } from "./Requests";
@@ -702,7 +702,7 @@ function DatasourceRequestBox({
       const fileHandle = await fileHandler(connectionId);
 
       // Fetch and handle SQL dump data
-      const combinedSQL = await getSQLDumpStreamedRequest(connectionId);
+      const combinedSQL = await SQLDumpRequest(connectionId);
 
       // Create a writable stream that writes the blob to the file
       const writableStream = await fileHandle.createWritable();
@@ -739,7 +739,7 @@ function DatasourceRequestBox({
   };
 
   const handleButtonClick = () => {
-    if (request?.type === "GetSQLDump") {
+    if (request?.type === "SQLDump") {
       setChosenConnection(request.connection);
       setShowSQLDumpModal(true);
     } else {

@@ -376,7 +376,7 @@ class ExecutionRequestService(
         }
 
         val queryToExecute = when (executionRequest.request.type) {
-            RequestType.SingleExecution, RequestType.GetSQLDump -> executionRequest.request.statement!!
+            RequestType.SingleExecution, RequestType.SQLDump -> executionRequest.request.statement!!
             RequestType.TemporaryAccess -> query ?: throw MissingQueryException(
                 "For temporary access requests the query param is required",
             )
@@ -510,7 +510,7 @@ class ExecutionRequestService(
         }
         val downloadAllowedAndReason = executionRequest.csvDownloadAllowed(query)
         val queryToExecute = when (executionRequest.request.type) {
-            RequestType.SingleExecution, RequestType.GetSQLDump ->
+            RequestType.SingleExecution, RequestType.SQLDump ->
                 executionRequest.request.statement!!
                     .trim()
                     .removeSuffix(";")
@@ -701,7 +701,7 @@ class ExecutionRequestService(
 fun ExecutionRequestDetails.raiseIfAlreadyExecuted() {
     if (resolveExecutionStatus() == ExecutionStatus.EXECUTED) {
         when (request.type) {
-            RequestType.SingleExecution, RequestType.GetSQLDump ->
+            RequestType.SingleExecution, RequestType.SQLDump ->
                 throw AlreadyExecutedException(
                     "This request has already been executed, can only execute a configured amount of times!",
                 )

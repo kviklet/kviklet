@@ -91,7 +91,7 @@ const CSVDownloadSchema = z.object({
 
 const RawDatasourceRequestSchema = z.object({
   id: z.string(),
-  type: z.enum(["TemporaryAccess", "SingleExecution", "GetSQLDump"]),
+  type: z.enum(["TemporaryAccess", "SingleExecution", "SQLDump"]),
   author: userResponseSchema,
   title: z.string().min(1),
   description: z.string(),
@@ -312,9 +312,7 @@ const addReviewToRequest = async (
   );
 };
 
-const getSQLDumpStreamedRequest = async (
-  connectionId: string,
-): Promise<string> => {
+const SQLDumpRequest = async (connectionId: string): Promise<string> => {
   const response = await fetch(`${requestUrl}stream-sql-dump/${connectionId}`, {
     method: "GET",
     credentials: "include",
@@ -461,7 +459,7 @@ export {
   patchRequest,
   postStartServer,
   executeCommand,
-  getSQLDumpStreamedRequest,
+  SQLDumpRequest,
 };
 export type {
   DBExecuteResponseResult as ExecuteResponseResult,
