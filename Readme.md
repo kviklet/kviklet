@@ -12,14 +12,14 @@ Kviklet embraces the **Four-Eyes Principle** and a high level of configurability
 
 Kviklet is a self hosted docker container, that provides you with a Single Page Web app that you can login to create your SQL requests or approve the ones of others.
 
-We currently support **Postgres**, **MySQL** and **MS SQL Server**.
+We currently support **Postgres**, **MySQL**, **MS SQL Server** and **MongoDB**.
 
 ## Features
 
 Kviklet ships with a variety of features that an engineering team needs to manage their production database access in a **simple but secure** manner:
 
 - **SSO (Google)**: Log into Kviklet without the need for a username or password. No more shared credentials for DB access.
-- **Or LDAP Support**: Log into Kviklet with your LDAP credentials.
+- **LDAP Support**: Log into Kviklet with your LDAP credentials.
 - **Review/Approval Flow**: Leave Comments and Suggestions on other developers data requests.
 - **Temporary Access (1h)**: Execute any statement on a db for 1h after having been approved
 - **Single Query**: Execute a singular statement. Allows the reviewer to review your query before execution.
@@ -27,7 +27,18 @@ Kviklet ships with a variety of features that an engineering team needs to manag
 - **RBAC**: Configure which team has access to which database/table to as fine of a granularity as the DB Engine allows.
 - **Postgres Proxy**: Start a proxy server to use the DB Client of your choice, but everything will be stored in the Kviklet Auditlog.
 - **Kubernetes Exec**: Execute a statement on a pod in your kubernetes cluster. (Currently only supports Execution of a single command no live session yet)
-- And more...
+
+## Feature by Database/Connection Type
+ Most are available for all (SSO, LDAP, RBAC, Review/Approval Flow, Auditlog, etc.), but some features vary by database. The following table shows which features are available for which database type if it varies:
+
+|Database|Statement Review|Temporary Access|Proxy(Beta)|Explain Plan|
+|---|---|---|---|---|
+|Postgres|&check;|&check;|&check;|&check;|
+|MySQL|&check;|&check;|&cross;|&check;|
+|MariaDB|&check;|&check;|&cross;|&check;|
+|SQL Server|&check;|&check;|&cross;|&check;|
+|MongoDB|&check;||&cross;|&cross;|&cross;|
+|Kubernetes|&check;|&cross;|&cross;|&cross;|
 
 ## Setup
 
