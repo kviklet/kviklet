@@ -11,7 +11,6 @@ import { isApiErrorResponse } from "../api/Errors";
 import useNotification from "../hooks/useNotification";
 import Toggle from "../components/Toggle";
 
-
 function timeSince(date: Date) {
   const seconds =
     Math.floor((new Date().getTime() - date.getTime()) / 1000) +
