@@ -81,9 +81,9 @@ export default function DatabaseConnectionForm(props: {
     resolver: zodResolver(connectionFormSchema),
   });
 
-  const [protocolOptions, setProtocolOptions] = useState<DatabaseProtocol[]>(
-    [],
-  );
+  const [protocolOptions, setProtocolOptions] = useState<DatabaseProtocol[]>([
+    DatabaseProtocol.POSTGRESQL,
+  ]);
 
   const watchDisplayName = watch("displayName");
   const watchId = watch("id");
@@ -107,6 +107,7 @@ export default function DatabaseConnectionForm(props: {
     setValue("reviewConfig", { numTotalRequired: 1 });
     setValue("port", 5432);
     setValue("type", DatabaseType.POSTGRES);
+    setValue("protocol", DatabaseProtocol.POSTGRESQL);
     setValue("maxExecutions", 1);
   }, []);
 
@@ -339,7 +340,6 @@ const TestingConnectionFragment = (props: {
     useState<TestConnectionResponse | null>(null);
 
   useEffect(() => {
-    console.log("resetting response");
     setTestConnectionResponse(null);
   }, [props.type]);
 
