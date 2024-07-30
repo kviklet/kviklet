@@ -3,8 +3,23 @@
 ## Run the app in containers:
 
 ```
-docker compose build --no-cache kviklet
 docker-compose up -d kviklet kviklet-postgres mysql
+```
+
+- Need to rebuild to see changes:
+  In the `docker-compose.yml` file, update the kviklet service to use the build context:
+
+```
+kviklet:
+   # image: ghcr.io/kviklet/kviklet:main
+   build: .
+```
+
+Then rebuild and restart the kviklet container:
+
+```
+docker compose build --no-cache kviklet
+docker-compose up -d kviklet
 ```
 
 ### Steps to create new request
@@ -44,18 +59,9 @@ brew services start postgresql@16
 3. Create an `application-local.properties` file in the `src/main/resources` directory with the appropriate configuration settings. For example:
 
 ```
-spring.liquibase.change-log=classpath:changelog/000-changelog.yaml
 spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/kviklet
 spring.datasource.username=postgres
 spring.datasource.password=postgres
-spring.datasource.driverClassName=org.postgresql.Driver
-spring.jpa.properties.hibernate.auto_quote_keyword=true
-spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
-
-app.name=Kviklet
-
-initial.user.email=admin@admin.com
-initial.user.password=admin
 ```
 
 4. Create a PostgreSQL database and set the database owner to the initial user specified in `application-local.properties`.
@@ -75,7 +81,7 @@ initial.user.password=admin
    ./gradlew bootRun --args='--spring.profiles.active=local'
 ```
 
----
+## docker compose build --no-cache kviklet
 
 ## Tests and checks
 
