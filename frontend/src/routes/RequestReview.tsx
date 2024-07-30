@@ -510,12 +510,10 @@ function DatasourceRequestBox({
       : []),
   ];
 
-  /* eslint-disable @typescript-eslint/no-unsafe-call */
   const fileHandler = async (connectionId: string) => {
     try {
       // Create a handle for the file the user wants to save
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const fileHandle = await (window as any).showSaveFilePicker({
+      const fileHandle = await window.showSaveFilePicker({
         suggestedName: `${connectionId}.sql`,
         types: [
           {
@@ -559,7 +557,6 @@ function DatasourceRequestBox({
       setShowSQLDumpModal(false);
     }
   };
-  /* eslint-enable @typescript-eslint/no-unsafe-call */
 
   const SQLDumpModal = () => {
     if (!showSQLDumpModal || !chosenConnection) return null;
