@@ -29,7 +29,7 @@ Kviklet ships with a variety of features that an engineering team needs to manag
 - **Kubernetes Exec**: Execute a statement on a pod in your kubernetes cluster. (Currently only supports Execution of a single command no live session yet)
 
 ## Feature by Database/Connection Type
- Most are available for all (SSO, LDAP, RBAC, Review/Approval Flow, Auditlog, etc.), but some features vary by database. The following table shows which features are available for which database type if it varies:
+ Most features are available for all databases (SSO, LDAP, RBAC, Review/Approval Flow, Auditlog, etc.). But some features are restricted, either because it simply hasn't been built yet or because it makes no sense for that specific purpose. The following table shows which features are available for which database type:
 
 |Database|Statement Review|Temporary Access|Proxy(Beta)|Explain Plan|
 |---|---|---|---|---|
