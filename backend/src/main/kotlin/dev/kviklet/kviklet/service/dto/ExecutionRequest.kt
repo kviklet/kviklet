@@ -299,7 +299,7 @@ data class SQLDumpResponse(val resource: InputStreamResource, val fileName: Stri
     override fun getRelated(resource: Resource): SecuredDomainObject? = null
 }
 
-class SecuredFlux(
+class StreamedSQLDump(
     private val flux: Flux<ByteArray>,
     private val securedObjectId: String,
     private val domainObjectType: Resource,
