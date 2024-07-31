@@ -6,10 +6,16 @@ import {
 import { Link } from "react-router-dom";
 import Button from "../components/Button";
 import Spinner from "../components/Spinner";
-import { CircleStackIcon, CloudIcon } from "@heroicons/react/20/solid";
+import {
+  CircleStackIcon,
+  ClockIcon,
+  CloudIcon,
+} from "@heroicons/react/20/solid";
 import { isApiErrorResponse } from "../api/Errors";
 import useNotification from "../hooks/useNotification";
 import Toggle from "../components/Toggle";
+import SearchInput from "../components/SearchInput";
+import Tooltip from "../components/Tooltip";
 
 function timeSince(date: Date) {
   const seconds =
@@ -69,7 +75,7 @@ function mapStatusToLabelColor(status?: string) {
       return "dark:ring-gray-400/10 dark:text-gray-500 ring-gray-500/10 text-gray-600 bg-gray-50 dark:bg-gray-400/10";
   }
 }
-const useRequests = (onlyPending: boolean) => {
+const useRequests = (onlyPending: boolean, searchTerm: string) => {
   const [requests, setRequests] = useState<ExecutionRequestResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -103,7 +109,19 @@ const useRequests = (onlyPending: boolean) => {
     ? requests.filter((r) => r.reviewStatus === "AWAITING_APPROVAL")
     : requests;
 
-  const sortedRequests = [...visibleRequests].sort((a, b) => {
+  const filteredRequests = visibleRequests.filter(
+    (request) =>
+      request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.reviewStatus.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      request.executionStatus
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      request.author.fullName?.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  const sortedRequests = [...filteredRequests].sort((a, b) => {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
@@ -112,7 +130,8 @@ const useRequests = (onlyPending: boolean) => {
 
 function Requests() {
   const [onlyPending, setOnlyPending] = useState(false);
-  const { requests, loading } = useRequests(onlyPending);
+  const [searchTerm, setSearchTerm] = useState("");
+  const { requests, loading } = useRequests(onlyPending, searchTerm);
 
   return (
     <div className="h-full">
@@ -125,14 +144,24 @@ function Requests() {
       {(loading && <Spinner></Spinner>) || (
         <div className="h-full bg-slate-50 dark:bg-slate-950">
           <div className="mx-auto max-w-5xl ">
-            <div className="flex flex-row">
-              <div className="mb-2 ml-auto mr-2 mt-4 flex flex-row">
-                <label className="mr-2">Only show pending requests</label>
-                <Toggle
-                  active={onlyPending}
-                  onClick={() => setOnlyPending(!onlyPending)}
-                ></Toggle>
-              </div>
+            <div className="mb-2 mt-4 flex flex-row items-center justify-between">
+              <SearchInput
+                value={searchTerm}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setSearchTerm(e.target.value)
+                }
+                placeholder="Search requests..."
+                className="w-full"
+              />
+              <Tooltip position="bottom" content="Show only pending requests">
+                <div className="ml-4 flex items-center">
+                  <ClockIcon className="mr-2 h-5 w-5 text-slate-400" />
+                  <Toggle
+                    active={onlyPending}
+                    onClick={() => setOnlyPending(!onlyPending)}
+                  />
+                </div>
+              </Tooltip>
             </div>
 
             {requests.length === 0 && (
@@ -144,7 +173,7 @@ function Requests() {
               return (
                 <Link to={`/requests/${request.id}`}>
                   <div
-                    className="mx-2 my-4 rounded-md border border-slate-200 bg-white px-4 py-4 shadow-md transition-colors hover:bg-slate-50 dark:border dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
+                    className="my-4 rounded-md border border-slate-200 bg-white px-4 py-4 shadow-md transition-colors hover:bg-slate-50 dark:border dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
                     key={request.id}
                   >
                     <div className="flex">
