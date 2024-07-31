@@ -525,7 +525,7 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
 
     @Operation(summary = "Export Databse Request At Once", description = "Get SQL dump by connectionId")
     @GetMapping("/sql-dump/{connectionId}")
-    fun SQLDump(@PathVariable connectionId: String): ResponseEntity<InputStreamResource> {
+    fun generateSQLDump(@PathVariable connectionId: String): ResponseEntity<InputStreamResource> {
         val response = executionRequestService.generateSQLDump(connectionId)
         return ResponseEntity.ok()
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"${response.fileName}\"")
