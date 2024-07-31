@@ -556,12 +556,14 @@ function DatasourceRequestBox({
 
       // Handle reading from the readable stream and writing to the writable stream
       const pump = async () => {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            break;
+        let done = false;
+        while (!done) {
+          const result = await reader.read();
+          done = result.done;
+          const value = result.value;
+          if (value !== undefined) {
+            await writableStream.write(value);
           }
-          await writableStream.write(value);
         }
         await writableStream.close();
       };

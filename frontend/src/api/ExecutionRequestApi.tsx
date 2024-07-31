@@ -327,8 +327,7 @@ const SQLDumpRequest = async (connectionId: string): Promise<Uint8Array[]> => {
       `Failed to fetch SQL dump: ${response.status} ${response.statusText}`,
     );
   }
-
-  const base64Chunks = await response.json();
+  const base64Chunks = (await response.json()) as string[];
 
   // Convert Base64 encoded strings to Uint8Array
   const decodedChunks = base64Chunks.map((chunk: string) => {
