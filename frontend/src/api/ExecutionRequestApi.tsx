@@ -315,7 +315,8 @@ const addReviewToRequest = async (
   );
 };
 
-const SQLDumpRequest = async (connectionId: string): Promise<string> => {
+const SQLDumpRequest = async (connectionId: string): Promise<Uint8Array[]> => {
+  // Request SQL dump data from the backend which returns an array of encoded strings in chunks
   const response = await fetch(`${requestUrl}stream-sql-dump/${connectionId}`, {
     method: "GET",
     credentials: "include",
@@ -327,18 +328,20 @@ const SQLDumpRequest = async (connectionId: string): Promise<string> => {
     );
   }
 
-  const encodedStrings: string[] = await response.json();
-  const sqlStrings: string[] = [];
+  const base64Chunks = await response.json();
 
-  encodedStrings.forEach((encodedString) => {
-    // Decode the base64 string
-    const decodedString = atob(encodedString);
-    // Push decoded SQL to array
-    sqlStrings.push(decodedString);
+  // Convert Base64 encoded strings to Uint8Array
+  const decodedChunks = base64Chunks.map((chunk: string) => {
+    // Decode Base64 to binary string
+    const binaryString = atob(chunk);
+    const binaryLen = binaryString.length;
+    const bytes = new Uint8Array(binaryLen);
+    for (let i = 0; i < binaryLen; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
   });
-
-  // Combine all SQL strings into one
-  return sqlStrings.join("");
+  return decodedChunks;
 };
 
 function withType<T, U extends string>(schema: z.ZodSchema<T>, typeValue: U) {
