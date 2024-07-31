@@ -531,25 +531,41 @@ function DatasourceRequestBox({
     }
   };
 
+  // Function to handle streaming the SQL dump and saving it to a file
   const handleStreamSQLDump = async (connectionId: string) => {
     try {
-      // Get file handle using the utility function
+      // Get a file handle to write the file
       const fileHandle = await fileHandler(connectionId);
+      // Request and decode the SQL dump data
+      const decodedChunks = await SQLDumpRequest(connectionId);
 
-      // Fetch and handle SQL dump data
-      const combinedSQL = await SQLDumpRequest(connectionId);
+      // Create a ReadableStream from decoded chunks
+      const readableStream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          decodedChunks.forEach((chunk: Uint8Array) => {
+            controller.enqueue(chunk);
+          });
+          controller.close();
+        },
+      });
 
-      // Create a writable stream that writes the blob to the file
+      const reader = readableStream.getReader();
+      // Create a writable stream to write data to the file
       const writableStream = await fileHandle.createWritable();
 
-      // Write the combined SQL content to the file
-      await writableStream.write(
-        new Blob([combinedSQL], { type: "text/plain" }),
-      );
+      // Handle reading from the readable stream and writing to the writable stream
+      const pump = async () => {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+          await writableStream.write(value);
+        }
+        await writableStream.close();
+      };
 
-      // Close the file and release the stream
-      await writableStream.close();
-
+      await pump();
       console.log("File saved successfully.");
     } catch (error) {
       console.error("Error:", error);
