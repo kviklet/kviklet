@@ -264,7 +264,7 @@ class ExecutionRequestService(
                     // If successful, prepare response entity with the SQL dump as input stream
                     val resource = InputStreamResource(tempFile.inputStream())
                     val fileName = "$connectionId.sql"
-                    return SQLDumpResponse(resource, fileName)
+                    return SQLDumpResponse(resource, fileName, connectionId)
                 } else {
                     // If the process did not complete successfully, destroy the process
                     process.destroy()
