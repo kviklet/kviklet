@@ -291,8 +291,9 @@ data class ExecutionProxy(
     override fun getRelated(resource: Resource): SecuredDomainObject? = null
 }
 
-data class SQLDumpResponse(val resource: InputStreamResource, val fileName: String) : SecuredDomainObject {
-    override fun getSecuredObjectId(): String? = fileName
+data class SQLDumpResponse(val resource: InputStreamResource, val fileName: String, val connectionId: String) :
+    SecuredDomainObject {
+    override fun getSecuredObjectId(): String = connectionId
 
     override fun getDomainObjectType(): Resource = Resource.EXECUTION_REQUEST
 
