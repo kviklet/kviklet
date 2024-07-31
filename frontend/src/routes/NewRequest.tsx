@@ -14,11 +14,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { addRequest } from "../api/ExecutionRequestApi";
 import { z } from "zod";
 import Button from "../components/Button";
-import { Disclosure } from "@headlessui/react";
+import {
+  Disclosure,
+  DisclosureButton,
+  DisclosurePanel,
+} from "@headlessui/react";
 import { Pod, getPods } from "../api/KubernetesApi";
 import useConnections from "../hooks/connections";
 import useNotification from "../hooks/useNotification";
 import { isApiErrorResponse } from "../api/Errors";
+import SearchInput from "../components/SearchInput";
 
 const languageString = (connection: ConnectionResponse): string => {
   if (connection._type === "DATASOURCE") {
@@ -117,6 +122,14 @@ export default function ConnectionChooser() {
   const [chosenMode, setChosenMode] = useState<
     "SingleExecution" | "TemporaryAccess" | undefined
   >(undefined);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredConnections = connections.filter(
+    (connection) =>
+      connection.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      connection.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      connection.id.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
 
   const location = useLocation();
 
@@ -148,7 +161,7 @@ export default function ConnectionChooser() {
             <Disclosure defaultOpen={true}>
               {({ open, close }) => (
                 <>
-                  <Disclosure.Button className="py-2">
+                  <DisclosureButton className="py-2">
                     <div className="flex flex-row justify-between">
                       <div className="flex flex-row">
                         <div>Connections</div>
@@ -170,13 +183,20 @@ export default function ConnectionChooser() {
                         </div>
                       )}
                     </div>
-                  </Disclosure.Button>
-                  <Disclosure.Panel>
+                  </DisclosureButton>
+                  <DisclosurePanel>
+                    <SearchInput
+                      value={searchTerm}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                        setSearchTerm(e.target.value)
+                      }
+                      className="mb-4"
+                    />
                     <ul
                       role="list"
                       className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
                     >
-                      {connections.map((connection) => (
+                      {filteredConnections.map((connection) => (
                         <Card
                           header={connection.displayName}
                           subheader={connection.description}
@@ -196,7 +216,7 @@ export default function ConnectionChooser() {
                         ></Card>
                       ))}
                     </ul>
-                  </Disclosure.Panel>
+                  </DisclosurePanel>
                 </>
               )}
             </Disclosure>
