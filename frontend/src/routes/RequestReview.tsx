@@ -575,7 +575,7 @@ function DatasourceRequestBox({
     } catch (error) {
       if (error instanceof Error) {
         addNotification({
-          title: "Failed to fetch requests",
+          title: "Failed to process SQL dump.",
           text: error.message,
           type: "error",
         });
