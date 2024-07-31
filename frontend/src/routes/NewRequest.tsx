@@ -24,7 +24,6 @@ import useConnections from "../hooks/connections";
 import useNotification from "../hooks/useNotification";
 import { isApiErrorResponse } from "../api/Errors";
 import SearchInput from "../components/SearchInput";
-import { DatabaseType } from "../api/DatasourceApi";
 
 const languageString = (connection: ConnectionResponse): string => {
   if (connection._type === "DATASOURCE") {
