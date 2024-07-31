@@ -24,6 +24,7 @@ import useConnections from "../hooks/connections";
 import useNotification from "../hooks/useNotification";
 import { isApiErrorResponse } from "../api/Errors";
 import SearchInput from "../components/SearchInput";
+import { DatabaseType } from "../api/DatasourceApi";
 
 const languageString = (connection: ConnectionResponse): string => {
   if (connection._type === "DATASOURCE") {
@@ -212,30 +213,39 @@ export default function ConnectionChooser() {
                       role="list"
                       className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
                     >
-                      {filteredConnections.map((connection) => (
-                        <Card
-                          header={connection.displayName}
-                          subheader={connection.description}
-                          label={connection.id}
-                          key={connection.id}
-                          clickQuery={() => {
-                            setChosenConnection(connection);
-                            setChosenMode("SingleExecution");
-                            close();
-                          }}
-                          clickAccess={() => {
-                            setChosenConnection(connection);
-                            setChosenMode("TemporaryAccess");
-                            close();
-                          }}
-                          clickSQLDump={() => {
-                            setChosenConnection(connection);
-                            setChosenMode("SQLDump");
-                            close();
-                          }}
-                          connectionType={connection._type}
-                        ></Card>
-                      ))}
+                      {filteredConnections.map((connection) => {
+                        // Only enable DB dump for MySQL & PostgresSQL
+                        const sqlDumpEnabled =
+                          connection._type === "DATASOURCE" &&
+                          (connection.type === DatabaseType.POSTGRES ||
+                            connection.type === DatabaseType.MYSQL);
+
+                        return (
+                          <Card
+                            header={connection.displayName}
+                            subheader={connection.description}
+                            label={connection.id}
+                            key={connection.id}
+                            clickQuery={() => {
+                              setChosenConnection(connection);
+                              setChosenMode("SingleExecution");
+                              close();
+                            }}
+                            clickAccess={() => {
+                              setChosenConnection(connection);
+                              setChosenMode("TemporaryAccess");
+                              close();
+                            }}
+                            clickSQLDump={() => {
+                              setChosenConnection(connection);
+                              setChosenMode("SQLDump");
+                              close();
+                            }}
+                            connectionType={connection._type}
+                            sqlDumpEnabled={sqlDumpEnabled}
+                          ></Card>
+                        );
+                      })}
                     </ul>
                   </DisclosurePanel>
                 </>
@@ -717,6 +727,7 @@ interface CardProps {
   clickAccess: () => void;
   clickSQLDump: () => void;
   connectionType: "DATASOURCE" | "KUBERNETES";
+  sqlDumpEnabled: boolean;
 }
 
 const Card = (props: CardProps) => {
@@ -777,7 +788,7 @@ const Card = (props: CardProps) => {
               </button>
             </div>
           )}
-          {props.connectionType === "DATASOURCE" && (
+          {props.connectionType === "DATASOURCE" && props.sqlDumpEnabled && (
             <div className="-ml-px flex w-0 flex-1">
               <button
                 onClick={props.clickSQLDump}
