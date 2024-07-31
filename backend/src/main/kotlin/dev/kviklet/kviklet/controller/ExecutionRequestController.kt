@@ -42,6 +42,10 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import org.bson.Document
+import org.springframework.core.io.InputStreamResource
+import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
@@ -51,6 +55,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import reactor.core.publisher.Flux
 import java.time.LocalDateTime
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
@@ -499,6 +504,33 @@ data class ProxyResponse(val port: Int, val username: String, val password: Stri
     description = "Run queries against a datasource by interacting with Execution Requests",
 )
 class ExecutionRequestController(val executionRequestService: ExecutionRequestService) {
+    @Operation(
+        summary = "Export Databse Request Streamed",
+        description = """
+    Exports database data incrementally by sending small portions continuously,
+     avoiding the need to save any temporary file in memory.
+    """,
+    )
+    @GetMapping("/stream-sql-dump/{connectionId}")
+    fun streamSQLDump(@PathVariable connectionId: String): ResponseEntity<Flux<ByteArray>> {
+        val securedFlux = executionRequestService.streamSQLDump(connectionId)
+        val responseFlux = securedFlux.toFlux()
+
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"$connectionId.sql\"")
+            .contentType(MediaType.APPLICATION_OCTET_STREAM)
+            .body(responseFlux)
+    }
+
+    @Operation(summary = "Export Databse Request At Once", description = "Get SQL dump by connectionId")
+    @GetMapping("/sql-dump/{connectionId}")
+    fun generateSQLDump(@PathVariable connectionId: String): ResponseEntity<InputStreamResource> {
+        val response = executionRequestService.generateSQLDump(connectionId)
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"${response.fileName}\"")
+            .contentType(MediaType.parseMediaType("application/octet-stream"))
+            .body(response.resource)
+    }
 
     @Operation(summary = "Create Execution Request")
     @PostMapping("/")

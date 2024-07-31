@@ -4,10 +4,10 @@ import org.springframework.boot.gradle.tasks.run.BootRun
 plugins {
     id("org.springframework.boot") version "3.1.2"
     id("io.spring.dependency-management") version "1.0.15.RELEASE"
-    kotlin("jvm") version "1.9.10"
-    kotlin("plugin.spring") version "1.9.10"
-    kotlin("plugin.jpa") version "1.9.10"
-    kotlin("kapt") version "1.9.10" // needed for query-dsl
+    kotlin("jvm") version "1.9.24"
+    kotlin("plugin.spring") version "1.9.24"
+    kotlin("plugin.jpa") version "1.9.24"
+    kotlin("kapt") version "1.9.24" // needed for query-dsl
 }
 
 kapt {
@@ -50,6 +50,10 @@ dependencies {
     implementation("org.springframework.security:spring-security-ldap")
     implementation("org.springframework.ldap:spring-ldap-core")
     implementation("org.springframework.boot:spring-boot-devtools")
+    implementation("org.springframework.boot:spring-boot-starter-webflux")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
+    implementation("io.projectreactor.kotlin:reactor-kotlin-extensions")
 
     implementation("org.springframework.security:spring-security-acl")
     implementation("org.springframework.security:spring-security-config")

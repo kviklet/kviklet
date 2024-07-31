@@ -9,6 +9,8 @@ import dev.kviklet.kviklet.security.SecuredDomainObject
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import net.sf.jsqlparser.JSQLParserException
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
+import org.springframework.core.io.InputStreamResource
+import reactor.core.publisher.Flux
 import java.io.Serializable
 import java.time.LocalDateTime
 
@@ -35,6 +37,7 @@ enum class ExecutionStatus {
 enum class RequestType {
     SingleExecution,
     TemporaryAccess,
+    SQLDump,
 }
 
 /**
@@ -179,7 +182,7 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
 
     fun resolveExecutionStatus(): ExecutionStatus {
         when (request.type) {
-            RequestType.SingleExecution -> {
+            RequestType.SingleExecution, RequestType.SQLDump -> {
                 val executions = events.filter { it.type == EventType.EXECUTE }
                 request.connection.maxExecutions?.let { maxExecutions ->
                     if (maxExecutions == 0) { // magic number for unlimited executions
@@ -227,6 +230,10 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
     private fun isExecutable(): Boolean = resolveReviewStatus() == ReviewStatus.APPROVED
 
     fun csvDownloadAllowed(query: String? = null): Pair<Boolean, String> {
+        if (request.type === RequestType.SQLDump) {
+            return Pair(false, "CSV download is not available for SQLDump")
+        }
+
         if (request.connection !is DatasourceConnection || request !is DatasourceExecutionRequest) {
             return Pair(false, "Only Datasource Requests can be downloaded as CSV")
         }
@@ -240,7 +247,7 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         }
 
         val queryToExecute = when (request.type) {
-            RequestType.SingleExecution -> request.statement!!.trim().removeSuffix(";")
+            RequestType.SingleExecution, RequestType.SQLDump -> request.statement!!.trim().removeSuffix(";")
             RequestType.TemporaryAccess -> query?.trim()?.removeSuffix(
                 ";",
             ) ?: return Pair(false, "Query can't be empty")
@@ -275,4 +282,28 @@ data class ExecutionProxy(
     override fun getDomainObjectType() = Resource.EXECUTION_REQUEST
 
     override fun getRelated(resource: Resource): SecuredDomainObject? = null
+}
+
+data class SQLDumpResponse(val resource: InputStreamResource, val fileName: String, val connectionId: String) :
+    SecuredDomainObject {
+    override fun getSecuredObjectId(): String = connectionId
+
+    override fun getDomainObjectType(): Resource = Resource.EXECUTION_REQUEST
+
+    override fun getRelated(resource: Resource): SecuredDomainObject? = null
+}
+
+class StreamedSQLDump(
+    private val flux: Flux<ByteArray>,
+    private val securedObjectId: String,
+    private val domainObjectType: Resource,
+) : SecuredDomainObject {
+
+    override fun getSecuredObjectId(): String? = securedObjectId
+
+    override fun getDomainObjectType(): Resource = domainObjectType
+
+    override fun getRelated(resource: Resource): SecuredDomainObject? = null
+
+    fun toFlux(): Flux<ByteArray> = flux
 }

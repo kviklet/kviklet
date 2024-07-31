@@ -10,7 +10,7 @@ COPY --chown=gradle:gradle ./backend .
 # Build the applications
 RUN gradle build  -x kaptTestKotlin -x compileTestKotlin -x test --no-daemon
 
-FROM node:20 as build-frontend
+FROM node:22 as build-frontend
 WORKDIR /app
 COPY ./frontend/package-lock.json ./frontend/package.json ./
 RUN npm ci --production
@@ -22,8 +22,12 @@ FROM amazoncorretto:21
 
 WORKDIR /app
 
-# Install nginx
-RUN amazon-linux-extras install -y nginx1
+# Install nginx and MySQL client
+RUN amazon-linux-extras install -y nginx1 && \
+    amazon-linux-extras enable mariadb10.5 && \
+    yum clean metadata && \
+    yum install -y mariadb && \
+    yum install -y postgresql
 
 COPY ./frontend/docker/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf
 COPY --from=build-frontend /app/build /usr/share/nginx/html
