@@ -426,6 +426,7 @@ function DatasourceRequestBox({
   updateRequest: (request: { statement?: string }) => Promise<void>;
 }) {
   const [editMode, setEditMode] = useState(false);
+  const { addNotification } = useNotification();
   const [showSQLDumpModal, setShowSQLDumpModal] = useState(false);
   const [chosenConnection, setChosenConnection] = useState<
     ConnectionResponse | undefined
@@ -566,9 +567,19 @@ function DatasourceRequestBox({
       };
 
       await pump();
-      console.log("File saved successfully.");
+      addNotification({
+        title: "Success",
+        text: "SQL dump file saved successfully.",
+        type: "info",
+      });
     } catch (error) {
-      console.error("Error:", error);
+      if (error instanceof Error) {
+        addNotification({
+          title: "Failed to fetch requests",
+          text: error.message,
+          type: "error",
+        });
+      }
     } finally {
       setShowSQLDumpModal(false);
     }
