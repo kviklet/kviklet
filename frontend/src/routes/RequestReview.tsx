@@ -36,7 +36,10 @@ import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import MenuDropDown from "../components/MenuDropdown";
 import baseUrl from "../api/base";
 import LoadingCancelButton from "../components/LoadingCancelButton";
-import useRequest, { ReviewTypes, isRelationalDatabase } from "../hooks/request";
+import useRequest, {
+  ReviewTypes,
+  isRelationalDatabase,
+} from "../hooks/request";
 
 interface RequestReviewParams {
   requestId: string;
@@ -74,7 +77,6 @@ const componentMap = {
     <ul className="ml-4 mt-4 list-disc">{children}</ul>
   ),
 };
-
 
 function RequestReview() {
   const params = useParams() as unknown as RequestReviewParams;
@@ -451,7 +453,6 @@ function DatasourceRequestBox({
     });
   };
 
-
   const menuDropDownItems = [
     {
       onClick: () => {},
@@ -564,9 +565,7 @@ function DatasourceRequestBox({
             className=""
             id="runQuery"
             type="submit"
-            disabled={
-              (request?.reviewStatus !== "APPROVED")
-            }
+            disabled={request?.reviewStatus !== "APPROVED"}
             onClick={runQuery}
             onCancel={() => void cancelQuery()}
           >
