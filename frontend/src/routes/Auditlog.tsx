@@ -1,10 +1,10 @@
 export default function Auditlog() {
   return (
     <div>
-      <div className="mb-3 border-b border-slate-300 dark:border-slate-700">
-        <h1 className="m-5 mx-auto w-3/4 pl-1.5 text-xl">Auditlog</h1>
+      <div className=" border-b border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
+        <h1 className=" m-5 mx-auto max-w-5xl pl-1.5 text-xl">Auditlog</h1>
       </div>
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-5xl">
         <List></List>
       </div>
     </div>
@@ -18,6 +18,7 @@ import { ExecutionLogResponse, getExecutions } from "../api/ExecutionsApi";
 import { useEffect, useState } from "react";
 import { timeSince } from "./Requests";
 import { isApiErrorResponse } from "../api/Errors";
+import SearchInput from "../components/SearchInput";
 
 function useExecutions() {
   const [executions, setExecutions] = useState<ExecutionLogResponse[]>([]);
@@ -40,16 +41,35 @@ function useExecutions() {
 
 function List() {
   const { executions, loading } = useExecutions();
+  const [searchTerm, setSearchTerm] = useState("");
+  const filteredExecutions = executions.filter(
+    (execution) =>
+      execution.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      execution.statement.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      execution.connectionId.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
   return (
-    <div className="overflow-hidden bg-white shadow dark:bg-slate-900 sm:rounded-md">
-      <ul
-        role="list"
-        className="divide-y divide-slate-100 dark:divide-slate-800"
-      >
-        {loading
-          ? Array.from({ length: 5 }).map(() => <ItemSkeleton />)
-          : executions.map((execution) => <Item execution={execution}></Item>)}
-      </ul>
+    <div>
+      <SearchInput
+        value={searchTerm}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+          setSearchTerm(e.target.value);
+        }}
+        placeholder="Search Auditlog"
+        className="my-4 w-full"
+      />
+      <div className="overflow-hidden bg-white shadow dark:bg-slate-900 sm:rounded-md">
+        <ul
+          role="list"
+          className="divide-y divide-slate-100 dark:divide-slate-800"
+        >
+          {loading
+            ? Array.from({ length: 5 }).map(() => <ItemSkeleton />)
+            : filteredExecutions.map((execution) => (
+                <Item execution={execution}></Item>
+              ))}
+        </ul>
+      </div>
     </div>
   );
 }
@@ -80,9 +100,9 @@ function Item({ execution }: { execution: ExecutionLogResponse }) {
     <Link to={`/requests/${execution.requestId}`}>
       <li
         key={execution.statement}
-        className="relative flex justify-between gap-x-6 py-5"
+        className="relative flex justify-between gap-x-6 border-b px-2 py-5 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
       >
-        <div className="flex min-w-0 gap-x-4">
+        <div className="flex min-w-0 items-center gap-x-4">
           <InitialBubble name={execution.name} className="shrink-0" />
           <div className="min-w-0 flex-auto">
             <p className="text-sm font-semibold leading-6 text-slate-900 dark:text-slate-50">
