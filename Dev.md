@@ -24,10 +24,7 @@ docker-compose up -d kviklet
 
 ### Steps to create new request
 
-1. Go to localhost and login with default Admin user:
-   User: testUser@example.com
-   Password: testPassword
-
+1. Go to localhost and login with default Admin user (specified in docker compose environment)
 2. Create new user via the `Settings`
 3. Create new database connection
    Note: The Hostname should be the mysql container's IP
