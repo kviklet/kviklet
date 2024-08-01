@@ -239,6 +239,7 @@ class ExecutionRequestService(
             }
             else -> {
                 JDBCExecutor.execute(
+                    executionRequestId = id,
                     connectionString = connection.getConnectionString(),
                     username = connection.username,
                     password = connection.password,
@@ -304,6 +305,19 @@ class ExecutionRequestService(
             finished = result.finished,
             exitCode = result.exitCode,
         )
+    }
+
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
+    fun cancel(id: ExecutionRequestId) {
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
+        val connection = executionRequest.request.connection
+        if (connection !is DatasourceConnection) {
+            throw RuntimeException("Only Datasource requests can be cancelled")
+        }
+        if (connection.type == DatasourceType.MONGODB) {
+            throw RuntimeException("MongoDB requests can't be cancelled")
+        }
+        JDBCExecutor.cancelQuery(id)
     }
 
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
@@ -410,6 +424,7 @@ class ExecutionRequestService(
         }
 
         val result = JDBCExecutor.execute(
+            executionRequestId = id,
             connectionString = connection.getConnectionString(),
             username = connection.username,
             password = connection.password,

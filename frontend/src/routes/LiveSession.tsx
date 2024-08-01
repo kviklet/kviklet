@@ -12,6 +12,8 @@ import { useParams } from "react-router-dom";
 import MultiResult from "../components/MultiResult";
 import { isApiErrorResponse } from "../api/Errors";
 import baseUrl from "../api/base";
+import useRequest, { isRelationalDatabase } from "../hooks/request";
+import LoadingCancelButton from "../components/LoadingCancelButton";
 
 interface SessionParams {
   requestId: string;
@@ -22,6 +24,7 @@ export default function LiveSession() {
   const [results, setResults] = useState<ExecuteResponseResult[] | undefined>(
     undefined,
   );
+  const { request, cancelQuery } = useRequest(params.requestId);
   const [dataLoading, setDataLoading] = useState(false);
   const [updatedRows, setUpdatedRows] = useState<number | undefined>(undefined);
   const [executionError, setExecutionError] = useState<string | undefined>(
@@ -73,7 +76,6 @@ export default function LiveSession() {
       params.requestId
     }/download?query=${encodeURIComponent(query || "")}`;
 
-    console.log("Link clicked, downloading from:", downloadUrl);
     window.location.href = downloadUrl;
   };
 
@@ -107,10 +109,24 @@ export default function LiveSession() {
           <a className="ml-auto mr-2" href="#" onClick={handleClick}>
             <Button>Download as CSV</Button>
           </a>
-          <Button type="submit" onClick={() => void executeQuery()}>
-            {" "}
-            Run Query
-          </Button>
+          {request?._type === "DATASOURCE" && isRelationalDatabase(request) ? (
+            <LoadingCancelButton
+              className=""
+              id="runQuery"
+              type="submit"
+              disabled={request?.reviewStatus !== "APPROVED"}
+              onClick={executeQuery}
+              onCancel={() => void cancelQuery()}
+            >
+              <div className="play-triangle mr-2 inline-block h-3 w-2 bg-slate-50"></div>
+              Run Query
+            </LoadingCancelButton>
+          ) : (
+            <Button type="submit" onClick={() => void executeQuery()}>
+              {" "}
+              Run Query
+            </Button>
+          )}
         </div>
 
         {updatedRows && (

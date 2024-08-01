@@ -246,6 +246,7 @@ export {
   addConnection,
   testConnection,
   connectionResponseSchema,
+  databaseConnectionResponseSchema,
   AuthenticationType,
   patchConnection,
   getConnections,

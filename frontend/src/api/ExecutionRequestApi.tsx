@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { userResponseSchema } from "./UserApi";
-import { connectionResponseSchema } from "./DatasourceApi";
+import {
+  connectionResponseSchema,
+  databaseConnectionResponseSchema,
+} from "./DatasourceApi";
 import baseUrl from "./base";
 import {
   ApiErrorResponse,
@@ -96,7 +99,7 @@ const RawDatasourceRequestSchema = z.object({
   title: z.string().min(1),
   description: z.string(),
   statement: z.string().nullable().optional(),
-  connection: connectionResponseSchema,
+  connection: databaseConnectionResponseSchema,
   executionStatus: z.string(),
   reviewStatus: z.string(),
   createdAt: z.coerce.date(),
@@ -355,6 +358,12 @@ const DocumentsResponseSchema = withType(
   "documents",
 );
 
+const CancelQueryResponseSchema = z.object({
+  success: z.boolean(),
+});
+
+type CancelQueryResponse = z.infer<typeof CancelQueryResponseSchema>;
+
 const DBExecuteResponseResultSchema = z.union([
   UpdateExecuteResponseSchema,
   SelectExecuteResponseSchema,
@@ -407,6 +416,22 @@ const runQuery = async (
   );
 };
 
+const cancel = async (
+  id: string,
+): Promise<ApiResponse<CancelQueryResponse>> => {
+  return fetchWithErrorHandling(
+    requestUrl + id + "/cancel",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    },
+    CancelQueryResponseSchema,
+  );
+};
+
 const executeCommand = async (
   id: string,
 ): Promise<ApiResponse<KubernetesExecuteResponse>> => {
@@ -430,6 +455,7 @@ export {
   addCommentToRequest,
   addReviewToRequest,
   runQuery,
+  cancel,
   patchRequest,
   postStartServer,
   executeCommand,

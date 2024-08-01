@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.service
 
 import com.zaxxer.hikari.HikariDataSource
 import dev.kviklet.kviklet.service.dto.ErrorQueryResult
+import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.QueryResult
 import dev.kviklet.kviklet.service.dto.RecordsQueryResult
 import dev.kviklet.kviklet.service.dto.UpdateQueryResult
@@ -9,7 +10,9 @@ import org.springframework.boot.jdbc.DataSourceBuilder
 import org.springframework.stereotype.Service
 import java.sql.ResultSet
 import java.sql.SQLException
+import java.sql.Statement
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 data class TestCredentialsResult(val success: Boolean, val message: String)
 
@@ -24,11 +27,14 @@ data class ColumnInfo(
 @Service
 class JDBCExecutor {
 
+    private val activeStatements = ConcurrentHashMap<String, Statement>()
+
     companion object {
         val DEFAULT_POSTGRES_DATABASES = listOf("template0", "template1")
     }
 
     fun execute(
+        executionRequestId: ExecutionRequestId,
         connectionString: String,
         username: String,
         password: String,
@@ -38,6 +44,10 @@ class JDBCExecutor {
         createConnection(connectionString, username, password).use { dataSource: HikariDataSource ->
             try {
                 dataSource.connection.createStatement().use { statement ->
+                    val previousValues = activeStatements.putIfAbsent(executionRequestId.toString(), statement)
+                    if (previousValues != null) {
+                        throw IllegalStateException("Request $executionRequestId already is executing a query")
+                    }
                     if (MSSQLexplain) {
                         statement.execute("SET SHOWPLAN_TEXT ON")
                     }
@@ -55,7 +65,17 @@ class JDBCExecutor {
                 }
             } catch (e: SQLException) {
                 return listOf(sqlExecptionToResult(e))
+            } finally {
+                activeStatements.remove(executionRequestId.toString())
             }
+        }
+    }
+
+    fun cancelQuery(executionRequestId: ExecutionRequestId) {
+        try {
+            activeStatements[executionRequestId.toString()]?.cancel()
+        } catch (e: SQLException) {
+            throw IllegalStateException("Error cancelling Query", e)
         }
     }
 
