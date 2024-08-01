@@ -243,4 +243,28 @@ class PostgresJDBCExecutorTest(@Autowired override val JDBCExecutorService: JDBC
             ),
         )
     }
+
+    @Test
+    fun testQueryCancellation() {
+        // Create a long-running query
+        val longRunningQuery = """
+        SELECT pg_sleep(5); -- This will sleep for 5 seconds
+    """
+
+        // Create a separate thread to execute the long-running query
+        val executionThread = Thread {
+            try {
+                executeQuery(longRunningQuery)
+            } catch (e: Exception) {
+                assert(e is IllegalStateException)
+                assert(e.message?.contains("cancelled") == true)
+            }
+        }
+
+        executionThread.start()
+        Thread.sleep(1000) // wait for the query to start
+        JDBCExecutorService.cancelQuery(executionRequestId)
+        executionThread.join(500) // Wait half a second for the cancellation to kick in
+        assert(!executionThread.isAlive) { "The query was not cancelled within the expected time frame" }
+    }
 }

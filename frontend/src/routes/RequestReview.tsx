@@ -3,23 +3,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import ReactMarkdown from "react-markdown";
 import {
-  ExecutionRequestResponseWithComments,
-  addCommentToRequest,
-  addReviewToRequest,
-  getSingleRequest,
-  runQuery,
-  ChangeExecutionRequestPayload,
-  patchRequest,
   Edit,
   Review,
   Comment as CommentEvent,
   Execute,
-  postStartServer,
   ProxyResponse,
   ExecuteResponseResult,
   KubernetesExecutionRequestResponseWithComments,
   DatasourceExecutionRequestResponseWithComments,
-  executeCommand,
   KubernetesExecuteResponse,
 } from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
@@ -43,9 +34,9 @@ import ShellResult from "../components/ShellResult";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import MenuDropDown from "../components/MenuDropdown";
-import { isApiErrorResponse } from "../api/Errors";
-import useNotification from "../hooks/useNotification";
 import baseUrl from "../api/base";
+import LoadingCancelButton from "../components/LoadingCancelButton";
+import useRequest, { ReviewTypes, isRelationalDatabase } from "../hooks/request";
 
 interface RequestReviewParams {
   requestId: string;
@@ -84,170 +75,6 @@ const componentMap = {
   ),
 };
 
-enum ReviewTypes {
-  Comment = "comment",
-  Approve = "approve",
-  RequestChange = "request_change",
-  Reject = "reject",
-}
-
-const useRequest = (id: string) => {
-  const [request, setRequest] = useState<
-    ExecutionRequestResponseWithComments | undefined
-  >(undefined);
-  const [loading, setLoading] = useState(true);
-  const [proxyResponse, setProxyResponse] = useState<ProxyResponse | undefined>(
-    undefined,
-  );
-
-  const { addNotification } = useNotification();
-
-  async function loadRequest() {
-    setLoading(true);
-    const request = await getSingleRequest(id);
-    if (isApiErrorResponse(request)) {
-      addNotification({
-        title: "Failed to fetch request",
-        text: request.message,
-        type: "error",
-      });
-      setLoading(false);
-      return;
-    }
-    setRequest(request);
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    void loadRequest();
-  }, []);
-
-  const [results, setResults] = useState<ExecuteResponseResult[] | undefined>();
-  const [dataLoading, setDataLoading] = useState<boolean>(false);
-  const [kubernetesResults, setKubernetesResults] = useState<
-    KubernetesExecuteResponse | undefined
-  >();
-  const [executionError, setExecutionError] = useState<string | undefined>(
-    undefined,
-  );
-
-  const addComment = async (comment: string) => {
-    const response = await addCommentToRequest(id, comment);
-
-    if (isApiErrorResponse(response)) {
-      addNotification({
-        title: "Failed to add comment",
-        text: response.message,
-        type: "error",
-      });
-      return;
-    }
-
-    // update the request with the new comment by updating the events propertiy with a new Comment
-    setRequest((request) => {
-      if (request === undefined) {
-        return undefined;
-      }
-      return {
-        ...request,
-        events: [...request.events, response],
-      };
-    });
-  };
-
-  const start = async (): Promise<void> => {
-    const response = await postStartServer(id);
-    if (isApiErrorResponse(response)) {
-      addNotification({
-        title: "Failed to start proxy",
-        text: response.message,
-        type: "error",
-      });
-    } else {
-      setProxyResponse(response);
-    }
-  };
-
-  const updateRequest = async (request: ChangeExecutionRequestPayload) => {
-    const response = await patchRequest(id, request);
-    if (isApiErrorResponse(response)) {
-      addNotification({
-        title: "Failed to update request",
-        text: response.message,
-        type: "error",
-      });
-      return;
-    } else {
-      setRequest(response);
-    }
-  };
-
-  const sendReview = async (
-    comment: string,
-    type: ReviewTypes,
-  ): Promise<boolean> => {
-    let response;
-    switch (type) {
-      case ReviewTypes.Approve:
-        response = await addReviewToRequest(id, comment, "APPROVE");
-        break;
-      case ReviewTypes.Comment:
-        response = await addComment(comment);
-        break;
-      case ReviewTypes.RequestChange:
-        response = await addReviewToRequest(id, comment, "REQUEST_CHANGE");
-        break;
-      case ReviewTypes.Reject:
-        response = await addReviewToRequest(id, comment, "REJECT");
-        break;
-    }
-    if (isApiErrorResponse(response)) {
-      addNotification({
-        title: "Failed to add review",
-        text: response.message,
-        type: "error",
-      });
-      return false;
-    }
-    await loadRequest();
-    return true;
-  };
-
-  const execute = async (explain: boolean) => {
-    setDataLoading(true);
-    if (request?._type === "DATASOURCE") {
-      const response = await runQuery(id, undefined, explain);
-      if (isApiErrorResponse(response)) {
-        setExecutionError(response.message);
-      } else {
-        setResults(response.results);
-      }
-    } else if (request?._type === "KUBERNETES") {
-      const response = await executeCommand(id);
-      if (isApiErrorResponse(response)) {
-        setExecutionError(response.message);
-      } else {
-        setKubernetesResults(response);
-      }
-    }
-
-    setDataLoading(false);
-  };
-
-  return {
-    request,
-    sendReview,
-    execute,
-    start,
-    updateRequest,
-    results,
-    kubernetesResults,
-    dataLoading,
-    executionError,
-    loading,
-    proxyResponse,
-  };
-};
 
 function RequestReview() {
   const params = useParams() as unknown as RequestReviewParams;
@@ -255,6 +82,7 @@ function RequestReview() {
     request,
     sendReview,
     execute,
+    cancelQuery,
     start,
     updateRequest,
     results,
@@ -297,6 +125,7 @@ function RequestReview() {
                     <DatasourceRequestDisplay
                       request={request}
                       run={run}
+                      cancelQuery={cancelQuery}
                       start={start}
                       updateRequest={updateRequest}
                       results={results}
@@ -366,6 +195,7 @@ function DatasourceRequestDisplay({
   request,
   run,
   start,
+  cancelQuery,
   updateRequest,
   results,
   dataLoading,
@@ -374,6 +204,7 @@ function DatasourceRequestDisplay({
 }: {
   request: DatasourceExecutionRequestResponseWithComments | undefined;
   run: (explain?: boolean) => Promise<void>;
+  cancelQuery: () => Promise<void>;
   start: () => Promise<void>;
   updateRequest: (request: { statement?: string }) => Promise<void>;
   results: ExecuteResponseResult[] | undefined;
@@ -386,6 +217,7 @@ function DatasourceRequestDisplay({
       <DatasourceRequestBox
         request={request}
         runQuery={run}
+        cancelQuery={cancelQuery}
         startServer={start}
         updateRequest={updateRequest}
       ></DatasourceRequestBox>
@@ -577,11 +409,13 @@ const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
 function DatasourceRequestBox({
   request,
   runQuery,
+  cancelQuery,
   startServer,
   updateRequest,
 }: {
   request: DatasourceExecutionRequestResponseWithComments | undefined;
   runQuery: (explain?: boolean) => Promise<void>;
+  cancelQuery: () => Promise<void>;
   startServer: () => Promise<void>;
   updateRequest: (request: { statement?: string }) => Promise<void>;
 }) {
@@ -616,6 +450,7 @@ function DatasourceRequestBox({
       },
     });
   };
+
 
   const menuDropDownItems = [
     {
@@ -724,20 +559,43 @@ function DatasourceRequestBox({
       </div>
       <div className="relative mt-3 flex justify-end">
         <MenuDropDown items={menuDropDownItems}></MenuDropDown>
-        <Button
-          className=""
-          id="runQuery"
-          type={(request?.reviewStatus == "APPROVED" && "submit") || "disabled"}
-          onClick={() => void runQuery()}
-        >
-          <div
-            className={`play-triangle mr-2 inline-block h-3 w-2 ${
-              (request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
-              "bg-slate-500"
-            }`}
-          ></div>
-          {request?.type == "SingleExecution" ? "Run Query" : "Start Session"}
-        </Button>
+        {isRelationalDatabase(request) ? (
+          <LoadingCancelButton
+            className=""
+            id="runQuery"
+            type="submit"
+            disabled={
+              (request?.reviewStatus !== "APPROVED")
+            }
+            onClick={runQuery}
+            onCancel={() => void cancelQuery()}
+          >
+            <div
+              className={`play-triangle mr-2 inline-block h-3 w-2 ${
+                (request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
+                "bg-slate-500"
+              }`}
+            ></div>
+            {request?.type == "SingleExecution" ? "Run Query" : "Start Session"}
+          </LoadingCancelButton>
+        ) : (
+          <Button
+            className=""
+            id="runQuery"
+            type={
+              (request?.reviewStatus == "APPROVED" && "submit") || "disabled"
+            }
+            onClick={() => void runQuery()}
+          >
+            <div
+              className={`play-triangle mr-2 inline-block h-3 w-2 ${
+                (request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
+                "bg-slate-500"
+              }`}
+            ></div>
+            {request?.type == "SingleExecution" ? "Run Query" : "Start Session"}
+          </Button>
+        )}
       </div>
     </div>
   );

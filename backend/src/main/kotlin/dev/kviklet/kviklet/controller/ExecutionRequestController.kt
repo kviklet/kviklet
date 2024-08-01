@@ -491,6 +491,8 @@ data class QueryResultLogResponse(val columnCount: Int, val rowCount: Int) : Res
 
 data class ProxyResponse(val port: Int, val username: String, val password: String)
 
+data class CancelQueryResponse(val success: Boolean)
+
 @RestController()
 @Validated
 @RequestMapping("/execution-requests")
@@ -605,5 +607,15 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
             username = proxy.username,
             password = proxy.password,
         )
+    }
+
+    @Operation(
+        summary = "Cancel Running Query",
+        description = "Cancel a running query by executionRequestId",
+    )
+    @PostMapping("/{executionRequestId}/cancel")
+    fun cancelQuery(@PathVariable executionRequestId: ExecutionRequestId): CancelQueryResponse {
+        executionRequestService.cancel(executionRequestId)
+        return CancelQueryResponse(success = true)
     }
 }
