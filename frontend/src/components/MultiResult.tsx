@@ -148,17 +148,18 @@ const MultiResult: React.FC<{ resultList: ExecuteResponseResult[] }> = ({
   return (
     <div className="flex w-screen flex-col justify-center">
       {resultList.length > 1 && (
-      <div className="flex justify-start space-x-2">
-        <div className="my-1 text-slate-700 dark:text-slate-400">
-          {currentIndex + 1 + "/" + resultList.length}
+        <div className="flex justify-start space-x-2">
+          <div className="my-1 text-slate-700 dark:text-slate-400">
+            {currentIndex + 1 + "/" + resultList.length}
+          </div>
+          <Button size="sm" onClick={handlePrevious}>
+            Previous
+          </Button>
+          <Button size="sm" onClick={handleNext}>
+            Next
+          </Button>
         </div>
-        <Button size="sm" onClick={handlePrevious}>
-          Previous
-        </Button>
-        <Button size="sm" onClick={handleNext}>
-          Next
-        </Button>
-      </div>)}
+      )}
       {selectedContent._type === "select" && <Table data={selectedContent} />}
 
       {selectedContent._type === "update" && (
