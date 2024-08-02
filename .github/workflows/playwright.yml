@@ -15,14 +15,14 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Start containers
-        run: docker-compose -f "../e2e-compose.yml" up -d --build
+        run: docker compose -f "../e2e-compose.yml" up  -d --build
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
       - name: Run Playwright tests
         run: npx playwright test
       - name: Stop containers
         if: always()
-        run: docker-compose -f "../e2e-compose.yml" down
+        run: docker compose  -f "../e2e-compose.yml" down
       - uses: actions/upload-artifact@v3
         if: always()
         with:
