@@ -20,7 +20,8 @@ class IdGenerator : IdentifierGenerator {
         val bb: ByteBuffer = ByteBuffer.allocate(16)
         bb.putLong(uuid.mostSignificantBits)
         bb.putLong(uuid.leastSignificantBits)
-        return base58encode(bb.array())
+        val encoded = base58encode(bb.array())
+        return if (encoded.length == 21) "$encoded " else encoded
     }
 
     companion object {
