@@ -51,7 +51,7 @@ class UserEntity(
         joinColumns = [JoinColumn(name = "user_id")],
         inverseJoinColumns = [JoinColumn(name = "role_id")],
     )
-    var roles: MutableSet<RoleEntity> = emptySet<RoleEntity>().toMutableSet(),
+    var roles: MutableSet<RoleEntity> = mutableSetOf(),
 ) : BaseEntity() {
     fun toDto() = User(
         id = id?.let { UserId(it) },
