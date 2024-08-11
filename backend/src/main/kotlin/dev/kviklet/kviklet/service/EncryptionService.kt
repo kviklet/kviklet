@@ -35,8 +35,9 @@ class EncryptionService(private val config: EncryptionConfigProperties) {
         return Base64.getEncoder().encodeToString(iv.iv + encrypted)
     }
 
-    fun decrypt(encrypted: String): String {
+    fun decrypt(encrypted: String?): String? {
         if (!config.enabled) return encrypted
+        if (encrypted == null) return null
 
         val decoded = Base64.getDecoder().decode(encrypted)
         val iv = IvParameterSpec(decoded.copyOfRange(0, 16))

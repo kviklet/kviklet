@@ -56,3 +56,6 @@ databaseChangeLog:
   - include:
       file: 020-add-protocol-column.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 021-add-is-encrypted-column.yaml
+      relativeToChangelogFile: true
