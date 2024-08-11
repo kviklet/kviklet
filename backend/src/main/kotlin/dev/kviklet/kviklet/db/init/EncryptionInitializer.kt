@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Profile
 @Profile("!test")
 class EncryptionInitializer {
     @Bean
-    fun initializer(connectionAdapter: ConnectionAdapter): ApplicationRunner = ApplicationRunner { _ ->
+    fun rotateAndEncrypt(connectionAdapter: ConnectionAdapter): ApplicationRunner = ApplicationRunner { _ ->
         // listing all connections ensures they get encrypted if not already done
         // Also rotates they encryption key if two are provided
         connectionAdapter.listConnections()
