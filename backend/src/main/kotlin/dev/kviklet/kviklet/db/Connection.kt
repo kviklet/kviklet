@@ -46,8 +46,8 @@ class ConnectionEntity(
     var reviewConfig: ReviewConfig,
     @OneToMany(mappedBy = "connection", cascade = [CascadeType.ALL])
     val executionRequests: Set<ExecutionRequestEntity> = emptySet(),
-
     var maxExecutions: Int? = null,
+    var isEncrypted: Boolean = false,
 
     // Datasource Connection fields
     @Enumerated(EnumType.STRING)
@@ -102,14 +102,57 @@ class ConnectionEntity(
 interface ConnectionRepository : JpaRepository<ConnectionEntity, String>
 
 @Service
-class ConnectionAdapter(val connectionRepository: ConnectionRepository) {
+class ConnectionAdapter(
+    val connectionRepository: ConnectionRepository,
+    private val encryptionService: EncryptionService,
+    private val encryptionConfig: EncryptionConfigProperties,
+) {
+    private fun save(connection: ConnectionEntity): ConnectionEntity {
+        if (encryptionConfig.enabled && !connection.isEncrypted) {
+            connection.username = connection.username?.let { encryptionService.encrypt(it) }
+            connection.password = connection.password?.let { encryptionService.encrypt(it) }
+            connection.isEncrypted = true
+        }
+        return connectionRepository.save(connection)
+    }
 
-    fun getConnection(connectionId: ConnectionId): Connection =
-        connectionRepository.findByIdOrNull(connectionId.toString())?.toDto()
-            ?: throw EntityNotFound(
-                "Datasource Connection Not Found",
-                "Datasource Connection $$connectionId does not exist.",
+    @Transactional
+    fun getConnection(connectionId: ConnectionId): Connection {
+        val entity = connectionRepository.findByIdOrNull(connectionId.toString())
+            ?: throw EntityNotFound("Connection Not Found", "Connection $connectionId does not exist.")
+
+        return decryptCredentialsIfNeeded(entity)
+    }
+
+    private fun decryptCredentialsIfNeeded(connection: ConnectionEntity): Connection {
+        if (!encryptionConfig.enabled && !connection.isEncrypted) return connection.toDto()
+        if (!encryptionConfig.enabled) {
+            throw IllegalStateException(
+                "Connection is encrypted but encryption is not enabled, please add encryption key.",
             )
+        }
+        if (connection.isEncrypted) {
+            connection.username = connection.username?.let { encryptionService.decrypt(it) }
+            connection.password = connection.password?.let { encryptionService.decrypt(it) }
+            connection.isEncrypted = false
+
+            val dto = connection.toDto()
+            reEncryptAndSaveIfNeeded(connection)
+            return dto
+        } else {
+            val dto = connection.toDto()
+            // encrypt and save again to ensure that the connection is now encrypted
+            save(connection)
+            return dto
+        }
+    }
+
+    private fun reEncryptAndSaveIfNeeded(connection: ConnectionEntity) {
+        val needsReEncryption = encryptionConfig.enabled && (encryptionConfig.key?.bothKeysProvided() ?: false)
+        if (needsReEncryption) {
+            save(connection)
+        }
+    }
 
     @Transactional
     fun createDatasourceConnection(
@@ -127,7 +170,7 @@ class ConnectionAdapter(val connectionRepository: ConnectionRepository) {
         type: DatasourceType,
         protocol: DatabaseProtocol,
         additionalJDBCOptions: String,
-    ): Connection = connectionRepository.save(
+    ): Connection = save(
         ConnectionEntity(
             id = connectionId.toString(),
             displayName = displayName,
@@ -182,8 +225,9 @@ class ConnectionAdapter(val connectionRepository: ConnectionRepository) {
         datasourceConnection.databaseName = databaseName
         datasourceConnection.reviewConfig = reviewConfig
         datasourceConnection.additionalJDBCOptions = additionalJDBCOptions
+        datasourceConnection.isEncrypted = false
 
-        return connectionRepository.save(datasourceConnection).toDto()
+        return save(datasourceConnection).toDto()
     }
 
     fun updateKubernetesConnection(
@@ -206,7 +250,7 @@ class ConnectionAdapter(val connectionRepository: ConnectionRepository) {
         datasourceConnection.reviewConfig = reviewConfig
         datasourceConnection.maxExecutions = maxExecutions
 
-        return connectionRepository.save(datasourceConnection).toDto()
+        return save(datasourceConnection).toDto()
     }
 
     @Transactional
@@ -216,7 +260,7 @@ class ConnectionAdapter(val connectionRepository: ConnectionRepository) {
         description: String,
         reviewConfig: ReviewConfig,
         maxExecutions: Int?,
-    ): Connection = connectionRepository.save(
+    ): Connection = save(
         ConnectionEntity(
             id = connectionId.toString(),
             displayName = displayName,
@@ -231,7 +275,7 @@ class ConnectionAdapter(val connectionRepository: ConnectionRepository) {
         connectionRepository.deleteById(id.toString())
     }
 
-    fun listConnections(): List<Connection> = connectionRepository.findAll().map { it.toDto() }
+    fun listConnections(): List<Connection> = connectionRepository.findAll().map { decryptCredentialsIfNeeded(it) }
 
     fun deleteAll() {
         connectionRepository.deleteAll()

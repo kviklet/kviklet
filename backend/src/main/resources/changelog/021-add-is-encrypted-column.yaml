@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: 020-add-protocol-column
+      author: Jascha
+      changes:
+        - addColumn:
+            tableName: connection
+            columns:
+              - column:
+                  name: is_encrypted
+                  type: BOOLEAN
+                  defaultValue: false
