@@ -92,10 +92,16 @@ data class DatasourceConnection(
             "jdbc:sqlserver://$hostname:$port" +
                 (databaseName?.takeIf { it.isNotBlank() }?.let { ";databaseName=$databaseName" } ?: "") +
                 additionalOptions
-        DatasourceType.MONGODB ->
-            "${protocol.uriString}://$hostname:$port/" +
+        DatasourceType.MONGODB -> {
+            val credentialString = if (username.isNotBlank() && password.isNotBlank()) {
+                "$username:$password@"
+            } else {
+                ""
+            }
+            "${protocol.uriString}://$credentialString$hostname:$port/" +
                 (databaseName ?: "") +
                 additionalOptions
+        }
     }
 }
 
