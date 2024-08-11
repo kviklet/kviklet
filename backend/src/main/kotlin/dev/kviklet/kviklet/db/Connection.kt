@@ -1,8 +1,6 @@
 package dev.kviklet.kviklet.db
 
 import dev.kviklet.kviklet.db.util.ReviewConfigConverter
-import dev.kviklet.kviklet.service.EncryptionConfigProperties
-import dev.kviklet.kviklet.service.EncryptionService
 import dev.kviklet.kviklet.service.EntityNotFound
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection

@@ -1,4 +1,4 @@
-package dev.kviklet.kviklet.service
+package dev.kviklet.kviklet.db
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Configuration
 import org.springframework.stereotype.Service

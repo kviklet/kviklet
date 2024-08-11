@@ -3,8 +3,8 @@ package dev.kviklet.kviklet
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ConnectionRepository
 import dev.kviklet.kviklet.db.ConnectionType
+import dev.kviklet.kviklet.db.EncryptionConfigProperties
 import dev.kviklet.kviklet.db.ReviewConfig
-import dev.kviklet.kviklet.service.EncryptionConfigProperties
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DatabaseProtocol
