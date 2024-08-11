@@ -227,6 +227,29 @@ Currently there are notifications for:
 - New Requests, that need approvals
 - New approvals on requests
 
+## Encryption
+
+If you don't want the credentials to be stored in cleartext in the DB, I recommend that you enable database encryption on the Kviklet postgres DB itself. For most hosted providers this is a simple checkbox to click.  
+Nontheless I understand that if the Kviklet database is somehow compromised, this is a huge security risk. As it contains the database crendetials for potentially all your production datastores. So you can enabled encryption of the credentials at rest.
+
+To do this simply set the two environment variables.
+```
+ENCRYPTION_ENABLED=true
+ENCRYPTION_KEY_CURRENT=some-secret
+```
+Kviklet will encrypt all your existing credentials on startup, and use the secret for future connections that you create.
+
+### Key Rotation
+
+If you want to rotate the key you can simply add another variable for the previous key and change the current one:
+```
+ENCRYPTION_KEY_PREVIOUS=some-secret
+ENCRYPTION_KEY_CURRENT=another-secret
+```
+Kviklet will re-encrypt all connections on startup, so that you can then restart the contaienr with the previous key removed.
+
+
+
 ## Experimental Features
 
 There is two few experimental Features. That were build mostly on community/customer feedback. Feel free to try these out and leave any input that you might have. We hope to develop into this further in the future and make it work well with the core approval flow.
