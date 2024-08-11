@@ -28,8 +28,8 @@ class EncryptionService(private val config: EncryptionConfigProperties) {
         if (!config.enabled) return value
 
         val key = getKeyFromPassword(loadKey())
-        val iv = generateIv()
         val cipher = Cipher.getInstance(algorithm)
+        val iv = generateIv(cipher)
         cipher.init(Cipher.ENCRYPT_MODE, key, iv)
         val encrypted = cipher.doFinal(value.toByteArray())
         return Base64.getEncoder().encodeToString(iv.iv + encrypted)
@@ -69,8 +69,8 @@ class EncryptionService(private val config: EncryptionConfigProperties) {
         return SecretKeySpec(key, "AES")
     }
 
-    private fun generateIv(): IvParameterSpec {
-        val iv = ByteArray(16)
+    private fun generateIv(cipher: Cipher): IvParameterSpec {
+        val iv = ByteArray(cipher.blockSize)
         val secureRandom = java.security.SecureRandom()
         secureRandom.nextBytes(iv)
         return IvParameterSpec(iv)
