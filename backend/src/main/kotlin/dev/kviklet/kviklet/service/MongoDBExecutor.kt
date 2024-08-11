@@ -12,8 +12,6 @@ import org.bson.Document
 import org.springframework.stereotype.Service
 import java.util.concurrent.TimeUnit
 
-data class MongoTestCredentialsResult(val success: Boolean, val message: String)
-
 @Service
 class MongoDBExecutor {
 
@@ -56,13 +54,13 @@ class MongoDBExecutor {
     private fun mongoExceptionToResult(e: MongoException): ErrorQueryResult =
         ErrorQueryResult(e.code, e.message ?: "Unknown MongoDB error")
 
-    fun testCredentials(connectionString: String): MongoTestCredentialsResult = try {
+    fun testCredentials(connectionString: String): TestCredentialsResult = try {
         MongoClients.create(connectionString).use { client ->
             client.listDatabaseNames().first() // Just to test the connection
-            MongoTestCredentialsResult(success = true, message = "Connection successful")
+            TestCredentialsResult(success = true, message = "Connection successful")
         }
     } catch (e: MongoException) {
-        MongoTestCredentialsResult(success = false, message = e.message ?: "Unknown MongoDB error")
+        TestCredentialsResult(success = false, message = e.message ?: "Unknown MongoDB error")
     }
 
     fun getAccessibleDatabases(connectionString: String): List<String> = try {

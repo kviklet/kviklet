@@ -26,7 +26,11 @@ data class TestConnectionResult(
 )
 
 @Service
-class ConnectionService(private val connectionAdapter: ConnectionAdapter, private val JDBCExecutor: JDBCExecutor) {
+class ConnectionService(
+    private val connectionAdapter: ConnectionAdapter,
+    private val JDBCExecutor: JDBCExecutor,
+    private val mongoDBExecutor: MongoDBExecutor,
+) {
 
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_GET)
@@ -149,15 +153,39 @@ class ConnectionService(private val connectionAdapter: ConnectionAdapter, privat
         protocol: DatabaseProtocol,
         additionalJDBCOptions: String,
     ): TestConnectionResult {
+        val connection = DatasourceConnection(
+            connectionId,
+            displayName,
+            description,
+            reviewConfig = ReviewConfig(reviewsRequired),
+            maxExecutions,
+            databaseName,
+            AuthenticationType.USER_PASSWORD,
+            username,
+            password,
+            port,
+            hostname,
+            type,
+            protocol,
+            additionalJDBCOptions,
+        )
         val accessibleDatabases = mutableListOf<String>()
         if (!databaseName.isNullOrBlank()) {
             accessibleDatabases.add(databaseName)
         }
-        val credentialsResult = JDBCExecutor.testCredentials(
-            connectionString = "jdbc:${protocol.uriString}://$hostname:$port/$databaseName",
-            username = username,
-            password = password,
-        )
+        val credentialsResult = when (protocol) {
+            DatabaseProtocol.MONGODB, DatabaseProtocol.MONGODB_SRV -> {
+                mongoDBExecutor.testCredentials(
+                    connectionString = connection.getConnectionString(),
+                )
+            }
+            else ->
+                JDBCExecutor.testCredentials(
+                    connectionString = connection.getConnectionString(),
+                    username = username,
+                    password = password,
+                )
+        }
         if (type == DatasourceType.POSTGRESQL && credentialsResult.success) {
             val databases = JDBCExecutor.getAccessibleDatabasesPostgres(
                 connectionString = "jdbc:${protocol.uriString}://$hostname:$port/$databaseName",

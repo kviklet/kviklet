@@ -70,6 +70,22 @@ export default function DatabaseConnectionForm(props: {
   createConnection: (payload: ConnectionPayload) => Promise<void>;
   closeModal: () => void;
 }) {
+  const getProtocolOptions = (type: DatabaseType) => {
+    if (type === DatabaseType.POSTGRES) {
+      return [DatabaseProtocol.POSTGRESQL];
+    }
+    if (type === DatabaseType.MYSQL) {
+      return [DatabaseProtocol.MYSQL];
+    }
+    if (type === DatabaseType.MSSQL) {
+      return [DatabaseProtocol.MSSQL];
+    }
+    if (type === DatabaseType.MONGODB) {
+      return [DatabaseProtocol.MONGODB, DatabaseProtocol.MONGODB_SRV];
+    }
+    return [];
+  };
+
   const {
     register,
     handleSubmit,
@@ -117,25 +133,25 @@ export default function DatabaseConnectionForm(props: {
     }
   };
 
+  const protocol = watch("protocol");
+
   useEffect(() => {
     if (watchType === DatabaseType.POSTGRES) {
-      setProtocolOptions([DatabaseProtocol.POSTGRESQL]);
       updatePortIfNotTouched(5432);
     }
     if (watchType === DatabaseType.MYSQL) {
-      setProtocolOptions([DatabaseProtocol.MYSQL]);
       updatePortIfNotTouched(3306);
     }
     if (watchType === DatabaseType.MSSQL) {
-      setProtocolOptions([DatabaseProtocol.MSSQL]);
       updatePortIfNotTouched(1433);
     }
     if (watchType === DatabaseType.MONGODB) {
-      setProtocolOptions([
-        DatabaseProtocol.MONGODB,
-        DatabaseProtocol.MONGODB_SRV,
-      ]);
       updatePortIfNotTouched(27017);
+    }
+    const protocolChoices = getProtocolOptions(watchType);
+    setProtocolOptions(protocolChoices);
+    if (!protocolChoices.includes(protocol)) {
+      setValue("protocol", protocolChoices[0]);
     }
   }, [watchType]);
 
