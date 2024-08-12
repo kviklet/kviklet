@@ -37,6 +37,21 @@ const languageString = (connection: ConnectionResponse): string => {
   }
 };
 
+const queryPlaceholder = (connection: ConnectionResponse): string => {
+  if (connection._type === "DATASOURCE") {
+    if (connection.type === DatabaseType.MONGODB) {
+      return `{
+    "find": "testCollection",
+    "filter": { "name": "John Doe" }
+}`;
+    } else {
+      return "SELECT id FROM some_table;";
+    }
+  } else {
+    return "echo hello world";
+  }
+};
+
 const DatasourceExecutionRequestSchema = z
   .object({
     connectionType: z.literal("DATASOURCE"),
@@ -374,7 +389,7 @@ const DatasourceExecutionRequestForm = ({
             <textarea
               className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
               id="statement-input"
-              placeholder="Select id from some_table;"
+              placeholder={queryPlaceholder(connection)}
               {...register("statement")}
             ></textarea>
             {errors.statement && (
