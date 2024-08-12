@@ -1,5 +1,9 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import { ExecuteResponseResult, runQuery } from "../api/ExecutionRequestApi";
+import {
+  ExecuteResponseResult,
+  ExecutionRequestResponseWithComments,
+  runQuery,
+} from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
 
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
@@ -21,10 +25,29 @@ interface SessionParams {
 
 export default function LiveSession() {
   const params = useParams() as unknown as SessionParams;
+  const { request, cancelQuery } = useRequest(params.requestId);
+
+  return (
+    <div className="flex h-full w-full">
+      <div className="mx-auto flex h-full w-2/3 flex-col">
+        {(request && (
+          <Editor request={request} cancelQuery={cancelQuery}></Editor>
+        )) || <Spinner></Spinner>}
+      </div>
+    </div>
+  );
+}
+
+const Editor = ({
+  request,
+  cancelQuery,
+}: {
+  request: ExecutionRequestResponseWithComments;
+  cancelQuery: () => Promise<void>;
+}) => {
   const [results, setResults] = useState<ExecuteResponseResult[] | undefined>(
     undefined,
   );
-  const { request, cancelQuery } = useRequest(params.requestId);
   const [dataLoading, setDataLoading] = useState(false);
   const [updatedRows, setUpdatedRows] = useState<number | undefined>(undefined);
   const [executionError, setExecutionError] = useState<string | undefined>(
@@ -38,14 +61,19 @@ export default function LiveSession() {
   const { currentTheme } = useContext<ThemeContext>(ThemeStatusContext);
   const theme = currentTheme === "dark" ? "vs-dark" : "vs";
 
+  const language =
+    request._type === "DATASOURCE" && isRelationalDatabase(request)
+      ? "sql"
+      : "json";
+
   useEffect(() => {
     if (monacoEl) {
       setEditor((editor) => {
         if (editor) return editor;
 
         const newEditor = monaco.editor.create(monacoEl.current!, {
-          value: "SELECT * FROM TEST;",
-          language: "sql",
+          value: "",
+          language: language,
           suggest: {
             showKeywords: true,
           },
@@ -73,7 +101,7 @@ export default function LiveSession() {
       editor?.getValue();
 
     const downloadUrl = `${baseUrl}/execution-requests/${
-      params.requestId
+      request.id
     }/download?query=${encodeURIComponent(query || "")}`;
 
     window.location.href = downloadUrl;
@@ -89,7 +117,7 @@ export default function LiveSession() {
     setExecutionError(undefined);
     setResults(undefined);
     setDataLoading(true);
-    const response = await runQuery(params.requestId, text);
+    const response = await runQuery(request.id, text);
     if (isApiErrorResponse(response)) {
       setExecutionError(response.message);
     } else {
@@ -140,4 +168,4 @@ export default function LiveSession() {
       </div>
     </div>
   );
-}
+};
