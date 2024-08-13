@@ -36,7 +36,6 @@ class EncryptionService(private val config: EncryptionConfigProperties) {
     }
 
     fun decrypt(encrypted: String?): String? {
-        if (!config.enabled) return encrypted
         if (encrypted == null) return null
 
         val decoded = Base64.getDecoder().decode(encrypted)

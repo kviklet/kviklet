@@ -122,9 +122,8 @@ class ConnectionAdapter(
             return toDtoDirectly(connection)
         }
         if (!encryptionConfig.enabled) {
-            throw IllegalStateException(
-                "Connection is encrypted but encryption is not enabled, please add encryption key.",
-            )
+            tryDecryptAndSave(connection)
+            return toDtoDirectly(connection)
         }
         if (connection.isEncrypted) {
             connection.username = connection.storedUsername?.let { encryptionService.decrypt(it) }
@@ -141,6 +140,12 @@ class ConnectionAdapter(
             save(connection)
             return dto
         }
+    }
+
+    private fun tryDecryptAndSave(connection: ConnectionEntity) {
+        connection.username = connection.storedUsername?.let { encryptionService.decrypt(it) }
+        connection.password = connection.storedPassword?.let { encryptionService.decrypt(it) }
+        save(connection)
     }
 
     private fun reEncryptAndSaveIfNeeded(connection: ConnectionEntity) {
