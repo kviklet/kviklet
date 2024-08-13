@@ -138,6 +138,8 @@ class TestDataInitializer(
                 description = "This is a localhost connection",
                 username = "postgres",
                 password = "postgres",
+                storedUsername = "postgres",
+                storedPassword = "postgres",
                 reviewConfig = ReviewConfig(numTotalRequired = 1),
                 datasourceType = DatasourceType.POSTGRESQL,
                 hostname = "localhost",
