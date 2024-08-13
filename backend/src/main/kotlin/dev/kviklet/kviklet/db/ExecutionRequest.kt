@@ -3,6 +3,7 @@ package dev.kviklet.kviklet.db
 import com.querydsl.jpa.impl.JPAQuery
 import dev.kviklet.kviklet.db.util.BaseEntity
 import dev.kviklet.kviklet.service.EntityNotFound
+import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
@@ -79,10 +80,10 @@ class ExecutionRequestEntity(
         .append("id", id)
         .toString()
 
-    fun toDto(): ExecutionRequest = when (executionRequestType) {
+    fun toDto(connectionDto: Connection): ExecutionRequest = when (executionRequestType) {
         ExecutionRequestType.DATASOURCE -> DatasourceExecutionRequest(
             id = ExecutionRequestId(id!!),
-            connection = connection.toDto() as DatasourceConnection,
+            connection = connectionDto as DatasourceConnection,
             title = title,
             type = executionType,
             description = description,
@@ -94,7 +95,7 @@ class ExecutionRequestEntity(
 
         ExecutionRequestType.KUBERNETES -> KubernetesExecutionRequest(
             id = ExecutionRequestId(id!!),
-            connection = connection.toDto() as KubernetesConnection,
+            connection = connectionDto as KubernetesConnection,
             title = title,
             type = executionType,
             description = description,
@@ -108,12 +109,12 @@ class ExecutionRequestEntity(
         )
     }
 
-    fun toDetailDto(): ExecutionRequestDetails {
+    fun toDetailDto(connectionDto: Connection): ExecutionRequestDetails {
         val details = ExecutionRequestDetails(
-            request = toDto(),
+            request = toDto(connectionDto),
             events = mutableSetOf<Event>(),
         )
-        details.events.addAll(events.map { it.toDto(details.request) }.toSet())
+        details.events.addAll(events.map { it.toDto(details.request, details.request.connection) }.toSet())
         return details
     }
 }
@@ -146,6 +147,7 @@ class ExecutionRequestAdapter(
     val executionRequestRepository: ExecutionRequestRepository,
     val connectionRepository: ConnectionRepository,
     val userRepository: UserRepository,
+    val connectionAdapter: ConnectionAdapter,
 ) {
 
     @Autowired
@@ -165,10 +167,12 @@ class ExecutionRequestAdapter(
 
         executionRequestEntity.events.add(event)
         executionRequestRepository.saveAndFlush(executionRequestEntity)
-        val details = executionRequestEntity.toDetailDto()
+        val details = executionRequestEntity.toDetailDto(
+            connectionAdapter.toDto(executionRequestEntity.connection),
+        )
         entityManager.refresh(event)
 
-        return Pair(details, event.toDto(details.request))
+        return Pair(details, event.toDto(details.request, details.request.connection))
     }
 
     fun deleteAll() {
@@ -229,7 +233,9 @@ class ExecutionRequestAdapter(
                 containerName = containerName,
                 command = command,
             ),
-        ).toDetailDto()
+        ).toDetailDto(
+            connectionAdapter.toDto(connection),
+        )
     }
 
     fun updateExecutionRequest(
@@ -272,11 +278,16 @@ class ExecutionRequestAdapter(
         command?.let { executionRequestEntity.command = it }
 
         executionRequestRepository.save(executionRequestEntity)
-        return executionRequestEntity.toDetailDto()
+        return executionRequestEntity.toDetailDto(
+            connectionAdapter.toDto(executionRequestEntity.connection),
+        )
     }
 
-    fun listExecutionRequests(): List<ExecutionRequestDetails> =
-        executionRequestRepository.findAll().map { it.toDetailDto() }
+    fun listExecutionRequests(): List<ExecutionRequestDetails> = executionRequestRepository.findAll().map {
+        it.toDetailDto(
+            connectionAdapter.toDto(it.connection),
+        )
+    }
 
     private fun getExecutionRequestDetailsEntity(id: ExecutionRequestId): ExecutionRequestEntity =
         executionRequestRepository.findByIdWithDetails(id)
@@ -291,5 +302,7 @@ class ExecutionRequestAdapter(
     @Transactional
     fun getExecutionRequestDetails(id: ExecutionRequestId): ExecutionRequestDetails = getExecutionRequestDetailsEntity(
         id,
-    ).toDetailDto()
+    ).toDetailDto(
+        connectionAdapter.toDto(getExecutionRequestDetailsEntity(id).connection),
+    )
 }
