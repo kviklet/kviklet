@@ -115,6 +115,10 @@ class ConnectionAdapter(
         return decryptCredentialsIfNeeded(entity)
     }
 
+    /*
+     * Decrypts the credentials of a connection if needed. And populates the username and password fields.
+     * Always use this method to get the connection object, don't call toDtoDirectly directly.
+     */
     private fun decryptCredentialsIfNeeded(connection: ConnectionEntity): Connection {
         if (!encryptionConfig.enabled && !connection.isEncrypted) {
             connection.username = connection.storedUsername
@@ -171,7 +175,7 @@ class ConnectionAdapter(
         type: DatasourceType,
         protocol: DatabaseProtocol,
         additionalJDBCOptions: String,
-    ): Connection = toDtoDirectly(
+    ): Connection = decryptCredentialsIfNeeded(
         save(
             ConnectionEntity(
                 id = connectionId.toString(),
@@ -230,7 +234,7 @@ class ConnectionAdapter(
         datasourceConnection.additionalJDBCOptions = additionalJDBCOptions
         datasourceConnection.isEncrypted = false
 
-        return toDtoDirectly(save(datasourceConnection))
+        return decryptCredentialsIfNeeded(save(datasourceConnection))
     }
 
     fun updateKubernetesConnection(
@@ -253,7 +257,7 @@ class ConnectionAdapter(
         datasourceConnection.reviewConfig = reviewConfig
         datasourceConnection.maxExecutions = maxExecutions
 
-        return toDtoDirectly(save(datasourceConnection))
+        return decryptCredentialsIfNeeded(save(datasourceConnection))
     }
 
     @Transactional
@@ -263,7 +267,7 @@ class ConnectionAdapter(
         description: String,
         reviewConfig: ReviewConfig,
         maxExecutions: Int?,
-    ): Connection = toDtoDirectly(
+    ): Connection = decryptCredentialsIfNeeded(
         save(
             ConnectionEntity(
                 id = connectionId.toString(),
