@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
 import dev.kviklet.kviklet.db.util.BaseEntity
 import dev.kviklet.kviklet.db.util.EventPayloadConverter
+import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventId
 import dev.kviklet.kviklet.service.dto.EventType
@@ -103,9 +104,9 @@ class EventEntity(
         .append("id", id)
         .toString()
 
-    fun toDto(request: ExecutionRequest? = null): Event {
+    fun toDto(request: ExecutionRequest? = null, connection: Connection): Event {
         if (request == null) {
-            val executionDetails = executionRequest.toDetailDto()
+            val executionDetails = executionRequest.toDetailDto(connection)
             return executionDetails.events.find { it.eventId.toString() == id }!!
         }
         return Event.create(
@@ -123,21 +124,29 @@ interface EventRepository : JpaRepository<EventEntity, String> {
 }
 
 @Service
-class EventAdapter(private val eventRepository: EventRepository) {
+class EventAdapter(private val eventRepository: EventRepository, private val connectionAdapter: ConnectionAdapter) {
     fun getExecutions(): List<ExecuteEvent> {
         val events = eventRepository.findByType(EventType.EXECUTE)
-        return events.map { it.toDto() }.filterIsInstance<ExecuteEvent>()
+        return events.map {
+            it.toDto(
+                connection = connectionAdapter.toDto(it.executionRequest.connection),
+            )
+        }.filterIsInstance<ExecuteEvent>()
     }
 
     fun updateEvent(id: EventId, payload: Payload): Event {
         val event = eventRepository.findById(id.toString()).orElseThrow { IllegalArgumentException("Event not found") }
         event.payload = payload
         eventRepository.save(event)
-        return event.toDto()
+        return event.toDto(
+            connection = connectionAdapter.toDto(event.executionRequest.connection),
+        )
     }
 
     fun getEvent(id: EventId): Event {
         val event = eventRepository.findById(id.toString()).orElseThrow { IllegalArgumentException("Event not found") }
-        return event.toDto()
+        return event.toDto(
+            connection = connectionAdapter.toDto(event.executionRequest.connection),
+        )
     }
 }

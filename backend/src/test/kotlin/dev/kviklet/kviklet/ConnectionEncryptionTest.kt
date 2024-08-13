@@ -85,8 +85,8 @@ class ConnectionEncryptionTest(
         )
 
         val storedConnection = connectionRepository.findById(connection.id.toString()).get()
-        storedConnection.username shouldBe "unencrypteduser"
-        storedConnection.password shouldBe "unencryptedpassword"
+        storedConnection.storedUsername shouldBe "unencrypteduser"
+        storedConnection.storedPassword shouldBe "unencryptedpassword"
         storedConnection.isEncrypted shouldBe false
 
         val retrievedConnection = connectionAdapter.getConnection(connection.id) as DatasourceConnection
@@ -104,8 +104,8 @@ class ConnectionEncryptionTest(
         )
 
         val storedConnection = connectionRepository.findById(connection.id.toString()).get()
-        storedConnection.username shouldNotBe "testuser"
-        storedConnection.password shouldNotBe "testpassword"
+        storedConnection.storedUsername shouldNotBe "testuser"
+        storedConnection.storedPassword shouldNotBe "testpassword"
         storedConnection.isEncrypted shouldBe true
 
         val retrievedConnection = connectionAdapter.getConnection(connection.id) as DatasourceConnection
@@ -123,8 +123,8 @@ class ConnectionEncryptionTest(
         )
 
         val initialStoredConnection = connectionRepository.findById(connection.id.toString()).get()
-        val initialEncryptedUsername = initialStoredConnection.username
-        val initialEncryptedPassword = initialStoredConnection.password
+        val initialEncryptedUsername = initialStoredConnection.storedUsername
+        val initialEncryptedPassword = initialStoredConnection.storedPassword
 
         encryptionConfig.key = EncryptionConfigProperties.KeyProperties(
             current = NEW_ENCRYPTION_KEY,
@@ -134,10 +134,10 @@ class ConnectionEncryptionTest(
         val retrievedConnection = connectionAdapter.getConnection(connection.id) as DatasourceConnection
 
         val updatedStoredConnection = connectionRepository.findById(connection.id.toString()).get()
-        updatedStoredConnection.username shouldNotBe initialEncryptedUsername
-        updatedStoredConnection.password shouldNotBe initialEncryptedPassword
-        updatedStoredConnection.username shouldNotBe "rotationuser"
-        updatedStoredConnection.password shouldNotBe "rotationpassword"
+        updatedStoredConnection.storedUsername shouldNotBe initialEncryptedUsername
+        updatedStoredConnection.storedPassword shouldNotBe initialEncryptedPassword
+        updatedStoredConnection.storedUsername shouldNotBe "rotationuser"
+        updatedStoredConnection.storedPassword shouldNotBe "rotationpassword"
         updatedStoredConnection.isEncrypted shouldBe true
 
         retrievedConnection.username shouldBe "rotationuser"
@@ -173,8 +173,8 @@ class ConnectionEncryptionTest(
         )
 
         val updatedStoredConnection = connectionRepository.findById(connection.id.toString()).get()
-        updatedStoredConnection.username shouldNotBe initialEncryptedUsername
-        updatedStoredConnection.username shouldNotBe "updateduser"
+        updatedStoredConnection.storedUsername shouldNotBe initialEncryptedUsername
+        updatedStoredConnection.storedUsername shouldNotBe "updateduser"
         updatedStoredConnection.isEncrypted shouldBe true
 
         val retrievedConnection = connectionAdapter.getConnection(connection.id) as DatasourceConnection
@@ -201,12 +201,12 @@ class ConnectionEncryptionTest(
         val storedConnection1 = connectionRepository.findById(connection1.id.toString()).get()
         val storedConnection2 = connectionRepository.findById(connection2.id.toString()).get()
 
-        storedConnection1.username shouldNotBe "testuser1"
-        storedConnection1.password shouldNotBe "testpassword1"
+        storedConnection1.storedUsername shouldNotBe "testuser1"
+        storedConnection1.storedPassword shouldNotBe "testpassword1"
         storedConnection1.isEncrypted shouldBe true
 
-        storedConnection2.username shouldNotBe "testuser2"
-        storedConnection2.password shouldNotBe "testpassword2"
+        storedConnection2.storedUsername shouldNotBe "testuser2"
+        storedConnection2.storedPassword shouldNotBe "testpassword2"
         storedConnection2.isEncrypted shouldBe true
 
         val listedConnections = connectionAdapter.listConnections()
@@ -250,9 +250,9 @@ class ConnectionEncryptionTest(
 
         val storedConnection = connectionRepository.findById(connectionId.toString()).get()
         storedConnection.connectionType shouldBe ConnectionType.KUBERNETES
-        storedConnection.isEncrypted shouldBe false
-        storedConnection.username shouldBe null
-        storedConnection.password shouldBe null
+        storedConnection.isEncrypted shouldBe true
+        storedConnection.storedUsername shouldBe null
+        storedConnection.storedPassword shouldBe null
     }
 
     @Test
@@ -270,8 +270,8 @@ class ConnectionEncryptionTest(
 
         // Verify the connection is stored unencrypted
         val initialStoredConnection = connectionRepository.findById(connection.id.toString()).get()
-        initialStoredConnection.username shouldBe "unencrypteduser"
-        initialStoredConnection.password shouldBe "unencryptedpassword"
+        initialStoredConnection.storedUsername shouldBe "unencrypteduser"
+        initialStoredConnection.storedPassword shouldBe "unencryptedpassword"
         initialStoredConnection.isEncrypted shouldBe false
 
         // Enable encryption
@@ -290,8 +290,8 @@ class ConnectionEncryptionTest(
 
         // Verify the stored connection is now encrypted
         val updatedStoredConnection = connectionRepository.findById(connection.id.toString()).get()
-        updatedStoredConnection.username shouldNotBe "unencrypteduser"
-        updatedStoredConnection.password shouldNotBe "unencryptedpassword"
+        updatedStoredConnection.storedUsername shouldNotBe "unencrypteduser"
+        updatedStoredConnection.storedPassword shouldNotBe "unencryptedpassword"
         updatedStoredConnection.isEncrypted shouldBe true
 
         // Retrieve the connection again to ensure it can be decrypted correctly

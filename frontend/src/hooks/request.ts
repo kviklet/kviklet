@@ -79,8 +79,6 @@ const useRequest = (id: string) => {
   const addComment = async (comment: string) => {
     const response = await addCommentToRequest(id, comment);
 
-    const { addNotification } = useNotification();
-
     if (isApiErrorResponse(response)) {
       addNotification({
         title: "Failed to add comment",

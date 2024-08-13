@@ -20,6 +20,16 @@ jobs:
         run: npx playwright install --with-deps
       - name: Run Playwright tests
         run: npx playwright test
+      - name: Capture Docker logs
+        if: always()
+        run: docker compose -f "../e2e-compose.yml" logs > docker_logs.txt
+      - name: Upload Docker logs
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-logs
+          path: e2e/docker_logs.txt
+          retention-days: 30
       - name: Stop containers
         if: always()
         run: docker compose  -f "../e2e-compose.yml" down

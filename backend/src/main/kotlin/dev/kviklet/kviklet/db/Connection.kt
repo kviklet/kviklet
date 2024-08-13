@@ -49,12 +49,22 @@ class ConnectionEntity(
     var maxExecutions: Int? = null,
     var isEncrypted: Boolean = false,
 
+    @Column(name = "username")
+    var storedUsername: String? = null,
+
+    @Column(name = "password")
+    var storedPassword: String? = null,
+
+    @Transient
+    var username: String? = null,
+
+    @Transient
+    var password: String? = null,
+
     // Datasource Connection fields
     @Enumerated(EnumType.STRING)
     var authenticationType: AuthenticationType? = null,
     var databaseName: String? = null,
-    var username: String? = null,
-    var password: String? = null,
     @Enumerated(EnumType.STRING)
     var datasourceType: DatasourceType? = null,
     @Enumerated(EnumType.STRING)
@@ -69,34 +79,6 @@ class ConnectionEntity(
         .append("id", id)
         .append("name", displayName)
         .toString()
-
-    fun toDto(): Connection = when (connectionType) {
-        ConnectionType.DATASOURCE ->
-            DatasourceConnection(
-                id = ConnectionId(id),
-                displayName = displayName,
-                authenticationType = authenticationType!!,
-                databaseName = databaseName,
-                maxExecutions = maxExecutions,
-                username = username!!,
-                password = password!!,
-                description = description,
-                reviewConfig = reviewConfig,
-                port = port!!,
-                hostname = hostname!!,
-                type = datasourceType!!,
-                protocol = protocol ?: datasourceType!!.toProtocol(),
-                additionalOptions = additionalJDBCOptions ?: "",
-            )
-        ConnectionType.KUBERNETES ->
-            KubernetesConnection(
-                id = ConnectionId(id),
-                displayName = displayName,
-                description = description,
-                reviewConfig = reviewConfig,
-                maxExecutions = maxExecutions,
-            )
-    }
 }
 
 interface ConnectionRepository : JpaRepository<ConnectionEntity, String>
@@ -108,12 +90,21 @@ class ConnectionAdapter(
     private val encryptionConfig: EncryptionConfigProperties,
 ) {
     private fun save(connection: ConnectionEntity): ConnectionEntity {
-        if (encryptionConfig.enabled && !connection.isEncrypted) {
-            connection.username = connection.username?.let { encryptionService.encrypt(it) }
-            connection.password = connection.password?.let { encryptionService.encrypt(it) }
+        val unencryptedUsername = connection.username
+        val unencryptedPassword = connection.password
+        if (encryptionConfig.enabled) {
+            connection.storedUsername = unencryptedUsername?.let { encryptionService.encrypt(it) }
+            connection.storedPassword = unencryptedPassword?.let { encryptionService.encrypt(it) }
             connection.isEncrypted = true
+        } else {
+            connection.storedUsername = unencryptedUsername
+            connection.storedPassword = unencryptedPassword
+            connection.isEncrypted = false
         }
-        return connectionRepository.save(connection)
+        val connectionEntity = connectionRepository.save(connection)
+        connectionEntity.username = unencryptedUsername
+        connectionEntity.password = unencryptedPassword
+        return connectionEntity
     }
 
     @Transactional
@@ -124,27 +115,41 @@ class ConnectionAdapter(
         return decryptCredentialsIfNeeded(entity)
     }
 
+    /*
+     * Decrypts the credentials of a connection if needed. And populates the username and password fields.
+     * Always use this method to get the connection object, don't call toDtoDirectly directly.
+     */
     private fun decryptCredentialsIfNeeded(connection: ConnectionEntity): Connection {
-        if (!encryptionConfig.enabled && !connection.isEncrypted) return connection.toDto()
+        if (!encryptionConfig.enabled && !connection.isEncrypted) {
+            connection.username = connection.storedUsername
+            connection.password = connection.storedPassword
+            return toDtoDirectly(connection)
+        }
         if (!encryptionConfig.enabled) {
-            throw IllegalStateException(
-                "Connection is encrypted but encryption is not enabled, please add encryption key.",
-            )
+            tryDecryptAndSave(connection)
+            return toDtoDirectly(connection)
         }
         if (connection.isEncrypted) {
-            connection.username = connection.username?.let { encryptionService.decrypt(it) }
-            connection.password = connection.password?.let { encryptionService.decrypt(it) }
-            connection.isEncrypted = false
+            connection.username = connection.storedUsername?.let { encryptionService.decrypt(it) }
+            connection.password = connection.storedPassword?.let { encryptionService.decrypt(it) }
 
-            val dto = connection.toDto()
+            val dto = toDtoDirectly(connection)
             reEncryptAndSaveIfNeeded(connection)
             return dto
         } else {
-            val dto = connection.toDto()
+            connection.username = connection.storedUsername
+            connection.password = connection.storedPassword
+            val dto = toDtoDirectly(connection)
             // encrypt and save again to ensure that the connection is now encrypted
             save(connection)
             return dto
         }
+    }
+
+    private fun tryDecryptAndSave(connection: ConnectionEntity) {
+        connection.username = connection.storedUsername?.let { encryptionService.decrypt(it) }
+        connection.password = connection.storedPassword?.let { encryptionService.decrypt(it) }
+        save(connection)
     }
 
     private fun reEncryptAndSaveIfNeeded(connection: ConnectionEntity) {
@@ -170,25 +175,27 @@ class ConnectionAdapter(
         type: DatasourceType,
         protocol: DatabaseProtocol,
         additionalJDBCOptions: String,
-    ): Connection = save(
-        ConnectionEntity(
-            id = connectionId.toString(),
-            displayName = displayName,
-            authenticationType = authenticationType,
-            databaseName = databaseName,
-            maxExecutions = maxExecutions,
-            username = username,
-            password = password,
-            description = description,
-            reviewConfig = reviewConfig,
-            executionRequests = emptySet(),
-            port = port,
-            hostname = hostname,
-            datasourceType = type,
-            connectionType = ConnectionType.DATASOURCE,
-            additionalJDBCOptions = additionalJDBCOptions,
+    ): Connection = decryptCredentialsIfNeeded(
+        save(
+            ConnectionEntity(
+                id = connectionId.toString(),
+                displayName = displayName,
+                authenticationType = authenticationType,
+                databaseName = databaseName,
+                maxExecutions = maxExecutions,
+                username = username,
+                password = password,
+                description = description,
+                reviewConfig = reviewConfig,
+                executionRequests = emptySet(),
+                port = port,
+                hostname = hostname,
+                datasourceType = type,
+                connectionType = ConnectionType.DATASOURCE,
+                additionalJDBCOptions = additionalJDBCOptions,
+            ),
         ),
-    ).toDto()
+    )
 
     fun updateDatasourceConnection(
         id: ConnectionId,
@@ -227,7 +234,7 @@ class ConnectionAdapter(
         datasourceConnection.additionalJDBCOptions = additionalJDBCOptions
         datasourceConnection.isEncrypted = false
 
-        return save(datasourceConnection).toDto()
+        return decryptCredentialsIfNeeded(save(datasourceConnection))
     }
 
     fun updateKubernetesConnection(
@@ -250,7 +257,7 @@ class ConnectionAdapter(
         datasourceConnection.reviewConfig = reviewConfig
         datasourceConnection.maxExecutions = maxExecutions
 
-        return save(datasourceConnection).toDto()
+        return decryptCredentialsIfNeeded(save(datasourceConnection))
     }
 
     @Transactional
@@ -260,16 +267,18 @@ class ConnectionAdapter(
         description: String,
         reviewConfig: ReviewConfig,
         maxExecutions: Int?,
-    ): Connection = save(
-        ConnectionEntity(
-            id = connectionId.toString(),
-            displayName = displayName,
-            description = description,
-            reviewConfig = reviewConfig,
-            connectionType = ConnectionType.KUBERNETES,
-            maxExecutions = maxExecutions,
+    ): Connection = decryptCredentialsIfNeeded(
+        save(
+            ConnectionEntity(
+                id = connectionId.toString(),
+                displayName = displayName,
+                description = description,
+                reviewConfig = reviewConfig,
+                connectionType = ConnectionType.KUBERNETES,
+                maxExecutions = maxExecutions,
+            ),
         ),
-    ).toDto()
+    )
 
     fun deleteConnection(id: ConnectionId) {
         connectionRepository.deleteById(id.toString())
@@ -279,5 +288,35 @@ class ConnectionAdapter(
 
     fun deleteAll() {
         connectionRepository.deleteAll()
+    }
+
+    fun toDto(connection: ConnectionEntity): Connection = decryptCredentialsIfNeeded(connection)
+
+    private fun toDtoDirectly(connection: ConnectionEntity): Connection = when (connection.connectionType) {
+        ConnectionType.DATASOURCE ->
+            DatasourceConnection(
+                id = ConnectionId(connection.id),
+                displayName = connection.displayName,
+                authenticationType = connection.authenticationType!!,
+                databaseName = connection.databaseName,
+                maxExecutions = connection.maxExecutions,
+                username = connection.username!!,
+                password = connection.password!!,
+                description = connection.description,
+                reviewConfig = connection.reviewConfig,
+                port = connection.port!!,
+                hostname = connection.hostname!!,
+                type = connection.datasourceType!!,
+                protocol = connection.protocol ?: connection.datasourceType!!.toProtocol(),
+                additionalOptions = connection.additionalJDBCOptions ?: "",
+            )
+        ConnectionType.KUBERNETES ->
+            KubernetesConnection(
+                id = ConnectionId(connection.id),
+                displayName = connection.displayName,
+                description = connection.description,
+                reviewConfig = connection.reviewConfig,
+                maxExecutions = connection.maxExecutions,
+            )
     }
 }
