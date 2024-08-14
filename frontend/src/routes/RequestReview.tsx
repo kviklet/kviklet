@@ -44,6 +44,7 @@ import useRequest, {
 import Modal from "../components/Modal";
 import SQLDumpConfirm from "../components/SQLDumpConfirm";
 import { ConnectionResponse } from "../api/DatasourceApi";
+import useNotification from "../hooks/useNotification";
 
 interface RequestReviewParams {
   requestId: string;
@@ -601,12 +602,12 @@ function DatasourceRequestBox({
     );
   };
 
-  const handleButtonClick = () => {
+  const handleButtonClick = async () => {
     if (request?.type === "SQLDump") {
       setChosenConnection(request.connection);
       setShowSQLDumpModal(true);
     } else {
-      void runQuery();
+      await runQuery();
     }
   };
 
@@ -671,25 +672,45 @@ function DatasourceRequestBox({
       </div>
       <div className="relative mt-3 flex justify-end">
         <MenuDropDown items={menuDropDownItems}></MenuDropDown>
-        <Button
-          className=""
-          id="runQuery"
-          type={request?.reviewStatus === "APPROVED" ? "submit" : "disabled"}
-          onClick={handleButtonClick}
-        >
-          <div
-            className={`play-triangle mr-2 inline-block h-3 w-2 ${
-              request?.reviewStatus === "APPROVED"
-                ? "bg-slate-50"
-                : "bg-slate-500"
-            }`}
-          ></div>
-          {request?.type === "SingleExecution"
-            ? "Run Query"
-            : request?.type === "TemporaryAccess"
-            ? "Start Session"
-            : "Get SQL Dump"}
-        </Button>
+        {isRelationalDatabase(request) ? (
+          <LoadingCancelButton
+            className=""
+            id="runQuery"
+            type="submit"
+            disabled={request?.reviewStatus !== "APPROVED"}
+            onClick={handleButtonClick}
+            onCancel={() => void cancelQuery()}
+          >
+            <div
+              className={`play-triangle mr-2 inline-block h-3 w-2 ${
+                (request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
+                "bg-slate-500"
+              }`}
+            ></div>
+            {request?.type === "SingleExecution"
+              ? "Run Query"
+              : request?.type === "TemporaryAccess"
+              ? "Start Session"
+              : "Get SQL Dump"}
+          </LoadingCancelButton>
+        ) : (
+          <Button
+            className=""
+            id="runQuery"
+            type={
+              (request?.reviewStatus == "APPROVED" && "submit") || "disabled"
+            }
+            onClick={() => void runQuery()}
+          >
+            <div
+              className={`play-triangle mr-2 inline-block h-3 w-2 ${
+                (request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
+                "bg-slate-500"
+              }`}
+            ></div>
+            {request?.type == "SingleExecution" ? "Run Query" : "Start Session"}
+          </Button>
+        )}
         {SQLDumpModal()}
       </div>
     </div>
