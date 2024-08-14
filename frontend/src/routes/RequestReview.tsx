@@ -44,6 +44,7 @@ import useRequest, {
 import Modal from "../components/Modal";
 import SQLDumpConfirm from "../components/SQLDumpConfirm";
 import { ConnectionResponse } from "../api/DatasourceApi";
+import useNotification from "../hooks/useNotification";
 
 interface RequestReviewParams {
   requestId: string;
@@ -601,12 +602,12 @@ function DatasourceRequestBox({
     );
   };
 
-  const handleButtonClick = () => {
+  const handleButtonClick = async () => {
     if (request?.type === "SQLDump") {
       setChosenConnection(request.connection);
       setShowSQLDumpModal(true);
     } else {
-      void runQuery();
+      await runQuery();
     }
   };
 
@@ -677,7 +678,7 @@ function DatasourceRequestBox({
             id="runQuery"
             type="submit"
             disabled={request?.reviewStatus !== "APPROVED"}
-            onClick={runQuery}
+            onClick={handleButtonClick}
             onCancel={() => void cancelQuery()}
             dataTestId="run-query-button"
           >

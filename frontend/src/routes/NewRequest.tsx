@@ -213,11 +213,11 @@ export default function ConnectionChooser() {
                       className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
                     >
                       {filteredConnections.map((connection) => {
-                        // Only enable DB dump for MySQL & PostgresSQL
+                        // TODO: Here we will enable the dump for PostgresSQL when pg_dump issue is resolved in the backend
+                        // Only enable DB dump for MySQL
                         const sqlDumpEnabled =
                           connection._type === "DATASOURCE" &&
-                          (connection.type === DatabaseType.POSTGRES ||
-                            connection.type === DatabaseType.MYSQL);
+                          connection.type === DatabaseType.MYSQL;
 
                         return (
                           <Card

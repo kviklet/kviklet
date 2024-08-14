@@ -144,6 +144,8 @@ class ExecutionRequestService(
                 )
                 sqlDumpCommand
             }
+
+            // TODO: Here we'd get pg_dump version mismatch error
             DatasourceType.POSTGRESQL -> {
                 val sqlDumpCommand = listOfNotNull(
                     "pg_dump",
