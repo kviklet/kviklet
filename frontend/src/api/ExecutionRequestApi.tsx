@@ -300,7 +300,7 @@ const addReviewToRequest = async (
   id: string,
   review: string,
   action: string,
-): Promise<ApiResponse<void>> => {
+): Promise<ApiResponse<Review>> => {
   return fetchWithErrorHandling(
     requestUrl + id + "/reviews",
     {
@@ -311,7 +311,7 @@ const addReviewToRequest = async (
       credentials: "include",
       body: JSON.stringify({ comment: review, action }),
     },
-    z.undefined(),
+    ReviewEvent,
   );
 };
 
