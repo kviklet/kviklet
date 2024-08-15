@@ -1,7 +1,7 @@
 version: "3"
 services:
   postgres:
-    image: postgres:9.6
+    image: postgres:16
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -44,7 +44,7 @@ services:
   #    - ./mssql-data:/var/opt/mssql
 
   kviklet-postgres:
-    image: postgres:9.6
+    image: postgres:16
     restart: always
     environment:
       POSTGRES_USER: postgres

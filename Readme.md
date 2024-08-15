@@ -51,9 +51,76 @@ The latest one currently is `ghcr.io/kviklet/kviklet:0.4.2`, you can also use `:
 
 If you just want to try out how it works:
 
-1. Clone the repository (or copy the `docker-compose.yml` and `sample_data.sql`)
+1. Here is a minimal docker-compose.yaml:
+```
+services:
+  postgres:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+#      - ./sample_data.sql:/docker-entrypoint-initdb.d/init.sql
+
+  kviklet-postgres:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: kviklet
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./kviklet-postgres-data:/var/lib/postgresql/data
+
+  kviklet:
+    image: ghcr.io/kviklet/kviklet:main
+    ports:
+      - "80:80"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://kviklet-postgres:5432/kviklet
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - INITIAL_USER_EMAIL=admin@admin.com
+      - INITIAL_USER_PASSWORD=admin
+    depends_on:
+      - kviklet-postgres
+```
+
 2. Run the `docker-compose.yml` via `docker-compose up -d`. Kviklet should spin up on port 80 so just got to `localhost` and play around. The admin login is admin@admin.com with `admin` as password.
-3. The docker-compose contains an extra postgres database for which you can setup a connection in Kviklet. This database contains a sample `Locations` table if you want to run a test query.
+
+3. The docker-compose contains an extra postgres database for which you can setup a connection in Kviklet. To make this database contain some data, uncomment this line:
+```
+      - ./sample_data.sql:/docker-entrypoint-initdb.d/init.sql
+```
+And create a sample_data.sql file:
+```sql
+CREATE TABLE Locations (
+    Name VARCHAR(100) NOT NULL,
+    Address VARCHAR(255) NOT NULL,
+    City VARCHAR(100) NOT NULL,
+    Country VARCHAR(100) NOT NULL,
+    PostalCode VARCHAR(20) NOT NULL
+);
+
+alter table public.Locations
+    owner to postgres;
+
+INSERT INTO public.Locations (Name, Address, City, Country, PostalCode) VALUES
+('Central Park', '59th to 110th St', 'New York', 'USA', '10022'),
+('Eiffel Tower', 'Champ de Mars, 5 Avenue Anatole', 'Paris', 'France', '75007'),
+('Colosseum', 'Piazza del Colosseo, 1', 'Rome', 'Italy', '00184'),
+('Sydney Opera House', 'Bennelong Point', 'Sydney', 'Australia', '2000'),
+('Great Wall of China', 'Huairou District', 'Beijing', 'China', '101405');
+```
+
+Or just log in with your database client of choice and create some data yourself.
 
 ### DB Setup
 
@@ -233,22 +300,24 @@ If you don't want the credentials to be stored in cleartext in the DB, I recomme
 Nontheless I understand that if the Kviklet database is somehow compromised, this is a huge security risk. As it contains the database crendetials for potentially all your production datastores. So you can enabled encryption of the credentials at rest.
 
 To do this simply set the two environment variables.
+
 ```
 ENCRYPTION_ENABLED=true
 ENCRYPTION_KEY_CURRENT=some-secret
 ```
+
 Kviklet will encrypt all your existing credentials on startup, and use the secret for future connections that you create.
 
 ### Key Rotation
 
 If you want to rotate the key you can simply add another variable for the previous key and change the current one:
+
 ```
 ENCRYPTION_KEY_PREVIOUS=some-secret
 ENCRYPTION_KEY_CURRENT=another-secret
 ```
+
 Kviklet will re-encrypt all connections on startup, so that you can then restart the contaienr with the previous key removed.
-
-
 
 ## Experimental Features
 
