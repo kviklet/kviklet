@@ -362,6 +362,9 @@ class ExecutionRequestService(
         ) {
             throw RuntimeException("Only Datasource requests can be downloaded as CSV")
         }
+        if (connection.type == DatasourceType.MONGODB) {
+            throw RuntimeException("MongoDB requests can't be downloaded as CSV")
+        }
         val downloadAllowedAndReason = executionRequest.csvDownloadAllowed(query)
         val queryToExecute = when (executionRequest.request.type) {
             RequestType.SingleExecution -> executionRequest.request.statement!!.trim().removeSuffix(";")

@@ -231,6 +231,10 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
             return Pair(false, "Only Datasource Requests can be downloaded as CSV")
         }
 
+        if (request.connection.type == DatasourceType.MONGODB) {
+            return Pair(false, "MongoDB requests can't be downloaded as CSV")
+        }
+
         if (resolveReviewStatus() != ReviewStatus.APPROVED) {
             return Pair(false, "This request has not been approved yet!")
         }

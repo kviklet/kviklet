@@ -223,7 +223,7 @@ function DatasourceRequestDisplay({
         startServer={start}
         updateRequest={updateRequest}
       ></DatasourceRequestBox>
-      <div className="flex justify-center">
+      <div className="mt-4 flex justify-center">
         {(dataLoading && <Spinner></Spinner>) ||
           (results && <MultiResult resultList={results}></MultiResult>)}
       </div>
@@ -480,8 +480,9 @@ function DatasourceRequestBox({
               void runQuery(true);
             },
             enabled:
-              request?.reviewStatus === "APPROVED" ||
-              request?.reviewStatus === "AWAITING_APPROVAL",
+              isRelationalDatabase(request) &&
+              (request?.reviewStatus === "APPROVED" ||
+                request?.reviewStatus === "AWAITING_APPROVAL"),
             content: "Explain",
           },
         ]
