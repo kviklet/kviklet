@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse
 import jakarta.transaction.Transactional
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpStatus
@@ -65,6 +66,12 @@ class PasswordEncoderConfig {
     fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
 }
 
+@ConfigurationProperties(prefix = "cors")
+@Configuration
+class CorsSettings {
+    var allowedOrigins: List<String> = emptyList()
+}
+
 @Configuration
 @EnableWebSecurity
 class SecurityConfig(
@@ -75,6 +82,7 @@ class SecurityConfig(
     private val ldapProperties: LdapProperties,
     private val contextSource: LdapContextSource,
     private val userDetailsService: UserDetailsServiceImpl,
+    private val corsSettings: CorsSettings,
 ) {
 
     @Bean
@@ -184,12 +192,7 @@ class SecurityConfig(
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
         val configuration = CorsConfiguration()
-        configuration.allowedOrigins = listOf(
-            "http://localhost:5173",
-            "http://localhost:5174",
-            "http://localhost:80",
-            "http://localhost",
-        )
+        configuration.allowedOrigins = corsSettings.allowedOrigins
         configuration.allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
         configuration.allowCredentials = true
         configuration.allowedHeaders = listOf("*")
