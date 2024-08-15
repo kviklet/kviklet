@@ -70,38 +70,4 @@ class MongoDBExecutor {
     } catch (e: MongoException) {
         emptyList()
     }
-
-    fun executeAndStreamDbResponse(
-        connectionString: String,
-        databaseName: String,
-        query: String,
-        callback: (List<String>) -> Unit,
-    ) {
-        try {
-            MongoClients.create(connectionString).use { client ->
-                val database = client.getDatabase(databaseName)
-                val command = Document.parse(query)
-
-                val result = database.runCommand(command)
-                if (result.containsKey("cursor")) {
-                    val cursor = result.get("cursor", Document::class.java)
-                    val documents = cursor.getList("firstBatch", Document::class.java)
-
-                    if (documents.isNotEmpty()) {
-                        // Send column names
-                        callback(documents.first().keys.toList())
-
-                        // Send data
-                        documents.forEach { doc ->
-                            callback(doc.values.map { it.toString() })
-                        }
-                    }
-                } else {
-                    throw IllegalStateException("Can't stream a non-query result")
-                }
-            }
-        } catch (e: MongoException) {
-            throw IllegalStateException("Error executing query", e)
-        }
-    }
 }

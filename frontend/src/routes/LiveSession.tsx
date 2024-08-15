@@ -134,9 +134,11 @@ const Editor = ({
           <div className="h-full w-full" ref={monacoEl}></div>
         </div>
         <div className="flex flex-row">
-          <a className="ml-auto mr-2" href="#" onClick={handleClick}>
-            <Button>Download as CSV</Button>
-          </a>
+          {request?._type === "DATASOURCE" && isRelationalDatabase(request) && (
+            <a className="ml-auto mr-2" href="#" onClick={handleClick}>
+              <Button>Download as CSV</Button>
+            </a>
+          )}
           {request?._type === "DATASOURCE" && isRelationalDatabase(request) ? (
             <LoadingCancelButton
               className=""
