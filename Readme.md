@@ -4,9 +4,8 @@
 
 Secure access to production environments without impairing developer productivity.
 
-<p align="center">
-<img src="https://github.com/kviklet/kviklet/raw/main/images/ExecutionRequest.png" width="700px">
-</p>
+![Kviklet](images/ExecutedRequest_light.png#gh-light-mode-only)
+![Kviklet](images/ExecutedRequest_dark.png#gh-dark-mode-only)
 
 Kviklet embraces the **Four-Eyes Principle** and a high level of configurability, to allow a **Pull Request-like Review and Approval** flow for individual SQL statements or Database sessions. This allows engineering teams to self regulate on who gets access to what data and when. This allow your organization to stay secure and compliant while still allowing for modern empowering true to DevOps workflows.
 
