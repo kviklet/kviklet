@@ -12,49 +12,7 @@ services:
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
       - ./sample_data.sql:/docker-entrypoint-initdb.d/init.sql
-
-  mongodb:
-    image: mongo:jammy
-    restart: always
-    ports:
-      - "27017:27017"
-    volumes:
-      - ./mongodb-data:/data/db
-
-  mariadb:
-    image: mariadb:10
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: mariadb
-    ports:
-      - "3307:3306"
-    volumes:
-      - ./mariadb-data:/var/lib/mysql
-
-
-  #mysql:
-  #  image: mysql:8
-  #  restart: always
-  #  environment:
-  #    MYSQL_ROOT_PASSWORD: root
-  #    MYSQL_DATABASE: mysql
-  #  ports:
-  #    - "3306:3306"
-  #  volumes:
-  #    - ./mysql-data:/var/lib/mysql
-
-  #mssql:
-  #  image: mcr.microsoft.com/mssql/server:2022-latest
-  #  restart: always
-  #  environment:
-  #    ACCEPT_EULA: Y
-  #    MSSQL_SA_PASSWORD: test1234TEST
-  #  ports:
-  #    - "1433:1433"
-  #  volumes:
-  #    - ./mssql-data:/var/opt/mssql
-
+  
   kviklet-postgres:
     image: postgres:16
     restart: always
@@ -80,19 +38,60 @@ services:
     depends_on:
       - kviklet-postgres
 
-  ldap:
-    image: osixia/openldap:1.1.8
-    ports:
-      - "389:389"
-    environment:
-      - LDAP_ORGANISATION=Kviklet
-      - LDAP_DOMAIN=kviklet.dev
-      - LDAP_ADMIN_PASSWORD=admin
-      - LDAP_CONFIG_PASSWORD=config
-  ldapmyadmin:
-    image: osixia/phpldapadmin:0.9.0
-    ports:
-      - "80:80"
-    environment:
-      - PHPLDAPADMIN_LDAP_HOSTS=ldap
-      - PHPLDAPADMIN_HTTPS=false
+  #mongodb:
+  #  image: mongo:jammy
+  #  restart: always
+  #  ports:
+  #    - "27017:27017"
+  #  volumes:
+  #    - ./mongodb-data:/data/db
+
+  #mariadb:
+  #  image: mariadb:10
+  #  restart: always
+  #  environment:
+  #    MARIADB_ROOT_PASSWORD: root
+  #  ports:
+  #    - "3307:3306"
+  #  volumes:
+  #    - ./mariadb-data:/var/lib/mysql
+
+
+  #mysql:
+  #  image: mysql:8
+  #  restart: always
+  #  environment:
+  #    MYSQL_ROOT_PASSWORD: root
+  #    MYSQL_DATABASE: mysql
+  #  ports:
+  #    - "3306:3306"
+  #  volumes:
+  #    - ./mysql-data:/var/lib/mysql
+
+  #mssql:
+  #  image: mcr.microsoft.com/mssql/server:2022-latest
+  #  restart: always
+  #  environment:
+  #    ACCEPT_EULA: Y
+  #    MSSQL_SA_PASSWORD: test1234TEST
+  #  ports:
+  #    - "1433:1433"
+  #  volumes:
+  #    - ./mssql-data:/var/opt/mssql
+
+  #ldap:
+  #  image: osixia/openldap:1.1.8
+  #  ports:
+  #    - "389:389"
+  #  environment:
+  #    - LDAP_ORGANISATION=Kviklet
+  #    - LDAP_DOMAIN=kviklet.dev
+  #    - LDAP_ADMIN_PASSWORD=admin
+  #    - LDAP_CONFIG_PASSWORD=config
+  #ldapmyadmin:
+  #  image: osixia/phpldapadmin:0.9.0
+  #  ports:
+  #    - "80:80"
+  #  environment:
+  #    - PHPLDAPADMIN_LDAP_HOSTS=ldap
+  #    - PHPLDAPADMIN_HTTPS=false
