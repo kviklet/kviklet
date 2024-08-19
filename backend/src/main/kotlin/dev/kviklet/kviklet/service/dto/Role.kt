@@ -1,5 +1,7 @@
 package dev.kviklet.kviklet.service.dto
 
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonValue
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Resource
 import dev.kviklet.kviklet.security.SecuredDomainId
@@ -47,9 +49,10 @@ data class Role(
     override fun getRelated(resource: Resource): SecuredDomainObject? = null
 }
 
-@JvmInline
-value class RoleId(private val id: String) :
+data class RoleId
+@JsonCreator constructor(private val id: String) :
     Serializable,
     SecuredDomainId {
+    @JsonValue
     override fun toString() = id
 }

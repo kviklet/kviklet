@@ -1,5 +1,7 @@
 package dev.kviklet.kviklet.service.dto
 
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonValue
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.PolicyGrantedAuthority
@@ -12,10 +14,11 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import java.io.Serializable
 import java.time.LocalDateTime
 
-@JvmInline
-value class ExecutionRequestId(private val id: String) :
+data class ExecutionRequestId
+@JsonCreator constructor(private val id: String) :
     Serializable,
     SecuredDomainId {
+    @JsonValue
     override fun toString() = id
 }
 
