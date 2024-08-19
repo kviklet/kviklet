@@ -76,6 +76,7 @@ dependencies {
     testImplementation("org.testcontainers:postgresql:$testcontainersVersion")
     testImplementation("org.testcontainers:mssqlserver:$testcontainersVersion")
     testImplementation("org.testcontainers:mongodb:$testcontainersVersion")
+    testImplementation("org.testcontainers:mariadb:$testcontainersVersion")
 
     testImplementation("io.kotest:kotest-assertions-core:5.5.5")
     testImplementation("io.mockk:mockk:1.13.4")
@@ -93,7 +94,7 @@ dependencies {
     implementation(group = "javax.inject", name = "javax.inject", version = "1")
 
     // db drivers
-    implementation("org.mariadb.jdbc:mariadb-java-client:3.1.4")
+    implementation("org.mariadb.jdbc:mariadb-java-client:3.4.1")
     implementation("com.mysql:mysql-connector-j:8.3.0")
     implementation("com.microsoft.sqlserver:mssql-jdbc:12.6.1.jre11")
     implementation("org.mongodb:mongodb-driver-sync:5.1.2")

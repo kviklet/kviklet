@@ -99,6 +99,9 @@ function UpdateDatasourceConnectionForm({
     if (type === DatabaseType.MONGODB) {
       return [DatabaseProtocol.MONGODB, DatabaseProtocol.MONGODB_SRV];
     }
+    if (type === DatabaseType.MARIADB) {
+      return [DatabaseProtocol.MARIADB];
+    }
     return [];
   };
 
@@ -166,6 +169,7 @@ function UpdateDatasourceConnectionForm({
             >
               <option value={DatabaseType.POSTGRES}>Postgres</option>
               <option value={DatabaseType.MYSQL}>MySQL</option>
+              <option value={DatabaseType.MARIADB}>MariaDB</option>
               <option value={DatabaseType.MSSQL}>MS SQL</option>
               <option value={DatabaseType.MONGODB}>MongoDB</option>
             </select>
