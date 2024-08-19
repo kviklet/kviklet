@@ -13,6 +13,7 @@ enum class DatasourceType(val schema: String) {
     MYSQL("mysql"),
     MSSQL("sqlserver"),
     MONGODB("mongodb"),
+    MARIADB("mariadb"),
     ;
 
     fun toProtocol(): DatabaseProtocol = when (this) {
@@ -20,6 +21,7 @@ enum class DatasourceType(val schema: String) {
         MYSQL -> DatabaseProtocol.MYSQL
         MSSQL -> DatabaseProtocol.MSSQL
         MONGODB -> DatabaseProtocol.MONGODB
+        MARIADB -> DatabaseProtocol.MARIADB
     }
 }
 
@@ -27,6 +29,7 @@ enum class DatabaseProtocol(val uriString: String) {
     POSTGRESQL("postgresql"),
     MYSQL("mysql"),
     MSSQL("sqlserver"),
+    MARIADB("mariadb"),
     MONGODB("mongodb"),
     MONGODB_SRV("mongodb+srv"),
 }
@@ -91,6 +94,10 @@ data class DatasourceConnection(
         DatasourceType.MSSQL ->
             "jdbc:sqlserver://$hostname:$port" +
                 (databaseName?.takeIf { it.isNotBlank() }?.let { ";databaseName=$databaseName" } ?: "") +
+                additionalOptions
+        DatasourceType.MARIADB ->
+            "jdbc:mariadb://$hostname:$port/" +
+                databaseName +
                 additionalOptions
         DatasourceType.MONGODB -> {
             val credentialString = if (username.isNotBlank() && password.isNotBlank()) {

@@ -11,6 +11,7 @@ enum DatabaseType {
   MYSQL = "MYSQL",
   MSSQL = "MSSQL",
   MONGODB = "MONGODB",
+  MARIADB = "MARIADB",
 }
 
 enum DatabaseProtocol {
@@ -19,6 +20,7 @@ enum DatabaseProtocol {
   MSSQL = "MSSQL",
   MONGODB = "MONGODB",
   MONGODB_SRV = "MONGODB_SRV",
+  MARIADB = "MARIADB",
 }
 
 const databaseConnectionResponseSchema = withType(

@@ -54,6 +54,9 @@ const getJDBCOptionsPlaceholder = (type: DatabaseType) => {
   if (type === DatabaseType.MYSQL) {
     return "?useSSL=false";
   }
+  if (type === DatabaseType.MARIADB) {
+    return "?useSSL=false";
+  }
   if (type === DatabaseType.MSSQL) {
     return ";encrypt=true;trustServerCertificate=true";
   }
@@ -79,6 +82,9 @@ export default function DatabaseConnectionForm(props: {
     }
     if (type === DatabaseType.MSSQL) {
       return [DatabaseProtocol.MSSQL];
+    }
+    if (type === DatabaseType.MARIADB) {
+      return [DatabaseProtocol.MARIADB];
     }
     if (type === DatabaseType.MONGODB) {
       return [DatabaseProtocol.MONGODB, DatabaseProtocol.MONGODB_SRV];
@@ -142,6 +148,9 @@ export default function DatabaseConnectionForm(props: {
     if (watchType === DatabaseType.MYSQL) {
       updatePortIfNotTouched(3306);
     }
+    if (watchType === DatabaseType.MARIADB) {
+      updatePortIfNotTouched(3306);
+    }
     if (watchType === DatabaseType.MSSQL) {
       updatePortIfNotTouched(1433);
     }
@@ -184,6 +193,7 @@ export default function DatabaseConnectionForm(props: {
             >
               <option value={DatabaseType.POSTGRES}>Postgres</option>
               <option value={DatabaseType.MYSQL}>MySQL</option>
+              <option value={DatabaseType.MARIADB}>MariaDB</option>
               <option value={DatabaseType.MSSQL}>MS SQL</option>
               <option value={DatabaseType.MONGODB}>MongoDB</option>
             </select>

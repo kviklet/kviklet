@@ -21,6 +21,18 @@ services:
     volumes:
       - ./mongodb-data:/data/db
 
+  mariadb:
+    image: mariadb:10
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: mariadb
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./mariadb-data:/var/lib/mysql
+
+
   #mysql:
   #  image: mysql:8
   #  restart: always

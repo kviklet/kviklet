@@ -32,7 +32,8 @@ const isRelationalDatabase = (
   return (
     request?.connection?.type === DatabaseType.POSTGRES ||
     request?.connection?.type === DatabaseType.MYSQL ||
-    request?.connection?.type === DatabaseType.MSSQL
+    request?.connection?.type === DatabaseType.MSSQL ||
+    request?.connection?.type === DatabaseType.MARIADB
   );
 };
 
