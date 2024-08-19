@@ -254,6 +254,66 @@ class ExecutionTest {
         }
 
         @Test
+        fun `only request creator can execute the request`() {
+            // Create and approve an execution request
+            val executionRequest = executionRequestHelper.createExecutionRequest(
+                db,
+                testUser,
+                connection = testConnection,
+            )
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+            approveRequest(executionRequest.getId(), "Approved", reviewerCookie)
+
+            mockMvc.perform(
+                post("/execution-requests/${executionRequest.getId()}/execute")
+                    .cookie(reviewerCookie)
+                    .contentType("application/json"),
+            ).andExpect(status().isForbidden)
+        }
+
+        @Test
+        fun `only request creator can edit the request`() {
+            // Create an execution request
+            val executionRequest = executionRequestHelper.createExecutionRequest(
+                db,
+                testUser,
+                connection = testConnection,
+            )
+
+            // Login as the creator
+            val creatorCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+            // Creator should be able to edit the request
+            mockMvc.perform(
+                patch("/execution-requests/${executionRequest.getId()}")
+                    .cookie(creatorCookie)
+                    .content(
+                        """
+                {
+                    "statement": "SELECT * FROM updated_table"
+                }
+                        """.trimIndent(),
+                    )
+                    .contentType("application/json"),
+            ).andExpect(status().isOk)
+
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+
+            mockMvc.perform(
+                patch("/execution-requests/${executionRequest.getId()}")
+                    .cookie(reviewerCookie)
+                    .content(
+                        """
+                {
+                    "statement": "SELECT * FROM another_table"
+                }
+                        """.trimIndent(),
+                    )
+                    .contentType("application/json"),
+            ).andExpect(status().isForbidden)
+        }
+
+        @Test
         fun `when executing simple insert then succeed`() {
             val insertRequest = executionRequestHelper.createExecutionRequest(
                 db,

@@ -1,5 +1,7 @@
 package dev.kviklet.kviklet.service.dto
 
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonValue
 import dev.kviklet.kviklet.db.CommentPayload
 import dev.kviklet.kviklet.db.EditPayload
 import dev.kviklet.kviklet.db.ErrorResultLogPayload
@@ -10,13 +12,17 @@ import dev.kviklet.kviklet.db.ReviewPayload
 import dev.kviklet.kviklet.db.UpdateResultLogPayload
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.security.Resource
+import dev.kviklet.kviklet.security.SecuredDomainId
 import dev.kviklet.kviklet.security.SecuredDomainObject
 import java.io.Serializable
 import java.time.LocalDateTime
 import java.util.*
 
-@JvmInline
-value class EventId(private val id: String) : Serializable {
+data class EventId
+@JsonCreator constructor(private val id: String) :
+    Serializable,
+    SecuredDomainId {
+    @JsonValue
     override fun toString() = id
 }
 
