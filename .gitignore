@@ -5,4 +5,5 @@ kviklet-mariadb-data/
 mysql-data
 mssql-data
 mongodb-data
+mariadb-data
 lib

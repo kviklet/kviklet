@@ -33,6 +33,9 @@ COPY --from=build /home/gradle/src/build/libs/*.jar app.jar
 
 COPY --chmod=755 ./run.sh .
 
+RUN ln -sf /dev/stdout /var/log/nginx/access.log \
+    && ln -sf /dev/stderr /var/log/nginx/error.log
+
 EXPOSE 80
 
 # Start the application
