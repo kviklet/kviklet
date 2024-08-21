@@ -44,3 +44,28 @@ export async function fetchWithErrorHandling<T>(
     return { message: "An unknown error occurred" };
   }
 }
+
+async function fetchEmptyWithErrorHandling(
+  url: string,
+  options: RequestInit,
+): Promise<ApiErrorResponse | null> {
+  try {
+    const response = await fetch(url, options);
+    if (
+      response.status === 204 ||
+      response.headers.get("Content-Length") === "0"
+    ) {
+      return null;
+    }
+    const json: unknown = await response.json();
+
+    return parseSchemaOrError(ApiErrorResponseSchema, json);
+  } catch (error) {
+    if (error instanceof Error) {
+      return { message: error.message };
+    }
+    return { message: "An unknown error occurred" };
+  }
+}
+
+export { fetchEmptyWithErrorHandling };

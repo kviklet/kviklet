@@ -1,6 +1,10 @@
 import { z } from "zod";
 import baseUrl, { withType } from "./base";
-import { ApiResponse, fetchWithErrorHandling } from "./Errors";
+import {
+  ApiResponse,
+  fetchEmptyWithErrorHandling,
+  fetchWithErrorHandling,
+} from "./Errors";
 
 enum AuthenticationType {
   USER_PASSWORD = "USER_PASSWORD",
@@ -244,6 +248,16 @@ const getConnection = async (
   );
 };
 
+const deleteConnection = async (id: string): Promise<ApiResponse<null>> => {
+  return fetchEmptyWithErrorHandling(`${baseUrl}/connections/${id}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+  });
+};
+
 export {
   addConnection,
   testConnection,
@@ -256,6 +270,7 @@ export {
   DatabaseType,
   DatabaseProtocol,
   kubernetesConnectionPayloadSchema,
+  deleteConnection,
 };
 
 export type {

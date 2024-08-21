@@ -13,10 +13,10 @@ import UserSettings from "./UserSettings";
 import RoleSettings from "./RolesSettings";
 import React from "react";
 import ProfileSettings from "./ProfileSettings";
-import ConnectionDetails from "./connection/ConnectionDetails";
 import RoleDetailsView from "./RoleDetailsView";
 import NewRoleView from "./NewRoleView";
 import GeneralSettings from "./GeneralSettings";
+import ConnectionDetails from "./connection/details/ConnectionDetails";
 
 const Tab = (props: {
   children: React.ReactNode;
