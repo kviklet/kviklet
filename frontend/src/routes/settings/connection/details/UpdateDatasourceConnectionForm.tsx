@@ -1,25 +1,16 @@
-import { useParams } from "react-router-dom";
 import { z } from "zod";
 import {
   DatabaseConnectionResponse,
   DatabaseProtocol,
   DatabaseType,
-  KubernetesConnectionResponse,
-} from "../../../api/DatasourceApi";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useConnection } from "../../../hooks/connections";
-import Spinner from "../../../components/Spinner";
-import InputField, { TextField } from "../../../components/InputField";
+} from "../../../../api/DatasourceApi";
+import InputField, { TextField } from "../../../../components/InputField";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-import { getJDBCOptionsPlaceholder } from "./DatabaseConnectionForm";
-import Button from "../../../components/Button";
+import { getJDBCOptionsPlaceholder } from "../DatabaseConnectionForm";
+import Button from "../../../../components/Button";
 import { useEffect, useState } from "react";
-
-interface ConnectionDetailsParams {
-  connectionId: string;
-}
+import { useConnectionForm } from "./ConnectionEditFormHook";
 
 const datasourceConnectionFormSchema = z
   .object({
@@ -42,82 +33,46 @@ const datasourceConnectionFormSchema = z
 
 type ConnectionForm = z.infer<typeof datasourceConnectionFormSchema>;
 
-export default function ConnectionDetails() {
-  const params = useParams() as unknown as ConnectionDetailsParams;
-  const connectionId = params.connectionId;
-
-  const { loading, connection, editConnection } = useConnection(connectionId);
-
-  return (
-    <div>
-      <div className="flex w-full flex-col">
-        <div className="flex w-full items-center justify-between">
-          <div className="text-lg font-semibold dark:text-white">
-            Connection Settings
-          </div>
-        </div>
-        {loading ? (
-          <Spinner></Spinner>
-        ) : (
-          (connection && connection._type === "DATASOURCE" && (
-            <UpdateDatasourceConnectionForm
-              connection={connection}
-              editConnection={editConnection}
-            ></UpdateDatasourceConnectionForm>
-          )) ||
-          (connection && connection._type === "KUBERNETES" && (
-            <UpdateKubernetesConnectionForm
-              connection={connection}
-              editConnection={editConnection}
-            ></UpdateKubernetesConnectionForm>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
 interface UpdateDatasourceFormProps {
   connection: DatabaseConnectionResponse;
   editConnection: (connection: ConnectionForm) => Promise<void>;
 }
 
-function UpdateDatasourceConnectionForm({
+const getProtocolOptions = (type: DatabaseType) => {
+  if (type === DatabaseType.POSTGRES) {
+    return [DatabaseProtocol.POSTGRESQL];
+  }
+  if (type === DatabaseType.MYSQL) {
+    return [DatabaseProtocol.MYSQL];
+  }
+  if (type === DatabaseType.MSSQL) {
+    return [DatabaseProtocol.MSSQL];
+  }
+  if (type === DatabaseType.MONGODB) {
+    return [DatabaseProtocol.MONGODB, DatabaseProtocol.MONGODB_SRV];
+  }
+  if (type === DatabaseType.MARIADB) {
+    return [DatabaseProtocol.MARIADB];
+  }
+  return [];
+};
+
+export default function UpdateDatasourceConnectionForm({
   connection,
   editConnection,
 }: UpdateDatasourceFormProps) {
-  const getProtocolOptions = (type: DatabaseType) => {
-    if (type === DatabaseType.POSTGRES) {
-      return [DatabaseProtocol.POSTGRESQL];
-    }
-    if (type === DatabaseType.MYSQL) {
-      return [DatabaseProtocol.MYSQL];
-    }
-    if (type === DatabaseType.MSSQL) {
-      return [DatabaseProtocol.MSSQL];
-    }
-    if (type === DatabaseType.MONGODB) {
-      return [DatabaseProtocol.MONGODB, DatabaseProtocol.MONGODB_SRV];
-    }
-    if (type === DatabaseType.MARIADB) {
-      return [DatabaseProtocol.MARIADB];
-    }
-    return [];
-  };
-
   const [protocolOptions, setProtocolOptions] = useState<DatabaseProtocol[]>(
     getProtocolOptions(connection.type),
   );
 
   const {
     register,
-    handleSubmit,
-    setValue,
     formState: { errors, isDirty },
     watch,
-  } = useForm<ConnectionForm>({
-    resolver: zodResolver(datasourceConnectionFormSchema),
-    defaultValues: {
+    setValue,
+    handleFormSubmit,
+  } = useConnectionForm({
+    initialValues: {
       displayName: connection.displayName,
       description: connection.description,
       type: connection.type,
@@ -130,14 +85,14 @@ function UpdateDatasourceConnectionForm({
       reviewConfig: {
         numTotalRequired: connection.reviewConfig.numTotalRequired,
       },
-      additionalJDBCOptions: connection.additionalJDBCOptions,
+      additionalJDBCOptions: connection.additionalJDBCOptions || "",
       maxExecutions: connection.maxExecutions,
+      connectionType: "DATASOURCE",
     },
+    schema: datasourceConnectionFormSchema,
+    onSubmit: editConnection,
+    connectionType: "DATASOURCE",
   });
-
-  const onSubmit = async (data: ConnectionForm) => {
-    await editConnection(data);
-  };
 
   const watchType = watch("type");
   useEffect(() => {
@@ -146,10 +101,15 @@ function UpdateDatasourceConnectionForm({
       setValue("protocol", protocolOptions[0]);
     }
     setProtocolOptions(protocolOptions);
-  }, [watchType]);
+  }, [watchType, connection.protocol, setValue]);
 
   return (
-    <form onSubmit={(event) => void handleSubmit(onSubmit)(event)}>
+    <form
+      onSubmit={(event) => {
+        event.preventDefault();
+        void handleFormSubmit();
+      }}
+    >
       <div className="flex w-full flex-col">
         <div className="flex-col space-y-2">
           <div className="flex w-full justify-between">
@@ -304,120 +264,6 @@ function UpdateDatasourceConnectionForm({
             </Disclosure>
           </div>
           <Button type={isDirty ? "submit" : "disabled"}>Save</Button>
-        </div>
-      </div>
-    </form>
-  );
-}
-
-const kubernetesConnectionFormSchema = z
-  .object({
-    displayName: z.string().min(3),
-    description: z.string(),
-    reviewConfig: z.object({
-      numTotalRequired: z.coerce.number(),
-    }),
-    maxExecutions: z.coerce.number().nullable(),
-  })
-  .transform((data) => ({ ...data, connectionType: "KUBERNETES" }));
-type KubernetesConnectionForm = z.infer<typeof kubernetesConnectionFormSchema>;
-
-interface UpdateFormProps {
-  connection: KubernetesConnectionResponse;
-  editConnection: (connection: KubernetesConnectionForm) => Promise<void>;
-}
-
-function UpdateKubernetesConnectionForm({
-  connection,
-  editConnection,
-}: UpdateFormProps) {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isDirty },
-  } = useForm<KubernetesConnectionForm>({
-    resolver: zodResolver(kubernetesConnectionFormSchema),
-    defaultValues: {
-      displayName: connection.displayName,
-      description: connection.description,
-      reviewConfig: {
-        numTotalRequired: connection.reviewConfig.numTotalRequired,
-      },
-      maxExecutions: connection.maxExecutions,
-    },
-  });
-
-  const onSubmit = async (data: KubernetesConnectionForm) => {
-    await editConnection(data);
-  };
-  return (
-    <form onSubmit={(event) => void handleSubmit(onSubmit)(event)}>
-      <div className="flex w-full flex-col ">
-        <div className="flex-col space-y-2">
-          <InputField
-            label="Connection name"
-            id="displayName"
-            placeholder="Connection name"
-            {...register("displayName")}
-            error={errors.displayName?.message}
-          />
-          <TextField
-            label="Description"
-            id="description"
-            placeholder="Provides prod read access with no required reviews"
-            {...register("description")}
-            error={errors.description?.message}
-          />
-          <InputField
-            label="Required reviews"
-            id="numTotalRequired"
-            placeholder="1"
-            tooltip="The number of required approving reviews that's required before a request can be executed."
-            type="number"
-            {...register("reviewConfig.numTotalRequired")}
-            error={errors.reviewConfig?.numTotalRequired?.message}
-          />
-          <div className="w-full">
-            <Disclosure defaultOpen={false}>
-              {({ open }) => (
-                <>
-                  <Disclosure.Button className="py-2">
-                    <div className="flex flex-row justify-between">
-                      <div className="flex flex-row">
-                        <div>Advanced Options</div>
-                      </div>
-                      <div className="flex flex-row">
-                        {open ? (
-                          <ChevronDownIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronDownIcon>
-                        ) : (
-                          <ChevronRightIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronRightIcon>
-                        )}
-                      </div>
-                    </div>
-                  </Disclosure.Button>
-                  <Disclosure.Panel unmount={false}>
-                    <div className="flex-col space-y-2">
-                      <InputField
-                        label="Max executions"
-                        id="maxExecutions"
-                        placeholder="Max executions"
-                        tooltip="The maximum number of times each request can be executed after it has been approved, usually 1."
-                        type="number"
-                        {...register("maxExecutions")}
-                        error={errors.maxExecutions?.message}
-                      />
-                    </div>
-                  </Disclosure.Panel>
-                </>
-              )}
-            </Disclosure>
-          </div>
-          <Button
-            type={isDirty ? "submit" : "disabled"}
-            className="btn btn-primary mt-4"
-          >
-            Save
-          </Button>
         </div>
       </div>
     </form>

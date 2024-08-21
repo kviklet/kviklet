@@ -5,6 +5,7 @@ import {
   PatchConnectionPayload,
   PatchDatabaseConnectionPayload,
   addConnection,
+  deleteConnection,
   getConnection,
   getConnections,
   patchConnection,
@@ -127,10 +128,30 @@ const useConnection = (id: string) => {
     setLoading(false);
   };
 
+  const removeConnection = async () => {
+    const response = await deleteConnection(id);
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to delete connection",
+        text: response.message,
+        type: "error",
+      });
+      return response;
+    } else {
+      addNotification({
+        title: "Connection deleted",
+        text: "The connection has been deleted",
+        type: "info",
+      });
+      return null;
+    }
+  };
+
   return {
     loading,
     connection,
     editConnection,
+    removeConnection,
   };
 };
 
