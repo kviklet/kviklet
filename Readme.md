@@ -51,6 +51,7 @@ The latest one currently is `ghcr.io/kviklet/kviklet:0.4.2`, you can also use `:
 If you just want to try out how it works:
 
 1. Here is a minimal docker-compose.yaml:
+
 ```
 services:
   postgres:
@@ -95,10 +96,13 @@ services:
 2. Run the `docker-compose.yml` via `docker-compose up -d`. Kviklet should spin up on port 80 so just got to `localhost` and play around. The admin login is admin@admin.com with `admin` as password.
 
 3. The docker-compose contains an extra postgres database for which you can setup a connection in Kviklet. To make this database contain some data, uncomment this line:
+
 ```
       - ./sample_data.sql:/docker-entrypoint-initdb.d/init.sql
 ```
+
 And create a sample_data.sql file:
+
 ```sql
 CREATE TABLE Locations (
     Name VARCHAR(100) NOT NULL,
@@ -316,10 +320,6 @@ Kviklet will re-encrypt all connections on startup, so that you can then restart
 There is two few experimental Features. That were build mostly on community/customer feedback. Feel free to try these out and leave any input that you might have. We hope to develop into this further in the future and make it work well with the core approval flow.
 
 ### Kubernetes Exec
-
-<p align="center">
-<img src= "https://github.com/kviklet/kviklet/raw/main/images/KubernetesExec.png" width="700px">
-</p>
 
 If you want to use the Kubernetes Exec feature you have to create a separate kubernetes connection. Kviklet will use the user of the deployed pod to execute the command. So make sure that the user has the necessary permissions to execute commands on the pods that you want to access.
 
