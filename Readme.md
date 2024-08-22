@@ -4,9 +4,8 @@
 
 Secure access to production environments without impairing developer productivity.
 
-<p align="center">
-<img src="https://github.com/kviklet/kviklet/raw/main/images/ExecutionRequest.png" width="700px">
-</p>
+![Kviklet](images/ExecutedRequest_light.png#gh-light-mode-only)
+![Kviklet](images/ExecutedRequest_dark.png#gh-dark-mode-only)
 
 Kviklet embraces the **Four-Eyes Principle** and a high level of configurability, to allow a **Pull Request-like Review and Approval** flow for individual SQL statements or Database sessions. This allows engineering teams to self regulate on who gets access to what data and when. This allow your organization to stay secure and compliant while still allowing for modern empowering true to DevOps workflows.
 
@@ -52,6 +51,7 @@ The latest one currently is `ghcr.io/kviklet/kviklet:0.4.2`, you can also use `:
 If you just want to try out how it works:
 
 1. Here is a minimal docker-compose.yaml:
+
 ```
 services:
   postgres:
@@ -96,10 +96,13 @@ services:
 2. Run the `docker-compose.yml` via `docker-compose up -d`. Kviklet should spin up on port 80 so just got to `localhost` and play around. The admin login is admin@admin.com with `admin` as password.
 
 3. The docker-compose contains an extra postgres database for which you can setup a connection in Kviklet. To make this database contain some data, uncomment this line:
+
 ```
       - ./sample_data.sql:/docker-entrypoint-initdb.d/init.sql
 ```
+
 And create a sample_data.sql file:
+
 ```sql
 CREATE TABLE Locations (
     Name VARCHAR(100) NOT NULL,
@@ -240,9 +243,8 @@ You can customize these attributes to match your LDAP schema. After configuring 
 
 After starting Kviklet you first have to configure a database connection. Go to Settings -> Databases -> Add Connection.
 
-<p align="center">
-<img src="https://github.com/kviklet/kviklet/raw/main/images/AddConnectionForm.png" width="400px">
-</p>
+![Add Connection](images/CreateConnection_light.png#gh-light-mode-only)
+![Add Connection](images/CreateConnection_dark.png#gh-dark-mode-only)
 
 Here you can configure how many reviews are required to run Requests on this connection. You can also configure how often a request can be run. The default is 1 and we recommend to stick to this for most use cases. As a special config, setting this to 0 any request on the connection can be run an infinite amount of times.
 
@@ -261,16 +263,10 @@ This is useful e.g. if you have different teams with different databases and wan
 
 Creating a new role works as follows. Go to Settings -> Roles -> Add Role.
 
-<p align="center">
-<img src="https://github.com/kviklet/kviklet/raw/main/images/NewRole.png" width="700px">
-</p>
+![Add Role](images/CreateRole_light.png#gh-light-mode-only)
+![Add Role](images/CreateRole_dark.png#gh-dark-mode-only)
 
 The default settings are not as relevant for most roles and you can just give User Read and RoleView Access and leave it at that.
-
-<p align="center">
-<img src="https://github.com/kviklet/kviklet/raw/main/images/ConnectionSelector.png" width="400px">
-</p>
-
 More interesting is the adding of individual permissions for Connections. Here you first add a selector to select specific connections. This can either be a specific id or you use wildcards with `*` to match multiple connections. E.g. if you want to have a role that has access to all dev databases (in case you also manage acces to those with kviklet) you'd use a selector like `dev-*` and ensure the ids of the connections are set correctly.
 
 You can of course also make up a system that you use for your different teams inside of your organization.
@@ -325,10 +321,6 @@ There is two few experimental Features. That were build mostly on community/cust
 
 ### Kubernetes Exec
 
-<p align="center">
-<img src= "https://github.com/kviklet/kviklet/raw/main/images/KubernetesExec.png" width="700px">
-</p>
-
 If you want to use the Kubernetes Exec feature you have to create a separate kubernetes connection. Kviklet will use the user of the deployed pod to execute the command. So make sure that the user has the necessary permissions to execute commands on the pods that you want to access.
 
 Kviklet also uses /bin/sh to execute the command, so you will need to make sure your pods have a shell or at least a symlink in /bin/sh. If this bothers you feel free to open an issue, we can potentially make this configurable or find another solution.
@@ -341,9 +333,8 @@ If you create requests for temporary access. You can instead of using the web in
 For this the container uses ports 5438-6000 so you need to expose those.
 The user can then create a temp access request, and click "Start Proxy" once it's been approved. They will get a port and a user + temporary password. With this they can login to the database. Kviklet validates the temp user and password and proxies all requests to the underlying user on the database. Any executed statements are logged in the auditlog as if they were run via the web interface.
 
-<p align="center">
-<img src="https://github.com/kviklet/kviklet/raw/main/images/Proxy.png" width="700px">
-</p>
+![Postgres Proxy](images/PostgresProxy_light.png#gh-light-mode-only)
+![Postgres Proxy](images/PostgresProxy_dark.png#gh-dark-mode-only)
 
 ## Questions? Contributions?
 
