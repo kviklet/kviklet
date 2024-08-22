@@ -239,9 +239,8 @@ You can customize these attributes to match your LDAP schema. After configuring 
 
 After starting Kviklet you first have to configure a database connection. Go to Settings -> Databases -> Add Connection.
 
-<p align="center">
-<img src="https://github.com/kviklet/kviklet/raw/main/images/AddConnectionForm.png" width="400px">
-</p>
+![Add Connection](images/CreateConnection_light.png#gh-light-mode-only)
+![Add Connection](images/CreateConnection_dark.png#gh-dark-mode-only)
 
 Here you can configure how many reviews are required to run Requests on this connection. You can also configure how often a request can be run. The default is 1 and we recommend to stick to this for most use cases. As a special config, setting this to 0 any request on the connection can be run an infinite amount of times.
 
@@ -260,16 +259,10 @@ This is useful e.g. if you have different teams with different databases and wan
 
 Creating a new role works as follows. Go to Settings -> Roles -> Add Role.
 
-<p align="center">
-<img src="https://github.com/kviklet/kviklet/raw/main/images/NewRole.png" width="700px">
-</p>
+![Add Role](images/CreateRole_light.png#gh-light-mode-only)
+![Add Role](images/CreateRole_dark.png#gh-dark-mode-only)
 
 The default settings are not as relevant for most roles and you can just give User Read and RoleView Access and leave it at that.
-
-<p align="center">
-<img src="https://github.com/kviklet/kviklet/raw/main/images/ConnectionSelector.png" width="400px">
-</p>
-
 More interesting is the adding of individual permissions for Connections. Here you first add a selector to select specific connections. This can either be a specific id or you use wildcards with `*` to match multiple connections. E.g. if you want to have a role that has access to all dev databases (in case you also manage acces to those with kviklet) you'd use a selector like `dev-*` and ensure the ids of the connections are set correctly.
 
 You can of course also make up a system that you use for your different teams inside of your organization.
@@ -340,9 +333,8 @@ If you create requests for temporary access. You can instead of using the web in
 For this the container uses ports 5438-6000 so you need to expose those.
 The user can then create a temp access request, and click "Start Proxy" once it's been approved. They will get a port and a user + temporary password. With this they can login to the database. Kviklet validates the temp user and password and proxies all requests to the underlying user on the database. Any executed statements are logged in the auditlog as if they were run via the web interface.
 
-<p align="center">
-<img src="https://github.com/kviklet/kviklet/raw/main/images/Proxy.png" width="700px">
-</p>
+![Postgres Proxy](images/PostgresProxy_light.png#gh-light-mode-only)
+![Postgres Proxy](images/PostgresProxy_dark.png#gh-dark-mode-only)
 
 ## Questions? Contributions?
 
