@@ -139,6 +139,12 @@ export default function DatabaseConnectionForm(props: {
     }
   };
 
+  const updateJDBCOptionsIfNotTouched = (options: string) => {
+    if (!touchedFields.additionalJDBCOptions) {
+      setValue("additionalJDBCOptions", options);
+    }
+  };
+
   const protocol = watch("protocol");
 
   useEffect(() => {
@@ -147,9 +153,11 @@ export default function DatabaseConnectionForm(props: {
     }
     if (watchType === DatabaseType.MYSQL) {
       updatePortIfNotTouched(3306);
+      updateJDBCOptionsIfNotTouched("?allowMultiQueries=true");
     }
     if (watchType === DatabaseType.MARIADB) {
       updatePortIfNotTouched(3306);
+      updateJDBCOptionsIfNotTouched("?allowMultiQueries=true");
     }
     if (watchType === DatabaseType.MSSQL) {
       updatePortIfNotTouched(1433);
