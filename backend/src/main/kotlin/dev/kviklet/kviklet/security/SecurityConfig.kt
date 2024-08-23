@@ -1,6 +1,5 @@
 package dev.kviklet.kviklet.security
 
-import OriginHeaderFilter
 import dev.kviklet.kviklet.controller.ServerUrlInterceptor
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.User
@@ -55,7 +54,6 @@ import org.springframework.stereotype.Service
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
-import org.springframework.web.filter.CorsFilter
 import org.springframework.web.filter.ForwardedHeaderFilter
 import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry
@@ -128,7 +126,6 @@ class SecurityConfig(
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http.invoke {
             addFilterBefore<WebAsyncManagerIntegrationFilter>(ForwardedHeaderFilter())
-            addFilterBefore<CorsFilter>(OriginHeaderFilter())
             cors { }
             authenticationManager = authManager(http)
 
