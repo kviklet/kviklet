@@ -82,7 +82,7 @@ services:
   kviklet:
     image: ghcr.io/kviklet/kviklet:main
     ports:
-      - "80:80"
+      - "80:8080"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://kviklet-postgres:5432/kviklet
       - SPRING_DATASOURCE_USERNAME=postgres
@@ -149,7 +149,7 @@ INITIAL_USER_EMAIL=admin@example.com
 INITIAL_USER_PASSWORD=someverysecurepassword
 ```
 
-We publish our containers do the github packages for now, so with all this set you can run `ghcr.io/kviklet/kviklet:main` don't forget to expose port 80.
+We publish our containers do the github packages for now, so with all this set you can run `ghcr.io/kviklet/kviklet:main` don't forget to map port `8080` which is the default port Kviklet spins up on.
 
 An example docker run could looks like this:
 

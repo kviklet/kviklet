@@ -1,42 +1,43 @@
-# Stage 1: Build the application
 FROM gradle:jdk-focal AS build
-
-# Set the working directory
 WORKDIR /home/gradle/src
 
-# Copy the source code to the container
 COPY --chown=gradle:gradle ./backend .
 
-# Build the applications
 RUN gradle build  -x kaptTestKotlin -x compileTestKotlin -x test --no-daemon
 
 FROM node:20 as build-frontend
+
 WORKDIR /app
 COPY ./frontend/package-lock.json ./frontend/package.json ./
 RUN npm ci --production
 COPY ./frontend .
 RUN npm run build
 
-# Stage 2: Run the application
-FROM amazoncorretto:21
+# Needed to copy a working Java runtime to the final image
+FROM amazoncorretto:21 AS javaruntime
+
+FROM nginxinc/nginx-unprivileged:1.27
 
 WORKDIR /app
 
-# Install nginx
-RUN amazon-linux-extras install -y nginx1
-
-COPY ./frontend/docker/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf
-COPY --from=build-frontend /app/build /usr/share/nginx/html
-
-# Copy the built jar file from the build stage
-COPY --from=build /home/gradle/src/build/libs/*.jar app.jar
-
-COPY --chmod=755 ./run.sh .
+USER root
 
 RUN ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log
 
-EXPOSE 80
+COPY --from=javaruntime /usr/lib/jvm/java-21-amazon-corretto /usr/lib/jvm/java-21-amazon-corretto
 
-# Start the application
+# Set Java environment variables
+ENV JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+USER nginx
+
+COPY --chown=nginx:nginx ./frontend/docker/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf
+COPY --from=build-frontend --chown=nginx:nginx /app/build /usr/share/nginx/html
+COPY --from=build --chown=nginx:nginx /home/gradle/src/build/libs/*.jar app.jar
+COPY --chown=nginx:nginx --chmod=755 ./run.sh .
+
+EXPOSE 8080
+
 CMD ["/usr/bin/sh", "./run.sh"]
