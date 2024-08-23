@@ -28,7 +28,7 @@ services:
   kviklet:
     image: ghcr.io/kviklet/kviklet:main
     ports:
-      - "80:80"
+      - "80:8080"
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://kviklet-postgres:5432/kviklet
       - SPRING_DATASOURCE_USERNAME=postgres

@@ -49,8 +49,8 @@ services:
   kviklet:
     build: .
     ports:
-      - "80:80"
+      - "80:8080"
     environment:
-      - spring.profiles.active=e2e
+      - SPRING_PROFILES_ACTIVE=e2e
     depends_on:
       - kviklet-postgres

@@ -2,13 +2,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Release.Name | quote }}
-  namespace: {{ .Release.Namespace | quote }}
+  name: { { .Release.Name | quote } }
+  namespace: { { .Release.Namespace | quote } }
 spec:
   ports:
-    - name: {{ .Release.Name | quote }}
+    - name: { { .Release.Name | quote } }
       protocol: TCP
-      port: {{ .Values.port }}
-      targetPort: {{ .Values.port }}
+      port: { { .Values.port } }
+      targetPort: 8080
   selector:
-    app: {{ .Release.Name | quote }}
+    app: { { .Release.Name | quote } }
