@@ -65,6 +65,9 @@ dependencies {
     implementation("jakarta.validation:jakarta.validation-api")
     implementation("org.postgresql:postgresql:42.7.3")
 
+    //live session requirements
+    implementation("org.springframework.boot:spring-boot-starter-websocket")
+
     runtimeOnly("com.h2database:h2")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
