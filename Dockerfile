@@ -40,4 +40,4 @@ COPY --chown=nginx:nginx --chmod=755 ./run.sh .
 
 EXPOSE 8080
 
-CMD ["/usr/bin/sh", "./run.sh"]
+CMD ["/usr/bin/bash", "./run.sh"]
