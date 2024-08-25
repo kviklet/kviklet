@@ -57,4 +57,4 @@ jobs:
 
       - name: Force Redeploy ECS Service
         run: |
-          aws ecs update-service --cluster demo-cluster --service opsgate --force-new-deployment
+          aws ecs update-service --cluster demo-cluster --service kviklet-demo --force-new-deployment
