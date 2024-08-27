@@ -7,7 +7,6 @@ class LoginPage {
     await this.page.getByTestId("email-input").fill(email);
     await this.page.getByTestId("password-input").fill(password);
     await this.page.getByTestId("login-button").click();
-    console.log("Waiting for requests list");
     await this.page.waitForURL("**/requests");
     await this.page.waitForSelector('[data-testid="requests-list"]');
   }
@@ -30,19 +29,31 @@ class SettingsPage {
 
   async createConnection(
     name: string,
+    type: string,
     username: string,
     password: string,
     host: string,
-    port: string
+    port: string,
+    database?: string,
+    additionalOptions?: string
   ) {
     await this.page.getByTestId("add-connection-button").click();
     await this.page.getByTestId("connection-name").fill(name);
+    await this.page.getByTestId("connection-type").selectOption(type);
     await this.page.getByTestId("connection-username").fill(username);
     await this.page.getByTestId("connection-password").fill(password);
     await this.page.getByTestId("connection-hostname").fill(host);
     await this.page.getByTestId("connection-required-reviews").fill("0");
     await this.page.getByTestId("advanced-options-button").click();
     await this.page.getByTestId("connection-port").fill(port);
+    if (database) {
+      await this.page.getByTestId("connection-database").fill(database);
+    }
+    if (additionalOptions) {
+      await this.page.getByTestId("connection-additional-options").fill(
+        additionalOptions
+      );
+    }
     await this.page.getByTestId("create-connection-button").click();
   }
 }

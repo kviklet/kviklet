@@ -587,6 +587,7 @@ function DatasourceRequestBox({
               (request?.reviewStatus == "APPROVED" && "submit") || "disabled"
             }
             onClick={() => void runQuery()}
+            dataTestId="run-query-button"
           >
             <div
               className={`play-triangle mr-2 inline-block h-3 w-2 ${

@@ -6,7 +6,7 @@ import {
   SettingsPage,
 } from "./pages";
 
-test.describe("E2E Tests", () => {
+test.describe("E2E Tests for Multiple Databases", () => {
   let loginPage: LoginPage;
   let settingsPage: SettingsPage;
   let requestsPage: RequestsPage;
@@ -20,37 +20,115 @@ test.describe("E2E Tests", () => {
     await loginPage.login("admin@admin.com", "admin");
   });
 
-  test("Create Connection", async ({ page }) => {
-    await settingsPage.navigateToConnections();
-    await settingsPage.createConnection(
-      "my test connection",
-      "postgres",
-      "postgres",
-      "postgres",
-      "5432"
-    );
-    await expect(
-      page.getByTestId("connection-card-my test connection")
-    ).toHaveText("my test connection");
-  });
+  const databases = [
+    {
+      name: "PostgreSQL",
+      type: "Postgres",
+      username: "postgres",
+      password: "postgres",
+      host: "postgres",
+      port: "5432",
+      database: "postgres",
+      testQuery: "SELECT 1 AS result; SELECT 2 AS result;",
+      additionalOptions: undefined,
+    },
+    {
+      name: "MySQL",
+      type: "MySQL",
+      username: "root",
+      password: "root",
+      host: "mysql",
+      port: "3306",
+      database: "mysql",
+      testQuery: "SELECT 1 AS result; SELECT 2 AS result;",
+      additionalOptions: undefined,
+    },
+    {
+      name: "MSSQL",
+      type: "MS SQL",
+      username: "sa",
+      password: "test1234TEST",
+      host: "mssql",
+      port: "1433",
+      database: "master",
+      testQuery: "SELECT 1 AS result; SELECT 2 AS result;",
+      additionalOptions: ";encrypt=true;trustServerCertificate=true",
+    },
+    {
+      name: "MariaDB",
+      type: "MariaDB",
+      username: "root",
+      password: "root",
+      host: "mariadb",
+      port: "3306",
+      database: "mysql",
+      testQuery: "SELECT 1 AS result; SELECT 2 AS result;",
+      dditionalOptions: undefined,
+    },
+    {
+      name: "MongoDB",
+      type: "MongoDB",
+      username: "",
+      password: "",
+      host: "mongodb",
+      port: "27017",
+      database: "test",
+      testQuery: "{ping: 1}",
+      additionalOptions: undefined,
+    },
+  ];
 
-  test("Create Request", async ({ page }) => {
-    await requestsPage.createRequest(
-      "my test connection",
-      "my test query",
-      "Testing if everything works",
-      "Select * from test;"
-    );
-    await page.waitForURL("**/requests");
-    await expect(page.getByTestId("request-link-my test query")).toBeVisible();
-  });
+  for (const db of databases) {
+    test.describe(`${db.name} Tests`, () => {
+      const connectionName = `${db.name} Test Connection`;
+      const requestName = `${db.name} Test Query`;
 
-  test("Execute Request", async ({ page }) => {
-    const reviewPage = new RequestsReviewPage(page, "my test query");
-    await reviewPage.executeRequest();
-    const cellCount = await page.getByTestId("result-table-cell").count();
-    expect(cellCount).toBeGreaterThan(4);
-    const headerCount = await page.getByTestId("result-table-header").count();
-    expect(headerCount).toBe(2);
-  });
+      test(`Create ${db.name} Connection`, async ({ page }) => {
+        await settingsPage.navigateToConnections();
+        await settingsPage.createConnection(
+          connectionName,
+          db.type,
+          db.username,
+          db.password,
+          db.host,
+          db.port,
+          db.database,
+          db.additionalOptions
+        );
+        await expect(
+          page.getByTestId(`connection-card-${connectionName}`)
+        ).toHaveText(connectionName);
+      });
+
+      test(`Create ${db.name} Request`, async ({ page }) => {
+        await requestsPage.createRequest(
+          connectionName,
+          requestName,
+          `Testing ${db.name} connection`,
+          db.testQuery
+        );
+        await page.waitForURL("**/requests");
+        await expect(
+          page.getByTestId(`request-link-${requestName}`)
+        ).toBeVisible();
+      });
+
+      test(`Execute ${db.name} Request`, async ({ page }) => {
+        const reviewPage = new RequestsReviewPage(page, requestName);
+        await reviewPage.executeRequest();
+        if (db.type !== "MongoDB") {
+          const cellCount = await page.getByTestId("result-table-cell").count();
+          expect(cellCount).toBe(1);
+          const headerCount = await page
+            .getByTestId("result-table-header")
+            .count();
+          expect(headerCount).toBe(1);
+        } else {
+          await expect(page.getByTestId("result-component")).toContainText(
+            'ok: 1'
+          );
+        }
+      });
+    });
+  }
 });
