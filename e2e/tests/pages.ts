@@ -50,9 +50,9 @@ class SettingsPage {
       await this.page.getByTestId("connection-database").fill(database);
     }
     if (additionalOptions) {
-      await this.page.getByTestId("connection-additional-options").fill(
-        additionalOptions
-      );
+      await this.page
+        .getByTestId("connection-additional-options")
+        .fill(additionalOptions);
     }
     await this.page.getByTestId("create-connection-button").click();
   }
@@ -78,6 +78,18 @@ class RequestsPage {
     await this.page.getByTestId("request-statement").fill(query);
     await this.page.getByTestId("submit-button").click();
   }
+
+  async createSession(
+    connectionName: string,
+    name: string,
+    description: string
+  ) {
+    await this.navigate();
+    await this.page.getByTestId(`access-button-${connectionName}`).click();
+    await this.page.getByTestId("request-title").fill(name);
+    await this.page.getByTestId("request-description").fill(description);
+    await this.page.getByTestId("submit-button").click();
+  }
 }
 
 class RequestsReviewPage {
@@ -94,6 +106,12 @@ class RequestsReviewPage {
     await this.page.getByTestId("submit-review-button").click();
   }
 
+  async startLiveSession() {
+    await this.navigate();
+    await this.page.getByTestId("run-query-button").click();
+    await this.page.waitForURL("**/session");
+  }
+
   async executeRequest() {
     await this.navigate();
     await this.page.getByTestId("run-query-button").click();
@@ -101,4 +119,27 @@ class RequestsReviewPage {
   }
 }
 
-export { LoginPage, SettingsPage, RequestsPage, RequestsReviewPage };
+class LiveSessionPage {
+  constructor(private page: Page) {}
+
+  async executeQuery(query: string) {
+    await this.page.waitForSelector('[data-testid="monaco-editor-wrapper"]');
+
+    await this.page.click('[data-testid="monaco-editor-wrapper"]');
+
+    await this.page.keyboard.press("Control+A");
+    await this.page.keyboard.press("Backspace");
+    await this.page.keyboard.type(query);
+
+    await this.page.getByTestId("run-query-button").click();
+    await this.page.waitForSelector('[data-testid="result-component"]');
+  }
+}
+
+export {
+  LoginPage,
+  SettingsPage,
+  RequestsPage,
+  RequestsReviewPage,
+  LiveSessionPage,
+};
