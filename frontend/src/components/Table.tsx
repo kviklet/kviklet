@@ -51,6 +51,7 @@ const Table: React.FC<{ data: SelectExecuteResponse }> = ({ data }) => {
                 <th
                   className="text-sx py-2 pr-2 text-slate-700 dark:text-slate-200"
                   key={header.id}
+                  data-testid="result-table-header"
                 >
                   {header.isPlaceholder
                     ? null
@@ -74,6 +75,7 @@ const Table: React.FC<{ data: SelectExecuteResponse }> = ({ data }) => {
                   className="text-sx whitespace-pre border-b
                   border-slate-200 py-2 pr-2 text-slate-700 dark:border-slate-800 dark:text-slate-200"
                   key={cell.id}
+                  data-testid="result-table-cell"
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>

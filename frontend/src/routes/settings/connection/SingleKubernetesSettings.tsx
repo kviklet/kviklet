@@ -29,7 +29,6 @@ export default function SingleKubernetesConnectionSettings(props: {
     setShowCheck(false);
   };
 
-  // Main screen showing connection
   return (
     <div className="mx-2 my-4 rounded-md border border-slate-200 bg-slate-50 px-4 py-4 shadow-md transition-colors dark:border dark:border-slate-700 dark:bg-slate-900">
       <div className="flex justify-between">
@@ -60,8 +59,6 @@ export default function SingleKubernetesConnectionSettings(props: {
             dark:text-slate-50 dark:focus:border-slate-500 dark:hover:border-slate-600 dark:focus:hover:border-slate-500 sm:w-36 lg:w-auto"
           ></input>
         </div>
-
-        {/* Accept button */}
         <div className="flex justify-end">
           <button
             onClick={() => void submit()}

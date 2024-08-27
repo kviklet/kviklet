@@ -11,6 +11,7 @@ function LoadingCancelButton(props: {
   textSize?: "sm" | "md" | "lg";
   type?: "button" | "submit" | "reset" | "primary" | "danger" | undefined;
   disabled?: boolean;
+  dataTestId?: string;
 }) {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -59,6 +60,7 @@ function LoadingCancelButton(props: {
       className={`${
         props.className
       } ${size} ${textSize} ${getButtonStyle()} flex items-center justify-center rounded-md align-middle leading-5`}
+      data-testid={props.dataTestId}
     >
       {isLoading ? (
         <>

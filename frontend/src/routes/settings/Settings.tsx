@@ -6,8 +6,7 @@ import {
   UsersIcon,
 } from "@heroicons/react/20/solid";
 
-import { useState } from "react";
-import { Link, Outlet, Route, Routes } from "react-router-dom";
+import { Link, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import ConnectionSettings from "./connection/ConnectionSettings";
 import UserSettings from "./UserSettings";
 import RoleSettings from "./RolesSettings";
@@ -21,13 +20,12 @@ import ConnectionDetails from "./connection/details/ConnectionDetails";
 const Tab = (props: {
   children: React.ReactNode;
   active: boolean;
-  onClick: () => void;
   link: string;
+  dataTestId?: string;
 }) => {
   return (
-    <Link to={props.link}>
+    <Link to={props.link} data-testid={props.dataTestId}>
       <div
-        onClick={props.onClick}
         className={
           "rounded pr-2 hover:bg-slate-100 dark:hover:bg-slate-900 " +
             (props.active &&
@@ -51,7 +49,13 @@ function SettingsSidebar(props: { children: React.ReactNode }) {
 }
 
 const Settings = () => {
-  const [activeTab, setActiveTab] = useState<string>("general");
+  const location = useLocation();
+  const getActiveTab = (path: string) => {
+    if (path === "/settings") return "general";
+    const pathParts = path.split("/");
+    return pathParts[2] || "general";
+  };
+  const activeTab = getActiveTab(location.pathname);
 
   const tabStyles =
     "flex flex-row items-center justify-left text-slate-700 dark:text-slate-50 text-sm p-1";
@@ -69,16 +73,16 @@ const Settings = () => {
       link: "/settings",
     },
     {
-      name: "databases",
+      name: "connections",
       tabContent: (
         <div className="flex flex-col">
           <div className={tabStyles}>
             <CircleStackIcon className="mr-2 h-6" />
-            Databases
+            Connections
           </div>
         </div>
       ),
-      link: "/settings/databases",
+      link: "/settings/connections",
     },
     {
       name: "users",
@@ -128,8 +132,8 @@ const Settings = () => {
           <SettingsSidebar>
             {tabs.map((tab) => (
               <Tab
+                dataTestId={`settings-${tab.name}`}
                 active={activeTab === tab.name}
-                onClick={() => setActiveTab(tab.name)}
                 link={tab.link}
                 key={tab.name}
               >
@@ -141,7 +145,7 @@ const Settings = () => {
             <Routes>
               <Route path="/*" element={<GeneralSettings />} />
               <Route path="/" element={<GeneralSettings />} />
-              <Route path="databases" element={<ConnectionSettings />} />
+              <Route path="connections" element={<ConnectionSettings />} />
               <Route
                 path="connections/:connectionId"
                 element={<ConnectionDetails />}

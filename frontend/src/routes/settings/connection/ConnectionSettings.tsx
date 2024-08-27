@@ -59,6 +59,7 @@ function ConnectionSettingsList(props: {
           <Button
             className="mx-2 my-1 ml-auto"
             onClick={props.addConnectionHandler}
+            dataTestId="add-connection-button"
           >
             Add connection
           </Button>

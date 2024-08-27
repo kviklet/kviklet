@@ -16,6 +16,7 @@ const StyledInput = (props: {
   type: string;
   value: string;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  dataTestId?: string;
 }) => {
   return (
     <input
@@ -23,6 +24,7 @@ const StyledInput = (props: {
       name={props.name}
       value={props.value}
       onChange={props.onChange}
+      data-testid={props.dataTestId}
       className="block w-full appearance-none rounded-md border border-slate-300 px-3 
         py-2 transition-colors focus:border-indigo-600 focus:outline-none hover:border-slate-400
         focus:hover:border-indigo-600 dark:border-slate-700 dark:bg-slate-900 dark:focus:border-gray-500
@@ -116,6 +118,7 @@ const Login = () => {
                   type="text"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
+                  dataTestId="email-input"
                 ></StyledInput>
                 <label className="py-2 text-sm" htmlFor="password">
                   Password
@@ -125,8 +128,14 @@ const Login = () => {
                   type="password"
                   value={password}
                   onChange={(event) => setPassword(event?.target.value)}
+                  dataTestId="password-input"
                 ></StyledInput>
-                <Button className="mt-2 w-full" id="sign-in" type="submit">
+                <Button
+                  className="mt-2 w-full"
+                  id="sign-in"
+                  type="submit"
+                  dataTestId="login-button"
+                >
                   Sign in
                 </Button>
               </div>
