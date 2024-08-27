@@ -321,6 +321,7 @@ export default function DatabaseConnectionForm(props: {
                         placeholder="Database name"
                         {...register("databaseName")}
                         error={errors.databaseName?.message}
+                        data-testid="connection-database"
                       />
                       <InputField
                         id="port"
@@ -334,6 +335,7 @@ export default function DatabaseConnectionForm(props: {
                       <InputField
                         id="additionalJDBCOptions"
                         label="Additional options"
+                        data-testid="connection-additional-options"
                         placeholder={getJDBCOptionsPlaceholder(watchType)}
                         {...register("additionalJDBCOptions")}
                         error={errors.additionalJDBCOptions?.message}
