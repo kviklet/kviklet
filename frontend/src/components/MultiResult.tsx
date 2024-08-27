@@ -146,7 +146,10 @@ const MultiResult: React.FC<{ resultList: ExecuteResponseResult[] }> = ({
 
   const selectedContent = resultList[currentIndex];
   return (
-    <div className="flex w-screen flex-col justify-center">
+    <div
+      className="flex w-screen flex-col justify-center"
+      data-testid="result-component"
+    >
       {resultList.length > 1 && (
         <div className="flex justify-start space-x-2">
           <div className="my-1 text-slate-700 dark:text-slate-400">

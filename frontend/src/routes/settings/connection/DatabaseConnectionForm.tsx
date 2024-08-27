@@ -192,6 +192,7 @@ export default function DatabaseConnectionForm(props: {
               Database Type
             </label>
             <select
+              data-testid="connection-type"
               {...register("type")}
               className="block w-full basis-3/5 appearance-none rounded-md border border-slate-300 px-3
         py-2 text-sm transition-colors focus:border-indigo-600 focus:outline-none
@@ -237,6 +238,7 @@ export default function DatabaseConnectionForm(props: {
             placeholder="Connection name"
             {...register("displayName")}
             error={errors.displayName?.message}
+            data-testid="connection-name"
           />
           <TextField
             id="description"
@@ -244,6 +246,7 @@ export default function DatabaseConnectionForm(props: {
             placeholder="Provides prod read access with no required reviews"
             {...register("description")}
             error={errors.description?.message}
+            data-testid="connection-description"
           />
           <InputField
             id="username"
@@ -251,6 +254,7 @@ export default function DatabaseConnectionForm(props: {
             placeholder="Username"
             {...register("username")}
             error={errors.username?.message}
+            data-testid="connection-username"
           />
           <InputField
             id="password"
@@ -259,6 +263,7 @@ export default function DatabaseConnectionForm(props: {
             type="password"
             {...register("password")}
             error={errors.password?.message}
+            data-testid="connection-password"
           />
           <InputField
             id="hostname"
@@ -266,6 +271,7 @@ export default function DatabaseConnectionForm(props: {
             placeholder="localhost"
             {...register("hostname")}
             error={errors.hostname?.message}
+            data-testid="connection-hostname"
           />
           <InputField
             id="reviewConfig.numTotalRequired"
@@ -276,13 +282,17 @@ export default function DatabaseConnectionForm(props: {
             min="0"
             {...register("reviewConfig.numTotalRequired")}
             error={errors.reviewConfig?.numTotalRequired?.message}
+            data-testid="connection-required-reviews"
           />
 
           <div className="w-full">
             <Disclosure defaultOpen={false}>
               {({ open }) => (
                 <>
-                  <DisclosureButton className="py-2">
+                  <DisclosureButton
+                    className="py-2"
+                    data-testid="advanced-options-button"
+                  >
                     <div className="flex flex-row justify-between">
                       <div className="flex flex-row">
                         <div>Advanced Options</div>
@@ -319,6 +329,7 @@ export default function DatabaseConnectionForm(props: {
                         type="number"
                         {...register("port")}
                         error={errors.port?.message}
+                        data-testid="connection-port"
                       />
                       <InputField
                         id="additionalJDBCOptions"
@@ -353,6 +364,7 @@ export default function DatabaseConnectionForm(props: {
               type="submit"
               className="ml-auto"
               onClick={(event) => void handleSubmitCreate(event)}
+              dataTestId="create-connection-button"
             >
               Create Connection
             </Button>

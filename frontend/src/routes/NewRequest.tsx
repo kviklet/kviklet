@@ -347,6 +347,7 @@ const DatasourceExecutionRequestForm = ({
             id="title-input"
             type="text"
             placeholder="My query"
+            data-testid="request-title"
             {...register("title")}
           />
           {errors.title && (
@@ -370,6 +371,7 @@ const DatasourceExecutionRequestForm = ({
                 ? "Why do you need access to this connection?"
                 : "What are you trying to accomplish with this Query?"
             }
+            data-testid="request-description"
             {...register("description")}
           ></textarea>
           {errors.description && (
@@ -390,6 +392,7 @@ const DatasourceExecutionRequestForm = ({
               className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
               id="statement-input"
               placeholder={queryPlaceholder(connection)}
+              data-testid="request-statement"
               {...register("statement")}
             ></textarea>
             {errors.statement && (
@@ -401,7 +404,9 @@ const DatasourceExecutionRequestForm = ({
         )}
         <div className="-mx-3 mb-2 flex flex-wrap">
           <div className="mb-6 ml-auto px-3">
-            <Button type="submit">Submit</Button>
+            <Button type="submit" dataTestId="submit-button">
+              Submit
+            </Button>
           </div>
         </div>
       </form>
@@ -540,6 +545,7 @@ const KubernetesExecutionRequestForm = ({
               id="title-input"
               type="text"
               placeholder="My query"
+              data-testid="request-title"
               {...register("title")}
             />
             {errors.title && (
@@ -563,6 +569,7 @@ const KubernetesExecutionRequestForm = ({
                   ? "Why do you need access to this connection?"
                   : "What are you trying to accomplish?"
               }
+              data-testid="request-description"
               {...register("description")}
             ></textarea>
             {errors.description && (
@@ -727,6 +734,7 @@ const Card = (props: CardProps) => {
             <button
               onClick={props.clickQuery}
               className="relative -mr-px inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-bl-lg border border-transparent py-4 text-sm font-semibold text-slate-900 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-800"
+              data-testid={`query-button-${props.header}`}
             >
               {props.connectionType === "DATASOURCE" ? (
                 <CircleStackIcon
@@ -747,6 +755,7 @@ const Card = (props: CardProps) => {
               <button
                 onClick={props.clickAccess}
                 className="relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-br-lg border border-transparent py-4 text-sm font-semibold text-slate-900 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-800"
+                data-testid={`access-button-${props.header}`}
               >
                 <CommandLineIcon
                   className="h-5 w-5 text-slate-400 dark:text-slate-500"

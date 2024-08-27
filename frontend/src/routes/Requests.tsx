@@ -142,7 +142,10 @@ function Requests() {
         </h1>
       </div>
       {(loading && <Spinner></Spinner>) || (
-        <div className="h-full bg-slate-50 dark:bg-slate-950">
+        <div
+          className="h-full bg-slate-50 dark:bg-slate-950"
+          data-testid="requests-list"
+        >
           <div className="mx-auto max-w-5xl ">
             <div className="mb-2 mt-4 flex flex-row items-center justify-between">
               <SearchInput
@@ -171,7 +174,10 @@ function Requests() {
             )}
             {requests.map((request) => {
               return (
-                <Link to={`/requests/${request.id}`}>
+                <Link
+                  to={`/requests/${request.id}`}
+                  data-testid={`request-link-${request.title}`}
+                >
                   <div
                     className="my-4 rounded-md border border-slate-200 bg-white px-4 py-4 shadow-md transition-colors hover:bg-slate-50 dark:border dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
                     key={request.id}
