@@ -105,7 +105,11 @@ data class DatasourceConnection(
             } else {
                 ""
             }
-            "${protocol.uriString}://$credentialString$hostname:$port/" +
+            "${protocol.uriString}://$credentialString$hostname${if (protocol == DatabaseProtocol.MONGODB_SRV) {
+                ""
+            } else {
+                ":$port"
+            }}/" +
                 (databaseName ?: "") +
                 additionalOptions
         }
