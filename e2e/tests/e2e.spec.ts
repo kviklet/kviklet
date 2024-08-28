@@ -1,5 +1,6 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
 import {
+  LiveSessionPage,
   LoginPage,
   RequestsPage,
   RequestsReviewPage,
@@ -82,6 +83,7 @@ test.describe("E2E Tests for Multiple Databases", () => {
     test.describe(`${db.name} Tests`, () => {
       const connectionName = `${db.name} Test Connection`;
       const requestName = `${db.name} Test Query`;
+      const liveSessionName = `${db.name} Live Session`;
 
       test(`Create ${db.name} Connection`, async ({ page }) => {
         await settingsPage.navigateToConnections();
@@ -116,19 +118,42 @@ test.describe("E2E Tests for Multiple Databases", () => {
       test(`Execute ${db.name} Request`, async ({ page }) => {
         const reviewPage = new RequestsReviewPage(page, requestName);
         await reviewPage.executeRequest();
-        if (db.type !== "MongoDB") {
-          const cellCount = await page.getByTestId("result-table-cell").count();
-          expect(cellCount).toBe(1);
-          const headerCount = await page
-            .getByTestId("result-table-header")
-            .count();
-          expect(headerCount).toBe(1);
-        } else {
-          await expect(page.getByTestId("result-component")).toContainText(
-            'ok: 1'
-          );
-        }
+
+        await validateResultOfQuery(db, page);
+      });
+
+      test(`Create ${db.name} Live Session`, async ({ page, context }) => {
+        await requestsPage.createSession(
+          connectionName,
+          liveSessionName,
+          `Testing ${db.name} live session`
+        );
+        await page.waitForURL("**/requests");
+        await expect(
+          page.getByTestId(`request-link-${liveSessionName}`)
+        ).toBeVisible();
+      });
+
+      test(`Execute ${db.name} Live Session`, async ({ page }) => {
+        const reviewPage = new RequestsReviewPage(page, liveSessionName);
+        await reviewPage.startLiveSession();
+
+        const liveSessionPage = new LiveSessionPage(page);
+        await liveSessionPage.executeQuery(db.testQuery);
+
+        await validateResultOfQuery(db, page);
       });
     });
   }
 });
+
+const validateResultOfQuery = async (db: { type: string }, page: Page) => {
+  if (db.type !== "MongoDB") {
+    const cellCount = await page.getByTestId("result-table-cell").count();
+    expect(cellCount).toBe(1);
+    const headerCount = await page.getByTestId("result-table-header").count();
+    expect(headerCount).toBe(1);
+  } else {
+    await expect(page.getByTestId("result-component")).toContainText("ok: 1");
+  }
+};
