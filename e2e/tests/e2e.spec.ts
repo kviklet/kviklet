@@ -157,3 +157,118 @@ const validateResultOfQuery = async (db: { type: string }, page: Page) => {
     await expect(page.getByTestId("result-component")).toContainText("ok: 1");
   }
 };
+
+test.describe("User Management Tests", () => {
+  let loginPage: LoginPage;
+  let settingsPage: SettingsPage;
+
+  test.beforeEach(async ({ page }) => {
+    loginPage = new LoginPage(page);
+    settingsPage = new SettingsPage(page);
+
+    await page.goto("/");
+    await loginPage.login("admin@admin.com", "admin");
+  });
+
+  test("Add developer user and validate login", async ({ page }) => {
+    await settingsPage.navigate();
+    await settingsPage.navigateToUsers();
+    await settingsPage.addUser(
+      "Developer Account",
+      "developer@example.com",
+      "developerpass"
+    );
+    await settingsPage.addDeveloperRoleToUser("developer@example.com");
+    await expect(page.getByText("developer@example.com")).toBeVisible();
+    await page.getByTestId("settings-dropdown").click();
+    await page.getByRole("button", { name: "Logout" }).click();
+    await page.waitForURL("**/login");
+
+    await loginPage.login("developer@example.com", "developerpass");
+    await expect(page.url()).toContain("/requests");
+    await expect(page.getByTestId("requests-list")).toBeVisible();
+  });
+});
+
+
+test.describe("Connection Review Workflow", () => {
+  let adminLoginPage: LoginPage;
+  let developerLoginPage: LoginPage;
+  let settingsPage: SettingsPage;
+  let requestsPage: RequestsPage;
+
+  const adminEmail = "admin@admin.com";
+  const adminPassword = "admin";
+  const developerEmail = "developer2@example.com";
+  const developerPassword = "developerpass";
+
+  test.beforeEach(async ({ page }) => {
+    adminLoginPage = new LoginPage(page);
+    developerLoginPage = new LoginPage(page);
+    settingsPage = new SettingsPage(page);
+    requestsPage = new RequestsPage(page);
+
+    // Ensure the developer user exists
+    await page.goto("/");
+    await adminLoginPage.login(adminEmail, adminPassword);
+    await settingsPage.addUser(
+      "Developer Review Account",
+      developerEmail,
+      developerPassword
+    );
+    await settingsPage.addDeveloperRoleToUser(developerEmail);
+    await page.getByTestId("settings-dropdown").click();
+    await page.getByRole("button", { name: "Logout" }).click();
+  });
+
+  test("Create connection with required review, approve, and execute query", async ({
+    page,
+    context,
+  }) => {
+    // Admin creates a connection with required review
+    await adminLoginPage.login(adminEmail, adminPassword);
+    await settingsPage.navigateToConnections();
+    await settingsPage.createConnection(
+      "Review Required Connection",
+      "Postgres",
+      "postgres",
+      "postgres",
+      "postgres",
+      "5432",
+      "postgres",
+      undefined,
+      1 // Set required reviews to 1
+    );
+
+    // Admin creates a request
+    await requestsPage.createRequest(
+      "Review Required Connection",
+      "Test Review Request",
+      "This request requires a review",
+      "SELECT 1 AS result;"
+    );
+
+    // Admin logs out
+    await page.getByTestId("settings-dropdown").click();
+    await page.getByRole("button", { name: "Logout" }).click();
+
+    // Developer logs in and approves the request
+    await developerLoginPage.login(developerEmail, developerPassword);
+    const reviewPage = new RequestsReviewPage(page, "Test Review Request");
+    await reviewPage.approveRequest();
+
+    // Developer logs out
+    await page.getByTestId("settings-dropdown").click();
+    await page.getByRole("button", { name: "Logout" }).click();
+
+    // Admin logs back in and executes the approved request
+    await adminLoginPage.login(adminEmail, adminPassword);
+    await reviewPage.executeRequest();
+
+    // Validate the result
+    const cellCount = await page.getByTestId("result-table-cell").count();
+    expect(cellCount).toBe(1);
+    const headerCount = await page.getByTestId("result-table-header").count();
+    expect(headerCount).toBe(1);
+  });
+});

@@ -47,6 +47,7 @@ function UserForm(props: {
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setEmail(e.target.value)
             }
+            data-testid="email-input"
           />
         </div>
         <div className="mb-3 flex flex-col">
@@ -58,6 +59,7 @@ function UserForm(props: {
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setPassword(e.target.value)
             }
+            data-testid="password-input"
           />
         </div>
         <div className="mb-3 flex flex-col">
@@ -68,10 +70,15 @@ function UserForm(props: {
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setFullName(e.target.value)
             }
+            data-testid="name-input"
           />
         </div>
         <div className="mb-3 flex flex-col">
-          <Button className="ml-auto" type="submit">
+          <Button
+            className="ml-auto"
+            type="submit"
+            dataTestId="create-user-button"
+          >
             Create
           </Button>
         </div>
@@ -159,7 +166,7 @@ const UserRow = (props: {
   setRoles: (roles: RoleResponse[]) => Promise<boolean>;
 }) => {
   return (
-    <div className="flex flex-row">
+    <div className="flex flex-row" data-testid={`user-${props.user.email}`}>
       <div className="grid w-full grid-cols-2 p-2 shadow-sm md:grid-cols-3">
         <div className="flex flex-row">
           <div className="font-bold">{props.user.fullName}</div>
@@ -213,6 +220,7 @@ const UserSettings = () => {
           <Button
             className="my-2 ml-auto"
             onClick={() => setShowCreateUserModal(true)}
+            dataTestId="add-user-button"
           >
             Add User
           </Button>

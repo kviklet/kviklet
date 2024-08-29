@@ -94,6 +94,11 @@ class TestDataInitializer(
                     resource = "*",
                 ),
                 PolicyEntity(
+                    action = Permission.EXECUTION_REQUEST_REVIEW.getPermissionString(),
+                    effect = PolicyEffect.ALLOW,
+                    resource = "*",
+                ),
+                PolicyEntity(
                     action = Permission.EXECUTION_REQUEST_EXECUTE.getPermissionString(),
                     effect = PolicyEffect.ALLOW,
                     resource = "*",
@@ -105,6 +110,11 @@ class TestDataInitializer(
                 ),
                 PolicyEntity(
                     action = Permission.USER_EDIT.getPermissionString(),
+                    effect = PolicyEffect.ALLOW,
+                    resource = "*",
+                ),
+                PolicyEntity(
+                    action = Permission.ROLE_GET.getPermissionString(),
                     effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),

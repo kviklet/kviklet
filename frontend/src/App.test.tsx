@@ -13,14 +13,14 @@ import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 
 const handleStatusNotLoggedIn = rest.get(
-  "http://localhost:8080/status",
+  "http://localhost:8081/status",
   (req, res, ctx) => {
     return res(ctx.status(401));
   },
 );
 
 const handleStatusLoggedIn = rest.get(
-  "http://localhost:8080/status",
+  "http://localhost:8081/status",
   (req, res, ctx) => {
     return res(
       ctx.status(200),
@@ -34,7 +34,7 @@ const handleStatusLoggedIn = rest.get(
   },
 );
 const handleLogin = rest.post(
-  "http://localhost:8080/login",
+  "http://localhost:8081/login",
   (req, res, ctx) => {
     return res(
       ctx.status(200),
@@ -46,14 +46,14 @@ const handleLogin = rest.post(
 );
 
 const handleGetExecutionRequests = rest.get(
-  "http://localhost:8080/execution-requests/",
+  "http://localhost:8081/execution-requests/",
   (req, res, ctx) => {
     return res(ctx.status(200), ctx.json([]));
   },
 );
 
 const handleConfig = rest.get(
-  "http://localhost:8080/config/",
+  "http://localhost:8081/config/",
   (req, res, ctx) => {
     return res(
       ctx.status(200),

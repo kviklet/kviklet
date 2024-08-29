@@ -39,7 +39,10 @@ export default function RoleComboBox({
       multiple
     >
       <div className="relative">
-        <ListboxButton className="relative cursor-default rounded-md bg-white py-1.5 pl-3 pr-10 text-slate-900 ring-1 ring-slate-300 focus:outline-none focus:ring-slate-400 dark:bg-slate-900 dark:text-slate-50 dark:ring-slate-700 focus:dark:ring-slate-500 sm:text-sm sm:leading-6">
+        <ListboxButton
+          className="relative cursor-default rounded-md bg-white py-1.5 pl-3 pr-10 text-slate-900 ring-1 ring-slate-300 focus:outline-none focus:ring-slate-400 dark:bg-slate-900 dark:text-slate-50 dark:ring-slate-700 focus:dark:ring-slate-500 sm:text-sm sm:leading-6"
+          data-testid="role-combobox-button"
+        >
           <span className="block w-[8rem] truncate text-left lg:w-[15rem]">
             {selectedRoles.map((role) => role.name).join(", ")}
           </span>
@@ -60,6 +63,7 @@ export default function RoleComboBox({
               disabled={role.isDefault}
               value={role}
               className="relative cursor-default select-none py-2 pl-3 pr-9 data-[focus]:bg-blue-100 data-[focus]:dark:bg-slate-700 "
+              data-testid={`role-combobox-option-${role.name}`}
             >
               {({ selected, focus }) => (
                 <>
