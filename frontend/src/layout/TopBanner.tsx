@@ -61,6 +61,7 @@ function TopBanner() {
                   <Link
                     to={"/new"}
                     className="hover:text-sky-500 dark:hover:text-sky-400"
+                    data-testid="new-link"
                   >
                     New
                   </Link>
@@ -69,6 +70,7 @@ function TopBanner() {
                   <Link
                     to={"/requests"}
                     className="hover:text-sky-500 dark:hover:text-sky-400"
+                    data-testid="requests-link"
                   >
                     Requests
                   </Link>
@@ -77,7 +79,10 @@ function TopBanner() {
             </nav>
             <div className="ml-6 flex items-center border-l border-slate-200 pl-6 dark:border-slate-800">
               <Popover className="relative h-6">
-                <PopoverButton className="mr-4 h-6 w-6 text-slate-400 transition-colors hover:text-slate-800 dark:text-slate-500 dark:hover:text-slate-200">
+                <PopoverButton
+                  className="mr-4 h-6 w-6 text-slate-400 transition-colors hover:text-slate-800 dark:text-slate-500 dark:hover:text-slate-200"
+                  data-testid="settings-dropdown"
+                >
                   <span className="sr-only">Settings Drop Down</span>
                   <Cog6ToothIcon className="" />
                 </PopoverButton>

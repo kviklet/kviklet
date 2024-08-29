@@ -1,0 +1,19 @@
+Subject: [PATCH] Allowing mariadb connection to start server.
+---
+Index: backend/src/main/resources/changelog/007-rename-googleid-column-to-subject.yaml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/backend/src/main/resources/changelog/007-rename-googleid-column-to-subject.yaml b/backend/src/main/resources/changelog/007-rename-googleid-column-to-subject.yaml
+--- a/backend/src/main/resources/changelog/007-rename-googleid-column-to-subject.yaml	(revision 75c1726a335a5a0766e54f07a85da267ee77a8de)
++++ b/backend/src/main/resources/changelog/007-rename-googleid-column-to-subject.yaml	(date 1720509836914)
+@@ -6,4 +6,5 @@
+         - renameColumn:
+             oldColumnName: google_id
+             newColumnName: subject
+-            tableName: user
+\ No newline at end of file
++            tableName: user
++            columnDataType: varchar(255)
+\ No newline at end of file

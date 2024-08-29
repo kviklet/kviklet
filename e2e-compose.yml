@@ -7,10 +7,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
-    ports:
-      - "5432:5432"
     volumes:
-      - ./postgres-data:/var/lib/postgresql/data
       - ./e2e/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   mysql:
@@ -19,10 +16,6 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: mysql
-    ports:
-      - "3306:3306"
-    volumes:
-      - ./mysql-data:/var/lib/mysql
 
   mssql:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -30,27 +23,34 @@ services:
     environment:
       ACCEPT_EULA: Y
       MSSQL_SA_PASSWORD: test1234TEST
-    ports:
-      - "1433:1433"
-    volumes:
-      - ./mssql-data:/var/opt/mssql
+
+  mongodb:
+    image: mongo:jammy
+    restart: always
+
+  mariadb:
+    image: mariadb:10
+    restart: always
+    environment:
+      MARIADB_ROOT_PASSWORD: root
 
   kviklet-postgres:
-    image: postgres:9.6
+    image: postgres:16
     restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: kviklet
-    ports:
-      - "5433:5432"
-    volumes:
-      - ./kviklet-postgres-data:/var/lib/postgresql/data
+
   kviklet:
     build: .
     ports:
-      - "80:80"
+      - "4444:8080"
     environment:
-      - spring.profiles.active=e2e
+      - INITIAL_USER_EMAIL=admin@admin.com
+      - INITIAL_USER_PASSWORD=admin
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://kviklet-postgres:5432/kviklet
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
     depends_on:
       - kviklet-postgres

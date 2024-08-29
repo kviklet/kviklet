@@ -138,7 +138,10 @@ const Editor = ({
   return (
     <div className="flex h-full w-full">
       <div className="mx-auto flex h-full w-2/3 flex-col">
-        <div className="my-5 h-32 resize-y overflow-auto">
+        <div
+          className="my-5 h-32 resize-y overflow-auto"
+          data-testid="monaco-editor-wrapper"
+        >
           <div className="h-full w-full" ref={monacoEl}></div>
         </div>
         <div className="flex flex-row">
@@ -155,12 +158,17 @@ const Editor = ({
               disabled={request?.reviewStatus !== "APPROVED"}
               onClick={executeQuery}
               onCancel={() => void cancelQuery()}
+              dataTestId="run-query-button"
             >
               <div className="play-triangle mr-2 inline-block h-3 w-2 bg-slate-50"></div>
               Run Query
             </LoadingCancelButton>
           ) : (
-            <Button type="submit" onClick={() => void executeQuery()}>
+            <Button
+              dataTestId="run-query-button"
+              type="submit"
+              onClick={() => void executeQuery()}
+            >
               {" "}
               Run Query
             </Button>

@@ -39,7 +39,6 @@ const connectionFormSchema = z
     databaseName: z.string(),
     reviewConfig: z.object({
       numTotalRequired: z.coerce.number(),
-      fourEyesRequired: z.boolean()
     }),
     additionalJDBCOptions: z.string(),
     maxExecutions: z.coerce.number().nullable(),
@@ -127,7 +126,7 @@ export default function DatabaseConnectionForm(props: {
   }, [watchDisplayName]);
 
   useEffect(() => {
-    setValue("reviewConfig", { numTotalRequired: 1, fourEyesRequired: false });
+    setValue("reviewConfig", { numTotalRequired: 1 });
     setValue("port", 5432);
     setValue("type", DatabaseType.POSTGRES);
     setValue("protocol", DatabaseProtocol.POSTGRESQL);
@@ -140,6 +139,12 @@ export default function DatabaseConnectionForm(props: {
     }
   };
 
+  const updateJDBCOptionsIfNotTouched = (options: string) => {
+    if (!touchedFields.additionalJDBCOptions) {
+      setValue("additionalJDBCOptions", options);
+    }
+  };
+
   const protocol = watch("protocol");
 
   useEffect(() => {
@@ -148,9 +153,11 @@ export default function DatabaseConnectionForm(props: {
     }
     if (watchType === DatabaseType.MYSQL) {
       updatePortIfNotTouched(3306);
+      updateJDBCOptionsIfNotTouched("?allowMultiQueries=true");
     }
     if (watchType === DatabaseType.MARIADB) {
       updatePortIfNotTouched(3306);
+      updateJDBCOptionsIfNotTouched("?allowMultiQueries=true");
     }
     if (watchType === DatabaseType.MSSQL) {
       updatePortIfNotTouched(1433);
@@ -179,18 +186,19 @@ export default function DatabaseConnectionForm(props: {
         <div className="flex-col space-y-2">
           <div className="flex w-full justify-between">
             <label
-                htmlFor="type"
-                className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
+              htmlFor="type"
+              className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
             >
               Database Type
             </label>
             <select
-                {...register("type")}
-                className="block w-full basis-3/5 appearance-none rounded-md border border-slate-300 px-3
+              data-testid="connection-type"
+              {...register("type")}
+              className="block w-full basis-3/5 appearance-none rounded-md border border-slate-300 px-3
         py-2 text-sm transition-colors focus:border-indigo-600 focus:outline-none
         hover:border-slate-400 focus:hover:border-indigo-600 dark:border-slate-700 dark:bg-slate-900
          dark:focus:border-gray-500 dark:hover:border-slate-600 dark:hover:focus:border-gray-500"
-                defaultValue={DatabaseType.POSTGRES}
+              defaultValue={DatabaseType.POSTGRES}
             >
               <option value={DatabaseType.POSTGRES}>Postgres</option>
               <option value={DatabaseType.MYSQL}>MySQL</option>
@@ -202,160 +210,163 @@ export default function DatabaseConnectionForm(props: {
 
           <div className="flex w-full justify-between">
             <label
-                htmlFor="type"
-                className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
+              htmlFor="type"
+              className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
             >
               Database Protocol
             </label>
             <select
-                {...register("protocol")}
-                className="block w-full basis-3/5 appearance-none rounded-md border border-slate-300 px-3
+              {...register("protocol")}
+              className="block w-full basis-3/5 appearance-none rounded-md border border-slate-300 px-3
         py-2 text-sm transition-colors focus:border-indigo-600 focus:outline-none
         hover:border-slate-400 focus:hover:border-indigo-600 dark:border-slate-700 dark:bg-slate-900
          dark:focus:border-gray-500 dark:hover:border-slate-600 dark:hover:focus:border-gray-500"
-                defaultValue={protocolOptions[0]}
-                disabled={protocolOptions.length === 1}
+              defaultValue={protocolOptions[0]}
+              disabled={protocolOptions.length === 1}
             >
               {protocolOptions.map((protocol) => (
-                  <option key={protocol} value={protocol}>
-                    {protocol}
-                  </option>
+                <option key={protocol} value={protocol}>
+                  {protocol}
+                </option>
               ))}
             </select>
           </div>
 
           <InputField
-              id="displayName"
-              label="Name"
-              placeholder="Connection name"
-              {...register("displayName")}
-              error={errors.displayName?.message}
+            id="displayName"
+            label="Name"
+            placeholder="Connection name"
+            {...register("displayName")}
+            error={errors.displayName?.message}
+            data-testid="connection-name"
           />
           <TextField
-              id="description"
-              label="Description"
-              placeholder="Provides prod read access with no required reviews"
-              {...register("description")}
-              error={errors.description?.message}
+            id="description"
+            label="Description"
+            placeholder="Provides prod read access with no required reviews"
+            {...register("description")}
+            error={errors.description?.message}
+            data-testid="connection-description"
           />
           <InputField
-              id="username"
-              label="Username"
-              placeholder="Username"
-              {...register("username")}
-              error={errors.username?.message}
+            id="username"
+            label="Username"
+            placeholder="Username"
+            {...register("username")}
+            error={errors.username?.message}
+            data-testid="connection-username"
           />
           <InputField
-              id="password"
-              label="Password"
-              placeholder="Password"
-              type="password"
-              {...register("password")}
-              error={errors.password?.message}
+            id="password"
+            label="Password"
+            placeholder="Password"
+            type="password"
+            {...register("password")}
+            error={errors.password?.message}
+            data-testid="connection-password"
           />
           <InputField
-              id="hostname"
-              label="Hostname"
-              placeholder="localhost"
-              {...register("hostname")}
-              error={errors.hostname?.message}
+            id="hostname"
+            label="Hostname"
+            placeholder="localhost"
+            {...register("hostname")}
+            error={errors.hostname?.message}
+            data-testid="connection-hostname"
           />
           <InputField
-              id="reviewConfig.numTotalRequired"
-              label="Required reviews"
-              tooltip="The number of required approving reviews that's required before a request can be executed."
-              placeholder="1"
-              type="number"
-              min="0"
-              {...register("reviewConfig.numTotalRequired")}
-              error={errors.reviewConfig?.numTotalRequired?.message}
+            id="reviewConfig.numTotalRequired"
+            label="Required reviews"
+            tooltip="The number of required approving reviews that's required before a request can be executed."
+            placeholder="1"
+            type="number"
+            min="0"
+            {...register("reviewConfig.numTotalRequired")}
+            error={errors.reviewConfig?.numTotalRequired?.message}
+            data-testid="connection-required-reviews"
           />
-
-          <InputField
-              id="reviewConfig.fourEyesRequired"
-              label="Four-eyes required"
-              tooltip="Ensures that four-eyes (2 people) are required, where the editor cannot run the query themselvs."
-              type="checkbox"
-              {...register("reviewConfig.fourEyesRequired")}
-              error={errors.reviewConfig?.fourEyesRequired?.message}
-          />
-
 
           <div className="w-full">
             <Disclosure defaultOpen={false}>
-              {({open}) => (
-                  <>
-                    <DisclosureButton className="py-2">
-                      <div className="flex flex-row justify-between">
-                        <div className="flex flex-row">
-                          <div>Advanced Options</div>
-                        </div>
-                        <div className="flex flex-row">
-                          {open ? (
-                              <ChevronDownIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronDownIcon>
-                          ) : (
-                              <ChevronRightIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronRightIcon>
-                          )}
-                        </div>
+              {({ open }) => (
+                <>
+                  <DisclosureButton
+                    className="py-2"
+                    data-testid="advanced-options-button"
+                  >
+                    <div className="flex flex-row justify-between">
+                      <div className="flex flex-row">
+                        <div>Advanced Options</div>
                       </div>
-                    </DisclosureButton>
-                    <DisclosurePanel unmount={false}>
-                      <div className="flex-col space-y-2">
-                        <InputField
-                            id="id"
-                            label="Connection ID"
-                            placeholder="datasource-id"
-                            {...register("id")}
-                            error={errors.id?.message}
-                        />
-                        <InputField
-                            id="databaseName"
-                            label="Database name"
-                            placeholder="Database name"
-                            {...register("databaseName")}
-                            error={errors.databaseName?.message}
-                        />
-                        <InputField
-                            id="port"
-                            label="Port"
-                            placeholder="Port"
-                            type="number"
-                            {...register("port")}
-                            error={errors.port?.message}
-                        />
-                        <InputField
-                            id="additionalJDBCOptions"
-                            label="Additional options"
-                            placeholder={getJDBCOptionsPlaceholder(watchType)}
-                            {...register("additionalJDBCOptions")}
-                            error={errors.additionalJDBCOptions?.message}
-                        />
-                        <InputField
-                            id="maxExecutions"
-                            label="Max executions"
-                            placeholder="1"
-                            tooltip="The maximum number of times each request can be executed after it has been approved, usually 1."
-                            type="number"
-                            {...register("maxExecutions")}
-                            error={errors.maxExecutions?.message}
-                        />
-                        <TestingConnectionFragment
-                            handleSubmit={handleSubmit}
-                            type={watchType}
-                            createConnection={props.createConnection}
-                            closeModal={props.closeModal}
-                        />
+                      <div className="flex flex-row">
+                        {open ? (
+                          <ChevronDownIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronDownIcon>
+                        ) : (
+                          <ChevronRightIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronRightIcon>
+                        )}
                       </div>
-                    </DisclosurePanel>
-                  </>
+                    </div>
+                  </DisclosureButton>
+                  <DisclosurePanel unmount={false}>
+                    <div className="flex-col space-y-2">
+                      <InputField
+                        id="id"
+                        label="Connection ID"
+                        placeholder="datasource-id"
+                        {...register("id")}
+                        error={errors.id?.message}
+                      />
+                      <InputField
+                        id="databaseName"
+                        label="Database name"
+                        placeholder="Database name"
+                        {...register("databaseName")}
+                        error={errors.databaseName?.message}
+                        data-testid="connection-database"
+                      />
+                      <InputField
+                        id="port"
+                        label="Port"
+                        placeholder="Port"
+                        type="number"
+                        {...register("port")}
+                        error={errors.port?.message}
+                        data-testid="connection-port"
+                      />
+                      <InputField
+                        id="additionalJDBCOptions"
+                        label="Additional options"
+                        data-testid="connection-additional-options"
+                        placeholder={getJDBCOptionsPlaceholder(watchType)}
+                        {...register("additionalJDBCOptions")}
+                        error={errors.additionalJDBCOptions?.message}
+                      />
+                      <InputField
+                        id="maxExecutions"
+                        label="Max executions"
+                        placeholder="1"
+                        tooltip="The maximum number of times each request can be executed after it has been approved, usually 1."
+                        type="number"
+                        {...register("maxExecutions")}
+                        error={errors.maxExecutions?.message}
+                      />
+                      <TestingConnectionFragment
+                        handleSubmit={handleSubmit}
+                        type={watchType}
+                        createConnection={props.createConnection}
+                        closeModal={props.closeModal}
+                      />
+                    </div>
+                  </DisclosurePanel>
+                </>
               )}
             </Disclosure>
           </div>
           <div className="flex">
             <Button
-                type="submit"
-                className="ml-auto"
-                onClick={(event) => void handleSubmitCreate(event)}
+              type="submit"
+              className="ml-auto"
+              onClick={(event) => void handleSubmitCreate(event)}
+              dataTestId="create-connection-button"
             >
               Create Connection
             </Button>
@@ -374,13 +385,13 @@ const TestingConnectionFragment = (props: {
 }) => {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [testConnectionResponse, setTestConnectionResponse] =
-      useState<TestConnectionResponse | null>(null);
+    useState<TestConnectionResponse | null>(null);
 
   useEffect(() => {
     setTestConnectionResponse(null);
   }, [props.type]);
 
-  const {addNotification} = useNotification();
+  const { addNotification } = useNotification();
 
   const handleSubmitTest = props.handleSubmit(async (data: ConnectionForm) => {
     setIsTestingConnection(true);

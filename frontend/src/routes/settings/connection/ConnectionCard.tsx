@@ -6,7 +6,10 @@ export default function ConnectionCard(props: {
   connection: ConnectionResponse;
 }) {
   return (
-    <Link to={`/settings/connections/${props.connection.id}`}>
+    <Link
+      to={`/settings/connections/${props.connection.id}`}
+      data-testid={`connection-card-${props.connection.displayName}`}
+    >
       <div className="group my-2 flex justify-between rounded-md border border-slate-200 bg-slate-50 px-2 py-1 align-middle shadow-md transition-colors dark:border dark:border-slate-700 dark:bg-slate-900">
         <div>
           <div className="text-md font-medium">

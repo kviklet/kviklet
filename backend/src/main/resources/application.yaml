@@ -11,5 +11,7 @@ spring:
       hibernate:
         auto_quote_keyword: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+server:
+  port: 8081
 app:
   name: "Kviklet"

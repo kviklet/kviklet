@@ -570,6 +570,7 @@ function DatasourceRequestBox({
             disabled={request?.reviewStatus !== "APPROVED"}
             onClick={runQuery}
             onCancel={() => void cancelQuery()}
+            dataTestId="run-query-button"
           >
             <div
               className={`play-triangle mr-2 inline-block h-3 w-2 ${
@@ -587,6 +588,7 @@ function DatasourceRequestBox({
               (request?.reviewStatus == "APPROVED" && "submit") || "disabled"
             }
             onClick={() => void runQuery()}
+            dataTestId="run-query-button"
           >
             <div
               className={`play-triangle mr-2 inline-block h-3 w-2 ${
@@ -1043,6 +1045,7 @@ function CommentBox({
                   id="submit"
                   type="submit"
                   onClick={() => void handleReview()}
+                  dataTestId="submit-review-button"
                 >
                   Review
                 </Button>
@@ -1087,6 +1090,7 @@ function ReviewRadioBox({
               }`}
               onChange={() => setChosenReviewType(reviewType.id)}
               disabled={!reviewType.enabled}
+              data-testid={`review-type-${reviewType.title}`}
             />
             <span className="ml-3 block">
               <label
