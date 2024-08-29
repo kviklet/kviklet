@@ -27,6 +27,7 @@
     "react-hook-form": "^7.43.8",
     "react-markdown": "^8.0.7",
     "react-router-dom": "^6.8.1",
+    "react-stomp": "^5.1.0",
     "react-syntax-highlighter": "^15.5.0",
     "react-use-websocket": "^4.8.1",
     "tailwind-scrollbar": "^2.1.0",

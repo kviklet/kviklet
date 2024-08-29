@@ -130,6 +130,7 @@ class ExecutionRequestFactory : Factory() {
         executionStatus,
         createdAt,
         author ?: userFactory.createUser(),
+        null
     )
 }
 
@@ -138,7 +139,7 @@ class ConnectionFactory : Factory() {
         id: ConnectionId = ConnectionId("test-connection " + nextId()),
         displayName: String = "Test Connection",
         description: String = "A test connection",
-        reviewConfig: ReviewConfig = ReviewConfig(numTotalRequired = 1),
+        reviewConfig: ReviewConfig = ReviewConfig(numTotalRequired = 1, fourEyesRequired = false),
         maxExecutions: Int? = 1,
         databaseName: String? = null,
         authenticationType: AuthenticationType = AuthenticationType.USER_PASSWORD,

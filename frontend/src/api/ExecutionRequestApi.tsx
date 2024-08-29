@@ -29,6 +29,7 @@ const ReviewEvent = withType(
     type: z.literal("REVIEW"),
     author: userResponseSchema.optional(),
     comment: z.string(),
+    fourEyesReview : z.boolean(),
     createdAt: z.coerce.date(),
     action: z.enum(["APPROVE", "REQUEST_CHANGE", "REJECT"]),
     id: z.string(),

@@ -65,7 +65,7 @@ class ConnectionEncryptionTest(
         username = username,
         password = password,
         description = "Test description",
-        reviewConfig = ReviewConfig(numTotalRequired = 1),
+        reviewConfig = ReviewConfig(numTotalRequired = 1, fourEyesRequired = false),
         port = port,
         hostname = "localhost",
         type = type,
@@ -168,7 +168,7 @@ class ConnectionEncryptionTest(
             username = "updateduser",
             password = "initialpassword",
             databaseName = "partialdb",
-            reviewConfig = ReviewConfig(numTotalRequired = 1),
+            reviewConfig = ReviewConfig(numTotalRequired = 1, fourEyesRequired = false) ,
             additionalJDBCOptions = "",
         )
 
@@ -230,7 +230,7 @@ class ConnectionEncryptionTest(
             connectionId = connectionId,
             displayName = "Test Kubernetes Connection",
             description = "Test Kubernetes description",
-            reviewConfig = ReviewConfig(numTotalRequired = 2),
+            reviewConfig = ReviewConfig(numTotalRequired = 2, fourEyesRequired = false),
             maxExecutions = 10,
         )
 

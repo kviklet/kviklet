@@ -91,6 +91,7 @@ data class DatasourceExecutionRequest(
     override val executionStatus: String,
     override val createdAt: LocalDateTime = utcTimeNow(),
     override val author: User,
+    val fourEyesAuthorSecret: String?
 ) : ExecutionRequest(id, connection, title, type, description, executionStatus, createdAt, author)
 
 data class KubernetesExecutionRequest(
@@ -114,7 +115,7 @@ data class KubernetesExecutionRequest(
     description,
     executionStatus,
     createdAt,
-    author,
+    author
 )
 
 data class ExecutionRequestDetails(val request: ExecutionRequest, val events: MutableSet<Event>) :
@@ -223,7 +224,10 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         policies: List<PolicyGrantedAuthority>,
     ): Boolean = when (permission) {
         Permission.EXECUTION_REQUEST_EDIT -> request.author.getId() == userDetails.id
-        Permission.EXECUTION_REQUEST_EXECUTE -> request.author.getId() == userDetails.id && isExecutable()
+        Permission.EXECUTION_REQUEST_EXECUTE ->
+            (request.author.getId() == userDetails.id ||
+                    //FIXME - probably want to make this tighter - not just "not the author" but use the HMAC-ing here or around here)
+                    request.connection.reviewConfig.fourEyesRequired && request.author.getId() != userDetails.id)  && isExecutable()
         else -> true
     }
 

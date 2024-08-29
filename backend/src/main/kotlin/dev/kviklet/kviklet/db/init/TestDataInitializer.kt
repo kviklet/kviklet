@@ -140,7 +140,7 @@ class TestDataInitializer(
                 password = "postgres",
                 storedUsername = "postgres",
                 storedPassword = "postgres",
-                reviewConfig = ReviewConfig(numTotalRequired = 1),
+                reviewConfig = ReviewConfig(numTotalRequired = 1, fourEyesRequired = false),
                 datasourceType = DatasourceType.POSTGRESQL,
                 hostname = "localhost",
                 port = 5432,

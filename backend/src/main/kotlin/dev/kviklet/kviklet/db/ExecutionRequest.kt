@@ -73,6 +73,7 @@ class ExecutionRequestEntity(
     var podName: String? = "",
     var containerName: String? = "",
     var command: String? = "",
+    var fourEyesAuthorSecret: String? = ""
 
 ) : BaseEntity() {
 
@@ -91,6 +92,7 @@ class ExecutionRequestEntity(
             executionStatus = executionStatus,
             createdAt = createdAt,
             author = author.toDto(),
+            fourEyesAuthorSecret = fourEyesAuthorSecret
         )
 
         ExecutionRequestType.KUBERNETES -> KubernetesExecutionRequest(
@@ -192,6 +194,7 @@ class ExecutionRequestAdapter(
         podName: String? = null,
         containerName: String? = null,
         command: String? = null,
+        fourEyesAuthorSecret: String? = null
     ): ExecutionRequestDetails {
         val connection = connectionRepository.findByIdOrNull(connectionId.toString())
             ?: throw EntityNotFound("Connection Not Found", "Connection with id $connectionId does not exist.")
@@ -232,6 +235,7 @@ class ExecutionRequestAdapter(
                 podName = podName,
                 containerName = containerName,
                 command = command,
+                fourEyesAuthorSecret = fourEyesAuthorSecret
             ),
         ).toDetailDto(
             connectionAdapter.toDto(connection),

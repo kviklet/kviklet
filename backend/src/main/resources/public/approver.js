@@ -5,8 +5,11 @@ const stompClient = new StompJs.Client({
 stompClient.onConnect = (frame) => {
     setConnected(true);
     console.log('Connected: ' + frame);
-    stompClient.subscribe('/topic/liveSession/' +
-        $("#currentSession").val(), (liveSession) => {
+
+    var currentSession = $("#currentSession").val();
+    var topic = "/topic/liveSession/" + currentSession;
+    console.log("Connecting to " + topic);
+    stompClient.subscribe(topic, (liveSession) => {
         updateSqlText(JSON.parse(liveSession.body));
     });
 };
@@ -49,15 +52,35 @@ function disconnect() {
 
 
 function updateSqlText(message) {
+    console.log(message);
     $("#previewSql").val(message.sql);
+    $("#currentTamperProofSignature").val(message.tamperProofSignature);
+}
+
+function runQuery() {
+    var currentSessionId = $("#currentSession").val();
+    $.ajax({
+            url: "/liveSession/" + currentSessionId + "/execute",
+            type: "PUT",
+            dataType: "json",
+            contentType: "application/json; charset=utf-8",
+            data: JSON.stringify({
+                executionRequestId: currentSessionId,
+                sql: $("#previewSql").val(),
+                tamperProofSignature: $("#currentTamperProofSignature").val()
+            }),
+            success: function (data) {
+                $("#greetings").append("<tr><td>Session created for " + data.id + "</td></tr>");
+            }
+        }
+    );
 }
 
 function listSessions() {
     $.get("/liveSession", {}, function (sessions) {
-        $("#greetings").html(
+        $("#sessionList").html(
             $(sessions).map(function () {
-                console.log("hi");
-                return "<tr><td><button class='joinSession' type=\"submit\">" + this.id + "</button></td></tr>";
+                return "<tr><td><button class='joinSession' type=\"submit\">" + this.executionRequestId + "</button></td></tr>";
             }).get().join());
 
         //after addimg buttons, let's add a click handler
@@ -70,8 +93,10 @@ function listSessions() {
 
 $(function () {
     $("form").on('submit', (e) => e.preventDefault());
+    listSessions();
     $("#listSessions").click(() => listSessions());
     $("#connect").click(() => connect());
     $("#disconnect").click(() => disconnect());
     $("#send").click(() => sendName());
+    $("#runQuery").click(() => runQuery());
 });

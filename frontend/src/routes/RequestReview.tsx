@@ -402,6 +402,7 @@ const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
           ></div>
 
           {request?.type == "SingleExecution" ? "Run Command" : "Start Session"}
+
         </Button>
       </div>
     </div>
@@ -515,7 +516,7 @@ function DatasourceRequestBox({
         </div>
         <div className="py-3">
           <p className="pb-6 text-slate-500">{request?.description}</p>
-          {request?.type == "SingleExecution" ? (
+          {request?.type == "SingleExecution" || request ? (
             editMode ? (
               <div>
                 <textarea

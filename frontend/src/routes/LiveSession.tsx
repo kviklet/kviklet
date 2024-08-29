@@ -1,4 +1,6 @@
 import { useContext, useEffect, useRef, useState } from "react";
+import SockJsClient from 'react-stomp';
+
 import {
   ExecuteResponseResult,
   ExecutionRequestResponseWithComments,
@@ -106,6 +108,12 @@ const Editor = ({
 
     window.location.href = downloadUrl;
   };
+
+  const   onMessageReceive = (msg, topic) => {
+    this.setState(prevState => ({
+      messages: [...prevState.messages, msg]
+    }));
+  }
 
   const executeQuery = async () => {
     const selection = editor?.getSelection();

@@ -26,6 +26,7 @@ const datasourceConnectionFormSchema = z
     maxExecutions: z.coerce.number().nullable(),
     reviewConfig: z.object({
       numTotalRequired: z.coerce.number(),
+      fourEyesRequired: z.boolean()
     }),
     additionalJDBCOptions: z.string(),
   })
@@ -84,6 +85,7 @@ export default function UpdateDatasourceConnectionForm({
       databaseName: connection.databaseName || "",
       reviewConfig: {
         numTotalRequired: connection.reviewConfig.numTotalRequired,
+        fourEyesRequired: connection.reviewConfig.fourEyesRequired
       },
       additionalJDBCOptions: connection.additionalJDBCOptions || "",
       maxExecutions: connection.maxExecutions,
@@ -204,6 +206,15 @@ export default function UpdateDatasourceConnectionForm({
             min="0"
             {...register("reviewConfig.numTotalRequired")}
             error={errors.reviewConfig?.numTotalRequired?.message}
+          />
+
+          <InputField
+              id="reviewConfig.fourEyesRequired"
+              label="Four-eyes required"
+              tooltip="Ensures that four-eyes (2 people) are required, where the editor cannot run the query themselvs."
+              type="checkbox"
+              {...register("reviewConfig.fourEyesRequired")}
+              error={errors.reviewConfig?.fourEyesRequired?.message}
           />
 
           <div className="w-full">

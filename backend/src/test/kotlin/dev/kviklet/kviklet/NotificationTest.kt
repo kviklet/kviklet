@@ -93,6 +93,7 @@ class NotificationTest {
             "A test connection",
             ReviewConfig(
                 numTotalRequired = 1,
+                fourEyesRequired = false
             ),
 
             3306,

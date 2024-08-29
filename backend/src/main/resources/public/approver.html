@@ -2,7 +2,8 @@
 <html>
 <head>
     <title>Hello WebSocket</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+          integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
     <link href="/main.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
@@ -14,13 +15,29 @@
     Javascript and reload this page!</h2></noscript>
 <div id="main-content" class="container">
     <div class="row">
+
+        <div class="row">
+            <div class="col-md-12">
+                <table id="conversation" class="table table-striped">
+                    <thead>
+                    <tr>
+                        <th>Current sessions. click button to join</th>
+                    </tr>
+                    </thead>
+                    <tbody id="sessionList">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+
         <div class="col-md-6">
-            <input type="text" value="" id="currentSession" />
+            <input type="text" value="" id="currentSession"/>
         </div>
         <div class="col-md-6">
             <form class="form-inline">
                 <div class="form-group">
-                    <button id="listSessions" class="btn btn-default" type="submit">List sessions</button>
+                    <button id="listSessions" class="btn btn-default" type="submit">Refresh sessions</button>
                     <label for="connect">WebSocket connection:</label>
                     <button id="connect" class="btn btn-default" type="submit">Connect</button>
                     <button id="disconnect" class="btn btn-default" type="submit" disabled="disabled">Disconnect
@@ -39,20 +56,16 @@
         </div>
     </div>
     <div class="row">
-        <textarea id="previewSql" ></textarea>
+        <textarea id="previewSql" readonly="true" style="width: 80%; height: 100px"></textarea>
     </div>
+
     <div class="row">
-        <div class="col-md-12">
-            <table id="conversation" class="table table-striped">
-                <thead>
-                <tr>
-                    <th>Greetings</th>
-                </tr>
-                </thead>
-                <tbody id="greetings">
-                </tbody>
-            </table>
-        </div>
+        <label for="currentTamperProofSignature">server built signature to prevent tampering</label>
+        <input id="currentTamperProofSignature" type="input" readonly="true"/>
+    </div>
+
+    <div>
+        <button id="runQuery">Run query</button>
     </div>
 </div>
 </body>

@@ -59,3 +59,6 @@ databaseChangeLog:
   - include:
       file: 021-add-is-encrypted-column.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 022-four-eyes-author-secret.yaml
+      relativeToChangelogFile: true

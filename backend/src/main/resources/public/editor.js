@@ -31,12 +31,35 @@ function setConnected(connected) {
 }
 
 function createSession() {
+    $.ajax({
+        url: "/liveSession",
+        type: "POST",
+        data: JSON.stringify({
+            connectionId: $("#connections").val(),
+            title: $("#requestTitle").val(),
+            type: "TemporaryAccess",
+            connectionType: "DATASOURCE",
+            description: "4-eyes session default"
+        }),
+        contentType: "application/json; charset=utf-8",
+        dataType: "json",
+        success: function (data) {
+            $("#currentSessionId").val(data.executionRequestId);
+            $("#sqlExecutionBox").css("display", "block");
 
-    $.post("/liveSession", {}, function (data) {
-        $("#currentSessionId").val(data.id);
-    });
+        }
+    })
 }
 
+function populateConnections() {
+
+    $.get("/connections/", {}, function (connections) {
+        $("#connections").html(
+            $(connections).map(function () {
+                return "<option>" + this.id + "</option>";
+            }).get().join());
+    })
+}
 
 function sendSqlUpdate() {
     $.ajax({
@@ -45,18 +68,16 @@ function sendSqlUpdate() {
             dataType: "json",
             contentType: "application/json; charset=utf-8",
             data: JSON.stringify({
-                id: $("#currentSessionId").val(),
+                executionRequestId: $("#currentSessionId").val(),
                 sql: $("#sql").val()
             }),
             success: function (data) {
-                    $("#greetings").append("<tr><td>Session created for " + data.id + "</td></tr>");
-                }
+                $("#greetings").append("<tr><td>Session created for " + data.id + "</td></tr>");
+            }
         }
-    )
-    ;
-
-
+    );
 }
+
 
 function showGreeting(message) {
     $("#greetings").append("<tr><td>" + message + "</td></tr>");
@@ -66,6 +87,6 @@ $(function () {
     $("form").on('submit', (e) => e.preventDefault());
     $("#startSession").click(() => createSession());
     $("#sql").keyup(() => sendSqlUpdate())
-    // $( "#disconnect" ).click(() => disconnect());
-    // $( "#send" ).click(() => sendName());
+
+    populateConnections();
 });

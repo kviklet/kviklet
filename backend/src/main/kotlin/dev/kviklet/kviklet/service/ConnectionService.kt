@@ -59,6 +59,7 @@ class ConnectionService(
             request.reviewConfig?.let {
                 ReviewConfig(
                     it.numTotalRequired,
+                    it.fourEyesRequired
                 )
             } ?: connection.reviewConfig,
             request.additionalJDBCOptions ?: connection.additionalOptions,
@@ -80,6 +81,7 @@ class ConnectionService(
             request.reviewConfig?.let {
                 ReviewConfig(
                     it.numTotalRequired,
+                    it.fourEyesRequired
                 )
             } ?: connection.reviewConfig,
             request.maxExecutions ?: connection.maxExecutions,
@@ -113,6 +115,7 @@ class ConnectionService(
         password: String,
         description: String,
         reviewsRequired: Int,
+        fourEyesRequired: Boolean,
         port: Int,
         hostname: String,
         type: DatasourceType,
@@ -129,6 +132,7 @@ class ConnectionService(
         description,
         ReviewConfig(
             numTotalRequired = reviewsRequired,
+            fourEyesRequired = fourEyesRequired
         ),
         port,
         hostname,
@@ -147,6 +151,7 @@ class ConnectionService(
         password: String,
         description: String,
         reviewsRequired: Int,
+        fourEyesRequired: Boolean,
         port: Int,
         hostname: String,
         type: DatasourceType,
@@ -157,7 +162,7 @@ class ConnectionService(
             connectionId,
             displayName,
             description,
-            reviewConfig = ReviewConfig(reviewsRequired),
+            reviewConfig = ReviewConfig(reviewsRequired, fourEyesRequired),
             maxExecutions,
             databaseName,
             AuthenticationType.USER_PASSWORD,
@@ -208,6 +213,7 @@ class ConnectionService(
         displayName: String,
         description: String,
         reviewsRequired: Int,
+        fourEyesRequired: Boolean,
         maxExecutions: Int?,
     ): Connection = connectionAdapter.createKubernetesConnection(
         connectionId,
@@ -215,6 +221,7 @@ class ConnectionService(
         description,
         ReviewConfig(
             numTotalRequired = reviewsRequired,
+            fourEyesRequired = fourEyesRequired
         ),
         maxExecutions,
     )

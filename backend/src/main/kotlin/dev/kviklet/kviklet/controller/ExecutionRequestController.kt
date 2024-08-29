@@ -509,7 +509,7 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
         request: CreateExecutionRequestRequest,
         @CurrentUser userDetails: UserDetailsWithId,
     ): ExecutionRequestResponse {
-        val executionRequest = executionRequestService.create(request.connectionId, request, userDetails.id)
+        val executionRequest = executionRequestService.create(request.connectionId, request, userDetails.id, null)
         return ExecutionRequestResponse.fromDto(executionRequest)
     }
 

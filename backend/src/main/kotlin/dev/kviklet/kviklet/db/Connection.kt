@@ -25,7 +25,7 @@ import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
-data class ReviewConfig(val numTotalRequired: Int)
+data class ReviewConfig(val numTotalRequired: Int, val fourEyesRequired: Boolean)
 
 enum class ConnectionType {
     DATASOURCE,
@@ -242,7 +242,7 @@ class ConnectionAdapter(
         displayName: String,
         description: String,
         reviewConfig: ReviewConfig,
-        maxExecutions: Int?,
+        maxExecutions: Int?
     ): Connection {
         val datasourceConnection = connectionRepository.findByIdOrNull(id.toString())
             ?: throw EntityNotFound(

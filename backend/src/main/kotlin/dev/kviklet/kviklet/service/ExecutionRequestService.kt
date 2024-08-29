@@ -65,10 +65,11 @@ class ExecutionRequestService(
         connectionId: ConnectionId,
         request: CreateExecutionRequestRequest,
         userId: String,
+        fourEyesAuthorSecret : String?
     ): ExecutionRequestDetails {
         val executionRequestDetails = when (request) {
             is CreateDatasourceExecutionRequestRequest -> {
-                createDatasourceRequest(connectionId, request, userId)
+                createDatasourceRequest(connectionId, request, userId, fourEyesAuthorSecret)
             }
             is CreateKubernetesExecutionRequestRequest -> {
                 createKubernetesRequest(connectionId, request, userId)
@@ -84,6 +85,7 @@ class ExecutionRequestService(
         connectionId: ConnectionId,
         request: CreateDatasourceExecutionRequestRequest,
         userId: String,
+        fourEyesAuthorSecret: String?,
     ): ExecutionRequestDetails = executionRequestAdapter.createExecutionRequest(
         connectionId = connectionId,
         title = request.title,
@@ -92,6 +94,7 @@ class ExecutionRequestService(
         statement = request.statement,
         executionStatus = "PENDING",
         authorId = userId,
+        fourEyesAuthorSecret = fourEyesAuthorSecret
     )
 
     private fun createKubernetesRequest(

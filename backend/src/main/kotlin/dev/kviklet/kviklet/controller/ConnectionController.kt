@@ -142,9 +142,9 @@ data class UpdateKubernetesConnectionRequest(
     val maxExecutions: Int? = null,
 ) : UpdateConnectionRequest()
 
-data class ReviewConfigRequest(val numTotalRequired: Int = 0)
+data class ReviewConfigRequest(val numTotalRequired: Int = 0, val fourEyesRequired: Boolean = false)
 
-data class ReviewConfigResponse(val numTotalRequired: Int = 0)
+data class ReviewConfigResponse(val numTotalRequired: Int = 0, val fourEyesRequired: Boolean = false)
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
 @JsonSubTypes(
@@ -190,6 +190,7 @@ data class DatasourceConnectionResponse(
             description = datasourceConnection.description,
             reviewConfig = ReviewConfigResponse(
                 datasourceConnection.reviewConfig.numTotalRequired,
+                datasourceConnection.reviewConfig.fourEyesRequired
             ),
             additionalJDBCOptions = datasourceConnection.additionalOptions,
         )
@@ -249,6 +250,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             password = request.password,
             description = request.description,
             reviewsRequired = request.reviewConfig.numTotalRequired,
+            fourEyesRequired = request.reviewConfig.fourEyesRequired,
             port = request.port,
             hostname = request.hostname,
             type = request.type,
@@ -266,6 +268,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             password = request.password,
             description = request.description,
             reviewsRequired = request.reviewConfig.numTotalRequired,
+            fourEyesRequired = request.reviewConfig.fourEyesRequired,
             port = request.port,
             hostname = request.hostname,
             type = request.type,
@@ -280,6 +283,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             displayName = request.displayName,
             description = request.description,
             reviewsRequired = request.reviewConfig.numTotalRequired,
+            fourEyesRequired = request.reviewConfig.fourEyesRequired,
             maxExecutions = request.maxExecutions,
         )
 

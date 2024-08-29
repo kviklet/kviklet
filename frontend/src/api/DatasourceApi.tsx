@@ -42,6 +42,7 @@ const databaseConnectionResponseSchema = withType(
     databaseName: z.coerce.string().nullable(),
     reviewConfig: z.object({
       numTotalRequired: z.number(),
+      fourEyesRequired: z.boolean()
     }),
     additionalJDBCOptions: z.string().optional(),
   }),
@@ -54,7 +55,7 @@ const kubernetesConnectionResponseSchema = withType(
     displayName: z.coerce.string(),
     description: z.coerce.string(),
     reviewConfig: z.object({
-      numTotalRequired: z.coerce.number(),
+      numTotalRequired: z.coerce.number()
     }),
     maxExecutions: z.coerce.number().nullable(),
   }),
@@ -83,6 +84,7 @@ const databaseConnectionPayloadSchema = z
     maxExecutions: z.coerce.number().nullable(),
     reviewConfig: z.object({
       numTotalRequired: z.number(),
+      fourEyesRequired: z.boolean(),
     }),
     type: z.nativeEnum(DatabaseType),
     protocol: z.nativeEnum(DatabaseProtocol),

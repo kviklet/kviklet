@@ -171,6 +171,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             "A test connection",
             ReviewConfig(
                 numTotalRequired = 1,
+                fourEyesRequired = false
             ),
 
             container.getMappedPort(5432),
@@ -193,6 +194,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             "A test connection",
             ReviewConfig(
                 numTotalRequired = 1,
+                fourEyesRequired = false
             ),
             container.getMappedPort(27017),
             container.host,
@@ -208,6 +210,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
         "A test kubernetes connection",
         ReviewConfig(
             numTotalRequired = 1,
+            fourEyesRequired = false
         ),
         1,
     )
