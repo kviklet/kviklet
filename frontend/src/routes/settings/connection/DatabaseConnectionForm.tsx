@@ -39,6 +39,7 @@ const connectionFormSchema = z
     databaseName: z.string(),
     reviewConfig: z.object({
       numTotalRequired: z.coerce.number(),
+      fourEyesRequired: z.boolean()
     }),
     additionalJDBCOptions: z.string(),
     maxExecutions: z.coerce.number().nullable(),
@@ -126,7 +127,7 @@ export default function DatabaseConnectionForm(props: {
   }, [watchDisplayName]);
 
   useEffect(() => {
-    setValue("reviewConfig", { numTotalRequired: 1 });
+    setValue("reviewConfig", { numTotalRequired: 1, fourEyesRequired: false });
     setValue("port", 5432);
     setValue("type", DatabaseType.POSTGRES);
     setValue("protocol", DatabaseProtocol.POSTGRESQL);
@@ -283,6 +284,15 @@ export default function DatabaseConnectionForm(props: {
             {...register("reviewConfig.numTotalRequired")}
             error={errors.reviewConfig?.numTotalRequired?.message}
             data-testid="connection-required-reviews"
+          />
+
+          <InputField
+              id="reviewConfig.fourEyesRequired"
+              label="Four-eyes required"
+              tooltip="Ensures that four-eyes (2 people) are required, where the editor cannot run the query themselvs."
+              type="checkbox"
+              {...register("reviewConfig.fourEyesRequired")}
+              error={errors.reviewConfig?.fourEyesRequired?.message}
           />
 
           <div className="w-full">
