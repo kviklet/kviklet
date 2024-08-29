@@ -12,7 +12,7 @@ services:
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
       - ./sample_data.sql:/docker-entrypoint-initdb.d/init.sql
-  
+
   kviklet-postgres:
     image: postgres:16
     restart: always
@@ -55,7 +55,6 @@ services:
   #    - "3307:3306"
   #  volumes:
   #    - ./mariadb-data:/var/lib/mysql
-
 
   #mysql:
   #  image: mysql:8

@@ -5,8 +5,8 @@ const apiBasePath = import.meta.env.VITE_API_BASE_PATH;
 
 let baseUrl = "";
 if (!apiBasePath) {
-  // In dev mode locally, usually spring boot runs on 8080
-  baseUrl = `${window.location.protocol}//${window.location.hostname}:8080`;
+  // Setting the baseurl for running the frontend and backend locally without the container setup with nginx
+  baseUrl = `${window.location.protocol}//${window.location.hostname}:8081`;
 } else {
   baseUrl = `${window.location.protocol}//${window.location.host}${apiBasePath}`;
 }

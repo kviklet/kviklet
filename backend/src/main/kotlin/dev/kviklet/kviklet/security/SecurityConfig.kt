@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.http.HttpStatus
 import org.springframework.ldap.core.DirContextAdapter
 import org.springframework.ldap.core.DirContextOperations
 import org.springframework.ldap.core.support.LdapContextSource
@@ -47,6 +46,7 @@ import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler
+import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler
 import org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher
 import org.springframework.stereotype.Component
@@ -173,9 +173,7 @@ class SecurityConfig(
                 logoutRequestMatcher = AntPathRequestMatcher("/logout", "POST")
                 invalidateHttpSession = true
                 deleteCookies("JSESSIONID")
-                addLogoutHandler { _, response, _ ->
-                    response.status = HttpStatus.OK.value()
-                }
+                logoutSuccessHandler = HttpStatusReturningLogoutSuccessHandler()
             }
             csrf {
                 disable()

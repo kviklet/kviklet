@@ -27,6 +27,34 @@ class SettingsPage {
     await this.page.waitForURL("**/settings/connections");
   }
 
+  async navigateToUsers() {
+    await this.navigate();
+    await this.page.getByTestId("settings-users").click();
+    await this.page.waitForURL("**/settings/users");
+  }
+
+  async addUser(name: string, email: string, password: string) {
+    await this.navigateToUsers();
+    await this.page.getByTestId("add-user-button").click();
+    await this.page.getByTestId("name-input").fill(name);
+    await this.page.getByTestId("email-input").fill(email);
+    await this.page.getByTestId("password-input").fill(password);
+    await this.page.getByTestId("create-user-button").click();
+    await this.page.waitForSelector(`[data-testid="user-${email}"]`);
+  }
+
+  async addDeveloperRoleToUser(email: string) {
+    await this.navigateToUsers();
+
+    const userRow = this.page.getByTestId(`user-${email}`);
+    const roleCombobox = userRow.getByTestId("role-combobox-button");
+    await roleCombobox.click();
+    await this.page.getByTestId("role-combobox-option-Developer Role").click();
+    await roleCombobox.click();
+
+    await expect(roleCombobox).toContainText("Developer", { timeout: 5000 });
+  }
+
   async createConnection(
     name: string,
     type: string,
@@ -35,7 +63,8 @@ class SettingsPage {
     host: string,
     port: string,
     database?: string,
-    additionalOptions?: string
+    additionalOptions?: string,
+    requiredReviews?: number
   ) {
     await this.page.getByTestId("add-connection-button").click();
     await this.page.getByTestId("connection-name").fill(name);
@@ -43,7 +72,9 @@ class SettingsPage {
     await this.page.getByTestId("connection-username").fill(username);
     await this.page.getByTestId("connection-password").fill(password);
     await this.page.getByTestId("connection-hostname").fill(host);
-    await this.page.getByTestId("connection-required-reviews").fill("0");
+    await this.page
+      .getByTestId("connection-required-reviews")
+      .fill(requiredReviews?.toString() ?? "0");
     await this.page.getByTestId("advanced-options-button").click();
     await this.page.getByTestId("connection-port").fill(port);
     if (database) {
@@ -55,6 +86,7 @@ class SettingsPage {
         .fill(additionalOptions);
     }
     await this.page.getByTestId("create-connection-button").click();
+    await this.page.waitForSelector(`[data-testid="connection-card-${name}"]`);
   }
 }
 

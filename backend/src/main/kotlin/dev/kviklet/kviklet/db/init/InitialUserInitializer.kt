@@ -56,7 +56,27 @@ class InitialUserInitializer(private val roleRepository: RoleRepository) {
                     resource = "*",
                 ),
                 PolicyEntity(
+                    action = Permission.EXECUTION_REQUEST_REVIEW.getPermissionString(),
+                    effect = PolicyEffect.ALLOW,
+                    resource = "*",
+                ),
+                PolicyEntity(
                     action = Permission.EXECUTION_REQUEST_EXECUTE.getPermissionString(),
+                    effect = PolicyEffect.ALLOW,
+                    resource = "*",
+                ),
+                PolicyEntity(
+                    action = Permission.USER_GET.getPermissionString(),
+                    effect = PolicyEffect.ALLOW,
+                    resource = "*",
+                ),
+                PolicyEntity(
+                    action = Permission.USER_EDIT.getPermissionString(),
+                    effect = PolicyEffect.ALLOW,
+                    resource = "*",
+                ),
+                PolicyEntity(
+                    action = Permission.ROLE_GET.getPermissionString(),
                     effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
