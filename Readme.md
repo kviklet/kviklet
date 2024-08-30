@@ -7,7 +7,7 @@ Secure access to production environments without impairing developer productivit
 ![Kviklet](images/ExecutedRequest_light.png#gh-light-mode-only)
 ![Kviklet](images/ExecutedRequest_dark.png#gh-dark-mode-only)
 
-Kviklet embraces the **Four-Eyes Principle** and a high level of configurability, to allow a **Pull Request-like Review and Approval** flow for individual SQL statements or Database sessions. This allows engineering teams to self regulate on who gets access to what data and when. This allow your organization to stay secure and compliant while still allowing for modern empowering true to DevOps workflows.
+Kviklet (pronounced Quick-let) embraces the **Four-Eyes Principle** and a high level of configurability, to allow a **Pull Request-like Review and Approval** flow for individual SQL statements or Database sessions. This allows engineering teams to self regulate on who gets access to what data and when. This allow your organization to stay secure and compliant while still allowing for modern empowering true to DevOps workflows.
 
 Kviklet is a self hosted docker container, that provides you with a Single Page Web app that you can login to create your SQL requests or approve the ones of others.
 
