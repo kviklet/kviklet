@@ -56,7 +56,7 @@ const DatasourceExecutionRequestSchema = z
   .object({
     connectionType: z.literal("DATASOURCE"),
     title: z.string().min(1, { message: "Title is required" }),
-    type: z.enum(["TemporaryAccess", "SingleExecution", "SQLDump"]),
+    type: z.enum(["TemporaryAccess", "SingleExecution", "Dump"]),
     description: z.string(),
     statement: z.string().optional(),
     connectionId: z.string().min(1),
@@ -64,7 +64,7 @@ const DatasourceExecutionRequestSchema = z
   .refine(
     (data) =>
       data.type === "TemporaryAccess" ||
-      "SQLDump" ||
+      "Dump" ||
       (!!data.statement && data.type === "SingleExecution"),
     {
       message: "If you create a query request an SQL statement is rquired",
@@ -119,7 +119,7 @@ interface PreConfiguredStateKubernetes {
 
 interface PreConfiguredStateDatasource {
   connectionId: string;
-  mode: "SingleExecution" | "TemporaryAccess" | "SQLDump";
+  mode: "SingleExecution" | "TemporaryAccess" | "Dump";
   connectionType: "Datasource";
   title: string;
   description: string;
@@ -136,7 +136,7 @@ export default function ConnectionChooser() {
     ConnectionResponse | undefined
   >(undefined);
   const [chosenMode, setChosenMode] = useState<
-    "SingleExecution" | "TemporaryAccess" | "SQLDump" | undefined
+    "SingleExecution" | "TemporaryAccess" | "Dump" | undefined
   >(undefined);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -213,12 +213,6 @@ export default function ConnectionChooser() {
                       className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
                     >
                       {filteredConnections.map((connection) => {
-                        // TODO: Here we will enable the dump for PostgresSQL when pg_dump issue is resolved in the backend
-                        // Only enable DB dump for MySQL
-                        const sqlDumpEnabled =
-                          connection._type === "DATASOURCE" &&
-                          connection.type === DatabaseType.MYSQL;
-
                         return (
                           <Card
                             header={connection.displayName}
@@ -237,11 +231,14 @@ export default function ConnectionChooser() {
                             }}
                             clickSQLDump={() => {
                               setChosenConnection(connection);
-                              setChosenMode("SQLDump");
+                              setChosenMode("Dump");
                               close();
                             }}
                             connectionType={connection._type}
-                            sqlDumpEnabled={sqlDumpEnabled}
+                            sqlDumpEnabled={
+                              connection._type === "DATASOURCE" &&
+                              connection.dumpsEnabled
+                            }
                           ></Card>
                         );
                       })}
@@ -279,7 +276,7 @@ const DatasourceExecutionRequestForm = ({
   mode,
 }: {
   connection: ConnectionResponse;
-  mode: "SingleExecution" | "TemporaryAccess" | "SQLDump";
+  mode: "SingleExecution" | "TemporaryAccess" | "Dump";
 }) => {
   const navigate = useNavigate();
 
@@ -363,7 +360,7 @@ const DatasourceExecutionRequestForm = ({
             id="title-input"
             type="text"
             placeholder={
-              mode === "SQLDump" ? "Give the request a title" : "My query"
+              mode === "Dump" ? "Give the request a title" : "My query"
             }
             data-testid="request-title"
             {...register("title")}

@@ -94,7 +94,7 @@ const CSVDownloadSchema = z.object({
 
 const RawDatasourceRequestSchema = z.object({
   id: z.string(),
-  type: z.enum(["TemporaryAccess", "SingleExecution", "SQLDump"]),
+  type: z.enum(["TemporaryAccess", "SingleExecution", "Dump"]),
   author: userResponseSchema,
   title: z.string().min(1),
   description: z.string(),
@@ -315,7 +315,9 @@ const addReviewToRequest = async (
   );
 };
 
-const SQLDumpRequest = async (connectionId: string): Promise<Uint8Array[]> => {
+const SQLDumpRequest = async (
+  connectionId: string,
+): Promise<ReadableStream<Uint8Array>> => {
   // Request SQL dump data from the backend which returns an array of encoded strings in chunks
   const response = await fetch(`${requestUrl}stream-sql-dump/${connectionId}`, {
     method: "GET",
@@ -327,20 +329,8 @@ const SQLDumpRequest = async (connectionId: string): Promise<Uint8Array[]> => {
       `Failed to fetch SQL dump: ${response.status} ${response.statusText}`,
     );
   }
-  const base64Chunks = (await response.json()) as string[];
-
-  // Convert Base64 encoded strings to Uint8Array
-  const decodedChunks = base64Chunks.map((chunk: string) => {
-    // Decode Base64 to binary string
-    const binaryString = atob(chunk);
-    const binaryLen = binaryString.length;
-    const bytes = new Uint8Array(binaryLen);
-    for (let i = 0; i < binaryLen; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
-  });
-  return decodedChunks;
+  if (response.body === null) throw new Error("Response body is null");
+  return response.body;
 };
 
 function withType<T, U extends string>(schema: z.ZodSchema<T>, typeValue: U) {

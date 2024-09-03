@@ -62,6 +62,7 @@ class ConnectionService(
                 )
             } ?: connection.reviewConfig,
             request.additionalJDBCOptions ?: connection.additionalOptions,
+            dumpsEnabled = request.dumpsEnabled ?: connection.dumpsEnabled,
         )
     }
 
@@ -118,6 +119,7 @@ class ConnectionService(
         type: DatasourceType,
         protocol: DatabaseProtocol,
         additionalJDBCOptions: String,
+        dumpsEnabled: Boolean,
     ): Connection = connectionAdapter.createDatasourceConnection(
         connectionId,
         displayName,
@@ -135,6 +137,7 @@ class ConnectionService(
         type,
         protocol,
         additionalJDBCOptions,
+        dumpsEnabled,
     )
 
     @Policy(Permission.DATASOURCE_CONNECTION_CREATE, checkIsPresentOnly = true)
@@ -152,6 +155,7 @@ class ConnectionService(
         type: DatasourceType,
         protocol: DatabaseProtocol,
         additionalJDBCOptions: String,
+        dumpsEnabled: Boolean,
     ): TestConnectionResult {
         val connection = DatasourceConnection(
             connectionId,
@@ -168,6 +172,7 @@ class ConnectionService(
             type,
             protocol,
             additionalJDBCOptions,
+            dumpsEnabled,
         )
         val accessibleDatabases = mutableListOf<String>()
         if (!databaseName.isNullOrBlank()) {

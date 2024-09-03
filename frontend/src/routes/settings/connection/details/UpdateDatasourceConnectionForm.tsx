@@ -5,7 +5,11 @@ import {
   DatabaseType,
 } from "../../../../api/DatasourceApi";
 import InputField, { TextField } from "../../../../components/InputField";
-import { Disclosure } from "@headlessui/react";
+import {
+  Disclosure,
+  DisclosureButton,
+  DisclosurePanel,
+} from "@headlessui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import { getJDBCOptionsPlaceholder } from "../DatabaseConnectionForm";
 import Button from "../../../../components/Button";
@@ -28,6 +32,7 @@ const datasourceConnectionFormSchema = z
       numTotalRequired: z.coerce.number(),
     }),
     additionalJDBCOptions: z.string(),
+    dumpsEnabled: z.boolean(),
   })
   .transform((data) => ({ ...data, connectionType: "DATASOURCE" }));
 
@@ -88,11 +93,14 @@ export default function UpdateDatasourceConnectionForm({
       additionalJDBCOptions: connection.additionalJDBCOptions || "",
       maxExecutions: connection.maxExecutions,
       connectionType: "DATASOURCE",
+      dumpsEnabled: connection.dumpsEnabled,
     },
     schema: datasourceConnectionFormSchema,
     onSubmit: editConnection,
     connectionType: "DATASOURCE",
   });
+
+  console.log("hellos");
 
   const watchType = watch("type");
   useEffect(() => {
@@ -210,7 +218,7 @@ export default function UpdateDatasourceConnectionForm({
             <Disclosure defaultOpen={true}>
               {({ open }) => (
                 <>
-                  <Disclosure.Button className="py-2">
+                  <DisclosureButton className="py-2">
                     <div className="flex flex-row justify-between">
                       <div className="flex flex-row">
                         <div>Advanced Options</div>
@@ -223,8 +231,8 @@ export default function UpdateDatasourceConnectionForm({
                         )}
                       </div>
                     </div>
-                  </Disclosure.Button>
-                  <Disclosure.Panel unmount={false}>
+                  </DisclosureButton>
+                  <DisclosurePanel unmount={false}>
                     <div className="flex-col space-y-2">
                       <InputField
                         id="databaseName"
@@ -257,8 +265,21 @@ export default function UpdateDatasourceConnectionForm({
                         {...register("maxExecutions")}
                         error={errors.maxExecutions?.message}
                       />
+                      <div className="flex w-full justify-between">
+                        <label
+                          htmlFor="dumpsEnabled"
+                          className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
+                        >
+                          Dumps Enabled
+                        </label>
+                        <input
+                          type="checkbox"
+                          className="my-auto h-4 w-4"
+                          {...register("dumpsEnabled")}
+                        />
+                      </div>
                     </div>
-                  </Disclosure.Panel>
+                  </DisclosurePanel>
                 </>
               )}
             </Disclosure>

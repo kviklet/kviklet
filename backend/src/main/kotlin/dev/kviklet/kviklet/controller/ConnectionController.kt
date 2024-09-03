@@ -87,6 +87,7 @@ data class CreateDatasourceConnectionRequest(
     val hostname: String,
     val port: Int,
     val additionalJDBCOptions: String = "",
+    val dumpsEnabled: Boolean = false,
 
 ) : ConnectionRequest()
 
@@ -128,6 +129,8 @@ data class UpdateDatasourceConnectionRequest(
     val reviewConfig: ReviewConfigRequest? = null,
 
     val additionalJDBCOptions: String? = null,
+
+    val dumpsEnabled: Boolean? = null,
 ) : UpdateConnectionRequest()
 
 data class UpdateKubernetesConnectionRequest(
@@ -174,6 +177,7 @@ data class DatasourceConnectionResponse(
     val description: String,
     val reviewConfig: ReviewConfigResponse,
     val additionalJDBCOptions: String,
+    val dumpsEnabled: Boolean,
 ) : ConnectionResponse(ConnectionType.DATASOURCE) {
     companion object {
         fun fromDto(datasourceConnection: DatasourceConnection) = DatasourceConnectionResponse(
@@ -192,6 +196,7 @@ data class DatasourceConnectionResponse(
                 datasourceConnection.reviewConfig.numTotalRequired,
             ),
             additionalJDBCOptions = datasourceConnection.additionalOptions,
+            dumpsEnabled = datasourceConnection.dumpsEnabled,
         )
     }
 }
@@ -255,6 +260,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             protocol = request.protocol ?: request.type.toProtocol(),
             additionalJDBCOptions = request.additionalJDBCOptions,
             maxExecutions = request.maxExecutions,
+            dumpsEnabled = request.dumpsEnabled,
         )
 
     private fun testDatabaseConnection(request: CreateDatasourceConnectionRequest): TestConnectionResult =
@@ -272,6 +278,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             protocol = request.protocol ?: request.type.toProtocol(),
             additionalJDBCOptions = request.additionalJDBCOptions,
             maxExecutions = request.maxExecutions,
+            dumpsEnabled = request.dumpsEnabled,
         )
 
     private fun createKubernetesConnection(request: CreateKubernetesConnectionRequest): Connection =

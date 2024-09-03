@@ -81,6 +81,7 @@ data class DatasourceConnection(
     val type: DatasourceType,
     val protocol: DatabaseProtocol,
     val additionalOptions: String,
+    val dumpsEnabled: Boolean,
 ) : Connection(id, displayName, description, reviewConfig, maxExecutions) {
     fun getConnectionString(): String = when (type) {
         DatasourceType.POSTGRESQL ->

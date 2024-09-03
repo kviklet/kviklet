@@ -44,7 +44,7 @@ function TopBanner() {
 
   return (
     <div className="supports-backdrop-blur:bg-white/95 sticky top-0 z-40 mx-auto h-16 w-full flex-none border-b border-slate-900/10 backdrop-blur transition-colors duration-500 dark:border-b-slate-700">
-      <div className="mx-0 mx-4 px-8 py-4">
+      <div className="mx-4 px-8 py-4">
         <div className="relative flex items-center">
           <Link to="/">
             <div className="flex">

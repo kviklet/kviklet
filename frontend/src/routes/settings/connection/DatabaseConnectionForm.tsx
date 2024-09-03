@@ -42,6 +42,7 @@ const connectionFormSchema = z
     }),
     additionalJDBCOptions: z.string(),
     maxExecutions: z.coerce.number().nullable(),
+    dumpsEnabled: z.boolean(),
   })
   .transform((data) => ({ ...data, connectionType: "DATASOURCE" }));
 
@@ -106,6 +107,7 @@ export default function DatabaseConnectionForm(props: {
   const [protocolOptions, setProtocolOptions] = useState<DatabaseProtocol[]>([
     DatabaseProtocol.POSTGRESQL,
   ]);
+  const [dumpsEnabledVisible, setDumpsEnabledVisible] = useState(false);
 
   const watchDisplayName = watch("displayName");
   const watchId = watch("id");
@@ -131,6 +133,7 @@ export default function DatabaseConnectionForm(props: {
     setValue("type", DatabaseType.POSTGRES);
     setValue("protocol", DatabaseProtocol.POSTGRESQL);
     setValue("maxExecutions", 1);
+    setValue("dumpsEnabled", false);
   }, []);
 
   const updatePortIfNotTouched = (port: number) => {
@@ -154,6 +157,7 @@ export default function DatabaseConnectionForm(props: {
     if (watchType === DatabaseType.MYSQL) {
       updatePortIfNotTouched(3306);
       updateJDBCOptionsIfNotTouched("?allowMultiQueries=true");
+      setDumpsEnabledVisible(true);
     }
     if (watchType === DatabaseType.MARIADB) {
       updatePortIfNotTouched(3306);
@@ -349,6 +353,21 @@ export default function DatabaseConnectionForm(props: {
                         {...register("maxExecutions")}
                         error={errors.maxExecutions?.message}
                       />
+                      {dumpsEnabledVisible && (
+                        <div className="flex w-full justify-between">
+                          <label
+                            htmlFor="dumpsEnabled"
+                            className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+                          >
+                            Dumps Enabled
+                          </label>
+                          <input
+                            type="checkbox"
+                            className="my-auto h-4 w-4"
+                            {...register("dumpsEnabled")}
+                          />
+                        </div>
+                      )}
                       <TestingConnectionFragment
                         handleSubmit={handleSubmit}
                         type={watchType}

@@ -515,7 +515,7 @@ function DatasourceRequestBox({
   const fileHandler = async (connectionId: string) => {
     try {
       // Create a handle for the file the user wants to save
-      const fileHandle = await window.showSaveFilePicker({
+      const fileHandle: FileSystemFileHandle = await window.showSaveFilePicker({
         suggestedName: `${connectionId}.sql`,
         types: [
           {
@@ -536,23 +536,10 @@ function DatasourceRequestBox({
   // Function to handle streaming the SQL dump and saving it to a file
   const handleStreamSQLDump = async (connectionId: string) => {
     try {
-      // Get a file handle to write the file
       const fileHandle = await fileHandler(connectionId);
-      // Request and decode the SQL dump data
-      const decodedChunks = await SQLDumpRequest(connectionId);
+      const responseStream = await SQLDumpRequest(connectionId);
 
-      // Create a ReadableStream from decoded chunks
-      const readableStream = new ReadableStream<Uint8Array>({
-        start(controller) {
-          decodedChunks.forEach((chunk: Uint8Array) => {
-            controller.enqueue(chunk);
-          });
-          controller.close();
-        },
-      });
-
-      const reader = readableStream.getReader();
-      // Create a writable stream to write data to the file
+      const reader = responseStream.getReader();
       const writableStream = await fileHandle.createWritable();
 
       // Handle reading from the readable stream and writing to the writable stream
@@ -603,7 +590,7 @@ function DatasourceRequestBox({
   };
 
   const handleButtonClick = async () => {
-    if (request?.type === "SQLDump") {
+    if (request?.type === "Dump") {
       setChosenConnection(request.connection);
       setShowSQLDumpModal(true);
     } else {
@@ -713,6 +700,7 @@ function DatasourceRequestBox({
             {request?.type == "SingleExecution" ? "Run Query" : "Start Session"}
           </Button>
         )}
+        <SQLDumpModal />
       </div>
     </div>
   );

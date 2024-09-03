@@ -12,7 +12,6 @@ import dev.kviklet.kviklet.security.UserDetailsWithId
 import net.sf.jsqlparser.JSQLParserException
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import org.springframework.core.io.InputStreamResource
-import reactor.core.publisher.Flux
 import java.io.Serializable
 import java.time.LocalDateTime
 
@@ -40,7 +39,7 @@ enum class ExecutionStatus {
 enum class RequestType {
     SingleExecution,
     TemporaryAccess,
-    SQLDump,
+    Dump,
 }
 
 /**
@@ -185,7 +184,7 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
 
     fun resolveExecutionStatus(): ExecutionStatus {
         when (request.type) {
-            RequestType.SingleExecution, RequestType.SQLDump -> {
+            RequestType.SingleExecution, RequestType.Dump -> {
                 val executions = events.filter { it.type == EventType.EXECUTE }
                 request.connection.maxExecutions?.let { maxExecutions ->
                     if (maxExecutions == 0) { // magic number for unlimited executions
@@ -233,7 +232,7 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
     private fun isExecutable(): Boolean = resolveReviewStatus() == ReviewStatus.APPROVED
 
     fun csvDownloadAllowed(query: String? = null): Pair<Boolean, String> {
-        if (request.type === RequestType.SQLDump) {
+        if (request.type === RequestType.Dump) {
             return Pair(false, "CSV download is not available for SQLDump")
         }
 
@@ -254,7 +253,7 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         }
 
         val queryToExecute = when (request.type) {
-            RequestType.SingleExecution, RequestType.SQLDump -> request.statement!!.trim().removeSuffix(";")
+            RequestType.SingleExecution, RequestType.Dump -> request.statement!!.trim().removeSuffix(";")
             RequestType.TemporaryAccess -> query?.trim()?.removeSuffix(
                 ";",
             ) ?: return Pair(false, "Query can't be empty")
@@ -298,19 +297,4 @@ data class SQLDumpResponse(val resource: InputStreamResource, val fileName: Stri
     override fun getDomainObjectType(): Resource = Resource.EXECUTION_REQUEST
 
     override fun getRelated(resource: Resource): SecuredDomainObject? = null
-}
-
-class StreamedSQLDump(
-    private val flux: Flux<ByteArray>,
-    private val securedObjectId: String,
-    private val domainObjectType: Resource,
-) : SecuredDomainObject {
-
-    override fun getSecuredObjectId(): String? = securedObjectId
-
-    override fun getDomainObjectType(): Resource = domainObjectType
-
-    override fun getRelated(resource: Resource): SecuredDomainObject? = null
-
-    fun toFlux(): Flux<ByteArray> = flux
 }

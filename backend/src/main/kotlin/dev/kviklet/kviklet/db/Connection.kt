@@ -73,6 +73,7 @@ class ConnectionEntity(
     var port: Int? = null,
     @Column(name = "additional_jdbc_options")
     var additionalJDBCOptions: String? = null,
+    var dumpsEnabled: Boolean = false,
 ) {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
@@ -175,6 +176,7 @@ class ConnectionAdapter(
         type: DatasourceType,
         protocol: DatabaseProtocol,
         additionalJDBCOptions: String,
+        dumpsEnabled: Boolean,
     ): Connection = decryptCredentialsIfNeeded(
         save(
             ConnectionEntity(
@@ -194,6 +196,7 @@ class ConnectionAdapter(
                 protocol = protocol,
                 connectionType = ConnectionType.DATASOURCE,
                 additionalJDBCOptions = additionalJDBCOptions,
+                dumpsEnabled = dumpsEnabled,
             ),
         ),
     )
@@ -212,6 +215,7 @@ class ConnectionAdapter(
         databaseName: String?,
         reviewConfig: ReviewConfig,
         additionalJDBCOptions: String,
+        dumpsEnabled: Boolean,
     ): Connection {
         val datasourceConnection = connectionRepository.findByIdOrNull(id.toString())
             ?: throw EntityNotFound(
@@ -234,6 +238,7 @@ class ConnectionAdapter(
         datasourceConnection.reviewConfig = reviewConfig
         datasourceConnection.additionalJDBCOptions = additionalJDBCOptions
         datasourceConnection.isEncrypted = false
+        datasourceConnection.dumpsEnabled = dumpsEnabled
 
         return decryptCredentialsIfNeeded(save(datasourceConnection))
     }
@@ -310,6 +315,7 @@ class ConnectionAdapter(
                 type = connection.datasourceType!!,
                 protocol = connection.protocol ?: connection.datasourceType!!.toProtocol(),
                 additionalOptions = connection.additionalJDBCOptions ?: "",
+                dumpsEnabled = connection.dumpsEnabled,
             )
         ConnectionType.KUBERNETES ->
             KubernetesConnection(
