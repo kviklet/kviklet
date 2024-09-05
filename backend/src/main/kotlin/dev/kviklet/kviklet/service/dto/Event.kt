@@ -3,6 +3,7 @@ package dev.kviklet.kviklet.service.dto
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonValue
 import dev.kviklet.kviklet.db.CommentPayload
+import dev.kviklet.kviklet.db.DumpResultLogPayload
 import dev.kviklet.kviklet.db.EditPayload
 import dev.kviklet.kviklet.db.ErrorResultLogPayload
 import dev.kviklet.kviklet.db.ExecutePayload
@@ -79,6 +80,7 @@ abstract class Event(
                         is ErrorResultLogPayload -> ErrorResultLog(it.errorCode, it.message)
                         is UpdateResultLogPayload -> UpdateResultLog(it.rowsUpdated)
                         is QueryResultLogPayload -> QueryResultLog(it.columnCount, it.rowCount)
+                        is DumpResultLogPayload -> DumpResultLog(it.size)
                     }
                 }
                 ExecuteEvent(
@@ -145,6 +147,7 @@ enum class ResultType {
     ERROR,
     UPDATE,
     QUERY,
+    DUMP,
 }
 
 sealed class ResultLog(val type: ResultType)
@@ -154,3 +157,5 @@ data class ErrorResultLog(val errorCode: Int, val message: String) : ResultLog(R
 data class UpdateResultLog(val rowsUpdated: Int) : ResultLog(ResultType.UPDATE)
 
 data class QueryResultLog(val columnCount: Int, val rowCount: Int) : ResultLog(ResultType.QUERY)
+
+data class DumpResultLog(val size: Long) : ResultLog(ResultType.DUMP)

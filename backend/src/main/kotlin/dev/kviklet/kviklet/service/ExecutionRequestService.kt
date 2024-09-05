@@ -20,6 +20,8 @@ import dev.kviklet.kviklet.service.dto.DBExecutionResult
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
 import dev.kviklet.kviklet.service.dto.DatasourceType
+import dev.kviklet.kviklet.service.dto.DumpResultLog
+import dev.kviklet.kviklet.service.dto.ErrorResultLog
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventType
 import dev.kviklet.kviklet.service.dto.ExecuteEvent
@@ -126,14 +128,6 @@ class ExecutionRequestService(
         command = request.command,
     )
 
-    /**
-     * Constructs a command list for dumping a SQL database based on the connection type.
-     *
-     * @param connection The DatasourceConnection object containing connection details.
-     * @param outputFile An optional file path where the SQL dump will be saved.
-     * @return A list of strings representing the command to execute.
-     * @throws IllegalArgumentException If the database type is unsupported.
-     */
     private fun constructSQLDumpCommand(connection: DatasourceConnection, outputFile: String? = null): List<String> =
         when (connection.type) {
             DatasourceType.MYSQL -> {
@@ -159,49 +153,72 @@ class ExecutionRequestService(
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
-    fun streamSQLDump(executionRequestId: ExecutionRequestId, outputStream: OutputStream) {
+    fun streamSQLDump(executionRequestId: ExecutionRequestId, outputStream: OutputStream, userId: String) {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(executionRequestId)
 
         val connection = connectionService.getDatasourceConnection(executionRequest.request.connection.id)
 
-        if (connection !is DatasourceConnection) {
-            throw RuntimeException("Only Datasource connections can be dumped")
+        val reviewStatus = executionRequest.resolveReviewStatus()
+        if (reviewStatus != ReviewStatus.APPROVED) {
+            throw InvalidReviewException("This request has not been approved yet!")
         }
 
-        // Construct SQL dump command
-        val command = constructSQLDumpCommand(connection)
+        executionRequest.raiseIfAlreadyExecuted()
 
-        // Execute the SQL dump
+        if (connection !is DatasourceConnection) {
+            throw IllegalArgumentException("Only Datasource connections can be dumped")
+        }
+
+        val event = eventService.saveEvent(
+            executionRequestId,
+            userId,
+            ExecutePayload(
+                isDump = true,
+            ),
+        )
+
+        val command = constructSQLDumpCommand(connection)
         val process = ProcessBuilder(command).start()
         val inputStream = BufferedInputStream(process.inputStream)
+        var totalBytesRead = 0L
         try {
-            // Buffer to read chunks of data from the process input stream
             val buffer = ByteArray(8192)
             var bytesRead: Int
 
-            // Read from the input stream in chunks and write to the output stream
             while (inputStream.read(buffer).also { bytesRead = it } != -1) {
                 outputStream.write(buffer, 0, bytesRead)
+                totalBytesRead += bytesRead
                 outputStream.flush()
                 logger.info("Read and sent $bytesRead bytes")
             }
 
-            // Wait for the process to complete and check the exit code
             val exitCode = process.waitFor()
             if (exitCode != 0) {
                 val errorStream = process.errorStream.bufferedReader().use { it.readText() }
-                throw Exception("SQL dump command failed: $errorStream")
+                throw RuntimeException("SQL dump command failed: $errorStream")
             }
         } catch (e: Exception) {
-            throw Exception("Unexpected error occurred: ${e.message}")
+            eventService.addResultLogs(
+                event.eventId!!,
+                listOf(
+                    ErrorResultLog(
+                        errorCode = 0,
+                        message = "An error occurred while dumping the database: ${e.message}",
+                    ),
+                ),
+            )
+            throw RuntimeException("Unexpected error occurred during dump: ${e.message}")
         } finally {
             try {
-                inputStream?.close()
+                inputStream.close()
             } catch (e: IOException) {
                 logger.error("Error closing inputStream: ${e.message}")
             }
-            process?.destroy()
+            process.destroy()
         }
+
+        val resultLogs = listOf(DumpResultLog(totalBytesRead))
+        eventService.addResultLogs(event.eventId!!, resultLogs)
     }
 
     @Transactional

@@ -57,6 +57,7 @@ data class ExecutePayload(
     val namespace: String? = null,
     val results: List<ResultLogPayload> = emptyList(),
     val isDownload: Boolean = false,
+    val isDump: Boolean = false,
 ) : Payload(EventType.EXECUTE)
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -78,6 +79,8 @@ data class ErrorResultLogPayload(val errorCode: Int, val message: String) : Resu
 data class UpdateResultLogPayload(val rowsUpdated: Int) : ResultLogPayload(ResultType.UPDATE)
 
 data class QueryResultLogPayload(val columnCount: Int, val rowCount: Int) : ResultLogPayload(ResultType.QUERY)
+
+data class DumpResultLogPayload(val size: Long) : ResultLogPayload(ResultType.DUMP)
 
 @Entity(name = "event")
 class EventEntity(

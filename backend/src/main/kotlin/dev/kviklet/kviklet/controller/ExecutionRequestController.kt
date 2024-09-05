@@ -11,6 +11,7 @@ import dev.kviklet.kviklet.service.dto.CommentEvent
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DBExecutionResult
 import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
+import dev.kviklet.kviklet.service.dto.DumpResultLog
 import dev.kviklet.kviklet.service.dto.EditEvent
 import dev.kviklet.kviklet.service.dto.ErrorQueryResult
 import dev.kviklet.kviklet.service.dto.ErrorResultLog
@@ -484,6 +485,9 @@ abstract class ResultLogResponse(val type: ResultType) {
                 columnCount = dto.columnCount,
                 rowCount = dto.rowCount,
             )
+            is DumpResultLog -> DumpResultLogResponse(
+                size = dto.size,
+            )
         }
     }
 }
@@ -493,6 +497,8 @@ data class ErrorResultLogResponse(val errorCode: Int, val message: String) : Res
 data class UpdateResultLogResponse(val rowsUpdated: Int) : ResultLogResponse(ResultType.UPDATE)
 
 data class QueryResultLogResponse(val columnCount: Int, val rowCount: Int) : ResultLogResponse(ResultType.QUERY)
+
+data class DumpResultLogResponse(val size: Long) : ResultLogResponse(ResultType.DUMP)
 
 data class ProxyResponse(val port: Int, val username: String, val password: String)
 
@@ -514,9 +520,12 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
     """,
     )
     @GetMapping("/{executionRequestId}/dump")
-    fun dump(@PathVariable executionRequestId: ExecutionRequestId): ResponseEntity<StreamingResponseBody> {
+    fun dump(
+        @PathVariable executionRequestId: ExecutionRequestId,
+        @CurrentUser userDetails: UserDetailsWithId,
+    ): ResponseEntity<StreamingResponseBody> {
         val streamingResponseBody = StreamingResponseBody { outputStream: OutputStream ->
-            executionRequestService.streamSQLDump(executionRequestId, outputStream)
+            executionRequestService.streamSQLDump(executionRequestId, outputStream, userDetails.id)
         }
 
         return ResponseEntity.ok()
