@@ -513,14 +513,14 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
      avoiding the need to save any temporary file in memory.
     """,
     )
-    @GetMapping("/stream-sql-dump/{connectionId}")
-    fun streamSQLDump(@PathVariable connectionId: String): ResponseEntity<StreamingResponseBody> {
+    @GetMapping("/{executionRequestId}/dump")
+    fun dump(@PathVariable executionRequestId: ExecutionRequestId): ResponseEntity<StreamingResponseBody> {
         val streamingResponseBody = StreamingResponseBody { outputStream: OutputStream ->
-            executionRequestService.streamSQLDump(connectionId, outputStream)
+            executionRequestService.streamSQLDump(executionRequestId, outputStream)
         }
 
         return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"$connectionId.sql\"")
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"$executionRequestId.sql\"")
             .contentType(MediaType.APPLICATION_OCTET_STREAM)
             .body(streamingResponseBody)
     }

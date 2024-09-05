@@ -159,39 +159,38 @@ class ExecutionRequestService(
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
-    fun streamSQLDump(connectionId: String, outputStream: OutputStream) {
-        var inputStream: BufferedInputStream? = null
-        var process: Process? = null
+    fun streamSQLDump(executionRequestId: ExecutionRequestId, outputStream: OutputStream) {
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(executionRequestId)
+
+        val connection = connectionService.getDatasourceConnection(executionRequest.request.connection.id)
+
+        if (connection !is DatasourceConnection) {
+            throw RuntimeException("Only Datasource connections can be dumped")
+        }
+
+        // Construct SQL dump command
+        val command = constructSQLDumpCommand(connection)
+
+        // Execute the SQL dump
+        val process = ProcessBuilder(command).start()
+        val inputStream = BufferedInputStream(process.inputStream)
         try {
-            val connection = connectionService.getDatasourceConnection(ConnectionId(connectionId))
+            // Buffer to read chunks of data from the process input stream
+            val buffer = ByteArray(8192)
+            var bytesRead: Int
 
-            if (connection is DatasourceConnection) {
-                // Construct SQL dump command
-                val command = constructSQLDumpCommand(connection)
+            // Read from the input stream in chunks and write to the output stream
+            while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                outputStream.write(buffer, 0, bytesRead)
+                outputStream.flush()
+                logger.info("Read and sent $bytesRead bytes")
+            }
 
-                // Execute the SQL dump
-                process = ProcessBuilder(command).start()
-                inputStream = BufferedInputStream(process.inputStream)
-
-                // Buffer to read chunks of data from the process input stream
-                val buffer = ByteArray(8192)
-                var bytesRead: Int
-
-                // Read from the input stream in chunks and write to the output stream
-                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                    outputStream.write(buffer, 0, bytesRead)
-                    outputStream.flush()
-                    logger.info("Read and sent $bytesRead bytes")
-                }
-
-                // Wait for the process to complete and check the exit code
-                val exitCode = process.waitFor()
-                if (exitCode != 0) {
-                    val errorStream = process.errorStream.bufferedReader().use { it.readText() }
-                    throw Exception("SQL dump command failed: $errorStream")
-                }
-            } else {
-                throw Exception("Invalid connection type for connectionId: $connectionId")
+            // Wait for the process to complete and check the exit code
+            val exitCode = process.waitFor()
+            if (exitCode != 0) {
+                val errorStream = process.errorStream.bufferedReader().use { it.readText() }
+                throw Exception("SQL dump command failed: $errorStream")
             }
         } catch (e: Exception) {
             throw Exception("Unexpected error occurred: ${e.message}")

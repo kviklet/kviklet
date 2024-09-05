@@ -12,7 +12,7 @@ import {
   KubernetesExecutionRequestResponseWithComments,
   DatasourceExecutionRequestResponseWithComments,
   KubernetesExecuteResponse,
-  SQLDumpRequest,
+  streamDump,
 } from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
 import { mapStatus, mapStatusToLabelColor, timeSince } from "./Requests";
@@ -43,7 +43,6 @@ import useRequest, {
 } from "../hooks/request";
 import Modal from "../components/Modal";
 import SQLDumpConfirm from "../components/SQLDumpConfirm";
-import { ConnectionResponse } from "../api/DatasourceApi";
 import useNotification from "../hooks/useNotification";
 
 interface RequestReviewParams {
@@ -429,9 +428,6 @@ function DatasourceRequestBox({
   const [editMode, setEditMode] = useState(false);
   const { addNotification } = useNotification();
   const [showSQLDumpModal, setShowSQLDumpModal] = useState(false);
-  const [chosenConnection, setChosenConnection] = useState<
-    ConnectionResponse | undefined
-  >(undefined);
   const navigate = useNavigate();
   const [statement, setStatement] = useState(request?.statement || "");
   const changeStatement = async (
@@ -534,10 +530,13 @@ function DatasourceRequestBox({
   };
 
   // Function to handle streaming the SQL dump and saving it to a file
-  const handleStreamSQLDump = async (connectionId: string) => {
+  const handleStreamSQLDump = async (
+    executionRequestId: string,
+    connectionId: string,
+  ) => {
     try {
       const fileHandle = await fileHandler(connectionId);
-      const responseStream = await SQLDumpRequest(connectionId);
+      const responseStream = await streamDump(executionRequestId);
 
       const reader = responseStream.getReader();
       const writableStream = await fileHandle.createWritable();
@@ -576,13 +575,15 @@ function DatasourceRequestBox({
   };
 
   const SQLDumpModal = () => {
-    if (!showSQLDumpModal || !chosenConnection) return null;
+    if (!showSQLDumpModal || !request) return null;
     return (
       <Modal setVisible={setShowSQLDumpModal}>
         <SQLDumpConfirm
           title="Get SQL Dump"
-          message={`Are you sure you want to get sql dump from database ${chosenConnection?.displayName}?`}
-          onConfirm={() => handleStreamSQLDump(chosenConnection.id)} //Export Databse Request Streamed
+          message={`Are you sure you want to get sql dump from database ${request?.connection?.displayName}?`}
+          onConfirm={() =>
+            handleStreamSQLDump(request.id, request.connection.id)
+          }
           onCancel={() => setShowSQLDumpModal(false)}
         />
       </Modal>
@@ -591,7 +592,6 @@ function DatasourceRequestBox({
 
   const handleButtonClick = async () => {
     if (request?.type === "Dump") {
-      setChosenConnection(request.connection);
       setShowSQLDumpModal(true);
     } else {
       await runQuery();

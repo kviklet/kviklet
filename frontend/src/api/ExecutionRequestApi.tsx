@@ -315,11 +315,11 @@ const addReviewToRequest = async (
   );
 };
 
-const SQLDumpRequest = async (
-  connectionId: string,
+const streamDump = async (
+  executionRequestId: string,
 ): Promise<ReadableStream<Uint8Array>> => {
   // Request SQL dump data from the backend which returns an array of encoded strings in chunks
-  const response = await fetch(`${requestUrl}stream-sql-dump/${connectionId}`, {
+  const response = await fetch(`${requestUrl}${executionRequestId}/dump`, {
     method: "GET",
     credentials: "include",
   });
@@ -477,7 +477,7 @@ export {
   patchRequest,
   postStartServer,
   executeCommand,
-  SQLDumpRequest,
+  streamDump,
 };
 export type {
   DBExecuteResponseResult as ExecuteResponseResult,
