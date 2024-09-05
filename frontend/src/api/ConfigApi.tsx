@@ -11,6 +11,7 @@ const ConfigResponseSchema = z.object({
 
 export const ConfigPayloadSchema = ConfigResponseSchema.omit({
   oauthProvider: true,
+  ldapEnabled: true,
 });
 
 export type ConfigResponse = z.infer<typeof ConfigResponseSchema>;
