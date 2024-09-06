@@ -191,6 +191,7 @@ class ConnectionAdapter(
                 port = port,
                 hostname = hostname,
                 datasourceType = type,
+                protocol = protocol,
                 connectionType = ConnectionType.DATASOURCE,
                 additionalJDBCOptions = additionalJDBCOptions,
             ),
