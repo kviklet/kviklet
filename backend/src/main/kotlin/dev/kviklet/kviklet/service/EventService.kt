@@ -66,4 +66,6 @@ fun ExecuteEvent.toPayload(): Payload = ExecutePayload(
             is DumpResultLog -> DumpResultLogPayload(it.size)
         }
     },
+    isDownload = isDownload,
+    isDump = isDump,
 )

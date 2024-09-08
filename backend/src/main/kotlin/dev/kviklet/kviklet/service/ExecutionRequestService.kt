@@ -151,7 +151,6 @@ class ExecutionRequestService(
             }
         }
 
-    @Transactional
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
     fun streamSQLDump(executionRequestId: ExecutionRequestId, outputStream: OutputStream, userId: String) {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(executionRequestId)
@@ -207,7 +206,7 @@ class ExecutionRequestService(
                     ),
                 ),
             )
-            throw RuntimeException("Unexpected error occurred during dump: ${e.message}")
+            throw RuntimeException("Unexpected error occurred during dump: ${e.message}", e)
         } finally {
             try {
                 inputStream.close()

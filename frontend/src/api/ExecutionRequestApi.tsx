@@ -83,6 +83,7 @@ const ExecuteEvent = withType(
     createdAt: z.coerce.date(),
     id: z.string(),
     isDownload: z.boolean().optional(),
+    isDump: z.boolean().optional(),
   }),
   "EXECUTE",
 );

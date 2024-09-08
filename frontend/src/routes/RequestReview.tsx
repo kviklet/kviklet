@@ -784,6 +784,11 @@ function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
             <FontAwesomeIcon icon={solid("play")} />
           </div>
         </div>
+        {event?.isDump && (
+          <div className="text-sm text-slate-500">
+            {event?.author?.fullName} requested a SQL dump from the database.
+          </div>
+        )}
         {event?.query && (
           <div className="text-sm text-slate-500">
             {event?.author?.fullName} {sqlStatementText}

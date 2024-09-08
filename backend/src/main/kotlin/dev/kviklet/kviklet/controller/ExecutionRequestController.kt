@@ -414,6 +414,7 @@ abstract class EventResponse(val type: EventType, open val createdAt: LocalDateT
                 event.podName,
                 event.namespace,
                 event.isDownload,
+                event.isDump,
             )
             else -> {
                 throw IllegalStateException("Somehow found event of type ${event.type}")
@@ -463,6 +464,7 @@ data class ExecuteEventResponse(
     val podName: String? = null,
     val namespace: String? = null,
     val isDownload: Boolean = false,
+    val isDump: Boolean = false,
 ) : EventResponse(EventType.EXECUTE, createdAt)
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
