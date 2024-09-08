@@ -178,6 +178,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             DatasourceType.POSTGRESQL,
             DatabaseProtocol.POSTGRESQL,
             additionalJDBCOptions = "",
+            dumpsEnabled = false,
         )
 
     @Transactional
@@ -199,6 +200,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             DatasourceType.MONGODB,
             DatabaseProtocol.MONGODB,
             additionalJDBCOptions = "",
+            dumpsEnabled = false,
         )
 
     @Transactional

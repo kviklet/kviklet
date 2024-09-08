@@ -100,6 +100,7 @@ class NotificationTest {
             DatasourceType.POSTGRESQL,
             DatabaseProtocol.POSTGRESQL,
             additionalJDBCOptions = "",
+            dumpsEnabled = false,
         )
         userHelper.createUser(permissions = listOf("*"))
         val cookie = userHelper.login(mockMvc = mockMvc)

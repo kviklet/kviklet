@@ -71,6 +71,7 @@ class ConnectionEncryptionTest(
         type = type,
         protocol = protocol,
         additionalJDBCOptions = "",
+        dumpsEnabled = false,
     ) as DatasourceConnection
 
     @Test
@@ -170,6 +171,7 @@ class ConnectionEncryptionTest(
             databaseName = "partialdb",
             reviewConfig = ReviewConfig(numTotalRequired = 1),
             additionalJDBCOptions = "",
+            dumpsEnabled = false,
         )
 
         val updatedStoredConnection = connectionRepository.findById(connection.id.toString()).get()
