@@ -33,7 +33,6 @@ export const ProtectedRoute = ({
   return children;
 };
 function App() {
-  console.log("hello");
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-50">
       <UserStatusProvider>

@@ -56,16 +56,16 @@ services:
   #  volumes:
   #    - ./mariadb-data:/var/lib/mysql
 
-  mysql:
-    image: mysql:8
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: mysql
-    ports:
-      - "3306:3306"
-    volumes:
-      - ./mysql-data:/var/lib/mysql
+  #mysql:
+  #  image: mysql:8
+  #  restart: always
+  #  environment:
+  #    MYSQL_ROOT_PASSWORD: root
+  #    MYSQL_DATABASE: mysql
+  #  ports:
+  #    - "3306:3306"
+  #  volumes:
+  #    - ./mysql-data:/var/lib/mysql
 
   #mssql:
   #  image: mcr.microsoft.com/mssql/server:2022-latest

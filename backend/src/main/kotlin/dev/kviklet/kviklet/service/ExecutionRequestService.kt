@@ -325,10 +325,11 @@ class ExecutionRequestService(
         }
 
         val queryToExecute = when (executionRequest.request.type) {
-            RequestType.SingleExecution, RequestType.Dump -> executionRequest.request.statement!!
+            RequestType.SingleExecution -> executionRequest.request.statement!!
             RequestType.TemporaryAccess -> query ?: throw MissingQueryException(
                 "For temporary access requests the query param is required",
             )
+            RequestType.Dump -> throw RuntimeException("Dump requests can't be executed via the /execute endpoint")
         }
         val event = eventService.saveEvent(
             id,
@@ -476,13 +477,14 @@ class ExecutionRequestService(
         }
         val downloadAllowedAndReason = executionRequest.csvDownloadAllowed(query)
         val queryToExecute = when (executionRequest.request.type) {
-            RequestType.SingleExecution, RequestType.Dump ->
+            RequestType.SingleExecution ->
                 executionRequest.request.statement!!
                     .trim()
                     .removeSuffix(";")
             RequestType.TemporaryAccess ->
                 query?.trim()?.removeSuffix(";")
                     ?: throw MissingQueryException("For temporary access requests a query to execute is required")
+            RequestType.Dump -> throw RuntimeException("Dump requests can't be downloaded as CSV")
         }
         if (!downloadAllowedAndReason.first) {
             throw RuntimeException(downloadAllowedAndReason.second)

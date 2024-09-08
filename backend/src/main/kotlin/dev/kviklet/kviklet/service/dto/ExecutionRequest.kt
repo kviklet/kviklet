@@ -11,7 +11,6 @@ import dev.kviklet.kviklet.security.SecuredDomainObject
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import net.sf.jsqlparser.JSQLParserException
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
-import org.springframework.core.io.InputStreamResource
 import java.io.Serializable
 import java.time.LocalDateTime
 
@@ -253,10 +252,11 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         }
 
         val queryToExecute = when (request.type) {
-            RequestType.SingleExecution, RequestType.Dump -> request.statement!!.trim().removeSuffix(";")
+            RequestType.SingleExecution -> request.statement!!.trim().removeSuffix(";")
             RequestType.TemporaryAccess -> query?.trim()?.removeSuffix(
                 ";",
             ) ?: return Pair(false, "Query can't be empty")
+            else -> return Pair(false, "Can't download results for this request type")
         }
         try {
             val statementCount = CCJSqlParserUtil.parseStatements(queryToExecute).size
@@ -286,15 +286,6 @@ data class ExecutionProxy(
     override fun getSecuredObjectId() = request.connection.id.toString()
 
     override fun getDomainObjectType() = Resource.EXECUTION_REQUEST
-
-    override fun getRelated(resource: Resource): SecuredDomainObject? = null
-}
-
-data class SQLDumpResponse(val resource: InputStreamResource, val fileName: String, val connectionId: String) :
-    SecuredDomainObject {
-    override fun getSecuredObjectId(): String = connectionId
-
-    override fun getDomainObjectType(): Resource = Resource.EXECUTION_REQUEST
 
     override fun getRelated(resource: Resource): SecuredDomainObject? = null
 }

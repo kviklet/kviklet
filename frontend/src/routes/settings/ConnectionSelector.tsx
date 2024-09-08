@@ -66,7 +66,6 @@ function ComboBox({
         });
 
   const onSelect = (option: string | null) => {
-    console.log(option);
     setQuery(option || "");
   };
 

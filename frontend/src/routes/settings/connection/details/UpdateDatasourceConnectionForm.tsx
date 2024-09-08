@@ -100,8 +100,6 @@ export default function UpdateDatasourceConnectionForm({
     connectionType: "DATASOURCE",
   });
 
-  console.log("hellos");
-
   const watchType = watch("type");
   useEffect(() => {
     const protocolOptions = getProtocolOptions(watchType);
