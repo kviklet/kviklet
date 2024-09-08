@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.service
 
+import dev.kviklet.kviklet.db.DumpResultLogPayload
 import dev.kviklet.kviklet.db.ErrorResultLogPayload
 import dev.kviklet.kviklet.db.EventAdapter
 import dev.kviklet.kviklet.db.ExecutePayload
@@ -9,6 +10,7 @@ import dev.kviklet.kviklet.db.QueryResultLogPayload
 import dev.kviklet.kviklet.db.UpdateResultLogPayload
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
+import dev.kviklet.kviklet.service.dto.DumpResultLog
 import dev.kviklet.kviklet.service.dto.ErrorResultLog
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventId
@@ -61,6 +63,9 @@ fun ExecuteEvent.toPayload(): Payload = ExecutePayload(
             is ErrorResultLog -> ErrorResultLogPayload(it.errorCode, it.message)
             is UpdateResultLog -> UpdateResultLogPayload(it.rowsUpdated)
             is QueryResultLog -> QueryResultLogPayload(it.columnCount, it.rowCount)
+            is DumpResultLog -> DumpResultLogPayload(it.size)
         }
     },
+    isDownload = isDownload,
+    isDump = isDump,
 )

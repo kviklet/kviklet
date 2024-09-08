@@ -20,6 +20,8 @@ import dev.kviklet.kviklet.service.dto.DBExecutionResult
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
 import dev.kviklet.kviklet.service.dto.DatasourceType
+import dev.kviklet.kviklet.service.dto.DumpResultLog
+import dev.kviklet.kviklet.service.dto.ErrorResultLog
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventType
 import dev.kviklet.kviklet.service.dto.ExecuteEvent
@@ -43,6 +45,9 @@ import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
+import java.io.BufferedInputStream
+import java.io.IOException
+import java.io.OutputStream
 import java.security.SecureRandom
 import java.time.LocalDateTime
 import java.util.concurrent.CompletableFuture
@@ -55,6 +60,7 @@ class ExecutionRequestService(
     private val kubernetesApi: KubernetesApi,
     private val applicationEventPublisher: ApplicationEventPublisher,
     private val mongoDBExecutor: MongoDBExecutor,
+    private val connectionService: ConnectionService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val proxies = mutableListOf<ExecutionProxy>()
@@ -84,15 +90,26 @@ class ExecutionRequestService(
         connectionId: ConnectionId,
         request: CreateDatasourceExecutionRequestRequest,
         userId: String,
-    ): ExecutionRequestDetails = executionRequestAdapter.createExecutionRequest(
-        connectionId = connectionId,
-        title = request.title,
-        type = request.type,
-        description = request.description,
-        statement = request.statement,
-        executionStatus = "PENDING",
-        authorId = userId,
-    )
+    ): ExecutionRequestDetails {
+        val connection = connectionService.getDatasourceConnection(connectionId)
+        if (connection !is DatasourceConnection) {
+            throw RuntimeException("Unexpected connection type for connectionId: $connectionId")
+        }
+        if (request.type == RequestType.Dump) {
+            if (!connection.dumpsEnabled) {
+                throw RuntimeException("Dumps are not enabled for this connection")
+            }
+        }
+        return executionRequestAdapter.createExecutionRequest(
+            connectionId = connectionId,
+            title = request.title,
+            type = request.type,
+            description = request.description,
+            statement = request.statement,
+            executionStatus = "PENDING",
+            authorId = userId,
+        )
+    }
 
     private fun createKubernetesRequest(
         connectionId: ConnectionId,
@@ -110,6 +127,98 @@ class ExecutionRequestService(
         containerName = request.containerName,
         command = request.command,
     )
+
+    private fun constructSQLDumpCommand(connection: DatasourceConnection, outputFile: String? = null): List<String> =
+        when (connection.type) {
+            DatasourceType.MYSQL -> {
+                val database = if (connection.databaseName.isNullOrBlank()) {
+                    listOf("--all-databases")
+                } else {
+                    listOf("--databases", connection.databaseName)
+                }
+                val sqlDumpCommand = listOfNotNull(
+                    "mysqldump",
+                    "-u${connection.username}",
+                    "-p${connection.password}",
+                    "-h${connection.hostname}",
+                    "-P${connection.port}",
+                    outputFile?.let { "--result-file=$it" },
+                )
+                sqlDumpCommand + database
+            }
+            else -> {
+                throw IllegalArgumentException("Unsupported database type: ${connection.type}")
+            }
+        }
+
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
+    fun streamSQLDump(executionRequestId: ExecutionRequestId, outputStream: OutputStream, userId: String) {
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(executionRequestId)
+
+        val connection = connectionService.getDatasourceConnection(executionRequest.request.connection.id)
+
+        val reviewStatus = executionRequest.resolveReviewStatus()
+        if (reviewStatus != ReviewStatus.APPROVED) {
+            throw InvalidReviewException("This request has not been approved yet!")
+        }
+
+        executionRequest.raiseIfAlreadyExecuted()
+
+        if (connection !is DatasourceConnection) {
+            throw IllegalArgumentException("Only Datasource connections can be dumped")
+        }
+
+        val event = eventService.saveEvent(
+            executionRequestId,
+            userId,
+            ExecutePayload(
+                isDump = true,
+            ),
+        )
+
+        val command = constructSQLDumpCommand(connection)
+        val process = ProcessBuilder(command).start()
+        val inputStream = BufferedInputStream(process.inputStream)
+        var totalBytesRead = 0L
+        try {
+            val buffer = ByteArray(8192)
+            var bytesRead: Int
+
+            while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                outputStream.write(buffer, 0, bytesRead)
+                totalBytesRead += bytesRead
+                outputStream.flush()
+                logger.info("Read and sent $bytesRead bytes")
+            }
+
+            val exitCode = process.waitFor()
+            if (exitCode != 0) {
+                val errorStream = process.errorStream.bufferedReader().use { it.readText() }
+                throw RuntimeException("SQL dump command failed: $errorStream")
+            }
+        } catch (e: Exception) {
+            eventService.addResultLogs(
+                event.eventId!!,
+                listOf(
+                    ErrorResultLog(
+                        errorCode = 0,
+                        message = "An error occurred while dumping the database: ${e.message}",
+                    ),
+                ),
+            )
+            throw RuntimeException("Unexpected error occurred during dump: ${e.message}", e)
+        } finally {
+            try {
+                inputStream.close()
+            } catch (e: IOException) {
+                logger.error("Error closing inputStream: ${e.message}")
+            }
+            process.destroy()
+        }
+
+        val resultLogs = listOf(DumpResultLog(totalBytesRead))
+        eventService.addResultLogs(event.eventId!!, resultLogs)
+    }
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_EDIT)
@@ -220,6 +329,7 @@ class ExecutionRequestService(
             RequestType.TemporaryAccess -> query ?: throw MissingQueryException(
                 "For temporary access requests the query param is required",
             )
+            RequestType.Dump -> throw RuntimeException("Dump requests can't be executed via the /execute endpoint")
         }
         val event = eventService.saveEvent(
             id,
@@ -367,10 +477,14 @@ class ExecutionRequestService(
         }
         val downloadAllowedAndReason = executionRequest.csvDownloadAllowed(query)
         val queryToExecute = when (executionRequest.request.type) {
-            RequestType.SingleExecution -> executionRequest.request.statement!!.trim().removeSuffix(";")
-            RequestType.TemporaryAccess -> query?.trim()?.removeSuffix(
-                ";",
-            ) ?: throw MissingQueryException("For temporary access requests a query to execute is required")
+            RequestType.SingleExecution ->
+                executionRequest.request.statement!!
+                    .trim()
+                    .removeSuffix(";")
+            RequestType.TemporaryAccess ->
+                query?.trim()?.removeSuffix(";")
+                    ?: throw MissingQueryException("For temporary access requests a query to execute is required")
+            RequestType.Dump -> throw RuntimeException("Dump requests can't be downloaded as CSV")
         }
         if (!downloadAllowedAndReason.first) {
             throw RuntimeException(downloadAllowedAndReason.second)
@@ -556,7 +670,7 @@ class ExecutionRequestService(
 fun ExecutionRequestDetails.raiseIfAlreadyExecuted() {
     if (resolveExecutionStatus() == ExecutionStatus.EXECUTED) {
         when (request.type) {
-            RequestType.SingleExecution ->
+            RequestType.SingleExecution, RequestType.Dump ->
                 throw AlreadyExecutedException(
                     "This request has already been executed, can only execute a configured amount of times!",
                 )

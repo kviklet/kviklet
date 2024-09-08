@@ -83,6 +83,7 @@ const ExecuteEvent = withType(
     createdAt: z.coerce.date(),
     id: z.string(),
     isDownload: z.boolean().optional(),
+    isDump: z.boolean().optional(),
   }),
   "EXECUTE",
 );
@@ -94,7 +95,7 @@ const CSVDownloadSchema = z.object({
 
 const RawDatasourceRequestSchema = z.object({
   id: z.string(),
-  type: z.enum(["TemporaryAccess", "SingleExecution"]),
+  type: z.enum(["TemporaryAccess", "SingleExecution", "Dump"]),
   author: userResponseSchema,
   title: z.string().min(1),
   description: z.string(),
@@ -315,6 +316,24 @@ const addReviewToRequest = async (
   );
 };
 
+const streamDump = async (
+  executionRequestId: string,
+): Promise<ReadableStream<Uint8Array>> => {
+  // Request SQL dump data from the backend which returns an array of encoded strings in chunks
+  const response = await fetch(`${requestUrl}${executionRequestId}/dump`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch SQL dump: ${response.status} ${response.statusText}`,
+    );
+  }
+  if (response.body === null) throw new Error("Response body is null");
+  return response.body;
+};
+
 function withType<T, U extends string>(schema: z.ZodSchema<T>, typeValue: U) {
   return schema.transform((data) => ({
     ...data,
@@ -459,6 +478,7 @@ export {
   patchRequest,
   postStartServer,
   executeCommand,
+  streamDump,
 };
 export type {
   DBExecuteResponseResult as ExecuteResponseResult,

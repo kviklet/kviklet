@@ -1,7 +1,14 @@
 databaseChangeLog:
   - changeSet:
-      id: 020-add-protocol-column
+      id: 21-add-is-encrypted-column
       author: Jascha
+      # Accidentally used the wrong id in a previous version of the changeset so we need to check if the column exists
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            columnExists:
+              tableName: connection
+              columnName: is_encrypted
       changes:
         - addColumn:
             tableName: connection

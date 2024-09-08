@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: 022-add-dumps-enabled-column
+      author: Jascha
+      changes:
+        - addColumn:
+            tableName: connection
+            columns:
+              - column:
+                  name: dumps_enabled
+                  type: BOOLEAN
+                  defaultValue: false

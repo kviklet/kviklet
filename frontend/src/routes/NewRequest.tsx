@@ -56,7 +56,7 @@ const DatasourceExecutionRequestSchema = z
   .object({
     connectionType: z.literal("DATASOURCE"),
     title: z.string().min(1, { message: "Title is required" }),
-    type: z.enum(["TemporaryAccess", "SingleExecution"]),
+    type: z.enum(["TemporaryAccess", "SingleExecution", "Dump"]),
     description: z.string(),
     statement: z.string().optional(),
     connectionId: z.string().min(1),
@@ -64,6 +64,7 @@ const DatasourceExecutionRequestSchema = z
   .refine(
     (data) =>
       data.type === "TemporaryAccess" ||
+      "Dump" ||
       (!!data.statement && data.type === "SingleExecution"),
     {
       message: "If you create a query request an SQL statement is rquired",
@@ -118,7 +119,7 @@ interface PreConfiguredStateKubernetes {
 
 interface PreConfiguredStateDatasource {
   connectionId: string;
-  mode: "SingleExecution" | "TemporaryAccess";
+  mode: "SingleExecution" | "TemporaryAccess" | "Dump";
   connectionType: "Datasource";
   title: string;
   description: string;
@@ -135,7 +136,7 @@ export default function ConnectionChooser() {
     ConnectionResponse | undefined
   >(undefined);
   const [chosenMode, setChosenMode] = useState<
-    "SingleExecution" | "TemporaryAccess" | undefined
+    "SingleExecution" | "TemporaryAccess" | "Dump" | undefined
   >(undefined);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -211,25 +212,36 @@ export default function ConnectionChooser() {
                       role="list"
                       className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
                     >
-                      {filteredConnections.map((connection) => (
-                        <Card
-                          header={connection.displayName}
-                          subheader={connection.description}
-                          label={connection.id}
-                          key={connection.id}
-                          clickQuery={() => {
-                            setChosenConnection(connection);
-                            setChosenMode("SingleExecution");
-                            close();
-                          }}
-                          clickAccess={() => {
-                            setChosenConnection(connection);
-                            setChosenMode("TemporaryAccess");
-                            close();
-                          }}
-                          connectionType={connection._type}
-                        ></Card>
-                      ))}
+                      {filteredConnections.map((connection) => {
+                        return (
+                          <Card
+                            header={connection.displayName}
+                            subheader={connection.description}
+                            label={connection.id}
+                            key={connection.id}
+                            clickQuery={() => {
+                              setChosenConnection(connection);
+                              setChosenMode("SingleExecution");
+                              close();
+                            }}
+                            clickAccess={() => {
+                              setChosenConnection(connection);
+                              setChosenMode("TemporaryAccess");
+                              close();
+                            }}
+                            clickSQLDump={() => {
+                              setChosenConnection(connection);
+                              setChosenMode("Dump");
+                              close();
+                            }}
+                            connectionType={connection._type}
+                            sqlDumpEnabled={
+                              connection._type === "DATASOURCE" &&
+                              connection.dumpsEnabled
+                            }
+                          ></Card>
+                        );
+                      })}
                     </ul>
                   </DisclosurePanel>
                 </>
@@ -244,7 +256,8 @@ export default function ConnectionChooser() {
                 ></DatasourceExecutionRequestForm>
               )) ||
               (chosenConnection &&
-                chosenMode &&
+                (chosenMode === "SingleExecution" ||
+                  chosenMode === "TemporaryAccess") &&
                 chosenConnection._type == "KUBERNETES" && (
                   <KubernetesExecutionRequestForm
                     connection={chosenConnection}
@@ -263,7 +276,7 @@ const DatasourceExecutionRequestForm = ({
   mode,
 }: {
   connection: ConnectionResponse;
-  mode: "SingleExecution" | "TemporaryAccess";
+  mode: "SingleExecution" | "TemporaryAccess" | "Dump";
 }) => {
   const navigate = useNavigate();
 
@@ -346,7 +359,9 @@ const DatasourceExecutionRequestForm = ({
             className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
             id="title-input"
             type="text"
-            placeholder="My query"
+            placeholder={
+              mode === "Dump" ? "Give the request a title" : "My query"
+            }
             data-testid="request-title"
             {...register("title")}
           />
@@ -369,7 +384,9 @@ const DatasourceExecutionRequestForm = ({
             placeholder={
               mode === "TemporaryAccess"
                 ? "Why do you need access to this connection?"
-                : "What are you trying to accomplish with this Query?"
+                : mode === "SingleExecution"
+                ? "What are you trying to accomplish with this Query?"
+                : "Why do you need a SQL dump from this database?"
             }
             data-testid="request-description"
             {...register("description")}
@@ -704,7 +721,9 @@ interface CardProps {
   subheader: string;
   clickQuery: () => void;
   clickAccess: () => void;
+  clickSQLDump: () => void;
   connectionType: "DATASOURCE" | "KUBERNETES";
+  sqlDumpEnabled: boolean;
 }
 
 const Card = (props: CardProps) => {
@@ -762,6 +781,20 @@ const Card = (props: CardProps) => {
                   aria-hidden="true"
                 />
                 Access
+              </button>
+            </div>
+          )}
+          {props.connectionType === "DATASOURCE" && props.sqlDumpEnabled && (
+            <div className="-ml-px flex w-0 flex-1">
+              <button
+                onClick={props.clickSQLDump}
+                className="relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-br-lg border border-transparent py-4 text-sm font-semibold text-slate-900 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-800"
+              >
+                <CircleStackIcon
+                  className="h-5 w-5 text-slate-400 dark:text-slate-500"
+                  aria-hidden="true"
+                />
+                DB Dump
               </button>
             </div>
           )}

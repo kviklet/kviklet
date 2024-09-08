@@ -12,6 +12,7 @@ import {
   KubernetesExecutionRequestResponseWithComments,
   DatasourceExecutionRequestResponseWithComments,
   KubernetesExecuteResponse,
+  streamDump,
 } from "../api/ExecutionRequestApi";
 import Button from "../components/Button";
 import { mapStatus, mapStatusToLabelColor, timeSince } from "./Requests";
@@ -40,6 +41,9 @@ import useRequest, {
   ReviewTypes,
   isRelationalDatabase,
 } from "../hooks/request";
+import Modal from "../components/Modal";
+import SQLDumpConfirm from "../components/SQLDumpConfirm";
+import useNotification from "../hooks/useNotification";
 
 interface RequestReviewParams {
   requestId: string;
@@ -422,6 +426,8 @@ function DatasourceRequestBox({
   updateRequest: (request: { statement?: string }) => Promise<void>;
 }) {
   const [editMode, setEditMode] = useState(false);
+  const { addNotification } = useNotification();
+  const [showSQLDumpModal, setShowSQLDumpModal] = useState(false);
   const navigate = useNavigate();
   const [statement, setStatement] = useState(request?.statement || "");
   const changeStatement = async (
@@ -438,7 +444,9 @@ function DatasourceRequestBox({
   const questionText =
     request?.type == "SingleExecution"
       ? " wants to execute a statement on "
-      : " wants to have access to ";
+      : request?.type == "TemporaryAccess"
+      ? " wants to have access to "
+      : " wants to get a SQL dump from ";
 
   const navigateCopy = () => {
     navigate(`/new`, {
@@ -499,6 +507,96 @@ function DatasourceRequestBox({
         ]
       : []),
   ];
+
+  const fileHandler = async (connectionId: string) => {
+    try {
+      // Create a handle for the file the user wants to save
+      const fileHandle: FileSystemFileHandle = await window.showSaveFilePicker({
+        suggestedName: `${connectionId}.sql`,
+        types: [
+          {
+            description: "SQL Files",
+            accept: {
+              "text/sql": [".sql"],
+            },
+          },
+        ],
+      });
+      return fileHandle;
+    } catch (error) {
+      console.error("Error getting file handle:", error);
+      throw error;
+    }
+  };
+
+  // Function to handle streaming the SQL dump and saving it to a file
+  const handleStreamSQLDump = async (
+    executionRequestId: string,
+    connectionId: string,
+  ) => {
+    try {
+      const fileHandle = await fileHandler(connectionId);
+      const responseStream = await streamDump(executionRequestId);
+
+      const reader = responseStream.getReader();
+      const writableStream = await fileHandle.createWritable();
+
+      // Handle reading from the readable stream and writing to the writable stream
+      const pump = async () => {
+        let done = false;
+        while (!done) {
+          const result = await reader.read();
+          done = result.done;
+          const value = result.value;
+          if (value !== undefined) {
+            await writableStream.write(value);
+          }
+        }
+        await writableStream.close();
+      };
+
+      await pump();
+      addNotification({
+        title: "Success",
+        text: "SQL dump file saved successfully.",
+        type: "info",
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        addNotification({
+          title: "Failed to process SQL dump.",
+          text: error.message,
+          type: "error",
+        });
+      }
+    } finally {
+      setShowSQLDumpModal(false);
+    }
+  };
+
+  const SQLDumpModal = () => {
+    if (!showSQLDumpModal || !request) return null;
+    return (
+      <Modal setVisible={setShowSQLDumpModal}>
+        <SQLDumpConfirm
+          title="Get SQL Dump"
+          message={`Are you sure you want to get sql dump from database ${request?.connection?.displayName}?`}
+          onConfirm={() =>
+            handleStreamSQLDump(request.id, request.connection.id)
+          }
+          onCancel={() => setShowSQLDumpModal(false)}
+        />
+      </Modal>
+    );
+  };
+
+  const handleButtonClick = async () => {
+    if (request?.type === "Dump") {
+      setShowSQLDumpModal(true);
+    } else {
+      await runQuery();
+    }
+  };
 
   return (
     <div>
@@ -567,7 +665,7 @@ function DatasourceRequestBox({
             id="runQuery"
             type="submit"
             disabled={request?.reviewStatus !== "APPROVED"}
-            onClick={runQuery}
+            onClick={handleButtonClick}
             onCancel={() => void cancelQuery()}
             dataTestId="run-query-button"
           >
@@ -577,7 +675,11 @@ function DatasourceRequestBox({
                 "bg-slate-500"
               }`}
             ></div>
-            {request?.type == "SingleExecution" ? "Run Query" : "Start Session"}
+            {request?.type === "SingleExecution"
+              ? "Run Query"
+              : request?.type === "TemporaryAccess"
+              ? "Start Session"
+              : "Get SQL Dump"}
           </LoadingCancelButton>
         ) : (
           <Button
@@ -598,6 +700,7 @@ function DatasourceRequestBox({
             {request?.type == "SingleExecution" ? "Run Query" : "Start Session"}
           </Button>
         )}
+        <SQLDumpModal />
       </div>
     </div>
   );
@@ -681,6 +784,11 @@ function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
             <FontAwesomeIcon icon={solid("play")} />
           </div>
         </div>
+        {event?.isDump && (
+          <div className="text-sm text-slate-500">
+            {event?.author?.fullName} requested a SQL dump from the database.
+          </div>
+        )}
         {event?.query && (
           <div className="text-sm text-slate-500">
             {event?.author?.fullName} {sqlStatementText}

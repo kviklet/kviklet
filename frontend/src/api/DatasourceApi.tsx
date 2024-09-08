@@ -44,6 +44,7 @@ const databaseConnectionResponseSchema = withType(
       numTotalRequired: z.number(),
     }),
     additionalJDBCOptions: z.string().optional(),
+    dumpsEnabled: z.boolean(),
   }),
   "DATASOURCE",
 );

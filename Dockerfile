@@ -5,8 +5,7 @@ COPY --chown=gradle:gradle ./backend .
 
 RUN gradle build  -x kaptTestKotlin -x compileTestKotlin -x test --no-daemon
 
-FROM node:20 as build-frontend
-
+FROM node:22 as build-frontend
 WORKDIR /app
 COPY ./frontend/package-lock.json ./frontend/package.json ./
 RUN npm ci --production
@@ -24,6 +23,12 @@ USER root
 
 RUN ln -sf /dev/stdout /var/log/nginx/access.log \
     && ln -sf /dev/stderr /var/log/nginx/error.log
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y mariadb-client && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 
 COPY --from=javaruntime /usr/lib/jvm/java-21-amazon-corretto /usr/lib/jvm/java-21-amazon-corretto
 
