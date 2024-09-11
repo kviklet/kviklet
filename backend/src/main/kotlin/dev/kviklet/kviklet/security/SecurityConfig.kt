@@ -148,6 +148,7 @@ class SecurityConfig(
             authorizeHttpRequests {
                 authorize("/login", permitAll)
                 authorize("/login**", permitAll)
+                authorize("/health", permitAll)
                 authorize("/oauth2**", permitAll)
                 authorize("/v3/api-docs/**", permitAll)
                 authorize("/swagger-ui/**", permitAll)
