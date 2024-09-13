@@ -108,6 +108,7 @@ class ExecutionRequestService(
             statement = request.statement,
             executionStatus = "PENDING",
             authorId = userId,
+            temporaryAccessDuration = request.temporaryAccessDuration,
         )
     }
 
@@ -126,6 +127,7 @@ class ExecutionRequestService(
         podName = request.podName,
         containerName = request.containerName,
         command = request.command,
+        temporaryAccessDuration = request.temporaryAccessDuration,
     )
 
     private fun constructSQLDumpCommand(connection: DatasourceConnection, outputFile: String? = null): List<String> =

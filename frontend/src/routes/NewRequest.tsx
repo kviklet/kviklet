@@ -60,6 +60,7 @@ const DatasourceExecutionRequestSchema = z
     description: z.string(),
     statement: z.string().optional(),
     connectionId: z.string().min(1),
+    temporaryAccessDuration: z.number().optional(),
   })
   .refine(
     (data) =>
@@ -67,10 +68,17 @@ const DatasourceExecutionRequestSchema = z
       "Dump" ||
       (!!data.statement && data.type === "SingleExecution"),
     {
-      message: "If you create a query request an SQL statement is rquired",
+      message: "If you create a query request an SQL statement is required",
+    },
+  )
+  .refine(
+    (data) =>
+      data.type !== "TemporaryAccess" ||
+      data.temporaryAccessDuration !== undefined,
+    {
+      message: "For TemporaryAccess, a Duration is required",
     },
   );
-
 const KubernetesExecutionRequestSchema = z
   .object({
     connectionType: z.literal("KUBERNETES"),
@@ -82,6 +90,7 @@ const KubernetesExecutionRequestSchema = z
     namespace: z.string().min(1).default("default"),
     podName: z.string().min(1),
     containerName: z.string().optional(),
+    temporaryAccessDuration: z.number().optional(),
   })
   .refine(
     (data) =>
@@ -89,6 +98,14 @@ const KubernetesExecutionRequestSchema = z
       (!!data.command && data.type === "SingleExecution"),
     {
       message: "If you create a command request a command is required",
+    },
+  )
+  .refine(
+    (data) =>
+      data.type !== "TemporaryAccess" ||
+      data.temporaryAccessDuration !== undefined,
+    {
+      message: "For TemporaryAccess, a Duration is required",
     },
   );
 
@@ -115,6 +132,7 @@ interface PreConfiguredStateKubernetes {
   namespace: string;
   containerName: string;
   podName: string;
+  temporaryAccessDuration: number;
 }
 
 interface PreConfiguredStateDatasource {
@@ -124,6 +142,7 @@ interface PreConfiguredStateDatasource {
   title: string;
   description: string;
   statement: string;
+  temporaryAccessDuration: number;
 }
 
 type PreConfiguredState =
@@ -303,6 +322,9 @@ const DatasourceExecutionRequestForm = ({
       setValue("description", state.description);
       setValue("statement", state.statement);
     }
+    if (mode === "TemporaryAccess") {
+      setValue("temporaryAccessDuration", 60);
+    }
   }, [connection, mode]);
 
   const onSubmit: SubmitHandler<DatasourceExecutionRequest> = async (
@@ -397,6 +419,27 @@ const DatasourceExecutionRequestForm = ({
             </p>
           )}
         </div>
+        {mode === "TemporaryAccess" && (
+          <div className="my-3 rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
+            <label
+              htmlFor="temporaryAccessDuration-input"
+              className="block text-xs font-medium text-slate-900 dark:text-slate-50"
+            >
+              Duration (in minutes)
+            </label>
+            <input
+              className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
+              id="temporaryAccessDuration-input"
+              type="number"
+              {...register("temporaryAccessDuration")}
+            />
+            {errors.temporaryAccessDuration && (
+              <p className="mt-2 text-xs italic text-red-500">
+                {errors.temporaryAccessDuration?.message}
+              </p>
+            )}
+          </div>
+        )}
         {mode === "SingleExecution" && (
           <div className="my-3 rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
             <label
@@ -495,6 +538,9 @@ const KubernetesExecutionRequestForm = ({
       setValue("namespace", state.namespace);
       setValue("podName", state.podName);
       setValue("containerName", state.containerName);
+    }
+    if (mode === "TemporaryAccess") {
+      setValue("temporaryAccessDuration", 60);
     }
   }, [connection, mode]);
 
@@ -678,6 +724,27 @@ const KubernetesExecutionRequestForm = ({
               </p>
             )}
           </div>
+          {mode === "TemporaryAccess" && (
+            <div className="my-3 rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
+              <label
+                htmlFor="temporaryAccessDuration-input"
+                className="block text-xs font-medium text-slate-900 dark:text-slate-50"
+              >
+                Duration (in minutes)
+              </label>
+              <input
+                className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
+                id="temporaryAccessDuration-input"
+                type="number"
+                {...register("temporaryAccessDuration")}
+              />
+              {errors.temporaryAccessDuration && (
+                <p className="mt-2 text-xs italic text-red-500">
+                  {errors.temporaryAccessDuration?.message}
+                </p>
+              )}
+            </div>
+          )}
           {mode === "SingleExecution" && (
             <div className="my-3 rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
               <label
