@@ -16,7 +16,7 @@ class MyProperties {
     lateinit var name: String
 }
 
-// data class ErrorResponse(val code: Int, val type: String, val message: String, val detail: String? = null)
+data class ErrorResponse(val code: Int, val type: String, val message: String, val detail: String? = null)
 
 @Configuration
 @EnableWebSocket
@@ -29,6 +29,7 @@ class WebSocketConfig : WebSocketConfigurer {
 
     override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
         val handlerRegistry = registry.addHandler(sessionWebsocketHandler, "/sql/{requestId}")
+            .addInterceptors(AuthHandshakeInterceptor())
         if (corsSettings.allowedOrigins.isNotEmpty()) {
             handlerRegistry.setAllowedOrigins(*corsSettings.allowedOrigins.toTypedArray())
         }

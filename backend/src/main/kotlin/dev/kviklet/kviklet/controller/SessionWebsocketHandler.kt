@@ -3,117 +3,134 @@ package dev.kviklet.kviklet.controller
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.databind.ObjectMapper
+import dev.kviklet.kviklet.security.UserDetailsWithId
+import dev.kviklet.kviklet.service.dto.ExecutionRequestId
+import dev.kviklet.kviklet.service.dto.LiveSession
+import dev.kviklet.kviklet.service.dto.LiveSessionId
+import dev.kviklet.kviklet.service.websocket.SessionService
+import dev.kviklet.kviklet.service.websocket.UserRole
+import dev.kviklet.kviklet.service.websocket.UserRoleService
 import org.slf4j.LoggerFactory
+import org.springframework.security.core.context.SecurityContext
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.handler.TextWebSocketHandler
+import org.springframework.web.util.UriComponentsBuilder
+import java.util.concurrent.ConcurrentHashMap
 
-// Data classes for message structures
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 @JsonSubTypes(
-    JsonSubTypes.Type(value = ExecuteQueryMessage::class, name = "execute_query"),
-    JsonSubTypes.Type(value = CancelQueryMessage::class, name = "cancel_query"),
-    JsonSubTypes.Type(value = HeartbeatMessage::class, name = "heartbeat"),
+    JsonSubTypes.Type(value = UpdateContentMessage::class, name = "update_content"),
 )
 sealed class WebSocketMessage {
     abstract val id: String
 }
 
-data class ExecuteQueryMessage(override val id: String, val payload: ExecuteQueryPayload) : WebSocketMessage()
+data class UpdateContentMessage(override val id: String, val content: String) : WebSocketMessage()
 
-data class CancelQueryMessage(override val id: String) : WebSocketMessage()
+sealed class ResponseMessage(open val id: LiveSessionId)
+data class ErrorResponseMessage(override val id: LiveSessionId, val error: String) : ResponseMessage(id)
 
-data class HeartbeatMessage(override val id: String) : WebSocketMessage()
-
-data class ExecuteQueryPayload(val sql: String, val params: List<Any>?)
-sealed class WebSocketResponseMessage {
-    abstract val type: String
-    abstract val id: String
-}
-
-data class QueryResultResponseMessage(override val id: String, val payload: QueryResultPayload) :
-    WebSocketResponseMessage() {
-    override val type = "query_result"
-}
-
-data class ErrorResponseMessage(override val id: String, val payload: ErrorPayload) : WebSocketResponseMessage() {
-    override val type = "error"
-}
-
-data class HeartbeatResponseMessage(override val id: String) : WebSocketResponseMessage() {
-    override val type = "heartbeat"
-}
-
-data class QueryResultPayload(
-    val columns: List<String>,
-    val rows: List<List<Any>>,
-    val rowCount: Int,
-    val executionTime: Double,
-)
-
-data class ErrorPayload(val code: String, val message: String)
+data class StatusMessage(override val id: LiveSessionId, val consoleContent: String, val observers: List<String>) :
+    ResponseMessage(id)
 
 @Component
-class SessionWebsocketHandler : TextWebSocketHandler() {
+class SessionWebsocketHandler(
+    private val sessionService: SessionService,
+    private val userRoleService: UserRoleService,
+    private val objectMapper: ObjectMapper,
+) : TextWebSocketHandler() {
     private val logger = LoggerFactory.getLogger(SessionWebsocketHandler::class.java)
-    private val objectMapper = ObjectMapper()
+    private val sessionRoleMap = ConcurrentHashMap<String, UserRole>()
+    private val sessionObservers = ConcurrentHashMap<LiveSessionId, MutableSet<WebSocketSession>>()
+    private val sessionToLiveSessionMap = ConcurrentHashMap<String, LiveSessionId>()
 
     override fun afterConnectionEstablished(session: WebSocketSession) {
-        logger.info("New WebSocket connection established: ${session.id}")
+        val requestId = extractRequestId(session)
+        val securityContext = session.attributes["SPRING_SECURITY_CONTEXT"] as? SecurityContext
+        if (securityContext != null) {
+            SecurityContextHolder.setContext(securityContext)
+        } else {
+            throw IllegalStateException("Security context not found in WebSocket session")
+        }
+        val liveSession = sessionService.createOrConnectToSession(
+            ExecutionRequestId(requestId),
+        )
+        sessionToLiveSessionMap[session.id] = liveSession.id!!
+        val userDetailsWithId = SecurityContextHolder.getContext().authentication.principal as UserDetailsWithId
+        val userRole = userRoleService.determineUserRole(userDetailsWithId.id, ExecutionRequestId(requestId))
+        sessionRoleMap[session.id] = userRole
+
+        if (userRole == UserRole.OBSERVER) {
+            sessionObservers.computeIfAbsent(liveSession.id!!) { ConcurrentHashMap.newKeySet() }.add(session)
+        }
+        broadcastUpdate(liveSession)
+
+        logger.info(
+            "New WebSocket connection established: ${session.id}, userId: ${userDetailsWithId.id}, requestId: $requestId, role: $userRole",
+        )
+    }
+
+    private fun extractRequestId(session: WebSocketSession): String {
+        val uri = session.uri ?: throw IllegalStateException("Session URI is null")
+        val path = UriComponentsBuilder.fromUri(uri).build().pathSegments
+        return path.lastOrNull() ?: throw IllegalArgumentException("RequestId not found in URI")
     }
 
     override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
+        val securityContext = session.attributes["SPRING_SECURITY_CONTEXT"] as? SecurityContext
+        if (securityContext != null) {
+            SecurityContextHolder.setContext(securityContext)
+        } else {
+            throw IllegalStateException("Security context not found in WebSocket session")
+        }
+        val liveSessionId = sessionToLiveSessionMap[session.id] ?: throw IllegalStateException("LiveSession not found")
+
+        if (message.payload == "CONNECT") {
+            val liveSession = sessionService.getSession(liveSessionId)
+            broadcastUpdate(liveSession)
+            return
+        }
+
         try {
             when (val webSocketMessage = objectMapper.readValue(message.payload, WebSocketMessage::class.java)) {
-                is ExecuteQueryMessage -> handleExecuteQuery(session, webSocketMessage)
-                is CancelQueryMessage -> handleCancelQuery(session, webSocketMessage)
-                is HeartbeatMessage -> handleHeartbeat(session, webSocketMessage)
+                is UpdateContentMessage -> {
+                    val updatedSession = sessionService.updateContent(
+                        liveSessionId,
+                        webSocketMessage.content,
+                    )
+                    broadcastUpdate(updatedSession)
+                }
             }
         } catch (e: Exception) {
             logger.error("Error processing message", e)
-            sendErrorResponseMessage(session, "INTERNAL_ERROR", "An internal error occurred", "unknown")
+            sendErrorResponseMessage(session, "INTERNAL_ERROR", liveSessionId)
         }
     }
 
-    private fun handleExecuteQuery(session: WebSocketSession, message: ExecuteQueryMessage) {
-        // TODO: Execute the SQL query using your existing logic
-        // For now, we'll just send a mock result
-        val result = QueryResultResponseMessage(
-            id = message.id,
-            payload = QueryResultPayload(
-                columns = listOf("id", "name"),
-                rows = listOf(listOf(1, "John Doe")),
-                rowCount = 1,
-                executionTime = 0.023,
-            ),
+    private fun broadcastUpdate(updatedSession: LiveSession) {
+        val updateMessage = StatusMessage(
+            id = updatedSession.id!!,
+            consoleContent = updatedSession.consoleContent,
+            observers = sessionObservers[updatedSession.id]?.map { it.id } ?: emptyList(),
         )
-        sendMessage(session, result)
+        sessionObservers[updatedSession.id]?.forEach { observerSession ->
+            sendMessage(observerSession, updateMessage)
+        }
     }
 
-    private fun handleCancelQuery(session: WebSocketSession, message: CancelQueryMessage) {
-        // TODO: Implement query cancellation logic
-        // sendMessage(session, message)
-    }
-
-    private fun handleHeartbeat(session: WebSocketSession, message: HeartbeatMessage) {
-        sendMessage(session, HeartbeatResponseMessage(id = message.id))
-    }
-
-    private fun handleUnknownMessage(session: WebSocketSession, id: String) {
-        sendErrorResponseMessage(session, "UNKNOWN_MESSAGE_TYPE", "Received unknown message type", id)
-    }
-
-    private fun sendErrorResponseMessage(session: WebSocketSession, code: String, message: String, id: String) {
+    private fun sendErrorResponseMessage(session: WebSocketSession, message: String, id: LiveSessionId) {
         val errorMessage = ErrorResponseMessage(
             id = id,
-            payload = ErrorPayload(code = code, message = message),
+            error = message,
         )
         sendMessage(session, errorMessage)
     }
 
-    private fun sendMessage(session: WebSocketSession, message: WebSocketResponseMessage) {
+    private fun sendMessage(session: WebSocketSession, message: ResponseMessage) {
         try {
             session.sendMessage(TextMessage(objectMapper.writeValueAsString(message)))
         } catch (e: Exception) {
