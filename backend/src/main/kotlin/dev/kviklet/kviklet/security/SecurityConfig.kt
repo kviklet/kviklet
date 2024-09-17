@@ -87,8 +87,9 @@ class SecurityConfig(
 
     @Bean
     fun ldapAuthenticationProvider(): LdapAuthenticationProvider {
+        val searchBase = ldapProperties.searchBase?.takeIf { it.isNotBlank() } ?: "ou=${ldapProperties.userOu}"
         val userSearch = FilterBasedLdapUserSearch(
-            "ou=${ldapProperties.userOu}",
+            searchBase,
             "(${ldapProperties.uniqueIdentifierAttribute}={0})",
             contextSource,
         )
