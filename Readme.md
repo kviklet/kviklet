@@ -209,7 +209,7 @@ If you run into issues feel free to create an issue, we have not tried every sin
 
 ### LDAP
 
-Kviklet supports LDAP authentication. To enable and configure LDAP, you need to set the following environment variables:
+Kviklet supports LDAP authentication. To enable and configure LDAP, you can override the following environment variables:
 
 ```
 LDAP_ENABLED=true
@@ -221,6 +221,7 @@ LDAP_UNIQUE_IDENTIFIER_ATTRIBUTE=uid
 LDAP_EMAIL_ATTRIBUTE=mail
 LDAP_FULL_NAME_ATTRIBUTE=cn
 LDAP_USER_OU=people
+LDAP_SEARCH_BASE=ou=people
 ```
 
 Here's what each setting means:
@@ -234,6 +235,7 @@ Here's what each setting means:
 - `LDAP_EMAIL_ATTRIBUTE`: The LDAP attribute that contains the user's email address (default: "mail").
 - `LDAP_FULL_NAME_ATTRIBUTE`: The LDAP attribute that contains the user's full name (default: "cn").
 - `LDAP_USER_OU`: The Organizational Unit (OU) where user accounts are stored (default: "people").
+- `LDAP_SEARCH_BASE`: Allows to override the base DN for user searches (default: "ou=people"). If you use FreeIPA you might need to set this to e.g. `cn=users`. If set LDAP_USER_OU is ignored.
 
 You can customize these attributes to match your LDAP schema. After configuring LDAP, users will be able to log in using their LDAP credentials. The first time an LDAP user logs in, a corresponding user account will be created in Kviklet with default permissions. An admin will need to assign appropriate roles to these users after their first login.
 
