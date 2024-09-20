@@ -52,7 +52,6 @@ import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
@@ -69,6 +68,7 @@ sealed class CreateExecutionRequestRequest(
     open val title: String,
     open val type: RequestType,
     open val description: String,
+    open val duration: Long, // Pa989
 )
 
 data class CreateDatasourceExecutionRequestRequest(
@@ -76,19 +76,21 @@ data class CreateDatasourceExecutionRequestRequest(
     override val title: String,
     override val type: RequestType,
     override val description: String,
+    override val duration: Long, // Pa989
     val statement: String?,
-) : CreateExecutionRequestRequest(connectionId, title, type, description)
+) : CreateExecutionRequestRequest(connectionId, title, type, description, duration) // Pa989
 
 data class CreateKubernetesExecutionRequestRequest(
     override val connectionId: ConnectionId,
     override val title: String,
     override val type: RequestType,
     override val description: String,
+    override val duration: Long, // Pa989
     val namespace: String,
     val podName: String,
     val containerName: String?,
     val command: String,
-) : CreateExecutionRequestRequest(connectionId, title, type, description)
+) : CreateExecutionRequestRequest(connectionId, title, type, description, duration) // Pa989
 
 data class UpdateExecutionRequestRequest(
     val title: String?,
@@ -127,6 +129,7 @@ sealed class ExecutionRequestResponse(open val id: ExecutionRequestId) {
                     connection = ConnectionResponse.fromDto(
                         dto.request.connection,
                     ),
+                    duration = dto.request.duration, // P0075
                 )
                 is KubernetesExecutionRequest -> KubernetesExecutionRequestResponse(
                     id = dto.request.id!!,
@@ -144,6 +147,7 @@ sealed class ExecutionRequestResponse(open val id: ExecutionRequestId) {
                     podName = dto.request.podName,
                     containerName = dto.request.containerName,
                     command = dto.request.command,
+                    duration = dto.request.duration, // P0075
                 )
             }
         }
@@ -160,6 +164,7 @@ sealed class ExecutionRequestResponse(open val id: ExecutionRequestId) {
         val reviewStatus: ReviewStatus,
         val executionStatus: ExecutionStatus,
         val createdAt: LocalDateTime = utcTimeNow(),
+        val duration: Long, // P0075
     ) : ExecutionRequestResponse(id = id)
 
     data class KubernetesExecutionRequestResponse(
@@ -176,6 +181,7 @@ sealed class ExecutionRequestResponse(open val id: ExecutionRequestId) {
         val podName: String?,
         val containerName: String?,
         val command: String?,
+        val duration: Long, // P0075
     ) : ExecutionRequestResponse(id = id)
 }
 
@@ -202,6 +208,7 @@ sealed class ExecutionRequestDetailResponse(open val id: ExecutionRequestId, ope
                     allowed = dto.csvDownloadAllowed().first,
                     reason = dto.csvDownloadAllowed().second,
                 ),
+                duration = dto.request.duration, // P0075
             )
             is KubernetesExecutionRequest -> KubernetesExecutionRequestDetailResponse(
                 id = dto.request.id!!,
@@ -218,6 +225,7 @@ sealed class ExecutionRequestDetailResponse(open val id: ExecutionRequestId, ope
                 command = dto.request.command,
                 events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
                 connection = ConnectionResponse.fromDto(dto.request.connection),
+                duration = dto.request.duration, // P0075
             )
         }
     }
@@ -235,6 +243,7 @@ data class DatasourceExecutionRequestDetailResponse(
     val executionStatus: ExecutionStatus,
     val createdAt: LocalDateTime = utcTimeNow(),
     val csvDownload: CSVDownloadableResponse,
+    val duration: Long, // P0075
     override val events: List<EventResponse>,
 ) : ExecutionRequestDetailResponse(
     id = id,
@@ -257,6 +266,7 @@ data class KubernetesExecutionRequestDetailResponse(
     val podName: String?,
     val containerName: String?,
     val command: String?,
+    val duration: Long, // P0075
     override val events: List<EventResponse>,
 ) : ExecutionRequestDetailResponse(
     id = id,
@@ -543,7 +553,7 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
         request: CreateExecutionRequestRequest,
         @CurrentUser userDetails: UserDetailsWithId,
     ): ExecutionRequestResponse {
-        val executionRequest = executionRequestService.create(request.connectionId, request, userDetails.id)
+        val executionRequest = executionRequestService.create(request.connectionId, request, userDetails.id, request.duration) // Pae2c
         return ExecutionRequestResponse.fromDto(executionRequest)
     }
 

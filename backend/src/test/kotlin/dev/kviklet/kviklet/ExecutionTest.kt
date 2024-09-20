@@ -344,6 +344,42 @@ class ExecutionTest {
             verifyExecutionsList(errorRequest.getId(), userCookie)
             verifyErrorExecutionRequestDetails(errorRequest.getId(), userCookie)
         }
+
+        @Test
+        fun `when executing temporary access request then succeed`() {
+            val tempAccessRequest = executionRequestHelper.createExecutionRequest(
+                db,
+                testUser,
+                "SELECT * FROM foo.simple_table",
+                type = "TemporaryAccess",
+                duration = 3600L
+            )
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+            val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            approveRequest(tempAccessRequest.getId(), "Approved", reviewerCookie)
+
+            executeRequestAndAssert(tempAccessRequest.getId(), userCookie)
+            verifyExecutionsList(tempAccessRequest.getId(), userCookie)
+            verifyExecutionRequestDetails(tempAccessRequest.getId(), userCookie)
+        }
+
+        @Test
+        fun `when executing temporary access request with infinite duration then succeed`() {
+            val tempAccessRequest = executionRequestHelper.createExecutionRequest(
+                db,
+                testUser,
+                "SELECT * FROM foo.simple_table",
+                type = "TemporaryAccess",
+                duration = 0L
+            )
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+            val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            approveRequest(tempAccessRequest.getId(), "Approved", reviewerCookie)
+
+            executeRequestAndAssert(tempAccessRequest.getId(), userCookie)
+            verifyExecutionsList(tempAccessRequest.getId(), userCookie)
+            verifyExecutionRequestDetails(tempAccessRequest.getId(), userCookie)
+        }
     }
 
     @Test

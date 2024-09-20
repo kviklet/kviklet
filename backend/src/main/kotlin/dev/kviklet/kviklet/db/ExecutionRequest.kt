@@ -74,6 +74,8 @@ class ExecutionRequestEntity(
     var containerName: String? = "",
     var command: String? = "",
 
+    var duration: Long, // P0db3
+
 ) : BaseEntity() {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
@@ -91,6 +93,7 @@ class ExecutionRequestEntity(
             executionStatus = executionStatus,
             createdAt = createdAt,
             author = author.toDto(),
+            duration = duration, // P5117
         )
 
         ExecutionRequestType.KUBERNETES -> KubernetesExecutionRequest(
@@ -106,6 +109,7 @@ class ExecutionRequestEntity(
             podName = podName,
             containerName = containerName,
             command = command,
+            duration = duration, // P5117
         )
     }
 
@@ -192,6 +196,7 @@ class ExecutionRequestAdapter(
         podName: String? = null,
         containerName: String? = null,
         command: String? = null,
+        duration: Long, // P0db3
     ): ExecutionRequestDetails {
         val connection = connectionRepository.findByIdOrNull(connectionId.toString())
             ?: throw EntityNotFound("Connection Not Found", "Connection with id $connectionId does not exist.")
@@ -232,6 +237,7 @@ class ExecutionRequestAdapter(
                 podName = podName,
                 containerName = containerName,
                 command = command,
+                duration = duration, // P0db3
             ),
         ).toDetailDto(
             connectionAdapter.toDto(connection),

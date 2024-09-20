@@ -53,6 +53,7 @@ sealed class ExecutionRequest(
     open val executionStatus: String,
     open val createdAt: LocalDateTime = utcTimeNow(),
     open val author: User,
+    open val duration: Long, // P4d97
 ) : SecuredDomainObject {
     fun getId() = id.toString()
     override fun getSecuredObjectId() = connection.getSecuredObjectId()
@@ -92,7 +93,8 @@ data class DatasourceExecutionRequest(
     override val executionStatus: String,
     override val createdAt: LocalDateTime = utcTimeNow(),
     override val author: User,
-) : ExecutionRequest(id, connection, title, type, description, executionStatus, createdAt, author)
+    override val duration: Long, // P4d97
+) : ExecutionRequest(id, connection, title, type, description, executionStatus, createdAt, author, duration)
 
 data class KubernetesExecutionRequest(
     override val id: ExecutionRequestId?,
@@ -107,6 +109,7 @@ data class KubernetesExecutionRequest(
     val podName: String?,
     val containerName: String?,
     val command: String?,
+    override val duration: Long, // P4d97
 ) : ExecutionRequest(
     id,
     connection,
@@ -116,6 +119,7 @@ data class KubernetesExecutionRequest(
     executionStatus,
     createdAt,
     author,
+    duration,
 )
 
 data class ExecutionRequestDetails(val request: ExecutionRequest, val events: MutableSet<Event>) :
@@ -201,7 +205,7 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
                     return ExecutionStatus.EXECUTABLE
                 }
                 val firstExecution = executions.minBy { it.createdAt }
-                return if (firstExecution.createdAt < utcTimeNow().minusMinutes(60)) {
+                return if (request.duration == 0L || firstExecution.createdAt < utcTimeNow().minusSeconds(request.duration)) { // Pba70
                     ExecutionStatus.EXECUTED
                 } else {
                     ExecutionStatus.ACTIVE

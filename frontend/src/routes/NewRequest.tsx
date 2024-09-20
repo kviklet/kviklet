@@ -60,6 +60,7 @@ const DatasourceExecutionRequestSchema = z
     description: z.string(),
     statement: z.string().optional(),
     connectionId: z.string().min(1),
+    duration: z.number().min(0, { message: "Duration must be a positive number" }).optional(),
   })
   .refine(
     (data) =>
@@ -82,6 +83,7 @@ const KubernetesExecutionRequestSchema = z
     namespace: z.string().min(1).default("default"),
     podName: z.string().min(1),
     containerName: z.string().optional(),
+    duration: z.number().min(0, { message: "Duration must be a positive number" }).optional(),
   })
   .refine(
     (data) =>
@@ -115,6 +117,7 @@ interface PreConfiguredStateKubernetes {
   namespace: string;
   containerName: string;
   podName: string;
+  duration?: number;
 }
 
 interface PreConfiguredStateDatasource {
@@ -124,6 +127,7 @@ interface PreConfiguredStateDatasource {
   title: string;
   description: string;
   statement: string;
+  duration?: number;
 }
 
 type PreConfiguredState =
@@ -302,6 +306,7 @@ const DatasourceExecutionRequestForm = ({
       setValue("title", state.title);
       setValue("description", state.description);
       setValue("statement", state.statement);
+      setValue("duration", state.duration);
     }
   }, [connection, mode]);
 
@@ -419,6 +424,29 @@ const DatasourceExecutionRequestForm = ({
             )}
           </div>
         )}
+        {mode === "TemporaryAccess" && (
+          <div className="my-3 rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
+            <label
+              htmlFor="duration-input"
+              className="block text-xs font-medium text-slate-900 dark:text-slate-50"
+            >
+              Duration (seconds)
+            </label>
+            <input
+              className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
+              id="duration-input"
+              type="number"
+              placeholder="3600"
+              data-testid="request-duration"
+              {...register("duration")}
+            />
+            {errors.duration && (
+              <p className="mt-2 text-xs italic text-red-500">
+                {errors.duration?.message}
+              </p>
+            )}
+          </div>
+        )}
         <div className="-mx-3 mb-2 flex flex-wrap">
           <div className="mb-6 ml-auto px-3">
             <Button type="submit" dataTestId="submit-button">
@@ -495,6 +523,7 @@ const KubernetesExecutionRequestForm = ({
       setValue("namespace", state.namespace);
       setValue("podName", state.podName);
       setValue("containerName", state.containerName);
+      setValue("duration", state.duration);
     }
   }, [connection, mode]);
 
@@ -700,6 +729,29 @@ const KubernetesExecutionRequestForm = ({
               {errors.command && (
                 <p className="mt-2 text-xs italic text-red-500">
                   {errors.command?.message}
+                </p>
+              )}
+            </div>
+          )}
+          {mode === "TemporaryAccess" && (
+            <div className="my-3 rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
+              <label
+                htmlFor="duration-input"
+                className="block text-xs font-medium text-slate-900 dark:text-slate-50"
+              >
+                Duration (seconds)
+              </label>
+              <input
+                className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
+                id="duration-input"
+                type="number"
+                placeholder="3600"
+                data-testid="request-duration"
+                {...register("duration")}
+              />
+              {errors.duration && (
+                <p className="mt-2 text-xs italic text-red-500">
+                  {errors.duration?.message}
                 </p>
               )}
             </div>

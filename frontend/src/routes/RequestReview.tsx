@@ -212,7 +212,7 @@ function DatasourceRequestDisplay({
   run: (explain?: boolean) => Promise<void>;
   cancelQuery: () => Promise<void>;
   start: () => Promise<void>;
-  updateRequest: (request: { statement?: string }) => Promise<void>;
+  updateRequest: (request: { statement?: string, duration?: number }) => Promise<void>;
   results: ExecuteResponseResult[] | undefined;
   dataLoading: boolean;
   executionError: string | undefined;
@@ -258,7 +258,7 @@ function KubernetesRequestDisplay({
   request: KubernetesExecutionRequestResponseWithComments;
   run: (explain?: boolean) => Promise<void>;
   start: () => Promise<void>;
-  updateRequest: (request: { command?: string }) => Promise<void>;
+  updateRequest: (request: { command?: string, duration?: number }) => Promise<void>;
   results: KubernetesExecuteResponse | undefined;
   dataLoading: boolean;
   executionError: string | undefined;
@@ -294,7 +294,7 @@ interface KubernetesRequestBoxProps {
   request: KubernetesExecutionRequestResponseWithComments;
   runQuery: (explain?: boolean) => Promise<void>;
   startServer: () => Promise<void>;
-  updateRequest: (request: { command?: string }) => Promise<void>;
+  updateRequest: (request: { command?: string, duration?: number }) => Promise<void>;
 }
 
 const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
@@ -304,18 +304,20 @@ const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
 }) => {
   const [editMode, setEditMode] = useState(false);
   const [command, setCommand] = useState(request?.command || "");
+  const [duration, setDuration] = useState(request?.duration || 0);
 
   const navigate = useNavigate();
 
   useEffect(() => {
     setCommand(request?.command || "");
-  }, [request?.command]);
+    setDuration(request?.duration || 0);
+  }, [request?.command, request?.duration]);
 
   const changeCommand = async (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
   ) => {
     e.preventDefault();
-    await updateRequest({ command: command });
+    await updateRequest({ command: command, duration: duration });
     setEditMode(false);
   };
 
@@ -331,6 +333,7 @@ const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
         namespace: request?.namespace,
         podName: request?.podName,
         containerName: request?.containerName,
+        duration: request?.duration,
       },
     });
   };
@@ -375,6 +378,18 @@ const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
             ></textarea>
           ) : (
             <Highlighter>{command || "No command specified"}</Highlighter>
+          )}
+          <br />
+          Duration:{" "}
+          {editMode ? (
+            <input
+              className="mb-2 block w-full appearance-none rounded-md border border-gray-200 bg-slate-100 p-1 leading-normal text-gray-700 transition-colors focus:border-gray-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-slate-500 dark:hover:border-slate-600 dark:focus:hover:border-slate-500"
+              type="number"
+              onChange={(e) => setDuration(Number(e.target.value))}
+              value={duration}
+            />
+          ) : (
+            <span>{duration} seconds</span>
           )}
         </div>
         {editMode ? (
@@ -423,23 +438,25 @@ function DatasourceRequestBox({
   runQuery: (explain?: boolean) => Promise<void>;
   cancelQuery: () => Promise<void>;
   startServer: () => Promise<void>;
-  updateRequest: (request: { statement?: string }) => Promise<void>;
+  updateRequest: (request: { statement?: string, duration?: number }) => Promise<void>;
 }) {
   const [editMode, setEditMode] = useState(false);
   const { addNotification } = useNotification();
   const [showSQLDumpModal, setShowSQLDumpModal] = useState(false);
   const navigate = useNavigate();
   const [statement, setStatement] = useState(request?.statement || "");
+  const [duration, setDuration] = useState(request?.duration || 0);
   const changeStatement = async (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
   ) => {
     e.preventDefault();
-    await updateRequest({ statement });
+    await updateRequest({ statement, duration });
     setEditMode(false);
   };
   useEffect(() => {
     setStatement(request?.statement || "");
-  }, [request?.statement]);
+    setDuration(request?.duration || 0);
+  }, [request?.statement, request?.duration]);
 
   const questionText =
     request?.type == "SingleExecution"
@@ -457,6 +474,7 @@ function DatasourceRequestBox({
         mode: request?.type,
         description: request?.description,
         statement: request?.statement,
+        duration: request?.duration,
       },
     });
   };
@@ -654,6 +672,21 @@ function DatasourceRequestBox({
             )
           ) : (
             ""
+          )}
+          {request?.type == "TemporaryAccess" && (
+            <div className="text-slate-500">
+              Duration:{" "}
+              {editMode ? (
+                <input
+                  className="mb-2 block w-full appearance-none rounded-md border border-gray-200 bg-slate-100 p-1 leading-normal text-gray-700 transition-colors focus:border-gray-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-slate-500 dark:hover:border-slate-600 dark:focus:hover:border-slate-500"
+                  type="number"
+                  onChange={(e) => setDuration(Number(e.target.value))}
+                  value={duration}
+                />
+              ) : (
+                <span>{duration} seconds</span>
+              )}
+            </div>
           )}
         </div>
       </div>

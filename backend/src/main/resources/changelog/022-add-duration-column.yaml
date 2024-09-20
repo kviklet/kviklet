@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 022-add-duration-column
+      author: developer
+      changes:
+        - addColumn:
+            tableName: execution_request
+            columns:
+              - column:
+                  name: duration
+                  type: BIGINT
+                  constraints:
+                    nullable: false

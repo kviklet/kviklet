@@ -106,6 +106,7 @@ const RawDatasourceRequestSchema = z.object({
   createdAt: z.coerce.date(),
   connectionName: z.string().optional(),
   csvDownload: CSVDownloadSchema.optional(),
+  duration: z.number().optional(), // P8337
 });
 
 const RawKubernetesRequestSchema = z.object({
@@ -123,6 +124,7 @@ const RawKubernetesRequestSchema = z.object({
   namespace: z.string(),
   containerName: z.coerce.string(),
   command: z.string().optional(),
+  duration: z.number().optional(), // P8337
 });
 
 const ProxyResponse = z.object({
@@ -139,6 +141,7 @@ const ChangeExecutionRequestPayloadSchema = z.object({
   podName: z.string().optional(),
   namespace: z.string().optional(),
   containerName: z.string().optional(),
+  duration: z.number().optional(), // P8337
 });
 
 const DatasourceExecutionRequestResponse = withType(

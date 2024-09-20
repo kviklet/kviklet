@@ -74,10 +74,10 @@ class ExecutionRequestService(
     ): ExecutionRequestDetails {
         val executionRequestDetails = when (request) {
             is CreateDatasourceExecutionRequestRequest -> {
-                createDatasourceRequest(connectionId, request, userId)
+                createDatasourceRequest(connectionId, request, userId, request.duration)
             }
             is CreateKubernetesExecutionRequestRequest -> {
-                createKubernetesRequest(connectionId, request, userId)
+                createKubernetesRequest(connectionId, request, userId, request.duration)
             }
         }
         RequestCreatedEvent.fromRequest(executionRequestDetails).let {
@@ -90,6 +90,7 @@ class ExecutionRequestService(
         connectionId: ConnectionId,
         request: CreateDatasourceExecutionRequestRequest,
         userId: String,
+        duration: Long,
     ): ExecutionRequestDetails {
         val connection = connectionService.getDatasourceConnection(connectionId)
         if (connection !is DatasourceConnection) {
@@ -108,6 +109,7 @@ class ExecutionRequestService(
             statement = request.statement,
             executionStatus = "PENDING",
             authorId = userId,
+            duration = duration,
         )
     }
 
@@ -115,6 +117,7 @@ class ExecutionRequestService(
         connectionId: ConnectionId,
         request: CreateKubernetesExecutionRequestRequest,
         userId: String,
+        duration: Long,
     ): ExecutionRequestDetails = executionRequestAdapter.createExecutionRequest(
         connectionId = connectionId,
         title = request.title,
@@ -126,6 +129,7 @@ class ExecutionRequestService(
         podName = request.podName,
         containerName = request.containerName,
         command = request.command,
+        duration = duration,
     )
 
     private fun constructSQLDumpCommand(connection: DatasourceConnection, outputFile: String? = null): List<String> =
