@@ -22,6 +22,7 @@ import dev.kviklet.kviklet.service.dto.ReviewEvent
 import dev.kviklet.kviklet.service.dto.Role
 import dev.kviklet.kviklet.service.dto.RoleId
 import dev.kviklet.kviklet.service.dto.utcTimeNow
+import java.time.Duration
 import java.time.LocalDateTime
 import kotlin.reflect.KClass
 
@@ -120,6 +121,7 @@ class ExecutionRequestFactory : Factory() {
         executionStatus: String = "PENDING",
         createdAt: LocalDateTime = utcTimeNow(),
         author: User? = null,
+        temporaryAccessDuration: Duration? = null,
     ): DatasourceExecutionRequest = DatasourceExecutionRequest(
         id,
         connection ?: connectionFactory.createDatasourceConnection(),
@@ -130,6 +132,7 @@ class ExecutionRequestFactory : Factory() {
         executionStatus,
         createdAt,
         author ?: userFactory.createUser(),
+        temporaryAccessDuration,
     )
 }
 

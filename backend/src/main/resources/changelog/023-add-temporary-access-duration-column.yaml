@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 023-add-temporary-access-duration-to-execution-request
+      author: jascha
+      changes:
+        - addColumn:
+            tableName: execution_request
+            columns:
+              - column:
+                  name: temporary_access_duration
+                  type: bigint
+                  constraints:
+                    nullable: true

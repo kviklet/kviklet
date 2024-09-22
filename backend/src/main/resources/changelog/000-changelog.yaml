@@ -62,3 +62,6 @@ databaseChangeLog:
   - include:
       file: 022-add-dumps-enabled-column.yaml
       relativeToChangelogFile: true
+  - include:
+        file: 023-add-temporary-access-duration-column.yaml
+        relativeToChangelogFile: true

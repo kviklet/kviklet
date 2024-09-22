@@ -45,6 +45,7 @@ const EditEvent = withType(
     previousPodName: z.string().optional().nullable(),
     previousNamespace: z.string().optional().nullable(),
     previousContainerName: z.string().optional().nullable(),
+    previousAccessDuration: z.number().optional().nullable(),
     createdAt: z.coerce.date(),
     id: z.string(),
   }),
@@ -106,6 +107,7 @@ const RawDatasourceRequestSchema = z.object({
   createdAt: z.coerce.date(),
   connectionName: z.string().optional(),
   csvDownload: CSVDownloadSchema.optional(),
+  temporaryAccessDuration: z.number().nullable(),
 });
 
 const RawKubernetesRequestSchema = z.object({
@@ -123,6 +125,7 @@ const RawKubernetesRequestSchema = z.object({
   namespace: z.string(),
   containerName: z.coerce.string(),
   command: z.string().optional(),
+  temporaryAccessDuration: z.number().optional(),
 });
 
 const ProxyResponse = z.object({
@@ -139,6 +142,7 @@ const ChangeExecutionRequestPayloadSchema = z.object({
   podName: z.string().optional(),
   namespace: z.string().optional(),
   containerName: z.string().optional(),
+  temporaryAccessDuration: z.number().optional().nullable(),
 });
 
 const DatasourceExecutionRequestResponse = withType(

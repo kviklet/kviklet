@@ -2,7 +2,6 @@ import { Route, Navigate, Routes } from "react-router-dom";
 import Settings from "./routes/settings/Settings";
 import DefaultLayout from "./layout/DefaultLayout";
 import { Requests } from "./routes/Requests";
-import RequestReview from "./routes/RequestReview";
 import Login from "./routes/Login";
 import { useContext } from "react";
 import {
@@ -14,6 +13,7 @@ import LiveSession from "./routes/LiveSession";
 import ConnectionChooser from "./routes/NewRequest";
 import Auditlog from "./routes/Auditlog";
 import { NotificationContextProvider } from "./components/NotifcationStatusProvider";
+import RequestReview from "./routes/Review";
 
 export interface ProtectedRouteProps {
   children: JSX.Element;
