@@ -31,6 +31,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Duration
 import java.time.LocalDateTime
 
 enum class ExecutionRequestType {
@@ -74,6 +75,8 @@ class ExecutionRequestEntity(
     var containerName: String? = "",
     var command: String? = "",
 
+    var temporaryAccessDuration: Long? = null,
+
 ) : BaseEntity() {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
@@ -91,6 +94,7 @@ class ExecutionRequestEntity(
             executionStatus = executionStatus,
             createdAt = createdAt,
             author = author.toDto(),
+            temporaryAccessDuration = temporaryAccessDuration?.let { Duration.ofMinutes(it) },
         )
 
         ExecutionRequestType.KUBERNETES -> KubernetesExecutionRequest(
@@ -106,6 +110,7 @@ class ExecutionRequestEntity(
             podName = podName,
             containerName = containerName,
             command = command,
+            temporaryAccessDuration = temporaryAccessDuration?.let { Duration.ofMinutes(it) },
         )
     }
 
@@ -192,6 +197,7 @@ class ExecutionRequestAdapter(
         podName: String? = null,
         containerName: String? = null,
         command: String? = null,
+        temporaryAccessDuration: Duration? = null,
     ): ExecutionRequestDetails {
         val connection = connectionRepository.findByIdOrNull(connectionId.toString())
             ?: throw EntityNotFound("Connection Not Found", "Connection with id $connectionId does not exist.")
@@ -232,6 +238,7 @@ class ExecutionRequestAdapter(
                 podName = podName,
                 containerName = containerName,
                 command = command,
+                temporaryAccessDuration = temporaryAccessDuration?.toMinutes(),
             ),
         ).toDetailDto(
             connectionAdapter.toDto(connection),
@@ -248,6 +255,7 @@ class ExecutionRequestAdapter(
         podName: String? = null,
         containerName: String? = null,
         command: String? = null,
+        temporaryAccessDuration: Duration? = null,
     ): ExecutionRequestDetails {
         val executionRequestEntity = getExecutionRequestDetailsEntity(id)
 
@@ -276,6 +284,7 @@ class ExecutionRequestAdapter(
         podName?.let { executionRequestEntity.podName = it }
         containerName?.let { executionRequestEntity.containerName = it }
         command?.let { executionRequestEntity.command = it }
+        temporaryAccessDuration?.let { executionRequestEntity.temporaryAccessDuration = it.toMinutes() }
 
         executionRequestRepository.save(executionRequestEntity)
         return executionRequestEntity.toDetailDto(

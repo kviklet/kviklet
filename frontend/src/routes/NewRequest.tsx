@@ -41,9 +41,9 @@ const queryPlaceholder = (connection: ConnectionResponse): string => {
   if (connection._type === "DATASOURCE") {
     if (connection.type === DatabaseType.MONGODB) {
       return `{
-    "find": "testCollection",
-    "filter": { "name": "John Doe" }
-}`;
+      "find": "testCollection",
+      "filter": { "name": "John Doe" }
+  }`;
     } else {
       return "SELECT id FROM some_table;";
     }
@@ -60,7 +60,7 @@ const DatasourceExecutionRequestSchema = z
     description: z.string(),
     statement: z.string().optional(),
     connectionId: z.string().min(1),
-    temporaryAccessDuration: z.number().optional(),
+    temporaryAccessDuration: z.coerce.number().optional(),
   })
   .refine(
     (data) =>
@@ -90,7 +90,7 @@ const KubernetesExecutionRequestSchema = z
     namespace: z.string().min(1).default("default"),
     podName: z.string().min(1),
     containerName: z.string().optional(),
-    temporaryAccessDuration: z.number().optional(),
+    temporaryAccessDuration: z.coerce.number().optional(),
   })
   .refine(
     (data) =>

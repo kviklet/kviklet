@@ -27,6 +27,7 @@ import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
 import org.hibernate.annotations.ColumnTransformer
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Service
+import java.time.Duration
 import java.time.LocalDateTime
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -42,6 +43,7 @@ data class ReviewPayload(val comment: String, val action: ReviewAction) : Payloa
 @JsonTypeName("EDIT")
 data class EditPayload(
     val previousQuery: String? = null,
+    val previousAccessDurationInMinutes: Duration? = null,
     val previousCommand: String? = null,
     val previousContainerName: String? = null,
     val previousPodName: String? = null,

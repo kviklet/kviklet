@@ -49,6 +49,7 @@ import java.io.BufferedInputStream
 import java.io.IOException
 import java.io.OutputStream
 import java.security.SecureRandom
+import java.time.Duration
 import java.time.LocalDateTime
 import java.util.concurrent.CompletableFuture
 
@@ -108,7 +109,7 @@ class ExecutionRequestService(
             statement = request.statement,
             executionStatus = "PENDING",
             authorId = userId,
-            temporaryAccessDuration = request.temporaryAccessDuration,
+            temporaryAccessDuration = request.temporaryAccessDuration?.let { Duration.ofMinutes(it) },
         )
     }
 
@@ -127,7 +128,7 @@ class ExecutionRequestService(
         podName = request.podName,
         containerName = request.containerName,
         command = request.command,
-        temporaryAccessDuration = request.temporaryAccessDuration,
+        temporaryAccessDuration = request.temporaryAccessDuration?.let { Duration.ofMinutes(it) },
     )
 
     private fun constructSQLDumpCommand(connection: DatasourceConnection, outputFile: String? = null): List<String> =
@@ -238,6 +239,16 @@ class ExecutionRequestService(
                         id,
                         userId,
                         EditPayload(previousQuery = executionRequestDetails.request.statement ?: ""),
+                    )
+                }
+                val newDuration = request.temporaryAccessDuration?.let { Duration.ofMinutes(it) }
+                if (newDuration != executionRequestDetails.request.temporaryAccessDuration) {
+                    eventService.saveEvent(
+                        id,
+                        userId,
+                        EditPayload(
+                            previousAccessDurationInMinutes = executionRequestDetails.request.temporaryAccessDuration,
+                        ),
                     )
                 }
             }

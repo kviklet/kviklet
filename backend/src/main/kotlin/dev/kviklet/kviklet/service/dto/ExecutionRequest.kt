@@ -12,6 +12,7 @@ import dev.kviklet.kviklet.security.UserDetailsWithId
 import net.sf.jsqlparser.JSQLParserException
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import java.io.Serializable
+import java.time.Duration
 import java.time.LocalDateTime
 
 data class ExecutionRequestId
@@ -53,6 +54,7 @@ sealed class ExecutionRequest(
     open val executionStatus: String,
     open val createdAt: LocalDateTime = utcTimeNow(),
     open val author: User,
+    open val temporaryAccessDuration: Duration? = null,
 ) : SecuredDomainObject {
     fun getId() = id.toString()
     override fun getSecuredObjectId() = connection.getSecuredObjectId()
@@ -92,7 +94,12 @@ data class DatasourceExecutionRequest(
     override val executionStatus: String,
     override val createdAt: LocalDateTime = utcTimeNow(),
     override val author: User,
-) : ExecutionRequest(id, connection, title, type, description, executionStatus, createdAt, author)
+    override val temporaryAccessDuration: Duration?,
+) : ExecutionRequest(
+    id, connection, title, type, description, executionStatus, createdAt,
+    author,
+    temporaryAccessDuration,
+)
 
 data class KubernetesExecutionRequest(
     override val id: ExecutionRequestId?,
@@ -107,6 +114,7 @@ data class KubernetesExecutionRequest(
     val podName: String?,
     val containerName: String?,
     val command: String?,
+    override val temporaryAccessDuration: Duration?,
 ) : ExecutionRequest(
     id,
     connection,
@@ -116,6 +124,7 @@ data class KubernetesExecutionRequest(
     executionStatus,
     createdAt,
     author,
+    temporaryAccessDuration,
 )
 
 data class ExecutionRequestDetails(val request: ExecutionRequest, val events: MutableSet<Event>) :
@@ -195,13 +204,21 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
                 }
                 return ExecutionStatus.EXECUTABLE
             }
+
             RequestType.TemporaryAccess -> {
                 val executions = events.filter { it.type == EventType.EXECUTE }
                 if (executions.isEmpty()) {
                     return ExecutionStatus.EXECUTABLE
                 }
                 val firstExecution = executions.minBy { it.createdAt }
-                return if (firstExecution.createdAt < utcTimeNow().minusMinutes(60)) {
+                // Default to 1 hour if not set, can be for old temporary access requests all new ones should have this set
+                val duration = request.temporaryAccessDuration ?: Duration.ofMinutes(60)
+
+                if (duration.isZero) {
+                    // If duration is zero, the request is always active
+                    return ExecutionStatus.ACTIVE
+                }
+                return if (firstExecution.createdAt.plus(duration) < utcTimeNow()) {
                     ExecutionStatus.EXECUTED
                 } else {
                     ExecutionStatus.ACTIVE
@@ -256,6 +273,7 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
             RequestType.TemporaryAccess -> query?.trim()?.removeSuffix(
                 ";",
             ) ?: return Pair(false, "Query can't be empty")
+
             else -> return Pair(false, "Can't download results for this request type")
         }
         try {

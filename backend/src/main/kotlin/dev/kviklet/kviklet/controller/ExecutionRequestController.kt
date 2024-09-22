@@ -57,8 +57,8 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
 import java.io.OutputStream
-import java.time.LocalDateTime
 import java.time.Duration
+import java.time.LocalDateTime
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
 @JsonSubTypes(
@@ -70,7 +70,7 @@ sealed class CreateExecutionRequestRequest(
     open val title: String,
     open val type: RequestType,
     open val description: String,
-    open val temporaryAccessDuration: Duration? = null,
+    open val temporaryAccessDuration: Long? = null,
 )
 
 data class CreateDatasourceExecutionRequestRequest(
@@ -79,7 +79,7 @@ data class CreateDatasourceExecutionRequestRequest(
     override val type: RequestType,
     override val description: String,
     val statement: String?,
-    override val temporaryAccessDuration: Duration? = null,
+    override val temporaryAccessDuration: Long? = null,
 ) : CreateExecutionRequestRequest(connectionId, title, type, description, temporaryAccessDuration)
 
 data class CreateKubernetesExecutionRequestRequest(
@@ -91,7 +91,7 @@ data class CreateKubernetesExecutionRequestRequest(
     val podName: String,
     val containerName: String?,
     val command: String,
-    override val temporaryAccessDuration: Duration? = null,
+    override val temporaryAccessDuration: Long? = null,
 ) : CreateExecutionRequestRequest(connectionId, title, type, description, temporaryAccessDuration)
 
 data class UpdateExecutionRequestRequest(
@@ -102,12 +102,10 @@ data class UpdateExecutionRequestRequest(
     val podName: String? = null,
     val containerName: String? = null,
     val command: String? = null,
-    val temporaryAccessDuration: Duration? = null,
+    val temporaryAccessDuration: Long? = null,
 )
 
 data class ExecuteExecutionRequestRequest(val query: String?, val explain: Boolean = false)
-
-data class DownloadCSVRequest(val query: String?)
 
 data class CreateReviewRequest(val comment: String, val action: ReviewAction)
 
@@ -132,7 +130,7 @@ sealed class ExecutionRequestResponse(open val id: ExecutionRequestId) {
                     connection = ConnectionResponse.fromDto(
                         dto.request.connection,
                     ),
-                    temporaryAccessDuration = dto.request.temporaryAccessDuration,
+                    temporaryAccessDuration = dto.request.temporaryAccessDuration?.toMinutes(),
                 )
                 is KubernetesExecutionRequest -> KubernetesExecutionRequestResponse(
                     id = dto.request.id!!,
@@ -150,7 +148,7 @@ sealed class ExecutionRequestResponse(open val id: ExecutionRequestId) {
                     podName = dto.request.podName,
                     containerName = dto.request.containerName,
                     command = dto.request.command,
-                    temporaryAccessDuration = dto.request.temporaryAccessDuration,
+                    temporaryAccessDuration = dto.request.temporaryAccessDuration?.toMinutes(),
                 )
             }
         }
@@ -167,7 +165,7 @@ sealed class ExecutionRequestResponse(open val id: ExecutionRequestId) {
         val reviewStatus: ReviewStatus,
         val executionStatus: ExecutionStatus,
         val createdAt: LocalDateTime = utcTimeNow(),
-        val temporaryAccessDuration: Duration? = null,
+        val temporaryAccessDuration: Long? = null,
     ) : ExecutionRequestResponse(id = id)
 
     data class KubernetesExecutionRequestResponse(
@@ -184,13 +182,10 @@ sealed class ExecutionRequestResponse(open val id: ExecutionRequestId) {
         val podName: String?,
         val containerName: String?,
         val command: String?,
-        val temporaryAccessDuration: Duration? = null,
+        val temporaryAccessDuration: Long? = null,
     ) : ExecutionRequestResponse(id = id)
 }
 
-/**
- * A DTO for the {@link dev.kviklet.kviklet.db.ExecutionRequestEntity} entity
- */
 sealed class ExecutionRequestDetailResponse(open val id: ExecutionRequestId, open val events: List<EventResponse>) {
 
     companion object {
@@ -211,7 +206,7 @@ sealed class ExecutionRequestDetailResponse(open val id: ExecutionRequestId, ope
                     allowed = dto.csvDownloadAllowed().first,
                     reason = dto.csvDownloadAllowed().second,
                 ),
-                temporaryAccessDuration = dto.request.temporaryAccessDuration,
+                temporaryAccessDuration = dto.request.temporaryAccessDuration?.toMinutes(),
             )
             is KubernetesExecutionRequest -> KubernetesExecutionRequestDetailResponse(
                 id = dto.request.id!!,
@@ -228,7 +223,7 @@ sealed class ExecutionRequestDetailResponse(open val id: ExecutionRequestId, ope
                 command = dto.request.command,
                 events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
                 connection = ConnectionResponse.fromDto(dto.request.connection),
-                temporaryAccessDuration = dto.request.temporaryAccessDuration,
+                temporaryAccessDuration = dto.request.temporaryAccessDuration?.toMinutes(),
             )
         }
     }
@@ -247,7 +242,7 @@ data class DatasourceExecutionRequestDetailResponse(
     val createdAt: LocalDateTime = utcTimeNow(),
     val csvDownload: CSVDownloadableResponse,
     override val events: List<EventResponse>,
-    val temporaryAccessDuration: Duration? = null,
+    val temporaryAccessDuration: Long? = null,
 ) : ExecutionRequestDetailResponse(
     id = id,
     events = events,
@@ -270,7 +265,7 @@ data class KubernetesExecutionRequestDetailResponse(
     val containerName: String?,
     val command: String?,
     override val events: List<EventResponse>,
-    val temporaryAccessDuration: Duration? = null,
+    val temporaryAccessDuration: Long? = null,
 ) : ExecutionRequestDetailResponse(
     id = id,
     events = events,
@@ -415,6 +410,7 @@ abstract class EventResponse(val type: EventType, open val createdAt: LocalDateT
                 event.previousContainerName,
                 event.previousPodName,
                 event.previousNamespace,
+                event.previousAccessDuration,
             )
             is ExecuteEvent -> ExecuteEventResponse(
                 event.getId()!!,
@@ -463,6 +459,7 @@ data class EditEventResponse(
     val previousContainerName: String? = null,
     val previousPodName: String? = null,
     val previousNamespace: String? = null,
+    val previousAccessDuration: Duration? = null,
 ) : EventResponse(EventType.EDIT, createdAt)
 
 @JsonTypeName("EXECUTE")

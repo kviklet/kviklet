@@ -16,6 +16,7 @@ import dev.kviklet.kviklet.security.Resource
 import dev.kviklet.kviklet.security.SecuredDomainId
 import dev.kviklet.kviklet.security.SecuredDomainObject
 import java.io.Serializable
+import java.time.Duration
 import java.time.LocalDateTime
 import java.util.*
 
@@ -72,7 +73,7 @@ abstract class Event(
             is EditPayload -> EditEvent(
                 id, request, author, createdAt, payload.previousQuery,
                 payload.previousCommand, payload.previousContainerName, payload.previousPodName,
-                payload.previousNamespace,
+                payload.previousNamespace, payload.previousAccessDurationInMinutes,
             )
             is ExecutePayload -> {
                 val results = payload.results.map {
@@ -124,6 +125,7 @@ data class EditEvent(
     val previousContainerName: String? = null,
     val previousPodName: String? = null,
     val previousNamespace: String? = null,
+    val previousAccessDuration: Duration? = null,
 ) : Event(EventType.EDIT, createdAt, request) {
     override fun hashCode() = Objects.hash(eventId)
 }
