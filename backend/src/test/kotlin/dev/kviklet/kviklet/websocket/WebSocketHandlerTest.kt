@@ -10,6 +10,7 @@ import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.LiveSessionId
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -50,9 +51,11 @@ class WebSocketHandlerTest {
     private lateinit var mockMvc: MockMvc
 
     private lateinit var webSocketClient: StandardWebSocketClient
-    private lateinit var objectMapper: ObjectMapper
     private lateinit var testUser: User
     private lateinit var testConnection: Connection
+
+    @Autowired
+    private lateinit var objectMapper: ObjectMapper
 
     companion object {
         val db: PostgreSQLContainer<*> = PostgreSQLContainer(DockerImageName.parse("postgres:11.1"))
@@ -71,7 +74,6 @@ class WebSocketHandlerTest {
         testUser = userHelper.createUser(permissions = listOf("*"))
         testConnection = connectionHelper.createPostgresConnection(db)
         webSocketClient = StandardWebSocketClient()
-        objectMapper = ObjectMapper()
     }
 
     @AfterEach
@@ -82,32 +84,30 @@ class WebSocketHandlerTest {
     }
 
     @Test
-    fun testWebSocketConnection() {
+    fun testWebSocketConnectionUpdateMessage() {
         val executionRequest = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
         val sessionCookie = userHelper.login(testUser.email, "123456", mockMvc)
 
         val messages = CompletableFuture<List<String>>()
         val session = connectToWebSocket(executionRequest.getId(), sessionCookie.value, messages)
 
-        // Send an update message
         val updateMessage = """
             {
                 "type": "update_content",
-                "id": "${executionRequest.getId()}",
                 "content": "SELECT * FROM users"
             }
         """.trimIndent()
         session.sendMessage(TextMessage(updateMessage))
 
-        // Wait for messages
         val receivedMessages = messages.get(5, TimeUnit.SECONDS)
 
-        // Assert the received messages
         assert(receivedMessages.isNotEmpty())
         val statusMessage = objectMapper.readValue(receivedMessages.last(), StatusMessage::class.java)
-        assert(statusMessage.id == LiveSessionId(executionRequest.getId()))
-        assert(statusMessage.consoleContent.isNotEmpty())
-        assert(statusMessage.observers.isNotEmpty())
+        assertEquals(statusMessage.consoleContent, "SELECT * FROM users")
+        val observer = (statusMessage.observers).first()
+        assertEquals(observer.id, testUser.getId())
+        assertEquals(observer.email, testUser.email)
+        assertEquals(observer.fullName, testUser.fullName)
 
         session.close()
     }
@@ -129,7 +129,7 @@ class WebSocketHandlerTest {
         // Assert the received error
         assert(receivedMessages.isNotEmpty())
         val errorMessage = objectMapper.readValue(receivedMessages.last(), ErrorResponseMessage::class.java)
-        assert(errorMessage.id == LiveSessionId(executionRequest.getId()))
+        assert(errorMessage.sessionId == LiveSessionId(executionRequest.getId()))
         assert(errorMessage.error.contains("Error processing message"))
 
         session.close()
