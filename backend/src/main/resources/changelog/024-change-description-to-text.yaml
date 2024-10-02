@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 024-change-description-to-text
+      author: jascha
+      changes:
+        - modifyDataType:
+            tableName: execution_request
+            columnName: description
+            newDataType: TEXT

@@ -158,6 +158,33 @@ class RoleHelper(private val roleService: RoleService) {
 
 @Component
 class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
+
+    /*
+     * Create a dummy connection for testing purposes
+     * This connection cannot execute requests
+     * @return Connection
+     */
+    @Transactional
+    fun createDummyConnection(): Connection = connectionAdapter.createDatasourceConnection(
+        ConnectionId("ds-conn-test"),
+        "Test Connection",
+        AuthenticationType.USER_PASSWORD,
+        "test",
+        1,
+        "test",
+        "test",
+        "A test connection",
+        ReviewConfig(
+            numTotalRequired = 1,
+        ),
+        1,
+        "localhost",
+        DatasourceType.POSTGRESQL,
+        DatabaseProtocol.POSTGRESQL,
+        additionalJDBCOptions = "",
+        dumpsEnabled = false,
+    )
+
     @Transactional
     fun createPostgresConnection(container: JdbcDatabaseContainer<*>): Connection =
         connectionAdapter.createDatasourceConnection(
@@ -232,13 +259,14 @@ class ExecutionRequestHelper(
         author: User,
         statement: String = "SELECT 1;",
         connection: Connection? = null,
+        description: String = "A test execution request",
     ): ExecutionRequestDetails {
         val requestConnection = connection ?: connectionHelper.createPostgresConnection(dbcontainer!!)
         return executionRequestAdapter.createExecutionRequest(
             connectionId = requestConnection.id,
             title = "Test Execution",
             type = RequestType.SingleExecution,
-            description = "A test execution request",
+            description = description,
             statement = statement,
             executionStatus = "PENDING",
             authorId = author.getId()!!,
