@@ -98,17 +98,57 @@ class WebSocketHandlerTest {
             }
         """.trimIndent()
         session.sendMessage(TextMessage(updateMessage))
-
+        // Wait 2 seconds for the message to be processed otherwise the get is too eager
+        // and only one updated message is received
+        Thread.sleep(2000)
         val receivedMessages = messages.get(5, TimeUnit.SECONDS)
-
         assert(receivedMessages.isNotEmpty())
+        // One message after initial connection and one message after the update
+        assertEquals(receivedMessages.size, 2)
         val statusMessage = objectMapper.readValue(receivedMessages.last(), StatusMessage::class.java)
         assertEquals(statusMessage.consoleContent, "SELECT * FROM users")
         val observer = (statusMessage.observers).first()
         assertEquals(observer.id, testUser.getId())
         assertEquals(observer.email, testUser.email)
         assertEquals(observer.fullName, testUser.fullName)
+        session.close()
+    }
 
+    @Test
+    fun sendExecuteMessage() {
+        val executionRequest = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+        val sessionCookie = userHelper.login(testUser.email, "123456", mockMvc)
+
+        val messages = CompletableFuture<List<String>>()
+        val session = connectToWebSocket(executionRequest.getId(), sessionCookie.value, messages)
+
+        val updateMessage = """
+            {
+                "type": "update_content",
+                "content": "SELECT * FROM users"
+            }
+        """.trimIndent()
+        session.sendMessage(TextMessage(updateMessage))
+        val executeMessage = """
+            {
+                "type": "execute"
+                "statement": "SELECT * FROM users"
+            }
+        """.trimIndent()
+        session.sendMessage(TextMessage(executeMessage))
+        // Wait 2 seconds for the message to be processed otherwise the get is too eager
+        // and only one updated message is received
+        Thread.sleep(2000)
+        val receivedMessages = messages.get(5, TimeUnit.SECONDS)
+        assert(receivedMessages.isNotEmpty())
+        // One message after initial connection and one message after the update
+        assertEquals(receivedMessages.size, 3)
+        val statusMessage = objectMapper.readValue(receivedMessages.last(), StatusMessage::class.java)
+        assertEquals(statusMessage.consoleContent, "SELECT * FROM users")
+        val observer = (statusMessage.observers).first()
+        assertEquals(observer.id, testUser.getId())
+        assertEquals(observer.email, testUser.email)
+        assertEquals(observer.fullName, testUser.fullName)
         session.close()
     }
 

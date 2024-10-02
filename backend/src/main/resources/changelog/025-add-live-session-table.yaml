@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: 023-add-live-session-table
+      id: 025-add-live-session-table
       author: jascha
       changes:
         - createTable:
@@ -16,7 +16,7 @@ databaseChangeLog:
                   name: execution_request_id
                   type: VARCHAR(255)
                   constraints:
-                      nullable: false
+                    nullable: false
               - column:
                   name: console_content
                   type: TEXT

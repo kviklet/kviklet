@@ -7,6 +7,7 @@ import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.UserService
+import dev.kviklet.kviklet.service.dto.DBExecutionResult
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.LiveSession
 import dev.kviklet.kviklet.service.dto.LiveSessionId
@@ -27,10 +28,13 @@ import java.util.concurrent.ConcurrentHashMap
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 @JsonSubTypes(
     JsonSubTypes.Type(value = UpdateContentMessage::class, name = "update_content"),
+    JsonSubTypes.Type(value = ExecuteMessage::class, name = "execute"),
 )
 sealed class WebSocketMessage
 
 data class UpdateContentMessage(val content: String) : WebSocketMessage()
+
+data class ExecuteMessage(val statement: String) : WebSocketMessage()
 
 sealed class ResponseMessage(open val sessionId: LiveSessionId)
 data class ErrorResponseMessage(override val sessionId: LiveSessionId, val error: String) : ResponseMessage(sessionId)
@@ -40,6 +44,9 @@ data class StatusMessage(
     val consoleContent: String,
     val observers: List<UserResponse>,
 ) : ResponseMessage(sessionId)
+
+data class ResultMessage(override val sessionId: LiveSessionId, val results: List<ExecutionResultResponse>) :
+    ResponseMessage(sessionId)
 
 data class SessionObserver(val webSocketSession: WebSocketSession, val user: User)
 
@@ -115,10 +122,32 @@ class SessionWebsocketHandler(
                     )
                     broadcastUpdate(updatedSession)
                 }
+                is ExecuteMessage -> {
+                    val executionResult = sessionService.executeStatement(
+                        liveSessionId,
+                        webSocketMessage.statement,
+                    )
+                    when (executionResult) {
+                        is DBExecutionResult -> {
+                            val resultMessage = ResultMessage(
+                                sessionId = liveSessionId,
+                                results = executionResult.results.map { ExecutionResultResponse.fromDto(it) },
+                            )
+                            broadcastResultMessage(liveSessionId, resultMessage)
+                        }
+                        else -> throw IllegalStateException("Unsupported execution result type: $executionResult")
+                    }
+                }
             }
         } catch (e: Exception) {
             logger.error("Error processing message", e)
             sendErrorResponseMessage(session, "INTERNAL_ERROR", liveSessionId)
+        }
+    }
+
+    private fun broadcastResultMessage(sessionId: LiveSessionId, resultMessage: ResultMessage) {
+        sessionObservers[sessionId]?.forEach { sessionObserver ->
+            sendMessage(sessionObserver.webSocketSession, resultMessage)
         }
     }
 
