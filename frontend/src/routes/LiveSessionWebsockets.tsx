@@ -1,12 +1,11 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import Button from "../components/Button";
 import MultiResult from "../components/MultiResult";
 import Spinner from "../components/Spinner";
-import { ExecuteResponseResult } from "../api/ExecutionRequestApi";
 import useRequest from "../hooks/request";
 import { useParams } from "react-router-dom";
-import { websocketBaseUrl } from "../api/base";
+import useLiveSession from "../hooks/useLiveSession";
 
 interface LiveSessionWebsocketsProps {
   requestId: string;
@@ -19,7 +18,7 @@ interface SessionParams {
 
 const LiveSessionWebsocketsLoader: React.FC = () => {
   const params = useParams() as unknown as SessionParams;
-  const { request, cancelQuery } = useRequest(params.requestId);
+  const { request } = useRequest(params.requestId);
 
   return (
     <>
@@ -41,14 +40,23 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
 }) => {
   const [editor, setEditor] =
     useState<monaco.editor.IStandaloneCodeEditor | null>(null);
-  const [results, setResults] = useState<ExecuteResponseResult[] | undefined>(
-    undefined,
-  );
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | undefined>(undefined);
-  const [updatedRows, setUpdatedRows] = useState<number | undefined>(undefined);
   const monacoEl = useRef(null);
-  const ws = useRef<WebSocket | null>(null);
+
+  const [mode, setMode] = useState<"listen" | "write">("listen");
+  const updateEditorContent = (newContent: string) => {
+    if (mode === "listen") {
+      monaco.editor.getModels()[0].setValue(newContent);
+    }
+  };
+
+  const {
+    error,
+    executeQuery,
+    updateContent,
+    isLoading,
+    updatedRows,
+    results,
+  } = useLiveSession(requestId, updateEditorContent);
 
   useEffect(() => {
     // Initialize Monaco editor
@@ -60,59 +68,27 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
         minimap: { enabled: false },
       });
       setEditor(newEditor);
+
+      // Add listener for content changes
+      const disposable = newEditor.onDidChangeModelContent(() => {
+        if (mode === "write") {
+          const newContent = newEditor.getValue();
+          updateContent(newContent);
+        }
+        //const newContent = newEditor.getValue();
+        //updateContent(newContent);
+      });
+
+      return () => {
+        disposable.dispose();
+        newEditor.dispose();
+      };
     }
-
-    // Initialize WebSocket connection
-    const socket = new WebSocket(`${websocketBaseUrl}/sql/${requestId}`);
-
-    socket.onopen = () => {
-      console.log("WebSocket connection established");
-      setError(undefined);
-    };
-
-    socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      handleWebSocketMessage(data);
-    };
-
-    socket.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      setError("WebSocket connection error");
-    };
-
-    socket.onclose = () => {
-      console.log("WebSocket connection closed");
-    };
-
-    ws.current = socket;
-
-    return () => {
-      editor?.dispose();
-      socket.close();
-    };
   }, [requestId, initialLanguage]);
 
-  const handleWebSocketMessage = (data: any) => {
-    if (data.type === "results") {
-      setResults(data.results);
-      setIsLoading(false);
-    } else if (data.type === "error") {
-      setError(data.message);
-      setIsLoading(false);
-    } else if (data.type === "updatedRows") {
-      setUpdatedRows(data.count);
-    }
-  };
-
-  const executeQuery = () => {
-    const query = editor?.getValue();
-    if (query && ws.current?.readyState === WebSocket.OPEN) {
-      setIsLoading(true);
-      setError(undefined);
-      setResults(undefined);
-      setUpdatedRows(undefined);
-      ws.current.send(JSON.stringify({ type: "execute", query }));
-    }
+  const onExecuteQueryClick = () => {
+    console.log("Setting mode to write");
+    setMode("write");
   };
 
   return (
@@ -125,7 +101,10 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
           <div className="h-full w-full" ref={monacoEl}></div>
         </div>
         <div className="mb-4 flex justify-end">
-          <Button onClick={executeQuery} disabled={isLoading}>
+          <Button
+            onClick={onExecuteQueryClick}
+            type={(isLoading && "disabled") || "button"}
+          >
             {isLoading ? "Running..." : "Run Query"}
           </Button>
         </div>

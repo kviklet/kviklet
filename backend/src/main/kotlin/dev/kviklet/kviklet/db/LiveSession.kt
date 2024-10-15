@@ -44,6 +44,8 @@ class LiveSessionAdapter(
         val liveSessionEntity = liveSessionRepository.findByExecutionRequestId(executionRequestId.toString())
         return liveSessionEntity?.toDto(connectionAdapter.toDto(liveSessionEntity.executionRequest.connection))
     }
+
+    @Transactional(readOnly = true)
     fun findById(id: LiveSessionId): LiveSession {
         val liveSessionEntity = liveSessionRepository.findByIdOrNull(id.toString()) ?: throw EntityNotFound(
             "Live session not found",
@@ -80,5 +82,15 @@ class LiveSessionAdapter(
 
         val updatedEntity = liveSessionRepository.save(liveSessionEntity)
         return updatedEntity.toDto(connectionAdapter.toDto(updatedEntity.executionRequest.connection))
+    }
+
+    @Transactional
+    fun deleteLiveSession(id: LiveSessionId) {
+        liveSessionRepository.deleteById(id.toString())
+    }
+
+    @Transactional
+    fun deleteAll() {
+        liveSessionRepository.deleteAll()
     }
 }

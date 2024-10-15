@@ -1,11 +1,17 @@
 package dev.kviklet.kviklet.service.websocket
 
 import dev.kviklet.kviklet.db.LiveSessionAdapter
+import dev.kviklet.kviklet.security.Permission
+import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.service.ExecutionRequestService
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.ExecutionResult
 import dev.kviklet.kviklet.service.dto.LiveSession
 import dev.kviklet.kviklet.service.dto.LiveSessionId
+import jakarta.persistence.LockModeType
+import jakarta.persistence.QueryHint
+import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.QueryHints
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -16,6 +22,8 @@ class SessionService(
 ) {
 
     @Transactional
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints(QueryHint(name = "javax.persistence.lock.timeout", value = "3000"))
     fun createOrConnectToSession(executionRequestId: ExecutionRequestId): LiveSession {
         val existingSession = sessionAdapter.findByExecutionRequestId(executionRequestId)
 
@@ -34,6 +42,7 @@ class SessionService(
         )
     }
 
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
     fun updateContent(sessionId: LiveSessionId, consoleContent: String): LiveSession =
         sessionAdapter.updateLiveSession(sessionId, consoleContent)
 

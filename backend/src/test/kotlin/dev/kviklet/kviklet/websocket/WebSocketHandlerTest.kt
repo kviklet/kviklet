@@ -1,16 +1,18 @@
 package dev.kviklet.kviklet.websocket
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import dev.kviklet.kviklet.controller.ErrorResponseMessage
-import dev.kviklet.kviklet.controller.StatusMessage
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.helper.ConnectionHelper
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.dto.Connection
-import dev.kviklet.kviklet.service.dto.LiveSessionId
+import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
+import dev.kviklet.kviklet.service.dto.RequestType
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -25,14 +27,26 @@ import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.client.standard.StandardWebSocketClient
 import org.springframework.web.socket.handler.TextWebSocketHandler
 import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.junit.jupiter.Container
+import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
 import java.net.URI
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
+data class SessionAndMessages(
+    val session: WebSocketSession,
+    val messages: CompletableFuture<List<String>>,
+    val executionRequest: ExecutionRequestDetails,
+)
+
+// TODO: Simplify assertions and calling code?
+// TODO: Assert that it doesnt work with SingleRequest Sessions
+// TODO: Assert that approvals are necessary still to execute
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Testcontainers
 class WebSocketHandlerTest {
 
     @Autowired
@@ -58,15 +72,11 @@ class WebSocketHandlerTest {
     private lateinit var objectMapper: ObjectMapper
 
     companion object {
+        @Container
         val db: PostgreSQLContainer<*> = PostgreSQLContainer(DockerImageName.parse("postgres:11.1"))
             .withUsername("root")
             .withPassword("root")
-            .withReuse(true)
             .withDatabaseName("test_db")
-
-        init {
-            db.start()
-        }
     }
 
     @BeforeEach
@@ -83,13 +93,48 @@ class WebSocketHandlerTest {
         userHelper.deleteAll()
     }
 
-    @Test
-    fun testWebSocketConnectionUpdateMessage() {
-        val executionRequest = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+    fun openSession(approved: Boolean = true): SessionAndMessages {
+        val messages = CompletableFuture<List<String>>()
+        val testApprover = userHelper.createUser()
+        val executionRequest = if (approved) {
+            executionRequestHelper.createApprovedRequest(
+                author = testUser,
+                approver = testApprover,
+                connection = testConnection,
+                requestType = RequestType.TemporaryAccess,
+            )
+        } else {
+            executionRequestHelper.createExecutionRequest(
+                author = testUser,
+                connection = testConnection,
+                requestType = RequestType.TemporaryAccess,
+            )
+        }
         val sessionCookie = userHelper.login(testUser.email, "123456", mockMvc)
 
-        val messages = CompletableFuture<List<String>>()
         val session = connectToWebSocket(executionRequest.getId(), sessionCookie.value, messages)
+        return SessionAndMessages(session, messages, executionRequest)
+    }
+
+    fun openObserverSession(executionRequest: ExecutionRequestDetails): SessionAndMessages {
+        val messages = CompletableFuture<List<String>>()
+        val testObserver = userHelper.createUser()
+        val sessionCookie = userHelper.login(testObserver.email, "123456", mockMvc)
+        val session = connectToWebSocket(executionRequest.getId(), sessionCookie.value, messages)
+        return SessionAndMessages(session, messages, executionRequest)
+    }
+
+    fun waitForResponses(messages: CompletableFuture<List<String>>, expectedMessages: Int): List<JsonNode> {
+        Thread.sleep(500)
+        val receivedMessages = messages.get(5, TimeUnit.SECONDS)
+        assert(receivedMessages.isNotEmpty())
+        assertEquals(receivedMessages.size, expectedMessages)
+        return receivedMessages.map { objectMapper.readTree(it) }
+    }
+
+    @Test
+    fun testWebSocketConnectionUpdateMessage() {
+        val (session, messages, _) = openSession()
 
         val updateMessage = """
             {
@@ -98,30 +143,20 @@ class WebSocketHandlerTest {
             }
         """.trimIndent()
         session.sendMessage(TextMessage(updateMessage))
-        // Wait 2 seconds for the message to be processed otherwise the get is too eager
-        // and only one updated message is received
-        Thread.sleep(2000)
-        val receivedMessages = messages.get(5, TimeUnit.SECONDS)
-        assert(receivedMessages.isNotEmpty())
-        // One message after initial connection and one message after the update
-        assertEquals(receivedMessages.size, 2)
-        val statusMessage = objectMapper.readValue(receivedMessages.last(), StatusMessage::class.java)
-        assertEquals(statusMessage.consoleContent, "SELECT * FROM users")
-        val observer = (statusMessage.observers).first()
-        assertEquals(observer.id, testUser.getId())
-        assertEquals(observer.email, testUser.email)
-        assertEquals(observer.fullName, testUser.fullName)
+
+        val receivedMessages = waitForResponses(messages, 2)
+        val statusMessage = receivedMessages.last()
+        assertEquals("SELECT * FROM users", statusMessage.get("consoleContent").asText())
+        val observer = statusMessage.get("observers").first()
+        assertEquals(observer.get("id").asText(), testUser.getId())
+        assertEquals(observer.get("email").asText(), testUser.email)
+        assertEquals(observer.get("fullName").asText(), testUser.fullName)
         session.close()
     }
 
     @Test
     fun sendExecuteMessage() {
-        val executionRequest = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
-        val sessionCookie = userHelper.login(testUser.email, "123456", mockMvc)
-
-        val messages = CompletableFuture<List<String>>()
-        val session = connectToWebSocket(executionRequest.getId(), sessionCookie.value, messages)
-
+        val (session, messages, _) = openSession()
         val updateMessage = """
             {
                 "type": "update_content",
@@ -131,48 +166,121 @@ class WebSocketHandlerTest {
         session.sendMessage(TextMessage(updateMessage))
         val executeMessage = """
             {
-                "type": "execute"
-                "statement": "SELECT * FROM users"
+                "type": "execute",
+                "statement": "SELECT 1 as test;"
             }
         """.trimIndent()
         session.sendMessage(TextMessage(executeMessage))
         // Wait 2 seconds for the message to be processed otherwise the get is too eager
         // and only one updated message is received
-        Thread.sleep(2000)
-        val receivedMessages = messages.get(5, TimeUnit.SECONDS)
-        assert(receivedMessages.isNotEmpty())
-        // One message after initial connection and one message after the update
-        assertEquals(receivedMessages.size, 3)
-        val statusMessage = objectMapper.readValue(receivedMessages.last(), StatusMessage::class.java)
-        assertEquals(statusMessage.consoleContent, "SELECT * FROM users")
-        val observer = (statusMessage.observers).first()
-        assertEquals(observer.id, testUser.getId())
-        assertEquals(observer.email, testUser.email)
-        assertEquals(observer.fullName, testUser.fullName)
+        val receivedMessages = waitForResponses(messages, 3)
+        val resultMessage = receivedMessages.last()
+        assertTrue(resultMessage.has("sessionId"))
+        assertTrue(resultMessage.has("results"))
+
+        val results = resultMessage.get("results")
+        assertTrue(results.isArray())
+        assertTrue(results.size() > 0)
+
+        val firstResult = results[0]
+        assertTrue(firstResult.has("type"))
+        assertEquals("RECORDS", firstResult.get("type").asText())
+
+        if (firstResult.has("rows") && firstResult.get("rows").isArray()) {
+            val firstRow = firstResult.get("rows")[0]
+            assertTrue(firstRow.has("test"))
+            assertEquals(1, firstRow.get("test").asInt())
+        }
+
         session.close()
     }
 
     @Test
     fun testInvalidMessage() {
-        val executionRequest = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
-        val sessionCookie = userHelper.login(testUser.email, "123456", mockMvc)
-
-        val messages = CompletableFuture<List<String>>()
-        val session = connectToWebSocket(executionRequest.getId(), sessionCookie.value, messages)
-
+        val (session, messages, _) = openSession()
         // Send an invalid message
         session.sendMessage(TextMessage("Invalid message"))
 
-        // Wait for messages
-        val receivedMessages = messages.get(5, TimeUnit.SECONDS)
-
-        // Assert the received error
-        assert(receivedMessages.isNotEmpty())
-        val errorMessage = objectMapper.readValue(receivedMessages.last(), ErrorResponseMessage::class.java)
-        assert(errorMessage.sessionId == LiveSessionId(executionRequest.getId()))
-        assert(errorMessage.error.contains("Error processing message"))
+        val receivedMessages = waitForResponses(messages, 2)
+        val errorMessage = receivedMessages.last()
+        assert(errorMessage.get("error").asText().contains("Error processing message"))
 
         session.close()
+    }
+
+    @Test
+    fun testObserveSession() {
+        val (session, messages, executionRequest) = openSession()
+        val (observerSession, observerMessages, _) = openObserverSession(executionRequest)
+        session.sendMessage(
+            TextMessage(
+                """
+                {
+                    "type": "update_content",
+                    "content": "SELECT * FROM users"
+                }
+                """.trimIndent(),
+            ),
+        )
+        val observerResults = waitForResponses(observerMessages, 2)
+        val statusMessage = observerResults.last()
+        assertEquals("SELECT * FROM users", statusMessage.get("consoleContent").asText())
+    }
+
+    @Test
+    fun `observer cannot update Content`() {
+        val (session, messages, executionRequest) = openSession()
+        val (observerSession, observerMessages, _) = openObserverSession(executionRequest)
+        observerSession.sendMessage(
+            TextMessage(
+                """
+                {
+                    "type": "update_content",
+                    "content": "SELECT * FROM users"
+                }
+                """.trimIndent(),
+            ),
+        )
+        val observerResults = waitForResponses(observerMessages, 2)
+        val statusMessage = observerResults.last()
+        assertFalse(statusMessage.has("consoleContent"))
+    }
+
+    @Test
+    fun `observer cannot execute`() {
+        val (session, messages, executionRequest) = openSession()
+        val (observerSession, observerMessages, _) = openObserverSession(executionRequest)
+        observerSession.sendMessage(
+            TextMessage(
+                """
+                {
+                    "type": "execute",
+                    "statement": "SELECT 1 as test;"
+                }
+                """.trimIndent(),
+            ),
+        )
+        val observerResults = waitForResponses(observerMessages, 2)
+        val resultMessage = observerResults.last()
+        assertFalse(resultMessage.has("results"))
+    }
+
+    @Test
+    fun `unapproved session cannot execute`()  {
+        val (session, messages, _) = openSession(false)
+        session.sendMessage(
+            TextMessage(
+                """
+                {
+                    "type": "execute",
+                    "statement": "SELECT 1 as test;"
+                }
+                """.trimIndent(),
+            ),
+        )
+        val receivedMessages = waitForResponses(messages, 2)
+        val errorMessage = receivedMessages.last()
+        assert(errorMessage.get("error").asText().contains("Error processing message"))
     }
 
     private fun connectToWebSocket(

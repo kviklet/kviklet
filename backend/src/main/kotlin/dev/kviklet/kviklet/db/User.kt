@@ -136,6 +136,7 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
         return userEntity.toDto()
     }
 
+    @Transactional(readOnly = true)
     fun findById(id: String): User {
         val userEntity = userRepository.findByIdOrNull(id) ?: throw EntityNotFound(
             "User not found",

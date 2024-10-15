@@ -12,8 +12,6 @@ import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.LiveSession
 import dev.kviklet.kviklet.service.dto.LiveSessionId
 import dev.kviklet.kviklet.service.websocket.SessionService
-import dev.kviklet.kviklet.service.websocket.UserRole
-import dev.kviklet.kviklet.service.websocket.UserRoleService
 import org.slf4j.LoggerFactory
 import org.springframework.security.core.context.SecurityContext
 import org.springframework.security.core.context.SecurityContextHolder
@@ -40,6 +38,7 @@ sealed class ResponseMessage(open val sessionId: LiveSessionId)
 data class ErrorResponseMessage(override val sessionId: LiveSessionId, val error: String) : ResponseMessage(sessionId)
 
 data class StatusMessage(
+    val type: String = "status",
     override val sessionId: LiveSessionId,
     val consoleContent: String,
     val observers: List<UserResponse>,
@@ -53,12 +52,10 @@ data class SessionObserver(val webSocketSession: WebSocketSession, val user: Use
 @Component
 class SessionWebsocketHandler(
     private val sessionService: SessionService,
-    private val userRoleService: UserRoleService,
     private val objectMapper: ObjectMapper,
     private val userService: UserService,
 ) : TextWebSocketHandler() {
     private val logger = LoggerFactory.getLogger(SessionWebsocketHandler::class.java)
-    private val sessionRoleMap = ConcurrentHashMap<String, UserRole>()
     private val sessionObservers = ConcurrentHashMap<LiveSessionId, MutableSet<SessionObserver>>()
     private val sessionToLiveSessionMap = ConcurrentHashMap<String, LiveSessionId>()
 
@@ -75,9 +72,7 @@ class SessionWebsocketHandler(
         )
         sessionToLiveSessionMap[session.id] = liveSession.id!!
         val userDetailsWithId = SecurityContextHolder.getContext().authentication.principal as UserDetailsWithId
-        val userRole = userRoleService.determineUserRole(userDetailsWithId.id, ExecutionRequestId(requestId))
         val user = userService.getUser(UserId(userDetailsWithId.id))
-        sessionRoleMap[session.id] = userRole
 
         sessionObservers.computeIfAbsent(liveSession.id!!) { ConcurrentHashMap.newKeySet() }.add(
             SessionObserver(
@@ -88,8 +83,18 @@ class SessionWebsocketHandler(
         broadcastUpdate(liveSession)
 
         logger.info(
-            "New WebSocket connection established: ${session.id}, userId: ${userDetailsWithId.id}, requestId: $requestId, role: $userRole",
+            "New WebSocket connection established: ${session.id}, userId: ${userDetailsWithId.id}, requestId: $requestId",
         )
+    }
+
+    override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
+        val liveSessionId = sessionToLiveSessionMap[session.id] ?: return
+        sessionObservers[liveSessionId]?.removeIf { it.webSocketSession == session }
+        if (sessionObservers[liveSessionId]?.isEmpty() == true) {
+            sessionObservers.remove(liveSessionId)
+        }
+        sessionToLiveSessionMap.remove(session.id)
+        logger.info("WebSocket connection closed: ${session.id}, status: $status")
     }
 
     private fun extractRequestId(session: WebSocketSession): String {
@@ -141,7 +146,7 @@ class SessionWebsocketHandler(
             }
         } catch (e: Exception) {
             logger.error("Error processing message", e)
-            sendErrorResponseMessage(session, "INTERNAL_ERROR", liveSessionId)
+            sendErrorResponseMessage(session, "Error processing message", liveSessionId)
         }
     }
 
@@ -177,9 +182,5 @@ class SessionWebsocketHandler(
         } catch (e: Exception) {
             logger.error("Error sending message", e)
         }
-    }
-
-    override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
-        logger.info("WebSocket connection closed: ${session.id}, status: $status")
     }
 }

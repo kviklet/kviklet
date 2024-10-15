@@ -245,6 +245,7 @@ class ExecutionRequestAdapter(
         )
     }
 
+    @Transactional
     fun updateExecutionRequest(
         id: ExecutionRequestId,
         title: String? = null,
