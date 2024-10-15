@@ -326,7 +326,13 @@ class PostgresProxy(
     private var proxyUsername = "postgres"
     private var proxyPassword = "postgres"
 
-    fun startServer(port: Int, proxyUsername: String, proxyPassword: String, startTime: LocalDateTime) {
+    fun startServer(
+        port: Int,
+        proxyUsername: String,
+        proxyPassword: String,
+        startTime: LocalDateTime,
+        maxTimeMinutes: Long,
+    ) {
         this.proxyUsername = proxyUsername
         this.proxyPassword = proxyPassword
 
@@ -336,7 +342,7 @@ class PostgresProxy(
         ServerSocket(port).use { serverSocket ->
 
             while (true) {
-                if (utcTimeNow().isAfter(startTime.plusMinutes(60))) {
+                if (utcTimeNow().isAfter(startTime.plusMinutes(maxTimeMinutes))) {
                     // kill all running threads and close sockets
                     threadPool.shutdownNow()
                     serverSocket.close()
