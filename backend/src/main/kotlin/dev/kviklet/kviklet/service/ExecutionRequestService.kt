@@ -621,6 +621,7 @@ class ExecutionRequestService(
             executionRequest = executionRequest.request,
             userId = userDetails.id,
             firstEventTime,
+            maxTimeMinutes = executionRequest.request.temporaryAccessDuration?.toMinutes() ?: 60,
         )
         logger.info("Started proxy for user ${connection.username} on port 5438")
         val proxy = ExecutionProxy(
@@ -661,6 +662,7 @@ class ExecutionRequestService(
         executionRequest: ExecutionRequest,
         userId: String,
         startTime: LocalDateTime,
+        maxTimeMinutes: Long,
     ): CompletableFuture<Void>? = CompletableFuture.runAsync {
         PostgresProxy(
             hostname,
@@ -676,6 +678,7 @@ class ExecutionRequestService(
             email,
             tempPassword,
             startTime,
+            maxTimeMinutes,
         )
     }
 }
