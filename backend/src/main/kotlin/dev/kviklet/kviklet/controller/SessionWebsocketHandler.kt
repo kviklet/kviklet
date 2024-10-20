@@ -182,7 +182,9 @@ class SessionWebsocketHandler(
     private fun sendMessage(session: WebSocketSession, message: ResponseMessage) {
         try {
             logger.info("Sending message to ${session.id}: $message")
-            session.sendMessage(TextMessage(objectMapper.writeValueAsString(message)))
+            synchronized(session) {
+                session.sendMessage(TextMessage(objectMapper.writeValueAsString(message)))
+            }
         } catch (e: Exception) {
             logger.error("Error sending message", e)
         }

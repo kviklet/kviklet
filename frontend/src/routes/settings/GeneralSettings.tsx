@@ -80,7 +80,7 @@ const ConfigForm = ({
     defaultValues: {
       teamsUrl: config?.teamsUrl,
       slackUrl: config?.slackUrl,
-      liveSessionEnabled: config?.liveSessionEnabled,
+      liveSessionEnabled: config?.liveSessionEnabled || false,
     },
   });
 
