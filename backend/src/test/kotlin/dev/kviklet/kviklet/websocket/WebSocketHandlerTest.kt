@@ -125,10 +125,10 @@ class WebSocketHandlerTest {
     }
 
     fun waitForResponses(messages: CompletableFuture<List<String>>, expectedMessages: Int): List<JsonNode> {
-        Thread.sleep(500)
+        Thread.sleep(1000)
         val receivedMessages = messages.get(5, TimeUnit.SECONDS)
         assert(receivedMessages.isNotEmpty())
-        assertEquals(receivedMessages.size, expectedMessages)
+        assertEquals(expectedMessages, receivedMessages.size)
         return receivedMessages.map { objectMapper.readTree(it) }
     }
 
@@ -225,6 +225,8 @@ class WebSocketHandlerTest {
         val observerResults = waitForResponses(observerMessages, 2)
         val statusMessage = observerResults.last()
         assertEquals("SELECT * FROM users", statusMessage.get("consoleContent").asText())
+        session.close()
+        observerSession.close()
     }
 
     @Test
@@ -244,6 +246,8 @@ class WebSocketHandlerTest {
         val observerResults = waitForResponses(observerMessages, 2)
         val statusMessage = observerResults.last()
         assertFalse(statusMessage.has("consoleContent"))
+        session.close()
+        observerSession.close()
     }
 
     @Test
@@ -263,6 +267,8 @@ class WebSocketHandlerTest {
         val observerResults = waitForResponses(observerMessages, 2)
         val resultMessage = observerResults.last()
         assertFalse(resultMessage.has("results"))
+        session.close()
+        observerSession.close()
     }
 
     @Test
@@ -281,6 +287,7 @@ class WebSocketHandlerTest {
         val receivedMessages = waitForResponses(messages, 2)
         val errorMessage = receivedMessages.last()
         assert(errorMessage.get("error").asText().contains("Error processing message"))
+        session.close()
     }
 
     private fun connectToWebSocket(

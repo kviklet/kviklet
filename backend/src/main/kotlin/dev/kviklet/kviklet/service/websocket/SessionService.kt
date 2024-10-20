@@ -24,6 +24,7 @@ class SessionService(
     @Transactional
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @QueryHints(QueryHint(name = "javax.persistence.lock.timeout", value = "3000"))
+    @Policy(Permission.EXECUTION_REQUEST_GET)
     fun createOrConnectToSession(executionRequestId: ExecutionRequestId): LiveSession {
         val existingSession = sessionAdapter.findByExecutionRequestId(executionRequestId)
 
@@ -33,6 +34,7 @@ class SessionService(
         return sessionAdapter.createLiveSession(executionRequestId, "")
     }
 
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
     fun executeStatement(sessionId: LiveSessionId, statement: String): ExecutionResult {
         val session = sessionAdapter.findById(sessionId)
         return executionRequestService.execute(
@@ -46,5 +48,6 @@ class SessionService(
     fun updateContent(sessionId: LiveSessionId, consoleContent: String): LiveSession =
         sessionAdapter.updateLiveSession(sessionId, consoleContent)
 
+    @Policy(Permission.EXECUTION_REQUEST_GET)
     fun getSession(sessionId: LiveSessionId): LiveSession = sessionAdapter.findById(sessionId)
 }
