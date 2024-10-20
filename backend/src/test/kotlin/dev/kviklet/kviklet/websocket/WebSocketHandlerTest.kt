@@ -266,7 +266,7 @@ class WebSocketHandlerTest {
     }
 
     @Test
-    fun `unapproved session cannot execute`()  {
+    fun `unapproved session cannot execute`() {
         val (session, messages, _) = openSession(false)
         session.sendMessage(
             TextMessage(
