@@ -1,9 +1,15 @@
 import { z } from "zod";
 import { userResponseSchema } from "./UserApi";
+import { DBExecuteResponseResultSchema } from "./ExecutionRequestApi";
 
 const updateContentMessage = z.object({
   type: z.literal("update_content"),
   content: z.string(),
+});
+
+const executeStatementMessage = z.object({
+  type: z.literal("execute"),
+  statement: z.string(),
 });
 
 const statusMessage = z.object({
@@ -13,4 +19,14 @@ const statusMessage = z.object({
   observers: z.array(userResponseSchema),
 });
 
-export { updateContentMessage, statusMessage };
+const resultMessage = z.object({
+  type: z.literal("result"),
+  results: z.array(DBExecuteResponseResultSchema),
+});
+
+export {
+  updateContentMessage,
+  statusMessage,
+  executeStatementMessage,
+  resultMessage,
+};

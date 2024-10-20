@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { websocketBaseUrl } from "../api/base";
 import { ExecuteResponseResult } from "../api/ExecutionRequestApi";
-import { statusMessage, updateContentMessage } from "../api/LiveSessionApi";
+import {
+  executeStatementMessage,
+  resultMessage,
+  statusMessage,
+  updateContentMessage,
+} from "../api/LiveSessionApi";
 import { z } from "zod";
 import debounce from "lodash/debounce";
 
@@ -50,6 +55,12 @@ const useLiveSession = (
 
   const handleWebSocketMessage = (data: object) => {
     console.log("Handling WebSocket message:", data);
+    const message = z.union([statusMessage, resultMessage]).parse(data);
+    if (message.type === "status") {
+      setContent(message.consoleContent);
+    } else if (message.type === "result") {
+      handleResultMesage(message);
+    }
     const validatedStatus = statusMessage.parse(data);
     console.log("Validated status:", validatedStatus);
     setContent(validatedStatus.consoleContent);
@@ -61,8 +72,13 @@ const useLiveSession = (
       setError(undefined);
       setResults(undefined);
       setUpdatedRows(undefined);
-      ws.current.send(JSON.stringify({ type: "execute", query }));
+      sendMessage(executeStatementMessage, { type: "execute", statement: query });
     }
+  };
+
+  const handleResultMesage = (message: z.infer<typeof resultMessage>) => {
+    setResults(message.results);
+    setIsLoading(false);
   };
 
   const sendMessage = <T extends z.ZodType>(schema: T, message: z.infer<T>) => {

@@ -44,8 +44,11 @@ data class StatusMessage(
     val observers: List<UserResponse>,
 ) : ResponseMessage(sessionId)
 
-data class ResultMessage(override val sessionId: LiveSessionId, val results: List<ExecutionResultResponse>) :
-    ResponseMessage(sessionId)
+data class ResultMessage(
+    val type: String = "result",
+    override val sessionId: LiveSessionId,
+    val results: List<ExecutionResultResponse>,
+) : ResponseMessage(sessionId)
 
 data class SessionObserver(val webSocketSession: WebSocketSession, val user: User)
 
@@ -72,6 +75,7 @@ class SessionWebsocketHandler(
         )
         sessionToLiveSessionMap[session.id] = liveSession.id!!
         val userDetailsWithId = SecurityContextHolder.getContext().authentication.principal as UserDetailsWithId
+        logger.info("User id: ${userDetailsWithId.id}")
         val user = userService.getUser(UserId(userDetailsWithId.id))
 
         sessionObservers.computeIfAbsent(liveSession.id!!) { ConcurrentHashMap.newKeySet() }.add(

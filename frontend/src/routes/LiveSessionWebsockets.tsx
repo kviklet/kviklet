@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import Button from "../components/Button";
 import MultiResult from "../components/MultiResult";
@@ -6,6 +6,7 @@ import Spinner from "../components/Spinner";
 import useRequest from "../hooks/request";
 import { useParams } from "react-router-dom";
 import useLiveSession from "../hooks/useLiveSession";
+import useNotification from "../hooks/useNotification";
 
 interface LiveSessionWebsocketsProps {
   requestId: string;
@@ -42,9 +43,10 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
     useState<monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoEl = useRef(null);
 
-  const [mode, setMode] = useState<"listen" | "write">("listen");
+  const { addNotification } = useNotification();
   const updateEditorContent = (newContent: string) => {
-    if (mode === "listen") {
+    const currentContent = monaco.editor.getModels()[0].getValue();
+    if (currentContent !== newContent) {
       monaco.editor.getModels()[0].setValue(newContent);
     }
   };
@@ -59,7 +61,6 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
   } = useLiveSession(requestId, updateEditorContent);
 
   useEffect(() => {
-    // Initialize Monaco editor
     if (monacoEl.current) {
       const newEditor = monaco.editor.create(monacoEl.current, {
         value: "",
@@ -69,14 +70,13 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
       });
       setEditor(newEditor);
 
-      // Add listener for content changes
-      const disposable = newEditor.onDidChangeModelContent(() => {
-        if (mode === "write") {
-          const newContent = newEditor.getValue();
-          updateContent(newContent);
+      const disposable = newEditor.onDidChangeModelContent((e) => {
+        if (e.isFlush) {
+          // Ingore updates that are not user initiated e.g. our own update call
+          return;
         }
-        //const newContent = newEditor.getValue();
-        //updateContent(newContent);
+        const newContent = newEditor.getValue();
+        updateContent(newContent);
       });
 
       return () => {
@@ -87,8 +87,19 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
   }, [requestId, initialLanguage]);
 
   const onExecuteQueryClick = () => {
-    console.log("Setting mode to write");
-    setMode("write");
+    const selection = editor?.getSelection();
+    const text =
+      (selection && editor?.getModel()?.getValueInRange(selection)) ||
+      editor?.getValue();
+    if (!text) {
+      addNotification({
+        type: "error",
+        title: "Query is empty",
+        text: "Cannot execute an empty query",
+      });
+      return;
+    }
+    executeQuery(text);
   };
 
   return (
@@ -112,11 +123,10 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
         {updatedRows !== undefined && (
           <div className="mb-4 text-green-500">{updatedRows} rows updated</div>
         )}
-        {isLoading ? (
-          <Spinner />
-        ) : (
-          results && <MultiResult resultList={results} />
-        )}
+        <div className="flex h-full justify-center">
+          {(isLoading && <Spinner></Spinner>) ||
+            (results && <MultiResult resultList={results}></MultiResult>)}
+        </div>
       </div>
     </div>
   );

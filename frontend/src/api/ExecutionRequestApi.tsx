@@ -483,7 +483,9 @@ export {
   postStartServer,
   executeCommand,
   streamDump,
+  DBExecuteResponseResultSchema,
 };
+
 export type {
   DBExecuteResponseResult as ExecuteResponseResult,
   ExecutionRequestResponse,

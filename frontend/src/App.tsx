@@ -14,6 +14,7 @@ import Auditlog from "./routes/Auditlog";
 import { NotificationContextProvider } from "./components/NotifcationStatusProvider";
 import RequestReview from "./routes/Review";
 import LiveSessionWebsockets from "./routes/LiveSessionWebsockets";
+import LiveSession from "./routes/LiveSession";
 
 export interface ProtectedRouteProps {
   children: JSX.Element;
@@ -89,10 +90,18 @@ function App() {
                   }
                 />
                 <Route
-                  path="requests/:requestId/session"
+                  path="requests/:requestId/session-live"
                   element={
                     <ProtectedRoute>
                       <LiveSessionWebsockets />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="requests/:requestId/session"
+                  element={
+                    <ProtectedRoute>
+                      <LiveSession />
                     </ProtectedRoute>
                   }
                 />
