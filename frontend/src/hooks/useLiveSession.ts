@@ -72,7 +72,10 @@ const useLiveSession = (
       setError(undefined);
       setResults(undefined);
       setUpdatedRows(undefined);
-      sendMessage(executeStatementMessage, { type: "execute", statement: query });
+      sendMessage(executeStatementMessage, {
+        type: "execute",
+        statement: query,
+      });
     }
   };
 
