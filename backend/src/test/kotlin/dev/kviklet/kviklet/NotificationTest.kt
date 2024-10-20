@@ -65,6 +65,7 @@ class NotificationTest {
             Configuration(
                 "",
                 "",
+                false,
             ),
         )
     }
@@ -80,6 +81,7 @@ class NotificationTest {
         val config = Configuration(
             teamsUrl = "https://teams.com",
             slackUrl = "https://slack.com",
+            liveSessionEnabled = false,
         )
         configService.setConfiguration(config)
         val connection = datasourceConnectionAdapter.createDatasourceConnection(
