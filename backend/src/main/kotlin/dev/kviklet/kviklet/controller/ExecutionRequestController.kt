@@ -3,6 +3,7 @@ package dev.kviklet.kviklet.controller
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
+import dev.kviklet.kviklet.db.ConfigurationAdapter
 import dev.kviklet.kviklet.security.CurrentUser
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.ColumnInfo
@@ -189,43 +190,46 @@ sealed class ExecutionRequestResponse(open val id: ExecutionRequestId) {
 sealed class ExecutionRequestDetailResponse(open val id: ExecutionRequestId, open val events: List<EventResponse>) {
 
     companion object {
-        fun fromDto(dto: ExecutionRequestDetails): ExecutionRequestDetailResponse = when (dto.request) {
-            is DatasourceExecutionRequest -> DatasourceExecutionRequestDetailResponse(
-                id = dto.request.id!!,
-                author = UserResponse(dto.request.author),
-                type = dto.request.type,
-                title = dto.request.title,
-                description = dto.request.description,
-                statement = dto.request.statement,
-                reviewStatus = dto.resolveReviewStatus(),
-                executionStatus = dto.resolveExecutionStatus(),
-                createdAt = dto.request.createdAt,
-                events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
-                connection = ConnectionResponse.fromDto(dto.request.connection),
-                csvDownload = CSVDownloadableResponse(
-                    allowed = dto.csvDownloadAllowed().first,
-                    reason = dto.csvDownloadAllowed().second,
-                ),
-                temporaryAccessDuration = dto.request.temporaryAccessDuration?.toMinutes(),
-            )
-            is KubernetesExecutionRequest -> KubernetesExecutionRequestDetailResponse(
-                id = dto.request.id!!,
-                author = UserResponse(dto.request.author),
-                type = dto.request.type,
-                title = dto.request.title,
-                description = dto.request.description,
-                reviewStatus = dto.resolveReviewStatus(),
-                executionStatus = dto.resolveExecutionStatus(),
-                createdAt = dto.request.createdAt,
-                namespace = dto.request.namespace,
-                podName = dto.request.podName,
-                containerName = dto.request.containerName,
-                command = dto.request.command,
-                events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
-                connection = ConnectionResponse.fromDto(dto.request.connection),
-                temporaryAccessDuration = dto.request.temporaryAccessDuration?.toMinutes(),
-            )
-        }
+        fun fromDto(dto: ExecutionRequestDetails, liveSessionEnabled: Boolean = false): ExecutionRequestDetailResponse =
+            when (dto.request) {
+                is DatasourceExecutionRequest -> DatasourceExecutionRequestDetailResponse(
+                    id = dto.request.id!!,
+                    author = UserResponse(dto.request.author),
+                    type = dto.request.type,
+                    title = dto.request.title,
+                    description = dto.request.description,
+                    statement = dto.request.statement,
+                    reviewStatus = dto.resolveReviewStatus(),
+                    executionStatus = dto.resolveExecutionStatus(),
+                    createdAt = dto.request.createdAt,
+                    events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
+                    connection = ConnectionResponse.fromDto(dto.request.connection),
+                    csvDownload = CSVDownloadableResponse(
+                        allowed = dto.csvDownloadAllowed().first,
+                        reason = dto.csvDownloadAllowed().second,
+                    ),
+                    temporaryAccessDuration = dto.request.temporaryAccessDuration?.toMinutes(),
+                    liveSessionEnabled = liveSessionEnabled,
+                )
+                is KubernetesExecutionRequest -> KubernetesExecutionRequestDetailResponse(
+                    id = dto.request.id!!,
+                    author = UserResponse(dto.request.author),
+                    type = dto.request.type,
+                    title = dto.request.title,
+                    description = dto.request.description,
+                    reviewStatus = dto.resolveReviewStatus(),
+                    executionStatus = dto.resolveExecutionStatus(),
+                    createdAt = dto.request.createdAt,
+                    namespace = dto.request.namespace,
+                    podName = dto.request.podName,
+                    containerName = dto.request.containerName,
+                    command = dto.request.command,
+                    events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
+                    connection = ConnectionResponse.fromDto(dto.request.connection),
+                    temporaryAccessDuration = dto.request.temporaryAccessDuration?.toMinutes(),
+                    liveSessionEnabled = liveSessionEnabled,
+                )
+            }
     }
 }
 
@@ -243,6 +247,7 @@ data class DatasourceExecutionRequestDetailResponse(
     val csvDownload: CSVDownloadableResponse,
     override val events: List<EventResponse>,
     val temporaryAccessDuration: Long? = null,
+    val liveSessionEnabled: Boolean,
 ) : ExecutionRequestDetailResponse(
     id = id,
     events = events,
@@ -266,6 +271,7 @@ data class KubernetesExecutionRequestDetailResponse(
     val command: String?,
     override val events: List<EventResponse>,
     val temporaryAccessDuration: Long? = null,
+    val liveSessionEnabled: Boolean,
 ) : ExecutionRequestDetailResponse(
     id = id,
     events = events,
@@ -523,7 +529,10 @@ data class CancelQueryResponse(val success: Boolean)
     name = "Execution Requests",
     description = "Run queries against a datasource by interacting with Execution Requests",
 )
-class ExecutionRequestController(val executionRequestService: ExecutionRequestService) {
+class ExecutionRequestController(
+    val executionRequestService: ExecutionRequestService,
+    private val configurationAdapter: ConfigurationAdapter,
+) {
     @Operation(
         summary = "Export Databse Request Streamed",
         description = """
@@ -559,10 +568,14 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
 
     @Operation(summary = "Get Execution Request")
     @GetMapping("/{executionRequestId}")
-    fun get(@PathVariable executionRequestId: ExecutionRequestId): ExecutionRequestDetailResponse =
-        executionRequestService.get(executionRequestId).let {
-            ExecutionRequestDetailResponse.fromDto(it)
+    fun get(@PathVariable executionRequestId: ExecutionRequestId): ExecutionRequestDetailResponse {
+        configurationAdapter.getConfiguration().let {
+            return ExecutionRequestDetailResponse.fromDto(
+                executionRequestService.get(executionRequestId),
+                it.liveSessionEnabled ?: false,
+            )
         }
+    }
 
     @Operation(summary = "List Execution Requests")
     @GetMapping("/")

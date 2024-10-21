@@ -9,7 +9,6 @@ import ExecuteEvent from "./events/ExecuteEvent";
 import ReviewEvent from "./events/ReviewEvent";
 import Comment from "./events/Comment";
 import CommentBox from "./CommentBox";
-import useConfig from "../../hooks/config";
 
 interface RequestReviewParams {
   requestId: string;
@@ -34,13 +33,11 @@ function RequestReview() {
 
   const navigate = useNavigate();
 
-  const { config } = useConfig();
-
   const run = async (explain?: boolean) => {
     if (request?.type === "SingleExecution") {
       await execute(explain || false);
     } else {
-      if (config?.liveSessionEnabled) {
+      if (request?.liveSessionEnabled) {
         navigate(`/requests/${request?.id}/session-live`);
       } else {
         navigate(`/requests/${request?.id}/session`);
