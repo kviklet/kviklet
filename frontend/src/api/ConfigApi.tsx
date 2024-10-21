@@ -7,6 +7,7 @@ const ConfigResponseSchema = z.object({
   ldapEnabled: z.boolean(),
   teamsUrl: z.string().nullable().optional(),
   slackUrl: z.string().nullable().optional(),
+  liveSessionEnabled: z.boolean().optional(),
 });
 
 export const ConfigPayloadSchema = ConfigResponseSchema.omit({

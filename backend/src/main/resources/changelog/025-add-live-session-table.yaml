@@ -1,0 +1,25 @@
+databaseChangeLog:
+  - changeSet:
+      id: 025-add-live-session-table
+      author: jascha
+      changes:
+        - createTable:
+            tableName: live_session
+            columns:
+              - column:
+                  name: id
+                  type: VARCHAR(255)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: execution_request_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: console_content
+                  type: TEXT
+                  constraints:
+                    nullable: false

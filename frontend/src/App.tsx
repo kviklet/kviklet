@@ -9,11 +9,12 @@ import {
   UserStatusProvider,
 } from "./components/UserStatusProvider";
 import { ThemeStatusProvider } from "./components/ThemeStatusProvider";
-import LiveSession from "./routes/LiveSession";
 import ConnectionChooser from "./routes/NewRequest";
 import Auditlog from "./routes/Auditlog";
 import { NotificationContextProvider } from "./components/NotifcationStatusProvider";
 import RequestReview from "./routes/Review";
+import LiveSessionWebsockets from "./routes/LiveSessionWebsockets";
+import LiveSession from "./routes/LiveSession";
 
 export interface ProtectedRouteProps {
   children: JSX.Element;
@@ -85,6 +86,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <RequestReview />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="requests/:requestId/session-live"
+                  element={
+                    <ProtectedRoute>
+                      <LiveSessionWebsockets />
                     </ProtectedRoute>
                   }
                 />

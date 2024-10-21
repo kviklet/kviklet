@@ -78,19 +78,19 @@ services:
   #  volumes:
   #    - ./mssql-data:/var/opt/mssql
 
-  #ldap:
-  #  image: osixia/openldap:1.1.8
-  #  ports:
-  #    - "389:389"
-  #  environment:
-  #    - LDAP_ORGANISATION=Kviklet
-  #    - LDAP_DOMAIN=kviklet.dev
-  #    - LDAP_ADMIN_PASSWORD=admin
-  #    - LDAP_CONFIG_PASSWORD=config
-  #ldapmyadmin:
-  #  image: osixia/phpldapadmin:0.9.0
-  #  ports:
-  #    - "80:80"
-  #  environment:
-  #    - PHPLDAPADMIN_LDAP_HOSTS=ldap
-  #    - PHPLDAPADMIN_HTTPS=false
+  # ldap:
+  #   image: osixia/openldap:1.1.8
+  #   ports:
+  #     - "389:389"
+  #   environment:
+  #     - LDAP_ORGANISATION=Kviklet
+  #     - LDAP_DOMAIN=kviklet.dev
+  #     - LDAP_ADMIN_PASSWORD=admin
+  #     - LDAP_CONFIG_PASSWORD=config
+  # ldapmyadmin:
+  #   image: osixia/phpldapadmin:0.9.0
+  #   ports:
+  #     - "80:80"
+  #   environment:
+  #     - PHPLDAPADMIN_LDAP_HOSTS=ldap
+  #     - PHPLDAPADMIN_HTTPS=false

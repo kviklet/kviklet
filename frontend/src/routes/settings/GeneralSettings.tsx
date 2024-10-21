@@ -9,7 +9,11 @@ import InputField from "../../components/InputField";
 import Button from "../../components/Button";
 import useConfig from "../../hooks/config";
 import Spinner from "../../components/Spinner";
-import { Disclosure } from "@headlessui/react";
+import {
+  Disclosure,
+  DisclosureButton,
+  DisclosurePanel,
+} from "@headlessui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 
 export default function GeneralSettings() {
@@ -30,7 +34,7 @@ export default function GeneralSettings() {
             <Disclosure defaultOpen={true}>
               {({ open }) => (
                 <>
-                  <Disclosure.Button className="py-2">
+                  <DisclosureButton className="py-2">
                     <div className="flex flex-row justify-between">
                       <div className="flex flex-row">
                         <h2>Notification Settings</h2>
@@ -43,13 +47,13 @@ export default function GeneralSettings() {
                         )}
                       </div>
                     </div>
-                  </Disclosure.Button>
-                  <Disclosure.Panel unmount={false}>
+                  </DisclosureButton>
+                  <DisclosurePanel unmount={false}>
                     <ConfigForm
                       config={config}
                       onSubmit={onSubmit}
                     ></ConfigForm>
-                  </Disclosure.Panel>
+                  </DisclosurePanel>
                 </>
               )}
             </Disclosure>
@@ -76,6 +80,7 @@ const ConfigForm = ({
     defaultValues: {
       teamsUrl: config?.teamsUrl,
       slackUrl: config?.slackUrl,
+      liveSessionEnabled: config?.liveSessionEnabled || false,
     },
   });
 
@@ -101,6 +106,13 @@ const ConfigForm = ({
         {...register("slackUrl")}
         placeholder="Slack URL"
         error={errors.slackUrl}
+      ></InputField>
+      <span className="text-sm dark:text-slate-300">Beta Features</span>
+      <InputField
+        label="Live Session Enabled (Beta)"
+        type="checkbox"
+        {...register("liveSessionEnabled")}
+        error={errors.liveSessionEnabled}
       ></InputField>
       <div className="flex flex-row-reverse">
         <Button type="submit">Save</Button>

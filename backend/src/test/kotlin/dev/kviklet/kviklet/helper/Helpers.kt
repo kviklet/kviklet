@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.helper
 
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
+import dev.kviklet.kviklet.db.LiveSessionAdapter
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.ReviewPayload
 import dev.kviklet.kviklet.db.User
@@ -16,12 +17,15 @@ import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
+import dev.kviklet.kviklet.service.dto.LiveSession
+import dev.kviklet.kviklet.service.dto.LiveSessionId
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.Role
 import dev.kviklet.kviklet.service.dto.RoleId
+import jakarta.annotation.PostConstruct
 import jakarta.servlet.http.Cookie
 import org.springframework.stereotype.Component
 import org.springframework.test.web.servlet.MockMvc
@@ -260,6 +264,7 @@ class ExecutionRequestHelper(
         statement: String = "SELECT 1;",
         connection: Connection? = null,
         description: String = "A test execution request",
+        requestType: RequestType = RequestType.SingleExecution,
     ): ExecutionRequestDetails {
         val requestConnection = connection ?: connectionHelper.createPostgresConnection(dbcontainer!!)
         return executionRequestAdapter.createExecutionRequest(
@@ -275,16 +280,18 @@ class ExecutionRequestHelper(
 
     @Transactional
     fun createApprovedRequest(
-        dbcontainer: JdbcDatabaseContainer<*>,
+        dbcontainer: JdbcDatabaseContainer<*>? = null,
         author: User,
         approver: User,
         sql: String = "SELECT 1;",
+        connection: Connection? = null,
+        requestType: RequestType = RequestType.SingleExecution,
     ): ExecutionRequestDetails {
-        val connection = connectionHelper.createPostgresConnection(dbcontainer)
+        val executionConnection = connection ?: connectionHelper.createPostgresConnection(dbcontainer!!)
         val executionRequest = executionRequestAdapter.createExecutionRequest(
-            connectionId = connection.id,
+            connectionId = executionConnection.id,
             title = "Test Execution",
-            type = RequestType.SingleExecution,
+            type = requestType,
             description = "A test execution request",
             statement = sql,
             executionStatus = "PENDING",
@@ -336,5 +343,59 @@ class ExecutionRequestHelper(
     @Transactional
     fun deleteAll() {
         executionRequestAdapter.deleteAll()
+    }
+}
+
+@Component
+class LiveSessionHelper(
+    private val liveSessionAdapter: LiveSessionAdapter,
+    private val executionRequestHelper: ExecutionRequestHelper,
+    private val userHelper: UserHelper,
+) {
+    private lateinit var genericApprover: User
+
+    @PostConstruct
+    fun init() {
+        genericApprover = userHelper.createUser()
+    }
+
+    @Transactional
+    fun createLiveSession(
+        executionRequest: ExecutionRequestDetails? = null,
+        author: User? = null,
+        dbContainer: JdbcDatabaseContainer<*>? = null,
+        initialContent: String = "",
+    ): LiveSession {
+        val request = executionRequest ?: executionRequestHelper.createApprovedRequest(
+            dbcontainer = dbContainer ?: throw IllegalArgumentException(
+                "dbContainer must be provided if executionRequest is null",
+            ),
+            approver = genericApprover,
+            requestType = RequestType.TemporaryAccess,
+            author = author ?: throw IllegalArgumentException(
+                "Author must be provided if executionRequest is null",
+            ),
+        )
+
+        return liveSessionAdapter.createLiveSession(
+            executionRequestId = request.request.id!!,
+            consoleContent = initialContent,
+        )
+    }
+
+    @Transactional
+    fun updateLiveSession(liveSessionId: LiveSessionId, consoleContent: String): LiveSession =
+        liveSessionAdapter.updateLiveSession(
+            id = liveSessionId,
+            consoleContent = consoleContent,
+        )
+
+    @Transactional
+    fun findLiveSessionByExecutionRequestId(executionRequestId: ExecutionRequestId): LiveSession? =
+        liveSessionAdapter.findByExecutionRequestId(executionRequestId)
+
+    @Transactional
+    fun deleteAll() {
+        liveSessionAdapter.deleteAll()
     }
 }

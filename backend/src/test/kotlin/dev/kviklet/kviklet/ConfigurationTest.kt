@@ -21,6 +21,7 @@ class ConfigurationTest {
             Configuration(
                 teamsUrl = "",
                 slackUrl = "",
+                liveSessionEnabled = false,
             ),
         )
     }
@@ -31,6 +32,7 @@ class ConfigurationTest {
         val configuration = Configuration(
             teamsUrl = "https://teams.com",
             slackUrl = "https://slack.com",
+            liveSessionEnabled = true,
         )
 
         val savedConfiguration = configurationAdapter.setConfiguration(configuration)

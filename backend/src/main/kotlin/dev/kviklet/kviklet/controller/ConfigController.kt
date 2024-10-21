@@ -15,13 +15,14 @@ import org.springframework.web.bind.annotation.RestController
 
 open class PublicConfigResponse(open val oAuthProvider: String?, open val ldapEnabled: Boolean)
 
-data class ConfigRequest(val teamsUrl: String?, val slackUrl: String?)
+data class ConfigRequest(val teamsUrl: String?, val slackUrl: String?, val liveSessionEnabled: Boolean?)
 
 data class ConfigResponse(
     override val oAuthProvider: String?,
     override val ldapEnabled: Boolean,
     val teamsUrl: String?,
     val slackUrl: String?,
+    val liveSessionEnabled: Boolean,
 ) : PublicConfigResponse(oAuthProvider, ldapEnabled) {
     companion object {
         fun fromConfiguration(
@@ -33,6 +34,7 @@ data class ConfigResponse(
             ldapEnabled = ldapEnabled,
             teamsUrl = configuration.teamsUrl,
             slackUrl = configuration.slackUrl,
+            liveSessionEnabled = configuration.liveSessionEnabled ?: false,
         )
     }
 }
@@ -73,6 +75,7 @@ class ConfigController(
             Configuration(
                 teamsUrl = request.teamsUrl,
                 slackUrl = request.slackUrl,
+                liveSessionEnabled = request.liveSessionEnabled,
             ),
         )
         return ConfigResponse.fromConfiguration(

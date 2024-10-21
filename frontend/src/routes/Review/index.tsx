@@ -37,7 +37,11 @@ function RequestReview() {
     if (request?.type === "SingleExecution") {
       await execute(explain || false);
     } else {
-      navigate(`/requests/${request?.id}/session`);
+      if (request?.liveSessionEnabled) {
+        navigate(`/requests/${request?.id}/session-live`);
+      } else {
+        navigate(`/requests/${request?.id}/session`);
+      }
     }
   };
 

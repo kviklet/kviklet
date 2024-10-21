@@ -68,3 +68,6 @@ databaseChangeLog:
   - include:
       file: 024-change-description-to-text.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 025-add-live-session-table.yaml
+      relativeToChangelogFile: true
