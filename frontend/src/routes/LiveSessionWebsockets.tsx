@@ -7,6 +7,7 @@ import useRequest from "../hooks/request";
 import { useParams } from "react-router-dom";
 import useLiveSession from "../hooks/useLiveSession";
 import useNotification from "../hooks/useNotification";
+import EventHistory from "./Review/EventHistory";
 
 interface LiveSessionWebsocketsProps {
   requestId: string;
@@ -51,14 +52,10 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
     }
   };
 
-  const {
-    error,
-    executeQuery,
-    updateContent,
-    isLoading,
-    updatedRows,
-    results,
-  } = useLiveSession(requestId, updateEditorContent);
+  const { executeQuery, updateContent, isLoading, updatedRows, results } =
+    useLiveSession(requestId, updateEditorContent);
+
+  const { request } = useRequest(requestId);
 
   useEffect(() => {
     if (monacoEl.current) {
@@ -72,7 +69,7 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
 
       const disposable = newEditor.onDidChangeModelContent((e) => {
         if (e.isFlush) {
-          // Ingore updates that are not user initiated e.g. our own update call
+          // Ignore updates that are not user initiated e.g. our own update call
           return;
         }
         const newContent = newEditor.getValue();
@@ -94,7 +91,7 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
     if (!text) {
       addNotification({
         type: "error",
-        title: "Query is empty",
+        title: "Query Error",
         text: "Cannot execute an empty query",
       });
       return;
@@ -119,7 +116,6 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
             {isLoading ? "Running..." : "Run Query"}
           </Button>
         </div>
-        {error && <div className="mb-4 text-red-500">{error}</div>}
         {updatedRows !== undefined && (
           <div className="mb-4 text-green-500">{updatedRows} rows updated</div>
         )}
@@ -127,6 +123,8 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
           {(isLoading && <Spinner></Spinner>) ||
             (results && <MultiResult resultList={results}></MultiResult>)}
         </div>
+
+        {request && <EventHistory request={request} reverse={true} />}
       </div>
     </div>
   );
