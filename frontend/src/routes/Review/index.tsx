@@ -4,11 +4,7 @@ import Spinner from "../../components/Spinner";
 import useRequest from "../../hooks/request";
 import KubernetesRequestDisplay from "./KubernetesRequestDisplay";
 import DatasourceRequestDisplay from "./DatasourceRequestDisplay";
-import EditEvent from "./events/EditEvent";
-import ExecuteEvent from "./events/ExecuteEvent";
-import ReviewEvent from "./events/ReviewEvent";
-import Comment from "./events/Comment";
-import CommentBox from "./CommentBox";
+import EventHistory from "./EventHistory";
 
 interface RequestReviewParams {
   requestId: string;
@@ -76,55 +72,19 @@ function RequestReview() {
                       proxyResponse={proxyResponse}
                     ></DatasourceRequestDisplay>
                   ) : (
-                    (
-                      <KubernetesRequestDisplay
-                        request={request}
-                        run={run}
-                        start={start}
-                        updateRequest={updateRequest}
-                        results={kubernetesResults}
-                        dataLoading={dataLoading}
-                        executionError={executionError}
-                        proxyResponse={proxyResponse}
-                      ></KubernetesRequestDisplay>
-                    ) || <></>
+                    <KubernetesRequestDisplay
+                      request={request}
+                      run={run}
+                      start={start}
+                      updateRequest={updateRequest}
+                      results={kubernetesResults}
+                      dataLoading={dataLoading}
+                      executionError={executionError}
+                      proxyResponse={proxyResponse}
+                    ></KubernetesRequestDisplay>
                   ))}
                 <div className="mt-3 w-full border-b border-slate-300 dark:border-slate-700"></div>
-                <div className="mt-6">
-                  <span>Activity</span>
-                </div>
-                <div>
-                  {request === undefined
-                    ? ""
-                    : request?.events?.map((event, index) => {
-                        if (event?._type === "EDIT")
-                          return (
-                            <EditEvent event={event} index={index}></EditEvent>
-                          );
-                        if (event?._type === "EXECUTE")
-                          return (
-                            <ExecuteEvent
-                              event={event}
-                              index={index}
-                            ></ExecuteEvent>
-                          );
-                        if (event?._type === "COMMENT")
-                          return (
-                            <Comment event={event} index={index}></Comment>
-                          );
-                        if (event?._type === "REVIEW")
-                          return (
-                            <ReviewEvent
-                              event={event}
-                              index={index}
-                            ></ReviewEvent>
-                          );
-                      })}
-                  <CommentBox
-                    sendReview={sendReview}
-                    userId={request?.author?.id}
-                  ></CommentBox>
-                </div>
+                <EventHistory request={request} sendReview={sendReview} />
               </div>
             </div>
           </div>

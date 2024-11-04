@@ -21,12 +21,27 @@ const statusMessage = z.object({
 
 const resultMessage = z.object({
   type: z.literal("result"),
+  sessionId: z.string(),
   results: z.array(DBExecuteResponseResultSchema),
 });
+
+const errorMessage = z.object({
+  sessionId: z.string(),
+  error: z.string(),
+});
+
+// Union type for all possible response messages
+const responseMessage = z.discriminatedUnion("type", [
+  statusMessage,
+  resultMessage,
+  errorMessage.extend({ type: z.literal("error") }),
+]);
 
 export {
   updateContentMessage,
   statusMessage,
   executeStatementMessage,
   resultMessage,
+  errorMessage,
+  responseMessage,
 };
