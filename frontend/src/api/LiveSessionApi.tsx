@@ -26,15 +26,15 @@ const resultMessage = z.object({
 });
 
 const errorMessage = z.object({
+  type: z.literal("error"),
   sessionId: z.string(),
   error: z.string(),
 });
 
-// Union type for all possible response messages
 const responseMessage = z.discriminatedUnion("type", [
   statusMessage,
   resultMessage,
-  errorMessage.extend({ type: z.literal("error") }),
+  errorMessage,
 ]);
 
 export {
