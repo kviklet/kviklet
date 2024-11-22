@@ -1,22 +1,31 @@
-#### image
-## kviklet Image
-image: ghcr.io/kviklet/kviklet:0.4.0
-
-#### imagePullPolicy
-## Pull Policy for Kubernetes Deployment
-imagePullPolicy: IfNotPresent
+image:
+  registry: ghcr.io
+  repository: kviklet/kviklet
+  pullPolicy: IfNotPresent
 
 #### port
 ## Service port of the kviklet
 port: 80
 
-### Database Kviklet
-dataSourceUrl: jdbc:postgresql://localhost:5432/kviklet
- 
-oidc:
-  enabled: false 
-  provider: "gitlab"
-  issuer: ""
+config: 
+  initialUser:
+    email: "admin@example.com"
+    # If not defined, it will generate random string
+    # initialUser-password: ""
+
+  # Value in datasource will be ignored if postgresql.enabled is true
+  datasource: {}
+    # url: jdbc:postgresql://postgresql.kviklet.svc:5432/kviklet
+    # username: "postgres"
+    # password: "postgres"
+    # secretName: "thisissecret"
+
+  oidc:
+    enabled: false 
+    provider: "google"
+    issuer: ""
+    clientId: ""
+    clientSecret: ""
 
 #### resources
 ## Deployment Resource
@@ -28,3 +37,18 @@ resources:
   requests:
     cpu: 100m
     memory: 256Mi
+
+nodeSelector: {}
+affinity: {}
+tolerations: []
+
+# PostgreSQL Helm Dependency
+# you can find more details about this here https://artifacthub.io/packages/helm/bitnami/postgresql
+postgresql:
+  ## @param postgresql.enabled Deploy a PostgreSQL server to satisfy the applications database requirements
+  enabled: true
+  auth:
+    postgresPassword: "postgres"
+    database: "kviklet"
+    # existingSecret: "thisissexret"
+  

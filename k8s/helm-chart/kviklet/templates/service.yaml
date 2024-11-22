@@ -2,13 +2,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: { { .Release.Name | quote } }
-  namespace: { { .Release.Namespace | quote } }
+  name: {{ include "fullname" . }}
+  namespace: {{ .Release.Namespace }}
 spec:
   ports:
-    - name: { { .Release.Name | quote } }
+    - name: {{ include "fullname" . }}
       protocol: TCP
-      port: { { .Values.port } }
+      port: {{ .Values.port }}
       targetPort: 8080
   selector:
-    app: { { .Release.Name | quote } }
+      app: {{ include "fullname" . }}
+      release: "{{ .Release.Name }}"
