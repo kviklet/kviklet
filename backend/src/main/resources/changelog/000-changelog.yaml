@@ -71,3 +71,6 @@ databaseChangeLog:
   - include:
       file: 025-add-live-session-table.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 026-add-reviewer-to-execution-request.yaml
+      relativeToChangelogFile: true

@@ -3,27 +3,8 @@ package dev.kviklet.kviklet.db
 import com.querydsl.jpa.impl.JPAQuery
 import dev.kviklet.kviklet.db.util.BaseEntity
 import dev.kviklet.kviklet.service.EntityNotFound
-import dev.kviklet.kviklet.service.dto.Connection
-import dev.kviklet.kviklet.service.dto.ConnectionId
-import dev.kviklet.kviklet.service.dto.DatasourceConnection
-import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
-import dev.kviklet.kviklet.service.dto.Event
-import dev.kviklet.kviklet.service.dto.ExecutionRequest
-import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
-import dev.kviklet.kviklet.service.dto.ExecutionRequestId
-import dev.kviklet.kviklet.service.dto.KubernetesConnection
-import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
-import dev.kviklet.kviklet.service.dto.RequestType
-import dev.kviklet.kviklet.service.dto.utcTimeNow
-import jakarta.persistence.CascadeType
-import jakarta.persistence.Entity
-import jakarta.persistence.EntityManager
-import jakarta.persistence.EnumType
-import jakarta.persistence.Enumerated
-import jakarta.persistence.FetchType
-import jakarta.persistence.JoinColumn
-import jakarta.persistence.ManyToOne
-import jakarta.persistence.OneToMany
+import dev.kviklet.kviklet.service.dto.*
+import jakarta.persistence.*
 import org.apache.commons.lang3.builder.ToStringBuilder
 import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
 import org.springframework.beans.factory.annotation.Autowired
@@ -77,6 +58,10 @@ class ExecutionRequestEntity(
 
     var temporaryAccessDuration: Long? = null,
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reviewer_id", nullable = true)
+    var reviewer: UserEntity? = null,
+
 ) : BaseEntity() {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
@@ -95,6 +80,7 @@ class ExecutionRequestEntity(
             createdAt = createdAt,
             author = author.toDto(),
             temporaryAccessDuration = temporaryAccessDuration?.let { Duration.ofMinutes(it) },
+            reviewer = reviewer?.toDto(),
         )
 
         ExecutionRequestType.KUBERNETES -> KubernetesExecutionRequest(
@@ -291,6 +277,18 @@ class ExecutionRequestAdapter(
         return executionRequestEntity.toDetailDto(
             connectionAdapter.toDto(executionRequestEntity.connection),
         )
+    }
+
+    @Transactional
+    fun setReviewer(id: ExecutionRequestId, reviewerId: String) {
+        val executionRequestEntity = getExecutionRequestDetailsEntity(id)
+
+        val reviewerEntity = userRepository.findByIdOrNull(reviewerId)
+            ?: throw EntityNotFound("User Not Found", "User with id $reviewerId does not exist.")
+
+        executionRequestEntity.reviewer = reviewerEntity
+
+        executionRequestRepository.save(executionRequestEntity)
     }
 
     fun listExecutionRequests(): List<ExecutionRequestDetails> = executionRequestRepository.findAll().map {

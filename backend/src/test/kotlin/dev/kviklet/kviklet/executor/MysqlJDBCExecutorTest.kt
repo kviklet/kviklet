@@ -27,7 +27,7 @@ class MysqlJDBCExecutorTest(@Autowired override val JDBCExecutorService: JDBCExe
             .withDatabaseName("")
 
         init {
-            db.start()
+            db.start()/**/
         }
     }
 

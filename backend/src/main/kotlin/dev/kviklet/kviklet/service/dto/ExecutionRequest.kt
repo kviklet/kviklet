@@ -55,6 +55,7 @@ sealed class ExecutionRequest(
     open val createdAt: LocalDateTime = utcTimeNow(),
     open val author: User,
     open val temporaryAccessDuration: Duration? = null,
+    open val reviewer: User?,
 ) : SecuredDomainObject {
     fun getId() = id.toString()
     override fun getSecuredObjectId() = connection.getSecuredObjectId()
@@ -95,10 +96,12 @@ data class DatasourceExecutionRequest(
     override val createdAt: LocalDateTime = utcTimeNow(),
     override val author: User,
     override val temporaryAccessDuration: Duration?,
+    override val reviewer: User?,
 ) : ExecutionRequest(
     id, connection, title, type, description, executionStatus, createdAt,
     author,
     temporaryAccessDuration,
+    reviewer
 )
 
 data class KubernetesExecutionRequest(
@@ -125,6 +128,7 @@ data class KubernetesExecutionRequest(
     createdAt,
     author,
     temporaryAccessDuration,
+    null
 )
 
 data class ExecutionRequestDetails(val request: ExecutionRequest, val events: MutableSet<Event>) :
@@ -241,7 +245,14 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         policies: List<PolicyGrantedAuthority>,
     ): Boolean = when (permission) {
         Permission.EXECUTION_REQUEST_EDIT -> request.author.getId() == userDetails.id
-        Permission.EXECUTION_REQUEST_EXECUTE -> request.author.getId() == userDetails.id && isExecutable()
+        Permission.EXECUTION_REQUEST_EXECUTE -> {
+            val userIdToCheck: String = if (request.reviewer != null) {
+                request.reviewer?.getId() ?: ""
+            } else {
+                request.author.getId() ?: ""
+            }
+            userIdToCheck == userDetails.id && isExecutable()
+        }
         else -> true
     }
 
