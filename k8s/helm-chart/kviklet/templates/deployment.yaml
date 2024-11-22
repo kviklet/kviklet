@@ -2,15 +2,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name | quote }}
-  namespace: {{ .Release.Namespace | quote }}
+  name: {{ include "fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ .Release.Name | quote }}
+    app: {{ include "fullname" . }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: {{ .Release.Name | quote }}
+      app: {{ include "fullname" . }}
+      release: "{{ .Release.Name }}"
   strategy:
     rollingUpdate:
       maxSurge: 1
@@ -19,48 +20,67 @@ spec:
   template:
     metadata:
       labels:
-        app: {{ .Release.Name | quote }}
+        app: {{ include "fullname" . }}
+        release: "{{ .Release.Name }}"
     spec:
       containers:
-        - name: {{ .Release.Name | quote }}
-          image: {{ .Values.image }}
-          imagePullPolicy: {{ .Values.imagePullPolicy }}
+        - name: {{ include "fullname" . }}
+          image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
           env: 
             - name: SPRING_DATASOURCE_USERNAME
+              {{- if .Values.postgresql.enabled }}
+              value: postgres
+              {{- else }}
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}
+                  name: {{ include "config.datasource.secretName" . }}
                   key: datasource-username
+              {{- end }}
             - name: SPRING_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}
-                  key: datasource-password
+                  name: {{ include "config.datasource.secretName" . }}
+                  key: {{ if .Values.postgresql.enabled }}postgres-password{{ else }}datasource-password{{ end }}
             - name: SPRING_DATASOURCE_URL
-              value: {{ .Values.dataSourceUrl }}
+              value: "{{ default (include "config.datasourceUrl" .) .Values.config.datasource.url }}"
             - name: INITIAL_USER_EMAIL
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}
+                  name: {{ include "fullname" . }}-config-secret
                   key: initialUser-email
             - name: INITIAL_USER_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}
+                  name: {{ include "fullname" . }}-config-secret
                   key: initialUser-password
-            {{- if .Values.oidc.enabled }}
+            {{- if .Values.config.oidc.enabled }}
             - name: KVIKLET_IDENTITYPROVIDER_CLIENTID
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}
+                  name: {{ include "fullname" . }}-config-secret
                   key: oidc-clientId
             - name: KVIKLET_IDENTITYPROVIDER_CLIENTSECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}
+                  name: {{ include "fullname" . }}-config-secret
                   key: oidc-clientSecret
             - name: KVIKLET_IDENTITYPROVIDER_TYPE
-              value: {{ .Values.oidc.provider }}
+              value: {{ .Values.config.oidc.provider }}
             - name: KVIKLET_IDENTITYPROVIDER_ISSUERURI
-              value: {{ .Values.oidc.issuer }}
+              value: {{ .Values.config.oidc.issuer }}
             {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

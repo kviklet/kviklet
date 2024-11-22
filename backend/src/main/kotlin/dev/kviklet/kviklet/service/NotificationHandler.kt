@@ -42,7 +42,6 @@ class NotificationHandler(
                     title = "New Request: \"${event.title}\"",
                     text = "Created by ${event.author}.\n" +
                         "This Request needs ${event.necessaryReviews} approving review(s) to be executed.\n" +
-                        "${event.query}"
                         "Go to $host/requests/${event.requestId} to review it.",
                 )
                 sendNotification(message)

@@ -2,4 +2,10 @@ apiVersion: v2
 description: Helm Chart for kviklet
 name: kviklet
 type: application
-version: 0.4.0
+version: 0.5.0
+appVersion: 0.5.1
+dependencies:
+- condition: postgresql.enabled
+  name: postgresql
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 16.2.2
