@@ -20,7 +20,8 @@ Return the Postgresql Secret Name
     {{- if .Values.postgresql.auth.existingSecret -}}
         {{- printf "%s" .Values.postgresql.auth.existingSecret -}}
     {{- else -}}
-        {{- printf "%s" (include "fullname" .) -}}-secret
+        {{- $releaseName := .Release.Name -}}
+        {{- printf "%s" .Release.Name -}}-postgresql
     {{- end -}}
 {{- end -}}
 {{- end -}}

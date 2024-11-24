@@ -50,5 +50,4 @@ postgresql:
   auth:
     postgresPassword: "postgres"
     database: "kviklet"
-    # existingSecret: "thisissexret"
   
