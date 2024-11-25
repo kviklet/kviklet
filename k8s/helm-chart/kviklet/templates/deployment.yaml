@@ -27,6 +27,8 @@ spec:
         - name: {{ include "fullname" . }}
           image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          ports:
+            - containerPort: 8080
           env: 
             - name: SPRING_DATASOURCE_USERNAME
               {{- if .Values.postgresql.enabled }}
