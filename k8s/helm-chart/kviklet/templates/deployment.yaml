@@ -5,13 +5,12 @@ metadata:
   name: {{ include "fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ include "fullname" . }}
+    {{- include "kviklet.metaLabels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: {{ include "fullname" . }}
-      release: "{{ .Release.Name }}"
+      {{- include "kviklet.metaLabels" . | nindent 8 }}
   strategy:
     rollingUpdate:
       maxSurge: 1
@@ -20,15 +19,35 @@ spec:
   template:
     metadata:
       labels:
-        app: {{ include "fullname" . }}
-        release: "{{ .Release.Name }}"
+        {{- include "kviklet.metaLabels" . | nindent 8 }}
     spec:
+      # ideally it should be health check api that check for db
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:1.36
+        env:
+          - name: SPRING_DATASOURCE_URL
+            value: "{{ default (include "config.datasourceUrl" .) .Values.config.datasource.url }}"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          # Extract host and port from SPRING_DATASOURCE_URL
+          POSTGRES_HOST=$(echo $SPRING_DATASOURCE_URL | sed -E 's|jdbc:postgresql://([^:/]+):([0-9]+)/.*|\1|')
+          POSTGRES_PORT=$(echo $SPRING_DATASOURCE_URL | sed -E 's|jdbc:postgresql://([^:/]+):([0-9]+)/.*|\2|')
+          until nc -z $POSTGRES_HOST $POSTGRES_PORT; do
+            echo "Waiting for PostgreSQL at $POSTGRES_HOST:$POSTGRES_PORT...";
+            sleep 2;
+          done;
+          echo "PostgreSQL is ready!";
       containers:
         - name: {{ include "fullname" . }}
           image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
           ports:
-            - containerPort: 8080
+            - name: http
+              containerPort: 8080
+              protocol: TCP
           env: 
             - name: SPRING_DATASOURCE_USERNAME
               {{- if .Values.postgresql.enabled }}

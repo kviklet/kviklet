@@ -4,12 +4,15 @@ kind: Service
 metadata:
   name: {{ include "fullname" . }}
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kviklet.metaLabels" . | nindent 4 }}
 spec:
+  type: {{ .Values.service.type }}
   ports:
-    - name: {{ include "fullname" . }}
+    - name: http
       protocol: TCP
-      port: {{ .Values.port }}
-      targetPort: 8080
+      port: {{ .Values.service.port }}
+      targetPort: http
   selector:
       app: {{ include "fullname" . }}
       release: "{{ .Release.Name }}"
