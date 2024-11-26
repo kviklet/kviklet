@@ -1,0 +1,11 @@
+Thank you for installing {{ .Chart.Name }}.
+
+Your release is named {{ .Release.Name }}.
+
+Accessing kviklet service:
+
+$ export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app={{ template "fullname" . }},release={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+
+$ kubectl -n {{ .Release.Namespace }} port-forward $POD_NAME 8080:8080
+
+Visit http://127.0.0.1:8080 to use your application! Expose your service via Ingress or LoadBalancer for production.
