@@ -14,5 +14,4 @@ spec:
       port: {{ .Values.service.port }}
       targetPort: http
   selector:
-      app: {{ include "fullname" . }}
-      release: "{{ .Release.Name }}"
+      {{- include "kviklet.metaLabels" . | nindent 8 }}
