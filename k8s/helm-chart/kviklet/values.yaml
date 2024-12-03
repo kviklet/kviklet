@@ -1,30 +1,57 @@
-#### image
-## kviklet Image
-image: ghcr.io/kviklet/kviklet:0.4.0
+image:
+  registry: ghcr.io
+  repository: kviklet/kviklet
+  pullPolicy: IfNotPresent
 
-#### imagePullPolicy
-## Pull Policy for Kubernetes Deployment
-imagePullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 80
 
-#### port
-## Service port of the kviklet
-port: 80
+config: 
+  initialUser:
+    email: "admin@example.com"
+    # If not defined, it will generate random string
+    # initialUser-password: ""
 
-### Database Kviklet
-dataSourceUrl: jdbc:postgresql://localhost:5432/kviklet
- 
-oidc:
-  enabled: false 
-  provider: "gitlab"
-  issuer: ""
+  # Value in datasource will be ignored if postgresql.enabled is true
+  datasource: {}
+    # url: jdbc:postgresql://postgresql.kviklet.svc:5432/kviklet
+    # username: "postgres"
+    # password: "postgres"
+    # secretName: "thisissecret"
 
-#### resources
-## Deployment Resource
-## Used when kind is Single
+  oidc:
+    enabled: false 
+    provider: "google"
+    issuer: ""
+    clientId: ""
+    clientSecret: ""
+
+# -- Define resources for kviklet pods.
+# see https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#resources
 resources:
-  limits:
-    cpu: 200m
-    memory: 512Mi
-  requests:
-    cpu: 100m
-    memory: 256Mi
+#  limits:
+#    cpu: 200m
+#    memory: 512Mi
+#  requests:
+#    cpu: 100m
+#    memory: 256Mi
+
+# -- see https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#scheduling
+nodeSelector: {}
+
+# -- see https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#scheduling
+tolerations: []
+
+# -- see https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#scheduling
+affinity: {}
+
+# PostgreSQL Helm Dependency
+# you can find more details about this here https://artifacthub.io/packages/helm/bitnami/postgresql
+postgresql:
+  ## @param postgresql.enabled Deploy a PostgreSQL server to satisfy the applications database requirements
+  enabled: true
+  auth:
+    postgresPassword: "postgres"
+    database: "kviklet"
+  

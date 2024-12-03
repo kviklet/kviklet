@@ -2,13 +2,16 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: { { .Release.Name | quote } }
-  namespace: { { .Release.Namespace | quote } }
+  name: {{ include "fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kviklet.metaLabels" . | nindent 4 }}
 spec:
+  type: {{ .Values.service.type }}
   ports:
-    - name: { { .Release.Name | quote } }
+    - name: http
       protocol: TCP
-      port: { { .Values.port } }
-      targetPort: 8080
+      port: {{ .Values.service.port }}
+      targetPort: http
   selector:
-    app: { { .Release.Name | quote } }
+      {{- include "kviklet.metaLabels" . | nindent 8 }}
