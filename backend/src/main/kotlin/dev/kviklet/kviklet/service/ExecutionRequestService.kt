@@ -6,37 +6,12 @@ import dev.kviklet.kviklet.controller.CreateExecutionRequestRequest
 import dev.kviklet.kviklet.controller.CreateKubernetesExecutionRequestRequest
 import dev.kviklet.kviklet.controller.CreateReviewRequest
 import dev.kviklet.kviklet.controller.UpdateExecutionRequestRequest
-import dev.kviklet.kviklet.db.CommentPayload
-import dev.kviklet.kviklet.db.EditPayload
-import dev.kviklet.kviklet.db.ExecutePayload
-import dev.kviklet.kviklet.db.ExecutionRequestAdapter
-import dev.kviklet.kviklet.db.ReviewPayload
+import dev.kviklet.kviklet.db.*
 import dev.kviklet.kviklet.proxy.PostgresProxy
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.security.UserDetailsWithId
-import dev.kviklet.kviklet.service.dto.ConnectionId
-import dev.kviklet.kviklet.service.dto.DBExecutionResult
-import dev.kviklet.kviklet.service.dto.DatasourceConnection
-import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
-import dev.kviklet.kviklet.service.dto.DatasourceType
-import dev.kviklet.kviklet.service.dto.DumpResultLog
-import dev.kviklet.kviklet.service.dto.ErrorResultLog
-import dev.kviklet.kviklet.service.dto.Event
-import dev.kviklet.kviklet.service.dto.EventType
-import dev.kviklet.kviklet.service.dto.ExecuteEvent
-import dev.kviklet.kviklet.service.dto.ExecutionProxy
-import dev.kviklet.kviklet.service.dto.ExecutionRequest
-import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
-import dev.kviklet.kviklet.service.dto.ExecutionRequestId
-import dev.kviklet.kviklet.service.dto.ExecutionResult
-import dev.kviklet.kviklet.service.dto.ExecutionStatus
-import dev.kviklet.kviklet.service.dto.KubernetesConnection
-import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
-import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
-import dev.kviklet.kviklet.service.dto.RequestType
-import dev.kviklet.kviklet.service.dto.ReviewStatus
-import dev.kviklet.kviklet.service.dto.utcTimeNow
+import dev.kviklet.kviklet.service.dto.*
 import dev.kviklet.kviklet.shell.KubernetesApi
 import jakarta.servlet.ServletOutputStream
 import jakarta.transaction.Transactional
@@ -62,6 +37,7 @@ class ExecutionRequestService(
     private val applicationEventPublisher: ApplicationEventPublisher,
     private val mongoDBExecutor: MongoDBExecutor,
     private val connectionService: ConnectionService,
+    private val configurationAdapter: ConfigurationAdapter,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val proxies = mutableListOf<ExecutionProxy>()
@@ -300,6 +276,16 @@ class ExecutionRequestService(
         if (executionRequest.resolveReviewStatus() == ReviewStatus.REJECTED) {
             throw InvalidReviewException("Can't review an already rejected request!")
         }
+
+        //Could stop multiple reviews/make the reviewers a list?
+        if (request.action == ReviewAction.APPROVE) {
+            configurationAdapter.getConfiguration().let {
+                if (it.liveSessionEnabled == true) {
+                    executionRequestAdapter.setReviewer(id, authorId)
+                }
+            }
+        }
+
         val reviewEvent = eventService.saveEvent(
             id,
             authorId,

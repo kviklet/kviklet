@@ -1,0 +1,15 @@
+databaseChangeLog:
+  - changeSet:
+      id: 026-add-reviewer-to-execution-request
+      author: David
+      changes:
+        - addColumn:
+            tableName: execution_request
+            columns:
+              - column:
+                  name: reviewer_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_live_session_reviewer
+                    references: user(id)

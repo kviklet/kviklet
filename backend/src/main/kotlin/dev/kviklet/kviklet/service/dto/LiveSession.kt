@@ -2,12 +2,7 @@ package dev.kviklet.kviklet.service.dto
 
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonValue
-import dev.kviklet.kviklet.security.Permission
-import dev.kviklet.kviklet.security.PolicyGrantedAuthority
-import dev.kviklet.kviklet.security.Resource
-import dev.kviklet.kviklet.security.SecuredDomainId
-import dev.kviklet.kviklet.security.SecuredDomainObject
-import dev.kviklet.kviklet.security.UserDetailsWithId
+import dev.kviklet.kviklet.security.*
 import java.io.Serializable
 
 data class LiveSession(
