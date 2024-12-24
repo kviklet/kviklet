@@ -1,0 +1,63 @@
+version: "3"
+services:
+  postgres:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+      - ./sample_data.sql:/docker-entrypoint-initdb.d/init.sql
+
+  kviklet-postgres:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_SSL_MODE: verify-full
+      POSTGRES_SSL_CERT_FILE: /var/lib/postgresql/server.crt
+      POSTGRES_SSL_KEY_FILE: /var/lib/postgresql/server.key
+      POSTGRES_SSL_CA_FILE: /var/lib/postgresql/root.crt
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./kviklet-postgres-data:/var/lib/postgresql/data
+      - ./certs/server.crt:/var/lib/postgresql/server.crt:ro
+      - ./certs/server.key:/var/lib/postgresql/server.key:ro
+      - ./certs/root.crt:/var/lib/postgresql/root.crt:ro
+      - ./postgres-config/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    command:
+      - "postgres"
+      - "-c"
+      - "ssl=on"
+      - "-c"
+      - "ssl_cert_file=/var/lib/postgresql/server.crt"
+      - "-c"
+      - "ssl_key_file=/var/lib/postgresql/server.key"
+      - "-c"
+      - "ssl_ca_file=/var/lib/postgresql/root.crt"
+      - "-c"
+      - "hba_file=/etc/postgresql/pg_hba.conf"
+
+  kviklet:
+    build: ../../
+    ports:
+      - "80:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://kviklet-postgres:5432/postgres?user=postgres
+      - SPRING_DATASOURCE_SSL_KEY_FILE=/etc/certs/client.key
+      - SPRING_DATASOURCE_SSL_CERT_FILE=/etc/certs/client.crt
+      - SPRING_DATASOURCE_SSL_ROOT_CERT=/etc/certs/root.crt
+      - INITIAL_USER_EMAIL=admin@admin.com
+      - INITIAL_USER_PASSWORD=admin
+    volumes:
+      - ./certs/client.key:/etc/certs/client.key:ro
+      - ./certs/client.crt:/etc/certs/client.crt:ro
+      - ./certs/root.crt:/etc/certs/root.crt:ro
+    depends_on:
+      - kviklet-postgres
