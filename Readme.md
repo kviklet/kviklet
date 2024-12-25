@@ -44,86 +44,93 @@ Most features are available for all databases (SSO, LDAP, RBAC, Review/Approval 
 
 Kviklet ships as a simple docker container.
 You can find the available verions under [Releases](https://github.com/kviklet/kviklet/releases). We recommend to regularly update the version you are using as we continue to build new features.  
-The latest one currently is `ghcr.io/kviklet/kviklet:0.5.0`, you can also use `:main` but it might happen every now and then that we accidentally merge something buggythough we try to avoid that.
+The latest one currently is `ghcr.io/kviklet/kviklet:0.5.1`, you can also use `:main` but it might happen every now and then that we accidentally merge something buggy. Though we try to avoid that.
 
 ### Quick Start
 
 If you just want to try out how it works:
 
 1. Here is a minimal docker-compose.yaml:
+   <details>
+   <summary> Click to expand compose content </summary>
 
-```
-services:
-  postgres:
-    image: postgres:16
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: postgres
-    ports:
-      - "5432:5432"
-    volumes:
-      - ./postgres-data:/var/lib/postgresql/data
-#      - ./sample_data.sql:/docker-entrypoint-initdb.d/init.sql
+   ```
+   services:
+     postgres:
+       image: postgres:16
+       restart: always
+       environment:
+         POSTGRES_USER: postgres
+         POSTGRES_PASSWORD: postgres
+         POSTGRES_DB: postgres
+       ports:
+         - "5432:5432"
+       volumes:
+         - ./postgres-data:/var/lib/postgresql/data
+   #      - ./sample_data.sql:/docker-entrypoint-initdb.d/init.sql
 
-  kviklet-postgres:
-    image: postgres:16
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: kviklet
-    ports:
-      - "5433:5432"
-    volumes:
-      - ./kviklet-postgres-data:/var/lib/postgresql/data
+     kviklet-postgres:
+       image: postgres:16
+       restart: always
+       environment:
+         POSTGRES_USER: postgres
+         POSTGRES_PASSWORD: postgres
+         POSTGRES_DB: kviklet
+       ports:
+         - "5433:5432"
+       volumes:
+         - ./kviklet-postgres-data:/var/lib/postgresql/data
 
-  kviklet:
-    image: ghcr.io/kviklet/kviklet:main
-    ports:
-      - "80:8080"
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://kviklet-postgres:5432/kviklet
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=postgres
-      - INITIAL_USER_EMAIL=admin@admin.com
-      - INITIAL_USER_PASSWORD=admin
-    depends_on:
-      - kviklet-postgres
-```
+     kviklet:
+       image: ghcr.io/kviklet/kviklet:main
+       ports:
+         - "80:8080"
+       environment:
+         - SPRING_DATASOURCE_URL=jdbc:postgresql://kviklet-postgres:5432/kviklet
+         - SPRING_DATASOURCE_USERNAME=postgres
+         - SPRING_DATASOURCE_PASSWORD=postgres
+         - INITIAL_USER_EMAIL=admin@admin.com
+         - INITIAL_USER_PASSWORD=admin
+       depends_on:
+         - kviklet-postgres
+   ```
 
-2. Run the `docker-compose.yml` via `docker-compose up -d`. Kviklet should spin up on port 80 so just got to `localhost` and play around. The admin login is admin@admin.com with `admin` as password.
+   </details>
+
+2. Run the `docker-compose.yml` via `docker-compose up -d`. Kviklet will spin up on port 80, go to `localhost` and play around. The admin login is admin@admin.com with `admin` as password.
 
 3. The docker-compose contains an extra postgres database for which you can setup a connection in Kviklet. To make this database contain some data, uncomment this line:
 
-```
-      - ./sample_data.sql:/docker-entrypoint-initdb.d/init.sql
-```
+   ```
+         - ./sample_data.sql:/docker-entrypoint-initdb.d/init.sql
+   ```
 
-And create a sample_data.sql file:
+   And create a sample_data.sql file:
 
-```sql
-CREATE TABLE Locations (
-    Name VARCHAR(100) NOT NULL,
-    Address VARCHAR(255) NOT NULL,
-    City VARCHAR(100) NOT NULL,
-    Country VARCHAR(100) NOT NULL,
-    PostalCode VARCHAR(20) NOT NULL
-);
+   <details>
+   <summary> Click to expand sample_data.sql content </summary>
 
-alter table public.Locations
-    owner to postgres;
+   ```sql
+   CREATE TABLE Locations (
+       Name VARCHAR(100) NOT NULL,
+       Address VARCHAR(255) NOT NULL,
+       City VARCHAR(100) NOT NULL,
+       Country VARCHAR(100) NOT NULL,
+       PostalCode VARCHAR(20) NOT NULL
+   );
 
-INSERT INTO public.Locations (Name, Address, City, Country, PostalCode) VALUES
-('Central Park', '59th to 110th St', 'New York', 'USA', '10022'),
-('Eiffel Tower', 'Champ de Mars, 5 Avenue Anatole', 'Paris', 'France', '75007'),
-('Colosseum', 'Piazza del Colosseo, 1', 'Rome', 'Italy', '00184'),
-('Sydney Opera House', 'Bennelong Point', 'Sydney', 'Australia', '2000'),
-('Great Wall of China', 'Huairou District', 'Beijing', 'China', '101405');
-```
+   alter table public.Locations
+       owner to postgres;
 
-Or just log in with your database client of choice and create some data yourself.
+   INSERT INTO public.Locations (Name, Address, City, Country, PostalCode) VALUES
+   ('Central Park', '59th to 110th St', 'New York', 'USA', '10022'),
+   ('Eiffel Tower', 'Champ de Mars, 5 Avenue Anatole', 'Paris', 'France', '75007'),
+   ('Colosseum', 'Piazza del Colosseo, 1', 'Rome', 'Italy', '00184'),
+   ('Sydney Opera House', 'Bennelong Point', 'Sydney', 'Australia', '2000'),
+   ('Great Wall of China', 'Huairou District', 'Beijing', 'China', '101405');
+   ```
+
+   </details>
 
 ### DB Setup
 
@@ -137,6 +144,8 @@ SPRING_DATASOURCE_PASSWORD = password
 SPRING_DATASOURCE_USERNAME = username
 SPRING_DATASOURCE_URL = jdbc:postgresql://[host]:[port]/[database]?currentSchema=[schema]
 ```
+
+You can also use certificates for the db connection, see [here](examples/certificates) for an example.
 
 ### Initial User
 
