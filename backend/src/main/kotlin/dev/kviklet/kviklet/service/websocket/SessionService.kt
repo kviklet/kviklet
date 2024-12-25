@@ -44,7 +44,7 @@ class SessionService(
         )
     }
 
-    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
+    @Policy(Permission.EXECUTION_REQUEST_EDIT)
     fun updateContent(sessionId: LiveSessionId, consoleContent: String): LiveSession =
         sessionAdapter.updateLiveSession(sessionId, consoleContent)
 
