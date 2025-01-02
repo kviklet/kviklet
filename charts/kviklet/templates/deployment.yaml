@@ -21,7 +21,6 @@ spec:
       labels:
         {{- include "kviklet.metaLabels" . | nindent 8 }}
     spec:
-      # ideally it should be health check api that check for db
       initContainers:
       - name: wait-for-postgres
         image: busybox:1.36

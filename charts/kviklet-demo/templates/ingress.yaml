@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-ingress
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: "{{ .Values.ingress.staticIpName }}"
+    networking.gke.io/managed-certificates: {{ .Release.Name }}-cert
+    networking.gke.io/v1beta1.FrontendConfig: {{ .Release.Name }}-frontendconfig
+    cloud.google.com/backend-config: '{"default": "{{ .Release.Name }}-iap"}'
+spec:
+  rules:
+    - host: demo.kviklet.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}
+                port:
+                  number: 80

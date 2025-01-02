@@ -7,4 +7,4 @@ mssql-data
 mongodb-data
 mariadb-data
 lib
-charts
+*.tgz

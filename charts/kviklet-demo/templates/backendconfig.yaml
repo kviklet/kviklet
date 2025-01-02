@@ -1,0 +1,11 @@
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: {{ .Release.Name }}-iap
+spec:
+  iap:
+    enabled: true
+    oauthclientCredentials:
+      secretName: {{ .Values.iap.secretName }}
+  securityPolicy:
+    name: {{ .Values.securityPolicy.name | default "default" }}

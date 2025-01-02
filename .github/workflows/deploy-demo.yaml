@@ -1,0 +1,54 @@
+name: Deploy Demo
+
+on:
+  push:
+    branches: [helm-charts-gcs-demo]
+
+jobs:
+  deploy:
+    name: Deploy Demo
+    runs-on: ubuntu-latest
+    environment: Demo
+
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GKE_CLUSTER: ${{ secrets.GKE_CLUSTER }}
+      GKE_ZONE: ${{ secrets.GKE_ZONE }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v2"
+        with:
+          credentials_json: "${{ secrets.GCP_SA_KEY }}"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v2"
+
+      - name: "Install GKE Auth Plugin"
+        run: |
+          gcloud components install gke-gcloud-auth-plugin
+
+      - name: "Get GKE credentials"
+        run: |
+          gcloud container clusters get-credentials ${{ env.GKE_CLUSTER }} \
+            --zone ${{ env.GKE_ZONE }} \
+            --project ${{ env.PROJECT_ID }}
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.12.1
+
+      - name: Deploy Demo Chart
+        run: |
+          cd charts/kviklet
+          helm dependency build
+          cd ../kviklet-demo
+          helm dependency build
+          helm upgrade --install kviklet-demo . \
+            --namespace kviklet \
+            --create-namespace \
+            --wait
