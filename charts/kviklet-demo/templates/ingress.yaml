@@ -4,8 +4,7 @@ metadata:
   name: {{ .Release.Name }}-ingress
   annotations:
     kubernetes.io/ingress.global-static-ip-name: "{{ .Values.ingress.staticIpName }}"
-    networking.gke.io/managed-certificates: {{ .Release.Name }}-cert
-    networking.gke.io/v1beta1.FrontendConfig: {{ .Release.Name }}-frontendconfig
+    networking.gke.io/managed-certificates: kviklet-demo-cert
     cloud.google.com/backend-config: '{"default": "{{ .Release.Name }}-iap"}'
 spec:
   rules:

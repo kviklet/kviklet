@@ -11,6 +11,12 @@ kviklet:
       postgresPassword: "postgres"
       database: "kviklet"
 
+  service:
+    annotations:
+      cloud.google.com/backend-config: '{"default": "kviklet-demo-iap"}'
+
+  externalSecretName: "kviklet-demo-config-secret" # Name of the secret containing the kviklets configuration
+
 # GCP specific configuration
 ingress:
   staticIpName: "kviklet-demo-ip" # Name of your static IP in GCP
@@ -19,6 +25,3 @@ ingress:
 iap:
   secretName: "kviklet-demo-oauth" # Secret containing OAuth client credentials
 
-# Security policy (optional)
-securityPolicy:
-  name: "default"

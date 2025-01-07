@@ -7,5 +7,3 @@ spec:
     enabled: true
     oauthclientCredentials:
       secretName: {{ .Values.iap.secretName }}
-  securityPolicy:
-    name: {{ .Values.securityPolicy.name | default "default" }}

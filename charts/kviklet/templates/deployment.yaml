@@ -21,24 +21,13 @@ spec:
       labels:
         {{- include "kviklet.metaLabels" . | nindent 8 }}
     spec:
-      initContainers:
-      - name: wait-for-postgres
-        image: busybox:1.36
-        env:
-          - name: SPRING_DATASOURCE_URL
-            value: "{{ default (include "config.datasourceUrl" .) .Values.config.datasource.url }}"
-        command:
-        - /bin/sh
-        - -c
-        - |
-          # Extract host and port from SPRING_DATASOURCE_URL
-          POSTGRES_HOST=$(echo $SPRING_DATASOURCE_URL | sed -E 's|jdbc:postgresql://([^:/]+):([0-9]+)/.*|\1|')
-          POSTGRES_PORT=$(echo $SPRING_DATASOURCE_URL | sed -E 's|jdbc:postgresql://([^:/]+):([0-9]+)/.*|\2|')
-          until nc -z $POSTGRES_HOST $POSTGRES_PORT; do
-            echo "Waiting for PostgreSQL at $POSTGRES_HOST:$POSTGRES_PORT...";
-            sleep 2;
-          done;
-          echo "PostgreSQL is ready!";
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "fullname" . }}-config
+            items:
+              - key: application.yaml
+                path: application.yaml
       containers:
         - name: {{ include "fullname" . }}
           image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -47,49 +36,29 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
-          env: 
-            - name: SPRING_DATASOURCE_USERNAME
-              {{- if .Values.postgresql.enabled }}
-              value: postgres
-              {{- else }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "config.datasource.secretName" . }}
-                  key: datasource-username
-              {{- end }}
-            - name: SPRING_DATASOURCE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "config.datasource.secretName" . }}
-                  key: {{ if .Values.postgresql.enabled }}postgres-password{{ else }}datasource-password{{ end }}
-            - name: SPRING_DATASOURCE_URL
-              value: "{{ default (include "config.datasourceUrl" .) .Values.config.datasource.url }}"
-            - name: INITIAL_USER_EMAIL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "fullname" . }}-config-secret
-                  key: initialUser-email
-            - name: INITIAL_USER_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "fullname" . }}-config-secret
-                  key: initialUser-password
-            {{- if .Values.config.oidc.enabled }}
-            - name: KVIKLET_IDENTITYPROVIDER_CLIENTID
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "fullname" . }}-config-secret
-                  key: oidc-clientId
-            - name: KVIKLET_IDENTITYPROVIDER_CLIENTSECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "fullname" . }}-config-secret
-                  key: oidc-clientSecret
-            - name: KVIKLET_IDENTITYPROVIDER_TYPE
-              value: {{ .Values.config.oidc.provider }}
-            - name: KVIKLET_IDENTITYPROVIDER_ISSUERURI
-              value: {{ .Values.config.oidc.issuer }}
-            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.externalSecretName | quote }}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/application.yaml
+              subPath: application.yaml
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/config/
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 1
+            failureThreshold: 3
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
