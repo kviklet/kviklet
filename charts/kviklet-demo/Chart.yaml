@@ -1,0 +1,10 @@
+apiVersion: v2
+name: kviklet-demo
+description: Demo deployment configuration for Kviklet
+type: application
+version: 0.1.0
+appVersion: 0.5.1
+dependencies:
+  - name: kviklet
+    version: ">=0.1.0"
+    repository: "file://../kviklet"

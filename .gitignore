@@ -7,3 +7,4 @@ mssql-data
 mongodb-data
 mariadb-data
 lib
+*.tgz

@@ -1,0 +1,64 @@
+# Primary application configuration
+config:
+  datasource:
+    url: "jdbc:postgresql://kviklet-demo-postgresql:5432/kviklet"
+
+  oidc:
+    enabled: false
+    provider: "" # google, keycloak, gitlab
+    issuerUri: "" # Required for keycloak and other providers
+
+  ldap:
+    enabled: false
+    url: ""
+    base: ""
+    principal: ""
+    attributes:
+      uniqueIdentifier: "uid"
+      email: "mail"
+      fullName: "cn"
+    organization:
+      userOu: "people"
+      searchBase: "ou=people"
+
+  # Name of the secret containing the kviklets configuration
+  # See README.md or the demo deployment for examples
+  externalSecretName: "kviklet-secret"
+
+# Application deployment configuration
+image:
+  registry: ghcr.io
+  repository: kviklet/kviklet
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+
+# -- Define resources for kviklet pods.
+# see https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#resources
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# -- see https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#scheduling
+nodeSelector: {}
+
+# -- see https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#scheduling
+tolerations: []
+
+# -- see https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#scheduling
+affinity: {}
+
+# PostgreSQL Helm Dependency
+# you can find more details about this here https://artifacthub.io/packages/helm/bitnami/postgresql
+postgresql:
+  ## @param postgresql.enabled Deploy a PostgreSQL server to satisfy the applications database requirements
+  enabled: true
+  auth:
+    postgresPassword: "postgres"
+    database: "kviklet"

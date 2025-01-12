@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kviklet.metaLabels" . | nindent 4 }}
+data:
+  application.yaml: |-
+    spring:
+      datasource:
+        url: {{ .Values.config.datasource.url | quote }}
+
+    {{- if .Values.config.oidc.enabled }}
+    kviklet:
+      identityProvider:
+        type: {{ .Values.config.oidc.provider | quote }}
+        {{- if .Values.config.oidc.issuer }}
+        issuerUri: {{ .Values.config.oidc.issuerUri | quote }}
+        {{- end }}
+    {{- end }}
+    {{- if .Values.config.ldap.enabled }}
+    ldap:
+      enabled: true
+      url: {{ .Values.config.ldap.url | quote }}
+      base: {{ .Values.config.ldap.base | quote }}
+      principal: {{ .Values.config.ldap.principal | quote }}
+      uniqueIdentifierAttribute: {{ .Values.config.ldap.attributes.uniqueIdentifier | quote }}
+      emailAttribute: {{ .Values.config.ldap.attributes.email | quote }}
+      fullNameAttribute: {{ .Values.config.ldap.attributes.fullName | quote }}
+      userOu: {{ .Values.config.ldap.organization.userOu | quote }}
+      searchBase: {{ .Values.config.ldap.organization.searchBase | quote }}
+    {{- end }}
