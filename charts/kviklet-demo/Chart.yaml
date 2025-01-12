@@ -6,5 +6,5 @@ version: 0.1.0
 appVersion: 0.5.1
 dependencies:
   - name: kviklet
-    version: ">=0.5.0"
+    version: ">=0.1.0"
     repository: "file://../kviklet"

@@ -8,4 +8,4 @@ $ export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "ap
 
 $ kubectl -n {{ .Release.Namespace }} port-forward $POD_NAME 8080:8080
 
-Visit http://127.0.0.1:8080 to use your application! Expose your service via Ingress or LoadBalancer for production.
+Visit http://127.0.0.1:8080 to use your application! Expose your service via an Ingress or a LoadBalancer for production.
