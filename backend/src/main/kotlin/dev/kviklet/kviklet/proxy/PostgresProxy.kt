@@ -342,11 +342,13 @@ class PostgresProxy(
         ServerSocket(port).use { serverSocket ->
 
             while (true) {
-                if (utcTimeNow().isAfter(startTime.plusMinutes(maxTimeMinutes))) {
-                    // kill all running threads and close sockets
-                    threadPool.shutdownNow()
-                    serverSocket.close()
-                    break
+                if (maxTimeMinutes != 0L) {
+                    if (utcTimeNow().isAfter(startTime.plusMinutes(maxTimeMinutes))) {
+                        // kill all running threads and close sockets
+                        threadPool.shutdownNow()
+                        serverSocket.close()
+                        break
+                    }
                 }
                 if (currentConnections >= maxConnections) {
                     Thread.sleep(1000)
