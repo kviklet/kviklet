@@ -6,7 +6,13 @@ import {
   testConnection,
   TestConnectionResponse,
 } from "../../../api/DatasourceApi";
-import { useForm, UseFormHandleSubmit } from "react-hook-form";
+import {
+  FieldErrors,
+  useForm,
+  UseFormHandleSubmit,
+  UseFormRegister,
+  UseFormWatch,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import InputField, { TextField } from "../../../components/InputField";
@@ -25,28 +31,40 @@ import { isApiErrorResponse } from "../../../api/Errors";
 import useNotification from "../../../hooks/useNotification";
 import Spinner from "../../../components/Spinner";
 
+const baseConnectionSchema = z.object({
+  displayName: z.string().min(3),
+  description: z.string(),
+  id: z.string().min(3),
+  type: z.nativeEnum(DatabaseType),
+  protocol: z.nativeEnum(DatabaseProtocol),
+  hostname: z.string().min(1),
+  port: z.coerce.number(),
+  databaseName: z.string(),
+  reviewConfig: z.object({
+    numTotalRequired: z.coerce.number(),
+  }),
+  additionalJDBCOptions: z.string(),
+  maxExecutions: z.coerce.number().nullable(),
+  dumpsEnabled: z.boolean(),
+});
+
 const connectionFormSchema = z
-  .object({
-    displayName: z.string().min(3),
-    description: z.string(),
-    id: z.string().min(3).min(3),
-    type: z.nativeEnum(DatabaseType),
-    protocol: z.nativeEnum(DatabaseProtocol),
-    hostname: z.string().min(1),
-    port: z.coerce.number(),
-    username: z.string().min(0),
-    password: z.string().min(0),
-    databaseName: z.string(),
-    reviewConfig: z.object({
-      numTotalRequired: z.coerce.number(),
+  .discriminatedUnion("authMethod", [
+    baseConnectionSchema.extend({
+      authMethod: z.literal("basic"),
+      username: z.string().min(0),
+      password: z.string().min(0),
     }),
-    additionalJDBCOptions: z.string(),
-    maxExecutions: z.coerce.number().nullable(),
-    dumpsEnabled: z.boolean(),
-  })
+    baseConnectionSchema.extend({
+      authMethod: z.literal("aws-iam"),
+      username: z.string().min(0),
+    }),
+  ])
   .transform((data) => ({ ...data, connectionType: "DATASOURCE" }));
 
 type ConnectionForm = z.infer<typeof connectionFormSchema>;
+type BasicAuthFormType = Extract<ConnectionForm, { authMethod: "basic" }>;
+//type IamAuthFormType = Extract<ConnectionForm, { authMethod: "aws-iam" }>;
 
 const getJDBCOptionsPlaceholder = (type: DatabaseType) => {
   if (type === DatabaseType.POSTGRES) {
@@ -252,23 +270,7 @@ export default function DatabaseConnectionForm(props: {
             error={errors.description?.message}
             data-testid="connection-description"
           />
-          <InputField
-            id="username"
-            label="Username"
-            placeholder="Username"
-            {...register("username")}
-            error={errors.username?.message}
-            data-testid="connection-username"
-          />
-          <InputField
-            id="password"
-            label="Password"
-            placeholder="Password"
-            type="password"
-            {...register("password")}
-            error={errors.password?.message}
-            data-testid="connection-password"
-          />
+          <AuthSection register={register} errors={errors} watch={watch} />
           <InputField
             id="hostname"
             label="Hostname"
@@ -395,6 +397,73 @@ export default function DatabaseConnectionForm(props: {
     </form>
   );
 }
+
+type AuthSectionProps = {
+  register: UseFormRegister<ConnectionForm>;
+  errors: FieldErrors<ConnectionForm>;
+  watch: UseFormWatch<ConnectionForm>;
+};
+
+const AuthSection = ({ register, errors, watch }: AuthSectionProps) => {
+  const authMethods = [
+    { value: "basic", label: "Username & Password" },
+    { value: "aws-iam", label: "AWS IAM" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="-mx-5 space-y-2 border-y border-slate-300 px-4 py-2 dark:border-slate-700 ">
+        <fieldset className="relative flex items-center justify-between">
+          <label className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200">
+            Authentication Method
+          </label>
+          <div className="flex basis-3/5 rounded-lg bg-slate-100 dark:bg-slate-900">
+            {authMethods.map((method) => (
+              <label
+                key={method.value}
+                className={`flex flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-2
+                  text-center text-sm font-medium tracking-tighter transition-colors
+                ${
+                  watch("authMethod") === method.value
+                    ? "bg-slate-400 text-slate-900 dark:bg-indigo-600 dark:text-slate-50"
+                    : "text-slate-700 hover:bg-slate-200 dark:text-slate-300 hover:dark:bg-slate-800"
+                }`}
+              >
+                <input
+                  type="radio"
+                  className="hidden"
+                  {...register("authMethod")}
+                  value={method.value}
+                />
+                {method.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <InputField
+          id="username"
+          label="Username"
+          placeholder="Username"
+          {...register("username")}
+          error={errors.username?.message}
+          data-testid="connection-username"
+        />
+        {watch("authMethod") === "basic" && (
+          <InputField
+            id="password"
+            label="Password"
+            placeholder="Password"
+            type="password"
+            {...register("password")}
+            error={(errors as FieldErrors<BasicAuthFormType>).password?.message}
+            data-testid="connection-password"
+          />
+        )}
+      </div>
+    </div>
+  );
+};
 
 const TestingConnectionFragment = (props: {
   handleSubmit: UseFormHandleSubmit<ConnectionForm>;
