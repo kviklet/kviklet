@@ -11,6 +11,7 @@ import {
   useForm,
   UseFormHandleSubmit,
   UseFormRegister,
+  UseFormSetValue,
   UseFormWatch,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,6 +32,9 @@ import { isApiErrorResponse } from "../../../api/Errors";
 import useNotification from "../../../hooks/useNotification";
 import Spinner from "../../../components/Spinner";
 
+const supportsIamAuth = (type: DatabaseType) =>
+  [DatabaseType.POSTGRES, DatabaseType.MYSQL].includes(type);
+
 const baseConnectionSchema = z.object({
   displayName: z.string().min(3),
   description: z.string(),
@@ -46,25 +50,33 @@ const baseConnectionSchema = z.object({
   additionalJDBCOptions: z.string(),
   maxExecutions: z.coerce.number().nullable(),
   dumpsEnabled: z.boolean(),
+  connectionType: z.literal("DATASOURCE").default("DATASOURCE"),
 });
 
-const connectionFormSchema = z
-  .discriminatedUnion("authMethod", [
-    baseConnectionSchema.extend({
-      authMethod: z.literal("basic"),
-      username: z.string().min(0),
-      password: z.string().min(0),
-    }),
-    baseConnectionSchema.extend({
-      authMethod: z.literal("aws-iam"),
-      username: z.string().min(0),
-    }),
-  ])
-  .transform((data) => ({ ...data, connectionType: "DATASOURCE" }));
+const connectionFormSchema = z.discriminatedUnion("authenticationType", [
+  baseConnectionSchema.extend({
+    authenticationType: z.literal("USER_PASSWORD"),
+    username: z.string().min(0),
+    password: z.string().min(0),
+  }),
+  baseConnectionSchema.extend({
+    authenticationType: z.literal("AWS_IAM"),
+    username: z.string().min(0),
+    type: z.nativeEnum(DatabaseType).refine(
+      (type) => supportsIamAuth(type),
+      (type) => ({
+        message: `AWS IAM authentication is not supported for ${type}`,
+      }),
+    ),
+  }),
+]);
 
 type ConnectionForm = z.infer<typeof connectionFormSchema>;
-type BasicAuthFormType = Extract<ConnectionForm, { authMethod: "basic" }>;
-//type IamAuthFormType = Extract<ConnectionForm, { authMethod: "aws-iam" }>;
+type BasicAuthFormType = Extract<
+  ConnectionForm,
+  { authenticationType: "USER_PASSWORD" }
+>;
+//type IamAuthFormType = Extract<ConnectionForm, { authenticationType: "aws-iam" }>;
 
 const getJDBCOptionsPlaceholder = (type: DatabaseType) => {
   if (type === DatabaseType.POSTGRES) {
@@ -122,6 +134,8 @@ export default function DatabaseConnectionForm(props: {
     resolver: zodResolver(connectionFormSchema),
   });
 
+  console.log(errors);
+
   const [protocolOptions, setProtocolOptions] = useState<DatabaseProtocol[]>([
     DatabaseProtocol.POSTGRESQL,
   ]);
@@ -150,6 +164,7 @@ export default function DatabaseConnectionForm(props: {
     setValue("port", 5432);
     setValue("type", DatabaseType.POSTGRES);
     setValue("protocol", DatabaseProtocol.POSTGRESQL);
+    setValue("authenticationType", "USER_PASSWORD");
     setValue("maxExecutions", 1);
     setValue("dumpsEnabled", false);
   }, []);
@@ -270,7 +285,12 @@ export default function DatabaseConnectionForm(props: {
             error={errors.description?.message}
             data-testid="connection-description"
           />
-          <AuthSection register={register} errors={errors} watch={watch} />
+          <AuthSection
+            register={register}
+            errors={errors}
+            watch={watch}
+            setValue={setValue}
+          />
           <InputField
             id="hostname"
             label="Hostname"
@@ -402,44 +422,67 @@ type AuthSectionProps = {
   register: UseFormRegister<ConnectionForm>;
   errors: FieldErrors<ConnectionForm>;
   watch: UseFormWatch<ConnectionForm>;
+  setValue: UseFormSetValue<ConnectionForm>;
 };
 
-const AuthSection = ({ register, errors, watch }: AuthSectionProps) => {
-  const authMethods = [
-    { value: "basic", label: "Username & Password" },
-    { value: "aws-iam", label: "AWS IAM" },
-  ];
+const AuthSection = ({
+  register,
+  errors,
+  watch,
+  setValue,
+}: AuthSectionProps) => {
+  const databaseType = watch("type");
+  const authenticationType = watch("authenticationType");
+  const supportsIamAuth = [DatabaseType.POSTGRES, DatabaseType.MYSQL].includes(
+    databaseType,
+  );
+
+  useEffect(() => {
+    if (!supportsIamAuth && authenticationType === "AWS_IAM") {
+      setValue("authenticationType", "USER_PASSWORD");
+    }
+  }, [databaseType, authenticationType, supportsIamAuth, setValue]);
+
+  const authenticationTypes = supportsIamAuth
+    ? [
+        { value: "USER_PASSWORD", label: "Username & Password" },
+        { value: "AWS_IAM", label: "AWS IAM" },
+      ]
+    : [{ value: "USER_PASSWORD", label: "Username & Password" }];
 
   return (
     <div className="space-y-4">
       <div className="-mx-5 space-y-2 border-y border-slate-300 px-4 py-2 dark:border-slate-700 ">
-        <fieldset className="relative flex items-center justify-between">
-          <label className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200">
-            Authentication Method
-          </label>
-          <div className="flex basis-3/5 rounded-lg bg-slate-100 dark:bg-slate-900">
-            {authMethods.map((method) => (
-              <label
-                key={method.value}
-                className={`flex flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-2
-                  text-center text-sm font-medium tracking-tighter transition-colors
-                ${
-                  watch("authMethod") === method.value
-                    ? "bg-slate-400 text-slate-900 dark:bg-indigo-600 dark:text-slate-50"
-                    : "text-slate-700 hover:bg-slate-200 dark:text-slate-300 hover:dark:bg-slate-800"
-                }`}
-              >
-                <input
-                  type="radio"
-                  className="hidden"
-                  {...register("authMethod")}
-                  value={method.value}
-                />
-                {method.label}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        {/* Only show auth method selector if IAM is supported */}
+        {supportsIamAuth && (
+          <fieldset className="relative flex items-center justify-between">
+            <label className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200">
+              Authentication Method
+            </label>
+            <div className="flex basis-3/5 rounded-lg bg-slate-100 dark:bg-slate-900">
+              {authenticationTypes.map((method) => (
+                <label
+                  key={method.value}
+                  className={`flex flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-2
+                    text-center text-sm font-medium tracking-tighter transition-colors
+                  ${
+                    watch("authenticationType") === method.value
+                      ? "bg-slate-400 text-slate-900 dark:bg-indigo-600 dark:text-slate-50"
+                      : "text-slate-700 hover:bg-slate-200 dark:text-slate-300 hover:dark:bg-slate-800"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    className="hidden"
+                    {...register("authenticationType")}
+                    value={method.value}
+                  />
+                  {method.label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
 
         <InputField
           id="username"
@@ -449,7 +492,7 @@ const AuthSection = ({ register, errors, watch }: AuthSectionProps) => {
           error={errors.username?.message}
           data-testid="connection-username"
         />
-        {watch("authMethod") === "basic" && (
+        {watch("authenticationType") === "USER_PASSWORD" && (
           <InputField
             id="password"
             label="Password"

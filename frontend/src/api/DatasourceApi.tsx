@@ -8,6 +8,7 @@ import {
 
 enum AuthenticationType {
   USER_PASSWORD = "USER_PASSWORD",
+  AWS_IAM = "AWS_IAM", // Add this if missing
 }
 
 enum DatabaseType {
@@ -73,42 +74,42 @@ const testConnectionResponseSchema = z.object({
   accessibleDatabases: z.array(z.string()),
 });
 
-const databaseConnectionPayloadSchema = z
-  .object({
-    displayName: z.coerce.string(),
-    id: z.string(),
-    username: z.string(),
-    password: z.string(),
-    description: z.string(),
-    databaseName: z.string(),
-    maxExecutions: z.coerce.number().nullable(),
-    reviewConfig: z.object({
-      numTotalRequired: z.number(),
-    }),
-    type: z.nativeEnum(DatabaseType),
-    protocol: z.nativeEnum(DatabaseProtocol),
-    hostname: z.string(),
-    port: z.number(),
-    additionalJDBCOptions: z.string().optional(),
-  })
-  .transform((data) => ({ ...data, connectionType: "DATASOURCE" }));
+interface ConnectionBase {
+  displayName: string;
+  id: string;
+  description: string;
+  reviewConfig: {
+    numTotalRequired: number;
+  };
+  maxExecutions: number | null;
+}
 
-const kubernetesConnectionPayloadSchema = z
-  .object({
-    displayName: z.coerce.string(),
-    id: z.string(),
-    description: z.string(),
-    reviewConfig: z.object({
-      numTotalRequired: z.coerce.number(),
-    }),
-    maxExecutions: z.coerce.number().nullable(),
-  })
-  .transform((data) => ({ ...data, connectionType: "KUBERNETES" }));
+interface DatabaseConnectionBase extends ConnectionBase {
+  connectionType: "DATASOURCE";
+  databaseName: string;
+  type: DatabaseType;
+  protocol: DatabaseProtocol;
+  hostname: string;
+  port: number;
+  additionalJDBCOptions?: string;
+}
 
-const connectionPayloadSchema = z.union([
-  databaseConnectionPayloadSchema,
-  kubernetesConnectionPayloadSchema,
-]);
+type DatabaseConnection =
+  | (DatabaseConnectionBase & {
+      authenticationType: "USER_PASSWORD";
+      username: string;
+      password: string;
+    })
+  | (DatabaseConnectionBase & {
+      authenticationType: "AWS_IAM";
+      username: string;
+    });
+
+interface KubernetesConnection extends ConnectionBase {
+  connectionType: "KUBERNETES";
+}
+
+type ConnectionPayload = DatabaseConnection | KubernetesConnection;
 
 const patchDatabaseConnectionPayloadSchema = z
   .object({
@@ -153,7 +154,6 @@ type DatabaseConnectionResponse = z.infer<
 type KubernetesConnectionResponse = z.infer<
   typeof kubernetesConnectionResponseSchema
 >;
-type ConnectionPayload = z.infer<typeof connectionPayloadSchema>;
 type PatchDatabaseConnectionPayload = z.infer<
   typeof patchDatabaseConnectionPayloadSchema
 >;
@@ -161,9 +161,6 @@ type PatchKubernetesConnectionPayload = z.infer<
   typeof patchKubernetesConnectionPayloadSchema
 >;
 type PatchConnectionPayload = z.infer<typeof patchConnectionPayloadSchema>;
-type KubernetesConnectionPayload = z.infer<
-  typeof kubernetesConnectionPayloadSchema
->;
 
 type TestConnectionResponse = z.infer<typeof testConnectionResponseSchema>;
 
@@ -270,7 +267,6 @@ export {
   getConnection,
   DatabaseType,
   DatabaseProtocol,
-  kubernetesConnectionPayloadSchema,
   deleteConnection,
 };
 
@@ -279,7 +275,6 @@ export type {
   ConnectionResponse,
   ConnectionPayload,
   PatchConnectionPayload,
-  KubernetesConnectionPayload,
   DatabaseConnectionResponse,
   KubernetesConnectionResponse,
   PatchDatabaseConnectionPayload,

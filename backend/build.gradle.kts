@@ -56,6 +56,7 @@ dependencies {
     implementation("org.springframework:spring-context-support")
     implementation("com.github.jsqlparser:jsqlparser:4.9")
     implementation("io.kubernetes:client-java:20.0.1")
+    implementation("software.amazon.awssdk:rds:2.30.6")
 
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
@@ -78,6 +79,7 @@ dependencies {
     testImplementation("org.testcontainers:mssqlserver:$testcontainersVersion")
     testImplementation("org.testcontainers:mongodb:$testcontainersVersion")
     testImplementation("org.testcontainers:mariadb:$testcontainersVersion")
+    testImplementation("io.github.cdimascio:dotenv-kotlin:6.5.0")
 
     testImplementation("io.kotest:kotest-assertions-core:5.5.5")
     testImplementation("io.mockk:mockk:1.13.4")

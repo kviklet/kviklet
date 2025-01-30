@@ -72,9 +72,7 @@ data class CreateDatasourceConnectionRequest(
     @field:Size(min = 0, max = 255, message = "Maximum length 255")
     val username: String,
 
-    @Schema(example = "root")
-    @field:Size(min = 0, max = 255, message = "Maximum length 255")
-    val password: String,
+    val password: String? = null,
 
     val description: String = "",
 
@@ -88,6 +86,7 @@ data class CreateDatasourceConnectionRequest(
     val port: Int,
     val additionalJDBCOptions: String = "",
     val dumpsEnabled: Boolean = false,
+    val authenticationType: AuthenticationType = AuthenticationType.USER_PASSWORD,
 
 ) : ConnectionRequest()
 
@@ -129,6 +128,8 @@ data class UpdateDatasourceConnectionRequest(
     val reviewConfig: ReviewConfigRequest? = null,
 
     val additionalJDBCOptions: String? = null,
+
+    val authenticationType: AuthenticationType? = null,
 
     val dumpsEnabled: Boolean? = null,
 ) : UpdateConnectionRequest()
@@ -188,7 +189,7 @@ data class DatasourceConnectionResponse(
             protocol = datasourceConnection.protocol,
             databaseName = datasourceConnection.databaseName,
             maxExecutions = datasourceConnection.maxExecutions,
-            username = datasourceConnection.username,
+            username = datasourceConnection.auth.username,
             hostname = datasourceConnection.hostname,
             port = datasourceConnection.port,
             description = datasourceConnection.description,
@@ -252,6 +253,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             databaseName = request.databaseName,
             username = request.username,
             password = request.password,
+            authenticationType = request.authenticationType,
             description = request.description,
             reviewsRequired = request.reviewConfig.numTotalRequired,
             port = request.port,
@@ -279,6 +281,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             additionalJDBCOptions = request.additionalJDBCOptions,
             maxExecutions = request.maxExecutions,
             dumpsEnabled = request.dumpsEnabled,
+            authenticationType = request.authenticationType,
         )
 
     private fun createKubernetesConnection(request: CreateKubernetesConnectionRequest): Connection =

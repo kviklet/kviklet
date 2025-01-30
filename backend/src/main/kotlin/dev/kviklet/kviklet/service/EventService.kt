@@ -31,7 +31,7 @@ class EventService(
     @Policy(Permission.EXECUTION_REQUEST_GET)
     @Transactional
     fun saveEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Event {
-        val (executionRequest, event) = executionRequestAdapter.addEvent(id, authorId, payload)
+        val (_, event) = executionRequestAdapter.addEvent(id, authorId, payload)
         return event
     }
 

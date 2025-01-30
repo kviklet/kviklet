@@ -36,6 +36,7 @@ enum class DatabaseProtocol(val uriString: String) {
 
 enum class AuthenticationType {
     USER_PASSWORD,
+    AWS_IAM,
     // other: aws iam, gpc, env var
 }
 
@@ -66,6 +67,12 @@ sealed class Connection(
     }
 }
 
+sealed class AuthenticationDetails(open val username: String) {
+    data class UserPassword(override val username: String, val password: String) : AuthenticationDetails(username)
+
+    data class AwsIam(override val username: String) : AuthenticationDetails(username)
+}
+
 data class DatasourceConnection(
     override val id: ConnectionId,
     override val displayName: String,
@@ -74,8 +81,7 @@ data class DatasourceConnection(
     override val maxExecutions: Int?,
     val databaseName: String?,
     val authenticationType: AuthenticationType,
-    val username: String,
-    val password: String,
+    val auth: AuthenticationDetails,
     val port: Int,
     val hostname: String,
     val type: DatasourceType,
@@ -83,36 +89,52 @@ data class DatasourceConnection(
     val additionalOptions: String,
     val dumpsEnabled: Boolean,
 ) : Connection(id, displayName, description, reviewConfig, maxExecutions) {
-    fun getConnectionString(): String = when (type) {
-        DatasourceType.POSTGRESQL ->
-            "jdbc:postgresql://$hostname:$port/" +
-                databaseName +
-                additionalOptions
-        DatasourceType.MYSQL ->
-            "jdbc:mysql://$hostname:$port/" +
-                databaseName +
-                additionalOptions
-        DatasourceType.MSSQL ->
-            "jdbc:sqlserver://$hostname:$port" +
-                (databaseName?.takeIf { it.isNotBlank() }?.let { ";databaseName=$databaseName" } ?: "") +
-                additionalOptions
-        DatasourceType.MARIADB ->
-            "jdbc:mariadb://$hostname:$port/" +
-                databaseName +
-                additionalOptions
-        DatasourceType.MONGODB -> {
-            val credentialString = if (username.isNotBlank() && password.isNotBlank()) {
-                "$username:$password@"
-            } else {
-                ""
+    fun getConnectionString(): String = when (auth) {
+        is AuthenticationDetails.UserPassword -> when (type) {
+            DatasourceType.POSTGRESQL ->
+                "jdbc:postgresql://$hostname:$port/" +
+                    databaseName +
+                    additionalOptions
+            DatasourceType.MYSQL ->
+                "jdbc:mysql://$hostname:$port/" +
+                    databaseName +
+                    additionalOptions
+            DatasourceType.MSSQL ->
+                "jdbc:sqlserver://$hostname:$port" +
+                    (databaseName?.takeIf { it.isNotBlank() }?.let { ";databaseName=$databaseName" } ?: "") +
+                    additionalOptions
+            DatasourceType.MARIADB ->
+                "jdbc:mariadb://$hostname:$port/" +
+                    databaseName +
+                    additionalOptions
+            DatasourceType.MONGODB -> {
+                val credentialString = if (auth.username.isNotBlank() && auth.password.isNotBlank()) {
+                    "${auth.username}:${auth.password}@"
+                } else {
+                    ""
+                }
+                "${protocol.uriString}://$credentialString$hostname${if (protocol == DatabaseProtocol.MONGODB_SRV) {
+                    ""
+                } else {
+                    ":$port"
+                }}/" +
+                    (databaseName ?: "") +
+                    additionalOptions
             }
-            "${protocol.uriString}://$credentialString$hostname${if (protocol == DatabaseProtocol.MONGODB_SRV) {
-                ""
-            } else {
-                ":$port"
-            }}/" +
-                (databaseName ?: "") +
-                additionalOptions
+        }
+
+        is AuthenticationDetails.AwsIam -> {
+            when (type) {
+                DatasourceType.POSTGRESQL ->
+                    "jdbc:postgresql://$hostname:$port/" +
+                        databaseName + "?sslmode=require" +
+                        additionalOptions
+                DatasourceType.MYSQL ->
+                    "jdbc:mysql://$hostname:$port/" +
+                        databaseName +
+                        additionalOptions
+                else -> throw IllegalArgumentException("AWS IAM is not supported for $type")
+            }
         }
     }
 }
