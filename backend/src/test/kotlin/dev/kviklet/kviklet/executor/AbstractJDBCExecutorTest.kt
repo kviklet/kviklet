@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.executor
 
 import dev.kviklet.kviklet.service.ColumnInfo
 import dev.kviklet.kviklet.service.JDBCExecutor
+import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.ErrorQueryResult
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.RecordsQueryResult
@@ -31,7 +32,12 @@ abstract class AbstractJDBCExecutorTest(@Autowired val JDBCExecutorService: JDBC
         url: String = getDb().jdbcUrl,
         username: String = getDb().username,
         password: String = getDb().password,
-    ) = JDBCExecutorService.execute(executionRequestId, url, username, password, query).get(0)
+    ) = JDBCExecutorService.execute(
+        executionRequestId,
+        url,
+        AuthenticationDetails.UserPassword(username, password),
+        query,
+    ).get(0)
 
     @BeforeEach
     fun setup() {

@@ -290,10 +290,6 @@ class JDBCExecutor {
             .build()
             .apply {
                 maximumPoolSize = 1
-                // Set SSL mode if not already in URL
-                if (!url.contains("sslmode=")) {
-                    addDataSourceProperty("sslmode", "require")
-                }
             }
 
     private fun createAwsIamConnection(url: String, auth: AuthenticationDetails.AwsIam): HikariDataSource =
@@ -303,9 +299,7 @@ class JDBCExecutor {
             this.username = auth.username
             maximumPoolSize = 1
             // IAM authentication requires SSL
-            if (!url.contains("sslmode=")) {
-                addDataSourceProperty("sslmode", "require")
-            }
+
             // Token lifetime is 15 minutes, so set max lifetime to 14 minutes
             maxLifetime = 840000
             initialize()

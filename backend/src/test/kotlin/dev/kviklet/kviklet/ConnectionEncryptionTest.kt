@@ -174,8 +174,11 @@ class ConnectionEncryptionTest(
             maxExecutions = null,
             hostname = "localhost",
             port = 5432,
-            username = "updateduser",
-            password = "initialpassword",
+            authenticationType = AuthenticationType.USER_PASSWORD,
+            auth = AuthenticationDetails.UserPassword(
+                username = "updateduser",
+                password = "initialpassword",
+            ),
             databaseName = "partialdb",
             reviewConfig = ReviewConfig(numTotalRequired = 1),
             additionalJDBCOptions = "",
@@ -229,11 +232,17 @@ class ConnectionEncryptionTest(
         val listedConnection1 = listedConnections.find { it.id == connection1.id } as DatasourceConnection
         val listedConnection2 = listedConnections.find { it.id == connection2.id } as DatasourceConnection
 
-        listedConnection1.username shouldBe "testuser1"
-        listedConnection1.password shouldBe "testpassword1"
+        listedConnection1.auth.shouldBeInstanceOf<AuthenticationDetails.UserPassword>()
+        val connectionAuth1 = listedConnection1.auth as AuthenticationDetails.UserPassword
 
-        listedConnection2.username shouldBe "testuser2"
-        listedConnection2.password shouldBe "testpassword2"
+        listedConnection2.auth.shouldBeInstanceOf<AuthenticationDetails.UserPassword>()
+        val connectionAuth2 = listedConnection2.auth as AuthenticationDetails.UserPassword
+
+        connectionAuth1.username shouldBe "testuser1"
+        connectionAuth1.password shouldBe "testpassword1"
+
+        connectionAuth2.username shouldBe "testuser2"
+        connectionAuth2.password shouldBe "testpassword2"
     }
 
     @Test
@@ -297,9 +306,11 @@ class ConnectionEncryptionTest(
         // Retrieve the connection, which should trigger encryption
         val retrievedConnection = connectionAdapter.getConnection(connection.id) as DatasourceConnection
 
+        retrievedConnection.auth.shouldBeInstanceOf<AuthenticationDetails.UserPassword>()
+        val userPasswordAuth = retrievedConnection.auth as AuthenticationDetails.UserPassword
         // Verify the retrieved connection has decrypted credentials
-        retrievedConnection.username shouldBe "unencrypteduser"
-        retrievedConnection.password shouldBe "unencryptedpassword"
+        userPasswordAuth.username shouldBe "unencrypteduser"
+        userPasswordAuth.password shouldBe "unencryptedpassword"
 
         // Verify the stored connection is now encrypted
         val updatedStoredConnection = connectionRepository.findById(connection.id.toString()).get()
@@ -309,7 +320,9 @@ class ConnectionEncryptionTest(
 
         // Retrieve the connection again to ensure it can be decrypted correctly
         val secondRetrievedConnection = connectionAdapter.getConnection(connection.id) as DatasourceConnection
-        secondRetrievedConnection.username shouldBe "unencrypteduser"
-        secondRetrievedConnection.password shouldBe "unencryptedpassword"
+        secondRetrievedConnection.auth.shouldBeInstanceOf<AuthenticationDetails.UserPassword>()
+        val secondUserPasswordAuth = secondRetrievedConnection.auth as AuthenticationDetails.UserPassword
+        secondUserPasswordAuth.username shouldBe "unencrypteduser"
+        secondUserPasswordAuth.password shouldBe "unencryptedpassword"
     }
 }

@@ -24,18 +24,19 @@ import org.springframework.test.context.ActiveProfiles
 @ActiveProfiles(value = ["local", "test"])
 @Tag("aws-integration")
 @DisabledIfEnvironmentVariable(named = "CI", matches = "true")
-class PostgresIAMAuthExecutorTest(
+class MysqlIAMAuthExecutorTest(
     @Autowired val JDBCExecutorService: JDBCExecutor,
-    @Value("\${aws.db.postgreshost}") private val awsDbHost: String,
+    @Value("\${aws.db.mysqlhost}") private val awsDbHost: String,
 ) {
-
     val executionRequestId = ExecutionRequestId("5Wb9WJxCxej5W1Rt6cTBV5")
+
     companion object {
-        // These could come from environment variables or test properties
-        private const val AWS_DB_PORT = "5432"
-        private const val AWS_DB_NAME = "postgres"
+        private const val AWS_DB_PORT = "3306"
+        private const val AWS_DB_NAME = "testdb"
         private const val AWS_DB_USER = "iamdbuser"
     }
+
+    private val jdbcUrl = "jdbc:mysql://$awsDbHost:$AWS_DB_PORT/$AWS_DB_NAME"
 
     private fun executeQueryWithIam(connectionString: String, query: String) = JDBCExecutorService.execute(
         executionRequestId = executionRequestId,
@@ -63,8 +64,8 @@ class PostgresIAMAuthExecutorTest(
             ),
             port = AWS_DB_PORT.toInt(),
             hostname = awsDbHost,
-            type = DatasourceType.POSTGRESQL,
-            protocol = DatabaseProtocol.POSTGRESQL,
+            type = DatasourceType.MYSQL,
+            protocol = DatabaseProtocol.MYSQL,
             additionalOptions = "",
             dumpsEnabled = false,
         )
@@ -73,8 +74,8 @@ class PostgresIAMAuthExecutorTest(
 
         result shouldBe RecordsQueryResult(
             columns = listOf(
-                ColumnInfo("col1", "int4", "java.lang.Integer"),
-                ColumnInfo("col2", "text", "java.lang.String"),
+                ColumnInfo("col1", "BIGINT", "java.lang.Long"),
+                ColumnInfo("col2", "VARCHAR", "java.lang.String"),
             ),
             data = listOf(mapOf("col1" to "1", "col2" to "2")),
         )

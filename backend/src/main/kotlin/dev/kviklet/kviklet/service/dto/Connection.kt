@@ -125,14 +125,16 @@ data class DatasourceConnection(
 
         is AuthenticationDetails.AwsIam -> {
             when (type) {
-                DatasourceType.POSTGRESQL ->
-                    "jdbc:postgresql://$hostname:$port/" +
-                        databaseName + "?sslmode=require" +
-                        additionalOptions
-                DatasourceType.MYSQL ->
-                    "jdbc:mysql://$hostname:$port/" +
-                        databaseName +
-                        additionalOptions
+                DatasourceType.POSTGRESQL -> {
+                    val baseUrl = "jdbc:postgresql://$hostname:$port/$databaseName"
+                    val delimiter = if (additionalOptions.isEmpty()) "?" else "&"
+                    baseUrl + additionalOptions + delimiter + "sslmode=require"
+                }
+                DatasourceType.MYSQL -> {
+                    val baseUrl = "jdbc:mysql://$hostname:$port/$databaseName"
+                    val delimiter = if (additionalOptions.isEmpty()) "?" else "&"
+                    baseUrl + additionalOptions + delimiter + "sslMode=REQUIRED"
+                }
                 else -> throw IllegalArgumentException("AWS IAM is not supported for $type")
             }
         }
