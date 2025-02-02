@@ -1,12 +1,24 @@
 import { useForm } from "react-hook-form";
-import {
-  KubernetesConnectionPayload,
-  kubernetesConnectionPayloadSchema,
-} from "../../../api/DatasourceApi";
 import { zodResolver } from "@hookform/resolvers/zod";
 import InputField from "../../../components/InputField";
 import { useEffect } from "react";
 import Button from "../../../components/Button";
+import { z } from "zod";
+
+const kubernetesConnectionPayloadSchema = z.object({
+  connectionType: z.literal("KUBERNETES"),
+  displayName: z.coerce.string(),
+  id: z.string(),
+  description: z.string(),
+  reviewConfig: z.object({
+    numTotalRequired: z.coerce.number(),
+  }),
+  maxExecutions: z.coerce.number().nullable(),
+});
+
+type KubernetesConnectionPayload = z.infer<
+  typeof kubernetesConnectionPayloadSchema
+>;
 
 export default function CreateKubernetesConnectionForm(props: {
   handleCreateConnection: (

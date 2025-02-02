@@ -11,10 +11,12 @@ import dev.kviklet.kviklet.db.EditPayload
 import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.ReviewPayload
+import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.proxy.PostgresProxy
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.security.UserDetailsWithId
+import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DBExecutionResult
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
@@ -62,6 +64,7 @@ class ExecutionRequestService(
     private val applicationEventPublisher: ApplicationEventPublisher,
     private val mongoDBExecutor: MongoDBExecutor,
     private val connectionService: ConnectionService,
+    private val userAdapter: UserAdapter,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val proxies = mutableListOf<ExecutionProxy>()
@@ -131,8 +134,11 @@ class ExecutionRequestService(
         temporaryAccessDuration = request.temporaryAccessDuration?.let { Duration.ofMinutes(it) },
     )
 
-    private fun constructSQLDumpCommand(connection: DatasourceConnection, outputFile: String? = null): List<String> =
-        when (connection.type) {
+    private fun constructSQLDumpCommand(connection: DatasourceConnection, outputFile: String? = null): List<String> {
+        if (connection.auth !is AuthenticationDetails.UserPassword) {
+            throw RuntimeException("Only UserPassword authentication is supported for SQL dumps")
+        }
+        return when (connection.type) {
             DatasourceType.MYSQL -> {
                 val database = if (connection.databaseName.isNullOrBlank()) {
                     listOf("--all-databases")
@@ -141,8 +147,8 @@ class ExecutionRequestService(
                 }
                 val sqlDumpCommand = listOfNotNull(
                     "mysqldump",
-                    "-u${connection.username}",
-                    "-p${connection.password}",
+                    "-u${connection.auth.username}",
+                    "-p${connection.auth.password}",
                     "-h${connection.hostname}",
                     "-P${connection.port}",
                     outputFile?.let { "--result-file=$it" },
@@ -153,6 +159,7 @@ class ExecutionRequestService(
                 throw IllegalArgumentException("Unsupported database type: ${connection.type}")
             }
         }
+    }
 
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
     fun streamSQLDump(executionRequestId: ExecutionRequestId, outputStream: OutputStream, userId: String) {
@@ -364,8 +371,7 @@ class ExecutionRequestService(
                 JDBCExecutor.execute(
                     executionRequestId = id,
                     connectionString = connection.getConnectionString(),
-                    username = connection.username,
-                    password = connection.password,
+                    authenticationDetails = connection.auth,
                     query = queryToExecute,
                 )
             }
@@ -514,8 +520,7 @@ class ExecutionRequestService(
 
         JDBCExecutor.executeAndStreamDbResponse(
             connectionString = connection.getConnectionString(),
-            username = connection.username,
-            password = connection.password,
+            authenticationDetails = connection.auth,
             query = queryToExecute,
         ) { row ->
             outputStream.println(
@@ -556,8 +561,7 @@ class ExecutionRequestService(
         val result = JDBCExecutor.execute(
             executionRequestId = id,
             connectionString = connection.getConnectionString(),
-            username = connection.username,
-            password = connection.password,
+            authenticationDetails = connection.auth,
             query = explainStatements,
             MSSQLexplain = connection.type == DatasourceType.MSSQL,
         )
@@ -596,6 +600,10 @@ class ExecutionRequestService(
         if (connection.type != DatasourceType.POSTGRESQL) {
             throw RuntimeException("Only Postgres is supported for proxying!")
         }
+        if (connection.auth !is AuthenticationDetails.UserPassword) {
+            throw RuntimeException("Only UserPassword authentication is supported for proxying!")
+        }
+
         executionRequest.raiseIfAlreadyExecuted()
 
         val executedEvents = executionRequest.events.filter { it.type == EventType.EXECUTE }
@@ -614,20 +622,20 @@ class ExecutionRequestService(
             connection.port,
             connection.databaseName ?: "",
             availablePort,
-            connection.username,
-            connection.password,
-            connection.username,
+            connection.auth,
+            // using this instead of the users email because @ for database usernames is not allowed
+            connection.auth.username,
             password,
             executionRequest = executionRequest.request,
             userId = userDetails.id,
             firstEventTime,
             maxTimeMinutes = executionRequest.request.temporaryAccessDuration?.toMinutes() ?: 60,
         )
-        logger.info("Started proxy for user ${connection.username} on port 5438")
+        logger.info("Started proxy for user ${connection.auth.username} on port 5438")
         val proxy = ExecutionProxy(
             request = executionRequest.request,
             port = availablePort,
-            username = connection.username,
+            username = connection.auth.username,
             password = password,
             startTime = firstEventTime,
         )
@@ -655,8 +663,7 @@ class ExecutionRequestService(
         port: Int,
         databaseName: String,
         mappedPort: Int,
-        username: String,
-        password: String,
+        authenticationDetails: AuthenticationDetails.UserPassword,
         email: String,
         tempPassword: String,
         executionRequest: ExecutionRequest,
@@ -668,8 +675,7 @@ class ExecutionRequestService(
             hostname,
             port,
             databaseName,
-            username,
-            password,
+            authenticationDetails,
             eventService,
             executionRequest,
             userId,

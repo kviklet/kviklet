@@ -7,6 +7,7 @@ import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
+import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
@@ -53,8 +54,8 @@ class ConnectionService(
             request.maxExecutions ?: connection.maxExecutions,
             request.hostname ?: connection.hostname,
             request.port ?: connection.port,
-            request.username ?: connection.username,
-            request.password ?: connection.password,
+            request.authenticationType ?: connection.authenticationType,
+            getUpdatedAuth(connection.auth, request),
             request.databaseName ?: connection.databaseName,
             request.reviewConfig?.let {
                 ReviewConfig(
@@ -64,6 +65,37 @@ class ConnectionService(
             request.additionalJDBCOptions ?: connection.additionalOptions,
             dumpsEnabled = request.dumpsEnabled ?: connection.dumpsEnabled,
         )
+    }
+
+    private fun getUpdatedAuth(
+        currentAuth: AuthenticationDetails,
+        request: UpdateDatasourceConnectionRequest,
+    ): AuthenticationDetails {
+        // If auth type is changing, create new auth details
+        if (request.authenticationType != null) {
+            return when (request.authenticationType) {
+                AuthenticationType.USER_PASSWORD -> AuthenticationDetails.UserPassword(
+                    username = request.username ?: currentAuth.username,
+                    password = request.password
+                        ?: (currentAuth as? AuthenticationDetails.UserPassword)?.password
+                        ?: throw IllegalArgumentException("Password required for USER_PASSWORD authentication"),
+                )
+                AuthenticationType.AWS_IAM -> AuthenticationDetails.AwsIam(
+                    username = request.username ?: currentAuth.username,
+                )
+            }
+        }
+
+        // If auth type isn't changing, just update the existing fields
+        return when (currentAuth) {
+            is AuthenticationDetails.UserPassword -> currentAuth.copy(
+                username = request.username ?: currentAuth.username,
+                password = request.password ?: currentAuth.password,
+            )
+            is AuthenticationDetails.AwsIam -> currentAuth.copy(
+                username = request.username ?: currentAuth.username,
+            )
+        }
     }
 
     private fun updateKubernetesConnection(
@@ -111,7 +143,8 @@ class ConnectionService(
         databaseName: String?,
         maxExecutions: Int?,
         username: String,
-        password: String,
+        password: String?,
+        authenticationType: AuthenticationType,
         description: String,
         reviewsRequired: Int,
         port: Int,
@@ -120,25 +153,30 @@ class ConnectionService(
         protocol: DatabaseProtocol,
         additionalJDBCOptions: String,
         dumpsEnabled: Boolean,
-    ): Connection = connectionAdapter.createDatasourceConnection(
-        connectionId,
-        displayName,
-        AuthenticationType.USER_PASSWORD,
-        databaseName,
-        maxExecutions,
-        username,
-        password,
-        description,
-        ReviewConfig(
-            numTotalRequired = reviewsRequired,
-        ),
-        port,
-        hostname,
-        type,
-        protocol,
-        additionalJDBCOptions,
-        dumpsEnabled,
-    )
+    ): Connection {
+        if (authenticationType == AuthenticationType.USER_PASSWORD && password == null) {
+            throw IllegalArgumentException("Password is required for USER_PASSWORD authentication")
+        }
+        return connectionAdapter.createDatasourceConnection(
+            connectionId,
+            displayName,
+            authenticationType,
+            databaseName,
+            maxExecutions,
+            username,
+            password,
+            description,
+            ReviewConfig(
+                numTotalRequired = reviewsRequired,
+            ),
+            port,
+            hostname,
+            type,
+            protocol,
+            additionalJDBCOptions,
+            dumpsEnabled,
+        )
+    }
 
     @Policy(Permission.DATASOURCE_CONNECTION_CREATE, checkIsPresentOnly = true)
     fun testDatabaseConnection(
@@ -147,7 +185,7 @@ class ConnectionService(
         databaseName: String?,
         maxExecutions: Int?,
         username: String,
-        password: String,
+        password: String?,
         description: String,
         reviewsRequired: Int,
         port: Int,
@@ -156,6 +194,7 @@ class ConnectionService(
         protocol: DatabaseProtocol,
         additionalJDBCOptions: String,
         dumpsEnabled: Boolean,
+        authenticationType: AuthenticationType,
     ): TestConnectionResult {
         val connection = DatasourceConnection(
             connectionId,
@@ -164,9 +203,11 @@ class ConnectionService(
             reviewConfig = ReviewConfig(reviewsRequired),
             maxExecutions,
             databaseName,
-            AuthenticationType.USER_PASSWORD,
-            username,
-            password,
+            authenticationType,
+            when (authenticationType) {
+                AuthenticationType.USER_PASSWORD -> AuthenticationDetails.UserPassword(username, password ?: "")
+                AuthenticationType.AWS_IAM -> AuthenticationDetails.AwsIam(username)
+            },
             port,
             hostname,
             type,
@@ -187,15 +228,13 @@ class ConnectionService(
             else ->
                 JDBCExecutor.testCredentials(
                     connectionString = connection.getConnectionString(),
-                    username = username,
-                    password = password,
+                    authenticationDetails = connection.auth,
                 )
         }
         if (type == DatasourceType.POSTGRESQL && credentialsResult.success) {
             val databases = JDBCExecutor.getAccessibleDatabasesPostgres(
                 connectionString = "jdbc:${protocol.uriString}://$hostname:$port/$databaseName",
-                username = username,
-                password = password,
+                authenticationDetails = connection.auth,
             )
             accessibleDatabases.addAll(databases)
         }

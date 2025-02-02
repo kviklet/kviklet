@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.proxy
 
 import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.service.EventService
+import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import dev.kviklet.kviklet.service.dto.utcTimeNow
 import org.postgresql.core.PGStream
@@ -317,8 +318,7 @@ class PostgresProxy(
     private val targetHost: String,
     private val targetPort: Int,
     private val databaseName: String,
-    private val username: String,
-    private val password: String,
+    private val authenticationDetails: AuthenticationDetails.UserPassword,
     private val eventService: EventService,
     private val executionRequest: ExecutionRequest,
     private val userId: String,
@@ -385,9 +385,9 @@ class PostgresProxy(
                 val hostSpec = HostSpec(targetHost, targetPort)
                 val factory = ConnectionFactoryImpl()
                 val props = Properties()
-                props.setProperty("user", username)
-                props.setProperty("password", password)
-                val database = if (databaseName != "") databaseName else username
+                props.setProperty("user", authenticationDetails.username)
+                props.setProperty("password", authenticationDetails.password)
+                val database = if (databaseName != "") databaseName else authenticationDetails.username
                 props.setProperty("PGDBNAME", database)
                 val queryExecutor = factory.openConnectionImpl(arrayOf(hostSpec), props) as QueryExecutorBase
 
@@ -419,8 +419,8 @@ class PostgresProxy(
                     eventService,
                     executionRequest,
                     userId,
-                    username,
-                    password,
+                    authenticationDetails.username,
+                    authenticationDetails.password,
                 ).startHandling(
                     targetHost,
                     targetPort,

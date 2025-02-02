@@ -3,6 +3,7 @@ package dev.kviklet.kviklet.helper
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserId
+import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DatabaseProtocol
@@ -161,8 +162,7 @@ class ConnectionFactory : Factory() {
         maxExecutions,
         databaseName,
         authenticationType,
-        username,
-        password,
+        AuthenticationDetails.UserPassword(username, password),
         port,
         hostname,
         type,

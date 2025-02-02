@@ -79,7 +79,7 @@ class SessionWebsocketHandler(
         logger.info("User id: ${userDetailsWithId.id}")
         val user = userService.getUser(UserId(userDetailsWithId.id))
 
-        sessionObservers.computeIfAbsent(liveSession.id!!) { ConcurrentHashMap.newKeySet() }.add(
+        sessionObservers.computeIfAbsent(liveSession.id) { ConcurrentHashMap.newKeySet() }.add(
             SessionObserver(
                 webSocketSession = session,
                 user = user,

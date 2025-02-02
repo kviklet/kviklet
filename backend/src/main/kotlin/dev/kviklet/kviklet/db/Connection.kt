@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.db
 
 import dev.kviklet.kviklet.db.util.ReviewConfigConverter
 import dev.kviklet.kviklet.service.EntityNotFound
+import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
@@ -168,7 +169,7 @@ class ConnectionAdapter(
         databaseName: String?,
         maxExecutions: Int?,
         username: String,
-        password: String,
+        password: String?,
         description: String,
         reviewConfig: ReviewConfig,
         port: Int,
@@ -210,8 +211,8 @@ class ConnectionAdapter(
         maxExecutions: Int?,
         hostname: String,
         port: Int,
-        username: String,
-        password: String,
+        authenticationType: AuthenticationType,
+        auth: AuthenticationDetails,
         databaseName: String?,
         reviewConfig: ReviewConfig,
         additionalJDBCOptions: String,
@@ -232,8 +233,12 @@ class ConnectionAdapter(
         datasourceConnection.hostname = hostname
         datasourceConnection.maxExecutions = maxExecutions
         datasourceConnection.port = port
-        datasourceConnection.username = username
-        datasourceConnection.password = password
+        datasourceConnection.authenticationType = authenticationType
+        datasourceConnection.username = auth.username
+        datasourceConnection.password = when (auth) {
+            is AuthenticationDetails.UserPassword -> auth.password
+            is AuthenticationDetails.AwsIam -> ""
+        }
         datasourceConnection.databaseName = databaseName
         datasourceConnection.reviewConfig = reviewConfig
         datasourceConnection.additionalJDBCOptions = additionalJDBCOptions
@@ -306,8 +311,15 @@ class ConnectionAdapter(
                 authenticationType = connection.authenticationType!!,
                 databaseName = connection.databaseName,
                 maxExecutions = connection.maxExecutions,
-                username = connection.username!!,
-                password = connection.password!!,
+                auth = when (connection.authenticationType!!) {
+                    AuthenticationType.USER_PASSWORD -> AuthenticationDetails.UserPassword(
+                        username = connection.username!!,
+                        password = connection.password!!,
+                    )
+                    AuthenticationType.AWS_IAM -> AuthenticationDetails.AwsIam(
+                        username = connection.username!!,
+                    )
+                },
                 description = connection.description,
                 reviewConfig = connection.reviewConfig,
                 port = connection.port!!,
