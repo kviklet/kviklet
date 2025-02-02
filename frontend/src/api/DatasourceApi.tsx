@@ -8,7 +8,7 @@ import {
 
 enum AuthenticationType {
   USER_PASSWORD = "USER_PASSWORD",
-  AWS_IAM = "AWS_IAM", // Add this if missing
+  AWS_IAM = "AWS_IAM",
 }
 
 enum DatabaseType {

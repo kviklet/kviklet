@@ -79,7 +79,6 @@ dependencies {
     testImplementation("org.testcontainers:mssqlserver:$testcontainersVersion")
     testImplementation("org.testcontainers:mongodb:$testcontainersVersion")
     testImplementation("org.testcontainers:mariadb:$testcontainersVersion")
-    testImplementation("io.github.cdimascio:dotenv-kotlin:6.5.0")
 
     testImplementation("io.kotest:kotest-assertions-core:5.5.5")
     testImplementation("io.mockk:mockk:1.13.4")
