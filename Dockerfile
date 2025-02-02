@@ -1,4 +1,4 @@
-FROM gradle:jdk-focal AS build
+FROM gradle:jdk-jammy AS build
 WORKDIR /home/gradle/src
 
 COPY --chown=gradle:gradle ./backend .
