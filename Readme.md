@@ -259,6 +259,25 @@ After starting Kviklet you first have to configure a database connection. Go to 
 
 Here you can configure how many reviews are required to run Requests on this connection. You can also configure how often a request can be run. The default is 1 and we recommend to stick to this for most use cases. As a special config, setting this to 0 any request on the connection can be run an infinite amount of times.
 
+#### AWS IAM AUTH
+
+Kviklet supports using IAM Auth for Postgres and MySQL Database Connections for this choose IAM Auth when creating a new connection.
+
+![IAM Auth](images/CreateConnectionIAM_light.png#gh-light-mode-only)
+![IAM Auth](images/CreateConnectionIAM_dark.png#gh-dark-mode-only)
+
+This will remove the option to set a password and instead user AWS credentials to connect to the database.
+
+Kviklet uses AWS's `DefaultCredentialsProvider` to find credentials and generate the token for the connection. This means all typical places should work (env vars or associated instance roles) exact order is documented here: https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/auth/credentials/DefaultCredentialsProvider.html
+
+The AWS region to use during token generation is inferred from your connection URL so there is no options to set it.
+
+To learn how to setup IAM Auth for your database follow the official AWS documentation: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html
+The main two points are:
+- Create a DB user with the IAM auth option and correct permissions
+- Create an IAM policy that allows the AWS entity to generate tokens for this user
+
+
 ### Roles
 
 Kviklet ships with 3 roles, Default, Admins and Developers.
