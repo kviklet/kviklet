@@ -24,7 +24,5 @@ class IdGenerator : IdentifierGenerator {
         return if (encoded.length == 21) "$encoded " else encoded
     }
 
-    companion object {
-        const val GENERATOR_NAME = "myGenerator"
-    }
+    override fun allowAssignedIdentifiers(): Boolean = true
 }
