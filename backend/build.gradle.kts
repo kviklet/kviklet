@@ -73,7 +73,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
-    testImplementation("com.tngtech.archunit:archunit-junit5:1.0.1")
+    testImplementation("com.tngtech.archunit:archunit-junit5:1.3.0")
     testImplementation("org.testcontainers:junit-jupiter:$testcontainersVersion")
     testImplementation("org.testcontainers:mysql:$testcontainersVersion")
     testImplementation("org.testcontainers:postgresql:$testcontainersVersion")
