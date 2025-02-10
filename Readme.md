@@ -145,7 +145,18 @@ SPRING_DATASOURCE_USERNAME = username
 SPRING_DATASOURCE_URL = jdbc:postgresql://[host]:[port]/[database]?currentSchema=[schema]
 ```
 
-You can also use certificates for the db connection, see [here](examples/certificates) for an example.
+
+#### Alternative Authentication methods
+- **IAM Auth:**
+  It is possible to use AWS IAM Auth for the database connection, in which case you simply omit the password and just set the username.
+  You also have to set the env var:
+  ```
+  SPRING_DATASOURCE_IAMAUTH=true
+  ```
+  Kviklet will load credentials from the usual places (env vars, instance roles, etc.) and generate a token for the connection.
+
+- **Certificates:**
+  You can also use certificates for the db connection, see [here](examples/certificates) for an example.
 
 ### Initial User
 
