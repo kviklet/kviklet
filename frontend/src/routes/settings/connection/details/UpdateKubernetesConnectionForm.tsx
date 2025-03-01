@@ -1,26 +1,27 @@
 import { z } from "zod";
-import { KubernetesConnectionResponse } from "../../../../api/DatasourceApi";
+import {
+  KubernetesConnectionResponse,
+  PatchConnectionPayload,
+} from "../../../../api/DatasourceApi";
 import InputField, { TextField } from "../../../../components/InputField";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import Button from "../../../../components/Button";
 import { useConnectionForm } from "./ConnectionEditFormHook";
 
-const kubernetesConnectionFormSchema = z
-  .object({
-    displayName: z.string().min(3),
-    description: z.string(),
-    reviewConfig: z.object({
-      numTotalRequired: z.coerce.number(),
-    }),
-    maxExecutions: z.coerce.number().nullable(),
-  })
-  .transform((data) => ({ ...data, connectionType: "KUBERNETES" }));
-type KubernetesConnectionForm = z.infer<typeof kubernetesConnectionFormSchema>;
+const kubernetesConnectionFormSchema = z.object({
+  displayName: z.string().min(3),
+  description: z.string(),
+  reviewConfig: z.object({
+    numTotalRequired: z.coerce.number(),
+  }),
+  maxExecutions: z.coerce.number().nullable(),
+  connectionType: z.literal("KUBERNETES").default("KUBERNETES"),
+});
 
 interface UpdateFormProps {
   connection: KubernetesConnectionResponse;
-  editConnection: (connection: KubernetesConnectionForm) => Promise<void>;
+  editConnection: (connection: PatchConnectionPayload) => Promise<void>;
 }
 
 export default function UpdateKubernetesConnectionForm({

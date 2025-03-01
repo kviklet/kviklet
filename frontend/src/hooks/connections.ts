@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import {
   ConnectionPayload,
   ConnectionResponse,
+  DatabaseType,
   PatchConnectionPayload,
-  PatchDatabaseConnectionPayload,
   addConnection,
   deleteConnection,
   getConnection,
@@ -106,11 +106,6 @@ const useConnection = (id: string) => {
   }, [id]);
 
   const editConnection = async (patchedConnection: PatchConnectionPayload) => {
-    if (isDataSourceConnection(patchedConnection)) {
-      if (patchedConnection.password === "") {
-        patchedConnection.password = undefined;
-      }
-    }
     if (!connection?.id) {
       return;
     }
@@ -155,11 +150,9 @@ const useConnection = (id: string) => {
   };
 };
 
-function isDataSourceConnection(
-  connection: PatchConnectionPayload,
-): connection is PatchDatabaseConnectionPayload {
-  return connection.connectionType === "DATASOURCE";
+function supportsIamAuth(type: DatabaseType): boolean {
+  return [DatabaseType.POSTGRES, DatabaseType.MYSQL].includes(type);
 }
 
 export default useConnections;
-export { useConnection };
+export { useConnection, supportsIamAuth };
