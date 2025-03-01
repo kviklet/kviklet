@@ -116,7 +116,10 @@ type AllNullableExcept<T, K extends keyof T> = {
 };
 
 type PatchDatabaseConnectionPayload = Omit<
-  AllNullableExcept<DatabaseConnection, "connectionType" | "authenticationType">,
+  AllNullableExcept<
+    DatabaseConnection,
+    "connectionType" | "authenticationType"
+  >,
   "id"
 >;
 

@@ -397,4 +397,3 @@ const AuthSection = ({
     </div>
   );
 };
-

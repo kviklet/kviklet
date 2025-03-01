@@ -33,7 +33,6 @@ import useNotification from "../../../hooks/useNotification";
 import Spinner from "../../../components/Spinner";
 import { supportsIamAuth } from "../../../hooks/connections";
 
-
 const baseConnectionSchema = z.object({
   displayName: z.string().min(3),
   description: z.string(),
