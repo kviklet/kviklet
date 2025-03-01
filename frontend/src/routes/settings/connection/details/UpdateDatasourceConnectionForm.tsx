@@ -323,17 +323,15 @@ const AuthSection = ({
 }: AuthSectionProps) => {
   const databaseType = watch("type");
   const authenticationType = watch("authenticationType");
-  const supportsIamAuth = [DatabaseType.POSTGRES, DatabaseType.MYSQL].includes(
-    databaseType,
-  );
+  const isIamAuthSupported = supportsIamAuth(databaseType);
 
   useEffect(() => {
-    if (!supportsIamAuth && authenticationType === "AWS_IAM") {
+    if (!isIamAuthSupported && authenticationType === "AWS_IAM") {
       setValue("authenticationType", "USER_PASSWORD");
     }
-  }, [databaseType, authenticationType, supportsIamAuth, setValue]);
+  }, [databaseType, authenticationType, isIamAuthSupported, setValue]);
 
-  const authenticationTypes = supportsIamAuth
+  const authenticationTypes = isIamAuthSupported
     ? [
         { value: "USER_PASSWORD", label: "Username & Password" },
         { value: "AWS_IAM", label: "AWS IAM" },
