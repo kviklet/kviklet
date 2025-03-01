@@ -323,17 +323,15 @@ const AuthSection = ({
 }: AuthSectionProps) => {
   const databaseType = watch("type");
   const authenticationType = watch("authenticationType");
-  const supportsIamAuth = [DatabaseType.POSTGRES, DatabaseType.MYSQL].includes(
-    databaseType,
-  );
+  const iamAuthIsSupported = supportsIamAuth(databaseType);
 
   useEffect(() => {
-    if (!supportsIamAuth && authenticationType === "AWS_IAM") {
+    if (!iamAuthIsSupported && authenticationType === "AWS_IAM") {
       setValue("authenticationType", "USER_PASSWORD");
     }
-  }, [databaseType, authenticationType, supportsIamAuth, setValue]);
+  }, [databaseType, authenticationType, iamAuthIsSupported, setValue]);
 
-  const authenticationTypes = supportsIamAuth
+  const authenticationTypes = iamAuthIsSupported
     ? [
         { value: "USER_PASSWORD", label: "Username & Password" },
         { value: "AWS_IAM", label: "AWS IAM" },
@@ -344,7 +342,7 @@ const AuthSection = ({
     <div className="space-y-4">
       <div className="-mx-5 space-y-2 border-y border-slate-300 px-4 py-2 dark:border-slate-700 ">
         {/* Only show auth method selector if IAM is supported */}
-        {supportsIamAuth && (
+        {iamAuthIsSupported && (
           <fieldset className="relative flex items-center justify-between">
             <label className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200">
               Authentication Method
