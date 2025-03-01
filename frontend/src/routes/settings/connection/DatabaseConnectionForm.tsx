@@ -31,9 +31,8 @@ import {
 import { isApiErrorResponse } from "../../../api/Errors";
 import useNotification from "../../../hooks/useNotification";
 import Spinner from "../../../components/Spinner";
+import { supportsIamAuth } from "../../../hooks/connections";
 
-const supportsIamAuth = (type: DatabaseType) =>
-  [DatabaseType.POSTGRES, DatabaseType.MYSQL].includes(type);
 
 const baseConnectionSchema = z.object({
   displayName: z.string().min(3),
@@ -433,17 +432,14 @@ const AuthSection = ({
 }: AuthSectionProps) => {
   const databaseType = watch("type");
   const authenticationType = watch("authenticationType");
-  const supportsIamAuth = [DatabaseType.POSTGRES, DatabaseType.MYSQL].includes(
-    databaseType,
-  );
 
   useEffect(() => {
-    if (!supportsIamAuth && authenticationType === "AWS_IAM") {
+    if (!supportsIamAuth(databaseType) && authenticationType === "AWS_IAM") {
       setValue("authenticationType", "USER_PASSWORD");
     }
-  }, [databaseType, authenticationType, supportsIamAuth, setValue]);
+  }, [databaseType, authenticationType, setValue]);
 
-  const authenticationTypes = supportsIamAuth
+  const authenticationTypes = supportsIamAuth(databaseType)
     ? [
         { value: "USER_PASSWORD", label: "Username & Password" },
         { value: "AWS_IAM", label: "AWS IAM" },
@@ -454,7 +450,7 @@ const AuthSection = ({
     <div className="space-y-4">
       <div className="-mx-5 space-y-2 border-y border-slate-300 px-4 py-2 dark:border-slate-700 ">
         {/* Only show auth method selector if IAM is supported */}
-        {supportsIamAuth && (
+        {supportsIamAuth(databaseType) && (
           <fieldset className="relative flex items-center justify-between">
             <label className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200">
               Authentication Method

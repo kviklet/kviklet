@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { KubernetesConnectionResponse } from "../../../../api/DatasourceApi";
+import { KubernetesConnectionResponse, PatchConnectionPayload } from "../../../../api/DatasourceApi";
 import InputField, { TextField } from "../../../../components/InputField";
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
@@ -14,13 +14,12 @@ const kubernetesConnectionFormSchema = z
       numTotalRequired: z.coerce.number(),
     }),
     maxExecutions: z.coerce.number().nullable(),
+    connectionType: z.literal("KUBERNETES").default("KUBERNETES"),
   })
-  .transform((data) => ({ ...data, connectionType: "KUBERNETES" }));
-type KubernetesConnectionForm = z.infer<typeof kubernetesConnectionFormSchema>;
 
 interface UpdateFormProps {
   connection: KubernetesConnectionResponse;
-  editConnection: (connection: KubernetesConnectionForm) => Promise<void>;
+  editConnection: (connection: PatchConnectionPayload) => Promise<void>;
 }
 
 export default function UpdateKubernetesConnectionForm({

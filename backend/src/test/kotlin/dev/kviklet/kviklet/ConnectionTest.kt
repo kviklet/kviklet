@@ -16,6 +16,7 @@ import dev.kviklet.kviklet.db.ExecutionRequestRepository
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.ExecutionRequestService
+import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
@@ -262,5 +263,38 @@ class ConnectionTest(
         updatedRequest.statement shouldBe mongoQuery
         updatedRequest.title shouldBe "Find Adult Users"
         updatedRequest.description shouldBe "Retrieve users aged 18 and above, sorted by name"
+    }
+
+    @Test
+    fun `test update authentication method`() {
+        val connection = datasourceConnectionController.createConnection(
+            CreateDatasourceConnectionRequest(
+                id = "postgres-connection",
+                displayName = "Postgres Connection",
+                username = "postgres",
+                password = "postgres",
+                reviewConfig = ReviewConfigRequest(
+                    numTotalRequired = 1,
+                ),
+                type = DatasourceType.POSTGRESQL,
+                hostname = "localhost",
+                port = 5432,
+                authenticationType = AuthenticationType.USER_PASSWORD,
+            ),
+        )
+
+        val editedConnection = datasourceConnectionController.updateConnection(
+            "postgres-connection",
+            UpdateDatasourceConnectionRequest(
+                username = "postgres",
+                authenticationType = AuthenticationType.AWS_IAM,
+            ),
+        )
+
+        editedConnection as DatasourceConnectionResponse
+
+        editedConnection.authenticationType shouldBe AuthenticationType.AWS_IAM
+        editedConnection.username shouldBe "postgres"
+        editedConnection.displayName shouldBe "Postgres Connection"
     }
 }
