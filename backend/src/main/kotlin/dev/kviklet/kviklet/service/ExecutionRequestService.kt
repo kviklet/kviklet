@@ -101,7 +101,12 @@ class ExecutionRequestService(
         }
         if (request.type == RequestType.Dump) {
             if (!connection.dumpsEnabled) {
-                throw RuntimeException("Dumps are not enabled for this connection")
+                throw IllegalStateException("Dumps are not enabled for this connection")
+            }
+        }
+        if (request.type == RequestType.TemporaryAccess) {
+            if (!connection.temporaryAccessEnabled) {
+                throw IllegalStateException("Temporary access is not enabled for this connection")
             }
         }
         return executionRequestAdapter.createExecutionRequest(
