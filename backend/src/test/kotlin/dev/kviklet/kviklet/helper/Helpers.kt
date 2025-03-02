@@ -187,6 +187,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
         DatabaseProtocol.POSTGRESQL,
         additionalJDBCOptions = "",
         dumpsEnabled = false,
+        temporaryAccessEnabled = true,
     )
 
     @Transactional
@@ -203,13 +204,13 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             ReviewConfig(
                 numTotalRequired = 1,
             ),
-
             container.getMappedPort(5432),
             container.host,
             DatasourceType.POSTGRESQL,
             DatabaseProtocol.POSTGRESQL,
             additionalJDBCOptions = "",
             dumpsEnabled = false,
+            temporaryAccessEnabled = true,
         )
 
     @Transactional
@@ -232,6 +233,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             DatabaseProtocol.MONGODB,
             additionalJDBCOptions = "",
             dumpsEnabled = false,
+            temporaryAccessEnabled = true,
         )
 
     @Transactional

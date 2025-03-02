@@ -38,6 +38,7 @@ const baseConnectionFormSchema = z.object({
   }),
   additionalJDBCOptions: z.string(),
   dumpsEnabled: z.boolean(),
+  temporaryAccessEnabled: z.boolean(),
   connectionType: z.literal("DATASOURCE").default("DATASOURCE"),
 });
 
@@ -122,6 +123,7 @@ export default function UpdateDatasourceConnectionForm({
       connectionType: "DATASOURCE",
       authenticationType: connection.authenticationType,
       dumpsEnabled: connection.dumpsEnabled,
+      temporaryAccessEnabled: connection.temporaryAccessEnabled,
     },
     schema: connectionFormSchema,
     onSubmit: editConnection,
@@ -293,6 +295,19 @@ export default function UpdateDatasourceConnectionForm({
                           type="checkbox"
                           className="my-auto h-4 w-4"
                           {...register("dumpsEnabled")}
+                        />
+                      </div>
+                      <div className="flex w-full justify-between">
+                        <label
+                          htmlFor="temporaryAccessEnabled"
+                          className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
+                        >
+                          Temporary Access Enabled
+                        </label>
+                        <input
+                          type="checkbox"
+                          className="my-auto h-4 w-4"
+                          {...register("temporaryAccessEnabled")}
                         />
                       </div>
                     </div>

@@ -258,6 +258,10 @@ export default function ConnectionChooser() {
                               connection._type === "DATASOURCE" &&
                               connection.dumpsEnabled
                             }
+                            temporaryAccessEnabled={
+                              connection._type === "DATASOURCE" &&
+                              connection.temporaryAccessEnabled
+                            }
                           ></Card>
                         );
                       })}
@@ -791,6 +795,7 @@ interface CardProps {
   clickSQLDump: () => void;
   connectionType: "DATASOURCE" | "KUBERNETES";
   sqlDumpEnabled: boolean;
+  temporaryAccessEnabled: boolean;
 }
 
 const Card = (props: CardProps) => {
@@ -836,21 +841,22 @@ const Card = (props: CardProps) => {
               {props.connectionType === "DATASOURCE" ? "Query" : "Command"}
             </button>
           </div>
-          {props.connectionType === "DATASOURCE" && (
-            <div className="-ml-px flex w-0 flex-1">
-              <button
-                onClick={props.clickAccess}
-                className="relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-br-lg border border-transparent py-4 text-sm font-semibold text-slate-900 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-800"
-                data-testid={`access-button-${props.header}`}
-              >
-                <CommandLineIcon
-                  className="h-5 w-5 text-slate-400 dark:text-slate-500"
-                  aria-hidden="true"
-                />
-                Access
-              </button>
-            </div>
-          )}
+          {props.connectionType === "DATASOURCE" &&
+            props.temporaryAccessEnabled && (
+              <div className="-ml-px flex w-0 flex-1">
+                <button
+                  onClick={props.clickAccess}
+                  className="relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-br-lg border border-transparent py-4 text-sm font-semibold text-slate-900 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-800"
+                  data-testid={`access-button-${props.header}`}
+                >
+                  <CommandLineIcon
+                    className="h-5 w-5 text-slate-400 dark:text-slate-500"
+                    aria-hidden="true"
+                  />
+                  Access
+                </button>
+              </div>
+            )}
           {props.connectionType === "DATASOURCE" && props.sqlDumpEnabled && (
             <div className="-ml-px flex w-0 flex-1">
               <button

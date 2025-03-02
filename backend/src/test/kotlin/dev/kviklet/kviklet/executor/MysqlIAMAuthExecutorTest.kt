@@ -68,6 +68,7 @@ class MysqlIAMAuthExecutorTest(
             protocol = DatabaseProtocol.MYSQL,
             additionalOptions = "",
             dumpsEnabled = false,
+            temporaryAccessEnabled = true,
         )
 
         val result = executeQueryWithIam(connection.getConnectionString(), "SELECT 1 as col1, '2' as col2")

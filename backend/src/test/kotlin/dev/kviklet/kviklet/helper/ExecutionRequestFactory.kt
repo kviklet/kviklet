@@ -154,6 +154,7 @@ class ConnectionFactory : Factory() {
         protocol: DatabaseProtocol = DatabaseProtocol.MYSQL,
         additionalJDBCOptions: String = "",
         dumpEnabled: Boolean = false,
+        temporaryAccessEnabled: Boolean = false,
     ): DatasourceConnection = DatasourceConnection(
         id,
         displayName,
@@ -169,6 +170,7 @@ class ConnectionFactory : Factory() {
         protocol,
         additionalJDBCOptions,
         dumpEnabled,
+        temporaryAccessEnabled,
     )
 }
 

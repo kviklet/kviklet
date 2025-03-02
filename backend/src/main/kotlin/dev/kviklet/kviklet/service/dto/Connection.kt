@@ -88,6 +88,7 @@ data class DatasourceConnection(
     val protocol: DatabaseProtocol,
     val additionalOptions: String,
     val dumpsEnabled: Boolean,
+    val temporaryAccessEnabled: Boolean,
 ) : Connection(id, displayName, description, reviewConfig, maxExecutions) {
     fun getConnectionString(): String = when (auth) {
         is AuthenticationDetails.UserPassword -> when (type) {

@@ -48,6 +48,7 @@ const baseConnectionSchema = z.object({
   additionalJDBCOptions: z.string(),
   maxExecutions: z.coerce.number().nullable(),
   dumpsEnabled: z.boolean(),
+  temporaryAccessEnabled: z.boolean().default(true),
   connectionType: z.literal("DATASOURCE").default("DATASOURCE"),
 });
 
@@ -165,6 +166,7 @@ export default function DatabaseConnectionForm(props: {
     setValue("authenticationType", "USER_PASSWORD");
     setValue("maxExecutions", 1);
     setValue("dumpsEnabled", false);
+    setValue("temporaryAccessEnabled", true);
   }, []);
 
   const updatePortIfNotTouched = (port: number) => {
@@ -379,7 +381,7 @@ export default function DatabaseConnectionForm(props: {
                             htmlFor="dumpsEnabled"
                             className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
                           >
-                            Dumps Enabled
+                            Enable Dumps
                           </label>
                           <input
                             type="checkbox"
@@ -388,6 +390,19 @@ export default function DatabaseConnectionForm(props: {
                           />
                         </div>
                       )}
+                      <div className="flex w-full justify-between">
+                        <label
+                          htmlFor="temporaryAccessEnabled"
+                          className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+                        >
+                          Enable Temporary Access
+                        </label>
+                        <input
+                          type="checkbox"
+                          className="my-auto h-4 w-4"
+                          {...register("temporaryAccessEnabled")}
+                        />
+                      </div>
                       <TestingConnectionFragment
                         handleSubmit={handleSubmit}
                         type={watchType}
