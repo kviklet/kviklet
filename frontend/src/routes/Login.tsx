@@ -68,7 +68,7 @@ const Login = () => {
             href={`${baseUrl}/oauth2/authorization/google`}
             className="mt-8 block w-full"
           >
-            <GoogleButton type="light" className="m-auto"></GoogleButton>
+            <GoogleButton type="light" className="m-auto" data-testid="sso-login-button"></GoogleButton>
           </a>
         );
       }
@@ -78,7 +78,7 @@ const Login = () => {
             href={`${baseUrl}/oauth2/authorization/keycloak`}
             className="mt-8 block w-full"
           >
-            <Button className="mx-auto w-full">Login with Keycloak</Button>
+            <Button className="mx-auto w-full" data-testid="sso-login-button">Login with Keycloak</Button>
           </a>
         );
       } else {
@@ -86,6 +86,7 @@ const Login = () => {
           <a
             href={`${baseUrl}/oauth2/authorization/${config.oauthProvider}`}
             className="mt-8 block w-full"
+            data-testid="sso-login-button"
           >
             <Button className="mx-auto w-full">
               Login with {config.oauthProvider}

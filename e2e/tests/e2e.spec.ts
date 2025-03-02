@@ -272,3 +272,16 @@ test.describe("Connection Review Workflow", () => {
     expect(headerCount).toBe(1);
   });
 });
+
+test.describe("Login via SSO", () => {
+  let loginPage: LoginPage;
+  test.beforeEach(async ({ page }) => {
+    loginPage = new LoginPage(page);
+    await page.goto("/");
+  });
+  test("Login via generic OIDC provider", async ({page}) => {
+    await loginPage.ssoLogin()
+    await expect(page.url()).toContain("/requests");
+    await expect(page.getByTestId("requests-list")).toBeVisible();
+  })
+})

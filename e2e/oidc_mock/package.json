@@ -1,0 +1,15 @@
+{
+  "name": "oidc_mock_kviklet",
+  "version": "0.0.1",
+  "description": "OIDC Mock for testing kviklet",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "type": "commonjs",
+  "author": "Deyan Georgiev",
+  "license": "MIT",
+  "dependencies": {
+    "oauth2-mock-server": "^7.2.0"
+  }
+}
