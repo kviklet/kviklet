@@ -31,9 +31,7 @@ import {
 import { isApiErrorResponse } from "../../../api/Errors";
 import useNotification from "../../../hooks/useNotification";
 import Spinner from "../../../components/Spinner";
-
-const supportsIamAuth = (type: DatabaseType) =>
-  [DatabaseType.POSTGRES, DatabaseType.MYSQL].includes(type);
+import { supportsIamAuth } from "../../../hooks/connections";
 
 const baseConnectionSchema = z.object({
   displayName: z.string().min(3),
@@ -50,6 +48,7 @@ const baseConnectionSchema = z.object({
   additionalJDBCOptions: z.string(),
   maxExecutions: z.coerce.number().nullable(),
   dumpsEnabled: z.boolean(),
+  temporaryAccessEnabled: z.boolean().default(true),
   connectionType: z.literal("DATASOURCE").default("DATASOURCE"),
 });
 
@@ -167,6 +166,7 @@ export default function DatabaseConnectionForm(props: {
     setValue("authenticationType", "USER_PASSWORD");
     setValue("maxExecutions", 1);
     setValue("dumpsEnabled", false);
+    setValue("temporaryAccessEnabled", true);
   }, []);
 
   const updatePortIfNotTouched = (port: number) => {
@@ -381,7 +381,7 @@ export default function DatabaseConnectionForm(props: {
                             htmlFor="dumpsEnabled"
                             className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
                           >
-                            Dumps Enabled
+                            Enable Dumps
                           </label>
                           <input
                             type="checkbox"
@@ -390,6 +390,19 @@ export default function DatabaseConnectionForm(props: {
                           />
                         </div>
                       )}
+                      <div className="flex w-full justify-between">
+                        <label
+                          htmlFor="temporaryAccessEnabled"
+                          className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+                        >
+                          Enable Temporary Access
+                        </label>
+                        <input
+                          type="checkbox"
+                          className="my-auto h-4 w-4"
+                          {...register("temporaryAccessEnabled")}
+                        />
+                      </div>
                       <TestingConnectionFragment
                         handleSubmit={handleSubmit}
                         type={watchType}
@@ -433,17 +446,14 @@ const AuthSection = ({
 }: AuthSectionProps) => {
   const databaseType = watch("type");
   const authenticationType = watch("authenticationType");
-  const supportsIamAuth = [DatabaseType.POSTGRES, DatabaseType.MYSQL].includes(
-    databaseType,
-  );
 
   useEffect(() => {
-    if (!supportsIamAuth && authenticationType === "AWS_IAM") {
+    if (!supportsIamAuth(databaseType) && authenticationType === "AWS_IAM") {
       setValue("authenticationType", "USER_PASSWORD");
     }
-  }, [databaseType, authenticationType, supportsIamAuth, setValue]);
+  }, [databaseType, authenticationType, setValue]);
 
-  const authenticationTypes = supportsIamAuth
+  const authenticationTypes = supportsIamAuth(databaseType)
     ? [
         { value: "USER_PASSWORD", label: "Username & Password" },
         { value: "AWS_IAM", label: "AWS IAM" },
@@ -454,7 +464,7 @@ const AuthSection = ({
     <div className="space-y-4">
       <div className="-mx-5 space-y-2 border-y border-slate-300 px-4 py-2 dark:border-slate-700 ">
         {/* Only show auth method selector if IAM is supported */}
-        {supportsIamAuth && (
+        {supportsIamAuth(databaseType) && (
           <fieldset className="relative flex items-center justify-between">
             <label className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200">
               Authentication Method

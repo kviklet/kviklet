@@ -96,13 +96,13 @@ class NotificationTest {
             ReviewConfig(
                 numTotalRequired = 1,
             ),
-
             3306,
             "postgres",
             DatasourceType.POSTGRESQL,
             DatabaseProtocol.POSTGRESQL,
             additionalJDBCOptions = "",
             dumpsEnabled = false,
+            temporaryAccessEnabled = true,
         )
         userHelper.createUser(permissions = listOf("*"))
         val cookie = userHelper.login(mockMvc = mockMvc)

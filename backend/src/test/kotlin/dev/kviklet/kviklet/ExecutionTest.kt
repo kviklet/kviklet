@@ -346,6 +346,73 @@ class ExecutionTest {
         }
     }
 
+    @Nested
+    inner class ExplainTests {
+        private lateinit var testSelectRequest: ExecutionRequestDetails
+        private lateinit var testInsertRequest: ExecutionRequestDetails
+
+        @BeforeEach
+        fun `setup execution requests`() {
+            testSelectRequest = executionRequestHelper.createExecutionRequest(
+                db,
+                testUser,
+                "SELECT * FROM foo.simple_table",
+                connection = testConnection,
+            )
+            testInsertRequest = executionRequestHelper.createExecutionRequest(
+                db,
+                testUser,
+                "INSERT INTO foo.simple_table VALUES (3, 'test')",
+                connection = testConnection,
+            )
+        }
+
+        @Test
+        fun `explain works on unapproved SELECT statements`() {
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+
+            // Verify explain works before approval
+            mockMvc.perform(
+                post("/execution-requests/${testSelectRequest.getId()}/execute")
+                    .cookie(reviewerCookie)
+                    .content("""{"explain": true}""")
+                    .contentType("application/json"),
+            )
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.results[0].columns[0].label").value("QUERY PLAN"))
+        }
+
+        @Test
+        fun `explain fails on non-SELECT statements`() {
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+
+            // Verify explain fails for INSERT
+            mockMvc.perform(
+                post("/execution-requests/${testInsertRequest.getId()}/execute")
+                    .cookie(reviewerCookie)
+                    .content("""{"explain": true}""")
+                    .contentType("application/json"),
+            )
+                .andExpect(status().isBadRequest)
+        }
+
+        @Test
+        fun `explain works for non-author users`() {
+            val otherUser = userHelper.createUser(permissions = listOf("*"))
+            val otherUserCookie = userHelper.login(email = otherUser.email, mockMvc = mockMvc)
+
+            // Verify another user can explain the query
+            mockMvc.perform(
+                post("/execution-requests/${testSelectRequest.getId()}/execute")
+                    .cookie(otherUserCookie)
+                    .content("""{"explain": true}""")
+                    .contentType("application/json"),
+            )
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.results[0].columns[0].label").value("QUERY PLAN"))
+        }
+    }
+
     @Test
     fun `when downloading CSV then succeed`() {
         val csvRequest = executionRequestHelper.createApprovedRequest(
