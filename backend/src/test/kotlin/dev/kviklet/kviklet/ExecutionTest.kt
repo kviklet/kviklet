@@ -72,7 +72,7 @@ class ExecutionTest {
 
         testUser = userHelper.createUser(permissions = listOf("*"))
         testReviewer = userHelper.createUser(permissions = listOf("*"))
-        testConnection = connectionHelper.createPostgresConnection(db)
+        testConnection = connectionHelper.createPostgresConnection(db, explainEnabled = true)
     }
 
     @AfterEach
@@ -350,6 +350,7 @@ class ExecutionTest {
     inner class ExplainTests {
         private lateinit var testSelectRequest: ExecutionRequestDetails
         private lateinit var testInsertRequest: ExecutionRequestDetails
+        private lateinit var testConnectionWithExplainDisabled: Connection
 
         @BeforeEach
         fun `setup execution requests`() {
@@ -365,6 +366,8 @@ class ExecutionTest {
                 "INSERT INTO foo.simple_table VALUES (3, 'test')",
                 connection = testConnection,
             )
+
+            testConnectionWithExplainDisabled = connectionHelper.createPostgresConnection(db, explainEnabled = false)
         }
 
         @Test
@@ -410,6 +413,27 @@ class ExecutionTest {
             )
                 .andExpect(status().isOk)
                 .andExpect(jsonPath("$.results[0].columns[0].label").value("QUERY PLAN"))
+        }
+
+        @Test
+        fun `explain fails when explain is disabled for the connection`() {
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+            val testSelectRequestNoExplain = executionRequestHelper.createExecutionRequest(
+                db,
+                testUser,
+                "SELECT * FROM foo.simple_table",
+                connection = testConnectionWithExplainDisabled,
+            )
+
+            // Verify explain fails when disabled
+            mockMvc.perform(
+                post("/execution-requests/${testSelectRequestNoExplain.getId()}/execute")
+                    .cookie(reviewerCookie)
+                    .content("""{"explain": true}""")
+                    .contentType("application/json"),
+            )
+                .andExpect(status().isBadRequest)
+                .andExpect(jsonPath("$.message").value("Explain is not enabled for this connection"))
         }
     }
 

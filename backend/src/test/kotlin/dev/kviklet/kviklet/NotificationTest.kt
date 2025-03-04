@@ -103,6 +103,7 @@ class NotificationTest {
             additionalJDBCOptions = "",
             dumpsEnabled = false,
             temporaryAccessEnabled = true,
+            explainEnabled = false,
         )
         userHelper.createUser(permissions = listOf("*"))
         val cookie = userHelper.login(mockMvc = mockMvc)

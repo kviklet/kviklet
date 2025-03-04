@@ -155,6 +155,7 @@ class ConnectionFactory : Factory() {
         additionalJDBCOptions: String = "",
         dumpEnabled: Boolean = false,
         temporaryAccessEnabled: Boolean = false,
+        explainEnabled: Boolean = false,
     ): DatasourceConnection = DatasourceConnection(
         id,
         displayName,
@@ -171,6 +172,7 @@ class ConnectionFactory : Factory() {
         additionalJDBCOptions,
         dumpEnabled,
         temporaryAccessEnabled,
+        explainEnabled,
     )
 }
 

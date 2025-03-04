@@ -551,6 +551,10 @@ class ExecutionRequestService(
             throw RuntimeException("Only Datasource connections can be explained")
         }
 
+        if (!connection.explainEnabled) {
+            throw IllegalArgumentException("Explain is not enabled for this connection")
+        }
+
         val requestType = executionRequest.request.type
         if (requestType != RequestType.SingleExecution) {
             throw InvalidReviewException("Can only explain single queries!")
