@@ -49,7 +49,7 @@ const baseConnectionSchema = z.object({
   maxExecutions: z.coerce.number().nullable(),
   dumpsEnabled: z.boolean(),
   temporaryAccessEnabled: z.boolean().default(true),
-  explainEnabled: z.boolean().default(true),
+  explainEnabled: z.boolean().default(false),
   connectionType: z.literal("DATASOURCE").default("DATASOURCE"),
 });
 
