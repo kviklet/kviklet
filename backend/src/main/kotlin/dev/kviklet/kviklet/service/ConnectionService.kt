@@ -65,6 +65,7 @@ class ConnectionService(
             request.additionalJDBCOptions ?: connection.additionalOptions,
             dumpsEnabled = request.dumpsEnabled ?: connection.dumpsEnabled,
             temporaryAccessEnabled = request.temporaryAccessEnabled ?: connection.temporaryAccessEnabled,
+            explainEnabled = request.explainEnabled ?: connection.explainEnabled,
         )
     }
 
@@ -154,7 +155,8 @@ class ConnectionService(
         protocol: DatabaseProtocol,
         additionalJDBCOptions: String,
         dumpsEnabled: Boolean,
-        temporaryAccessEnabled: Boolean = true,
+        temporaryAccessEnabled: Boolean,
+        explainEnabled: Boolean,
     ): Connection {
         if (authenticationType == AuthenticationType.USER_PASSWORD && password == null) {
             throw IllegalArgumentException("Password is required for USER_PASSWORD authentication")
@@ -178,6 +180,7 @@ class ConnectionService(
             additionalJDBCOptions,
             dumpsEnabled,
             temporaryAccessEnabled,
+            explainEnabled,
         )
     }
 
@@ -199,6 +202,7 @@ class ConnectionService(
         dumpsEnabled: Boolean,
         authenticationType: AuthenticationType,
         temporaryAccessEnabled: Boolean,
+        explainEnabled: Boolean,
     ): TestConnectionResult {
         val connection = DatasourceConnection(
             connectionId,
@@ -219,6 +223,7 @@ class ConnectionService(
             additionalJDBCOptions,
             dumpsEnabled,
             temporaryAccessEnabled,
+            explainEnabled,
         )
         val accessibleDatabases = mutableListOf<String>()
         if (!databaseName.isNullOrBlank()) {

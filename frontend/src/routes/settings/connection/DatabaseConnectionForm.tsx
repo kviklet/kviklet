@@ -49,6 +49,7 @@ const baseConnectionSchema = z.object({
   maxExecutions: z.coerce.number().nullable(),
   dumpsEnabled: z.boolean(),
   temporaryAccessEnabled: z.boolean().default(true),
+  explainEnabled: z.boolean().default(false),
   connectionType: z.literal("DATASOURCE").default("DATASOURCE"),
 });
 
@@ -167,6 +168,7 @@ export default function DatabaseConnectionForm(props: {
     setValue("maxExecutions", 1);
     setValue("dumpsEnabled", false);
     setValue("temporaryAccessEnabled", true);
+    setValue("explainEnabled", false);
   }, []);
 
   const updatePortIfNotTouched = (port: number) => {
@@ -401,6 +403,21 @@ export default function DatabaseConnectionForm(props: {
                           type="checkbox"
                           className="my-auto h-4 w-4"
                           {...register("temporaryAccessEnabled")}
+                        />
+                      </div>
+                      <div className="flex w-full justify-between">
+                        <label
+                          htmlFor="explainEnabled"
+                          className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+                          title="This feature relies on SQL parsing, it's recommended to only enable it on read-only connections."
+                        >
+                          Explain Enabled
+                          <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
+                        </label>
+                        <input
+                          type="checkbox"
+                          className="my-auto h-4 w-4"
+                          {...register("explainEnabled")}
                         />
                       </div>
                       <TestingConnectionFragment

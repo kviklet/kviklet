@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 027-add-explain-enabled
+      author: jascha
+      changes:
+        - addColumn:
+            tableName: connection
+            columns:
+              - column:
+                  name: explain_enabled
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

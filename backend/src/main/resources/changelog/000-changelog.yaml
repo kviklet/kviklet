@@ -74,3 +74,6 @@ databaseChangeLog:
   - include:
       file: 026-add-temporary-access-enabled-column.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 027-add-explain-enabled.yaml
+      relativeToChangelogFile: true
