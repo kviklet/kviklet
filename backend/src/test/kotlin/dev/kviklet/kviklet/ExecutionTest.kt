@@ -316,9 +316,9 @@ class ExecutionTest {
         @Test
         fun `when executing simple insert then succeed`() {
             val insertRequest = executionRequestHelper.createExecutionRequest(
-                db,
-                testUser,
-                "INSERT INTO foo.simple_table VALUES (1, 'test');",
+                author = testUser,
+                connection = testConnection,
+                statement = "INSERT INTO foo.simple_table VALUES (1, 'test');",
             )
             val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
             val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
@@ -332,9 +332,9 @@ class ExecutionTest {
         @Test
         fun `when execution errors then handle gracefully`() {
             val errorRequest = executionRequestHelper.createExecutionRequest(
-                db,
-                testUser,
-                "INSERT INTO non_existent_table VALUES (1, 'test');",
+                author = testUser,
+                connection = testConnection,
+                statement = "INSERT INTO non_existent_table VALUES (1, 'test');",
             )
             val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
             val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
@@ -440,10 +440,10 @@ class ExecutionTest {
     @Test
     fun `when downloading CSV then succeed`() {
         val csvRequest = executionRequestHelper.createApprovedRequest(
-            db,
-            testUser,
-            testReviewer,
-            "SELECT * FROM foo.simple_table",
+            author = testUser,
+            approver = testReviewer,
+            connection = testConnection,
+            sql = "SELECT * FROM foo.simple_table",
         )
         val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
 

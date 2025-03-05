@@ -88,7 +88,7 @@ data class CreateDatasourceConnectionRequest(
     val dumpsEnabled: Boolean = false,
     val authenticationType: AuthenticationType = AuthenticationType.USER_PASSWORD,
     val temporaryAccessEnabled: Boolean = true,
-    val explainEnabled: Boolean = true,
+    val explainEnabled: Boolean = false,
 ) : ConnectionRequest()
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")

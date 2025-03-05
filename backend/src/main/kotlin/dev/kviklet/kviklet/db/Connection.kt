@@ -76,7 +76,7 @@ class ConnectionEntity(
     var additionalJDBCOptions: String? = null,
     var dumpsEnabled: Boolean = false,
     var temporaryAccessEnabled: Boolean = true,
-    var explainEnabled: Boolean = true,
+    var explainEnabled: Boolean = false,
 ) {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)

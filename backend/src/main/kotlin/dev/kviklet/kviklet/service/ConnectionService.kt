@@ -155,8 +155,8 @@ class ConnectionService(
         protocol: DatabaseProtocol,
         additionalJDBCOptions: String,
         dumpsEnabled: Boolean,
-        temporaryAccessEnabled: Boolean = true,
-        explainEnabled: Boolean = true,
+        temporaryAccessEnabled: Boolean,
+        explainEnabled: Boolean,
     ): Connection {
         if (authenticationType == AuthenticationType.USER_PASSWORD && password == null) {
             throw IllegalArgumentException("Password is required for USER_PASSWORD authentication")
