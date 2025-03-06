@@ -11,7 +11,11 @@ import {
   DisclosureButton,
   DisclosurePanel,
 } from "@headlessui/react";
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  QuestionMarkCircleIcon,
+} from "@heroicons/react/20/solid";
 import { getJDBCOptionsPlaceholder } from "../DatabaseConnectionForm";
 import Button from "../../../../components/Button";
 import { useEffect, useState } from "react";
@@ -315,9 +319,11 @@ export default function UpdateDatasourceConnectionForm({
                       <div className="flex w-full justify-between">
                         <label
                           htmlFor="explainEnabled"
-                          className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
+                          className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+                          title="This feature relies on SQL parsing, it's recommended to only enable it on read-only connections."
                         >
                           Explain Enabled
+                          <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
                         </label>
                         <input
                           type="checkbox"
