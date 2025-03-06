@@ -72,10 +72,12 @@ function DatasourceRequestBox({
       tooltip:
         (!request?.csvDownload?.allowed && request?.csvDownload?.reason) ||
         undefined,
-      content: (
+      content: request?.csvDownload?.allowed ? (
         <a href={`${baseUrl}/execution-requests/${request?.id}/download`}>
           Download as CSV
         </a>
+      ) : (
+        <span>Download as CSV</span>
       ),
     },
     {
@@ -93,6 +95,7 @@ function DatasourceRequestBox({
             },
             enabled:
               isRelationalDatabase(request) &&
+              request?.connection?.explainEnabled &&
               (request?.reviewStatus === "APPROVED" ||
                 request?.reviewStatus === "AWAITING_APPROVAL"),
             content: "Explain",

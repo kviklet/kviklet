@@ -76,6 +76,7 @@ class ConnectionEntity(
     var additionalJDBCOptions: String? = null,
     var dumpsEnabled: Boolean = false,
     var temporaryAccessEnabled: Boolean = true,
+    var explainEnabled: Boolean = false,
 ) {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
@@ -180,6 +181,7 @@ class ConnectionAdapter(
         additionalJDBCOptions: String,
         dumpsEnabled: Boolean,
         temporaryAccessEnabled: Boolean,
+        explainEnabled: Boolean,
     ): Connection = decryptCredentialsIfNeeded(
         save(
             ConnectionEntity(
@@ -201,6 +203,7 @@ class ConnectionAdapter(
                 additionalJDBCOptions = additionalJDBCOptions,
                 dumpsEnabled = dumpsEnabled,
                 temporaryAccessEnabled = temporaryAccessEnabled,
+                explainEnabled = explainEnabled,
             ),
         ),
     )
@@ -221,6 +224,7 @@ class ConnectionAdapter(
         additionalJDBCOptions: String,
         dumpsEnabled: Boolean,
         temporaryAccessEnabled: Boolean,
+        explainEnabled: Boolean,
     ): Connection {
         val datasourceConnection = connectionRepository.findByIdOrNull(id.toString())
             ?: throw EntityNotFound(
@@ -249,6 +253,7 @@ class ConnectionAdapter(
         datasourceConnection.isEncrypted = false
         datasourceConnection.dumpsEnabled = dumpsEnabled
         datasourceConnection.temporaryAccessEnabled = temporaryAccessEnabled
+        datasourceConnection.explainEnabled = explainEnabled
 
         return decryptCredentialsIfNeeded(save(datasourceConnection))
     }
@@ -334,6 +339,7 @@ class ConnectionAdapter(
                 additionalOptions = connection.additionalJDBCOptions ?: "",
                 dumpsEnabled = connection.dumpsEnabled,
                 temporaryAccessEnabled = connection.temporaryAccessEnabled,
+                explainEnabled = connection.explainEnabled,
             )
         ConnectionType.KUBERNETES ->
             KubernetesConnection(
