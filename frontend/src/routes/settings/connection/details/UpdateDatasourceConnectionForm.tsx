@@ -420,7 +420,7 @@ const AuthSection = ({
           <InputField
             id="password"
             label="Password"
-            placeholder="Password"
+            placeholder="Unchanged"
             type="password"
             {...register("password")}
             error={(errors as FieldErrors<BasicAuthFormType>).password?.message}
