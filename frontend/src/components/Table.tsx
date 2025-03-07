@@ -42,7 +42,7 @@ const Table: React.FC<{ data: SelectExecuteResponse }> = ({ data }) => {
     >
       <table className="w-full text-left">
         <thead
-          className="sticky top-0 z-10 w-full cursor-pointer border-b border-slate-200 bg-slate-50 text-sm font-semibold leading-6 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900"
+          className="sticky top-0 w-full cursor-pointer border-b border-slate-200 bg-slate-50 text-sm font-semibold leading-6 transition-colors hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900"
           onClick={() => setSelected(!selected)}
         >
           {table.getHeaderGroups().map((headerGroup) => (
