@@ -117,13 +117,12 @@ type AllNullableExcept<T, K extends keyof T> = {
   [P in keyof T]: P extends K ? T[P] : T[P] | undefined;
 };
 
-type PatchDatabaseConnectionPayload = Omit<
-  AllNullableExcept<
-    DatabaseConnection,
-    "connectionType" | "authenticationType"
-  >,
-  "id"
->;
+// Use a distributive conditional type to preserve the union structure
+type PatchDatabaseConnectionPayload = DatabaseConnection extends infer T
+  ? T extends DatabaseConnection
+    ? Omit<AllNullableExcept<T, "connectionType" | "authenticationType">, "id">
+    : never
+  : never;
 
 type PatchKubernetesConnectionPayload = Omit<
   AllNullableExcept<KubernetesConnection, "connectionType">,
