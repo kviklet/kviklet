@@ -21,9 +21,9 @@ config:
       userOu: "people"
       searchBase: "ou=people"
 
-  # Name of the secret containing the kviklets configuration
-  # See README.md or the demo deployment for examples
-  externalSecretName: "kviklet-secret"
+# Name of the secret containing the kviklets configuration
+# See README.md or the demo deployment for examples
+externalSecretName: "kviklet-secret"
 
 # Application deployment configuration
 image:
