@@ -1,4 +1,4 @@
-package dev.kviklet.kviklet.proxy
+package dev.kviklet.kviklet.proxy.postgres
 
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
@@ -463,4 +463,11 @@ fun createAuthenticationMD5PasswordMessage(salt: Int): ByteArray {
     return responseBuffer.array()
 }
 
+fun confirmPasswordMessage(message: HashedPasswordMessage, username: String, expectedPassword: String, md5Salt: ByteArray) {
+    val password = message.message
+    val expectedMessage = HashedPasswordMessage.passwordContent(username, expectedPassword, md5Salt)
+    if (!password.toByteArray().contentEquals(expectedMessage)) {
+        throw Exception("Password does not match")
+    }
+}
 fun ByteArray.toHexString() = joinToString("") { "%02x".format(it) }

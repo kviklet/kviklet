@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.proxy
 
+import dev.kviklet.kviklet.proxy.postgres.isSessionExpired
 import dev.kviklet.kviklet.service.dto.utcTimeNow
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.springframework.test.context.ActiveProfiles

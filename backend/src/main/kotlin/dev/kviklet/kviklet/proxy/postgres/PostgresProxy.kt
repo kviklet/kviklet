@@ -1,4 +1,4 @@
-package dev.kviklet.kviklet.proxy
+package dev.kviklet.kviklet.proxy.postgres
 
 import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
@@ -24,6 +24,7 @@ class PostgresProxy(
     private val eventService: EventService,
     private val executionRequest: ExecutionRequest,
     private val userId: String,
+    val tlsCertificate: TLSCertificate? = null
 ) {
     private val threadPool = Executors.newCachedThreadPool()
     private lateinit var serverSocket: ServerSocket
@@ -47,7 +48,7 @@ class PostgresProxy(
         Thread { this.startTcpListener(port, maxTimeMinutes, startTime) }.start()
     }
 
-    private fun shutdownServer() {
+    fun shutdownServer() {
         this.threadPool.shutdownNow()
         this.serverSocket.close()
         this.isRunning = false
@@ -56,7 +57,7 @@ class PostgresProxy(
     private fun startTcpListener(port: Int, maxTimeMinutes: Long, startTime: LocalDateTime) {
         this.serverSocket = ServerSocket(port)
         this.isRunning = true
-        while (true) {
+        while (this.isRunning) {
             if (isSessionExpired(startTime, maxTimeMinutes)) {
                 this.shutdownServer()
                 break
@@ -68,6 +69,14 @@ class PostgresProxy(
 
             val clientSocket = acceptClientConnection() ?: continue
             handleClientConnection(clientSocket)
+        }
+    }
+
+    private fun acceptClientConnection(): Socket? {
+        return try {
+            serverSocket.accept()
+        } catch (e: Exception) {
+            null
         }
     }
 
@@ -87,23 +96,17 @@ class PostgresProxy(
         }
     }
 
-    private fun acceptClientConnection(): Socket? {
-        return try {
-            serverSocket.accept()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
-    }
-
     private fun handleClient(clientSocket: Socket) {
-        clientSocket.use { socket ->
+        clientSocket.use {
             val remotePgConn = targetPostgres.createTargetPgConnection()
             remotePgConn.getPGStream().socket.use { forwardSocket ->
+                val sslsock = setupClient(clientSocket, this.tlsCertificate, remotePgConn.getConnProps(), this.proxyUsername, this.proxyPassword)
+                // Those times are low, because the sockets are constantly being pulled for data(1 byte). SSLSockets don't support the available opeartions
+                // ref: https://stackoverflow.com/a/29386157
                 forwardSocket.soTimeout = 10
-
-                val conn = Connection(socket, forwardSocket, eventService, executionRequest, userId)
-                conn.startHandling(proxyUsername,proxyPassword,remotePgConn.getConnProps())
+                sslsock.soTimeout = 10
+                val conn = Connection(sslsock, forwardSocket, eventService, executionRequest, userId)
+                conn.startHandling()
             }
         }
     }
@@ -113,6 +116,7 @@ class TargetPostgresConnection(private val connInfo: Pair<PGStream, Map<String, 
     fun getPGStream() : PGStream { return connInfo.first }
     fun getConnProps() : Map<String, String> { return connInfo.second}
 }
+
 class TargetPostgresSocketFactory(authenticationDetails: AuthenticationDetails.UserPassword,
                                    databaseName: String,
                                    targetHost: String,
