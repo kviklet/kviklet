@@ -24,7 +24,7 @@ class PostgresProxy(
     private val eventService: EventService,
     private val executionRequest: ExecutionRequest,
     private val userId: String,
-    val tlsCertificate: TLSCertificate? = null
+    private val tlsCertificate: TLSCertificate? = null
 ) {
     private val threadPool = Executors.newCachedThreadPool()
     private lateinit var serverSocket: ServerSocket
@@ -53,10 +53,20 @@ class PostgresProxy(
         this.serverSocket.close()
         this.isRunning = false
     }
-
+    private fun acceptClientConnection(): Socket? {
+        return try {
+            serverSocket.accept()
+        } catch (e: Exception) {
+            null
+        }
+    }
     private fun startTcpListener(port: Int, maxTimeMinutes: Long, startTime: LocalDateTime) {
         this.serverSocket = ServerSocket(port)
         this.isRunning = true
+        startListeningLoop(maxTimeMinutes, startTime)
+    }
+
+    private fun startListeningLoop(maxTimeMinutes: Long, startTime: LocalDateTime) {
         while (this.isRunning) {
             if (isSessionExpired(startTime, maxTimeMinutes)) {
                 this.shutdownServer()
@@ -69,14 +79,6 @@ class PostgresProxy(
 
             val clientSocket = acceptClientConnection() ?: continue
             handleClientConnection(clientSocket)
-        }
-    }
-
-    private fun acceptClientConnection(): Socket? {
-        return try {
-            serverSocket.accept()
-        } catch (e: Exception) {
-            null
         }
     }
 
@@ -97,56 +99,13 @@ class PostgresProxy(
     }
 
     private fun handleClient(clientSocket: Socket) {
-        clientSocket.use {
-            val remotePgConn = targetPostgres.createTargetPgConnection()
-            remotePgConn.getPGStream().socket.use { forwardSocket ->
-                val sslsock = setupClient(clientSocket, this.tlsCertificate, remotePgConn.getConnProps(), this.proxyUsername, this.proxyPassword)
-                // Those times are low, because the sockets are constantly being pulled for data(1 byte). SSLSockets don't support the available opeartions
-                // ref: https://stackoverflow.com/a/29386157
-                forwardSocket.soTimeout = 10
-                sslsock.soTimeout = 10
-                val conn = Connection(sslsock, forwardSocket, eventService, executionRequest, userId)
-                conn.startHandling()
-            }
-        }
-    }
-}
-
-class TargetPostgresConnection(private val connInfo: Pair<PGStream, Map<String, String>>) {
-    fun getPGStream() : PGStream { return connInfo.first }
-    fun getConnProps() : Map<String, String> { return connInfo.second}
-}
-
-class TargetPostgresSocketFactory(authenticationDetails: AuthenticationDetails.UserPassword,
-                                   databaseName: String,
-                                   targetHost: String,
-                                   targetPort: Int) {
-    private val targetPgConnProps: Properties
-    private val hostSpec: Array<HostSpec>
-    init {
-        val props = Properties()
-        props.setProperty("user", authenticationDetails.username)
-        props.setProperty("password", authenticationDetails.password)
-        val database = if (databaseName != "") databaseName else authenticationDetails.username
-        props.setProperty("PGDBNAME", database)
-
-        this.targetPgConnProps = props
-        this.hostSpec = arrayOf(HostSpec(targetHost, targetPort))
-    }
-
-    fun createTargetPgConnection(): TargetPostgresConnection {
-        val factory = ConnectionFactoryImpl()
-        val queryExecutor = factory.openConnectionImpl(
-            this.hostSpec, this.targetPgConnProps
-        ) as QueryExecutorBase
-
-        val queryExecutorClass = QueryExecutorBase::class
-
-        val pgStreamProperty = queryExecutorClass.memberProperties.firstOrNull { it.name == "pgStream" }
-            ?: throw NoSuchElementException("Property 'pgStream' is not found")
-        pgStreamProperty.isAccessible = true
-
-        return TargetPostgresConnection(Pair(pgStreamProperty.get(queryExecutor) as PGStream, queryExecutor.parameterStatuses))
+        val remotePgConn = targetPostgres.createTargetPgConnection()
+        val configuredSocket = setupClient(clientSocket, this.tlsCertificate, remotePgConn.getConnProps(), this.proxyUsername, this.proxyPassword)
+        val forwardSocket =  remotePgConn.getPGStream().socket
+        configuredSocket.soTimeout = 10
+        forwardSocket.soTimeout = 10
+        Connection(configuredSocket, forwardSocket, eventService, executionRequest, userId)
+            .startHandling()
     }
 }
 

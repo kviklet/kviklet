@@ -176,6 +176,7 @@ class TerminationMessage(header: Char = 'X', length: Int = 4, originalContent: B
 }
 
 class MessageOrBytes(val message: ParsedMessage?, val bytes: ByteArray?, val response: ByteArray? = null)
+fun MessageOrBytes.writableBytes() : ByteArray { return this.message?.toByteArray() ?: this.bytes!!}
 class QueryMessage(
     override val header: Char = 'Q',
     override val length: Int,
@@ -470,4 +471,13 @@ fun confirmPasswordMessage(message: HashedPasswordMessage, username: String, exp
         throw Exception("Password does not match")
     }
 }
+
 fun ByteArray.toHexString() = joinToString("") { "%02x".format(it) }
+
+fun tlsNotSupportedMessage() : ByteArray{
+    return "N".toByteArray()
+}
+
+fun tlsSupportedMessage() : ByteArray {
+    return "S".toByteArray()
+}
