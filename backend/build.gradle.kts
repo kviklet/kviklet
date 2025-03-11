@@ -57,6 +57,7 @@ dependencies {
     implementation("com.github.jsqlparser:jsqlparser:4.9")
     implementation("io.kubernetes:client-java:20.0.1")
     implementation("software.amazon.awssdk:rds:2.30.6")
+    implementation("software.amazon.awssdk:sts:2.30.6")
 
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")

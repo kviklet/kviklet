@@ -1,4 +1,4 @@
-FROM gradle:jdk-jammy AS build
+FROM gradle:jdk21-noble AS build
 WORKDIR /home/gradle/src
 
 COPY --chown=gradle:gradle ./backend .
