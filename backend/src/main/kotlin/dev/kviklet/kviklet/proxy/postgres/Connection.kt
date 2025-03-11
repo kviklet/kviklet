@@ -19,8 +19,8 @@ class Connection(
 ) {
     private var clientInput: InputStream = clientSocket.getInputStream()
     private var clientOutput: OutputStream = clientSocket.getOutputStream()
-    private var targetInput: InputStream = targetSocket.getInputStream()
-    private var targetOutput: OutputStream = targetSocket.getOutputStream()
+    private var serverInput: InputStream = targetSocket.getInputStream()
+    private var serverOutput: OutputStream = targetSocket.getOutputStream()
     private val boundStatements: MutableMap<String, Statement> = mutableMapOf()
     private var terminationMessageReceived: Boolean = false
 
@@ -28,19 +28,15 @@ class Connection(
         // This basically transfers messages between the client and the server sockets.
         // NOTE: At this point the client connection is set up. SSL, Auth etc... are handled in ClientConnectionSetup.kt
         while (!terminationMessageReceived) {
-            readDataFromSSLSocketIfAvailable(clientInput) { input: ByteArray ->
-                handleClientData(input, input.size)
-            }
-            readDataFromSSLSocketIfAvailable(targetInput) { input: ByteArray ->
-                clientOutput.writeAndFlush(input, 0, input.size)
-            }
+            readDataFromSSLSocketIfAvailable(clientInput) { handleClientData(it) }
+            readDataFromSSLSocketIfAvailable(serverInput) { clientOutput.writeAndFlush(it) }
         }
     }
 
-    private fun handleClientData(clientBuffer: ByteArray, size: Int) {
-        for (messageOrBytes in parseDataToMessages(clientBuffer.copyOf(size))) {
-            terminationMessageReceived = messageOrBytes.message?.isTermination() ?: false
-            targetOutput.writeAndFlush(messageOrBytes.writableBytes())
+    private fun handleClientData(clientBuffer: ByteArray) {
+        for (messageOrBytes in parseDataToMessages(clientBuffer.copyOf(clientBuffer.size))) {
+            terminationMessageReceived = messageOrBytes.isTermination()
+            serverOutput.writeAndFlush(messageOrBytes.writableBytes())
         }
     }
 
@@ -73,12 +69,8 @@ class Connection(
 
     private fun handleBindMessage(parsedMessage: BindMessage) {
         val statement = boundStatements[parsedMessage.statementName]!!
-        boundStatements[parsedMessage.statementName] = Statement(
-            statement.query,
-            parsedMessage.parameterFormatCodes,
-            statement.parameterTypes,
-            parsedMessage.parameters
-        )
+        boundStatements[parsedMessage.statementName] =
+            Statement(statement.query, parsedMessage.parameterFormatCodes, statement.parameterTypes, parsedMessage.parameters)
     }
 }
 
@@ -96,9 +88,6 @@ fun readDataFromSSLSocketIfAvailable(input: InputStream, onInputAvailable: (inpu
     if (bytesRead > 0) {
         val buff = ByteArray(8192)
         val read = input.read(buff)
-        val final = ByteArray(read + 1)
-        System.arraycopy(singleByte, 0, final, 0, 1)
-        System.arraycopy(buff, 0, final, 1, read)
-        onInputAvailable(final)
+        onInputAvailable(singleByte + buff.copyOfRange(0, read))
     }
 }

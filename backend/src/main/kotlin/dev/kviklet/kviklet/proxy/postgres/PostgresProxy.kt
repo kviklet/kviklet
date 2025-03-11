@@ -11,8 +11,11 @@ import org.postgresql.util.HostSpec
 import java.net.ServerSocket
 import java.net.Socket
 import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.*
 import java.util.concurrent.Executors
+import kotlin.concurrent.schedule
+import kotlin.concurrent.timer
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.isAccessible
 
@@ -27,6 +30,7 @@ class PostgresProxy(
     private val tlsCertificate: TLSCertificate? = null
 ) {
     private val threadPool = Executors.newCachedThreadPool()
+    private val clientSockets : ArrayList<Socket> = arrayListOf()
     private lateinit var serverSocket: ServerSocket
     private var proxyUsername = "postgres"
     private var proxyPassword = "postgres"
@@ -45,10 +49,19 @@ class PostgresProxy(
     ) {
         this.proxyUsername = proxyUsername
         this.proxyPassword = proxyPassword
-        Thread { this.startTcpListener(port, maxTimeMinutes, startTime) }.start()
+        Thread { this.startTcpListener(port) }.start()
+        scheduleShutdown(
+            getShutdownDate(startTime, maxTimeMinutes)
+        )
     }
 
+    private fun scheduleShutdown(shutdownTime: Date) {
+        Timer().schedule(shutdownTime) {
+            shutdownServer()
+        }
+    }
     fun shutdownServer() {
+        this.clientSockets.forEach { it.close() }
         this.threadPool.shutdownNow()
         this.serverSocket.close()
         this.isRunning = false
@@ -60,18 +73,14 @@ class PostgresProxy(
             null
         }
     }
-    private fun startTcpListener(port: Int, maxTimeMinutes: Long, startTime: LocalDateTime) {
+    private fun startTcpListener(port: Int) {
         this.serverSocket = ServerSocket(port)
         this.isRunning = true
-        startListeningLoop(maxTimeMinutes, startTime)
+        startListeningLoop()
     }
 
-    private fun startListeningLoop(maxTimeMinutes: Long, startTime: LocalDateTime) {
+    private fun startListeningLoop() {
         while (this.isRunning) {
-            if (isSessionExpired(startTime, maxTimeMinutes)) {
-                this.shutdownServer()
-                break
-            }
             if (currentConnections >= maxConnections) {
                 Thread.sleep(1000)
                 continue
@@ -86,6 +95,7 @@ class PostgresProxy(
         threadPool.submit {
             try {
                 currentConnections++
+                clientSockets.add(clientSocket)
                 handleClient(clientSocket)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -109,6 +119,11 @@ class PostgresProxy(
     }
 }
 
-fun isSessionExpired(sessionStartTime: LocalDateTime, maximumDuration: Long): Boolean {
-    return maximumDuration <= 0L || utcTimeNow().isAfter(sessionStartTime.plusMinutes(maximumDuration))
+fun getShutdownDate(startTime: LocalDateTime, maxTimeMinutes: Long) : Date {
+    return Date.from(
+        startTime
+            .plusMinutes(maxTimeMinutes)
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+    )
 }

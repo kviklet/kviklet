@@ -84,6 +84,27 @@ class PostgresProxyQueriesSmokeTest {
 
         this.proxy.eventService.assertQueryIsAudited("SELECT 1")
     }
+
+    @Test
+    fun `Postgres proxy must be able to execute query resulting in output larger than the buffers`() {
+        val query = """
+            SELECT array_to_string(
+                array(select substr('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', trunc(random() * 62)::integer + 1, 1)
+            FROM   generate_series(1, 100000)), '');
+        """.trimIndent()
+        val stmt = this.proxy.connection.createStatement()
+        val result = stmt.executeQuery(query)
+        while (result.next()) {
+            val randomString = result.getString("array_to_string")
+            println(randomString.length)
+            println(randomString.length == 100000)
+            assertTrue(randomString.length == 100000)
+        }
+
+        this.proxy.eventService.assertQueryIsAudited(query)
+    }
+
+
     @Test
 
     fun `Must support CRUD operations`() {
