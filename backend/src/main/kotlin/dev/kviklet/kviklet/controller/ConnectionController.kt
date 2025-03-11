@@ -89,6 +89,7 @@ data class CreateDatasourceConnectionRequest(
     val authenticationType: AuthenticationType = AuthenticationType.USER_PASSWORD,
     val temporaryAccessEnabled: Boolean = true,
     val explainEnabled: Boolean = false,
+    val roleArn: String? = null,
 ) : ConnectionRequest()
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
@@ -121,6 +122,8 @@ data class UpdateDatasourceConnectionRequest(
     @Schema(example = "root")
     @field:Size(min = 0, max = 255, message = "Maximum length 255")
     val username: String? = null,
+
+    val roleArn: String? = null,
 
     @Schema(example = "password")
     @field:Size(min = 0, max = 255, message = "Maximum length 255")
@@ -274,6 +277,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             dumpsEnabled = request.dumpsEnabled,
             temporaryAccessEnabled = request.temporaryAccessEnabled,
             explainEnabled = request.explainEnabled,
+            roleArn = request.roleArn,
         )
 
     private fun testDatabaseConnection(request: CreateDatasourceConnectionRequest): TestConnectionResult =
@@ -295,6 +299,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             authenticationType = request.authenticationType,
             temporaryAccessEnabled = request.temporaryAccessEnabled,
             explainEnabled = request.explainEnabled,
+            roleArn = request.roleArn,
         )
 
     private fun createKubernetesConnection(request: CreateKubernetesConnectionRequest): Connection =

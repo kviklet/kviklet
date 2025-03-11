@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 028-add-rds-iam-role-arn
+      author: DerkSchooltink
+      changes:
+        - addColumn:
+            tableName: connection
+            columns:
+              - column:
+                  name: role_arn
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: true
