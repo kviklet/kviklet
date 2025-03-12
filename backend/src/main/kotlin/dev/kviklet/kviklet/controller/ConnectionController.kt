@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import dev.kviklet.kviklet.db.ConnectionType
 import dev.kviklet.kviklet.service.ConnectionService
 import dev.kviklet.kviklet.service.TestConnectionResult
+import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
@@ -189,6 +190,7 @@ data class DatasourceConnectionResponse(
     val dumpsEnabled: Boolean,
     val temporaryAccessEnabled: Boolean,
     val explainEnabled: Boolean,
+    val roleArn: String?,
 ) : ConnectionResponse(ConnectionType.DATASOURCE) {
     companion object {
         fun fromDto(datasourceConnection: DatasourceConnection) = DatasourceConnectionResponse(
@@ -210,6 +212,10 @@ data class DatasourceConnectionResponse(
             dumpsEnabled = datasourceConnection.dumpsEnabled,
             temporaryAccessEnabled = datasourceConnection.temporaryAccessEnabled,
             explainEnabled = datasourceConnection.explainEnabled,
+            roleArn = when (datasourceConnection.auth) {
+                is AuthenticationDetails.AwsIam -> datasourceConnection.auth.roleArn
+                else -> null
+            },
         )
     }
 }
