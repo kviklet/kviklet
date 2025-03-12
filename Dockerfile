@@ -5,7 +5,7 @@ COPY --chown=gradle:gradle ./backend .
 
 RUN gradle build  -x kaptTestKotlin -x compileTestKotlin -x test --no-daemon
 
-FROM node:22 as build-frontend
+FROM node:22 AS build-frontend
 WORKDIR /app
 COPY ./frontend/package-lock.json ./frontend/package.json ./
 RUN npm ci --production
