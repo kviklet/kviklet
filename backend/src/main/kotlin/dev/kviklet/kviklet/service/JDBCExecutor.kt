@@ -16,7 +16,6 @@ import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.rds.RdsUtilities
 import software.amazon.awssdk.services.sts.StsClient
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider
-import software.amazon.awssdk.services.sts.model.AssumeRoleRequest
 import java.net.URI
 import java.sql.ResultSet
 import java.sql.SQLException
@@ -38,7 +37,6 @@ data class ColumnInfo(
 class JDBCExecutor {
 
     private val activeStatements = ConcurrentHashMap<String, Statement>()
-    private val logger = LoggerFactory.getLogger(javaClass)
 
     companion object {
         val DEFAULT_POSTGRES_DATABASES = listOf("template0", "template1")
@@ -74,7 +72,7 @@ class JDBCExecutor {
                     return queryResults
                 }
             } catch (e: SQLException) {
-                return listOf(sqlExecptionToResult(e))
+                return listOf(sqlExceptionToResult(e))
             } finally {
                 activeStatements.remove(executionRequestId.toString())
             }
@@ -89,7 +87,7 @@ class JDBCExecutor {
         }
     }
 
-    private fun sqlExecptionToResult(e: SQLException): ErrorQueryResult {
+    private fun sqlExceptionToResult(e: SQLException): ErrorQueryResult {
         var message = e.message ?: ""
         // adding all the cause messages to the original message as well
         var cause = e.cause
@@ -108,7 +106,7 @@ class JDBCExecutor {
             }
             return TestCredentialsResult(success = true, message = "Connection successful")
         } catch (e: SQLException) {
-            val result = sqlExecptionToResult(e)
+            val result = sqlExceptionToResult(e)
             return TestCredentialsResult(success = false, message = result.message)
         }
     }
@@ -138,7 +136,7 @@ class JDBCExecutor {
 
                     return accessibleDatabases
                 }
-            } catch (e: SQLException) {
+            } catch (_: SQLException) {
                 return emptyList()
             }
         }
@@ -246,16 +244,14 @@ class JDBCExecutor {
                 .build()
         }
 
-        private fun createCredentialsProvider(): AwsCredentialsProvider = if (roleArn != null) {
+        private fun createCredentialsProvider(): AwsCredentialsProvider = if (!roleArn.isNullOrEmpty()) {
             logger.info("Using IAM role {} for authentication", roleArn)
             StsAssumeRoleCredentialsProvider.builder()
-                .refreshRequest(
-                    AssumeRoleRequest.builder()
-                        .roleArn(roleArn)
-                        .roleSessionName("RdsIamAuth")
-                        .build(),
-                )
+                .asyncCredentialUpdateEnabled(true)
                 .stsClient(StsClient.builder().region(region).build())
+                .refreshRequest { r ->
+                    r.roleArn(roleArn).roleSessionName("KvikletRdsIamSession").build()
+                }
                 .build()
         } else {
             logger.info("Using default credentials for authentication")
