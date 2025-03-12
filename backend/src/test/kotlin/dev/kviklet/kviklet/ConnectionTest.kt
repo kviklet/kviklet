@@ -46,7 +46,7 @@ class ConnectionTest(
     @Autowired val datasourceConnectionController: ConnectionController,
     @Autowired val executionRequestService: ExecutionRequestService,
 
-    ) {
+) {
 
     @Autowired
     private lateinit var userHelper: UserHelper
@@ -363,7 +363,7 @@ class ConnectionTest(
                 hostname = "example.amazonaws.com",
                 port = 5432,
                 authenticationType = AuthenticationType.AWS_IAM,
-                roleArn = roleArn
+                roleArn = roleArn,
             ),
         ) as DatasourceConnectionResponse
 
