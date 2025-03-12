@@ -36,7 +36,7 @@ fun setupClient(
         output.writeAndFlush(backendKeyData())
         output.writeAndFlush(readyForQuery())
 
-        return finalSocket;
+        return finalSocket
     }
 }
 
@@ -60,7 +60,7 @@ fun waitForStartupMessage(input: InputStream) {
         val buff = ByteArray(8192)
         val read = input.read(buff)
         if (read > 0 && isStartupMessage(buff)) {
-            break;
+            break
         }
     }
 }
@@ -80,7 +80,7 @@ fun waitUntilAuthenticated(input: InputStream, salt: Int, username: String, pass
             val parsed = ParsedMessage.fromBytes(ByteBuffer.wrap(buff))
             if (parsed is HashedPasswordMessage) {
                 confirmPasswordMessage(parsed, username, password, ByteBuffer.allocate(4).putInt(salt).array())
-                break;
+                break
             }
         }
     }

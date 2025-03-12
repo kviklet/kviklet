@@ -11,16 +11,24 @@ import kotlin.reflect.jvm.isAccessible
 
 
 class TargetPostgresConnection(private val connInfo: Pair<PGStream, Map<String, String>>) {
-    fun getPGStream() : PGStream { return connInfo.first }
-    fun getConnProps() : Map<String, String> { return connInfo.second}
+    fun getPGStream(): PGStream {
+        return connInfo.first
+    }
+
+    fun getConnProps(): Map<String, String> {
+        return connInfo.second
+    }
 }
 
-class TargetPostgresSocketFactory(authenticationDetails: AuthenticationDetails.UserPassword,
-                                  databaseName: String,
-                                  targetHost: String,
-                                  targetPort: Int) {
+class TargetPostgresSocketFactory(
+    authenticationDetails: AuthenticationDetails.UserPassword,
+    databaseName: String,
+    targetHost: String,
+    targetPort: Int
+) {
     private val targetPgConnProps: Properties
     private val hostSpec: Array<HostSpec>
+
     init {
         val props = Properties()
         props.setProperty("user", authenticationDetails.username)
@@ -44,6 +52,11 @@ class TargetPostgresSocketFactory(authenticationDetails: AuthenticationDetails.U
             ?: throw NoSuchElementException("Property 'pgStream' is not found")
         pgStreamProperty.isAccessible = true
 
-        return TargetPostgresConnection(Pair(pgStreamProperty.get(queryExecutor) as PGStream, queryExecutor.parameterStatuses))
+        return TargetPostgresConnection(
+            Pair(
+                pgStreamProperty.get(queryExecutor) as PGStream,
+                queryExecutor.parameterStatuses
+            )
+        )
     }
 }

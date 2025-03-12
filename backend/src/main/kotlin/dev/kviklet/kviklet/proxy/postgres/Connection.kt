@@ -60,6 +60,7 @@ class Connection(
         val executePayload = ExecutePayload(query = statement.interpolateQuery())
         eventService.saveEvent(executionRequest.id!!, userId, executePayload)
     }
+
     private fun handleParseMessage(parsedMessage: ParseMessage) {
         boundStatements[parsedMessage.statementName] = Statement(
             parsedMessage.query,
@@ -70,7 +71,12 @@ class Connection(
     private fun handleBindMessage(parsedMessage: BindMessage) {
         val statement = boundStatements[parsedMessage.statementName]!!
         boundStatements[parsedMessage.statementName] =
-            Statement(statement.query, parsedMessage.parameterFormatCodes, statement.parameterTypes, parsedMessage.parameters)
+            Statement(
+                statement.query,
+                parsedMessage.parameterFormatCodes,
+                statement.parameterTypes,
+                parsedMessage.parameters
+            )
     }
 }
 

@@ -125,13 +125,14 @@ open class ParsedMessage(open val header: Char, open val length: Int, open val o
     }
 
     companion object {
-        fun fromBytes(buffer: ByteBuffer) : ParsedMessage {
+        fun fromBytes(buffer: ByteBuffer): ParsedMessage {
             val header = buffer.get().toInt().toChar()
             val length = buffer.int
             val messageBytes = ByteArray(length - 4)
             buffer.get(messageBytes)
             return fromBytes(header, length, messageBytes)
         }
+
         fun fromBytes(header: Char, length: Int, bytes: ByteArray): ParsedMessage {
             if (bytes.size < length - 4) {
                 throw Exception("Not enough bytes to parse message")
@@ -176,8 +177,14 @@ class TerminationMessage(header: Char = 'X', length: Int = 4, originalContent: B
 }
 
 class MessageOrBytes(val message: ParsedMessage?, val bytes: ByteArray?, val response: ByteArray? = null)
-fun MessageOrBytes.writableBytes() : ByteArray { return this.message?.toByteArray() ?: this.bytes!!}
-fun MessageOrBytes.isTermination() : Boolean { return this.message?.isTermination() ?: false }
+
+fun MessageOrBytes.writableBytes(): ByteArray {
+    return this.message?.toByteArray() ?: this.bytes!!
+}
+
+fun MessageOrBytes.isTermination(): Boolean {
+    return this.message?.isTermination() ?: false
+}
 
 class QueryMessage(
     override val header: Char = 'Q',
@@ -466,7 +473,12 @@ fun createAuthenticationMD5PasswordMessage(salt: Int): ByteArray {
     return responseBuffer.array()
 }
 
-fun confirmPasswordMessage(message: HashedPasswordMessage, username: String, expectedPassword: String, md5Salt: ByteArray) {
+fun confirmPasswordMessage(
+    message: HashedPasswordMessage,
+    username: String,
+    expectedPassword: String,
+    md5Salt: ByteArray
+) {
     val password = message.message
     val expectedMessage = HashedPasswordMessage.passwordContent(username, expectedPassword, md5Salt)
     if (!password.toByteArray().contentEquals(expectedMessage)) {
@@ -476,10 +488,10 @@ fun confirmPasswordMessage(message: HashedPasswordMessage, username: String, exp
 
 fun ByteArray.toHexString() = joinToString("") { "%02x".format(it) }
 
-fun tlsNotSupportedMessage() : ByteArray{
+fun tlsNotSupportedMessage(): ByteArray {
     return "N".toByteArray()
 }
 
-fun tlsSupportedMessage() : ByteArray {
+fun tlsSupportedMessage(): ByteArray {
     return "S".toByteArray()
 }

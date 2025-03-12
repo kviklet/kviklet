@@ -3,11 +3,6 @@ package dev.kviklet.kviklet.proxy.postgres
 import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
-import dev.kviklet.kviklet.service.dto.utcTimeNow
-import org.postgresql.core.PGStream
-import org.postgresql.core.QueryExecutorBase
-import org.postgresql.core.v3.ConnectionFactoryImpl
-import org.postgresql.util.HostSpec
 import java.net.ServerSocket
 import java.net.Socket
 import java.time.LocalDateTime
@@ -15,9 +10,7 @@ import java.time.ZoneId
 import java.util.*
 import java.util.concurrent.Executors
 import kotlin.concurrent.schedule
-import kotlin.concurrent.timer
-import kotlin.reflect.full.memberProperties
-import kotlin.reflect.jvm.isAccessible
+
 
 class PostgresProxy(
     targetHost: String,
@@ -30,16 +23,17 @@ class PostgresProxy(
     private val tlsCertificate: TLSCertificate? = null
 ) {
     private val threadPool = Executors.newCachedThreadPool()
-    private val clientSockets : ArrayList<Socket> = arrayListOf()
+    private val clientSockets: ArrayList<Socket> = arrayListOf()
     private lateinit var serverSocket: ServerSocket
     private var proxyUsername = "postgres"
     private var proxyPassword = "postgres"
     private val maxConnections = 15
     private var currentConnections = 0
-    private var targetPostgres : TargetPostgresSocketFactory =
+    private var targetPostgres: TargetPostgresSocketFactory =
         TargetPostgresSocketFactory(authenticationDetails, databaseName, targetHost, targetPort)
-    var isRunning : Boolean = false
+    var isRunning: Boolean = false
         private set
+
     fun startServer(
         port: Int,
         proxyUsername: String,
@@ -60,12 +54,14 @@ class PostgresProxy(
             shutdownServer()
         }
     }
+
     fun shutdownServer() {
         this.clientSockets.forEach { it.close() }
         this.threadPool.shutdownNow()
         this.serverSocket.close()
         this.isRunning = false
     }
+
     private fun acceptClientConnection(): Socket? {
         return try {
             serverSocket.accept()
@@ -73,6 +69,7 @@ class PostgresProxy(
             null
         }
     }
+
     private fun startTcpListener(port: Int) {
         this.serverSocket = ServerSocket(port)
         this.isRunning = true
@@ -110,8 +107,14 @@ class PostgresProxy(
 
     private fun handleClient(clientSocket: Socket) {
         val remotePgConn = targetPostgres.createTargetPgConnection()
-        val configuredSocket = setupClient(clientSocket, this.tlsCertificate, remotePgConn.getConnProps(), this.proxyUsername, this.proxyPassword)
-        val forwardSocket =  remotePgConn.getPGStream().socket
+        val configuredSocket = setupClient(
+            clientSocket,
+            this.tlsCertificate,
+            remotePgConn.getConnProps(),
+            this.proxyUsername,
+            this.proxyPassword
+        )
+        val forwardSocket = remotePgConn.getPGStream().socket
         configuredSocket.soTimeout = 10
         forwardSocket.soTimeout = 10
         Connection(configuredSocket, forwardSocket, eventService, executionRequest, userId)
@@ -119,7 +122,7 @@ class PostgresProxy(
     }
 }
 
-fun getShutdownDate(startTime: LocalDateTime, maxTimeMinutes: Long) : Date {
+fun getShutdownDate(startTime: LocalDateTime, maxTimeMinutes: Long): Date {
     return Date.from(
         startTime
             .plusMinutes(maxTimeMinutes)
