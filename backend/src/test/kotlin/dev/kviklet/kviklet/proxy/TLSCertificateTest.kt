@@ -1,12 +1,13 @@
 package dev.kviklet.kviklet.proxy
 
+import dev.kviklet.kviklet.proxy.postgres.TLSCertificate
 import dev.kviklet.kviklet.proxy.postgres.TlsCertEnvConfig
 import dev.kviklet.kviklet.proxy.postgres.preprocessPEMObject
-import dev.kviklet.kviklet.proxy.postgres.tlsCertificateFactory
+import   dev.kviklet.kviklet.proxy.postgres.tlsCertificateFactory
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import java.io.File
 import java.io.FileOutputStream
-import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 
 
@@ -98,5 +99,27 @@ CJC2+PPy2deEXgREkGk/jpo=
         val expectedCert = """MIIC9DCCAdygAwIBAgIGAZViVxKQMA0GCSqGSIb3DQEBCwUAMDsxDTALBgNVBAMMBHRlc3QxCzAJBgNVBAYTAlVTMR0wGwYJKoZIhvcNAQkBFg50ZXN0QHRlc3QudGVzdDAeFw0yNTAzMDQxODA3MDhaFw0yNjAzMDQxODA3MDhaMDsxDTALBgNVBAMMBHRlc3QxCzAJBgNVBAYTAlVTMR0wGwYJKoZIhvcNAQkBFg50ZXN0QHRlc3QudGVzdDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAM4jJdUHh/SsGPKydu9e1VFdM7QYiiOHnY7sKdJGKDw2LsvjosVgY74SGPTUjBp7Qb2jl/Di2mCbcM9xBzHYj68PZnlhsLEJaR5kVb4zrkPp2IMQ79sfiuNag/kpRTmvdV8D2qIw3dfpPv+eYiBMWL75MITZ5qtzfKW1FPLxH3M8ydfQ3Imst0aF6QSrBGYyKCkAZUM5VJ1c4Bh4tYMxu4UEJARmB0Jbq8qGtzGO/bK4nvgBH+B/h2TnReBKYQo79iZke4JCJ+7rzcD3cHcO4X0/2gSFixuUwCd9GaRZjsP0Zj/Ys9aFy/JMbj2UVXV9lN07BxC3YtizcV4fiPuF1TECAwEAATANBgkqhkiG9w0BAQsFAAOCAQEAH0zmELPuP1nwSwSbY6rmQsR6gMHpwGYKHdo51194bkZgwVDwV1VcU74EaCyKGXHR9Jko24+raxuMJQHyxNv/JtvNWuz/jmNVDPSrtKOaQ3z9xfM+Lql8dIk1X/7xJgOES3IQQ32tSfXCCDaRs/nFL/HOsybqRftmxerci1fwiDdA/fgtc3GDY11vY2Yj9+oIWQLxwxc8UsGRibSzIFZTPD9Pn6SiriiZFX9ETYm90JaGuiJU5ZP/zmQys8GRq3jbskmo6aCNA1quJ9Gb7lO+vXcknA4Y+13/rMJ0Ao/kaOlhwXLPDla42taOY4qhcAm2CCzQqBd5lyaay33ZnWHPFw=="""
         assert(preprocessPEMObject(testCert) == expectedCert)
         assert(preprocessPEMObject(testKey) == expectedKey)
+    }
+    @Test
+    fun `Must fail if certificate is invalid`() {
+        assertThrows<Exception> {
+            TLSCertificate(testKey, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+        }
+    }
+    @Test
+    fun `Must fail if private key is invalid`() {
+        assertThrows<Exception> {
+            TLSCertificate("aaaaaaaaaaaaaaaaaaaaaaaaaaaaa", testCert)
+        }
+    }
+
+    @Test
+    fun `Must fail if public key and certificate don't match`() {
+        val fakeKey = """MIICdgIBADANBgkqhkiG9w0BAQEFAASCAmAwggJcAgEAAoGBAM76pTcYomMXF020VsxDvLm473NhBagLpcDXkMKQSaeQwK8KjB92KC5kN3CNOJOhiuxThZsVpP3+vuHE3nQUIhF4GJbA34W1GscikN3qm4GKleAPU3MUSGtvoqt1PukryVYP0XAQDlJzszMYkyKpO9Z/dVnom6ZHiBBxhtwz6lErAgMBAAECgYAVcOeOhpHD3A+A8C6RqG6zepHrjOBuIQ7BpFMNpK7MmfUr7NbJJ49QBverRCXZPUHL63cKsrpNyYbykldNBQzmPJPtEqHEMa71GMRe0NQEcdZiFefn3VRAETNyd9LIqRNnRx+OEzwXX302tt2Gw4j/kABd/P3VY+ysy635laez4QJBAPXw5jJHDOi7yAFOXeBZA4AlHyk7Ta99GzTJ5ykiYCZIdLHHfInxCX/tF2VaISeqlaVdAD8YkQ3E1Io1+AeYItsCQQDXccyXPJ8hZaQ55zmEveaJCGsQen9Rjwp9m7rcLzheh53jRIrHYXnWc9v4chJ48PPjyer5uUruWBQIZQR3FdPxAkAeTZdffIenqXOETa6ddPpMcMZ9IxR4WfbfMz1rQRQNw4G1YfoDWRKtk339e/R32bnkjSf5nkJJKwZxHSM5dFJfAkEAz1uLI4DIVBeE0eo3lQhFa1y711dfVTtMSIrrdWLJaUoz73qX68BoyLwoWl5IYzjeND6yNvpdITuKxG2dt5Q9sQJAaRM7kdGpe8vEwPcDtO6fnhsOF+ogvnHj7Bq5LM1YmDLZpgRSZ3UwBsiC0ilhRHD4JMSWuHRFfwD7ZidjC5QHFg=="""
+        // The below var is  cert which matches the key, left for testing/exploring if needed.
+        // val fakecert =  """MIICNjCCAZ+gAwIBAgIBADANBgkqhkiG9w0BAQ0FADA4MQswCQYDVQQGEwJ1czELMAkGA1UECAwCVVMxDTALBgNVBAoMBE5vbmUxDTALBgNVBAMMBHRlc3QwHhcNMjUwMzEyMDUxNDI4WhcNMjYwMzEyMDUxNDI4WjA4MQswCQYDVQQGEwJ1czELMAkGA1UECAwCVVMxDTALBgNVBAoMBE5vbmUxDTALBgNVBAMMBHRlc3QwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAM76pTcYomMXF020VsxDvLm473NhBagLpcDXkMKQSaeQwK8KjB92KC5kN3CNOJOhiuxThZsVpP3+vuHE3nQUIhF4GJbA34W1GscikN3qm4GKleAPU3MUSGtvoqt1PukryVYP0XAQDlJzszMYkyKpO9Z/dVnom6ZHiBBxhtwz6lErAgMBAAGjUDBOMB0GA1UdDgQWBBTE51xlc1MK1mdpCwcvaQjGAsn6vDAfBgNVHSMEGDAWgBTE51xlc1MK1mdpCwcvaQjGAsn6vDAMBgNVHRMEBTADAQH/MA0GCSqGSIb3DQEBDQUAA4GBAKa+jvipD4nn0qNTz2OBoL9lJxc61GUn6Wpe3s2mPz1nl9Vce8cQeehDE4xosN1TveaDdtQ8TXe37EHx7egjwMpW9sv+3/QxT00QPY0RXAIU5RFvaksFpAybRfewkODKa+Ph/9+ZzGFBl1PFnnOXPh7UErKf7AJ0XDbtMPIoaOuC"""
+        assertThrows<Exception> {
+            TLSCertificate(fakeKey, testCert)
+        }
     }
 }
