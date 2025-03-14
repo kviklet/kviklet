@@ -1,5 +1,5 @@
 # Stage 1: Build the application
-FROM gradle:jdk-focal AS build
+FROM gradle:jdk21-noble AS build
 
 # Set the working directory
 WORKDIR /home/gradle/src
@@ -8,10 +8,10 @@ WORKDIR /home/gradle/src
 COPY --chown=gradle:gradle . .
 
 # Build the application
-RUN gradle build  -x kaptTestKotlin -x compileTestKotlin --no-daemon
+RUN gradle build -x kaptTestKotlin -x compileTestKotlin --no-daemon
 
 # Stage 2: Run the application
-FROM amazoncorretto:20-alpine-jdk
+FROM amazoncorretto:21-alpine-jdk
 
 # Set the working directory
 WORKDIR /app

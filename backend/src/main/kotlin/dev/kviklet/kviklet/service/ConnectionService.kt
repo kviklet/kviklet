@@ -66,6 +66,7 @@ class ConnectionService(
             dumpsEnabled = request.dumpsEnabled ?: connection.dumpsEnabled,
             temporaryAccessEnabled = request.temporaryAccessEnabled ?: connection.temporaryAccessEnabled,
             explainEnabled = request.explainEnabled ?: connection.explainEnabled,
+            roleArn = request.roleArn,
         )
     }
 
@@ -84,6 +85,7 @@ class ConnectionService(
                 )
                 AuthenticationType.AWS_IAM -> AuthenticationDetails.AwsIam(
                     username = request.username ?: currentAuth.username,
+                    roleArn = request.roleArn ?: (currentAuth as? AuthenticationDetails.AwsIam)?.roleArn,
                 )
             }
         }
@@ -157,6 +159,7 @@ class ConnectionService(
         dumpsEnabled: Boolean,
         temporaryAccessEnabled: Boolean,
         explainEnabled: Boolean,
+        roleArn: String?,
     ): Connection {
         if (authenticationType == AuthenticationType.USER_PASSWORD && password == null) {
             throw IllegalArgumentException("Password is required for USER_PASSWORD authentication")
@@ -181,6 +184,7 @@ class ConnectionService(
             dumpsEnabled,
             temporaryAccessEnabled,
             explainEnabled,
+            roleArn,
         )
     }
 
@@ -203,6 +207,7 @@ class ConnectionService(
         authenticationType: AuthenticationType,
         temporaryAccessEnabled: Boolean,
         explainEnabled: Boolean,
+        roleArn: String?,
     ): TestConnectionResult {
         val connection = DatasourceConnection(
             connectionId,
@@ -214,7 +219,7 @@ class ConnectionService(
             authenticationType,
             when (authenticationType) {
                 AuthenticationType.USER_PASSWORD -> AuthenticationDetails.UserPassword(username, password ?: "")
-                AuthenticationType.AWS_IAM -> AuthenticationDetails.AwsIam(username)
+                AuthenticationType.AWS_IAM -> AuthenticationDetails.AwsIam(username, roleArn)
             },
             port,
             hostname,
