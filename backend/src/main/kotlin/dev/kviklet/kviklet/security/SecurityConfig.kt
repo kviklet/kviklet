@@ -317,7 +317,7 @@ class CustomOidcUserService(private val userAdapter: UserAdapter, private val ro
         var user = userAdapter.findBySubject(subject)
 
         if (user == null) {
-            // Check if a password user with the same email exists
+            // Check if a user with the same email exists
             userAdapter.findByEmail(email)?.let {
                 // Update existing user to use SSO
                 user = it.copy(
