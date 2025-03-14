@@ -12,6 +12,7 @@ import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService
 import org.springframework.security.oauth2.client.endpoint.DefaultAuthorizationCodeTokenResponseClient
 import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient
 import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCodeGrantRequest
+import org.springframework.security.oauth2.client.registration.ClientRegistration
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository
 import org.springframework.security.oauth2.client.registration.ClientRegistrations
 import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository
@@ -30,13 +31,17 @@ class IdentityProviderProperties {
     var clientId: String? = null
     var clientSecret: String? = null
     var issuerUri: String? = null
+    var authorizationUri: String? = null
+    var tokenUri: String? = null
+    var jwkSetUri: String? = null
+    var userInfoUri: String? = null
 
     fun isOauth2Enabled(): Boolean = type != null && clientId != null && clientSecret != null
 
-    fun getIssuer(): String = if (type == "google") {
+    fun getIssuer(): String? = if (type == "google") {
         "https://accounts.google.com"
     } else {
-        issuerUri!!
+        issuerUri
     }
 }
 
@@ -60,17 +65,45 @@ data class IdentityProviderConfig(
         } else {
             "{baseUrl}/login/oauth2/code/{registrationId}"
         }
-        val clientRegistration = ClientRegistrations
-            .fromIssuerLocation(properties.getIssuer())
-            .registrationId(properties.type)
-            .clientId(properties.clientId)
-            .clientSecret(properties.clientSecret)
-            .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-            .redirectUri(redirectUri)
-            .scope("openid", "email", "profile")
-            .userNameAttributeName(IdTokenClaimNames.SUB)
-            .clientName(properties.type!!.replaceFirstChar { it.uppercase() })
-            .build()
+        if (properties.getIssuer().isNullOrBlank() &&
+            (
+                properties.authorizationUri.isNullOrBlank() ||
+                    properties.tokenUri.isNullOrBlank() ||
+                    properties.jwkSetUri.isNullOrBlank() ||
+                    properties.userInfoUri.isNullOrBlank()
+                )
+        ) {
+            throw IllegalArgumentException(
+                "Either issuerUri or all of authorizationUri, tokenUri, jwkSetUri, and userInfoUri must be provided",
+            )
+        }
+        val clientRegistration = if (!properties.getIssuer().isNullOrBlank()) {
+            ClientRegistrations
+                .fromIssuerLocation(properties.getIssuer())
+                .registrationId(properties.type)
+                .clientId(properties.clientId)
+                .clientSecret(properties.clientSecret)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .redirectUri(redirectUri)
+                .scope("openid", "email", "profile")
+                .userNameAttributeName(IdTokenClaimNames.SUB)
+                .clientName(properties.type!!.replaceFirstChar { it.uppercase() })
+                .build()
+        } else {
+            ClientRegistration.withRegistrationId(properties.type)
+                .clientId(properties.clientId)
+                .clientSecret(properties.clientSecret)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .redirectUri(redirectUri)
+                .scope("openid", "email", "profile")
+                .authorizationUri(properties.authorizationUri)
+                .tokenUri(properties.tokenUri)
+                .jwkSetUri(properties.jwkSetUri)
+                .userInfoUri(properties.userInfoUri)
+                .userNameAttributeName(IdTokenClaimNames.SUB)
+                .clientName(properties.type!!.replaceFirstChar { it.uppercase() })
+                .build()
+        }
 
         return InMemoryClientRegistrationRepository(clientRegistration)
     }
