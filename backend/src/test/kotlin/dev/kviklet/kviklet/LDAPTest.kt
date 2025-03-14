@@ -3,6 +3,7 @@ package dev.kviklet.kviklet
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -148,6 +149,11 @@ class LDAPTest {
 
     @Autowired
     private lateinit var authenticationManager: AuthenticationManager
+
+    @AfterEach
+    fun cleanup() {
+        userAdapter.deleteAll()
+    }
 
     @Test
     fun `authenticate with LDAP credentials`() {
