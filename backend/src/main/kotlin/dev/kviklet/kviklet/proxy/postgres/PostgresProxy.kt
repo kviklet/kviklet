@@ -11,7 +11,7 @@ import java.util.*
 import java.util.concurrent.Executors
 import kotlin.concurrent.schedule
 
-
+val NO_SHUTDOWN = 0L // In some instances, the proxy may run forever(or at least the JVM is kill). The 0 value was fulling this duty in the original code.
 class PostgresProxy(
     targetHost: String,
     targetPort: Int,
@@ -44,9 +44,11 @@ class PostgresProxy(
         this.proxyUsername = proxyUsername
         this.proxyPassword = proxyPassword
         Thread { this.startTcpListener(port) }.start()
-        scheduleShutdown(
-            getShutdownDate(startTime, maxTimeMinutes)
-        )
+        if(maxTimeMinutes != NO_SHUTDOWN) {
+            scheduleShutdown(
+                getShutdownDate(startTime, maxTimeMinutes)
+            )
+        }
     }
 
     private fun scheduleShutdown(shutdownTime: Date) {

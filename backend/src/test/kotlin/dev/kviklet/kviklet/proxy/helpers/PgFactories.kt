@@ -47,11 +47,7 @@ fun proxyServerFactory(postgresContainer: PostgreSQLContainer<Nothing>, executio
     CompletableFuture.runAsync {
         proxy.startServer(port, "proxyUser", "proxyPassword", LocalDateTime.now(), 10)
     }
-    var sleepCycle = 0
-    while (!proxy.isRunning && sleepCycle < 10) {
-        Thread.sleep(1000); sleepCycle++
-    }
-    if(sleepCycle >= 10) { throw Exception("Failed to start server") }
+    waitForProxyStart(proxy)
     val proxyJdbcConnectionString = "jdbc:postgresql://localhost:${port}/testdb"
     val proxyProps = Properties()
     proxyProps.setProperty("user", "proxyUser")
@@ -60,3 +56,4 @@ fun proxyServerFactory(postgresContainer: PostgreSQLContainer<Nothing>, executio
     val proxyConnection = DriverManager.getConnection("jdbc:postgresql://localhost:${port}/testdb", proxyProps)
     return ProxyInstance(proxyPort,proxyJdbcConnectionString, proxy, proxyConnection, eventService)
 }
+

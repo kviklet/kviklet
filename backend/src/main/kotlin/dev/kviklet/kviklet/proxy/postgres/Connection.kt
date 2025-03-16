@@ -28,8 +28,8 @@ class Connection(
         // This basically transfers messages between the client and the server sockets.
         // NOTE: At this point the client connection is set up. SSL, Auth etc... are handled in ClientConnectionSetup.kt
         while (!terminationMessageReceived) {
-            readDataFromSSLSocketIfAvailable(clientInput) { handleClientData(it) }
-            readDataFromSSLSocketIfAvailable(serverInput) { clientOutput.writeAndFlush(it) }
+            readFromAnyStream(clientInput) { handleClientData(it) }
+            readFromAnyStream(serverInput) { clientOutput.writeAndFlush(it) }
         }
     }
 
@@ -83,7 +83,7 @@ class Connection(
 // Because SSLSocket available method always return zero, the code counts on short read timeout hack
 // Originally this was the case only for the server connections, now it is the case for both the client and the server
 // More info about the hack: https://stackoverflow.com/a/29386157
-fun readDataFromSSLSocketIfAvailable(input: InputStream, onInputAvailable: (input: ByteArray) -> Unit) {
+fun readFromAnyStream(input: InputStream, onInputAvailable: (input: ByteArray) -> Unit) {
     val singleByte = ByteArray(1)
     val bytesRead: Int = try {
         input.read(singleByte, 0, 1)

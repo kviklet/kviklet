@@ -75,11 +75,7 @@ class PostgresProxyAuthTest {
         CompletableFuture.runAsync {
             proxy.startServer(port, randomUsername, randomPassword, LocalDateTime.now(), 10)
         }
-        var sleepCycle = 0
-        while (!proxy.isRunning && sleepCycle < 10) {
-            Thread.sleep(1000); sleepCycle++
-        }
-        assert(sleepCycle < 10)
+        waitForProxyStart(proxy)
         assertDoesNotThrow {
             val proxyProps = Properties()
             proxyProps.setProperty("user", randomUsername)

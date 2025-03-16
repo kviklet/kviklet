@@ -126,6 +126,8 @@ open class ParsedMessage(open val header: Char, open val length: Int, open val o
 
     companion object {
         fun fromBytes(buffer: ByteBuffer): ParsedMessage {
+            // todo if check if length is < 4, funny things happen otherwise. The error is handled in the other fromBytes method
+            // but if the length is e.g. 1, the code will try to allocate array with negative size.
             val header = buffer.get().toInt().toChar()
             val length = buffer.int
             val messageBytes = ByteArray(length - 4)
@@ -139,30 +141,12 @@ open class ParsedMessage(open val header: Char, open val length: Int, open val o
             }
             return when (header) {
                 'X' -> TerminationMessage.fromBytes(length, bytes)
-                'p' -> {
-                    HashedPasswordMessage.fromBytes(length, bytes)
-                }
-
-                'Q' -> {
-                    QueryMessage.fromBytes(length, bytes)
-                }
-
-                'P' -> {
-                    ParseMessage.fromBytes(length, bytes)
-                }
-
-                'E' -> {
-                    ExecuteMessage.fromBytes(length, bytes)
-                }
-
-                'B' -> {
-                    BindMessage.fromBytes(length, bytes)
-                }
-
-                'S' -> {
-                    SyncMessage.fromBytes(length)
-                }
-
+                'p' -> HashedPasswordMessage.fromBytes(length, bytes)
+                'Q' -> QueryMessage.fromBytes(length, bytes)
+                'P' -> ParseMessage.fromBytes(length, bytes)
+                'E' -> ExecuteMessage.fromBytes(length, bytes)
+                'B' -> BindMessage.fromBytes(length, bytes)
+                'S' -> SyncMessage.fromBytes(length)
                 else -> ParsedMessage(header, length, bytes)
             }
         }
@@ -177,7 +161,7 @@ class TerminationMessage(header: Char = 'X', length: Int = 4, originalContent: B
 }
 
 class MessageOrBytes(val message: ParsedMessage?, val bytes: ByteArray?, val response: ByteArray? = null)
-
+// todo: move MessageOrBytes.writableBytes() and MessageOrBytes.isTermination() to the class
 fun MessageOrBytes.writableBytes(): ByteArray {
     return this.message?.toByteArray() ?: this.bytes!!
 }
@@ -310,7 +294,7 @@ class ParseMessage(
                 statementNameBytes.add(byte)
             }
             val statementName = String(statementNameBytes.toByteArray(), Charset.forName("UTF-8"))
-            // read the statement name until the first zero byte
+            // read the statement name until the first zero byte // TODO: ?
             val query = mutableListOf<Byte>()
             while (true) {
                 val byte = buffer.get()
@@ -331,12 +315,40 @@ class ParseMessage(
     }
 }
 
+class Statement(
+    val query: String,
+    private val parameterFormatCodes: List<Int> = mutableListOf(),
+    val parameterTypes: List<Int> = mutableListOf(),
+    private val boundParams: List<ByteArray> = mutableListOf(),
+) {
+    override fun toString(): String =
+        "Statement(query='$query', parameterFormatCodes=$parameterFormatCodes, boundParams=$boundParams)," +
+                "interpolated query: ${interpolateQuery()}"
+
+    fun interpolateQuery(): String {
+        var interpolatedQuery = query
+        for (i in boundParams.indices) {
+            val param = boundParams[i]
+            val paramType = parameterTypes[i]
+            val paramIndex = i + 1
+            interpolatedQuery = interpolatedQuery.replace(
+                "$$paramIndex",
+                "'${PGTypeStringifier().convertToHumanReadableString(paramType, param)}'",
+            )
+        }
+        return interpolatedQuery
+    }
+}
+
+// Messages returned by the proxy. All of those are used during connection setup
+
+
 class HashedPasswordMessage(
     override val header: Char = 'p',
     override val length: Int,
     override val originalContent: ByteArray,
     val message: String,
-    val zeroByte: Byte = 0,
+    private val zeroByte: Byte = 0,
 ) : ParsedMessage(header, length, originalContent) {
 
     override fun toByteArray(): ByteArray {
@@ -380,31 +392,6 @@ class HashedPasswordMessage(
             val message = "md5${md5WithSalt.toHexString()}".toByteArray()
             return message
         }
-    }
-}
-
-class Statement(
-    val query: String,
-    private val parameterFormatCodes: List<Int> = mutableListOf(),
-    val parameterTypes: List<Int> = mutableListOf(),
-    private val boundParams: List<ByteArray> = mutableListOf(),
-) {
-    override fun toString(): String =
-        "Statement(query='$query', parameterFormatCodes=$parameterFormatCodes, boundParams=$boundParams)," +
-                "interpolated query: ${interpolateQuery()}"
-
-    fun interpolateQuery(): String {
-        var interpolatedQuery = query
-        for (i in boundParams.indices) {
-            val param = boundParams[i]
-            val paramType = parameterTypes[i]
-            val paramIndex = i + 1
-            interpolatedQuery = interpolatedQuery.replace(
-                "$$paramIndex",
-                "'${PGTypeStringifier().convertToHumanReadableString(paramType, param)}'",
-            )
-        }
-        return interpolatedQuery
     }
 }
 
@@ -486,8 +473,6 @@ fun confirmPasswordMessage(
     }
 }
 
-fun ByteArray.toHexString() = joinToString("") { "%02x".format(it) }
-
 fun tlsNotSupportedMessage(): ByteArray {
     return "N".toByteArray()
 }
@@ -495,3 +480,5 @@ fun tlsNotSupportedMessage(): ByteArray {
 fun tlsSupportedMessage(): ByteArray {
     return "S".toByteArray()
 }
+
+fun ByteArray.toHexString() = joinToString("") { "%02x".format(it) }
