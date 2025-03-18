@@ -642,11 +642,28 @@ class ExecutionRequestController(
         response: HttpServletResponse,
         @RequestParam query: String?,
     ) {
-        response.contentType = "text/csv"
-        val csvName = executionRequestService.getCSVFileName(executionRequestId)
-        response.setHeader("Content-Disposition", "attachment; filename=\"$csvName\"")
-        val outputStream = response.outputStream
-        executionRequestService.streamResultsAsCsv(executionRequestId, userDetails.id, outputStream, query)
+        try {
+            // Set CSV headers ONLY if we know the query will succeed
+            response.contentType = "text/csv"
+            val csvName = executionRequestService.getCSVFileName(executionRequestId)
+            response.setHeader("Content-Disposition", "attachment; filename=\"$csvName\"")
+
+            // Use output stream to write CSV data
+            val outputStream = response.outputStream
+            executionRequestService.streamResultsAsCsv(executionRequestId, userDetails.id, outputStream, query)
+        } catch (e: IllegalStateException) {
+            // For exceptions, reset content type to plain text and use the same output method consistently
+            response.reset() // Clear previous response settings
+            response.contentType = "text/plain"
+            response.status = HttpServletResponse.SC_BAD_REQUEST
+            response.outputStream.use { it.write(e.message?.toByteArray() ?: "Unknown error".toByteArray()) }
+        } catch (e: Exception) {
+            // Handle any other exceptions
+            response.reset()
+            response.contentType = "text/plain"
+            response.status = HttpServletResponse.SC_INTERNAL_SERVER_ERROR
+            response.outputStream.use { it.write("An error occurred: ${e.message}".toByteArray()) }
+        }
     }
 
     @Operation(

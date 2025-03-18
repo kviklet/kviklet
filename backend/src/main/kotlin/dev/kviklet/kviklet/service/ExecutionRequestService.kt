@@ -514,25 +514,38 @@ class ExecutionRequestService(
             throw RuntimeException(downloadAllowedAndReason.second)
         }
 
-        eventService.saveEvent(
+        val eventId = eventService.saveEvent(
             id,
             userId,
             ExecutePayload(
                 query = queryToExecute,
                 isDownload = true,
             ),
-        )
+        ).eventId!!
 
-        JDBCExecutor.executeAndStreamDbResponse(
-            connectionString = connection.getConnectionString(),
-            authenticationDetails = connection.auth,
-            query = queryToExecute,
-        ) { row ->
-            outputStream.println(
-                row.joinToString(",") { field ->
-                    escapeCsvField(field)
-                },
+        try {
+            JDBCExecutor.executeAndStreamDbResponse(
+                connectionString = connection.getConnectionString(),
+                authenticationDetails = connection.auth,
+                query = queryToExecute,
+            ) { row ->
+                outputStream.println(
+                    row.joinToString(",") { field ->
+                        escapeCsvField(field)
+                    },
+                )
+            }
+        } catch (e: Exception) {
+            eventService.addResultLogs(
+                eventId,
+                listOf(
+                    ErrorResultLog(
+                        errorCode = 0,
+                        message = e.message ?: "An error occurred while streaming the database response",
+                    ),
+                ),
             )
+            throw e
         }
     }
 
