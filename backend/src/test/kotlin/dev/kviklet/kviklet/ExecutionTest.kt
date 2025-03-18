@@ -26,9 +26,11 @@ import org.springframework.core.io.FileUrlResource
 import org.springframework.jdbc.datasource.init.ScriptUtils
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.ResultActions
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.testcontainers.containers.PostgreSQLContainer
@@ -447,9 +449,38 @@ class ExecutionTest {
         )
         val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
 
-        val response = downloadCSV(csvRequest.getId(), userCookie)
-        verifyCSVContent(response)
+        val contentResponse = downloadCSV(csvRequest.getId(), userCookie).andExpect(status().isOk).andReturn()
+        val content = contentResponse.response.contentAsString
+        verifyCSVContent(content)
         verifyExecutionsList(csvRequest.getId(), userCookie)
+    }
+
+    @Test
+    fun `when downloading CSV with invalid query then return useful error`() {
+        val csvRequest = executionRequestHelper.createApprovedRequest(
+            author = testUser,
+            approver = testReviewer,
+            connection = testConnection,
+            sql = "SELECT * FROM foo.inexistent_table",
+        )
+        val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+        val response = downloadCSV(csvRequest.getId(), userCookie).andExpect(status().is4xxClientError)
+        response.andExpect(content().string(containsString("relation \"foo.inexistent_table\" does not exist")))
+
+        // Verify the request has exactly one event of type EXECUTE and it's an error
+        mockMvc.perform(
+            get("/execution-requests/${csvRequest.getId()}")
+                .cookie(userCookie),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.events", hasSize<Collection<*>>(2)))
+            .andExpect(jsonPath("$.events[1].type").value("EXECUTE"))
+            .andExpect(jsonPath("$.events[1].results[0].type").value("ERROR"))
+            .andExpect(
+                jsonPath(
+                    "$.events[1].results[0].message",
+                ).value(containsString("relation \"foo.inexistent_table\" does not exist")),
+            )
     }
 
     @Test
@@ -617,14 +648,11 @@ class ExecutionTest {
             .andExpect(jsonPath("$.events[1].results[0].type").value("ERROR"))
     }
 
-    private fun downloadCSV(executionRequestId: String, cookie: Cookie): String {
-        val result = mockMvc.perform(
-            get("/execution-requests/$executionRequestId/download")
-                .cookie(cookie)
-                .contentType("application/json"),
-        ).andExpect(status().isOk).andReturn()
-        return result.response.contentAsString
-    }
+    private fun downloadCSV(executionRequestId: String, cookie: Cookie): ResultActions = mockMvc.perform(
+        get("/execution-requests/$executionRequestId/download")
+            .cookie(cookie)
+            .contentType("application/json"),
+    )
 
     private fun verifyCSVContent(content: String) {
         assert(content.contains("col1,col2"))

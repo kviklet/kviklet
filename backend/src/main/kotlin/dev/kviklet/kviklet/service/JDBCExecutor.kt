@@ -159,7 +159,7 @@ class JDBCExecutor {
                     }
                 }
             } catch (e: SQLException) {
-                throw IllegalStateException("Error executing query", e)
+                throw IllegalStateException("Error executing query: ${e.message}", e)
             }
         }
     }
