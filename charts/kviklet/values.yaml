@@ -30,6 +30,7 @@ image:
   registry: ghcr.io
   repository: kviklet/kviklet
   pullPolicy: IfNotPresent
+  tag: main
 
 service:
   type: ClusterIP
