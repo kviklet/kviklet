@@ -145,6 +145,7 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         if (activeRequestedChanges() > 0) {
             return ReviewStatus.CHANGE_REQUESTED
         }
+
         val reviewStatus = if (numReviews >= reviewConfig.numTotalRequired) {
             ReviewStatus.APPROVED
         } else {
@@ -164,12 +165,30 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
 
     fun getApprovalCount(): Int {
         val latestEdit = events.filter { it.type == EventType.EDIT }.sortedBy { it.createdAt }.lastOrNull()
+
+        // Find the latest execution with error
+        val latestExecutionError = events.filter { it.type == EventType.EXECUTE }
+            .mapNotNull { it as? ExecuteEvent }
+            .filter { executeEvent -> executeEvent.results.any { it is ErrorResultLog } }
+            .maxByOrNull { it.createdAt }
+
+        // Use the latest of either edit or execution error timestamp
         val latestEditTimeStamp = latestEdit?.createdAt ?: LocalDateTime.MIN
+        val latestErrorTimeStamp = latestExecutionError?.createdAt ?: LocalDateTime.MIN
+        val latestResetTimeStamp = if (latestEditTimeStamp.isAfter(
+                latestErrorTimeStamp,
+            )
+        ) {
+            latestEditTimeStamp
+        } else {
+            latestErrorTimeStamp
+        }
+
         val numReviews = events.filter {
             it.type == EventType.REVIEW &&
                 it is ReviewEvent &&
                 it.action == ReviewAction.APPROVE &&
-                it.createdAt > latestEditTimeStamp
+                it.createdAt > latestResetTimeStamp
         }.groupBy { it.author.getId() }.count()
         return numReviews
     }
@@ -194,11 +213,17 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         when (request.type) {
             RequestType.SingleExecution, RequestType.Dump -> {
                 val executions = events.filter { it.type == EventType.EXECUTE }
+                // Filter out executions that resulted in errors
+                val successfulExecutions = executions.filter { executeEvent ->
+                    executeEvent !is ExecuteEvent ||
+                        executeEvent.results.none { it is ErrorResultLog }
+                }
+
                 request.connection.maxExecutions?.let { maxExecutions ->
                     if (maxExecutions == 0) { // magic number for unlimited executions
                         return ExecutionStatus.EXECUTABLE
                     }
-                    if (executions.size >= maxExecutions) {
+                    if (successfulExecutions.size >= maxExecutions) {
                         return ExecutionStatus.EXECUTED
                     }
                 }

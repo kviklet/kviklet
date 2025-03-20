@@ -640,8 +640,8 @@ class ExecutionTest {
         mockMvc.perform(
             get("/execution-requests/$executionRequestId").cookie(cookie),
         ).andExpect(status().isOk)
-            .andExpect(jsonPath("$.executionStatus").value("EXECUTED"))
-            .andExpect(jsonPath("$.reviewStatus").value("APPROVED"))
+            .andExpect(jsonPath("$.executionStatus").value("EXECUTABLE"))
+            .andExpect(jsonPath("$.reviewStatus").value("AWAITING_APPROVAL"))
             .andExpect(jsonPath("$.events", hasSize<Collection<*>>(2)))
             .andExpect(jsonPath("$.events[0].type").value("REVIEW"))
             .andExpect(jsonPath("$.events[1].type").value("EXECUTE"))

@@ -198,13 +198,17 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
     }
 
     @Transactional
-    fun createPostgresConnection(container: JdbcDatabaseContainer<*>, explainEnabled: Boolean = true): Connection {
+    fun createPostgresConnection(
+        container: JdbcDatabaseContainer<*>,
+        explainEnabled: Boolean = true,
+        maxExecutions: Int = 1,
+    ): Connection {
         val connection = connectionAdapter.createDatasourceConnection(
             ConnectionId("ds-conn-test-$connectionCount"),
             "Test Connection $connectionCount",
             AuthenticationType.USER_PASSWORD,
             container.databaseName,
-            1,
+            maxExecutions,
             container.username,
             container.password,
             "A test connection",
