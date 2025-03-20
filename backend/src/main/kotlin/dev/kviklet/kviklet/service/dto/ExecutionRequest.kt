@@ -176,7 +176,10 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
 
     fun latestResetTimestamp(): LocalDateTime {
         val latestEdit = events.filter { it.type == EventType.EDIT }.sortedBy { it.createdAt }.lastOrNull()
-
+        val latestEditTimeStamp = latestEdit?.createdAt ?: LocalDateTime.MIN
+        if (request.type == RequestType.TemporaryAccess) {
+            return latestEditTimeStamp
+        }
         // Find the latest execution with error
         val latestExecutionError = events.filter { it.type == EventType.EXECUTE }
             .mapNotNull { it as? ExecuteEvent }
@@ -184,7 +187,6 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
             .maxByOrNull { it.createdAt }
 
         // Use the latest of either edit or execution error timestamp
-        val latestEditTimeStamp = latestEdit?.createdAt ?: LocalDateTime.MIN
         val latestErrorTimeStamp = latestExecutionError?.createdAt ?: LocalDateTime.MIN
         val latestResetTimeStamp = if (latestEditTimeStamp.isAfter(
                 latestErrorTimeStamp,

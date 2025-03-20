@@ -6,6 +6,7 @@ import dev.kviklet.kviklet.helper.ExecutionRequestHelper
 import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.dto.Connection
+import dev.kviklet.kviklet.service.dto.RequestType
 import jakarta.servlet.http.Cookie
 import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.AfterEach
@@ -132,6 +133,46 @@ class ErrorExecutionLimitTest {
             .andExpect(jsonPath("$.executionStatus").value("EXECUTED"))
     }
 
+    @Test
+    fun `temporary access request should not change status after a failed statement`() {
+        // Create a temporary access execution request with a failing query
+        val temporaryAccessRequest = executionRequestHelper.createExecutionRequest(
+            author = testUser,
+            connection = testConnection,
+            statement = null,
+            requestType = RequestType.TemporaryAccess,
+        )
+
+        // Approve the request
+        approveRequest(temporaryAccessRequest.getId(), "Approved", reviewerCookie)
+
+        // Execute the request (should fail)
+        executeOnTemporaryAccessRequest(temporaryAccessRequest.getId(), userCookie, "SELECT * FROM non_existent_table;")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.results[0].errorCode").value(0))
+            .andExpect(
+                jsonPath(
+                    "$.results[0].message",
+                ).value(containsString("relation \"non_existent_table\" does not exist")),
+            )
+            .andExpect(jsonPath("$.results[0].type").value("ERROR"))
+
+        // Verify the status is still EXECUTABLE (not changed by the error)
+        mockMvc.perform(
+            get("/execution-requests/${temporaryAccessRequest.getId()}").cookie(userCookie),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.executionStatus").value("ACTIVE"))
+            .andExpect(jsonPath("$.reviewStatus").value("APPROVED"))
+
+        // Try again with a valid query without needing re-approval
+        executeOnTemporaryAccessRequest(
+            temporaryAccessRequest.getId(),
+            userCookie,
+            "SELECT 1 AS value;",
+        ).andExpect(status().isOk)
+    }
+
     private fun approveRequest(executionRequestId: String, comment: String, cookie: Cookie) = mockMvc.perform(
         post("/execution-requests/$executionRequestId/reviews")
             .cookie(cookie)
@@ -145,6 +186,14 @@ class ErrorExecutionLimitTest {
             )
             .contentType("application/json"),
     ).andExpect(status().isOk)
+
+    private fun executeOnTemporaryAccessRequest(executionRequestId: String, cookie: Cookie, query: String) =
+        mockMvc.perform(
+            post("/execution-requests/$executionRequestId/execute")
+                .cookie(cookie)
+                .content("""{"query": "$query"}""")
+                .contentType("application/json"),
+        )
 
     private fun executeErrorRequestAndAssert(executionRequestId: String, cookie: Cookie) {
         mockMvc.perform(
