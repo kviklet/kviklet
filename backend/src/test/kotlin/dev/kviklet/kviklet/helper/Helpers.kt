@@ -286,7 +286,7 @@ class ExecutionRequestHelper(
     fun createExecutionRequest(
         dbcontainer: JdbcDatabaseContainer<*>? = null,
         author: User,
-        statement: String = "SELECT 1;",
+        statement: String? = "SELECT 1;",
         connection: Connection? = null,
         description: String = "A test execution request",
         requestType: RequestType = RequestType.SingleExecution,
@@ -295,7 +295,7 @@ class ExecutionRequestHelper(
         return executionRequestAdapter.createExecutionRequest(
             connectionId = requestConnection.id,
             title = "Test Execution",
-            type = RequestType.SingleExecution,
+            type = requestType,
             description = description,
             statement = statement,
             executionStatus = "PENDING",
