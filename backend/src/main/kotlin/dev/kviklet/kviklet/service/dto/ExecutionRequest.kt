@@ -164,6 +164,17 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
     }
 
     fun getApprovalCount(): Int {
+        val resetTimestamp = latestResetTimestamp()
+        val numReviews = events.filter {
+            it.type == EventType.REVIEW &&
+                it is ReviewEvent &&
+                it.action == ReviewAction.APPROVE &&
+                it.createdAt > resetTimestamp
+        }.groupBy { it.author.getId() }.count()
+        return numReviews
+    }
+
+    fun latestResetTimestamp(): LocalDateTime {
         val latestEdit = events.filter { it.type == EventType.EDIT }.sortedBy { it.createdAt }.lastOrNull()
 
         // Find the latest execution with error
@@ -183,14 +194,7 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         } else {
             latestErrorTimeStamp
         }
-
-        val numReviews = events.filter {
-            it.type == EventType.REVIEW &&
-                it is ReviewEvent &&
-                it.action == ReviewAction.APPROVE &&
-                it.createdAt > latestResetTimeStamp
-        }.groupBy { it.author.getId() }.count()
-        return numReviews
+        return latestResetTimeStamp
     }
 
     fun activeRequestedChanges(): Int {
