@@ -70,7 +70,7 @@ sealed class Connection(
 sealed class AuthenticationDetails(open val username: String) {
     data class UserPassword(override val username: String, val password: String) : AuthenticationDetails(username)
 
-    data class AwsIam(override val username: String) : AuthenticationDetails(username)
+    data class AwsIam(override val username: String, val roleArn: String? = null) : AuthenticationDetails(username)
 }
 
 data class DatasourceConnection(
