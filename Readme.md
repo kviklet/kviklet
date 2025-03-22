@@ -7,9 +7,9 @@ Secure access to production environments without impairing developer productivit
 ![Kviklet](images/ExecutedRequest_light.png#gh-light-mode-only)
 ![Kviklet](images/ExecutedRequest_dark.png#gh-dark-mode-only)
 
-Kviklet (pronounced Quick-let) embraces the **Four-Eyes Principle** and a high level of configurability, to allow a **Pull Request-like Review and Approval** flow for individual SQL statements or Database sessions. This allows engineering teams to self regulate on who gets access to what data and when. This allow your organization to stay secure and compliant while still allowing for modern empowering true to DevOps workflows.
+Kviklet (pronounced Quick-let) embraces the **Four-Eyes Principle** and a high level of configurability to allow a **Pull Request-like Review and Approval** flow for individual SQL statements or Database sessions. This allows engineering teams to self regulate on who gets access to what data and when, allowing organizations to stay secure and compliant while embracing modern, empowering and truly "DevOps" workflows.
 
-Kviklet is a self hosted docker container, that provides you with a Single Page Web app that you can login to create your SQL requests or approve the ones of others.
+Kviklet is a self hosted docker container, that provides you with a Single Page Web app. Login to create SQL requests or approve the ones of others.
 
 We currently support **Postgres**, **MySQL**, **MS SQL Server** and **MongoDB**.
 
@@ -43,7 +43,7 @@ Most features are available for all databases (SSO, LDAP, RBAC, Review/Approval 
 ## Setup
 
 Kviklet ships as a simple docker container.
-You can find the available verions under [Releases](https://github.com/kviklet/kviklet/releases). We recommend to regularly update the version you are using as we continue to build new features.  
+You can find the available versions under [Releases](https://github.com/kviklet/kviklet/releases). We recommend regularly updating the version you are using as we continue to build new features.  
 The latest one currently is `ghcr.io/kviklet/kviklet:0.5.1`, you can also use `:main` but it might happen every now and then that we accidentally merge something buggy. Though we try to avoid that.
 
 ### Quick Start
@@ -145,14 +145,16 @@ SPRING_DATASOURCE_USERNAME = username
 SPRING_DATASOURCE_URL = jdbc:postgresql://[host]:[port]/[database]?currentSchema=[schema]
 ```
 
-
 #### Alternative Authentication methods
+
 - **IAM Auth:**
   It is possible to use AWS IAM Auth for the database connection, in which case you simply omit the password and just set the username.
   You also have to set the env var:
+
   ```
   SPRING_DATASOURCE_IAMAUTH=true
   ```
+
   Kviklet will load credentials from the usual places (env vars, instance roles, etc.) and generate a token for the connection.
 
 - **Certificates:**
@@ -224,7 +226,7 @@ After setting those environment variables the login page should show a Login wit
 
 #### Other OIDC providers
 
-Other OIDC providers should work similarly to Keycloak, note that the `redirect URI` will change depending on they type you choose, so if you choose `gitlab` it will be `https://[kviklet_host]/api/login/oauth2/code/gitlab`.
+Other OIDC providers should work similarly to Keycloak. Note that the `redirect URI` will change depending on they type you choose, so if you choose `gitlab` it will be `https://[kviklet_host]/api/login/oauth2/code/gitlab`.
 If you run into issues feel free to create an issue, we have not tried every single OIDC provider out there (yet) and there might be slight differences in the implementation that might require updates on Kviklets side.
 
 ### LDAP
@@ -285,9 +287,9 @@ The AWS region to use during token generation is inferred from your connection U
 
 To learn how to setup IAM Auth for your database follow the official AWS documentation: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html
 The main two points are:
+
 - Create a DB user with the IAM auth option and correct permissions
 - Create an IAM policy that allows the AWS entity to generate tokens for this user
-
 
 ### Roles
 
@@ -333,8 +335,8 @@ Currently there are notifications for:
 
 ## Encryption
 
-If you don't want the credentials to be stored in cleartext in the DB, I recommend that you enable database encryption on the Kviklet postgres DB itself. For most hosted providers this is a simple checkbox to click.  
-Nontheless I understand that if the Kviklet database is somehow compromised, this is a huge security risk. As it contains the database crendetials for potentially all your production datastores. So you can enabled encryption of the credentials at rest.
+If you don't want the credentials to be stored in cleartext in the DB, it is recommended that you enable database encryption on the Kviklet postgres DB itself. For most hosted providers this is a simple checkbox to click.  
+Nonetheless, if the Kviklet database is somehow compromised, this is a huge security risk. As it contains the database crendetials for potentially all your production datastores. So you can enable encryption of the credentials at rest.
 
 To do this simply set the two environment variables.
 
@@ -358,7 +360,7 @@ Kviklet will re-encrypt all connections on startup, so that you can then restart
 
 ## Experimental Features
 
-There is two few experimental Features. That were build mostly on community/customer feedback. Feel free to try these out and leave any input that you might have. We hope to develop into this further in the future and make it work well with the core approval flow.
+There are currently two experimental Features. That were built mostly on community feedback. Feel free to try these out and leave any input that you might have. We hope to develop into this further in the future and make it work well with the core approval flow.
 
 ### Kubernetes Exec
 
@@ -370,7 +372,7 @@ Kubernetes commands only wait for 5 seconds for output if the command takes long
 
 ### Proxy, Postgres only
 
-If you create requests for temporary access. You can instead of using the web interface to run queries also enable a proxy and use the DB client of your choice.
+If you create requests for temporary access, you can instead of using the web interface to run queries also enable a proxy and use the DB client of your choice.
 For this the container uses ports 5438-6000 so you need to expose those.
 The user can then create a temp access request, and click "Start Proxy" once it's been approved. They will get a port and a user + temporary password. With this they can login to the database. Kviklet validates the temp user and password and proxies all requests to the underlying user on the database. Any executed statements are logged in the auditlog as if they were run via the web interface.
 
