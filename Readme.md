@@ -283,6 +283,8 @@ This will remove the option to set a password and instead user AWS credentials t
 
 Kviklet uses AWS's `DefaultCredentialsProvider` to find credentials and generate the token for the connection. This means all typical places should work (env vars or associated instance roles) exact order is documented here: https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/auth/credentials/DefaultCredentialsProvider.html
 
+Additionally, you can provide an AWS role ARN that Kviklet will assume, and use those credentials to create the temporary DB token. This is particularly useful for connecting to databases that are not in the same AWS account as Kviklet. To use this feature, simply enter the role ARN in the designated field when creating or editing an IAM Auth connection. Leaving the field empty will use the default credentials provider (no role assumption).
+
 The AWS region to use during token generation is inferred from your connection URL so there is no options to set it.
 
 To learn how to setup IAM Auth for your database follow the official AWS documentation: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html

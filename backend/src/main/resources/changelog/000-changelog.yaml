@@ -77,3 +77,6 @@ databaseChangeLog:
   - include:
       file: 027-add-explain-enabled.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 028-add-rds-iam-role-arn.yaml
+      relativeToChangelogFile: true

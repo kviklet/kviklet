@@ -27,6 +27,7 @@ import io.kotest.matchers.equality.shouldBeEqualToIgnoringFields
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
@@ -347,6 +348,55 @@ class ConnectionTest(
     }
 
     @Test
+    fun `test role ARN is passed correctly`() {
+        // Create a connection with AWS IAM authentication and role ARN
+        val roleArn = "arn:aws:iam::123456789012:role/example-role"
+        val connection = datasourceConnectionController.createConnection(
+            CreateDatasourceConnectionRequest(
+                id = "aws-iam-conn",
+                displayName = "AWS IAM Connection",
+                username = "iam_user",
+                reviewConfig = ReviewConfigRequest(
+                    numTotalRequired = 1,
+                ),
+                type = DatasourceType.POSTGRESQL,
+                hostname = "example.amazonaws.com",
+                port = 5432,
+                authenticationType = AuthenticationType.AWS_IAM,
+                roleArn = roleArn,
+            ),
+        ) as DatasourceConnectionResponse
+
+        // Verify the role ARN is set correctly in the created connection
+        connection.roleArn shouldBe roleArn
+
+        // Get the connection and verify the role ARN is still correct
+        val retrievedConnection = datasourceConnectionController.getConnection(
+            "aws-iam-conn",
+        ) as DatasourceConnectionResponse
+        retrievedConnection.roleArn shouldBe roleArn
+
+        // Update the connection with a new role ARN
+        val newRoleArn = "arn:aws:iam::987654321098:role/new-example-role"
+        val updatedConnection = datasourceConnectionController.updateConnection(
+            "aws-iam-conn",
+            UpdateDatasourceConnectionRequest(
+                roleArn = newRoleArn,
+            ),
+        ) as DatasourceConnectionResponse
+
+        // Verify the new role ARN is set correctly
+        updatedConnection.roleArn shouldBe newRoleArn
+
+        // Get all connections and verify the role ARN is correct
+        val allConnections = datasourceConnectionController.getDatasourceConnections()
+        val ourConnection = allConnections.find {
+            (it as DatasourceConnectionResponse).id.toString() == "aws-iam-conn"
+        } as DatasourceConnectionResponse
+        ourConnection.roleArn shouldBe newRoleArn
+    }
+
+    @Test
     fun `test temporary access execution requests are not allowed on connections with temporary access disabled`() {
         // Create a connection with temporary access disabled
         val connection = datasourceConnectionController.createConnection(
@@ -375,7 +425,7 @@ class ConnectionTest(
         )
 
         // Attempt to create a temporary access execution request
-        val exception = org.junit.jupiter.api.assertThrows<IllegalStateException> {
+        val exception = assertThrows<IllegalStateException> {
             executionRequestController.create(
                 CreateDatasourceExecutionRequestRequest(
                     connectionId = ConnectionId("temp-access-conn"),

@@ -51,6 +51,7 @@ const baseConnectionSchema = z.object({
   temporaryAccessEnabled: z.boolean().default(true),
   explainEnabled: z.boolean().default(false),
   connectionType: z.literal("DATASOURCE").default("DATASOURCE"),
+  roleArn: z.string().optional(),
 });
 
 const connectionFormSchema = z.discriminatedUnion("authenticationType", [
@@ -376,6 +377,14 @@ export default function DatabaseConnectionForm(props: {
                         type="number"
                         {...register("maxExecutions")}
                         error={errors.maxExecutions?.message}
+                      />
+                      <InputField
+                        id="roleArn"
+                        label="Role ARN"
+                        placeholder="arn:aws:iam::123456789012:role/MyRole"
+                        tooltip="The ARN of the IAM role to assume for allowing RDS IAM authentication."
+                        {...register("roleArn")}
+                        error={errors.roleArn?.message}
                       />
                       {dumpsEnabledVisible && (
                         <div className="flex w-full justify-between">
