@@ -10,6 +10,11 @@ class LoginPage {
     await this.page.waitForURL("**/requests");
     await this.page.waitForSelector('[data-testid="requests-list"]');
   }
+  async ssoLogin() {
+    await this.page.getByTestId("sso-login-button").click()
+    await this.page.waitForURL("**/requests");
+    await this.page.waitForSelector('[data-testid="requests-list"]');
+  }
 }
 
 class SettingsPage {

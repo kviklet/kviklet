@@ -1,7 +1,7 @@
 version: "3"
 services:
   postgres:
-    image: postgres:9.6
+    image: postgres:13
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -46,11 +46,22 @@ services:
     build: .
     ports:
       - "4444:8080"
+      - "80:8080"
+      - "4000:4000"
     environment:
       - INITIAL_USER_EMAIL=admin@admin.com
       - INITIAL_USER_PASSWORD=admin
       - SPRING_DATASOURCE_URL=jdbc:postgresql://kviklet-postgres:5432/kviklet
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
+      - KVIKLET_IDENTITYPROVIDER_CLIENTID=kviklet
+      - KVIKLET_IDENTITYPROVIDER_CLIENTSECRET=not-real-secret
+      - KVIKLET_IDENTITYPROVIDER_TYPE=mock
+      - KVIKLET_IDENTITYPROVIDER_ISSUERURI=http://localhost:4000
     depends_on:
       - kviklet-postgres
+  oidc-server-mock:
+    build: ./e2e/oidc_mock
+    network_mode: service:kviklet
+    depends_on:
+      - kviklet
