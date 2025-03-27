@@ -12,7 +12,7 @@ import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.ReviewPayload
 import dev.kviklet.kviklet.db.UserAdapter
-import dev.kviklet.kviklet.proxy.PostgresProxy
+import dev.kviklet.kviklet.proxy.postgres.PostgresProxy
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.security.UserDetailsWithId
