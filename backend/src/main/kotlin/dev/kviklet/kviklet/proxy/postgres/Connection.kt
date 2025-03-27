@@ -1,6 +1,7 @@
 package dev.kviklet.kviklet.proxy.postgres
 
 import dev.kviklet.kviklet.db.ExecutePayload
+import dev.kviklet.kviklet.proxy.postgres.messages.*
 import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import java.io.InputStream
@@ -23,11 +24,16 @@ class Connection(
     private var serverOutput: OutputStream = targetSocket.getOutputStream()
     private val boundStatements: MutableMap<String, Statement> = mutableMapOf()
     private var terminationMessageReceived: Boolean = false
+    private var serverTerminating : Boolean = false
 
+     fun close() {
+        this.serverTerminating = true
+
+    }
     fun startHandling() {
         // This basically transfers messages between the client and the server sockets.
         // NOTE: At this point the client connection is set up. SSL, Auth etc... are handled in ClientConnectionSetup.kt
-        while (!terminationMessageReceived) {
+        while (!terminationMessageReceived && !serverTerminating) {
             readFromAnyStream(clientInput) { handleClientData(it) }
             readFromAnyStream(serverInput) { clientOutput.writeAndFlush(it) }
         }

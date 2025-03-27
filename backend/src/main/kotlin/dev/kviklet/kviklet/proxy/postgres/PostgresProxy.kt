@@ -23,7 +23,7 @@ class PostgresProxy(
     private val tlsCertificate: TLSCertificate? = null
 ) {
     private val threadPool = Executors.newCachedThreadPool()
-    private val clientSockets: ArrayList<Socket> = arrayListOf()
+    private val clientConnections: ArrayList<Connection> = arrayListOf()
     private lateinit var serverSocket: ServerSocket
     private var proxyUsername = "postgres"
     private var proxyPassword = "postgres"
@@ -58,10 +58,10 @@ class PostgresProxy(
     }
 
     fun shutdownServer() {
-        this.clientSockets.forEach { it.close() }
+        this.isRunning = false
+        this.clientConnections.forEach { it.close() }
         this.threadPool.shutdownNow()
         this.serverSocket.close()
-        this.isRunning = false
     }
 
     private fun acceptClientConnection(): Socket? {
@@ -94,7 +94,6 @@ class PostgresProxy(
         threadPool.submit {
             try {
                 currentConnections++
-                clientSockets.add(clientSocket)
                 handleClient(clientSocket)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -119,8 +118,10 @@ class PostgresProxy(
         val forwardSocket = remotePgConn.getPGStream().socket
         configuredSocket.soTimeout = 10
         forwardSocket.soTimeout = 10
-        Connection(configuredSocket, forwardSocket, eventService, executionRequest, userId)
-            .startHandling()
+        val clientConnection = Connection(configuredSocket, forwardSocket, eventService, executionRequest, userId)
+        this.clientConnections.add(clientConnection)
+        clientConnection.startHandling()
+
     }
 }
 

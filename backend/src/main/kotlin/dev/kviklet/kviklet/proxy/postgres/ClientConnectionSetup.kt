@@ -1,9 +1,9 @@
 package dev.kviklet.kviklet.proxy.postgres
 
+import dev.kviklet.kviklet.proxy.postgres.messages.*
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.Socket
-import java.nio.ByteBuffer
 import javax.net.ssl.SSLSocket
 
 fun setupClient(
@@ -28,9 +28,9 @@ fun setupClient(
             output = finalSocket.getOutputStream()
         }
 
-        waitForStartupMessage(input)
-        val salt = sendAuthRequest(output)
-        waitUntilAuthenticated(input, salt, username, password)
+        val isUserValid = waitForStartupMessageWithValidUser(input, username)
+        sendAuthRequest(output)
+        waitUntilAuthenticated(input, output, password, isUserValid)
         output.writeAndFlush(authenticationOk())
         sendParameters(output, params)
         output.writeAndFlush(backendKeyData())
@@ -54,36 +54,26 @@ fun enableSSL(clientSocket: Socket, cert: TLSCertificate): Socket {
     sslSocket.useClientMode = false
     return sslSocket
 }
-
-fun waitForStartupMessage(input: InputStream) {
+/* This method checks if a message is startup message and then if the user is valid. However, if a user is invalid, the error is not being delivered straight away.
+*   Rather than that, the error is passed to the SASL flow, which cancel the authentication once a password is sent. This is to prevent enumerating available users.
+* */
+fun waitForStartupMessageWithValidUser(input: InputStream, username: String) : Boolean {
     while (true) { // wait for startup message
         val buff = ByteArray(8192)
         val read = input.read(buff)
         if (read > 0 && isStartupMessage(buff)) {
-            break
+            return !startupMessageContainsValidUser(buff, read, username)
         }
     }
 }
-
-fun sendAuthRequest(output: OutputStream): Int {
-    val salt = (0..10000).random()
-    val authRequest = createAuthenticationMD5PasswordMessage(salt)
+fun sendAuthRequest(output: OutputStream) {
+    val authRequest = AuthenticationSASLStartMessage()
     output.writeAndFlush(authRequest)
-    return salt
-}
 
-fun waitUntilAuthenticated(input: InputStream, salt: Int, username: String, password: String) {
-    while (true) {
-        val buff = ByteArray(8192)
-        val read = input.read(buff)
-        if (read > 0) {
-            val parsed = ParsedMessage.fromBytes(ByteBuffer.wrap(buff))
-            if (parsed is HashedPasswordMessage) {
-                confirmPasswordMessage(parsed, username, password, ByteBuffer.allocate(4).putInt(salt).array())
-                break
-            }
-        }
-    }
+}
+fun waitUntilAuthenticated(input: InputStream, output: OutputStream, password: String, isUserValid: Boolean) {
+    val handler = SASLAuthHandler(output, input, password, isUserValid)
+    handler.handle()
 }
 
 fun sendParameters(output: OutputStream, params: Map<String, String>) {

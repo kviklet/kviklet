@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.testcontainers.containers.PostgreSQLContainer
 import dev.kviklet.kviklet.proxy.helpers.*
+import dev.kviklet.kviklet.proxy.mocks.EventServiceMock
 import dev.kviklet.kviklet.proxy.postgres.PostgresProxy
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import org.junit.jupiter.api.*
@@ -52,7 +53,8 @@ class PostgresProxyAuthTest {
         val throwable = assertThrows<PSQLException> {
             DriverManager.getConnection(this.proxy.connectionString)
         }
-        assertTrue(throwable.message!!.contains("The server requested password-based authentication"))
+        println(throwable.message)
+        assertTrue(throwable.message!!.contains("The server requested SCRAM-based authentication, but no password was provided."))
     }
 
     @Test
@@ -90,12 +92,15 @@ class PostgresProxyAuthTest {
         val randomUsername = getRandomString(8)
         val randomPassword = getRandomString(16)
         val connAuth = AuthenticationDetails.UserPassword("test", "test")
+        val request = executionRequestFactory.createDatasourceExecutionRequest()
+        val eventService = EventServiceMock(executionRequestAdapter, eventAdapter, request)
+
         var proxy = PostgresProxy(
             postgresContainer.host,
             postgresContainer.getMappedPort(5432),
             "testdb",
             connAuth,
-            this.proxy.eventService,
+            eventService,
             executionRequestFactory.createDatasourceExecutionRequest(),
             "mock"
         )

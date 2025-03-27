@@ -1,8 +1,7 @@
-package dev.kviklet.kviklet.proxy.postgres
+package dev.kviklet.kviklet.proxy.postgres.messages
 
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
-import java.security.MessageDigest
 
 class PGTypeStringifier(
     private val pgTypeMap: Map<Int, String> = mapOf(
@@ -141,7 +140,7 @@ open class ParsedMessage(open val header: Char, open val length: Int, open val o
             }
             return when (header) {
                 'X' -> TerminationMessage.fromBytes(length, bytes)
-                'p' -> HashedPasswordMessage.fromBytes(length, bytes)
+                'p' -> SASLInitialResponse.fromBytes(length, bytes)
                 'Q' -> QueryMessage.fromBytes(length, bytes)
                 'P' -> ParseMessage.fromBytes(length, bytes)
                 'E' -> ExecuteMessage.fromBytes(length, bytes)
@@ -161,6 +160,7 @@ class TerminationMessage(header: Char = 'X', length: Int = 4, originalContent: B
 }
 
 class MessageOrBytes(val message: ParsedMessage?, val bytes: ByteArray?, val response: ByteArray? = null)
+
 // todo: move MessageOrBytes.writableBytes() and MessageOrBytes.isTermination() to the class
 fun MessageOrBytes.writableBytes(): ByteArray {
     return this.message?.toByteArray() ?: this.bytes!!
@@ -272,49 +272,6 @@ class SyncMessage(override val header: Char = 'S', override val length: Int) :
     }
 }
 
-class ParseMessage(
-    override val header: Char = 'P',
-    override val length: Int,
-    override val originalContent: ByteArray,
-    val query: String,
-    val statementName: String,
-    val parameterTypes: List<Int>,
-) : ParsedMessage(header, length, originalContent) {
-    companion object {
-        // Strings are denoted with a zero byte at the end
-        fun fromBytes(length: Int, bytes: ByteArray): ParseMessage {
-            val buffer = ByteBuffer.wrap(bytes)
-            // read the query string until the first zero byte
-            val statementNameBytes = mutableListOf<Byte>()
-            while (true) {
-                val byte = buffer.get()
-                if (byte == 0.toByte()) {
-                    break
-                }
-                statementNameBytes.add(byte)
-            }
-            val statementName = String(statementNameBytes.toByteArray(), Charset.forName("UTF-8"))
-            // read the statement name until the first zero byte // TODO: ?
-            val query = mutableListOf<Byte>()
-            while (true) {
-                val byte = buffer.get()
-                if (byte == 0.toByte()) {
-                    break
-                }
-                query.add(byte)
-            }
-            val queryString = String(query.toByteArray(), Charset.forName("UTF-8"))
-            // read the parameter types
-            val parameterCount = buffer.short.toInt()
-            val parameterTypes = mutableListOf<Int>()
-            for (i in 0 until parameterCount) {
-                parameterTypes.add(buffer.int)
-            }
-            return ParseMessage('P', length, bytes, queryString, statementName, parameterTypes)
-        }
-    }
-}
-
 class Statement(
     val query: String,
     private val parameterFormatCodes: List<Int> = mutableListOf(),
@@ -341,60 +298,6 @@ class Statement(
 }
 
 // Messages returned by the proxy. All of those are used during connection setup
-
-
-class HashedPasswordMessage(
-    override val header: Char = 'p',
-    override val length: Int,
-    override val originalContent: ByteArray,
-    val message: String,
-    private val zeroByte: Byte = 0,
-) : ParsedMessage(header, length, originalContent) {
-
-    override fun toByteArray(): ByteArray {
-        val messageBytes = message.toByteArray()
-        val bufferSize = 1 + 4 + messageBytes.size + 1 // size for header, length, message, and zeroByte
-        val buffer = ByteBuffer.allocate(bufferSize)
-
-        buffer.put(header.code.toByte())
-        buffer.putInt(length)
-        buffer.put(messageBytes)
-        buffer.put(zeroByte)
-
-        return buffer.array()
-    }
-
-    companion object {
-        fun fromBytes(length: Int, bytes: ByteArray): HashedPasswordMessage {
-            val buffer = ByteBuffer.wrap(bytes)
-            val messageLength = length - 4 // Subtract length of 'length' itself and 'zeroByte'
-            val messageBytes = ByteArray(messageLength - 1)
-            buffer.get(messageBytes)
-            val message = String(messageBytes)
-            val zeroByte = buffer.get()
-
-            return HashedPasswordMessage('p', length, bytes, message, zeroByte)
-        }
-
-        fun from(username: String, password: String, salt: ByteArray): HashedPasswordMessage {
-            val message = passwordContent(username, password, salt)
-            val length = message.size + 5
-            return HashedPasswordMessage('p', length, ByteArray(0), message.toString(Charset.forName("UTF-8")), 0)
-        }
-
-        fun passwordContent(username: String, password: String, salt: ByteArray): ByteArray {
-            // Implemented after https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-START-UP
-            // The documentation says nothing about the last zero byte but datagrip sends it and it works, so we do too
-            val digest = MessageDigest.getInstance("MD5")
-            val md5 = digest.digest(password.toByteArray() + username.toByteArray())
-            val md5asString = md5.toHexString()
-            val md5WithSalt = digest.digest(md5asString.toByteArray() + salt)
-            val message = "md5${md5WithSalt.toHexString()}".toByteArray()
-            return message
-        }
-    }
-}
-
 fun readyForQuery(): ByteArray {
     val responseBuffer = ByteBuffer.allocate(6)
     responseBuffer.put('Z'.code.toByte())
@@ -403,13 +306,7 @@ fun readyForQuery(): ByteArray {
     return responseBuffer.array()
 }
 
-fun authenticationOk(): ByteArray {
-    val responseBuffer = ByteBuffer.allocate(9)
-    responseBuffer.put('R'.code.toByte())
-    responseBuffer.putInt(8)
-    responseBuffer.putInt(0)
-    return responseBuffer.array()
-}
+
 
 fun paramMessage(key: String, value: String): ByteArray {
     val responseBuffer = ByteBuffer.allocate(
@@ -432,53 +329,14 @@ fun backendKeyData(): ByteArray {
     responseBuffer.putInt(0)
     return responseBuffer.array()
 }
-
-fun isSSLRequest(byteArray: ByteArray): Boolean {
-    return byteArray[0] == 0x00.toByte() &&
-            byteArray[1] == 0x00.toByte() &&
-            byteArray[2] == 0x00.toByte() &&
-            byteArray[3] == 0x08.toByte() &&
-            byteArray[4] == 0x04.toByte() &&
-            byteArray[5] == 0xd2.toByte() &&
-            byteArray[6] == 0x16.toByte() &&
-            byteArray[7] == 0x2f.toByte()
-}
-
 fun isStartupMessage(byteArray: ByteArray): Boolean {
     return byteArray[4] == 0x00.toByte() &&
             byteArray[5] == 0x03.toByte() &&
             byteArray[6] == 0x00.toByte() &&
             byteArray[7] == 0x00.toByte()
 }
-
-fun createAuthenticationMD5PasswordMessage(salt: Int): ByteArray {
-    val responseBuffer = ByteBuffer.allocate(13)
-    responseBuffer.put('R'.code.toByte())
-    responseBuffer.putInt(12)
-    responseBuffer.putInt(5)
-    responseBuffer.putInt(salt)
-    return responseBuffer.array()
+fun startupMessageContainsValidUser(message: ByteArray, msgLen: Int, username : String) : Boolean{
+    return !String(message).subSequence(8, msgLen).contains(username)
 }
-
-fun confirmPasswordMessage(
-    message: HashedPasswordMessage,
-    username: String,
-    expectedPassword: String,
-    md5Salt: ByteArray
-) {
-    val password = message.message
-    val expectedMessage = HashedPasswordMessage.passwordContent(username, expectedPassword, md5Salt)
-    if (!password.toByteArray().contentEquals(expectedMessage)) {
-        throw Exception("Password does not match")
-    }
-}
-
-fun tlsNotSupportedMessage(): ByteArray {
-    return "N".toByteArray()
-}
-
-fun tlsSupportedMessage(): ByteArray {
-    return "S".toByteArray()
-}
-
 fun ByteArray.toHexString() = joinToString("") { "%02x".format(it) }
+
