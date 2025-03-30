@@ -3,7 +3,7 @@ package dev.kviklet.kviklet.proxy
 import dev.kviklet.kviklet.proxy.postgres.TLSCertificate
 import dev.kviklet.kviklet.proxy.postgres.TlsCertEnvConfig
 import dev.kviklet.kviklet.proxy.postgres.preprocessPEMObject
-import   dev.kviklet.kviklet.proxy.postgres.tlsCertificateFactory
+import dev.kviklet.kviklet.proxy.postgres.tlsCertificateFactory
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.io.File
@@ -68,7 +68,7 @@ CJC2+PPy2deEXgREkGk/jpo=
     }
 
     @Test
-    fun `tlsCertificateFactory must return use env vars when the PROXY_TLS_CERTIFICATES_SOURCE is set to env`() {
+    fun `tlsCertificateFactory must use env vars when the PROXY_TLS_CERTIFICATES_SOURCE is set to env`() {
         val env = TlsCertEnvConfig()
         env.PROXY_TLS_CERTIFICATES_SOURCE = "env"
         env.PROXY_TLS_CERTIFICATE_CERT = testCert
@@ -76,7 +76,7 @@ CJC2+PPy2deEXgREkGk/jpo=
         assert(tlsCertificateFactory(env) != null)
     }
     @Test
-    fun `tlsCertificateFactory must return use file when the PROXY_TLS_CERTIFICATES_SOURCE is set to file`() {
+    fun `tlsCertificateFactory must use file when the PROXY_TLS_CERTIFICATES_SOURCE is set to file`() {
         val tmpdir: String = Files.createTempDirectory("tmpDirPrefix").toFile().absolutePath
         val fileCert = File(tmpdir + "crt.pem")
         val fileKey = File(tmpdir + "key.pem")

@@ -20,7 +20,7 @@ class PostgresProxy(
     private val eventService: EventService,
     private val executionRequest: ExecutionRequest,
     private val userId: String,
-    private val tlsCertificate: TLSCertificate? = null
+    private val tlsCertificate: TLSCertificate? = tlsCertificateFactory()
 ) {
     private val threadPool = Executors.newCachedThreadPool()
     private val clientConnections: ArrayList<Connection> = arrayListOf()

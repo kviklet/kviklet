@@ -62,7 +62,6 @@ class TlsCertEnvConfig {
     var PROXY_TLS_CERTIFICATE_CERT: String? = System.getenv("PROXY_TLS_CERTIFICATE_CERT")
 }
 
-
 fun tlsCertificateFactory(env: TlsCertEnvConfig = TlsCertEnvConfig()): TLSCertificate? {
     val logger = LoggerFactory.getLogger("TLSCertificate")
 
