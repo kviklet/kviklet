@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.proxy
 
+import dev.kviklet.kviklet.TLSCerts
 import dev.kviklet.kviklet.db.EventAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import org.junit.jupiter.api.AfterEach

@@ -54,18 +54,19 @@ fun preprocessPEMObject(pem: String): String {
 }
 
 // The only reason for existence of this class is to mock env variables
-class TlsCertEnvConfig {
-    var PROXY_TLS_CERTIFICATES_SOURCE: String = System.getenv("PROXY_TLS_CERTIFICATES_SOURCE") ?: "NONE"
-    var PROXY_TLS_CERTIFICATE_FILE: String? = System.getenv("PROXY_TLS_CERTIFICATE_FILE")
-    var PROXY_TLS_CERTIFICATE_KEY_FILE: String? = System.getenv("PROXY_TLS_CERTIFICATE_KEY_FILE")
-    var PROXY_TLS_CERTIFICATE_KEY: String? = System.getenv("PROXY_TLS_CERTIFICATE_KEY")
-    var PROXY_TLS_CERTIFICATE_CERT: String? = System.getenv("PROXY_TLS_CERTIFICATE_CERT")
+class TlsCertEnvConfig(
+    var PROXY_TLS_CERTIFICATE_SOURCE: String = "NONE",
+    var PROXY_TLS_CERTIFICATE_FILE: String? = null,
+    var PROXY_TLS_CERTIFICATE_KEY_FILE: String? = null,
+    var PROXY_TLS_CERTIFICATE_KEY: String? = null,
+    var PROXY_TLS_CERTIFICATE_CERT: String? = null
+) {
 }
 
 fun tlsCertificateFactory(env: TlsCertEnvConfig = TlsCertEnvConfig()): TLSCertificate? {
     val logger = LoggerFactory.getLogger("TLSCertificate")
 
-    when (env.PROXY_TLS_CERTIFICATES_SOURCE.lowercase()) {
+    when (env.PROXY_TLS_CERTIFICATE_SOURCE.lowercase()) {
         "file" -> {
             if (env.PROXY_TLS_CERTIFICATE_FILE == null || env.PROXY_TLS_CERTIFICATE_KEY_FILE == null) {
                 logger.error("PROXY_TLS_CERTIFICATES_SOURCE is set to file but PROXY_TLS_CERTIFICATE_FILE or PROXY_TLS_CERTIFICATE_KEY_FILE are not set")
@@ -93,7 +94,7 @@ fun tlsCertificateFactory(env: TlsCertEnvConfig = TlsCertEnvConfig()): TLSCertif
         }
 
         else -> {
-            logger.warn("PROXY_TLS_CERTIFICATES_SOURCE was not found, the proxy won't support TLS ")
+            logger.warn("PROXY_TLS_CERTIFICATE_SOURCE was not found, the proxy won't support TLS ")
             return null
         }
     }

@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.service
 
+import dev.kviklet.kviklet.TLSCerts
 import dev.kviklet.kviklet.controller.CreateCommentRequest
 import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
 import dev.kviklet.kviklet.controller.CreateExecutionRequestRequest
@@ -13,6 +14,7 @@ import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.ReviewPayload
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.proxy.postgres.PostgresProxy
+import dev.kviklet.kviklet.proxy.postgres.tlsCertificateFactory
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.security.UserDetailsWithId
@@ -44,6 +46,7 @@ import jakarta.servlet.ServletOutputStream
 import jakarta.transaction.Transactional
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
@@ -68,6 +71,8 @@ class ExecutionRequestService(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val proxies = mutableListOf<ExecutionProxy>()
+    @Autowired
+    lateinit var proxyTLSCerts: TLSCerts
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_EDIT)
@@ -671,21 +676,29 @@ class ExecutionRequestService(
         startTime: LocalDateTime,
         maxTimeMinutes: Long,
     ): CompletableFuture<Void>? = CompletableFuture.runAsync {
-        PostgresProxy(
-            hostname,
-            port,
-            databaseName,
-            authenticationDetails,
-            eventService,
-            executionRequest,
-            userId,
-        ).startServer(
-            mappedPort,
-            email,
-            tempPassword,
-            startTime,
-            maxTimeMinutes,
-        )
+        try {
+            PostgresProxy(
+                hostname,
+                port,
+                databaseName,
+                authenticationDetails,
+                eventService,
+                executionRequest,
+                userId,
+                tlsCertificateFactory(proxyTLSCerts.proxyCertificates())
+            ).startServer(
+                mappedPort,
+                email,
+                tempPassword,
+                startTime,
+                maxTimeMinutes
+            )
+        }
+        catch(e: Exception) {
+            // At least print the exception, otherwise it will fail silently
+            println(e.message)
+            throw e
+        }
     }
 }
 

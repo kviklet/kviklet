@@ -69,10 +69,7 @@ CJC2+PPy2deEXgREkGk/jpo=
 
     @Test
     fun `tlsCertificateFactory must use env vars when the PROXY_TLS_CERTIFICATES_SOURCE is set to env`() {
-        val env = TlsCertEnvConfig()
-        env.PROXY_TLS_CERTIFICATES_SOURCE = "env"
-        env.PROXY_TLS_CERTIFICATE_CERT = testCert
-        env.PROXY_TLS_CERTIFICATE_KEY = testKey
+        val env = TlsCertEnvConfig("env", null, null, testKey, testCert)
         assert(tlsCertificateFactory(env) != null)
     }
     @Test
@@ -88,7 +85,7 @@ CJC2+PPy2deEXgREkGk/jpo=
         }
 
         val env = TlsCertEnvConfig()
-        env.PROXY_TLS_CERTIFICATES_SOURCE = "file"
+        env.PROXY_TLS_CERTIFICATE_SOURCE = "file"
         env.PROXY_TLS_CERTIFICATE_FILE = fileCert.absolutePath
         env.PROXY_TLS_CERTIFICATE_KEY_FILE = fileKey.absolutePath
         assert(tlsCertificateFactory(env) != null)
