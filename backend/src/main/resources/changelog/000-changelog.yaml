@@ -1,7 +1,7 @@
 databaseChangeLog:
   - include:
-     file: 001-initial.yaml
-     relativeToChangelogFile: true
+      file: 001-initial.yaml
+      relativeToChangelogFile: true
   - include:
       file: 002-add-database-name.yaml
       relativeToChangelogFile: true
@@ -70,4 +70,10 @@ databaseChangeLog:
       relativeToChangelogFile: true
   - include:
       file: 025-add-live-session-table.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: 026-add-temporary-access-enabled-column.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: 027-add-explain-enabled.yaml
       relativeToChangelogFile: true

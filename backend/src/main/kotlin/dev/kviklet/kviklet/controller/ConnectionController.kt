@@ -87,7 +87,8 @@ data class CreateDatasourceConnectionRequest(
     val additionalJDBCOptions: String = "",
     val dumpsEnabled: Boolean = false,
     val authenticationType: AuthenticationType = AuthenticationType.USER_PASSWORD,
-
+    val temporaryAccessEnabled: Boolean = true,
+    val explainEnabled: Boolean = false,
 ) : ConnectionRequest()
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
@@ -132,6 +133,10 @@ data class UpdateDatasourceConnectionRequest(
     val authenticationType: AuthenticationType? = null,
 
     val dumpsEnabled: Boolean? = null,
+
+    val temporaryAccessEnabled: Boolean? = null,
+
+    val explainEnabled: Boolean? = null,
 ) : UpdateConnectionRequest()
 
 data class UpdateKubernetesConnectionRequest(
@@ -179,6 +184,8 @@ data class DatasourceConnectionResponse(
     val reviewConfig: ReviewConfigResponse,
     val additionalJDBCOptions: String,
     val dumpsEnabled: Boolean,
+    val temporaryAccessEnabled: Boolean,
+    val explainEnabled: Boolean,
 ) : ConnectionResponse(ConnectionType.DATASOURCE) {
     companion object {
         fun fromDto(datasourceConnection: DatasourceConnection) = DatasourceConnectionResponse(
@@ -198,6 +205,8 @@ data class DatasourceConnectionResponse(
             ),
             additionalJDBCOptions = datasourceConnection.additionalOptions,
             dumpsEnabled = datasourceConnection.dumpsEnabled,
+            temporaryAccessEnabled = datasourceConnection.temporaryAccessEnabled,
+            explainEnabled = datasourceConnection.explainEnabled,
         )
     }
 }
@@ -263,6 +272,8 @@ class ConnectionController(val connectionService: ConnectionService) {
             additionalJDBCOptions = request.additionalJDBCOptions,
             maxExecutions = request.maxExecutions,
             dumpsEnabled = request.dumpsEnabled,
+            temporaryAccessEnabled = request.temporaryAccessEnabled,
+            explainEnabled = request.explainEnabled,
         )
 
     private fun testDatabaseConnection(request: CreateDatasourceConnectionRequest): TestConnectionResult =
@@ -282,6 +293,8 @@ class ConnectionController(val connectionService: ConnectionService) {
             maxExecutions = request.maxExecutions,
             dumpsEnabled = request.dumpsEnabled,
             authenticationType = request.authenticationType,
+            temporaryAccessEnabled = request.temporaryAccessEnabled,
+            explainEnabled = request.explainEnabled,
         )
 
     private fun createKubernetesConnection(request: CreateKubernetesConnectionRequest): Connection =

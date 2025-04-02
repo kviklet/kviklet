@@ -10,14 +10,17 @@ import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
 import dev.kviklet.kviklet.service.dto.DatasourceType
+import dev.kviklet.kviklet.service.dto.ErrorResultLog
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventId
+import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.RequestType
+import dev.kviklet.kviklet.service.dto.ResultLog
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewEvent
 import dev.kviklet.kviklet.service.dto.Role
@@ -106,6 +109,38 @@ class EventFactory : Factory() {
         comment = comment,
         action = ReviewAction.REQUEST_CHANGE,
     )
+
+    fun createExecuteEvent(
+        id: EventId = EventId("test-event " + nextId()),
+        request: ExecutionRequest? = null,
+        createdAt: LocalDateTime = utcTimeNow(),
+        author: User? = null,
+        query: String = "SELECT 1;",
+        results: List<ResultLog> = emptyList(),
+    ): ExecuteEvent = ExecuteEvent(
+        eventId = id,
+        request = request ?: executionRequestFactory.createDatasourceExecutionRequest(),
+        author = author ?: userFactory.createUser(),
+        createdAt = createdAt,
+        query = query,
+        results = results,
+    )
+
+    fun createExecuteEventWithError(
+        id: EventId = EventId("test-event " + nextId()),
+        request: ExecutionRequest? = null,
+        createdAt: LocalDateTime = utcTimeNow(),
+        author: User? = null,
+        query: String = "SELECT 1;",
+        errorMessage: String = "Execution failed",
+    ): ExecuteEvent = ExecuteEvent(
+        eventId = id,
+        request = request ?: executionRequestFactory.createDatasourceExecutionRequest(),
+        author = author ?: userFactory.createUser(),
+        createdAt = createdAt,
+        query = query,
+        results = listOf(ErrorResultLog(errorCode = 0, message = errorMessage)),
+    )
 }
 
 class ExecutionRequestFactory : Factory() {
@@ -154,6 +189,8 @@ class ConnectionFactory : Factory() {
         protocol: DatabaseProtocol = DatabaseProtocol.MYSQL,
         additionalJDBCOptions: String = "",
         dumpEnabled: Boolean = false,
+        temporaryAccessEnabled: Boolean = false,
+        explainEnabled: Boolean = false,
     ): DatasourceConnection = DatasourceConnection(
         id,
         displayName,
@@ -169,6 +206,8 @@ class ConnectionFactory : Factory() {
         protocol,
         additionalJDBCOptions,
         dumpEnabled,
+        temporaryAccessEnabled,
+        explainEnabled,
     )
 }
 

@@ -160,7 +160,7 @@ class JDBCExecutor {
                     }
                 }
             } catch (e: SQLException) {
-                throw IllegalStateException("Error executing query", e)
+                throw IllegalStateException("Error executing query: ${e.message}", e)
             }
         }
     }
@@ -295,11 +295,9 @@ class JDBCExecutor {
 
     private fun createAwsIamConnection(url: String, auth: AuthenticationDetails.AwsIam): HikariDataSource =
         AwsIamDataSource(auth.username).apply {
-            logger.info("url is $url")
             jdbcUrl = url
             this.username = auth.username
             maximumPoolSize = 1
-            // IAM authentication requires SSL
 
             // Token lifetime is 15 minutes, so set max lifetime to 14 minutes
             maxLifetime = 840000

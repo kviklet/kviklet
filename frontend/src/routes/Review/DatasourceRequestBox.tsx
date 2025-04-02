@@ -72,10 +72,12 @@ function DatasourceRequestBox({
       tooltip:
         (!request?.csvDownload?.allowed && request?.csvDownload?.reason) ||
         undefined,
-      content: (
+      content: request?.csvDownload?.allowed ? (
         <a href={`${baseUrl}/execution-requests/${request?.id}/download`}>
           Download as CSV
         </a>
+      ) : (
+        <span>Download as CSV</span>
       ),
     },
     {
@@ -93,6 +95,7 @@ function DatasourceRequestBox({
             },
             enabled:
               isRelationalDatabase(request) &&
+              request?.connection?.explainEnabled &&
               (request?.reviewStatus === "APPROVED" ||
                 request?.reviewStatus === "AWAITING_APPROVAL"),
             content: "Explain",
@@ -202,6 +205,15 @@ function DatasourceRequestBox({
     }
   };
 
+  const getDisabledReason = () => {
+    if (request?.reviewStatus !== "APPROVED") {
+      return "Request needs to be approved before execution";
+    } else if (request?.executionStatus === "EXECUTED") {
+      return "Request has already been executed";
+    }
+    return undefined;
+  };
+
   return (
     <div>
       <div className="relative border-slate-500 dark:border dark:border-slate-950 dark:bg-slate-950">
@@ -272,10 +284,14 @@ function DatasourceRequestBox({
               className=""
               id="runQuery"
               type="submit"
-              disabled={request?.reviewStatus !== "APPROVED"}
+              disabled={
+                request?.reviewStatus !== "APPROVED" ||
+                request?.executionStatus === "EXECUTED"
+              }
               onClick={handleButtonClick}
               onCancel={() => void cancelQuery()}
               dataTestId="run-query-button"
+              title={getDisabledReason()}
             >
               <div
                 className={`play-triangle mr-2 inline-block h-3 w-2 ${
@@ -294,10 +310,14 @@ function DatasourceRequestBox({
               className=""
               id="runQuery"
               type={
-                (request?.reviewStatus == "APPROVED" && "submit") || "disabled"
+                (request?.reviewStatus == "APPROVED" &&
+                  request?.executionStatus !== "EXECUTED" &&
+                  "submit") ||
+                "disabled"
               }
               onClick={() => void runQuery()}
               dataTestId="run-query-button"
+              title={getDisabledReason()}
             >
               <div
                 className={`play-triangle mr-2 inline-block h-3 w-2 ${

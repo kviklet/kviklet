@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import {
   ConnectionPayload,
   ConnectionResponse,
+  DatabaseType,
   PatchConnectionPayload,
-  PatchDatabaseConnectionPayload,
   addConnection,
   deleteConnection,
   getConnection,
@@ -49,34 +49,10 @@ const useConnections = () => {
     }
   };
 
-  const editConnection = async (
-    connectionId: string,
-    connection: PatchConnectionPayload,
-  ) => {
-    const response = await patchConnection(connection, connectionId);
-    if (isApiErrorResponse(response)) {
-      addNotification({
-        title: "Failed to edit connection",
-        text: response.message,
-        type: "error",
-      });
-      return;
-    } else {
-      const newConnections = connections.map((connection) => {
-        if (connection.id === response.id) {
-          return response;
-        }
-        return connection;
-      });
-      setConnections(newConnections);
-    }
-  };
-
   return {
     loading,
     connections,
     createConnection,
-    editConnection,
   };
 };
 
@@ -106,15 +82,18 @@ const useConnection = (id: string) => {
   }, [id]);
 
   const editConnection = async (patchedConnection: PatchConnectionPayload) => {
-    if (isDataSourceConnection(patchedConnection)) {
-      if (patchedConnection.password === "") {
-        patchedConnection.password = undefined;
-      }
-    }
     if (!connection?.id) {
       return;
     }
     setLoading(true);
+    if (
+      patchedConnection.connectionType === "DATASOURCE" &&
+      patchedConnection.authenticationType === "USER_PASSWORD" &&
+      patchedConnection.password === ""
+    ) {
+      // ensure that the password is not updated if the user didn't provide a new one
+      patchedConnection.password = undefined;
+    }
     const response = await patchConnection(patchedConnection, connection.id);
     if (isApiErrorResponse(response)) {
       addNotification({
@@ -155,11 +134,9 @@ const useConnection = (id: string) => {
   };
 };
 
-function isDataSourceConnection(
-  connection: PatchConnectionPayload,
-): connection is PatchDatabaseConnectionPayload {
-  return connection.connectionType === "DATASOURCE";
+function supportsIamAuth(type: DatabaseType): boolean {
+  return [DatabaseType.POSTGRES, DatabaseType.MYSQL].includes(type);
 }
 
 export default useConnections;
-export { useConnection };
+export { useConnection, supportsIamAuth };

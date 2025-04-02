@@ -80,10 +80,12 @@ dependencies {
     testImplementation("org.testcontainers:mssqlserver:$testcontainersVersion")
     testImplementation("org.testcontainers:mongodb:$testcontainersVersion")
     testImplementation("org.testcontainers:mariadb:$testcontainersVersion")
+    testImplementation("org.jsoup:jsoup:1.16.1")
 
     testImplementation("io.kotest:kotest-assertions-core:5.5.5")
     testImplementation("io.mockk:mockk:1.13.4")
     testImplementation("com.ninja-squad:springmockk:4.0.2")
+    testImplementation("net.sourceforge.htmlunit:htmlunit:2.70.0")
 
     // querydsl
     implementation("com.querydsl:querydsl-core:$queryDslVersion")

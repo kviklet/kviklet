@@ -46,6 +46,8 @@ const databaseConnectionResponseSchema = withType(
     }),
     additionalJDBCOptions: z.string().optional(),
     dumpsEnabled: z.boolean(),
+    temporaryAccessEnabled: z.boolean(),
+    explainEnabled: z.boolean(),
   }),
   "DATASOURCE",
 );
@@ -111,40 +113,25 @@ interface KubernetesConnection extends ConnectionBase {
 
 type ConnectionPayload = DatabaseConnection | KubernetesConnection;
 
-const patchDatabaseConnectionPayloadSchema = z
-  .object({
-    displayName: z.coerce.string().optional(),
-    protocol: z.nativeEnum(DatabaseProtocol).optional(),
-    username: z.string().optional(),
-    password: z.string().optional(),
-    description: z.string().optional(),
-    databaseName: z.string().optional(),
-    reviewConfig: z
-      .object({
-        numTotalRequired: z.number(),
-      })
-      .optional(),
-    maxExecutions: z.number().optional().nullable(),
-  })
-  .transform((data) => ({ ...data, connectionType: "DATASOURCE" }));
+type AllNullableExcept<T, K extends keyof T> = {
+  [P in keyof T]: P extends K ? T[P] : T[P] | undefined;
+};
 
-const patchKubernetesConnectionPayloadSchema = z
-  .object({
-    displayName: z.coerce.string().optional(),
-    description: z.string().optional(),
-    reviewConfig: z
-      .object({
-        numTotalRequired: z.number(),
-      })
-      .optional(),
-    maxExecutions: z.number().optional().nullable(),
-  })
-  .transform((data) => ({ ...data, connectionType: "KUBERNETES" }));
+// Use a distributive conditional type to preserve the union structure
+type PatchDatabaseConnectionPayload = DatabaseConnection extends infer T
+  ? T extends DatabaseConnection
+    ? Omit<AllNullableExcept<T, "connectionType" | "authenticationType">, "id">
+    : never
+  : never;
 
-const patchConnectionPayloadSchema = z.union([
-  patchDatabaseConnectionPayloadSchema,
-  patchKubernetesConnectionPayloadSchema,
-]);
+type PatchKubernetesConnectionPayload = Omit<
+  AllNullableExcept<KubernetesConnection, "connectionType">,
+  "id"
+>;
+
+type PatchConnectionPayload =
+  | PatchDatabaseConnectionPayload
+  | PatchKubernetesConnectionPayload;
 
 // extract the inferred type
 type ConnectionResponse = z.infer<typeof connectionResponseSchema>;
@@ -154,13 +141,6 @@ type DatabaseConnectionResponse = z.infer<
 type KubernetesConnectionResponse = z.infer<
   typeof kubernetesConnectionResponseSchema
 >;
-type PatchDatabaseConnectionPayload = z.infer<
-  typeof patchDatabaseConnectionPayloadSchema
->;
-type PatchKubernetesConnectionPayload = z.infer<
-  typeof patchKubernetesConnectionPayloadSchema
->;
-type PatchConnectionPayload = z.infer<typeof patchConnectionPayloadSchema>;
 
 type TestConnectionResponse = z.infer<typeof testConnectionResponseSchema>;
 

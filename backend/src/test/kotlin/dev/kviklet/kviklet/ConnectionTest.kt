@@ -16,6 +16,7 @@ import dev.kviklet.kviklet.db.ExecutionRequestRepository
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.ExecutionRequestService
+import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
@@ -262,5 +263,143 @@ class ConnectionTest(
         updatedRequest.statement shouldBe mongoQuery
         updatedRequest.title shouldBe "Find Adult Users"
         updatedRequest.description shouldBe "Retrieve users aged 18 and above, sorted by name"
+    }
+
+    @Test
+    fun `test update authentication method`() {
+        val connection = datasourceConnectionController.createConnection(
+            CreateDatasourceConnectionRequest(
+                id = "postgres-connection",
+                displayName = "Postgres Connection",
+                username = "postgres",
+                password = "postgres",
+                reviewConfig = ReviewConfigRequest(
+                    numTotalRequired = 1,
+                ),
+                type = DatasourceType.POSTGRESQL,
+                hostname = "localhost",
+                port = 5432,
+                authenticationType = AuthenticationType.USER_PASSWORD,
+            ),
+        )
+
+        val editedConnection = datasourceConnectionController.updateConnection(
+            "postgres-connection",
+            UpdateDatasourceConnectionRequest(
+                username = "postgres",
+                authenticationType = AuthenticationType.AWS_IAM,
+            ),
+        )
+
+        editedConnection as DatasourceConnectionResponse
+
+        editedConnection.authenticationType shouldBe AuthenticationType.AWS_IAM
+        editedConnection.username shouldBe "postgres"
+        editedConnection.displayName shouldBe "Postgres Connection"
+    }
+
+    @Test
+    fun `test temporary access flag`() {
+        // Create a connection with temporary access disabled
+        val connection = datasourceConnectionController.createConnection(
+            CreateDatasourceConnectionRequest(
+                id = "temp-access-conn",
+                displayName = "Temp Access Test Connection",
+                username = "root",
+                password = "root",
+                reviewConfig = ReviewConfigRequest(
+                    numTotalRequired = 1,
+                ),
+                type = DatasourceType.MYSQL,
+                hostname = "localhost",
+                port = 3306,
+                temporaryAccessEnabled = false,
+            ),
+        ) as DatasourceConnectionResponse
+
+        // Verify the flag is false in the created connection
+        connection.temporaryAccessEnabled shouldBe false
+
+        // Get the connection and verify the flag is still false
+        val retrievedConnection = datasourceConnectionController.getConnection(
+            "temp-access-conn",
+        ) as DatasourceConnectionResponse
+        retrievedConnection.temporaryAccessEnabled shouldBe false
+
+        // Update the connection to enable temporary access
+        val updatedConnection = datasourceConnectionController.updateConnection(
+            "temp-access-conn",
+            UpdateDatasourceConnectionRequest(
+                temporaryAccessEnabled = true,
+            ),
+        ) as DatasourceConnectionResponse
+
+        // Verify the flag is now true
+        updatedConnection.temporaryAccessEnabled shouldBe true
+
+        // Get all connections and verify the flag is correct
+        val allConnections = datasourceConnectionController.getDatasourceConnections()
+        val ourConnection = allConnections.find {
+            (it as DatasourceConnectionResponse).id.toString() ==
+                "temp-access-conn"
+        } as DatasourceConnectionResponse
+        ourConnection.temporaryAccessEnabled shouldBe true
+    }
+
+    @Test
+    fun `test temporary access execution requests are not allowed on connections with temporary access disabled`() {
+        // Create a connection with temporary access disabled
+        val connection = datasourceConnectionController.createConnection(
+            CreateDatasourceConnectionRequest(
+                id = "temp-access-conn",
+                displayName = "Temp Access Test Connection",
+                username = "root",
+                password = "root",
+                reviewConfig = ReviewConfigRequest(
+                    numTotalRequired = 1,
+                ),
+                type = DatasourceType.MYSQL,
+                hostname = "localhost",
+                port = 3306,
+                temporaryAccessEnabled = false,
+            ),
+        ) as DatasourceConnectionResponse
+
+        // Create a test user
+        val testUser = userHelper.createUser(listOf("*"))
+        val testUserDetails = UserDetailsWithId(
+            id = testUser.getId()!!,
+            email = testUser.email,
+            password = testUser.password,
+            authorities = emptyList(),
+        )
+
+        // Attempt to create a temporary access execution request
+        val exception = org.junit.jupiter.api.assertThrows<IllegalStateException> {
+            executionRequestController.create(
+                CreateDatasourceExecutionRequestRequest(
+                    connectionId = ConnectionId("temp-access-conn"),
+                    title = "Test Temporary Access",
+                    description = "This should fail",
+                    statement = "SELECT 1",
+                    type = RequestType.TemporaryAccess,
+                ),
+                userDetails = testUserDetails,
+            )
+        }
+
+        exception.message shouldBe "Temporary access is not enabled for this connection"
+
+        // Try to create a normal execution request
+        executionRequestController.create(
+            CreateDatasourceExecutionRequestRequest(
+                connectionId = ConnectionId("temp-access-conn"),
+                title = "Test Normal Execution",
+                description = "This should succeed",
+                statement = "SELECT 1",
+                type = RequestType.SingleExecution,
+            ),
+            userDetails = testUserDetails,
+        )
     }
 }
