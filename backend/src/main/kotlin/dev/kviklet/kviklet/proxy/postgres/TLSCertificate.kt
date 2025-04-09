@@ -45,12 +45,16 @@ class TLSCertificate(privKey: String, cert: String) {
 }
 
 fun preprocessPEMObject(pem: String): String {
-    return pem
-        .replace("\\s".toRegex(), "")
-        .replace("-----BEGINRSAPRIVATEKEY-----", "")
-        .replace("-----ENDRSAPRIVATEKEY-----", "")
-        .replace("-----BEGINCERTIFICATE-----", "")
-        .replace("-----ENDCERTIFICATE-----", "")
+    var processedPem = pem.replace("\\s".toRegex(), "");
+    val headers = arrayOf(
+        "-----BEGINRSAPRIVATEKEY-----","-----ENDRSAPRIVATEKEY-----",
+        "-----BEGINCERTIFICATE-----","-----ENDCERTIFICATE-----",
+        "-----BEGINRSAPRIVATEKEY-----", "-----ENDRSAPRIVATEKEY-----",
+        "-----BEGINECPRIVATEKEY-----", "-----ENDECPRIVATEKEY-----")
+    for (header in headers) {
+        processedPem = processedPem.replace(header, "")
+    }
+    return processedPem
 }
 
 // The only reason for existence of this class is to mock env variables
