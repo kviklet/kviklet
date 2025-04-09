@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 026-add-temporary-access-enabled-column
+      author: jascha
+      changes:
+        - addColumn:
+            tableName: connection
+            columns:
+              - column:
+                  name: temporary_access_enabled
+                  type: boolean
+                  defaultValue: true
+                  constraints:
+                    nullable: false

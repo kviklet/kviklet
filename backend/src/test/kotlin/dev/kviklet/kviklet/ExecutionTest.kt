@@ -26,9 +26,11 @@ import org.springframework.core.io.FileUrlResource
 import org.springframework.jdbc.datasource.init.ScriptUtils
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.ResultActions
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.testcontainers.containers.PostgreSQLContainer
@@ -72,7 +74,7 @@ class ExecutionTest {
 
         testUser = userHelper.createUser(permissions = listOf("*"))
         testReviewer = userHelper.createUser(permissions = listOf("*"))
-        testConnection = connectionHelper.createPostgresConnection(db)
+        testConnection = connectionHelper.createPostgresConnection(db, explainEnabled = true)
     }
 
     @AfterEach
@@ -316,9 +318,9 @@ class ExecutionTest {
         @Test
         fun `when executing simple insert then succeed`() {
             val insertRequest = executionRequestHelper.createExecutionRequest(
-                db,
-                testUser,
-                "INSERT INTO foo.simple_table VALUES (1, 'test');",
+                author = testUser,
+                connection = testConnection,
+                statement = "INSERT INTO foo.simple_table VALUES (1, 'test');",
             )
             val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
             val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
@@ -332,9 +334,9 @@ class ExecutionTest {
         @Test
         fun `when execution errors then handle gracefully`() {
             val errorRequest = executionRequestHelper.createExecutionRequest(
-                db,
-                testUser,
-                "INSERT INTO non_existent_table VALUES (1, 'test');",
+                author = testUser,
+                connection = testConnection,
+                statement = "INSERT INTO non_existent_table VALUES (1, 'test');",
             )
             val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
             val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
@@ -346,19 +348,139 @@ class ExecutionTest {
         }
     }
 
+    @Nested
+    inner class ExplainTests {
+        private lateinit var testSelectRequest: ExecutionRequestDetails
+        private lateinit var testInsertRequest: ExecutionRequestDetails
+        private lateinit var testConnectionWithExplainDisabled: Connection
+
+        @BeforeEach
+        fun `setup execution requests`() {
+            testSelectRequest = executionRequestHelper.createExecutionRequest(
+                db,
+                testUser,
+                "SELECT * FROM foo.simple_table",
+                connection = testConnection,
+            )
+            testInsertRequest = executionRequestHelper.createExecutionRequest(
+                db,
+                testUser,
+                "INSERT INTO foo.simple_table VALUES (3, 'test')",
+                connection = testConnection,
+            )
+
+            testConnectionWithExplainDisabled = connectionHelper.createPostgresConnection(db, explainEnabled = false)
+        }
+
+        @Test
+        fun `explain works on unapproved SELECT statements`() {
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+
+            // Verify explain works before approval
+            mockMvc.perform(
+                post("/execution-requests/${testSelectRequest.getId()}/execute")
+                    .cookie(reviewerCookie)
+                    .content("""{"explain": true}""")
+                    .contentType("application/json"),
+            )
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.results[0].columns[0].label").value("QUERY PLAN"))
+        }
+
+        @Test
+        fun `explain fails on non-SELECT statements`() {
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+
+            // Verify explain fails for INSERT
+            mockMvc.perform(
+                post("/execution-requests/${testInsertRequest.getId()}/execute")
+                    .cookie(reviewerCookie)
+                    .content("""{"explain": true}""")
+                    .contentType("application/json"),
+            )
+                .andExpect(status().isBadRequest)
+        }
+
+        @Test
+        fun `explain works for non-author users`() {
+            val otherUser = userHelper.createUser(permissions = listOf("*"))
+            val otherUserCookie = userHelper.login(email = otherUser.email, mockMvc = mockMvc)
+
+            // Verify another user can explain the query
+            mockMvc.perform(
+                post("/execution-requests/${testSelectRequest.getId()}/execute")
+                    .cookie(otherUserCookie)
+                    .content("""{"explain": true}""")
+                    .contentType("application/json"),
+            )
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.results[0].columns[0].label").value("QUERY PLAN"))
+        }
+
+        @Test
+        fun `explain fails when explain is disabled for the connection`() {
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+            val testSelectRequestNoExplain = executionRequestHelper.createExecutionRequest(
+                db,
+                testUser,
+                "SELECT * FROM foo.simple_table",
+                connection = testConnectionWithExplainDisabled,
+            )
+
+            // Verify explain fails when disabled
+            mockMvc.perform(
+                post("/execution-requests/${testSelectRequestNoExplain.getId()}/execute")
+                    .cookie(reviewerCookie)
+                    .content("""{"explain": true}""")
+                    .contentType("application/json"),
+            )
+                .andExpect(status().isBadRequest)
+                .andExpect(jsonPath("$.message").value("Explain is not enabled for this connection"))
+        }
+    }
+
     @Test
     fun `when downloading CSV then succeed`() {
         val csvRequest = executionRequestHelper.createApprovedRequest(
-            db,
-            testUser,
-            testReviewer,
-            "SELECT * FROM foo.simple_table",
+            author = testUser,
+            approver = testReviewer,
+            connection = testConnection,
+            sql = "SELECT * FROM foo.simple_table",
         )
         val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
 
-        val response = downloadCSV(csvRequest.getId(), userCookie)
-        verifyCSVContent(response)
+        val contentResponse = downloadCSV(csvRequest.getId(), userCookie).andExpect(status().isOk).andReturn()
+        val content = contentResponse.response.contentAsString
+        verifyCSVContent(content)
         verifyExecutionsList(csvRequest.getId(), userCookie)
+    }
+
+    @Test
+    fun `when downloading CSV with invalid query then return useful error`() {
+        val csvRequest = executionRequestHelper.createApprovedRequest(
+            author = testUser,
+            approver = testReviewer,
+            connection = testConnection,
+            sql = "SELECT * FROM foo.inexistent_table",
+        )
+        val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+        val response = downloadCSV(csvRequest.getId(), userCookie).andExpect(status().is4xxClientError)
+        response.andExpect(content().string(containsString("relation \"foo.inexistent_table\" does not exist")))
+
+        // Verify the request has exactly one event of type EXECUTE and it's an error
+        mockMvc.perform(
+            get("/execution-requests/${csvRequest.getId()}")
+                .cookie(userCookie),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.events", hasSize<Collection<*>>(2)))
+            .andExpect(jsonPath("$.events[1].type").value("EXECUTE"))
+            .andExpect(jsonPath("$.events[1].results[0].type").value("ERROR"))
+            .andExpect(
+                jsonPath(
+                    "$.events[1].results[0].message",
+                ).value(containsString("relation \"foo.inexistent_table\" does not exist")),
+            )
     }
 
     @Test
@@ -518,22 +640,19 @@ class ExecutionTest {
         mockMvc.perform(
             get("/execution-requests/$executionRequestId").cookie(cookie),
         ).andExpect(status().isOk)
-            .andExpect(jsonPath("$.executionStatus").value("EXECUTED"))
-            .andExpect(jsonPath("$.reviewStatus").value("APPROVED"))
+            .andExpect(jsonPath("$.executionStatus").value("EXECUTABLE"))
+            .andExpect(jsonPath("$.reviewStatus").value("AWAITING_APPROVAL"))
             .andExpect(jsonPath("$.events", hasSize<Collection<*>>(2)))
             .andExpect(jsonPath("$.events[0].type").value("REVIEW"))
             .andExpect(jsonPath("$.events[1].type").value("EXECUTE"))
             .andExpect(jsonPath("$.events[1].results[0].type").value("ERROR"))
     }
 
-    private fun downloadCSV(executionRequestId: String, cookie: Cookie): String {
-        val result = mockMvc.perform(
-            get("/execution-requests/$executionRequestId/download")
-                .cookie(cookie)
-                .contentType("application/json"),
-        ).andExpect(status().isOk).andReturn()
-        return result.response.contentAsString
-    }
+    private fun downloadCSV(executionRequestId: String, cookie: Cookie): ResultActions = mockMvc.perform(
+        get("/execution-requests/$executionRequestId/download")
+            .cookie(cookie)
+            .contentType("application/json"),
+    )
 
     private fun verifyCSVContent(content: String) {
         assert(content.contains("col1,col2"))

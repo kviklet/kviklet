@@ -74,13 +74,23 @@ class UserDetailsServiceImpl(
         var user = userAdapter.findByLdapIdentifier(uniqueId)
 
         if (user == null) {
-            val defaultRole = roleAdapter.findById(Role.DEFAULT_ROLE_ID)
-            user = dev.kviklet.kviklet.db.User(
-                ldapIdentifier = uniqueId,
-                email = email,
-                fullName = fullName,
-                roles = setOf(defaultRole),
-            )
+            user = userAdapter.findByEmail(email)
+            if (user != null) {
+                user = user.copy(
+                    ldapIdentifier = uniqueId,
+                    fullName = fullName,
+                    password = null,
+                    subject = null,
+                )
+            } else {
+                val defaultRole = roleAdapter.findById(Role.DEFAULT_ROLE_ID)
+                user = dev.kviklet.kviklet.db.User(
+                    ldapIdentifier = uniqueId,
+                    email = email,
+                    fullName = fullName,
+                    roles = setOf(defaultRole),
+                )
+            }
         } else {
             user = user.copy(
                 email = email,

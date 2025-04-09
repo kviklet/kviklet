@@ -163,60 +163,76 @@ class RoleHelper(private val roleService: RoleService) {
 @Component
 class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
 
+    var connectionCount = 1
+
     /*
      * Create a dummy connection for testing purposes
      * This connection cannot execute requests
      * @return Connection
      */
     @Transactional
-    fun createDummyConnection(): Connection = connectionAdapter.createDatasourceConnection(
-        ConnectionId("ds-conn-test"),
-        "Test Connection",
-        AuthenticationType.USER_PASSWORD,
-        "test",
-        1,
-        "test",
-        "test",
-        "A test connection",
-        ReviewConfig(
-            numTotalRequired = 1,
-        ),
-        1,
-        "localhost",
-        DatasourceType.POSTGRESQL,
-        DatabaseProtocol.POSTGRESQL,
-        additionalJDBCOptions = "",
-        dumpsEnabled = false,
-    )
+    fun createDummyConnection(): Connection {
+        val connection = connectionAdapter.createDatasourceConnection(
+            ConnectionId("ds-conn-test-$connectionCount"),
+            "Test Connection $connectionCount",
+            AuthenticationType.USER_PASSWORD,
+            "test",
+            1,
+            "test",
+            "test",
+            "A test connection",
+            ReviewConfig(
+                numTotalRequired = 1,
+            ),
+            1,
+            "localhost",
+            DatasourceType.POSTGRESQL,
+            DatabaseProtocol.POSTGRESQL,
+            additionalJDBCOptions = "",
+            dumpsEnabled = false,
+            temporaryAccessEnabled = true,
+            explainEnabled = false,
+        )
+        connectionCount++
+        return connection
+    }
 
     @Transactional
-    fun createPostgresConnection(container: JdbcDatabaseContainer<*>): Connection =
-        connectionAdapter.createDatasourceConnection(
-            ConnectionId("ds-conn-test"),
-            "Test Connection",
+    fun createPostgresConnection(
+        container: JdbcDatabaseContainer<*>,
+        explainEnabled: Boolean = true,
+        maxExecutions: Int = 1,
+    ): Connection {
+        val connection = connectionAdapter.createDatasourceConnection(
+            ConnectionId("ds-conn-test-$connectionCount"),
+            "Test Connection $connectionCount",
             AuthenticationType.USER_PASSWORD,
             container.databaseName,
-            1,
+            maxExecutions,
             container.username,
             container.password,
             "A test connection",
             ReviewConfig(
                 numTotalRequired = 1,
             ),
-
             container.getMappedPort(5432),
             container.host,
             DatasourceType.POSTGRESQL,
             DatabaseProtocol.POSTGRESQL,
             additionalJDBCOptions = "",
             dumpsEnabled = false,
+            temporaryAccessEnabled = true,
+            explainEnabled = explainEnabled,
         )
+        connectionCount++
+        return connection
+    }
 
     @Transactional
-    fun createMongoDBConnection(container: MongoDBContainer, databaseName: String = "db"): Connection =
-        connectionAdapter.createDatasourceConnection(
-            ConnectionId("ds-conn-test"),
-            "Test Connection",
+    fun createMongoDBConnection(container: MongoDBContainer, databaseName: String = "db"): Connection {
+        val connection = connectionAdapter.createDatasourceConnection(
+            ConnectionId("ds-conn-test-$connectionCount"),
+            "Test Connection $connectionCount",
             AuthenticationType.USER_PASSWORD,
             databaseName,
             1,
@@ -232,18 +248,27 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             DatabaseProtocol.MONGODB,
             additionalJDBCOptions = "",
             dumpsEnabled = false,
+            temporaryAccessEnabled = true,
+            explainEnabled = false,
         )
+        connectionCount++
+        return connection
+    }
 
     @Transactional
-    fun createKubernetesConnection(): Connection = connectionAdapter.createKubernetesConnection(
-        ConnectionId("k8s-conn-test"),
-        "Test Kubernetes Connection",
-        "A test kubernetes connection",
-        ReviewConfig(
-            numTotalRequired = 1,
-        ),
-        1,
-    )
+    fun createKubernetesConnection(): Connection {
+        val connection = connectionAdapter.createKubernetesConnection(
+            ConnectionId("k8s-conn-test-$connectionCount"),
+            "Test Kubernetes Connection $connectionCount",
+            "A test kubernetes connection",
+            ReviewConfig(
+                numTotalRequired = 1,
+            ),
+            1,
+        )
+        connectionCount++
+        return connection
+    }
 
     @Transactional
     fun deleteAll() {
@@ -261,7 +286,7 @@ class ExecutionRequestHelper(
     fun createExecutionRequest(
         dbcontainer: JdbcDatabaseContainer<*>? = null,
         author: User,
-        statement: String = "SELECT 1;",
+        statement: String? = "SELECT 1;",
         connection: Connection? = null,
         description: String = "A test execution request",
         requestType: RequestType = RequestType.SingleExecution,
@@ -270,7 +295,7 @@ class ExecutionRequestHelper(
         return executionRequestAdapter.createExecutionRequest(
             connectionId = requestConnection.id,
             title = "Test Execution",
-            type = RequestType.SingleExecution,
+            type = requestType,
             description = description,
             statement = statement,
             executionStatus = "PENDING",

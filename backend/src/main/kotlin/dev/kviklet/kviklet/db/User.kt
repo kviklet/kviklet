@@ -119,16 +119,19 @@ interface UserRepository : JpaRepository<UserEntity, String> {
 
 @Service
 class UserAdapter(private val userRepository: UserRepository, private val roleRepository: RoleRepository) {
+    @Transactional(readOnly = true)
     fun findByEmail(email: String): User? {
         val userEntity = userRepository.findByEmail(email) ?: return null
         return userEntity.toDto()
     }
 
+    @Transactional(readOnly = true)
     fun findByLdapIdentifier(ldapIdentifier: String): User? {
         val userEntity = userRepository.findByLdapIdentifier(ldapIdentifier) ?: return null
         return userEntity.toDto()
     }
 
+    @Transactional(readOnly = true)
     fun findBySubject(subject: String): User? {
         val userEntity = userRepository.findBySubject(subject) ?: return null
         return userEntity.toDto()
@@ -143,6 +146,7 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
         return userEntity.toDto()
     }
 
+    @Transactional
     fun createUser(user: User): User {
         val userEntity = UserEntity(
             ldapIdentifier = user.ldapIdentifier,
@@ -156,6 +160,7 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
         return savedUserEntity.toDto()
     }
 
+    @Transactional
     fun createOrUpdateUser(user: User): User {
         val userEntity = user.getId()?.let {
             userRepository.findByIdOrNull(it)
@@ -195,10 +200,12 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
         return savedUserEntity.toDto()
     }
 
+    @Transactional
     fun deleteUser(id: String) {
         userRepository.deleteById(id)
     }
 
+    @Transactional
     fun deleteAll() {
         userRepository.deleteAll()
     }

@@ -106,7 +106,12 @@ class ExecutionRequestService(
         }
         if (request.type == RequestType.Dump) {
             if (!connection.dumpsEnabled) {
-                throw RuntimeException("Dumps are not enabled for this connection")
+                throw IllegalStateException("Dumps are not enabled for this connection")
+            }
+        }
+        if (request.type == RequestType.TemporaryAccess) {
+            if (!connection.temporaryAccessEnabled) {
+                throw IllegalStateException("Temporary access is not enabled for this connection")
             }
         }
         return executionRequestAdapter.createExecutionRequest(
@@ -514,25 +519,38 @@ class ExecutionRequestService(
             throw RuntimeException(downloadAllowedAndReason.second)
         }
 
-        eventService.saveEvent(
+        val eventId = eventService.saveEvent(
             id,
             userId,
             ExecutePayload(
                 query = queryToExecute,
                 isDownload = true,
             ),
-        )
+        ).eventId!!
 
-        JDBCExecutor.executeAndStreamDbResponse(
-            connectionString = connection.getConnectionString(),
-            authenticationDetails = connection.auth,
-            query = queryToExecute,
-        ) { row ->
-            outputStream.println(
-                row.joinToString(",") { field ->
-                    escapeCsvField(field)
-                },
+        try {
+            JDBCExecutor.executeAndStreamDbResponse(
+                connectionString = connection.getConnectionString(),
+                authenticationDetails = connection.auth,
+                query = queryToExecute,
+            ) { row ->
+                outputStream.println(
+                    row.joinToString(",") { field ->
+                        escapeCsvField(field)
+                    },
+                )
+            }
+        } catch (e: Exception) {
+            eventService.addResultLogs(
+                eventId,
+                listOf(
+                    ErrorResultLog(
+                        errorCode = 0,
+                        message = e.message ?: "An error occurred while streaming the database response",
+                    ),
+                ),
             )
+            throw e
         }
     }
 
@@ -543,7 +561,7 @@ class ExecutionRequestService(
         return field
     }
 
-    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
+    @Policy(Permission.EXECUTION_REQUEST_GET)
     fun explain(id: ExecutionRequestId, query: String?, userId: String): DBExecutionResult {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
         val connection = executionRequest.request.connection
@@ -551,16 +569,25 @@ class ExecutionRequestService(
             throw RuntimeException("Only Datasource connections can be explained")
         }
 
+        if (!connection.explainEnabled) {
+            throw IllegalArgumentException("Explain is not enabled for this connection")
+        }
+
         val requestType = executionRequest.request.type
         if (requestType != RequestType.SingleExecution) {
             throw InvalidReviewException("Can only explain single queries!")
         }
         val parsedStatements = CCJSqlParserUtil.parseStatements(executionRequest.request.statement)
+        val selectStatements = parsedStatements.filter { it is net.sf.jsqlparser.statement.select.Select }
+
+        if (selectStatements.isEmpty()) {
+            throw IllegalArgumentException("Can only explain SELECT queries!")
+        }
 
         val explainStatements = if (connection.type == DatasourceType.MSSQL) {
-            parsedStatements.joinToString(";")
+            selectStatements.joinToString(";")
         } else {
-            parsedStatements.joinToString(";") { "EXPLAIN $it" }
+            selectStatements.joinToString(";") { "EXPLAIN $it" }
         }
 
         val result = JDBCExecutor.execute(

@@ -4,7 +4,6 @@ import dev.kviklet.kviklet.controller.ServerUrlInterceptor
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
-import dev.kviklet.kviklet.service.EmailAlreadyExistsException
 import dev.kviklet.kviklet.service.dto.Role
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -318,22 +317,29 @@ class CustomOidcUserService(private val userAdapter: UserAdapter, private val ro
         var user = userAdapter.findBySubject(subject)
 
         if (user == null) {
+            // Check if a user with the same email exists
             userAdapter.findByEmail(email)?.let {
-                // This means a password user with the same email already exists
-                throw EmailAlreadyExistsException(email)
+                // Update existing user to use SSO
+                user = it.copy(
+                    subject = subject, // Set the SSO subject
+                    email = email,
+                    fullName = name ?: it.fullName,
+                    password = null,
+                    ldapIdentifier = null,
+                )
+            } ?: run {
+                // No existing user found, create a new one
+                val defaultRole = roleAdapter.findById(Role.DEFAULT_ROLE_ID)
+                user = User(
+                    subject = subject,
+                    email = email,
+                    fullName = name,
+                    roles = setOf(defaultRole),
+                )
             }
-            val defaultRole = roleAdapter.findById(Role.DEFAULT_ROLE_ID)
-            // If the user is signing in for the first time, create a new user
-            user = User(
-                subject = subject,
-                email = email,
-                fullName = name,
-                roles = setOf(defaultRole),
-                // Set default roles and other user properties here
-            )
         } else {
             // If the user has already signed in before, update the user's information
-            user = user.copy(
+            user = user!!.copy(
                 subject = subject,
                 email = email,
                 fullName = name,
@@ -341,7 +347,7 @@ class CustomOidcUserService(private val userAdapter: UserAdapter, private val ro
             // Update other user properties here
         }
 
-        val savedUser = userAdapter.createOrUpdateUser(user)
+        val savedUser = userAdapter.createOrUpdateUser(user!!)
         // Handle your custom logic (e.g., saving the user to the database)
         // Extract policies
 
