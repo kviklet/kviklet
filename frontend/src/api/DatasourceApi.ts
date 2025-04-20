@@ -48,7 +48,7 @@ const databaseConnectionResponseSchema = withType(
     dumpsEnabled: z.boolean(),
     temporaryAccessEnabled: z.boolean(),
     explainEnabled: z.boolean(),
-    roleArn: z.string().optional(),
+    roleArn: z.string().nullable(),
   }),
   "DATASOURCE",
 );
