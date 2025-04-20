@@ -51,7 +51,6 @@ const baseConnectionSchema = z.object({
   temporaryAccessEnabled: z.boolean().default(true),
   explainEnabled: z.boolean().default(false),
   connectionType: z.literal("DATASOURCE").default("DATASOURCE"),
-  roleArn: z.string().optional(),
 });
 
 const connectionFormSchema = z.discriminatedUnion("authenticationType", [
@@ -63,6 +62,7 @@ const connectionFormSchema = z.discriminatedUnion("authenticationType", [
   baseConnectionSchema.extend({
     authenticationType: z.literal("AWS_IAM"),
     username: z.string().min(0),
+    roleArn: z.string().nullable(),
     type: z.nativeEnum(DatabaseType).refine(
       (type) => supportsIamAuth(type),
       (type) => ({
@@ -77,7 +77,10 @@ type BasicAuthFormType = Extract<
   ConnectionForm,
   { authenticationType: "USER_PASSWORD" }
 >;
-//type IamAuthFormType = Extract<ConnectionForm, { authenticationType: "aws-iam" }>;
+type AWSAuthFormType = Extract<
+  ConnectionForm,
+  { authenticationType: "AWS_IAM" }
+>;
 
 const getJDBCOptionsPlaceholder = (type: DatabaseType) => {
   if (type === DatabaseType.POSTGRES) {
@@ -538,7 +541,7 @@ const AuthSection = ({
             placeholder="arn:aws:iam::123456789012:role/MyRole"
             tooltip="(Optional) An ARN of an AWS IAM role to assume during RDS IAM authentication."
             {...register("roleArn")}
-            error={errors.roleArn?.message}
+            error={(errors as FieldErrors<AWSAuthFormType>).roleArn?.message}
           />
         )}
       </div>

@@ -106,7 +106,7 @@ type DatabaseConnection =
   | (DatabaseConnectionBase & {
       authenticationType: "AWS_IAM";
       username: string;
-      roleArn?: string;
+      roleArn: string | null;
     });
 
 interface KubernetesConnection extends ConnectionBase {

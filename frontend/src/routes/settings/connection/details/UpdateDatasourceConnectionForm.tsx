@@ -45,7 +45,6 @@ const baseConnectionFormSchema = z.object({
   temporaryAccessEnabled: z.boolean(),
   explainEnabled: z.boolean(),
   connectionType: z.literal("DATASOURCE").default("DATASOURCE"),
-  roleArn: z.string().optional(),
 });
 
 const connectionFormSchema = z.discriminatedUnion("authenticationType", [
@@ -57,6 +56,7 @@ const connectionFormSchema = z.discriminatedUnion("authenticationType", [
   baseConnectionFormSchema.extend({
     authenticationType: z.literal("AWS_IAM"),
     username: z.string().min(0),
+    roleArn: z.string().nullable(),
     type: z.nativeEnum(DatabaseType).refine(
       (type) => supportsIamAuth(type),
       (type) => ({
@@ -70,6 +70,10 @@ type ConnectionForm = z.infer<typeof connectionFormSchema>;
 type BasicAuthFormType = Extract<
   ConnectionForm,
   { authenticationType: "USER_PASSWORD" }
+>;
+type AWSAuthFormType = Extract<
+  ConnectionForm,
+  { authenticationType: "AWS_IAM" }
 >;
 
 interface UpdateDatasourceFormProps {
@@ -292,14 +296,6 @@ export default function UpdateDatasourceConnectionForm({
                         {...register("maxExecutions")}
                         error={errors.maxExecutions?.message}
                       />
-                      <InputField
-                        id="roleArn"
-                        label="Role ARN"
-                        placeholder="arn:aws:iam::123456789012:role/MyRole"
-                        tooltip="The ARN of the IAM role to assume for allowing RDS IAM authentication."
-                        {...register("roleArn")}
-                        error={errors.roleArn?.message}
-                      />
                       <div className="flex w-full justify-between">
                         <label
                           htmlFor="dumpsEnabled"
@@ -444,7 +440,7 @@ const AuthSection = ({
             placeholder="arn:aws:iam::123456789012:role/MyRole"
             tooltip="(Optional) An ARN of an AWS IAM role to assume during RDS IAM authentication."
             {...register("roleArn")}
-            error={errors.roleArn?.message}
+            error={(errors as FieldErrors<AWSAuthFormType>).roleArn?.message}
           />
         )}
       </div>
