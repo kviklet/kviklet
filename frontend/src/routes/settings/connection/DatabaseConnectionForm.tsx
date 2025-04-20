@@ -378,14 +378,6 @@ export default function DatabaseConnectionForm(props: {
                         {...register("maxExecutions")}
                         error={errors.maxExecutions?.message}
                       />
-                      <InputField
-                        id="roleArn"
-                        label="Role ARN"
-                        placeholder="arn:aws:iam::123456789012:role/MyRole"
-                        tooltip="The ARN of the IAM role to assume for allowing RDS IAM authentication."
-                        {...register("roleArn")}
-                        error={errors.roleArn?.message}
-                      />
                       {dumpsEnabledVisible && (
                         <div className="flex w-full justify-between">
                           <label
@@ -537,6 +529,16 @@ const AuthSection = ({
             {...register("password")}
             error={(errors as FieldErrors<BasicAuthFormType>).password?.message}
             data-testid="connection-password"
+          />
+        )}
+        {watch("authenticationType") === "AWS_IAM" && (
+          <InputField
+            id="roleArn"
+            label="Role ARN"
+            placeholder="arn:aws:iam::123456789012:role/MyRole"
+            tooltip="(Optional) An ARN of an AWS IAM role to assume during RDS IAM authentication."
+            {...register("roleArn")}
+            error={errors.roleArn?.message}
           />
         )}
       </div>

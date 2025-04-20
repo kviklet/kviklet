@@ -437,6 +437,16 @@ const AuthSection = ({
             data-testid="connection-password"
           />
         )}
+        {watch("authenticationType") === "AWS_IAM" && (
+          <InputField
+            id="roleArn"
+            label="Role ARN"
+            placeholder="arn:aws:iam::123456789012:role/MyRole"
+            tooltip="(Optional) An ARN of an AWS IAM role to assume during RDS IAM authentication."
+            {...register("roleArn")}
+            error={errors.roleArn?.message}
+          />
+        )}
       </div>
     </div>
   );
