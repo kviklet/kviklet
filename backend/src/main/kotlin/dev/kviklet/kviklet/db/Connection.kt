@@ -77,6 +77,7 @@ class ConnectionEntity(
     var dumpsEnabled: Boolean = false,
     var temporaryAccessEnabled: Boolean = true,
     var explainEnabled: Boolean = false,
+    var roleArn: String? = null,
 ) {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
@@ -182,6 +183,7 @@ class ConnectionAdapter(
         dumpsEnabled: Boolean,
         temporaryAccessEnabled: Boolean,
         explainEnabled: Boolean,
+        roleArn: String? = null,
     ): Connection = decryptCredentialsIfNeeded(
         save(
             ConnectionEntity(
@@ -204,6 +206,7 @@ class ConnectionAdapter(
                 dumpsEnabled = dumpsEnabled,
                 temporaryAccessEnabled = temporaryAccessEnabled,
                 explainEnabled = explainEnabled,
+                roleArn = roleArn,
             ),
         ),
     )
@@ -225,6 +228,7 @@ class ConnectionAdapter(
         dumpsEnabled: Boolean,
         temporaryAccessEnabled: Boolean,
         explainEnabled: Boolean,
+        roleArn: String? = null,
     ): Connection {
         val datasourceConnection = connectionRepository.findByIdOrNull(id.toString())
             ?: throw EntityNotFound(
@@ -254,6 +258,7 @@ class ConnectionAdapter(
         datasourceConnection.dumpsEnabled = dumpsEnabled
         datasourceConnection.temporaryAccessEnabled = temporaryAccessEnabled
         datasourceConnection.explainEnabled = explainEnabled
+        datasourceConnection.roleArn = roleArn
 
         return decryptCredentialsIfNeeded(save(datasourceConnection))
     }
@@ -328,6 +333,7 @@ class ConnectionAdapter(
                     )
                     AuthenticationType.AWS_IAM -> AuthenticationDetails.AwsIam(
                         username = connection.username!!,
+                        roleArn = connection.roleArn,
                     )
                 },
                 description = connection.description,

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import dev.kviklet.kviklet.db.ConnectionType
 import dev.kviklet.kviklet.service.ConnectionService
 import dev.kviklet.kviklet.service.TestConnectionResult
+import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
@@ -89,6 +90,7 @@ data class CreateDatasourceConnectionRequest(
     val authenticationType: AuthenticationType = AuthenticationType.USER_PASSWORD,
     val temporaryAccessEnabled: Boolean = true,
     val explainEnabled: Boolean = false,
+    val roleArn: String? = null,
 ) : ConnectionRequest()
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
@@ -121,6 +123,8 @@ data class UpdateDatasourceConnectionRequest(
     @Schema(example = "root")
     @field:Size(min = 0, max = 255, message = "Maximum length 255")
     val username: String? = null,
+
+    val roleArn: String? = null,
 
     @Schema(example = "password")
     @field:Size(min = 0, max = 255, message = "Maximum length 255")
@@ -186,6 +190,7 @@ data class DatasourceConnectionResponse(
     val dumpsEnabled: Boolean,
     val temporaryAccessEnabled: Boolean,
     val explainEnabled: Boolean,
+    val roleArn: String?,
 ) : ConnectionResponse(ConnectionType.DATASOURCE) {
     companion object {
         fun fromDto(datasourceConnection: DatasourceConnection) = DatasourceConnectionResponse(
@@ -207,6 +212,10 @@ data class DatasourceConnectionResponse(
             dumpsEnabled = datasourceConnection.dumpsEnabled,
             temporaryAccessEnabled = datasourceConnection.temporaryAccessEnabled,
             explainEnabled = datasourceConnection.explainEnabled,
+            roleArn = when (datasourceConnection.auth) {
+                is AuthenticationDetails.AwsIam -> datasourceConnection.auth.roleArn
+                else -> null
+            },
         )
     }
 }
@@ -274,6 +283,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             dumpsEnabled = request.dumpsEnabled,
             temporaryAccessEnabled = request.temporaryAccessEnabled,
             explainEnabled = request.explainEnabled,
+            roleArn = request.roleArn,
         )
 
     private fun testDatabaseConnection(request: CreateDatasourceConnectionRequest): TestConnectionResult =
@@ -295,6 +305,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             authenticationType = request.authenticationType,
             temporaryAccessEnabled = request.temporaryAccessEnabled,
             explainEnabled = request.explainEnabled,
+            roleArn = request.roleArn,
         )
 
     private fun createKubernetesConnection(request: CreateKubernetesConnectionRequest): Connection =

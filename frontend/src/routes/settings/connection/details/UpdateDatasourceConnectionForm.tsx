@@ -56,6 +56,7 @@ const connectionFormSchema = z.discriminatedUnion("authenticationType", [
   baseConnectionFormSchema.extend({
     authenticationType: z.literal("AWS_IAM"),
     username: z.string().min(0),
+    roleArn: z.string().nullable(),
     type: z.nativeEnum(DatabaseType).refine(
       (type) => supportsIamAuth(type),
       (type) => ({
@@ -69,6 +70,10 @@ type ConnectionForm = z.infer<typeof connectionFormSchema>;
 type BasicAuthFormType = Extract<
   ConnectionForm,
   { authenticationType: "USER_PASSWORD" }
+>;
+type AWSAuthFormType = Extract<
+  ConnectionForm,
+  { authenticationType: "AWS_IAM" }
 >;
 
 interface UpdateDatasourceFormProps {
@@ -130,6 +135,7 @@ export default function UpdateDatasourceConnectionForm({
       dumpsEnabled: connection.dumpsEnabled,
       temporaryAccessEnabled: connection.temporaryAccessEnabled,
       explainEnabled: connection.explainEnabled,
+      roleArn: connection.roleArn,
     },
     schema: connectionFormSchema,
     onSubmit: editConnection,
@@ -163,7 +169,7 @@ export default function UpdateDatasourceConnectionForm({
             </label>
             <select
               {...register("type")}
-              className="block w-full basis-3/5 appearance-none rounded-md border border-slate-300 px-3 
+              className="block w-full basis-3/5 appearance-none rounded-md border border-slate-300 px-3
         py-2 text-sm transition-colors focus:border-indigo-600 focus:outline-none
         hover:border-slate-400 focus:hover:border-indigo-600 dark:border-slate-700 dark:bg-slate-900
          dark:focus:border-gray-500 dark:hover:border-slate-600 dark:hover:focus:border-gray-500"
@@ -425,6 +431,16 @@ const AuthSection = ({
             {...register("password")}
             error={(errors as FieldErrors<BasicAuthFormType>).password?.message}
             data-testid="connection-password"
+          />
+        )}
+        {watch("authenticationType") === "AWS_IAM" && (
+          <InputField
+            id="roleArn"
+            label="Role ARN"
+            placeholder="arn:aws:iam::123456789012:role/MyRole"
+            tooltip="(Optional) An ARN of an AWS IAM role to assume during RDS IAM authentication."
+            {...register("roleArn")}
+            error={(errors as FieldErrors<AWSAuthFormType>).roleArn?.message}
           />
         )}
       </div>
