@@ -10,10 +10,9 @@ jobs:
   iam-tests:
     name: Run AWS IAM Tests
     runs-on: ubuntu-latest
+    environment: AWS
     env:
       RUN_AWS_IAM_TESTS: true
-      # Ensure this secret is set in your GitHub repo settings -> Secrets and variables -> Actions
-      AWS_REGION: ${{ secrets.AWS_REGION }}
 
     steps:
       - name: Checkout repository
@@ -31,7 +30,7 @@ jobs:
           # Ensure these secrets are set in your GitHub repo settings
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Grant execute permission for scripts and gradlew
         run: |
@@ -45,19 +44,13 @@ jobs:
       - name: Setup MySQL for IAM Test
         id: setup_mysql
         run: |
-          output=$(./backend/src/test/kotlin/dev/kviklet/kviklet/executor/setup-mysql-iam.sh)
-          echo "$output"
-          mysql_host=$(echo "$output" | grep '^MYSQL_HOST_OUTPUT=' | cut -d'=' -f2)
-          echo "mysql_host=$mysql_host" >> $GITHUB_OUTPUT
+          ./backend/src/test/kotlin/dev/kviklet/kviklet/executor/setup-mysql-iam.sh
         working-directory: .
 
       - name: Setup PostgreSQL for IAM Test
         id: setup_postgres
         run: |
-          output=$(./backend/src/test/kotlin/dev/kviklet/kviklet/executor/setup-postgres-iam.sh)
-          echo "$output"
-          postgres_host=$(echo "$output" | grep '^POSTGRES_HOST_OUTPUT=' | cut -d'=' -f2)
-          echo "postgres_host=$postgres_host" >> $GITHUB_OUTPUT
+          ./backend/src/test/kotlin/dev/kviklet/kviklet/executor/setup-postgres-iam.sh
         working-directory: .
 
       - name: Run AWS IAM integration tests

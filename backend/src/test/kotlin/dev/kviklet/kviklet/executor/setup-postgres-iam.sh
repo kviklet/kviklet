@@ -1,4 +1,5 @@
 #!/bin/bash
+echo "Starting setup of PostgreSQL RDS instance with IAM authentication..."
 set -e
 export AWS_PAGER=""
 
@@ -11,7 +12,7 @@ ALLOCATED_STORAGE_PG=20        # Minimum storage in GB
 VPC_SECURITY_GROUP_NAME_PG="postgres-iam-test-sg"
 IAM_POLICY_NAME_PG="postgres-iam-test-policy"
 IAM_ROLE_NAME_PG="postgres-iam-auth-role" # Changed from mysql-iam-test-role
-AWS_REGION=$(aws configure get region)
+AWS_REGION="${AWS_REGION:-$(aws configure get region)}"
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 IAM_POLICY_ARN_PG="arn:aws:iam::$AWS_ACCOUNT_ID:policy/$IAM_POLICY_NAME_PG"
 
@@ -155,6 +156,7 @@ if ! rds_instance_exists_pg; then
   echo "Creating RDS instance $DB_INSTANCE_IDENTIFIER_PG..."
   # Generate a strong master password
   MASTER_PASSWORD_PG=$(openssl rand -base64 15 | tr -dc \'a-zA-Z0-9!@#$%^&*()\' | head -c 20)A1!
+  echo "::add-mask::MASTER_PASSWORD_PG"
   echo "Master password for $DB_INSTANCE_IDENTIFIER_PG will be generated."
 
   aws rds create-db-instance \
@@ -169,6 +171,8 @@ if ! rds_instance_exists_pg; then
       --enable-iam-database-authentication \
       --publicly-accessible \
       --backup-retention-period 0 \
+      --deletion-protection false \
+      --skip-final-snapshot \
       --db-name "$DB_NAME_PG"
 
   echo "Waiting for RDS instance $DB_INSTANCE_IDENTIFIER_PG to be available..."
