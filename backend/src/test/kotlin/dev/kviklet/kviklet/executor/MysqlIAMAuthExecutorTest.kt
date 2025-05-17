@@ -14,7 +14,7 @@ import dev.kviklet.kviklet.service.dto.RecordsQueryResult
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
@@ -23,7 +23,7 @@ import org.springframework.test.context.ActiveProfiles
 @SpringBootTest
 @ActiveProfiles(value = ["local", "test"])
 @Tag("aws-integration")
-@DisabledIfEnvironmentVariable(named = "CI", matches = "true")
+@EnabledIfEnvironmentVariable(named = "RUN_AWS_IAM_TESTS", matches = "true")
 class MysqlIAMAuthExecutorTest(
     @Autowired val JDBCExecutorService: JDBCExecutor,
     @Value("\${aws.db.mysqlhost}") private val awsDbHost: String,

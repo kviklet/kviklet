@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-
+export AWS_PAGER=""
 # Configuration variables
 DB_INSTANCE_IDENTIFIER="test-mysql-iam"
 DB_NAME="testdb"
