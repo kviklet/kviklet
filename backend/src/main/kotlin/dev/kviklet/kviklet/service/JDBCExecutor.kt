@@ -69,6 +69,7 @@ class JDBCExecutor {
 
                         hasResults = statement.moreResults
                     }
+                    println(dataSource.password)
                     return queryResults
                 }
             } catch (e: SQLException) {
