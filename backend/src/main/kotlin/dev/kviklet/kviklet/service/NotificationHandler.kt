@@ -8,6 +8,7 @@ import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.notifications.SlackApiClient
 import dev.kviklet.kviklet.service.notifications.TeamsApiClient
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEvent
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
@@ -20,6 +21,9 @@ class NotificationHandler(
     private val teamsClient: TeamsApiClient,
     private val slackClient: SlackApiClient,
 ) {
+
+    @Value("\${kviklet.server.baseUrl:#{null}}")
+    private var serverBaseUrl: String? = null
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -36,7 +40,7 @@ class NotificationHandler(
     @EventListener
     fun handleExecutionRequestCreated(event: RequestCreatedEvent) {
         try {
-            val host = ServerUrlInterceptor.getServerUrl()
+            val host = serverBaseUrl.takeIf { !it.isNullOrBlank() } ?: ServerUrlInterceptor.getServerUrl()
             if (event.necessaryReviews > 0) {
                 val message = Message(
                     title = "New Request: \"${event.title}\"",
@@ -54,7 +58,7 @@ class NotificationHandler(
     @EventListener
     fun handleReviewStatusUpdated(event: ReviewStatusUpdatedEvent) {
         try {
-            val host = ServerUrlInterceptor.getServerUrl()
+            val host = serverBaseUrl.takeIf { !it.isNullOrBlank() } ?: ServerUrlInterceptor.getServerUrl()
             if (event.status == ReviewStatus.AWAITING_APPROVAL) {
                 val message = Message(
                     title = "Review Status Updated",
