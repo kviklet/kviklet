@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { FC, useEffect, useState } from "react";
 import { ExecuteResponseResult } from "../api/ExecutionRequestApi";
 import Table from "./Table";
 import Button from "./Button";
@@ -127,7 +127,7 @@ const JsonViewer = ({ data }: { data: unknown }) => {
   );
 };
 
-const MultiResult: React.FC<{ resultList: ExecuteResponseResult[] }> = ({
+const MultiResult: FC<{ resultList: ExecuteResponseResult[] }> = ({
   resultList,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);

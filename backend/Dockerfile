@@ -8,7 +8,7 @@ WORKDIR /home/gradle/src
 COPY --chown=gradle:gradle . .
 
 # Build the application
-RUN gradle build -x kaptTestKotlin -x compileTestKotlin --no-daemon
+RUN gradle assemble --no-daemon
 
 # Stage 2: Run the application
 FROM amazoncorretto:21-alpine-jdk

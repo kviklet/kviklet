@@ -80,3 +80,6 @@ databaseChangeLog:
   - include:
       file: 028-add-rds-iam-role-arn.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 029-add-api-keys-table.yaml
+      relativeToChangelogFile: true

@@ -16,11 +16,24 @@ export const parseSchemaOrError = <T>(
   schema: ZodSchema<T>,
   data: unknown,
 ): T | ApiErrorResponse => {
-  const result = z.union([schema, ApiErrorResponseSchema]).safeParse(data);
-  if (result.success) {
-    return result.data;
+  // First check if it's already an error response
+  const errorResult = ApiErrorResponseSchema.safeParse(data);
+  if (errorResult.success) {
+    return errorResult.data;
+  }
+
+  // Try to parse with the expected schema
+  const schemaResult = schema.safeParse(data);
+  if (schemaResult.success) {
+    return schemaResult.data;
   } else {
-    return { message: "Invalid server response." };
+    // Format the validation errors for better debugging
+    const formattedErrors = schemaResult.error.format();
+    console.error("Schema validation failed:", formattedErrors);
+
+    return {
+      message: `Invalid server response: ${schemaResult.error.message}`,
+    };
   }
 };
 
@@ -47,14 +60,14 @@ export async function fetchWithErrorHandling<T>(
 async function fetchEmptyWithErrorHandling(
   url: string,
   options: RequestInit,
-): Promise<ApiErrorResponse | null> {
+): Promise<ApiErrorResponse | void> {
   try {
     const response = await fetch(url, options);
     if (
       response.status === 204 ||
       response.headers.get("Content-Length") === "0"
     ) {
-      return null;
+      return;
     }
     const json: unknown = await response.json();
 

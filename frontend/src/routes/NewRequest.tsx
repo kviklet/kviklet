@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { ConnectionResponse, DatabaseType } from "../api/DatasourceApi";
 import Spinner from "../components/Spinner";
 import {
@@ -222,7 +222,7 @@ export default function ConnectionChooser() {
                   <DisclosurePanel>
                     <SearchInput
                       value={searchTerm}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
                         setSearchTerm(e.target.value)
                       }
                       className="mb-4"
@@ -654,7 +654,7 @@ const KubernetesExecutionRequestForm = ({
             </label>
             <select
               className="mt-2 block w-full rounded-md border-0 pr-10 text-slate-900 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-300 sm:text-sm sm:leading-6"
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => {
                 choosePod(e.target.value);
               }}
             >

@@ -3,7 +3,7 @@ WORKDIR /home/gradle/src
 
 COPY --chown=gradle:gradle ./backend .
 
-RUN gradle build  -x kaptTestKotlin -x compileTestKotlin -x test --no-daemon
+RUN gradle assemble --no-daemon
 
 FROM node:22 AS build-frontend
 WORKDIR /app

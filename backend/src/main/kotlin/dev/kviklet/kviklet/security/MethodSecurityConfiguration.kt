@@ -31,18 +31,19 @@ enum class Resource(val resourceName: String) {
     ROLE("role"),
     USER("user"),
     CONFIGURATION("configuration"),
+    API_KEY("api_key"),
 }
 
 enum class Permission(
     val resource: Resource,
     // if action is null, only the parent requiredPermission is checked
     val action: String?,
-    val requiredPermission: Permission?,
+    val requiredPermission: Permission? = null,
 ) {
-    CONFIGURATION_GET(Resource.CONFIGURATION, "get", null),
+    CONFIGURATION_GET(Resource.CONFIGURATION, "get"),
     CONFIGURATION_EDIT(Resource.CONFIGURATION, "edit", CONFIGURATION_GET),
 
-    DATASOURCE_CONNECTION_GET(Resource.DATASOURCE_CONNECTION, "get", null),
+    DATASOURCE_CONNECTION_GET(Resource.DATASOURCE_CONNECTION, "get"),
     DATASOURCE_CONNECTION_EDIT(Resource.DATASOURCE_CONNECTION, "edit", DATASOURCE_CONNECTION_GET),
     DATASOURCE_CONNECTION_CREATE(Resource.DATASOURCE_CONNECTION, "create", DATASOURCE_CONNECTION_GET),
 
@@ -51,13 +52,17 @@ enum class Permission(
     EXECUTION_REQUEST_REVIEW(Resource.EXECUTION_REQUEST, "review", EXECUTION_REQUEST_GET),
     EXECUTION_REQUEST_EXECUTE(Resource.EXECUTION_REQUEST, "execute", EXECUTION_REQUEST_GET),
 
-    ROLE_GET(Resource.ROLE, "get", null),
+    ROLE_GET(Resource.ROLE, "get"),
     ROLE_EDIT(Resource.ROLE, "edit", ROLE_GET),
 
-    USER_GET(Resource.USER, "get", null),
+    USER_GET(Resource.USER, "get"),
     USER_EDIT(Resource.USER, "edit", USER_GET),
     USER_CREATE(Resource.USER, "create", USER_GET),
     USER_EDIT_ROLES(Resource.USER, "edit_roles", USER_GET),
+
+    API_KEY_GET(Resource.API_KEY, "get"),
+    API_KEY_CREATE(Resource.API_KEY, "create", API_KEY_GET),
+    API_KEY_DELETE(Resource.API_KEY, "delete", API_KEY_GET),
     ;
 
     fun getPermissionString(): String = "${this.resource.resourceName}:${this.action}"
@@ -94,7 +99,7 @@ class MethodSecurityConfig(private val idResolver: IdResolver) {
 }
 
 @Component
-class MyAuthorizationManager(val userAdapter: UserAdapter) {
+class MyAuthorizationManager(private val userAdapter: UserAdapter) {
     fun check(
         authentication: Supplier<Authentication?>,
         invocation: MethodInvocation,

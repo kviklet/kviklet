@@ -1,8 +1,8 @@
-import { VFC, useRef, useState, useEffect, useContext } from "react";
+import { useRef, useState, useEffect, useContext, FC } from "react";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import { ThemeContext, ThemeStatusContext } from "./ThemeStatusProvider";
 
-export const Editor: VFC = () => {
+export const Editor: FC = () => {
   const [editor, setEditor] =
     useState<monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoEl = useRef(null);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { FC, useState } from "react";
 import { SelectExecuteResponse } from "../api/ExecutionRequestApi";
 
 import {
@@ -18,7 +18,7 @@ type Person = {
 };
 
 const columnHelper = createColumnHelper<Person>();
-const Table: React.FC<{ data: SelectExecuteResponse }> = ({ data }) => {
+const Table: FC<{ data: SelectExecuteResponse }> = ({ data }) => {
   const columns = data.columns.map((column) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return columnHelper.accessor(column.label as any, {

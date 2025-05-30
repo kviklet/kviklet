@@ -8,6 +8,7 @@ import {
   ComboboxOptions,
   Label,
 } from "@headlessui/react";
+import { ChangeEvent } from "react";
 
 export default function ConnectionSelector({
   value,
@@ -78,7 +79,7 @@ function ComboBox({
         <div className="relative">
           <ComboboxInput
             className="w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-slate-900 ring-1 ring-slate-300 focus:outline-none focus:ring-slate-400 dark:bg-slate-900 dark:text-slate-50 dark:ring-slate-700 focus:dark:ring-slate-500 sm:text-sm sm:leading-6"
-            onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+            onChange={(event: ChangeEvent<HTMLInputElement>) =>
               setQuery(event.target.value)
             }
             displayValue={() => query}
@@ -96,10 +97,10 @@ function ComboBox({
                 <ComboboxOption
                   key={option.id}
                   value={option.id}
-                  className={({ active }) =>
+                  className={({ focus }) =>
                     classNames(
                       "relative cursor-default select-none py-2 pl-3 pr-9",
-                      active
+                      focus
                         ? "bg-indigo-600 text-slate-50"
                         : "text-slate-900 dark:text-slate-50",
                     )
