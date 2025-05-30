@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
@@ -128,9 +129,92 @@ class NotificationTest {
             teamsApiClient.sendMessage(
                 webhookUrl = "https://teams.com",
                 "New Request: \"Test Execution\"",
-                any(),
+                match {
+                    it.contains("http://")
+                },
             )
         }
-        verify { slackApiClient.sendMessage(webhookUrl = "https://slack.com", any()) }
+        verify {
+            slackApiClient.sendMessage(
+                webhookUrl = "https://slack.com",
+                match {
+                    it.contains("http://")
+                },
+            )
+        }
+    }
+
+    @Test
+    @DirtiesContext
+    fun `calls notification apis with configured base url`() {
+        val baseUrl = "https://kviklet.example.com"
+        System.setProperty("kviklet.baseUrl", baseUrl)
+        try {
+            val config = Configuration(
+                teamsUrl = "https://teams.com",
+                slackUrl = "https://slack.com",
+                liveSessionEnabled = false,
+            )
+            configService.setConfiguration(config)
+            val connection = datasourceConnectionAdapter.createDatasourceConnection(
+                ConnectionId("ds-conn-test"),
+                "Test Connection",
+                AuthenticationType.USER_PASSWORD,
+                "test",
+                1,
+                "username",
+                "password",
+                "A test connection",
+                ReviewConfig(
+                    numTotalRequired = 1,
+                ),
+                3306,
+                "postgres",
+                DatasourceType.POSTGRESQL,
+                DatabaseProtocol.POSTGRESQL,
+                additionalJDBCOptions = "",
+                dumpsEnabled = false,
+                temporaryAccessEnabled = true,
+                explainEnabled = false,
+            )
+            userHelper.createUser(permissions = listOf("*"))
+            val cookie = userHelper.login(mockMvc = mockMvc)
+
+            mockMvc.perform(
+                MockMvcRequestBuilders.post("/execution-requests/").cookie(cookie).content(
+                    """
+                    {
+                        "connectionId": "${connection.id}",
+                        "title": "Test Execution",
+                        "type": "SingleExecution",
+                        "statement": "SELECT * FROM test",
+                        "description": "A test execution request",
+                        "readOnly": true,
+                        "connectionType": "DATASOURCE"
+                    }
+                    """.trimIndent(),
+                ).contentType("application/json"),
+            ).andExpect(MockMvcResultMatchers.status().isOk)
+
+            verify {
+                teamsApiClient.sendMessage(
+                    webhookUrl = "https://teams.com",
+                    "New Request: \"Test Execution\"",
+                    match {
+                        it.contains(baseUrl)
+                    },
+                )
+            }
+            verify {
+                slackApiClient.sendMessage(
+                    webhookUrl = "https://slack.com",
+                    match {
+                        it.contains(baseUrl)
+                    },
+                )
+            }
+        } finally {
+            System.clearProperty("kviklet.baseUrl")
+        }
     }
 }
