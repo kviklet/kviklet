@@ -22,7 +22,7 @@ class NotificationHandler(
     private val slackClient: SlackApiClient,
 ) {
 
-    @Value("\${kviklet.server.baseUrl:#{null}}")
+    @Value("\${kviklet.baseUrl:#{null}}")
     private var serverBaseUrl: String? = null
 
     private val logger = LoggerFactory.getLogger(javaClass)

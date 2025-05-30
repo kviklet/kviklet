@@ -146,7 +146,7 @@ class NotificationTest {
     @Test
     fun `calls notification apis with configured base url`() {
         val baseUrl = "https://kviklet.example.com"
-        System.setProperty("kviklet.server.baseUrl", baseUrl)
+        System.setProperty("kviklet.baseUrl", baseUrl)
         try {
             val config = Configuration(
                 teamsUrl = "https://teams.com",
@@ -212,7 +212,7 @@ class NotificationTest {
                 )
             }
         } finally {
-            System.clearProperty("kviklet.server.baseUrl")
+            System.clearProperty("kviklet.baseUrl")
         }
     }
 }
