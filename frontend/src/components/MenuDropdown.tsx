@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, ReactElement } from "react";
 import {
   Menu,
   MenuButton,
@@ -10,7 +10,7 @@ import { EllipsisVerticalIcon } from "@heroicons/react/20/solid";
 
 interface MenuItem {
   onClick: () => void;
-  content: string | JSX.Element;
+  content: string | ReactElement;
   enabled: boolean;
   tooltip?: string;
 }

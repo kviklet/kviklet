@@ -4,6 +4,8 @@ import dev.kviklet.kviklet.controller.ServerUrlInterceptor
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.service.ApiKeyService
+import dev.kviklet.kviklet.service.UserService
 import dev.kviklet.kviklet.service.dto.Role
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -45,6 +47,7 @@ import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler
 import org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher
@@ -81,6 +84,9 @@ class SecurityConfig(
     private val ldapProperties: LdapProperties,
     private val contextSource: LdapContextSource,
     private val userDetailsService: UserDetailsServiceImpl,
+    private val apiKeyService: ApiKeyService,
+    private val userService: UserService,
+    private val passwordEncoder: PasswordEncoder,
     private val corsSettings: CorsSettings,
 ) {
 
@@ -125,6 +131,14 @@ class SecurityConfig(
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http.invoke {
+            // TODO is this the right before filter?
+            addFilterBefore<UsernamePasswordAuthenticationFilter>(
+                ApiKeyAuthFilter(
+                    apiKeyService = apiKeyService,
+                    passwordEncoder = passwordEncoder,
+                    userService = userService,
+                ),
+            )
             addFilterBefore<WebAsyncManagerIntegrationFilter>(ForwardedHeaderFilter())
             if (corsSettings.allowedOrigins.isNotEmpty()) {
                 cors { }

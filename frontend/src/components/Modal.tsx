@@ -1,5 +1,7 @@
+import { ReactNode } from "react";
+
 const Modal = (props: {
-  children: React.ReactNode;
+  children: ReactNode;
   setVisible: (visible: boolean) => void;
 }) => {
   return (

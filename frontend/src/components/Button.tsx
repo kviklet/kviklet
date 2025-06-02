@@ -1,7 +1,9 @@
+import { ReactNode, MouseEventHandler } from "react";
+
 function Button(props: {
   id?: string;
-  onClick?: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
-  children: React.ReactNode;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
+  children: ReactNode;
   className?: string;
   size?: "sm" | "md" | "lg";
   textSize?: "sm" | "md" | "lg";

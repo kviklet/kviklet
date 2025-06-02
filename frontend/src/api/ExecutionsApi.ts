@@ -21,7 +21,7 @@ type ExecutionLogResponse = z.infer<typeof ExecutionLogResponseSchema>;
 type ExecutionsResponse = z.infer<typeof ExecutionsResponseSchema>;
 
 const getExecutions = async (): Promise<ApiResponse<ExecutionsResponse>> => {
-  const response = await fetchWithErrorHandling(
+  return await fetchWithErrorHandling(
     `${baseUrl}/executions/`,
     {
       method: "GET",
@@ -32,7 +32,6 @@ const getExecutions = async (): Promise<ApiResponse<ExecutionsResponse>> => {
     },
     ExecutionsResponseSchema,
   );
-  return response;
 };
 
 export { getExecutions };

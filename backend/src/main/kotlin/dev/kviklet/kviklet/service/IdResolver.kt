@@ -1,5 +1,7 @@
 package dev.kviklet.kviklet.service
 
+import dev.kviklet.kviklet.db.ApiKeyAdapter
+import dev.kviklet.kviklet.db.ApiKeyId
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.EventAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
@@ -24,6 +26,7 @@ class IdResolver(
     private val roleAdapter: RoleAdapter,
     private val eventAdapter: EventAdapter,
     private val liveSessionAdapter: LiveSessionAdapter,
+    private val apiKeyAdapter: ApiKeyAdapter,
 ) {
     fun resolve(id: SecuredDomainId): SecuredDomainObject? = try {
         when (id) {
@@ -33,6 +36,7 @@ class IdResolver(
             is RoleId -> roleAdapter.findById(id)
             is EventId -> eventAdapter.getEvent(id)
             is LiveSessionId -> liveSessionAdapter.findById(id)
+            is ApiKeyId -> apiKeyAdapter.findById(id)
             else -> throw IllegalArgumentException("Unknown id type: ${id::class}")
         }
     } catch (e: EntityNotFound) {

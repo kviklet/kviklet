@@ -5,9 +5,10 @@ import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 import { AbsoluteInitialBubble as InitialBubble } from "../../../components/InitialBubble";
 import { Review } from "../../../api/ExecutionRequestApi";
 import { componentMap } from "../components/Highlighter";
+import { ReactElement } from "react";
 
 function ReviewEvent({ event, index }: { event: Review; index: number }) {
-  const notificationText = (): JSX.Element => {
+  const notificationText = (): ReactElement => {
     switch (event.action) {
       case "APPROVE":
         return (
@@ -30,7 +31,7 @@ function ReviewEvent({ event, index }: { event: Review; index: number }) {
     }
   };
 
-  const notificationIcon = (): JSX.Element => {
+  const notificationIcon = (): ReactElement => {
     switch (event.action) {
       case "APPROVE":
         return (

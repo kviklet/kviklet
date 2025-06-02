@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { ChangeEvent, useContext, useState } from "react";
 import Button from "../../components/Button";
 import { Error, Success } from "../../components/Alert";
 import { updateUser } from "../../api/UserApi";
@@ -50,7 +50,7 @@ function ProfileSettings() {
             className="my-3 block w-full rounded-md border-0 px-3 py-1.5 pb-1.5 pr-14 pt-2.5 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus-visible:outline-none dark:bg-slate-900 dark:text-slate-50 dark:ring-slate-700 sm:text-sm sm:leading-6"
             autoComplete={undefined}
             value={newPassword}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
               setNewPassword(e.target.value)
             }
           />
@@ -68,7 +68,7 @@ function ProfileSettings() {
           className="my-3 block w-full rounded-md border-0 px-3 py-1.5 pb-1.5 pr-14 pt-2.5 text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus-visible:outline-none dark:bg-slate-900 dark:text-slate-50 dark:ring-slate-700 sm:text-sm sm:leading-6"
           autoComplete={undefined}
           value={confirmNewPassowrd}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
             setConfirmNewPassowrd(e.target.value)
           }
         />
