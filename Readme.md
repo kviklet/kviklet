@@ -17,8 +17,9 @@ We currently support **Postgres**, **MySQL**, **MS SQL Server** and **MongoDB**.
 
 Kviklet ships with a variety of features that an engineering team needs to manage their production database access in a **simple but secure** manner:
 
-- **SSO (Google)**: Log into Kviklet without the need for a username or password. No more shared credentials for DB access.
+- **SSO (OIDC, Google, Keycloak, etc.)**: Log into Kviklet without the need for a username or password. No more shared credentials for DB access.
 - **LDAP Support**: Log into Kviklet with your LDAP credentials.
+- **SAML Support**: Log into Kviklet with your SAML credentials. (Enterprise only)
 - **Review/Approval Flow**: Leave Comments and Suggestions on other developers data requests.
 - **Temporary Access (1h)**: Execute any statement on a db for 1h after having been approved
 - **Single Query**: Execute a singular statement. Allows the reviewer to review your query before execution.
@@ -186,7 +187,7 @@ docker run \
 ghcr.io/kviklet/kviklet:main
 ```
 
-### SSO
+### SSO via OIDC
 
 #### Google
 
@@ -260,6 +261,41 @@ Here's what each setting means:
 - `LDAP_SEARCH_BASE`: Allows to override the base DN for user searches (default: "ou=people"). If you use FreeIPA you might need to set this to e.g. `cn=users`. If set LDAP_USER_OU is ignored.
 
 You can customize these attributes to match your LDAP schema. After configuring LDAP, users will be able to log in using their LDAP credentials. The first time an LDAP user logs in, a corresponding user account will be created in Kviklet with default permissions. An admin will need to assign appropriate roles to these users after their first login.
+
+### SAML (Enterprise only)
+
+Kviklet supports SAML 2.0 authentication. To enable SAML, set the following environment variables:
+
+```
+SAML_ENABLED=true
+SAML_ENTITYID=https://your-identity-provider.com
+SAML_SSOSERVICELOCATION=https://your-identity-provider.com/sso
+SAML_VERIFICATIONCERTIFICATE=-----BEGIN CERTIFICATE-----\nMIICmzCCAYMCBgF4...\n-----END CERTIFICATE-----
+```
+
+Configuration details:
+- `SAML_ENABLED`: Set to `true` to enable SAML authentication
+- `SAML_ENTITYID`: The entity ID of your SAML identity provider
+- `SAML_SSOSERVICELOCATION`: The SSO service URL of your identity provider
+- `SAML_VERIFICATIONCERTIFICATE`: The X.509 certificate used to verify SAML responses (include the BEGIN/END CERTIFICATE lines)
+
+You can optionally customize the SAML attribute mappings:
+```
+SAML_USERATTRIBUTES_EMAILATTRIBUTE=email
+SAML_USERATTRIBUTES_NAMEATTRIBUTE=name  
+SAML_USERATTRIBUTES_IDATTRIBUTE=nameID
+```
+
+Your identity provider should be configured with:
+- Entity ID: `https://[kviklet_host]/api/saml2/service-provider-metadata/saml`
+- Redirect Uri: `https://[kviklet_host]/api/login/saml2/sso/saml`
+
+After configuring SAML, users can log in via the identity provider. On first login, a user account is created with default permissions.
+
+If you get correctly redirected to the IDP but then get a cors error, you can add your IDPs host to the allowed origins in Kviklet via:
+```
+CORS_ALLOWEDORIGINS=https://[idp_host]
+```
 
 ## Configuration
 
