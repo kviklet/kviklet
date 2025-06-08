@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.controller
 
 import dev.kviklet.kviklet.security.IdentityProviderProperties
 import dev.kviklet.kviklet.security.LdapProperties
+import dev.kviklet.kviklet.security.SamlProperties
 import dev.kviklet.kviklet.service.ConfigService
 import dev.kviklet.kviklet.service.dto.Configuration
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -13,25 +14,32 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
-open class PublicConfigResponse(open val oAuthProvider: String?, open val ldapEnabled: Boolean)
+open class PublicConfigResponse(
+    open val oAuthProvider: String?,
+    open val ldapEnabled: Boolean,
+    open val samlEnabled: Boolean,
+)
 
 data class ConfigRequest(val teamsUrl: String?, val slackUrl: String?, val liveSessionEnabled: Boolean?)
 
 data class ConfigResponse(
     override val oAuthProvider: String?,
     override val ldapEnabled: Boolean,
+    override val samlEnabled: Boolean,
     val teamsUrl: String?,
     val slackUrl: String?,
     val liveSessionEnabled: Boolean,
-) : PublicConfigResponse(oAuthProvider, ldapEnabled) {
+) : PublicConfigResponse(oAuthProvider, ldapEnabled, samlEnabled) {
     companion object {
         fun fromConfiguration(
             configuration: Configuration,
             oAuthProvider: String?,
             ldapEnabled: Boolean,
+            samlEnabled: Boolean,
         ): ConfigResponse = ConfigResponse(
             oAuthProvider = oAuthProvider,
             ldapEnabled = ldapEnabled,
+            samlEnabled = samlEnabled,
             teamsUrl = configuration.teamsUrl,
             slackUrl = configuration.slackUrl,
             liveSessionEnabled = configuration.liveSessionEnabled ?: false,
@@ -49,6 +57,7 @@ data class ConfigResponse(
 class ConfigController(
     val identityProviderProperties: IdentityProviderProperties,
     val ldapProperties: LdapProperties,
+    val samlProperties: SamlProperties,
     val configService: ConfigService,
 ) {
 
@@ -60,11 +69,13 @@ class ConfigController(
                 config,
                 identityProviderProperties.type?.lowercase(),
                 ldapProperties.enabled,
+                samlProperties.isSamlEnabled(),
             )
         } catch (e: AccessDeniedException) {
             return PublicConfigResponse(
                 oAuthProvider = identityProviderProperties.type?.lowercase(),
                 ldapEnabled = ldapProperties.enabled,
+                samlEnabled = samlProperties.isSamlEnabled(),
             )
         }
     }
@@ -82,6 +93,7 @@ class ConfigController(
             config,
             identityProviderProperties.type?.lowercase(),
             ldapProperties.enabled,
+            samlProperties.isSamlEnabled(),
         )
     }
 }

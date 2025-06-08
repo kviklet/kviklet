@@ -5,6 +5,7 @@ import { ApiResponse, fetchWithErrorHandling } from "./Errors";
 const ConfigResponseSchema = z.object({
   oauthProvider: z.string().nullable().optional(),
   ldapEnabled: z.boolean(),
+  samlEnabled: z.boolean(),
   teamsUrl: z.string().nullable().optional(),
   slackUrl: z.string().nullable().optional(),
   liveSessionEnabled: z.boolean().optional(),
@@ -13,6 +14,7 @@ const ConfigResponseSchema = z.object({
 export const ConfigPayloadSchema = ConfigResponseSchema.omit({
   oauthProvider: true,
   ldapEnabled: true,
+  samlEnabled: true,
 });
 
 export type ConfigResponse = z.infer<typeof ConfigResponseSchema>;

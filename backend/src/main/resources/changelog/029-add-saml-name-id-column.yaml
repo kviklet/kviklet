@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 029
+      author: kviklet
+      changes:
+        - addColumn:
+            tableName: user
+            columns:
+              - column:
+                  name: saml_name_id
+                  type: text
+                  constraints:
+                    unique: true

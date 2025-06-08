@@ -36,6 +36,7 @@ configurations {
 repositories {
     maven { url = uri("https://repo.spring.io/milestone") }
     mavenCentral()
+    maven { url = uri("https://build.shibboleth.net/maven/releases/") }
 }
 
 dependencies {
@@ -49,6 +50,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-websocket")
     implementation("org.springframework.security:spring-security-ldap")
     implementation("org.springframework.ldap:spring-ldap-core")
+    implementation("org.springframework.security:spring-security-saml2-service-provider")
     implementation("org.springframework.boot:spring-boot-devtools")
 
     implementation("org.springframework.security:spring-security-acl")
