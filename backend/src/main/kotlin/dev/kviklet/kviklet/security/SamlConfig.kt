@@ -3,6 +3,8 @@ package dev.kviklet.kviklet.security
 
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.service.LicenseRestrictionException
+import dev.kviklet.kviklet.service.LicenseService
 import dev.kviklet.kviklet.service.dto.Role
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -56,14 +58,17 @@ class CustomSaml2UserService(
     private val userAdapter: UserAdapter,
     private val roleAdapter: RoleAdapter,
     private val samlProperties: SamlProperties,
+    private val licenseService: LicenseService,
 ) {
     @Transactional
     fun loadUser(principal: Saml2AuthenticatedPrincipal): dev.kviklet.kviklet.db.User {
-        val nameId = principal.name
+        // Check if there's a valid license before allowing any SAML authentication
+        val license = licenseService.getActiveLicense()
+        if (license == null || !license.isValid()) {
+            throw LicenseRestrictionException("SAML authentication requires a valid license")
+        }
 
-        // Log all available attributes for debugging
-        println("SAML Principal attributes: ${principal.attributes}")
-        println("Looking for email attribute: ${samlProperties.userAttributes.emailAttribute}")
+        val nameId = principal.name
 
         val email = principal.getAttribute<String>(samlProperties.userAttributes.emailAttribute)?.firstOrNull()
             ?: throw IllegalStateException(
@@ -80,6 +85,10 @@ class CustomSaml2UserService(
 
             if (user == null) {
                 // Create new user
+                val maxUsers = license.allowedUsers
+                if (maxUsers <= userAdapter.listUsers().size.toUInt()) {
+                    throw LicenseRestrictionException("License does not allow more users")
+                }
                 val defaultRole = roleAdapter.findById(Role.DEFAULT_ROLE_ID)
                 user = dev.kviklet.kviklet.db.User(
                     email = email,

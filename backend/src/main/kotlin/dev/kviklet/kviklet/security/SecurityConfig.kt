@@ -4,6 +4,8 @@ import dev.kviklet.kviklet.controller.ServerUrlInterceptor
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.service.LicenseRestrictionException
+import dev.kviklet.kviklet.service.LicenseService
 import dev.kviklet.kviklet.service.dto.Role
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -319,8 +321,11 @@ class CustomOidcUser(
 }
 
 @Service
-class CustomOidcUserService(private val userAdapter: UserAdapter, private val roleAdapter: RoleAdapter) :
-    OidcUserService() {
+class CustomOidcUserService(
+    private val userAdapter: UserAdapter,
+    private val roleAdapter: RoleAdapter,
+    private val licenseService: LicenseService,
+) : OidcUserService() {
 
     @Transactional
     override fun loadUser(userRequest: OidcUserRequest): OidcUser {
@@ -345,6 +350,13 @@ class CustomOidcUserService(private val userAdapter: UserAdapter, private val ro
                 )
             } ?: run {
                 // No existing user found, create a new one
+                val license = licenseService.getActiveLicense()
+                if (license != null) {
+                    val maxUsers = license.allowedUsers
+                    if (maxUsers <= userAdapter.listUsers().size.toUInt()) {
+                        throw LicenseRestrictionException("License does not allow more users")
+                    }
+                }
                 val defaultRole = roleAdapter.findById(Role.DEFAULT_ROLE_ID)
                 user = User(
                     subject = subject,

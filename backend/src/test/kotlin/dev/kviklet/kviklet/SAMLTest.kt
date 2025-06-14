@@ -3,9 +3,12 @@ package dev.kviklet.kviklet
 import com.gargoylesoftware.htmlunit.WebClient
 import com.gargoylesoftware.htmlunit.html.HtmlInput
 import com.gargoylesoftware.htmlunit.html.HtmlPage
+import dev.kviklet.kviklet.db.LicenseAdapter
 import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.service.dto.LicenseFile
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -25,6 +28,7 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import java.time.LocalDateTime
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
@@ -40,6 +44,9 @@ class SAMLTest {
 
     @Autowired
     private lateinit var userAdapter: UserAdapter
+
+    @Autowired
+    private lateinit var licenseAdapter: LicenseAdapter
 
     companion object {
 
@@ -69,8 +76,8 @@ class SAMLTest {
             registry.add("saml.enabled") { "true" }
             registry.add("saml.entityId") { "$keycloakUrl/realms/test-saml-realm" }
             registry.add("saml.ssoServiceLocation") { "$keycloakUrl/realms/test-saml-realm/protocol/saml" }
-            registry.add("saml.verificationCertificate") { 
-                "-----BEGIN CERTIFICATE-----\n${getKeycloakSamlCertificate(keycloakUrl)}\n-----END CERTIFICATE-----" 
+            registry.add("saml.verificationCertificate") {
+                "-----BEGIN CERTIFICATE-----\n${getKeycloakSamlCertificate(keycloakUrl)}\n-----END CERTIFICATE-----"
             }
             registry.add("saml.userAttributes.emailAttribute") { "urn:oid:1.2.840.113549.1.9.1" }
             registry.add("saml.userAttributes.nameAttribute") { "urn:oid:2.5.4.3" }
@@ -105,7 +112,6 @@ class SAMLTest {
                 // Create test user
                 createTestUser(adminClient, keycloakUrl, accessToken)
             } catch (e: Exception) {
-                println("Failed to setup Keycloak: ${e.message}")
                 e.printStackTrace()
                 throw e
             }
@@ -114,20 +120,19 @@ class SAMLTest {
         private fun getKeycloakSamlCertificate(keycloakUrl: String): String {
             val adminClient = HttpClient.newHttpClient()
             val metadataUrl = "$keycloakUrl/realms/test-saml-realm/protocol/saml/descriptor"
-            
+
             try {
                 val response = adminClient.send(
                     HttpRequest.newBuilder().uri(URI.create(metadataUrl)).build(),
-                    HttpResponse.BodyHandlers.ofString()
+                    HttpResponse.BodyHandlers.ofString(),
                 )
-                
+
                 // Parse XML to extract certificate from <ds:X509Certificate> element
                 val certificateRegex = "<ds:X509Certificate>([^<]+)</ds:X509Certificate>".toRegex()
                 val match = certificateRegex.find(response.body())
                 return match?.groupValues?.get(1)?.replace("\n", "")
                     ?: throw Exception("Certificate not found in SAML metadata")
             } catch (e: Exception) {
-                println("Failed to get SAML certificate: ${e.message}")
                 throw e
             }
         }
@@ -248,7 +253,11 @@ class SAMLTest {
 
             mappers.forEach { mapperJson ->
                 val request = HttpRequest.newBuilder()
-                    .uri(URI.create("$keycloakUrl/admin/realms/test-saml-realm/clients/$clientId/protocol-mappers/models"))
+                    .uri(
+                        URI.create(
+                            "$keycloakUrl/admin/realms/test-saml-realm/clients/$clientId/protocol-mappers/models",
+                        ),
+                    )
                     .header("Authorization", "Bearer $token")
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(mapperJson))
@@ -290,9 +299,29 @@ class SAMLTest {
     @Autowired
     private lateinit var mockMvc: MockMvc
 
+    @BeforeEach
+    fun setUp() {
+        // WARNING: This is a test-only license limited to 2 users with test_license flag.
+        // DO NOT use in production. Real licenses must be obtained from Kviklet.
+        val licenseJson = """
+            {
+                "license_data":{"max_users":2,"expiry_date":"2100-01-01","test_license":true},
+                "signature":"E3cqrsVzWccsyWwIeCE2J4Mn/eHyP8j4T05Q4o2dtXH1lhum71rEyPqv9MLn//IcVGsLBY6MwWJGxxa+IBqZTvx0fkLix7e44BRJ5xnV83WzZbKyacNCsNqYEbNpeRcDmtC0pbk7/OSff8VDs5xdqWl7zsI+HA5KNdw878BZKVxusHkHhLtxOhHtbm7Gvcyia4XE86USTWUMYf6aCgNkQgRSOnTo5Zrs+vBUvgSI33l3XyBDx+cQcr9Mell2ytOYrTxQ4zUbRkzcsQtGRTHbh8uXQb5wS389F0zQWSLh7RrCRuaEZ0IDTt8tFkN+72fZ64504bsSR9mNgkgKTv/FvQiVCppKO8vpW0T0hg2xziXMnNSJ3MbihcNlpFsz9C2SEnGm18rQ4UagnLCWTqhz5DtWCxeaAExIT261o6J/wBwlsHHMJRiDaLo/cQOLVOUm43psOt4nlTdbijPoKhBejBuSgqSxTid1R7+8YaFlco/SaprzEspWHcOcVIPUN2jk"
+            }
+        """.trimIndent()
+
+        val licenseFile = LicenseFile(
+            fileContent = licenseJson,
+            fileName = "test-license.json",
+            createdAt = LocalDateTime.now(),
+        )
+        licenseAdapter.createLicense(licenseFile)
+    }
+
     @AfterEach
     fun tearDown() {
         userAdapter.deleteAll()
+        licenseAdapter.deleteAll()
     }
 
     @Test
@@ -330,23 +359,13 @@ class SAMLTest {
                 .find { it.getAttribute("type") == "submit" }
                 ?.click<HtmlPage>() ?: throw RuntimeException("Could not find submit button in SAML form")
 
-            // Debug: Print page information
-            println("=== KEYCLOAK LOGIN PAGE DEBUG INFO ===")
-            println("Page URL: ${keycloakLoginPage.url}")
-            println("Page title: ${keycloakLoginPage.titleText}")
-            println("=== END DEBUG INFO ===")
-
             // Fill in login credentials (using Keycloak test user)
             val usernameElement = keycloakLoginPage.getElementById("username")
             val passwordElement = keycloakLoginPage.getElementById("password")
 
-            println("Username element found: ${usernameElement != null}")
-            println("Password element found: ${passwordElement != null}")
-
             if (usernameElement != null && passwordElement != null) {
                 (usernameElement as HtmlInput).type("testuser")
                 (passwordElement as HtmlInput).type("testpass")
-                println("Filled in credentials")
             } else {
                 throw RuntimeException("Could not find login form elements on Keycloak page")
             }
@@ -356,20 +375,10 @@ class SAMLTest {
                 .filterIsInstance<HtmlInput>()
                 .find { it.getAttribute("type") == "submit" }
 
-            println("Submit button found: ${submitButton != null}")
-            println("Submit button value: ${submitButton?.getAttribute("value")}")
-
             val redirectPage = submitButton?.click<HtmlPage>()
 
-            println("=== AFTER LOGIN SUBMIT ===")
-            println("URL: ${redirectPage?.url}")
-            println("Title: ${redirectPage?.titleText}")
-            println("HTML: ${redirectPage?.asXml()}")
-            println("=== END AFTER LOGIN SUBMIT ===")
-
             // Check if this is the SAML response redirect page and submit the form
-            val returnPage = if (redirectPage?.asXml()?.contains("Authentication Redirect") == true) {
-                println("Found authentication redirect page, submitting SAML response...")
+            if (redirectPage?.asXml()?.contains("Authentication Redirect") == true) {
                 // Submit the SAML response form directly
                 val samlResponseForm = redirectPage.forms[0]
                 try {
@@ -380,42 +389,21 @@ class SAMLTest {
 
                     if (submitBtn != null) {
                         val finalPage = submitBtn.click<HtmlPage>()
-                        println("=== FINAL SAML RESPONSE SUBMIT ===")
-                        println("URL: ${finalPage?.url}")
-                        println("Title: ${finalPage?.titleText}")
-                        println("HTML: ${finalPage?.asXml()}")
-                        println("=== END FINAL SAML RESPONSE SUBMIT ===")
-                        finalPage
+                        assertThat(finalPage?.url?.toString()).contains("localhost:5173")
                     } else {
                         // No submit button found, submit the form directly
                         val finalPage = samlResponseForm.getElementsByTagName("input")[0].click<HtmlPage>()
-                        println("=== FINAL SAML RESPONSE SUBMIT (ALT) ===")
-                        println("URL: ${finalPage?.url}")
-                        println("Title: ${finalPage?.titleText}")
-                        println("HTML: ${finalPage?.asXml()}")
-                        println("=== END FINAL SAML RESPONSE SUBMIT (ALT) ===")
-                        finalPage
+                        assertThat(finalPage?.url?.toString()).contains("localhost:5173")
                     }
                 } catch (e: Exception) {
-                    println("Error submitting form: ${e.message}")
-                    redirectPage
+                    if (!e.message.orEmpty().contains("HttpHostConnectException: Connect to localhost:5173")) {
+                        throw e
+                    }
                 }
             } else {
-                redirectPage
-            }
-
-            // Check if we got redirected back to the app
-            try {
-                assertThat(returnPage?.url?.toString()).contains("localhost:5173")
-            } catch (e: Exception) {
-                // If the frontend hasn't started this exception is expected but the redirect worked
-                if (!e.message.orEmpty().contains("HttpHostConnectException: Connect to localhost:5173")) {
-                    throw e
-                }
+                assertThat(redirectPage?.url?.toString()).contains("localhost:5173")
             }
         } catch (e: Exception) {
-            // Log the error for debugging purposes
-            println("Error during SAML login flow: ${e.message}")
             e.printStackTrace()
             throw e // Re-throw to fail the test if necessary
         } finally {
@@ -441,10 +429,10 @@ class SAMLTest {
             email = "testuser@example.com",
             fullName = "Test User",
             password = "hashedpassword123",
-            roles = setOf()
+            roles = setOf(),
         )
         userAdapter.createOrUpdateUser(existingUser)
-        
+
         // Verify user was created with password auth
         val userBeforeSaml = userAdapter.findByEmail("testuser@example.com")
         assertThat(userBeforeSaml).isNotNull()
@@ -497,9 +485,16 @@ class SAMLTest {
                 val submitBtn = samlResponseForm.getElementsByTagName("input")
                     .filterIsInstance<HtmlInput>()
                     .find { it.getAttribute("type") == "submit" }
-                
+
                 if (submitBtn != null) {
-                    submitBtn.click<HtmlPage>()
+                    try {
+                        submitBtn.click<HtmlPage>()
+                    } catch (e: RuntimeException) {
+                        // if the frontend hasn't started this is expected
+                        if (!e.message.orEmpty().contains("HttpHostConnectException: Connect to localhost:5173")) {
+                            throw e
+                        }
+                    }
                 } else {
                     samlResponseForm.getElementsByTagName("input")[0].click<HtmlPage>()
                 }

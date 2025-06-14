@@ -83,3 +83,6 @@ databaseChangeLog:
   - include:
       file: 029-add-saml-name-id-column.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 030-create-license-table.yaml
+      relativeToChangelogFile: true

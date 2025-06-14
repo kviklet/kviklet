@@ -16,6 +16,7 @@ class UserService(
     private val userAdapter: UserAdapter,
     private val passwordEncoder: PasswordEncoder,
     private val roleAdapter: RoleAdapter,
+    private val licenseService: LicenseService,
 ) {
 
     @Transactional
@@ -26,6 +27,15 @@ class UserService(
         if (existingUser != null) {
             throw EmailAlreadyExistsException(email)
         }
+
+        val license = licenseService.getActiveLicense()
+        if (license != null) {
+            val maxUsers = license.allowedUsers
+            if (maxUsers <= userAdapter.listUsers().size.toUInt()) {
+                throw LicenseRestrictionException("License does not allow more users")
+            }
+        }
+
         val defaultRole = roleAdapter.findById(Role.DEFAULT_ROLE_ID)
 
         val user = User(

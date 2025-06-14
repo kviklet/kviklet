@@ -6,7 +6,9 @@ import com.tngtech.archunit.junit.AnalyzeClasses
 import com.tngtech.archunit.junit.ArchTest
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods
+import dev.kviklet.kviklet.security.NoPolicy
 import dev.kviklet.kviklet.security.Policy
+import jakarta.annotation.PostConstruct
 import jakarta.persistence.Entity
 import org.springframework.scheduling.annotation.Async
 
@@ -24,5 +26,6 @@ class ArchitectureTest {
         .and().areDeclaredInClassesThat().haveSimpleNameEndingWith("Service")
         .and().doNotHaveModifier(JavaModifier.SYNTHETIC)
         .and().areNotAnnotatedWith(Async::class.java)
-        .should().beAnnotatedWith(Policy::class.java)
+        .and().areNotAnnotatedWith(PostConstruct::class.java)
+        .should().beAnnotatedWith(Policy::class.java).orShould().beAnnotatedWith(NoPolicy::class.java)
 }
