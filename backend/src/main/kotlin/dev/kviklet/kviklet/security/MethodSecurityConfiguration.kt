@@ -10,8 +10,8 @@ import org.springframework.aop.Pointcut
 import org.springframework.aop.PointcutAdvisor
 import org.springframework.aop.framework.AopInfrastructureBean
 import org.springframework.aop.support.annotation.AnnotationMatchingPointcut
-import org.springframework.beans.factory.config.BeanDefinition.ROLE_INFRASTRUCTURE
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.config.BeanDefinition.ROLE_INFRASTRUCTURE
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Role
@@ -80,6 +80,10 @@ interface SecuredDomainObject {
 @Target(AnnotationTarget.FUNCTION)
 @Retention
 annotation class Policy(val permission: Permission, val checkIsPresentOnly: Boolean = false)
+
+@Target(AnnotationTarget.FUNCTION)
+@Retention
+annotation class NoPolicy
 
 @Configuration
 @EnableMethodSecurity(prePostEnabled = true)
