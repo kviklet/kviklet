@@ -130,6 +130,7 @@ interface ExecutionRequestRepository :
 
 interface CustomExecutionRequestRepository {
     fun findByIdWithDetails(id: ExecutionRequestId): ExecutionRequestEntity?
+    fun findAllWithDetails(): List<ExecutionRequestEntity>
 }
 
 class CustomExecutionRequestRepositoryImpl(private val entityManager: EntityManager) :
@@ -145,6 +146,14 @@ class CustomExecutionRequestRepositoryImpl(private val entityManager: EntityMana
             .fetch()
             .toSet()
             .firstOrNull()
+
+    override fun findAllWithDetails(): List<ExecutionRequestEntity> = JPAQuery<ExecutionRequestEntity>(entityManager)
+        .from(qExecutionRequestEntity)
+        .leftJoin(qExecutionRequestEntity.events).fetchJoin()
+        .leftJoin(qExecutionRequestEntity.connection).fetchJoin()
+        .leftJoin(qExecutionRequestEntity.author).fetchJoin()
+        .orderBy(qExecutionRequestEntity.createdAt.desc())
+        .fetch()
 }
 
 @Service
@@ -293,10 +302,8 @@ class ExecutionRequestAdapter(
         )
     }
 
-    fun listExecutionRequests(): List<ExecutionRequestDetails> = executionRequestRepository.findAll().map {
-        it.toDetailDto(
-            connectionAdapter.toDto(it.connection),
-        )
+    fun listExecutionRequests(): List<ExecutionRequestDetails> = executionRequestRepository.findAllWithDetails().map {
+        it.toDetailDto(connectionAdapter.toDto(it.connection))
     }
 
     private fun getExecutionRequestDetailsEntity(id: ExecutionRequestId): ExecutionRequestEntity =
