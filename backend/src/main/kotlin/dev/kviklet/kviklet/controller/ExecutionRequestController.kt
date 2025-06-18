@@ -644,7 +644,7 @@ class ExecutionRequestController(
     ) {
         try {
             // Set CSV headers ONLY if we know the query will succeed
-            response.contentType = "text/csv"
+            response.contentType = "text/csv; charset=UTF-8"
             val csvName = executionRequestService.getCSVFileName(executionRequestId)
             response.setHeader("Content-Disposition", "attachment; filename=\"$csvName\"")
 
