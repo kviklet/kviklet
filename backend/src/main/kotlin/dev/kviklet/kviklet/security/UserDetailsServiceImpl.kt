@@ -2,6 +2,8 @@ package dev.kviklet.kviklet.security
 
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.service.LicenseRestrictionException
+import dev.kviklet.kviklet.service.LicenseService
 import dev.kviklet.kviklet.service.dto.Role
 import org.springframework.ldap.core.LdapTemplate
 import org.springframework.ldap.query.LdapQueryBuilder
@@ -20,6 +22,7 @@ class UserDetailsServiceImpl(
     private val ldapProperties: LdapProperties,
     private val ldapTemplate: LdapTemplate,
     private val roleAdapter: RoleAdapter,
+    private val licenseService: LicenseService,
 ) : UserDetailsService {
 
     override fun loadUserByUsername(username: String): UserDetails {
@@ -74,13 +77,30 @@ class UserDetailsServiceImpl(
         var user = userAdapter.findByLdapIdentifier(uniqueId)
 
         if (user == null) {
-            val defaultRole = roleAdapter.findById(Role.DEFAULT_ROLE_ID)
-            user = dev.kviklet.kviklet.db.User(
-                ldapIdentifier = uniqueId,
-                email = email,
-                fullName = fullName,
-                roles = setOf(defaultRole),
-            )
+            user = userAdapter.findByEmail(email)
+            if (user != null) {
+                user = user.copy(
+                    ldapIdentifier = uniqueId,
+                    fullName = fullName,
+                    password = null,
+                    subject = null,
+                )
+            } else {
+                val license = licenseService.getActiveLicense()
+                if (license != null) {
+                    val maxUsers = license.allowedUsers
+                    if (maxUsers <= userAdapter.listUsers().size.toUInt()) {
+                        throw LicenseRestrictionException("License does not allow more users")
+                    }
+                }
+                val defaultRole = roleAdapter.findById(Role.DEFAULT_ROLE_ID)
+                user = dev.kviklet.kviklet.db.User(
+                    ldapIdentifier = uniqueId,
+                    email = email,
+                    fullName = fullName,
+                    roles = setOf(defaultRole),
+                )
+            }
         } else {
             user = user.copy(
                 email = email,

@@ -2,8 +2,8 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.springframework.boot.gradle.tasks.run.BootRun
 
 plugins {
-    id("org.springframework.boot") version "3.1.2"
-    id("io.spring.dependency-management") version "1.0.15.RELEASE"
+    id("org.springframework.boot") version "3.4.2"
+    id("io.spring.dependency-management") version "1.1.7"
     kotlin("jvm") version "1.9.24"
     kotlin("plugin.spring") version "1.9.24"
     kotlin("plugin.jpa") version "1.9.24"
@@ -25,7 +25,7 @@ group = "com.example"
 version = "0.0.1-SNAPSHOT"
 val queryDslVersion = "5.0.0"
 val testcontainersVersion = "1.18.3"
-java.sourceCompatibility = JavaVersion.VERSION_17
+java.sourceCompatibility = JavaVersion.VERSION_21
 
 configurations {
     compileOnly {
@@ -36,6 +36,7 @@ configurations {
 repositories {
     maven { url = uri("https://repo.spring.io/milestone") }
     mavenCentral()
+    maven { url = uri("https://build.shibboleth.net/maven/releases/") }
 }
 
 dependencies {
@@ -49,6 +50,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-websocket")
     implementation("org.springframework.security:spring-security-ldap")
     implementation("org.springframework.ldap:spring-ldap-core")
+    implementation("org.springframework.security:spring-security-saml2-service-provider")
     implementation("org.springframework.boot:spring-boot-devtools")
 
     implementation("org.springframework.security:spring-security-acl")
@@ -56,6 +58,8 @@ dependencies {
     implementation("org.springframework:spring-context-support")
     implementation("com.github.jsqlparser:jsqlparser:4.9")
     implementation("io.kubernetes:client-java:20.0.1")
+    implementation("software.amazon.awssdk:rds:2.30.37")
+    implementation("software.amazon.awssdk:sts:2.30.37")
 
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
@@ -71,17 +75,20 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
-    testImplementation("com.tngtech.archunit:archunit-junit5:1.0.1")
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("com.tngtech.archunit:archunit-junit5:1.3.0")
     testImplementation("org.testcontainers:junit-jupiter:$testcontainersVersion")
     testImplementation("org.testcontainers:mysql:$testcontainersVersion")
     testImplementation("org.testcontainers:postgresql:$testcontainersVersion")
     testImplementation("org.testcontainers:mssqlserver:$testcontainersVersion")
     testImplementation("org.testcontainers:mongodb:$testcontainersVersion")
     testImplementation("org.testcontainers:mariadb:$testcontainersVersion")
+    testImplementation("org.jsoup:jsoup:1.16.1")
 
     testImplementation("io.kotest:kotest-assertions-core:5.5.5")
     testImplementation("io.mockk:mockk:1.13.4")
     testImplementation("com.ninja-squad:springmockk:4.0.2")
+    testImplementation("net.sourceforge.htmlunit:htmlunit:2.70.0")
 
     // querydsl
     implementation("com.querydsl:querydsl-core:$queryDslVersion")
@@ -105,7 +112,7 @@ dependencies {
 tasks.withType<KotlinCompile> {
     kotlinOptions {
         freeCompilerArgs = listOf("-Xjsr305=strict")
-        jvmTarget = "17"
+        jvmTarget = "21"
     }
 }
 

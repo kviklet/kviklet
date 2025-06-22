@@ -25,7 +25,7 @@ jobs:
         run: docker compose -f "../e2e-compose.yml" logs > docker_logs.txt
       - name: Upload Docker logs
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: docker-logs
           path: e2e/docker_logs.txt
@@ -33,7 +33,7 @@ jobs:
       - name: Stop containers
         if: always()
         run: docker compose  -f "../e2e-compose.yml" down
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: playwright-report

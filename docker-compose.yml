@@ -25,18 +25,18 @@ services:
     volumes:
       - ./kviklet-postgres-data:/var/lib/postgresql/data
 
-  kviklet:
-    image: ghcr.io/kviklet/kviklet:main
-    ports:
-      - "80:8080"
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://kviklet-postgres:5432/kviklet
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=postgres
-      - INITIAL_USER_EMAIL=admin@admin.com
-      - INITIAL_USER_PASSWORD=admin
-    depends_on:
-      - kviklet-postgres
+  #kviklet:
+  #  image: ghcr.io/kviklet/kviklet:main
+  #  ports:
+  #    - "80:8080"
+  #  environment:
+  #    - SPRING_DATASOURCE_URL=jdbc:postgresql://kviklet-postgres:5432/kviklet
+  #    - SPRING_DATASOURCE_USERNAME=postgres
+  #    - SPRING_DATASOURCE_PASSWORD=postgres
+  #    - INITIAL_USER_EMAIL=admin@admin.com
+  #    - INITIAL_USER_PASSWORD=admin
+  #  depends_on:
+  #    - kviklet-postgres
 
   #mongodb:
   #  image: mongo:jammy
@@ -78,19 +78,37 @@ services:
   #  volumes:
   #    - ./mssql-data:/var/opt/mssql
 
-  # ldap:
-  #   image: osixia/openldap:1.1.8
-  #   ports:
-  #     - "389:389"
-  #   environment:
-  #     - LDAP_ORGANISATION=Kviklet
-  #     - LDAP_DOMAIN=kviklet.dev
-  #     - LDAP_ADMIN_PASSWORD=admin
-  #     - LDAP_CONFIG_PASSWORD=config
-  # ldapmyadmin:
-  #   image: osixia/phpldapadmin:0.9.0
-  #   ports:
-  #     - "80:80"
-  #   environment:
-  #     - PHPLDAPADMIN_LDAP_HOSTS=ldap
-  #     - PHPLDAPADMIN_HTTPS=false
+  ldap:
+    image: osixia/openldap:1.1.8
+    ports:
+      - "389:389"
+    environment:
+      - LDAP_ORGANISATION=Kviklet
+      - LDAP_DOMAIN=kviklet.dev
+      - LDAP_ADMIN_PASSWORD=admin
+      - LDAP_CONFIG_PASSWORD=config
+  ldapmyadmin:
+    image: osixia/phpldapadmin:0.9.0
+    ports:
+      - "80:80"
+    environment:
+      - PHPLDAPADMIN_LDAP_HOSTS=ldap
+      - PHPLDAPADMIN_HTTPS=
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: keycloak
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: true
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+    ports:
+      - "4321:8080"
+    command: start-dev
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+
+volumes:
+  keycloak_data:

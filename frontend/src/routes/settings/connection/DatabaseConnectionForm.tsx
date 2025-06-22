@@ -6,7 +6,14 @@ import {
   testConnection,
   TestConnectionResponse,
 } from "../../../api/DatasourceApi";
-import { useForm, UseFormHandleSubmit } from "react-hook-form";
+import {
+  FieldErrors,
+  useForm,
+  UseFormHandleSubmit,
+  UseFormRegister,
+  UseFormSetValue,
+  UseFormWatch,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import InputField, { TextField } from "../../../components/InputField";
@@ -24,29 +31,56 @@ import {
 import { isApiErrorResponse } from "../../../api/Errors";
 import useNotification from "../../../hooks/useNotification";
 import Spinner from "../../../components/Spinner";
+import { supportsIamAuth } from "../../../hooks/connections";
 
-const connectionFormSchema = z
-  .object({
-    displayName: z.string().min(3),
-    description: z.string(),
-    id: z.string().min(3).min(3),
-    type: z.nativeEnum(DatabaseType),
-    protocol: z.nativeEnum(DatabaseProtocol),
-    hostname: z.string().min(1),
-    port: z.coerce.number(),
+const baseConnectionSchema = z.object({
+  displayName: z.string().min(3),
+  description: z.string(),
+  id: z.string().min(3),
+  type: z.nativeEnum(DatabaseType),
+  protocol: z.nativeEnum(DatabaseProtocol),
+  hostname: z.string().min(1),
+  port: z.coerce.number(),
+  databaseName: z.string(),
+  reviewConfig: z.object({
+    numTotalRequired: z.coerce.number(),
+  }),
+  additionalJDBCOptions: z.string(),
+  maxExecutions: z.coerce.number().nullable(),
+  dumpsEnabled: z.boolean(),
+  temporaryAccessEnabled: z.boolean().default(true),
+  explainEnabled: z.boolean().default(false),
+  connectionType: z.literal("DATASOURCE").default("DATASOURCE"),
+});
+
+const connectionFormSchema = z.discriminatedUnion("authenticationType", [
+  baseConnectionSchema.extend({
+    authenticationType: z.literal("USER_PASSWORD"),
     username: z.string().min(0),
     password: z.string().min(0),
-    databaseName: z.string(),
-    reviewConfig: z.object({
-      numTotalRequired: z.coerce.number(),
-    }),
-    additionalJDBCOptions: z.string(),
-    maxExecutions: z.coerce.number().nullable(),
-    dumpsEnabled: z.boolean(),
-  })
-  .transform((data) => ({ ...data, connectionType: "DATASOURCE" }));
+  }),
+  baseConnectionSchema.extend({
+    authenticationType: z.literal("AWS_IAM"),
+    username: z.string().min(0),
+    roleArn: z.string().nullable(),
+    type: z.nativeEnum(DatabaseType).refine(
+      (type) => supportsIamAuth(type),
+      (type) => ({
+        message: `AWS IAM authentication is not supported for ${type}`,
+      }),
+    ),
+  }),
+]);
 
 type ConnectionForm = z.infer<typeof connectionFormSchema>;
+type BasicAuthFormType = Extract<
+  ConnectionForm,
+  { authenticationType: "USER_PASSWORD" }
+>;
+type AWSAuthFormType = Extract<
+  ConnectionForm,
+  { authenticationType: "AWS_IAM" }
+>;
 
 const getJDBCOptionsPlaceholder = (type: DatabaseType) => {
   if (type === DatabaseType.POSTGRES) {
@@ -104,6 +138,8 @@ export default function DatabaseConnectionForm(props: {
     resolver: zodResolver(connectionFormSchema),
   });
 
+  console.log(errors);
+
   const [protocolOptions, setProtocolOptions] = useState<DatabaseProtocol[]>([
     DatabaseProtocol.POSTGRESQL,
   ]);
@@ -132,8 +168,11 @@ export default function DatabaseConnectionForm(props: {
     setValue("port", 5432);
     setValue("type", DatabaseType.POSTGRES);
     setValue("protocol", DatabaseProtocol.POSTGRESQL);
+    setValue("authenticationType", "USER_PASSWORD");
     setValue("maxExecutions", 1);
     setValue("dumpsEnabled", false);
+    setValue("temporaryAccessEnabled", true);
+    setValue("explainEnabled", false);
   }, []);
 
   const updatePortIfNotTouched = (port: number) => {
@@ -252,22 +291,11 @@ export default function DatabaseConnectionForm(props: {
             error={errors.description?.message}
             data-testid="connection-description"
           />
-          <InputField
-            id="username"
-            label="Username"
-            placeholder="Username"
-            {...register("username")}
-            error={errors.username?.message}
-            data-testid="connection-username"
-          />
-          <InputField
-            id="password"
-            label="Password"
-            placeholder="Password"
-            type="password"
-            {...register("password")}
-            error={errors.password?.message}
-            data-testid="connection-password"
+          <AuthSection
+            register={register}
+            errors={errors}
+            watch={watch}
+            setValue={setValue}
           />
           <InputField
             id="hostname"
@@ -359,7 +387,7 @@ export default function DatabaseConnectionForm(props: {
                             htmlFor="dumpsEnabled"
                             className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
                           >
-                            Dumps Enabled
+                            Enable Dumps
                           </label>
                           <input
                             type="checkbox"
@@ -368,6 +396,34 @@ export default function DatabaseConnectionForm(props: {
                           />
                         </div>
                       )}
+                      <div className="flex w-full justify-between">
+                        <label
+                          htmlFor="temporaryAccessEnabled"
+                          className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+                        >
+                          Enable Temporary Access
+                        </label>
+                        <input
+                          type="checkbox"
+                          className="my-auto h-4 w-4"
+                          {...register("temporaryAccessEnabled")}
+                        />
+                      </div>
+                      <div className="flex w-full justify-between">
+                        <label
+                          htmlFor="explainEnabled"
+                          className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+                          title="This feature relies on SQL parsing, it's recommended to only enable it on read-only connections."
+                        >
+                          Explain Enabled
+                          <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
+                        </label>
+                        <input
+                          type="checkbox"
+                          className="my-auto h-4 w-4"
+                          {...register("explainEnabled")}
+                        />
+                      </div>
                       <TestingConnectionFragment
                         handleSubmit={handleSubmit}
                         type={watchType}
@@ -395,6 +451,103 @@ export default function DatabaseConnectionForm(props: {
     </form>
   );
 }
+
+type AuthSectionProps = {
+  register: UseFormRegister<ConnectionForm>;
+  errors: FieldErrors<ConnectionForm>;
+  watch: UseFormWatch<ConnectionForm>;
+  setValue: UseFormSetValue<ConnectionForm>;
+};
+
+const AuthSection = ({
+  register,
+  errors,
+  watch,
+  setValue,
+}: AuthSectionProps) => {
+  const databaseType = watch("type");
+  const authenticationType = watch("authenticationType");
+
+  useEffect(() => {
+    if (!supportsIamAuth(databaseType) && authenticationType === "AWS_IAM") {
+      setValue("authenticationType", "USER_PASSWORD");
+    }
+  }, [databaseType, authenticationType, setValue]);
+
+  const authenticationTypes = supportsIamAuth(databaseType)
+    ? [
+        { value: "USER_PASSWORD", label: "Username & Password" },
+        { value: "AWS_IAM", label: "AWS IAM" },
+      ]
+    : [{ value: "USER_PASSWORD", label: "Username & Password" }];
+
+  return (
+    <div className="space-y-4">
+      <div className="-mx-5 space-y-2 border-y border-slate-300 px-4 py-2 dark:border-slate-700 ">
+        {/* Only show auth method selector if IAM is supported */}
+        {supportsIamAuth(databaseType) && (
+          <fieldset className="relative flex items-center justify-between">
+            <label className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200">
+              Authentication Method
+            </label>
+            <div className="flex basis-3/5 rounded-lg bg-slate-100 dark:bg-slate-900">
+              {authenticationTypes.map((method) => (
+                <label
+                  key={method.value}
+                  className={`flex flex-1 cursor-pointer items-center justify-center rounded-md px-3 py-2
+                    text-center text-sm font-medium tracking-tighter transition-colors
+                  ${
+                    watch("authenticationType") === method.value
+                      ? "bg-slate-400 text-slate-900 dark:bg-indigo-600 dark:text-slate-50"
+                      : "text-slate-700 hover:bg-slate-200 dark:text-slate-300 hover:dark:bg-slate-800"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    className="hidden"
+                    {...register("authenticationType")}
+                    value={method.value}
+                  />
+                  {method.label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        )}
+
+        <InputField
+          id="username"
+          label="Username"
+          placeholder="Username"
+          {...register("username")}
+          error={errors.username?.message}
+          data-testid="connection-username"
+        />
+        {watch("authenticationType") === "USER_PASSWORD" && (
+          <InputField
+            id="password"
+            label="Password"
+            placeholder="Password"
+            type="password"
+            {...register("password")}
+            error={(errors as FieldErrors<BasicAuthFormType>).password?.message}
+            data-testid="connection-password"
+          />
+        )}
+        {watch("authenticationType") === "AWS_IAM" && (
+          <InputField
+            id="roleArn"
+            label="Role ARN"
+            placeholder="arn:aws:iam::123456789012:role/MyRole"
+            tooltip="(Optional) An ARN of an AWS IAM role to assume during RDS IAM authentication."
+            {...register("roleArn")}
+            error={(errors as FieldErrors<AWSAuthFormType>).roleArn?.message}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
 
 const TestingConnectionFragment = (props: {
   handleSubmit: UseFormHandleSubmit<ConnectionForm>;

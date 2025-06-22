@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.db
 
 import dev.kviklet.kviklet.db.util.ReviewConfigConverter
 import dev.kviklet.kviklet.service.EntityNotFound
+import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
@@ -74,6 +75,9 @@ class ConnectionEntity(
     @Column(name = "additional_jdbc_options")
     var additionalJDBCOptions: String? = null,
     var dumpsEnabled: Boolean = false,
+    var temporaryAccessEnabled: Boolean = true,
+    var explainEnabled: Boolean = false,
+    var roleArn: String? = null,
 ) {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
@@ -168,7 +172,7 @@ class ConnectionAdapter(
         databaseName: String?,
         maxExecutions: Int?,
         username: String,
-        password: String,
+        password: String?,
         description: String,
         reviewConfig: ReviewConfig,
         port: Int,
@@ -177,6 +181,9 @@ class ConnectionAdapter(
         protocol: DatabaseProtocol,
         additionalJDBCOptions: String,
         dumpsEnabled: Boolean,
+        temporaryAccessEnabled: Boolean,
+        explainEnabled: Boolean,
+        roleArn: String? = null,
     ): Connection = decryptCredentialsIfNeeded(
         save(
             ConnectionEntity(
@@ -197,6 +204,9 @@ class ConnectionAdapter(
                 connectionType = ConnectionType.DATASOURCE,
                 additionalJDBCOptions = additionalJDBCOptions,
                 dumpsEnabled = dumpsEnabled,
+                temporaryAccessEnabled = temporaryAccessEnabled,
+                explainEnabled = explainEnabled,
+                roleArn = roleArn,
             ),
         ),
     )
@@ -210,12 +220,15 @@ class ConnectionAdapter(
         maxExecutions: Int?,
         hostname: String,
         port: Int,
-        username: String,
-        password: String,
+        authenticationType: AuthenticationType,
+        auth: AuthenticationDetails,
         databaseName: String?,
         reviewConfig: ReviewConfig,
         additionalJDBCOptions: String,
         dumpsEnabled: Boolean,
+        temporaryAccessEnabled: Boolean,
+        explainEnabled: Boolean,
+        roleArn: String? = null,
     ): Connection {
         val datasourceConnection = connectionRepository.findByIdOrNull(id.toString())
             ?: throw EntityNotFound(
@@ -232,13 +245,20 @@ class ConnectionAdapter(
         datasourceConnection.hostname = hostname
         datasourceConnection.maxExecutions = maxExecutions
         datasourceConnection.port = port
-        datasourceConnection.username = username
-        datasourceConnection.password = password
+        datasourceConnection.authenticationType = authenticationType
+        datasourceConnection.username = auth.username
+        datasourceConnection.password = when (auth) {
+            is AuthenticationDetails.UserPassword -> auth.password
+            is AuthenticationDetails.AwsIam -> ""
+        }
         datasourceConnection.databaseName = databaseName
         datasourceConnection.reviewConfig = reviewConfig
         datasourceConnection.additionalJDBCOptions = additionalJDBCOptions
         datasourceConnection.isEncrypted = false
         datasourceConnection.dumpsEnabled = dumpsEnabled
+        datasourceConnection.temporaryAccessEnabled = temporaryAccessEnabled
+        datasourceConnection.explainEnabled = explainEnabled
+        datasourceConnection.roleArn = roleArn
 
         return decryptCredentialsIfNeeded(save(datasourceConnection))
     }
@@ -306,8 +326,16 @@ class ConnectionAdapter(
                 authenticationType = connection.authenticationType!!,
                 databaseName = connection.databaseName,
                 maxExecutions = connection.maxExecutions,
-                username = connection.username!!,
-                password = connection.password!!,
+                auth = when (connection.authenticationType!!) {
+                    AuthenticationType.USER_PASSWORD -> AuthenticationDetails.UserPassword(
+                        username = connection.username!!,
+                        password = connection.password!!,
+                    )
+                    AuthenticationType.AWS_IAM -> AuthenticationDetails.AwsIam(
+                        username = connection.username!!,
+                        roleArn = connection.roleArn,
+                    )
+                },
                 description = connection.description,
                 reviewConfig = connection.reviewConfig,
                 port = connection.port!!,
@@ -316,6 +344,8 @@ class ConnectionAdapter(
                 protocol = connection.protocol ?: connection.datasourceType!!.toProtocol(),
                 additionalOptions = connection.additionalJDBCOptions ?: "",
                 dumpsEnabled = connection.dumpsEnabled,
+                temporaryAccessEnabled = connection.temporaryAccessEnabled,
+                explainEnabled = connection.explainEnabled,
             )
         ConnectionType.KUBERNETES ->
             KubernetesConnection(

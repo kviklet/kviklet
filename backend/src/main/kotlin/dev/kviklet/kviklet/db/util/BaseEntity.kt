@@ -11,7 +11,7 @@ open class BaseEntity {
 
     @Id
     @GeneratedValue(generator = "uuid")
-    @GenericGenerator(name = "uuid", strategy = "dev.kviklet.kviklet.db.util.IdGenerator")
+    @GenericGenerator(name = "uuid", type = IdGenerator::class)
     var id: String? = null
 
     override fun equals(other: Any?): Boolean {

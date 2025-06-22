@@ -8,6 +8,7 @@ import {
 
 enum AuthenticationType {
   USER_PASSWORD = "USER_PASSWORD",
+  AWS_IAM = "AWS_IAM",
 }
 
 enum DatabaseType {
@@ -45,6 +46,9 @@ const databaseConnectionResponseSchema = withType(
     }),
     additionalJDBCOptions: z.string().optional(),
     dumpsEnabled: z.boolean(),
+    temporaryAccessEnabled: z.boolean(),
+    explainEnabled: z.boolean(),
+    roleArn: z.string().nullable(),
   }),
   "DATASOURCE",
 );
@@ -73,77 +77,63 @@ const testConnectionResponseSchema = z.object({
   accessibleDatabases: z.array(z.string()),
 });
 
-const databaseConnectionPayloadSchema = z
-  .object({
-    displayName: z.coerce.string(),
-    id: z.string(),
-    username: z.string(),
-    password: z.string(),
-    description: z.string(),
-    databaseName: z.string(),
-    maxExecutions: z.coerce.number().nullable(),
-    reviewConfig: z.object({
-      numTotalRequired: z.number(),
-    }),
-    type: z.nativeEnum(DatabaseType),
-    protocol: z.nativeEnum(DatabaseProtocol),
-    hostname: z.string(),
-    port: z.number(),
-    additionalJDBCOptions: z.string().optional(),
-  })
-  .transform((data) => ({ ...data, connectionType: "DATASOURCE" }));
+interface ConnectionBase {
+  displayName: string;
+  id: string;
+  description: string;
+  reviewConfig: {
+    numTotalRequired: number;
+  };
+  maxExecutions: number | null;
+}
 
-const kubernetesConnectionPayloadSchema = z
-  .object({
-    displayName: z.coerce.string(),
-    id: z.string(),
-    description: z.string(),
-    reviewConfig: z.object({
-      numTotalRequired: z.coerce.number(),
-    }),
-    maxExecutions: z.coerce.number().nullable(),
-  })
-  .transform((data) => ({ ...data, connectionType: "KUBERNETES" }));
+interface DatabaseConnectionBase extends ConnectionBase {
+  connectionType: "DATASOURCE";
+  databaseName: string;
+  type: DatabaseType;
+  protocol: DatabaseProtocol;
+  hostname: string;
+  port: number;
+  additionalJDBCOptions?: string;
+}
 
-const connectionPayloadSchema = z.union([
-  databaseConnectionPayloadSchema,
-  kubernetesConnectionPayloadSchema,
-]);
+type DatabaseConnection =
+  | (DatabaseConnectionBase & {
+      authenticationType: "USER_PASSWORD";
+      username: string;
+      password: string;
+    })
+  | (DatabaseConnectionBase & {
+      authenticationType: "AWS_IAM";
+      username: string;
+      roleArn: string | null;
+    });
 
-const patchDatabaseConnectionPayloadSchema = z
-  .object({
-    displayName: z.coerce.string().optional(),
-    protocol: z.nativeEnum(DatabaseProtocol).optional(),
-    username: z.string().optional(),
-    password: z.string().optional(),
-    description: z.string().optional(),
-    databaseName: z.string().optional(),
-    reviewConfig: z
-      .object({
-        numTotalRequired: z.number(),
-      })
-      .optional(),
-    maxExecutions: z.number().optional().nullable(),
-  })
-  .transform((data) => ({ ...data, connectionType: "DATASOURCE" }));
+interface KubernetesConnection extends ConnectionBase {
+  connectionType: "KUBERNETES";
+}
 
-const patchKubernetesConnectionPayloadSchema = z
-  .object({
-    displayName: z.coerce.string().optional(),
-    description: z.string().optional(),
-    reviewConfig: z
-      .object({
-        numTotalRequired: z.number(),
-      })
-      .optional(),
-    maxExecutions: z.number().optional().nullable(),
-  })
-  .transform((data) => ({ ...data, connectionType: "KUBERNETES" }));
+type ConnectionPayload = DatabaseConnection | KubernetesConnection;
 
-const patchConnectionPayloadSchema = z.union([
-  patchDatabaseConnectionPayloadSchema,
-  patchKubernetesConnectionPayloadSchema,
-]);
+type AllNullableExcept<T, K extends keyof T> = {
+  [P in keyof T]: P extends K ? T[P] : T[P] | undefined;
+};
+
+// Use a distributive conditional type to preserve the union structure
+type PatchDatabaseConnectionPayload = DatabaseConnection extends infer T
+  ? T extends DatabaseConnection
+    ? Omit<AllNullableExcept<T, "connectionType" | "authenticationType">, "id">
+    : never
+  : never;
+
+type PatchKubernetesConnectionPayload = Omit<
+  AllNullableExcept<KubernetesConnection, "connectionType">,
+  "id"
+>;
+
+type PatchConnectionPayload =
+  | PatchDatabaseConnectionPayload
+  | PatchKubernetesConnectionPayload;
 
 // extract the inferred type
 type ConnectionResponse = z.infer<typeof connectionResponseSchema>;
@@ -152,17 +142,6 @@ type DatabaseConnectionResponse = z.infer<
 >;
 type KubernetesConnectionResponse = z.infer<
   typeof kubernetesConnectionResponseSchema
->;
-type ConnectionPayload = z.infer<typeof connectionPayloadSchema>;
-type PatchDatabaseConnectionPayload = z.infer<
-  typeof patchDatabaseConnectionPayloadSchema
->;
-type PatchKubernetesConnectionPayload = z.infer<
-  typeof patchKubernetesConnectionPayloadSchema
->;
-type PatchConnectionPayload = z.infer<typeof patchConnectionPayloadSchema>;
-type KubernetesConnectionPayload = z.infer<
-  typeof kubernetesConnectionPayloadSchema
 >;
 
 type TestConnectionResponse = z.infer<typeof testConnectionResponseSchema>;
@@ -270,7 +249,6 @@ export {
   getConnection,
   DatabaseType,
   DatabaseProtocol,
-  kubernetesConnectionPayloadSchema,
   deleteConnection,
 };
 
@@ -279,7 +257,6 @@ export type {
   ConnectionResponse,
   ConnectionPayload,
   PatchConnectionPayload,
-  KubernetesConnectionPayload,
   DatabaseConnectionResponse,
   KubernetesConnectionResponse,
   PatchDatabaseConnectionPayload,

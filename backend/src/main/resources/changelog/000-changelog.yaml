@@ -1,7 +1,7 @@
 databaseChangeLog:
   - include:
-     file: 001-initial.yaml
-     relativeToChangelogFile: true
+      file: 001-initial.yaml
+      relativeToChangelogFile: true
   - include:
       file: 002-add-database-name.yaml
       relativeToChangelogFile: true
@@ -70,4 +70,19 @@ databaseChangeLog:
       relativeToChangelogFile: true
   - include:
       file: 025-add-live-session-table.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: 026-add-temporary-access-enabled-column.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: 027-add-explain-enabled.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: 028-add-rds-iam-role-arn.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: 029-add-saml-name-id-column.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: 030-create-license-table.yaml
       relativeToChangelogFile: true

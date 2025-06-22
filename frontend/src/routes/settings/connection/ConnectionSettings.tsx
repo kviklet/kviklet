@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   ConnectionPayload,
   ConnectionResponse,
-  PatchConnectionPayload,
 } from "../../../api/DatasourceApi";
 import Button from "../../../components/Button";
 import Modal from "../../../components/Modal";
@@ -41,10 +40,6 @@ function ConnectionSettingsList(props: {
   connections: ConnectionResponse[];
   addConnectionHandler: () => void;
   addKubnernetesConnectionHandler: () => void;
-  editConnectionHandler: (
-    connectionId: string,
-    connection: PatchConnectionPayload,
-  ) => Promise<void>;
 }) {
   return (
     <div className="flex max-h-[calc(100vh-theme(spacing.52))] w-full flex-col border-l pl-4 dark:border-slate-700  dark:bg-slate-950">
@@ -76,8 +71,7 @@ function ConnectionSettingsList(props: {
 }
 
 const ConnectionSettings = () => {
-  const { loading, connections, createConnection, editConnection } =
-    useConnections();
+  const { loading, connections, createConnection } = useConnections();
 
   const [showAddConnectionModal, setShowAddConnectionModal] =
     useState<boolean>(false);
@@ -104,9 +98,6 @@ const ConnectionSettings = () => {
               connections={connections}
               addConnectionHandler={() => {
                 setShowAddConnectionModal(true);
-              }}
-              editConnectionHandler={async (connectionId, connection) => {
-                await editConnection(connectionId, connection);
               }}
               addKubnernetesConnectionHandler={() => {
                 setShowAddKubernetesConnectionModal(true);

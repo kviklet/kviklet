@@ -1,6 +1,7 @@
 import {
   CircleStackIcon,
   Cog6ToothIcon,
+  ClipboardDocumentListIcon,
   UserCircleIcon,
   UserIcon,
   UsersIcon,
@@ -16,6 +17,7 @@ import RoleDetailsView from "./RoleDetailsView";
 import NewRoleView from "./NewRoleView";
 import GeneralSettings from "./GeneralSettings";
 import ConnectionDetails from "./connection/details/ConnectionDetails";
+import LicenseSettings from "./LicenseSettings";
 
 const Tab = (props: {
   children: React.ReactNode;
@@ -120,6 +122,18 @@ const Settings = () => {
       ),
       link: "/settings/profile",
     },
+    {
+      name: "License",
+      tabContent: (
+        <div className="flex flex-col">
+          <div className={tabStyles}>
+            <ClipboardDocumentListIcon className="mr-2 h-6"></ClipboardDocumentListIcon>
+            License
+          </div>
+        </div>
+      ),
+      link: "/settings/license",
+    },
   ];
 
   return (
@@ -155,6 +169,7 @@ const Settings = () => {
               <Route path="/roles/new" element={<NewRoleView />} />
               <Route path="/roles/:roleId" element={<RoleDetailsView />} />
               <Route path="profile" element={<ProfileSettings />} />
+              <Route path="license" element={<LicenseSettings />} />
             </Routes>
             <Outlet></Outlet>
           </div>

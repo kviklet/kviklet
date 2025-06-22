@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import dev.kviklet.kviklet.db.ConnectionType
 import dev.kviklet.kviklet.service.ConnectionService
 import dev.kviklet.kviklet.service.TestConnectionResult
+import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
@@ -72,9 +73,7 @@ data class CreateDatasourceConnectionRequest(
     @field:Size(min = 0, max = 255, message = "Maximum length 255")
     val username: String,
 
-    @Schema(example = "root")
-    @field:Size(min = 0, max = 255, message = "Maximum length 255")
-    val password: String,
+    val password: String? = null,
 
     val description: String = "",
 
@@ -88,7 +87,10 @@ data class CreateDatasourceConnectionRequest(
     val port: Int,
     val additionalJDBCOptions: String = "",
     val dumpsEnabled: Boolean = false,
-
+    val authenticationType: AuthenticationType = AuthenticationType.USER_PASSWORD,
+    val temporaryAccessEnabled: Boolean = true,
+    val explainEnabled: Boolean = false,
+    val roleArn: String? = null,
 ) : ConnectionRequest()
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
@@ -122,6 +124,8 @@ data class UpdateDatasourceConnectionRequest(
     @field:Size(min = 0, max = 255, message = "Maximum length 255")
     val username: String? = null,
 
+    val roleArn: String? = null,
+
     @Schema(example = "password")
     @field:Size(min = 0, max = 255, message = "Maximum length 255")
     val password: String? = null,
@@ -130,7 +134,13 @@ data class UpdateDatasourceConnectionRequest(
 
     val additionalJDBCOptions: String? = null,
 
+    val authenticationType: AuthenticationType? = null,
+
     val dumpsEnabled: Boolean? = null,
+
+    val temporaryAccessEnabled: Boolean? = null,
+
+    val explainEnabled: Boolean? = null,
 ) : UpdateConnectionRequest()
 
 data class UpdateKubernetesConnectionRequest(
@@ -178,6 +188,9 @@ data class DatasourceConnectionResponse(
     val reviewConfig: ReviewConfigResponse,
     val additionalJDBCOptions: String,
     val dumpsEnabled: Boolean,
+    val temporaryAccessEnabled: Boolean,
+    val explainEnabled: Boolean,
+    val roleArn: String?,
 ) : ConnectionResponse(ConnectionType.DATASOURCE) {
     companion object {
         fun fromDto(datasourceConnection: DatasourceConnection) = DatasourceConnectionResponse(
@@ -188,7 +201,7 @@ data class DatasourceConnectionResponse(
             protocol = datasourceConnection.protocol,
             databaseName = datasourceConnection.databaseName,
             maxExecutions = datasourceConnection.maxExecutions,
-            username = datasourceConnection.username,
+            username = datasourceConnection.auth.username,
             hostname = datasourceConnection.hostname,
             port = datasourceConnection.port,
             description = datasourceConnection.description,
@@ -197,6 +210,12 @@ data class DatasourceConnectionResponse(
             ),
             additionalJDBCOptions = datasourceConnection.additionalOptions,
             dumpsEnabled = datasourceConnection.dumpsEnabled,
+            temporaryAccessEnabled = datasourceConnection.temporaryAccessEnabled,
+            explainEnabled = datasourceConnection.explainEnabled,
+            roleArn = when (datasourceConnection.auth) {
+                is AuthenticationDetails.AwsIam -> datasourceConnection.auth.roleArn
+                else -> null
+            },
         )
     }
 }
@@ -252,6 +271,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             databaseName = request.databaseName,
             username = request.username,
             password = request.password,
+            authenticationType = request.authenticationType,
             description = request.description,
             reviewsRequired = request.reviewConfig.numTotalRequired,
             port = request.port,
@@ -261,6 +281,9 @@ class ConnectionController(val connectionService: ConnectionService) {
             additionalJDBCOptions = request.additionalJDBCOptions,
             maxExecutions = request.maxExecutions,
             dumpsEnabled = request.dumpsEnabled,
+            temporaryAccessEnabled = request.temporaryAccessEnabled,
+            explainEnabled = request.explainEnabled,
+            roleArn = request.roleArn,
         )
 
     private fun testDatabaseConnection(request: CreateDatasourceConnectionRequest): TestConnectionResult =
@@ -279,6 +302,10 @@ class ConnectionController(val connectionService: ConnectionService) {
             additionalJDBCOptions = request.additionalJDBCOptions,
             maxExecutions = request.maxExecutions,
             dumpsEnabled = request.dumpsEnabled,
+            authenticationType = request.authenticationType,
+            temporaryAccessEnabled = request.temporaryAccessEnabled,
+            explainEnabled = request.explainEnabled,
+            roleArn = request.roleArn,
         )
 
     private fun createKubernetesConnection(request: CreateKubernetesConnectionRequest): Connection =

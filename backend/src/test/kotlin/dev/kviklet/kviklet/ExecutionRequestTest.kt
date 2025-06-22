@@ -78,4 +78,21 @@ class ExecutionRequestTest {
         )
         assert(details.resolveReviewStatus() == ReviewStatus.CHANGE_REQUESTED)
     }
+
+    @Test
+    fun `test review status with approval and then execution error`() {
+        val request = executionRequestFactory.createDatasourceExecutionRequest()
+        val reviewer = userFactory.createUser()
+        val executor = userFactory.createUser()
+        val t3 = LocalDateTime.of(2021, 1, 3, 0, 0)
+        val events = mutableSetOf<Event>(
+            eventFactory.createReviewApprovedEvent(request = request, author = reviewer, createdAt = t1),
+            eventFactory.createExecuteEventWithError(request = request, author = executor, createdAt = t3),
+        )
+        val details = executionRequestDetailsFactory.createExecutionRequestDetails(
+            request = request,
+            events = events,
+        )
+        assert(details.resolveReviewStatus() == ReviewStatus.AWAITING_APPROVAL)
+    }
 }

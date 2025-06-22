@@ -7,9 +7,9 @@ Secure access to production environments without impairing developer productivit
 ![Kviklet](images/ExecutedRequest_light.png#gh-light-mode-only)
 ![Kviklet](images/ExecutedRequest_dark.png#gh-dark-mode-only)
 
-Kviklet (pronounced Quick-let) embraces the **Four-Eyes Principle** and a high level of configurability, to allow a **Pull Request-like Review and Approval** flow for individual SQL statements or Database sessions. This allows engineering teams to self regulate on who gets access to what data and when. This allow your organization to stay secure and compliant while still allowing for modern empowering true to DevOps workflows.
+Kviklet (pronounced Quick-let) embraces the **Four-Eyes Principle** and a high level of configurability to allow a **Pull Request-like Review and Approval** flow for individual SQL statements or Database sessions. This allows engineering teams to self regulate on who gets access to what data and when, allowing organizations to stay secure and compliant while embracing modern, empowering and truly "DevOps" workflows.
 
-Kviklet is a self hosted docker container, that provides you with a Single Page Web app that you can login to create your SQL requests or approve the ones of others.
+Kviklet is a self hosted docker container, that provides you with a Single Page Web app. Login to create SQL requests or approve the ones of others.
 
 We currently support **Postgres**, **MySQL**, **MS SQL Server** and **MongoDB**.
 
@@ -17,8 +17,9 @@ We currently support **Postgres**, **MySQL**, **MS SQL Server** and **MongoDB**.
 
 Kviklet ships with a variety of features that an engineering team needs to manage their production database access in a **simple but secure** manner:
 
-- **SSO (Google)**: Log into Kviklet without the need for a username or password. No more shared credentials for DB access.
+- **SSO (OIDC, Google, Keycloak, etc.)**: Log into Kviklet without the need for a username or password. No more shared credentials for DB access.
 - **LDAP Support**: Log into Kviklet with your LDAP credentials.
+- **SAML Support**: Log into Kviklet with your SAML credentials. (Enterprise only)
 - **Review/Approval Flow**: Leave Comments and Suggestions on other developers data requests.
 - **Temporary Access (1h)**: Execute any statement on a db for 1h after having been approved
 - **Single Query**: Execute a singular statement. Allows the reviewer to review your query before execution.
@@ -43,7 +44,7 @@ Most features are available for all databases (SSO, LDAP, RBAC, Review/Approval 
 ## Setup
 
 Kviklet ships as a simple docker container.
-You can find the available verions under [Releases](https://github.com/kviklet/kviklet/releases). We recommend to regularly update the version you are using as we continue to build new features.  
+You can find the available versions under [Releases](https://github.com/kviklet/kviklet/releases). We recommend regularly updating the version you are using as we continue to build new features.  
 The latest one currently is `ghcr.io/kviklet/kviklet:0.5.1`, you can also use `:main` but it might happen every now and then that we accidentally merge something buggy. Though we try to avoid that.
 
 ### Quick Start
@@ -145,7 +146,20 @@ SPRING_DATASOURCE_USERNAME = username
 SPRING_DATASOURCE_URL = jdbc:postgresql://[host]:[port]/[database]?currentSchema=[schema]
 ```
 
-You can also use certificates for the db connection, see [here](examples/certificates) for an example.
+#### Alternative Authentication methods
+
+- **IAM Auth:**
+  It is possible to use AWS IAM Auth for the database connection, in which case you simply omit the password and just set the username.
+  You also have to set the env var:
+
+  ```
+  SPRING_DATASOURCE_IAMAUTH=true
+  ```
+
+  Kviklet will load credentials from the usual places (env vars, instance roles, etc.) and generate a token for the connection.
+
+- **Certificates:**
+  You can also use certificates for the db connection, see [here](examples/certificates) for an example.
 
 ### Initial User
 
@@ -173,7 +187,7 @@ docker run \
 ghcr.io/kviklet/kviklet:main
 ```
 
-### SSO
+### SSO via OIDC
 
 #### Google
 
@@ -213,7 +227,7 @@ After setting those environment variables the login page should show a Login wit
 
 #### Other OIDC providers
 
-Other OIDC providers should work similarly to Keycloak, note that the `redirect URI` will change depending on they type you choose, so if you choose `gitlab` it will be `https://[kviklet_host]/api/login/oauth2/code/gitlab`.
+Other OIDC providers should work similarly to Keycloak. Note that the `redirect URI` will change depending on they type you choose, so if you choose `gitlab` it will be `https://[kviklet_host]/api/login/oauth2/code/gitlab`.
 If you run into issues feel free to create an issue, we have not tried every single OIDC provider out there (yet) and there might be slight differences in the implementation that might require updates on Kviklets side.
 
 ### LDAP
@@ -248,6 +262,41 @@ Here's what each setting means:
 
 You can customize these attributes to match your LDAP schema. After configuring LDAP, users will be able to log in using their LDAP credentials. The first time an LDAP user logs in, a corresponding user account will be created in Kviklet with default permissions. An admin will need to assign appropriate roles to these users after their first login.
 
+### SAML (Enterprise only)
+
+Kviklet supports SAML 2.0 authentication. To enable SAML, set the following environment variables:
+
+```
+SAML_ENABLED=true
+SAML_ENTITYID=https://your-identity-provider.com
+SAML_SSOSERVICELOCATION=https://your-identity-provider.com/sso
+SAML_VERIFICATIONCERTIFICATE=-----BEGIN CERTIFICATE-----\nMIICmzCCAYMCBgF4...\n-----END CERTIFICATE-----
+```
+
+Configuration details:
+- `SAML_ENABLED`: Set to `true` to enable SAML authentication
+- `SAML_ENTITYID`: The entity ID of your SAML identity provider
+- `SAML_SSOSERVICELOCATION`: The SSO service URL of your identity provider
+- `SAML_VERIFICATIONCERTIFICATE`: The X.509 certificate used to verify SAML responses (include the BEGIN/END CERTIFICATE lines)
+
+You can optionally customize the SAML attribute mappings:
+```
+SAML_USERATTRIBUTES_EMAILATTRIBUTE=email
+SAML_USERATTRIBUTES_NAMEATTRIBUTE=name  
+SAML_USERATTRIBUTES_IDATTRIBUTE=nameID
+```
+
+Your identity provider should be configured with:
+- Entity ID: `https://[kviklet_host]/api/saml2/service-provider-metadata/saml`
+- Redirect Uri: `https://[kviklet_host]/api/login/saml2/sso/saml`
+
+After configuring SAML, users can log in via the identity provider. On first login, a user account is created with default permissions.
+
+If you get correctly redirected to the IDP but then get a cors error, you can add your IDPs host to the allowed origins in Kviklet via:
+```
+CORS_ALLOWEDORIGINS=https://[idp_host]
+```
+
 ## Configuration
 
 ### Connections
@@ -258,6 +307,27 @@ After starting Kviklet you first have to configure a database connection. Go to 
 ![Add Connection](images/CreateConnection_dark.png#gh-dark-mode-only)
 
 Here you can configure how many reviews are required to run Requests on this connection. You can also configure how often a request can be run. The default is 1 and we recommend to stick to this for most use cases. As a special config, setting this to 0 any request on the connection can be run an infinite amount of times.
+
+#### AWS IAM AUTH
+
+Kviklet supports using IAM Auth for Postgres and MySQL Database Connections for this choose IAM Auth when creating a new connection.
+
+![IAM Auth](images/CreateConnectionIAM_light.png#gh-light-mode-only)
+![IAM Auth](images/CreateConnectionIAM_dark.png#gh-dark-mode-only)
+
+This will remove the option to set a password and instead user AWS credentials to connect to the database.
+
+Kviklet uses AWS's `DefaultCredentialsProvider` to find credentials and generate the token for the connection. This means all typical places should work (env vars or associated instance roles) exact order is documented here: https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/auth/credentials/DefaultCredentialsProvider.html
+
+Additionally, you can provide an AWS role ARN that Kviklet will assume, and use those credentials to create the temporary DB token. This is particularly useful for connecting to databases that are not in the same AWS account as Kviklet. To use this feature, simply enter the role ARN in the designated field when creating or editing an IAM Auth connection. Leaving the field empty will use the default credentials provider (no role assumption).
+
+The AWS region to use during token generation is inferred from your connection URL so there is no options to set it.
+
+To learn how to setup IAM Auth for your database follow the official AWS documentation: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html
+The main two points are:
+
+- Create a DB user with the IAM auth option and correct permissions
+- Create an IAM policy that allows the AWS entity to generate tokens for this user
 
 ### Roles
 
@@ -303,8 +373,8 @@ Currently there are notifications for:
 
 ## Encryption
 
-If you don't want the credentials to be stored in cleartext in the DB, I recommend that you enable database encryption on the Kviklet postgres DB itself. For most hosted providers this is a simple checkbox to click.  
-Nontheless I understand that if the Kviklet database is somehow compromised, this is a huge security risk. As it contains the database crendetials for potentially all your production datastores. So you can enabled encryption of the credentials at rest.
+If you don't want the credentials to be stored in cleartext in the DB, it is recommended that you enable database encryption on the Kviklet postgres DB itself. For most hosted providers this is a simple checkbox to click.  
+Nonetheless, if the Kviklet database is somehow compromised, this is a huge security risk. As it contains the database crendetials for potentially all your production datastores. So you can enable encryption of the credentials at rest.
 
 To do this simply set the two environment variables.
 
@@ -328,7 +398,7 @@ Kviklet will re-encrypt all connections on startup, so that you can then restart
 
 ## Experimental Features
 
-There is two few experimental Features. That were build mostly on community/customer feedback. Feel free to try these out and leave any input that you might have. We hope to develop into this further in the future and make it work well with the core approval flow.
+There are currently two experimental Features. That were built mostly on community feedback. Feel free to try these out and leave any input that you might have. We hope to develop into this further in the future and make it work well with the core approval flow.
 
 ### Kubernetes Exec
 
@@ -340,7 +410,7 @@ Kubernetes commands only wait for 5 seconds for output if the command takes long
 
 ### Proxy, Postgres only
 
-If you create requests for temporary access. You can instead of using the web interface to run queries also enable a proxy and use the DB client of your choice.
+If you create requests for temporary access, you can instead of using the web interface to run queries also enable a proxy and use the DB client of your choice.
 For this the container uses ports 5438-6000 so you need to expose those.
 The user can then create a temp access request, and click "Start Proxy" once it's been approved. They will get a port and a user + temporary password. With this they can login to the database. Kviklet validates the temp user and password and proxies all requests to the underlying user on the database. Any executed statements are logged in the auditlog as if they were run via the web interface.
 

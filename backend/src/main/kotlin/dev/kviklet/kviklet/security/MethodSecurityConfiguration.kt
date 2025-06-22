@@ -10,6 +10,7 @@ import org.springframework.aop.Pointcut
 import org.springframework.aop.PointcutAdvisor
 import org.springframework.aop.framework.AopInfrastructureBean
 import org.springframework.aop.support.annotation.AnnotationMatchingPointcut
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.config.BeanDefinition.ROLE_INFRASTRUCTURE
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -22,6 +23,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.oauth2.core.oidc.user.OidcUser
+import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal
 import org.springframework.stereotype.Component
 import java.util.function.Supplier
 
@@ -79,6 +81,10 @@ interface SecuredDomainObject {
 @Retention
 annotation class Policy(val permission: Permission, val checkIsPresentOnly: Boolean = false)
 
+@Target(AnnotationTarget.FUNCTION)
+@Retention
+annotation class NoPolicy
+
 @Configuration
 @EnableMethodSecurity(prePostEnabled = true)
 class MethodSecurityConfig(private val idResolver: IdResolver) {
@@ -94,7 +100,11 @@ class MethodSecurityConfig(private val idResolver: IdResolver) {
 }
 
 @Component
-class MyAuthorizationManager(val userAdapter: UserAdapter) {
+class MyAuthorizationManager(
+    val userAdapter: UserAdapter,
+    @Autowired(required = false)
+    val customSaml2UserService: CustomSaml2UserService? = null,
+) {
     fun check(
         authentication: Supplier<Authentication?>,
         invocation: MethodInvocation,
@@ -110,6 +120,14 @@ class MyAuthorizationManager(val userAdapter: UserAdapter) {
         val userDetailsWithId = when (auth.principal) {
             is UserDetailsWithId -> auth.principal as UserDetailsWithId
             is OidcUser -> (auth.principal as CustomOidcUser).getUserDetails()
+            is Saml2AuthenticatedPrincipal -> {
+                // Handle SAML2 authentication
+                val samlPrincipal = auth.principal as Saml2AuthenticatedPrincipal
+                val user = customSaml2UserService?.loadUser(samlPrincipal)
+                    ?: throw RuntimeException("SAML2 is enabled but CustomSaml2UserService is not available")
+                val authorities = user.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
+                UserDetailsWithId(user.getId()!!, user.email, "", authorities)
+            }
             is String -> return AuthorizationDecision(false) // anonymous user
             else -> throw RuntimeException("Unknown principal type: ${auth.principal.javaClass}")
         }

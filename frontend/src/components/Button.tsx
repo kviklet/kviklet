@@ -14,6 +14,7 @@ function Button(props: {
     | "danger"
     | undefined;
   dataTestId?: string;
+  title?: string;
 }) {
   const submitStyle =
     "bg-indigo-700 font-semibold text-white hover:bg-sky-900 dark:hover:bg-indigo-600 dark:bg-indigo-700 dark:text-slate-50 transition-colors dark:shadow-sm";
@@ -38,6 +39,7 @@ function Button(props: {
       type={submit}
       disabled={disabled}
       data-testid={props.dataTestId}
+      title={props.title}
       className={`${props.className} ${size} ${textSize} ${
         (props.type == "submit" && submitStyle) ||
         (props.type == "disabled" && disabledStyle) ||

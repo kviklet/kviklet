@@ -19,6 +19,13 @@ class ServerUrlInterceptor : HandlerInterceptor {
         if (serverUrl == null) {
             synchronized(this) {
                 if (serverUrl == null) {
+                    val targetPath = request.servletPath
+                    if (targetPath.startsWith("/health")) {
+                        // Skip setting serverUrl for health check endpoint as this is not a user-facing URL
+                        // and likely wont contain the correct server URL.
+                        return true
+                    }
+
                     val scheme = request.scheme // http or https
                     val serverName = request.serverName // hostname or IP address
                     val serverPort = request.serverPort // port number
