@@ -2,6 +2,7 @@ package dev.kviklet.kviklet
 
 import com.zaxxer.hikari.HikariDataSource
 import dev.kviklet.kviklet.controller.SessionWebsocketHandler
+import dev.kviklet.kviklet.proxy.postgres.TlsCertEnvConfig
 import dev.kviklet.kviklet.security.CorsSettings
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -44,7 +45,25 @@ class WebSocketConfig : WebSocketConfigurer {
         }
     }
 }
-
+@Configuration
+class TLSCerts(
+    @Value("\${proxy.tls_certificate_source:NONE}")
+    private val certificateSource: String,
+    @Value("\${proxy.tls_certificate_cert:null}")
+    private val certificateCert: String,
+    @Value("\${proxy.tls_certificate_key:null}")
+    private val certificateKey: String,
+    @Value("\${proxy.tls_certificate_cert_file:null}")
+    private val certificateCertFile: String,
+    @Value("\${proxy.tls_certificate_key_file:null}")
+    private val certificateKeyFile: String,
+) {
+    @Bean
+    @Primary
+    fun proxyCertificates() : TlsCertEnvConfig {
+        return TlsCertEnvConfig(certificateSource, certificateCertFile, certificateKeyFile, certificateKey, certificateCert)
+    }
+}
 @Configuration
 class DataSourceConfig(
     @Value("\${spring.datasource.url}")
