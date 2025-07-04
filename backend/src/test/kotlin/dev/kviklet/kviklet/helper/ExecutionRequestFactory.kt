@@ -220,6 +220,7 @@ class UserFactory : Factory() {
         password: String? = "password",
         subject: String? = null,
         ldapIdentifier: String? = null,
+        samlNameId: String? = null,
         email: String = "test" + nextId() + "@user.com",
         roles: Set<Role>? = null,
     ): User = User(
@@ -228,6 +229,7 @@ class UserFactory : Factory() {
         password,
         subject,
         ldapIdentifier,
+        samlNameId,
         email,
         roles ?: setOf(roleFactory.createRole()),
     )

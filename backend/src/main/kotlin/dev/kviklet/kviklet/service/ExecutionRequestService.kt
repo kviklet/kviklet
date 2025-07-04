@@ -529,16 +529,18 @@ class ExecutionRequestService(
         ).eventId!!
 
         try {
+            val writer = outputStream.writer(Charsets.UTF_8)
             JDBCExecutor.executeAndStreamDbResponse(
                 connectionString = connection.getConnectionString(),
                 authenticationDetails = connection.auth,
                 query = queryToExecute,
             ) { row ->
-                outputStream.println(
+                writer.write(
                     row.joinToString(",") { field ->
                         escapeCsvField(field)
-                    },
+                    } + "\n",
                 )
+                writer.flush()
             }
         } catch (e: Exception) {
             eventService.addResultLogs(

@@ -5,6 +5,11 @@ import { ApiResponse, fetchWithErrorHandling } from "./Errors";
 const ConfigResponseSchema = z.object({
   oauthProvider: z.string().nullable().optional(),
   ldapEnabled: z.boolean(),
+  samlEnabled: z.boolean(),
+  licenseValid: z.boolean(),
+  validUntil: z.coerce.date().nullable().optional(),
+  createdAt: z.coerce.date().nullable().optional(),
+  allowedUsers: z.number().nullable().optional(),
   teamsUrl: z.string().nullable().optional(),
   slackUrl: z.string().nullable().optional(),
   liveSessionEnabled: z.boolean().optional(),
@@ -13,6 +18,11 @@ const ConfigResponseSchema = z.object({
 export const ConfigPayloadSchema = ConfigResponseSchema.omit({
   oauthProvider: true,
   ldapEnabled: true,
+  samlEnabled: true,
+  licenseValid: true,
+  validUntil: true,
+  createdAt: true,
+  allowedUsers: true,
 });
 
 export type ConfigResponse = z.infer<typeof ConfigResponseSchema>;
@@ -47,4 +57,25 @@ export async function putConfig(
     },
     ConfigResponseSchema,
   );
+}
+
+export async function uploadLicense(file: File): Promise<boolean> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const response = await fetch(`${baseUrl}/config/license/`, {
+      method: "POST",
+      body: formData,
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status}`);
+    }
+    return true;
+  } catch (error) {
+    console.error("Upload failed:", error);
+    return false;
+  }
 }

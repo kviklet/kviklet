@@ -4,12 +4,15 @@ import dev.kviklet.kviklet.controller.ServerUrlInterceptor
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.service.LicenseRestrictionException
+import dev.kviklet.kviklet.service.LicenseService
 import dev.kviklet.kviklet.service.dto.Role
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.transaction.Transactional
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -29,6 +32,7 @@ import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.AuthenticationException
 import org.springframework.security.core.GrantedAuthority
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -41,6 +45,7 @@ import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService
 import org.springframework.security.oauth2.core.oidc.OidcIdToken
 import org.springframework.security.oauth2.core.oidc.OidcUserInfo
 import org.springframework.security.oauth2.core.oidc.user.OidcUser
+import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal
 import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
@@ -79,10 +84,14 @@ class SecurityConfig(
     private val customOidcUserService: CustomOidcUserService,
     private val idpProperties: IdentityProviderProperties,
     private val ldapProperties: LdapProperties,
+    private val samlProperties: SamlProperties,
     private val contextSource: LdapContextSource,
     private val userDetailsService: UserDetailsServiceImpl,
     private val corsSettings: CorsSettings,
 ) {
+
+    @Autowired(required = false)
+    private var samlLoginSuccessHandler: SamlLoginSuccessHandler? = null
 
     @Bean
     fun ldapAuthenticationProvider(): LdapAuthenticationProvider {
@@ -140,6 +149,14 @@ class SecurityConfig(
                 }
             }
 
+            if (samlProperties.isSamlEnabled()) {
+                saml2Login {
+                    samlLoginSuccessHandler?.let { authenticationSuccessHandler = it }
+                }
+
+                saml2Metadata { }
+            }
+
             exceptionHandling {
                 authenticationEntryPoint = CustomAuthenticationEntryPoint()
                 accessDeniedHandler = CustomAccessDeniedHandler()
@@ -150,6 +167,7 @@ class SecurityConfig(
                 authorize("/login**", permitAll)
                 authorize("/health", permitAll)
                 authorize("/oauth2**", permitAll)
+                authorize("/saml2/**", permitAll)
                 authorize("/v3/api-docs/**", permitAll)
                 authorize("/swagger-ui/**", permitAll)
                 authorize("/swagger-resources/**", permitAll)
@@ -193,7 +211,7 @@ class SecurityConfig(
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
         val configuration = CorsConfiguration()
-        configuration.allowedOrigins = corsSettings.allowedOrigins
+        configuration.allowedOriginPatterns = corsSettings.allowedOrigins
         configuration.allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
         configuration.allowCredentials = true
         configuration.allowedHeaders = listOf("*")
@@ -303,8 +321,11 @@ class CustomOidcUser(
 }
 
 @Service
-class CustomOidcUserService(private val userAdapter: UserAdapter, private val roleAdapter: RoleAdapter) :
-    OidcUserService() {
+class CustomOidcUserService(
+    private val userAdapter: UserAdapter,
+    private val roleAdapter: RoleAdapter,
+    private val licenseService: LicenseService,
+) : OidcUserService() {
 
     @Transactional
     override fun loadUser(userRequest: OidcUserRequest): OidcUser {
@@ -329,6 +350,13 @@ class CustomOidcUserService(private val userAdapter: UserAdapter, private val ro
                 )
             } ?: run {
                 // No existing user found, create a new one
+                val license = licenseService.getActiveLicense()
+                if (license != null) {
+                    val maxUsers = license.allowedUsers
+                    if (maxUsers <= userAdapter.listUsers().size.toUInt()) {
+                        throw LicenseRestrictionException("License does not allow more users")
+                    }
+                }
                 val defaultRole = roleAdapter.findById(Role.DEFAULT_ROLE_ID)
                 user = User(
                     subject = subject,
@@ -368,6 +396,45 @@ class OAuth2LoginSuccessHandler : SimpleUrlAuthenticationSuccessHandler() {
         response: HttpServletResponse?,
         authentication: Authentication?,
     ) {
+        val baseUrl = request?.let { getBaseUrl(it) }
+        val redirectUrl = "$baseUrl/requests"
+        redirectStrategy.sendRedirect(request, response, redirectUrl)
+    }
+
+    private fun getBaseUrl(request: HttpServletRequest): String {
+        val scheme = request.scheme
+        val serverName = request.serverName
+        val serverPort = request.serverPort
+
+        return "$scheme://$serverName${if (serverPort != 80 && serverPort != 443) ":5173" else ""}"
+    }
+}
+
+// The following class is not MIT licensed
+@Component
+@ConditionalOnProperty(prefix = "saml", name = ["enabled"], havingValue = "true")
+class SamlLoginSuccessHandler(private val customSaml2UserService: CustomSaml2UserService) :
+    SimpleUrlAuthenticationSuccessHandler() {
+
+    @Transactional
+    override fun onAuthenticationSuccess(
+        request: HttpServletRequest?,
+        response: HttpServletResponse?,
+        authentication: Authentication?,
+    ) {
+        // Convert SAML authentication to use UserDetailsWithId
+        if (authentication?.principal is Saml2AuthenticatedPrincipal) {
+            val samlPrincipal = authentication.principal as Saml2AuthenticatedPrincipal
+            val user = customSaml2UserService.loadUser(samlPrincipal)
+
+            val authorities = user.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
+            val userDetails = UserDetailsWithId(user.getId()!!, user.email, "", authorities)
+
+            // Create a new authentication token with UserDetailsWithId as principal
+            val newAuth = UsernamePasswordAuthenticationToken(userDetails, authentication.credentials, authorities)
+            SecurityContextHolder.getContext().authentication = newAuth
+        }
+
         val baseUrl = request?.let { getBaseUrl(it) }
         val redirectUrl = "$baseUrl/requests"
         redirectStrategy.sendRedirect(request, response, redirectUrl)

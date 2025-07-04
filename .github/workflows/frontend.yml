@@ -109,6 +109,6 @@ jobs:
         working-directory: ./frontend
         run: npm ci
 
-      - name: Check Types
+      - name: Eslint check
         working-directory: ./frontend
         run: npx eslint .

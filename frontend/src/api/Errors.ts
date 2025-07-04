@@ -20,7 +20,9 @@ export const parseSchemaOrError = <T>(
   if (result.success) {
     return result.data;
   } else {
-    return { message: "Invalid server response." };
+    return {
+      message: "Invalid server response.",
+    };
   }
 };
 

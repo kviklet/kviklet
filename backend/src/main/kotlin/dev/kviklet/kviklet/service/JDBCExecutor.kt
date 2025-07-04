@@ -10,14 +10,17 @@ import dev.kviklet.kviklet.service.dto.UpdateQueryResult
 import org.slf4j.LoggerFactory
 import org.springframework.boot.jdbc.DataSourceBuilder
 import org.springframework.stereotype.Service
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.rds.RdsUtilities
+import software.amazon.awssdk.services.sts.StsClient
+import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider
 import java.net.URI
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.sql.Statement
-import java.util.*
+import java.util.HexFormat
 import java.util.concurrent.ConcurrentHashMap
 
 data class TestCredentialsResult(val success: Boolean, val message: String)
@@ -34,7 +37,6 @@ data class ColumnInfo(
 class JDBCExecutor {
 
     private val activeStatements = ConcurrentHashMap<String, Statement>()
-    private val logger = LoggerFactory.getLogger(javaClass)
 
     companion object {
         val DEFAULT_POSTGRES_DATABASES = listOf("template0", "template1")
@@ -71,7 +73,7 @@ class JDBCExecutor {
                     return queryResults
                 }
             } catch (e: SQLException) {
-                return listOf(sqlExecptionToResult(e))
+                return listOf(sqlExceptionToResult(e))
             } finally {
                 activeStatements.remove(executionRequestId.toString())
             }
@@ -86,7 +88,7 @@ class JDBCExecutor {
         }
     }
 
-    private fun sqlExecptionToResult(e: SQLException): ErrorQueryResult {
+    private fun sqlExceptionToResult(e: SQLException): ErrorQueryResult {
         var message = e.message ?: ""
         // adding all the cause messages to the original message as well
         var cause = e.cause
@@ -105,7 +107,7 @@ class JDBCExecutor {
             }
             return TestCredentialsResult(success = true, message = "Connection successful")
         } catch (e: SQLException) {
-            val result = sqlExecptionToResult(e)
+            val result = sqlExceptionToResult(e)
             return TestCredentialsResult(success = false, message = result.message)
         }
     }
@@ -135,7 +137,7 @@ class JDBCExecutor {
 
                     return accessibleDatabases
                 }
-            } catch (e: SQLException) {
+            } catch (_: SQLException) {
                 return emptyList()
             }
         }
@@ -227,7 +229,7 @@ class JDBCExecutor {
         }
     }
 
-    class AwsIamDataSource(private val username: String) : HikariDataSource() {
+    class AwsIamDataSource(private val username: String, private val roleArn: String? = null) : HikariDataSource() {
         private lateinit var rdsUtilities: RdsUtilities
         private lateinit var uri: URI
         private lateinit var region: Region
@@ -239,8 +241,22 @@ class JDBCExecutor {
 
             rdsUtilities = RdsUtilities.builder()
                 .region(region)
-                .credentialsProvider(DefaultCredentialsProvider.create())
+                .credentialsProvider(createCredentialsProvider())
                 .build()
+        }
+
+        private fun createCredentialsProvider(): AwsCredentialsProvider = if (!roleArn.isNullOrEmpty()) {
+            logger.info("Using IAM role {} for authentication", roleArn)
+            StsAssumeRoleCredentialsProvider.builder()
+                .asyncCredentialUpdateEnabled(true)
+                .stsClient(StsClient.builder().region(region).build())
+                .refreshRequest { r ->
+                    r.roleArn(roleArn).roleSessionName("KvikletRdsIamSession").build()
+                }
+                .build()
+        } else {
+            logger.info("Using default credentials for authentication")
+            DefaultCredentialsProvider.create()
         }
 
         private fun extractRegionFromHost(host: String): Region {
@@ -294,7 +310,7 @@ class JDBCExecutor {
             }
 
     private fun createAwsIamConnection(url: String, auth: AuthenticationDetails.AwsIam): HikariDataSource =
-        AwsIamDataSource(auth.username).apply {
+        AwsIamDataSource(auth.username, auth.roleArn).apply {
             jdbcUrl = url
             this.username = auth.username
             maximumPoolSize = 1

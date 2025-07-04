@@ -48,6 +48,7 @@ const databaseConnectionResponseSchema = withType(
     dumpsEnabled: z.boolean(),
     temporaryAccessEnabled: z.boolean(),
     explainEnabled: z.boolean(),
+    roleArn: z.string().nullable(),
   }),
   "DATASOURCE",
 );
@@ -105,6 +106,7 @@ type DatabaseConnection =
   | (DatabaseConnectionBase & {
       authenticationType: "AWS_IAM";
       username: string;
+      roleArn: string | null;
     });
 
 interface KubernetesConnection extends ConnectionBase {

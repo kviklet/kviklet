@@ -96,6 +96,19 @@ const Login = () => {
     }
   };
 
+  const samlButton = () => {
+    if (config?.samlEnabled) {
+      return (
+        <a
+          href={`${baseUrl}/saml2/authenticate/saml`}
+          className="mt-8 block w-full"
+        >
+          <Button className="mx-auto w-full">Login with SAML</Button>
+        </a>
+      );
+    }
+  };
+
   return (
     <div>
       {(loading && <Spinner></Spinner>) || (
@@ -142,6 +155,7 @@ const Login = () => {
             </form>
 
             {oAuthButton()}
+            {samlButton()}
           </div>
         </div>
       )}

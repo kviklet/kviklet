@@ -36,6 +36,7 @@ configurations {
 repositories {
     maven { url = uri("https://repo.spring.io/milestone") }
     mavenCentral()
+    maven { url = uri("https://build.shibboleth.net/maven/releases/") }
 }
 
 dependencies {
@@ -49,6 +50,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-websocket")
     implementation("org.springframework.security:spring-security-ldap")
     implementation("org.springframework.ldap:spring-ldap-core")
+    implementation("org.springframework.security:spring-security-saml2-service-provider")
     implementation("org.springframework.boot:spring-boot-devtools")
 
     implementation("org.springframework.security:spring-security-acl")
@@ -56,7 +58,8 @@ dependencies {
     implementation("org.springframework:spring-context-support")
     implementation("com.github.jsqlparser:jsqlparser:4.9")
     implementation("io.kubernetes:client-java:20.0.1")
-    implementation("software.amazon.awssdk:rds:2.30.6")
+    implementation("software.amazon.awssdk:rds:2.30.37")
+    implementation("software.amazon.awssdk:sts:2.30.37")
 
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
