@@ -46,7 +46,6 @@ import jakarta.servlet.ServletOutputStream
 import jakarta.transaction.Transactional
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
@@ -68,12 +67,10 @@ class ExecutionRequestService(
     private val mongoDBExecutor: MongoDBExecutor,
     private val connectionService: ConnectionService,
     private val userAdapter: UserAdapter,
+    private val proxyTLSCerts: TLSCerts,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val proxies = mutableListOf<ExecutionProxy>()
-
-    @Autowired
-    lateinit var proxyTLSCerts: TLSCerts
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_EDIT)
