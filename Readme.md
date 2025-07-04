@@ -274,25 +274,29 @@ SAML_VERIFICATIONCERTIFICATE=-----BEGIN CERTIFICATE-----\nMIICmzCCAYMCBgF4...\n-
 ```
 
 Configuration details:
+
 - `SAML_ENABLED`: Set to `true` to enable SAML authentication
 - `SAML_ENTITYID`: The entity ID of your SAML identity provider
 - `SAML_SSOSERVICELOCATION`: The SSO service URL of your identity provider
 - `SAML_VERIFICATIONCERTIFICATE`: The X.509 certificate used to verify SAML responses (include the BEGIN/END CERTIFICATE lines)
 
 You can optionally customize the SAML attribute mappings:
+
 ```
 SAML_USERATTRIBUTES_EMAILATTRIBUTE=email
-SAML_USERATTRIBUTES_NAMEATTRIBUTE=name  
+SAML_USERATTRIBUTES_NAMEATTRIBUTE=name
 SAML_USERATTRIBUTES_IDATTRIBUTE=nameID
 ```
 
 Your identity provider should be configured with:
+
 - Entity ID: `https://[kviklet_host]/api/saml2/service-provider-metadata/saml`
 - Redirect Uri: `https://[kviklet_host]/api/login/saml2/sso/saml`
 
 After configuring SAML, users can log in via the identity provider. On first login, a user account is created with default permissions.
 
 If you get correctly redirected to the IDP but then get a cors error, you can add your IDPs host to the allowed origins in Kviklet via:
+
 ```
 CORS_ALLOWEDORIGINS=https://[idp_host]
 ```
@@ -410,25 +414,34 @@ Kubernetes commands only wait for 5 seconds for output if the command takes long
 
 ### Proxy, Postgres only
 
-If you create requests for temporary access, you can instead of using the web interface to run queries also enable a proxy and use the DB client of your choice.
-For this the container uses ports 5438-6000 so you need to expose those.
-The user can then create a temp access request, and click "Start Proxy" once it's been approved. They will get a port and a user + temporary password. With this they can login to the database. Kviklet validates the temp user and password and proxies all requests to the underlying user on the database. Any executed statements are logged in the auditlog as if they were run via the web interface.
+If you create requests for temporary access, you can - instead of using the web interface - run your queries through a kviklet managed proxy and use the DB client of your choice.
+For this the container uses ports 5438-6000, so you need to expose those.
+The user can then create a temporary access request, and click "Start Proxy" once it has been approved. Each request will get a port and a user + a temporary password. With this they can connect to the database. Kviklet validates the temp user and password and proxies all requests to the underlying user on the database. Any executed statements are logged in the auditlog as if they were run via the web interface.
+Note that the message parsing on the proxy side hasn't been tested with all clients, so if you run into issues with e.g. statements not being logged feel free to open an issue.
 
 ![Postgres Proxy](images/PostgresProxy_light.png#gh-light-mode-only)
 ![Postgres Proxy](fiimages/PostgresProxy_dark.png#gh-dark-mode-only)
 
-#### Postgres Proxy - TLS 
-The proxy support TLS, currently single certificate must be configured for all connections. The implication from this is that only single domain for it can be used.
-The proxy can either read the TLS certificate and key from environment variables, or from files. The table below outlines a list with them
-If the `PROXY_TLS_CERTIFICATE_SOURCE` environment variable is not set, the proxy won't support TLS. If it is set to `env`, only `PROXY_TLS_CERTIFICATE_CERT` and `PROXY_TLS_CERTIFICATE_KEY` variables will be used. 
-If it is set to file, the only `PROXY_TLS_CERTIFICATE_CERT_FILE` and `PROXY_TLS_CERTIFICATE_KEY_FILE` will be used.
-| Environment variable            | Description                                                                                                 |
-|---------------------------------|-------------------------------------------------------------------------------------------------------------|
-| PROXY_TLS_CERTIFICATE_SOURCE    | Outlines what is the source for the TLS certificates. Valid values are "env" and "file". Case insensitive   |
-| PROXY_TLS_CERTIFICATE_CERT      | Certificate(public key) which must be used for all connection to the proxy. Must be in pem format.          |
-| PROXY_TLS_CERTIFICATE_KEY       | Private key, corresponding to the public key. Used for all connections to the proxy. Must be in pem format. |
-| PROXY_TLS_CERTIFICATE_CERT_FILE | Full path to file containing PEM encoded certificate(public key)                                            |
-| PROXY_TLS_CERTIFICATE_KEY_FILE  | Full path to file containing PEM encoded private key                                                        |
+#### Postgres Proxy - TLS
+
+Kviklet terminates the TLS connection to the database. That means by default any traffic from and to the proxy itself is not encrypted.  
+If you want kviklet to reencrypt the traffic you can give Kviklet a TLS certificate and key for the proxy by setting the following environment variables:
+
+```
+PROXY_TLS_CERTIFICATE_SOURCE=env
+PROXY_TLS_CERTIFICATE_CERT=your-certificate
+PROXY_TLS_CERTIFICATE_KEY=your-key
+```
+
+alternatively you can use files:
+
+```
+PROXY_TLS_CERTIFICATE_SOURCE=file
+PROXY_TLS_CERTIFICATE_CERT_FILE=path/to/cert.pem
+PROXY_TLS_CERTIFICATE_KEY_FILE=path/to/key.pem
+```
+Either way the certificate and key must be stored in [pem format](https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail).
+
 ## Questions? Contributions?
 
 If you have any questions, feel free to create a github issue I try to answer within a reasonable amount of time and am also happy to develop feature for your use case if it fits the general vision of the tool.
