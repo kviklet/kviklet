@@ -9,22 +9,17 @@ import java.util.*
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.jvm.isAccessible
 
-
 class TargetPostgresConnection(private val connInfo: Pair<PGStream, Map<String, String>>) {
-    fun getPGStream(): PGStream {
-        return connInfo.first
-    }
+    fun getPGStream(): PGStream = connInfo.first
 
-    fun getConnProps(): Map<String, String> {
-        return connInfo.second
-    }
+    fun getConnProps(): Map<String, String> = connInfo.second
 }
 
 class TargetPostgresSocketFactory(
     authenticationDetails: AuthenticationDetails.UserPassword,
     databaseName: String,
     targetHost: String,
-    targetPort: Int
+    targetPort: Int,
 ) {
     private val targetPgConnProps: Properties
     private val hostSpec: Array<HostSpec>
@@ -43,7 +38,8 @@ class TargetPostgresSocketFactory(
     fun createTargetPgConnection(): TargetPostgresConnection {
         val factory = ConnectionFactoryImpl()
         val queryExecutor = factory.openConnectionImpl(
-            this.hostSpec, this.targetPgConnProps
+            this.hostSpec,
+            this.targetPgConnProps,
         ) as QueryExecutorBase
 
         val queryExecutorClass = QueryExecutorBase::class
@@ -55,8 +51,8 @@ class TargetPostgresSocketFactory(
         return TargetPostgresConnection(
             Pair(
                 pgStreamProperty.get(queryExecutor) as PGStream,
-                queryExecutor.parameterStatuses
-            )
+                queryExecutor.parameterStatuses,
+            ),
         )
     }
 }

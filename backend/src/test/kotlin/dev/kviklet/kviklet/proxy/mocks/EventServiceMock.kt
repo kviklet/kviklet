@@ -15,12 +15,12 @@ import java.util.ArrayList
 class EventServiceMock(
     executionRequestAdapter: ExecutionRequestAdapter,
     eventAdapter: EventAdapter,
-    var executionRequest: ExecutionRequest
+    var executionRequest: ExecutionRequest,
 ) : EventService(executionRequestAdapter, eventAdapter) {
     var queries: ArrayList<String> = ArrayList<String>()
     fun assertQueryIsAudited(query: String) {
         var processedQuery = query.lowercase().replace(" ", "").replace("\n".toRegex(), "")
-        if(processedQuery.last() == ';') {
+        if (processedQuery.last() == ';') {
             assertTrue(this.queries.contains(processedQuery.dropLast(1)))
             return
         }
@@ -29,13 +29,14 @@ class EventServiceMock(
     override fun saveEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Event {
         if (payload.type.compareTo(EventType.EXECUTE) == 0) {
             val executePayload = payload as ExecutePayload
-            if(executePayload.query?.last() == ';') {
-                executePayload.query?.let { queries.add(it.lowercase().replace(" ", "").replace("\n".toRegex(), "").dropLast(1)) }
-            } else{
+            if (executePayload.query?.last() == ';') {
+                executePayload.query?.let {
+                    queries.add(it.lowercase().replace(" ", "").replace("\n".toRegex(), "").dropLast(1))
+                }
+            } else {
                 executePayload.query?.let { queries.add(it.lowercase().replace(" ", "").replace("\n".toRegex(), "")) }
             }
         }
         return MockEvent(this.executionRequest)
     }
 }
-

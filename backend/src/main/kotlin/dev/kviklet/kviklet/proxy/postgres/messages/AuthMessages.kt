@@ -13,7 +13,7 @@ fun authenticationOk(): ByteArray {
 // SASL auth
 // Readings https://www.improving.com/thoughts/making-sense-of-scram-sha-256-authentication-in-mongodb/
 // https://www.postgresql.org/docs/current/sasl-authentication.html
-fun AuthenticationSASLStartMessage(): ByteArray {
+fun createAuthenticationSASLStartMessage(): ByteArray {
     val mechanismName = "SCRAM-SHA-256".toByteArray() + byteArrayOf(0x00)
     val msgLen = 1 + 4 + 4 + mechanismName.size // note 4 is int size
     val responseBuffer = ByteBuffer.allocate(msgLen + 1) // as msgLen size doesnt include the header
@@ -24,7 +24,7 @@ fun AuthenticationSASLStartMessage(): ByteArray {
     return responseBuffer.array()
 }
 
-fun AuthenticationSASLContinue(msg: ByteArray): ByteArray {
+fun createAuthenticationSASLContinue(msg: ByteArray): ByteArray {
     val msgLen = 4 + 4 + msg.size // note 4 is int size
     val responseBuffer = ByteBuffer.allocate(msgLen + 1) // as msgLen size doesnt include the header
     responseBuffer.put('R'.code.toByte())
@@ -34,7 +34,7 @@ fun AuthenticationSASLContinue(msg: ByteArray): ByteArray {
     return responseBuffer.array()
 }
 
-fun AuthenticationSASLFinal(msg: ByteArray): ByteArray {
+fun createAuthenticationSASLFinal(msg: ByteArray): ByteArray {
     val msgLen = 4 + 4 + msg.size // note 4 is int size
     val responseBuffer = ByteBuffer.allocate(msgLen + 1) // as msgLen size doesnt include the header
     responseBuffer.put('R'.code.toByte())
@@ -43,8 +43,6 @@ fun AuthenticationSASLFinal(msg: ByteArray): ByteArray {
     responseBuffer.put(msg)
     return responseBuffer.array()
 }
-
-
 
 class SASLInitialResponse(
     override val header: Char = 'p',
@@ -57,22 +55,20 @@ class SASLInitialResponse(
             val buffer = ByteBuffer.wrap(bytes)
             val messageBytes = ByteArray(length)
             buffer.get(messageBytes)
-            //NOTE: The message parsing below will work as long as only SCRAM-SHA-256 is supported. Once SCRAM-SHA-256-PLUS is added it won't work
+            // NOTE: The message parsing below will work as long as only SCRAM-SHA-256 is supported. Once SCRAM-SHA-256-PLUS is added it won't work
             val message = String(messageBytes).subSequence(26, length).toString()
             return SASLInitialResponse('p', length, bytes, message)
         }
     }
 
-    fun getClientNonce(): String {
-        return saslMessage.split(',')[1].replace("r=", "")
-    }
+    fun getClientNonce(): String = saslMessage.split(',')[1].replace("r=", "")
 }
 
 class SASLResponse(
     override val header: Char = 'p',
     override val length: Int,
     override val originalContent: ByteArray,
-    val saslMessage : String
+    val saslMessage: String,
 ) : ParsedMessage(header, length, originalContent) {
 
     companion object {
@@ -83,11 +79,6 @@ class SASLResponse(
             return SASLResponse('p', length, bytes, String(messageBytes.copyOfRange(5, length)))
         }
     }
-    fun getResponseWithoutProof() : String {
-        return saslMessage.split(',').subList(0,2).joinToString(",")
-    }
-    fun getProof() : String {
-        return saslMessage.split(',')[2].replaceFirst("p=", "")
-    }
+    fun getResponseWithoutProof(): String = saslMessage.split(',').subList(0, 2).joinToString(",")
+    fun getProof(): String = saslMessage.split(',')[2].replaceFirst("p=", "")
 }
-

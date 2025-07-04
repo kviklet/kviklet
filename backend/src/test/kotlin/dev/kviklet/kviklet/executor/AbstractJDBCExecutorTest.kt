@@ -42,7 +42,6 @@ abstract class AbstractJDBCExecutorTest(@Autowired val JDBCExecutorService: JDBC
     @BeforeEach
     fun setup() {
         val initScript = this::class.java.classLoader.getResource(initScript)!!
-        println(getDb().getJdbcUrl())
         ScriptUtils.executeSqlScript(getDb().createConnection(""), FileUrlResource(initScript))
     }
 

@@ -1,7 +1,14 @@
 package dev.kviklet.kviklet.proxy.postgres
 
 import dev.kviklet.kviklet.db.ExecutePayload
-import dev.kviklet.kviklet.proxy.postgres.messages.*
+import dev.kviklet.kviklet.proxy.postgres.messages.BindMessage
+import dev.kviklet.kviklet.proxy.postgres.messages.ExecuteMessage
+import dev.kviklet.kviklet.proxy.postgres.messages.MessageOrBytes
+import dev.kviklet.kviklet.proxy.postgres.messages.ParseMessage
+import dev.kviklet.kviklet.proxy.postgres.messages.ParsedMessage
+import dev.kviklet.kviklet.proxy.postgres.messages.Statement
+import dev.kviklet.kviklet.proxy.postgres.messages.isTermination
+import dev.kviklet.kviklet.proxy.postgres.messages.writableBytes
 import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import java.io.InputStream
@@ -9,7 +16,6 @@ import java.io.OutputStream
 import java.net.Socket
 import java.net.SocketTimeoutException
 import java.nio.ByteBuffer
-
 
 class Connection(
     clientSocket: Socket,
@@ -24,11 +30,10 @@ class Connection(
     private var serverOutput: OutputStream = targetSocket.getOutputStream()
     private val boundStatements: MutableMap<String, Statement> = mutableMapOf()
     private var terminationMessageReceived: Boolean = false
-    private var serverTerminating : Boolean = false
+    private var serverTerminating: Boolean = false
 
-     fun close() {
+    fun close() {
         this.serverTerminating = true
-
     }
     fun startHandling() {
         // This basically transfers messages between the client and the server sockets.
@@ -70,7 +75,7 @@ class Connection(
     private fun handleParseMessage(parsedMessage: ParseMessage) {
         boundStatements[parsedMessage.statementName] = Statement(
             parsedMessage.query,
-            parameterTypes = parsedMessage.parameterTypes
+            parameterTypes = parsedMessage.parameterTypes,
         )
     }
 
@@ -81,7 +86,7 @@ class Connection(
                 statement.query,
                 parsedMessage.parameterFormatCodes,
                 statement.parameterTypes,
-                parsedMessage.parameters
+                parsedMessage.parameters,
             )
     }
 }

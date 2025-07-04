@@ -1,9 +1,9 @@
 package dev.kviklet.kviklet.proxy.postgres
 
-import dev.kviklet.kviklet.proxy.postgres.messages.AuthenticationSASLContinue
-import dev.kviklet.kviklet.proxy.postgres.messages.AuthenticationSASLFinal
 import dev.kviklet.kviklet.proxy.postgres.messages.SASLInitialResponse
 import dev.kviklet.kviklet.proxy.postgres.messages.SASLResponse
+import dev.kviklet.kviklet.proxy.postgres.messages.createAuthenticationSASLContinue
+import dev.kviklet.kviklet.proxy.postgres.messages.createAuthenticationSASLFinal
 import java.io.InputStream
 import java.io.OutputStream
 import java.security.MessageDigest
@@ -14,20 +14,29 @@ import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 enum class AuthenticationState {
-    WAITING_CLIENT_FIRST, WAITING_CLIENT_PROOF, DONE
+    WAITING_CLIENT_FIRST,
+    WAITING_CLIENT_PROOF,
+    DONE,
 }
+
 /*
 * Note about isUserValid:
 * As the username is passed with the startup message, in the SASL flow the username is set to *(at least by the postgres driver).
 * As we want to validate the user, but not provide a potential attacker a way of enumerating them(that is finding valid user by probing), the error is postpone until the point where password is sent.
 * That way when an attacker tries to enumerate users, he won't know if the username or the password was incorrect.
 * */
-class SASLAuthHandler(private val output: OutputStream,private  val input: InputStream,private val password : String, private val isUserValid: Boolean, private val iterations : Int = 4096) {
+class SASLAuthHandler(
+    private val output: OutputStream,
+    private val input: InputStream,
+    private val password: String,
+    private val isUserValid: Boolean,
+    private val iterations: Int = 4096,
+) {
     private val serverNonce = getRandomString()
     private val salt = Salt()
-    private var state : AuthenticationState = AuthenticationState.WAITING_CLIENT_FIRST
-    private var clientFirst : SASLInitialResponse? = null
-    private var serverFirst : String = ""
+    private var state: AuthenticationState = AuthenticationState.WAITING_CLIENT_FIRST
+    private var clientFirst: SASLInitialResponse? = null
+    private var serverFirst: String = ""
     fun handle() {
         while (state != AuthenticationState.DONE) {
             val buff = ByteArray(8192)
@@ -37,40 +46,46 @@ class SASLAuthHandler(private val output: OutputStream,private  val input: Input
             }
         }
     }
-    private fun handleMessage(buff : ByteArray, read : Int) {
+    private fun handleMessage(buff: ByteArray, read: Int) {
         when (state) {
-            AuthenticationState.WAITING_CLIENT_FIRST -> { handleClientFirstMessage(buff, read); }
-            AuthenticationState.WAITING_CLIENT_PROOF -> { handleClientProof(buff, read);  }
-            AuthenticationState.DONE -> { return }
+            AuthenticationState.WAITING_CLIENT_FIRST -> {
+                handleClientFirstMessage(buff, read)
+            }
+            AuthenticationState.WAITING_CLIENT_PROOF -> {
+                handleClientProof(buff, read)
+            }
+            AuthenticationState.DONE -> {
+                return
+            }
         }
     }
     private fun handleClientFirstMessage(buff: ByteArray, read: Int) {
         clientFirst = SASLInitialResponse.fromBytes(read, buff)
-        serverFirst = "r=${clientFirst!!.getClientNonce() + serverNonce},s=${salt.base64Encoded},i=${iterations}"
+        serverFirst = "r=${clientFirst!!.getClientNonce() + serverNonce},s=${salt.base64Encoded},i=$iterations"
         sendServerFirstMessage()
     }
     private fun handleClientProof(buff: ByteArray, read: Int) {
         val clientResp = SASLResponse.fromBytes(read, buff)
-        val authMsg = "${clientFirst!!.saslMessage},${serverFirst},${clientResp.getResponseWithoutProof()}"
-        if(!isUserValid || !verifyClientProof(authMsg, clientResp.getProof())) {
+        val authMsg = "${clientFirst!!.saslMessage},$serverFirst,${clientResp.getResponseWithoutProof()}"
+        if (!isUserValid || !verifyClientProof(authMsg, clientResp.getProof())) {
             state = AuthenticationState.DONE
             throw Exception("Authentication failed")
         }
         sendServerFinal(authMsg)
     }
 
-    private fun sendServerFinal(authMsg : String ) {
+    private fun sendServerFinal(authMsg: String) {
         val srvResp = generateServerResponse(authMsg)
         output.writeAndFlush(srvResp)
         state = AuthenticationState.DONE
     }
     private fun sendServerFirstMessage() {
-        output.writeAndFlush(AuthenticationSASLContinue(serverFirst.toByteArray()))
+        output.writeAndFlush(createAuthenticationSASLContinue(serverFirst.toByteArray()))
         state = AuthenticationState.WAITING_CLIENT_PROOF
     }
-    private fun verifyClientProof(authMessage: String, clientProof: String) : Boolean{
+    private fun verifyClientProof(authMessage: String, clientProof: String): Boolean {
         val saltedPassword = pbkdf2(password, salt.salt, iterations)
-        val clientKey =  hmacSha256(saltedPassword, "Client Key")
+        val clientKey = hmacSha256(saltedPassword, "Client Key")
         val storedKey = sha256(clientKey)
         val clientSignature = hmacSha256(storedKey, authMessage)
         val expectedClientKey = xorBytes(Base64.getDecoder().decode(clientProof), clientSignature)
@@ -78,27 +93,25 @@ class SASLAuthHandler(private val output: OutputStream,private  val input: Input
         return storedKey.contentEquals(recomputedStoredKey)
     }
 
-    private fun generateServerResponse(authMessage: String) : ByteArray {
+    private fun generateServerResponse(authMessage: String): ByteArray {
         val saltedPassword = pbkdf2(password, salt.salt, iterations)
         val serverKey = hmacSha256(saltedPassword, "Server Key")
         val serverSignature = Base64.getEncoder().encodeToString(hmacSha256(serverKey, authMessage))
-        return AuthenticationSASLFinal("v=${serverSignature}".toByteArray())
+        return createAuthenticationSASLFinal("v=$serverSignature".toByteArray())
     }
 }
 
-class Salt() {
+class Salt {
     val salt = generateRandomSalt()
     val base64Encoded: String = Base64.getEncoder().encodeToString(salt)
-    private fun generateRandomSalt(size: Int = 24)  : ByteArray {
+    private fun generateRandomSalt(size: Int = 24): ByteArray {
         val salt = ByteArray(size)
         SecureRandom().nextBytes(salt)
         return salt
     }
-
 }
 
-
-fun getRandomString(length: Int = 32) : String {
+fun getRandomString(length: Int = 32): String {
     val allowedChars = ('A'..'Z') + ('a'..'z') + ('0'..'9')
     return (1..length)
         .map { allowedChars.random() }
@@ -110,9 +123,7 @@ fun hmacSha256(key: ByteArray, data: String): ByteArray {
     mac.init(SecretKeySpec(key, "HmacSHA256"))
     return mac.doFinal(data.toByteArray(Charsets.UTF_8))
 }
-fun sha256(data: ByteArray): ByteArray {
-    return MessageDigest.getInstance("SHA-256").digest(data)
-}
+fun sha256(data: ByteArray): ByteArray = MessageDigest.getInstance("SHA-256").digest(data)
 fun pbkdf2(password: String, salt: ByteArray, iterations: Int): ByteArray {
     val spec = PBEKeySpec(password.toCharArray(), salt, iterations, 32 * 8)
     return SecretKeyFactory
@@ -121,6 +132,6 @@ fun pbkdf2(password: String, salt: ByteArray, iterations: Int): ByteArray {
         .encoded
 }
 
-fun xorBytes(a: ByteArray, b: ByteArray): ByteArray {
-    return a.mapIndexed { i, v -> (v.toInt() xor b[i].toInt()).toByte() }.toByteArray()
-}
+fun xorBytes(a: ByteArray, b: ByteArray): ByteArray = a.mapIndexed { i, v ->
+    (v.toInt() xor b[i].toInt()).toByte()
+}.toByteArray()

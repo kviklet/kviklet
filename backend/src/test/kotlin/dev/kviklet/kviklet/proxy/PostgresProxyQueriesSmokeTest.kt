@@ -2,15 +2,17 @@ package dev.kviklet.kviklet.proxy
 
 import dev.kviklet.kviklet.db.EventAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
+import dev.kviklet.kviklet.proxy.helpers.ProxyInstance
+import dev.kviklet.kviklet.proxy.helpers.directConnectionFactory
+import dev.kviklet.kviklet.proxy.helpers.proxyServerFactory
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.testcontainers.containers.PostgreSQLContainer
-import dev.kviklet.kviklet.proxy.helpers.*
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
 import java.sql.Connection
 
 @SpringBootTest
@@ -18,11 +20,13 @@ import java.sql.Connection
 class PostgresProxyQueriesSmokeTest {
     @Autowired
     lateinit var executionRequestAdapter: ExecutionRequestAdapter
+
     @Autowired
     lateinit var eventAdapter: EventAdapter
-    private lateinit var directConnection : Connection
-    private lateinit var proxy : ProxyInstance
-    private lateinit var postgresContainer : PostgreSQLContainer<Nothing>
+    private lateinit var directConnection: Connection
+    private lateinit var proxy: ProxyInstance
+    private lateinit var postgresContainer: PostgreSQLContainer<Nothing>
+
     @BeforeEach
     fun setup() {
         postgresContainer = PostgreSQLContainer<Nothing>("postgres:13").apply {
@@ -31,10 +35,13 @@ class PostgresProxyQueriesSmokeTest {
             withPassword("test")
         }
         postgresContainer.start()
-        while(!postgresContainer.isRunning) { Thread.sleep(1000) }
+        while (!postgresContainer.isRunning) {
+            Thread.sleep(1000)
+        }
         this.directConnection = directConnectionFactory(postgresContainer)
         this.proxy = proxyServerFactory(postgresContainer, executionRequestAdapter, eventAdapter)
     }
+
     @AfterEach
     fun tearDown() {
         this.proxy.proxy.shutdownServer()
@@ -44,35 +51,37 @@ class PostgresProxyQueriesSmokeTest {
 
     @Test
     fun `Postgres proxy must be able to execute 100 DDL statements without hanging up`() {
-        for(i in 0..100) {
-            val CREATE_TABLE_QUERY = "CREATE TABLE IF NOT EXISTS proxy_test_ddl (id INTEGER,random VARCHAR(32));"
+        for (i in 0..100) {
+            val createTableQuery = "CREATE TABLE IF NOT EXISTS proxy_test_ddl (id INTEGER,random VARCHAR(32));"
             val stmtCreate = this.proxy.connection.createStatement()
-            stmtCreate.executeUpdate(CREATE_TABLE_QUERY)
+            stmtCreate.executeUpdate(createTableQuery)
         }
     }
+
     @Test
     fun `Postgres proxy must be able to execute 100 statements without hanging up`() {
-        val CREATE_TABLE_QUERY = "CREATE TABLE ddl_many_stms (id INTEGER,random VARCHAR(32));"
-        val TABEL_EXISTS_QUERY = """
+        val createTableQuery = "CREATE TABLE ddl_many_stms (id INTEGER,random VARCHAR(32));"
+        val tableExistsQuery = """
         SELECT EXISTS (
            SELECT FROM information_schema.tables
            WHERE  table_schema = 'public'
            AND    table_name   = 'ddl_many_stms'
         );
-    """.trimIndent()
+        """.trimIndent()
         val stmtCreate = this.proxy.connection.createStatement()
-        stmtCreate.executeUpdate(CREATE_TABLE_QUERY)
-        for(i in 0..100) {
+        stmtCreate.executeUpdate(createTableQuery)
+        for (i in 0..100) {
             val stmtRead = this.proxy.connection.createStatement()
-            val result = stmtRead.executeQuery(TABEL_EXISTS_QUERY)
+            val result = stmtRead.executeQuery(tableExistsQuery)
             while (result.next()) {
                 val isOne = result.getString("exists")
                 assertTrue(isOne == "t")
             }
         }
-        this.proxy.eventService.assertQueryIsAudited(CREATE_TABLE_QUERY)
-        this.proxy.eventService.assertQueryIsAudited(TABEL_EXISTS_QUERY)
+        this.proxy.eventService.assertQueryIsAudited(createTableQuery)
+        this.proxy.eventService.assertQueryIsAudited(tableExistsQuery)
     }
+
     @Test
     fun `Postgres proxy must be able to execute simple query`() {
         val stmt = this.proxy.connection.createStatement()
@@ -104,24 +113,22 @@ class PostgresProxyQueriesSmokeTest {
         this.proxy.eventService.assertQueryIsAudited(query)
     }
 
-
     @Test
-
     fun `Must support CRUD operations`() {
         // The logic is - the tests executes query against the proxy, and the result is observed via the direct connection.
         // For the select query, the direct connection is no used.
-        val CREATE_TABLE_QUERY = "CREATE TABLE IF NOT EXISTS proxy_test_crud (id INTEGER,random VARCHAR(32));"
-        val INSERT_QUERY = "INSERT INTO proxy_test_crud(id, random) VALUES (1, 'test');"
-        val SELECT_QUERY = "SELECT * FROM proxy_test_crud;"
-        val UPDATE_QUERY = "UPDATE proxy_test_crud SET random='TSET' WHERE id = 1;"
-        val DELETE_QUERY = "DELETE FROM proxy_test_crud WHERE id = 1;"
+        val createTableQuery = "CREATE TABLE IF NOT EXISTS proxy_test_crud (id INTEGER,random VARCHAR(32));"
+        val insertQuery = "INSERT INTO proxy_test_crud(id, random) VALUES (1, 'test');"
+        val selectQuery = "SELECT * FROM proxy_test_crud;"
+        val updateQuery = "UPDATE proxy_test_crud SET random='TSET' WHERE id = 1;"
+        val deleteQuery = "DELETE FROM proxy_test_crud WHERE id = 1;"
         val stmt = this.proxy.connection.createStatement()
-        stmt.executeUpdate(CREATE_TABLE_QUERY)
+        stmt.executeUpdate(createTableQuery)
         // Create/Insert
         val insertStmt = this.proxy.connection.createStatement()
-        insertStmt.executeUpdate(INSERT_QUERY)
+        insertStmt.executeUpdate(insertQuery)
         val selectStmt = this.directConnection.createStatement()
-        val resultPostInsert = selectStmt.executeQuery(SELECT_QUERY)
+        val resultPostInsert = selectStmt.executeQuery(selectQuery)
         while (resultPostInsert.next()) {
             val id = resultPostInsert.getInt("id")
             val random = resultPostInsert.getString("random")
@@ -130,7 +137,7 @@ class PostgresProxyQueriesSmokeTest {
         }
         // Read/Select
         val proxySelectStmt = this.proxy.connection.createStatement()
-        val resultFromSelect = proxySelectStmt.executeQuery(SELECT_QUERY)
+        val resultFromSelect = proxySelectStmt.executeQuery(selectQuery)
         while (resultFromSelect.next()) {
             val id = resultFromSelect.getInt("id")
             val random = resultFromSelect.getString("random")
@@ -139,8 +146,8 @@ class PostgresProxyQueriesSmokeTest {
         }
         // Update
         val updateStmt = this.proxy.connection.createStatement()
-        updateStmt.executeUpdate(UPDATE_QUERY)
-        val resultPostUpdate = selectStmt.executeQuery(SELECT_QUERY)
+        updateStmt.executeUpdate(updateQuery)
+        val resultPostUpdate = selectStmt.executeQuery(selectQuery)
         while (resultPostUpdate.next()) {
             val id = resultPostUpdate.getInt("id")
             val random = resultPostUpdate.getString("random")
@@ -150,26 +157,24 @@ class PostgresProxyQueriesSmokeTest {
 
         // Delete
         val deleteStmt = this.proxy.connection.createStatement()
-        deleteStmt.executeUpdate(DELETE_QUERY)
-        val resultPostDelete = selectStmt.executeQuery(SELECT_QUERY)
+        deleteStmt.executeUpdate(deleteQuery)
+        val resultPostDelete = selectStmt.executeQuery(selectQuery)
         var size = 0
         while (resultPostDelete.next()) {
             size++
         }
         assertTrue(size == 0)
 
-        this.proxy.eventService.assertQueryIsAudited(SELECT_QUERY)
-        this.proxy.eventService.assertQueryIsAudited(INSERT_QUERY)
-        this.proxy.eventService.assertQueryIsAudited(UPDATE_QUERY)
-        this.proxy.eventService.assertQueryIsAudited(DELETE_QUERY)
+        this.proxy.eventService.assertQueryIsAudited(selectQuery)
+        this.proxy.eventService.assertQueryIsAudited(insertQuery)
+        this.proxy.eventService.assertQueryIsAudited(updateQuery)
+        this.proxy.eventService.assertQueryIsAudited(deleteQuery)
     }
 
     @Test
-
     fun `Postgres proxy must support creating and executing stored procedures`() {
-
-        val CREATE_TABLE_QUERY = "CREATE TABLE IF NOT EXISTS proxy_test_procedures (id INTEGER,random VARCHAR(32));"
-        val STORED_PROCEDURE = """
+        val createTableQuery = "CREATE TABLE IF NOT EXISTS proxy_test_procedures (id INTEGER,random VARCHAR(32));"
+        val storedProcedure = """
         CREATE OR REPLACE PROCEDURE addTestRow(IN random VARCHAR(32))
         LANGUAGE plpgsql
         AS $$
@@ -180,21 +185,21 @@ class PostgresProxyQueriesSmokeTest {
         END
         $$;
     """
-        val CALL_PROCEDURE = "CALL addTestRow('test-stored-procedure');"
-        val SELECT_QUERY = "SELECT * FROM proxy_test_procedures WHERE random = 'test-stored-procedure';"
+        val callProcedure = "CALL addTestRow('test-stored-procedure');"
+        val selectQuery = "SELECT * FROM proxy_test_procedures WHERE random = 'test-stored-procedure';"
 
         var stmt = this.proxy.connection.createStatement()
 
-        stmt.executeUpdate(CREATE_TABLE_QUERY)
+        stmt.executeUpdate(createTableQuery)
 
         stmt = this.proxy.connection.createStatement()
-        stmt.executeUpdate(STORED_PROCEDURE)
+        stmt.executeUpdate(storedProcedure)
 
         stmt = this.proxy.connection.createStatement()
-        stmt.executeUpdate(CALL_PROCEDURE)
+        stmt.executeUpdate(callProcedure)
 
         val proxySelectStmt = this.proxy.connection.createStatement()
-        val resultFromSelect = proxySelectStmt.executeQuery(SELECT_QUERY)
+        val resultFromSelect = proxySelectStmt.executeQuery(selectQuery)
 
         while (resultFromSelect.next()) {
             val id = resultFromSelect.getInt("id")
@@ -203,62 +208,58 @@ class PostgresProxyQueriesSmokeTest {
             assertTrue(random == "test-stored-procedure")
         }
 
-        this.proxy.eventService.assertQueryIsAudited(CREATE_TABLE_QUERY)
-        this.proxy.eventService.assertQueryIsAudited(STORED_PROCEDURE)
-        this.proxy.eventService.assertQueryIsAudited(CALL_PROCEDURE)
+        this.proxy.eventService.assertQueryIsAudited(createTableQuery)
+        this.proxy.eventService.assertQueryIsAudited(storedProcedure)
+        this.proxy.eventService.assertQueryIsAudited(callProcedure)
     }
 
     @Test
-
     fun `Postgres proxy must support creating and executing prepared statements`() {
-        val CREATE_TABLE_QUERY = "CREATE TABLE IF NOT EXISTS proxy_test_statements (id INTEGER,random VARCHAR(32));\n"
-        val PREPARED_STATEMENT = """
+        val createTableQuery = "CREATE TABLE IF NOT EXISTS proxy_test_statements (id INTEGER,random VARCHAR(32));\n"
+        val preparedStatement = """
         PREPARE proxy_test_insert (int, text) AS
         INSERT INTO proxy_test_statements VALUES($1, $2);
-    """.trimIndent()
-        val EXECUTE = "EXECUTE proxy_test_insert(1, 'test-prepared-statement');"
-        val SELECT_QUERY = "SELECT * FROM proxy_test_statements WHERE random = 'test-prepared-statement';"
+        """.trimIndent()
+        val execute = "EXECUTE proxy_test_insert(1, 'test-prepared-statement');"
+        val selectQuery = "SELECT * FROM proxy_test_statements WHERE random = 'test-prepared-statement';"
 
         val stmt = this.proxy.connection.createStatement()
-        stmt.executeUpdate(CREATE_TABLE_QUERY)
-        stmt.executeUpdate(PREPARED_STATEMENT)
-        stmt.executeUpdate(EXECUTE)
+        stmt.executeUpdate(createTableQuery)
+        stmt.executeUpdate(preparedStatement)
+        stmt.executeUpdate(execute)
 
         val proxySelectStmt = this.proxy.connection.createStatement()
-        val resultFromSelect = proxySelectStmt.executeQuery(SELECT_QUERY)
+        val resultFromSelect = proxySelectStmt.executeQuery(selectQuery)
         while (resultFromSelect.next()) {
             val id = resultFromSelect.getInt("id")
             val random = resultFromSelect.getString("random")
             assertTrue(id < 1000)
             assertTrue(random == "test-prepared-statement")
         }
-        this.proxy.eventService.assertQueryIsAudited(CREATE_TABLE_QUERY)
-        this.proxy.eventService.assertQueryIsAudited(PREPARED_STATEMENT)
-        this.proxy.eventService.assertQueryIsAudited(EXECUTE)
+        this.proxy.eventService.assertQueryIsAudited(createTableQuery)
+        this.proxy.eventService.assertQueryIsAudited(preparedStatement)
+        this.proxy.eventService.assertQueryIsAudited(execute)
     }
 
     @Test
     fun `Postgres proxy must be able to execute DDL`() {
-
-        val CREATE_TABLE_QUERY = "CREATE TABLE IF NOT EXISTS proxy_test_ddl (id INTEGER,random VARCHAR(32));"
-        val TABEL_EXISTS_QUERY = """
+        val createTableQuery = "CREATE TABLE IF NOT EXISTS proxy_test_ddl (id INTEGER,random VARCHAR(32));"
+        val tableExistsQuery = """
         SELECT EXISTS (
            SELECT FROM information_schema.tables
            WHERE  table_schema = 'public'
            AND    table_name   = 'proxy_test_ddl'
         );
-    """.trimIndent()
+        """.trimIndent()
         val stmt = this.proxy.connection.createStatement()
-        stmt.executeUpdate(CREATE_TABLE_QUERY)
-        val result = stmt.executeQuery(TABEL_EXISTS_QUERY)
+        stmt.executeUpdate(createTableQuery)
+        val result = stmt.executeQuery(tableExistsQuery)
         while (result.next()) {
             val isOne = result.getString("exists")
             assertTrue(isOne == "t")
         }
 
-        this.proxy.eventService.assertQueryIsAudited(CREATE_TABLE_QUERY)
-        this.proxy.eventService.assertQueryIsAudited(TABEL_EXISTS_QUERY)
+        this.proxy.eventService.assertQueryIsAudited(createTableQuery)
+        this.proxy.eventService.assertQueryIsAudited(tableExistsQuery)
     }
-
 }
-

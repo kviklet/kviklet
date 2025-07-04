@@ -45,6 +45,7 @@ class WebSocketConfig : WebSocketConfigurer {
         }
     }
 }
+
 @Configuration
 class TLSCerts(
     @Value("\${proxy.tls_certificate_source:NONE}")
@@ -60,10 +61,10 @@ class TLSCerts(
 ) {
     @Bean
     @Primary
-    fun proxyCertificates() : TlsCertEnvConfig {
-        return TlsCertEnvConfig(certificateSource, certificateCertFile, certificateKeyFile, certificateKey, certificateCert)
-    }
+    fun proxyCertificates(): TlsCertEnvConfig =
+        TlsCertEnvConfig(certificateSource, certificateCertFile, certificateKeyFile, certificateKey, certificateCert)
 }
+
 @Configuration
 class DataSourceConfig(
     @Value("\${spring.datasource.url}")

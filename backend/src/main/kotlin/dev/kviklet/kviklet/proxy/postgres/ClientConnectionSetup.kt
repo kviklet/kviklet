@@ -1,6 +1,15 @@
 package dev.kviklet.kviklet.proxy.postgres
 
-import dev.kviklet.kviklet.proxy.postgres.messages.*
+import dev.kviklet.kviklet.proxy.postgres.messages.authenticationOk
+import dev.kviklet.kviklet.proxy.postgres.messages.backendKeyData
+import dev.kviklet.kviklet.proxy.postgres.messages.createAuthenticationSASLStartMessage
+import dev.kviklet.kviklet.proxy.postgres.messages.isSSLRequest
+import dev.kviklet.kviklet.proxy.postgres.messages.isStartupMessage
+import dev.kviklet.kviklet.proxy.postgres.messages.paramMessage
+import dev.kviklet.kviklet.proxy.postgres.messages.readyForQuery
+import dev.kviklet.kviklet.proxy.postgres.messages.startupMessageContainsValidUser
+import dev.kviklet.kviklet.proxy.postgres.messages.tlsNotSupportedMessage
+import dev.kviklet.kviklet.proxy.postgres.messages.tlsSupportedMessage
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.Socket
@@ -11,7 +20,7 @@ fun setupClient(
     tlsCert: TLSCertificate?,
     params: Map<String, String>,
     username: String,
-    password: String
+    password: String,
 ): Socket {
     val buffer = ByteArray(1024)
     var input = client.getInputStream()
@@ -48,16 +57,19 @@ fun handleSSLRequest(client: Socket, cert: TLSCertificate?): Socket {
 
 fun enableSSL(clientSocket: Socket, cert: TLSCertificate): Socket {
     val sslSocket = cert.sslContext.socketFactory.createSocket(
-        clientSocket, null,
-        clientSocket.getPort(), false
+        clientSocket,
+        null,
+        clientSocket.getPort(),
+        false,
     ) as SSLSocket
     sslSocket.useClientMode = false
     return sslSocket
 }
+
 /* This method checks if a message is startup message and then if the user is valid. However, if a user is invalid, the error is not being delivered straight away.
 *   Rather than that, the error is passed to the SASL flow, which cancel the authentication once a password is sent. This is to prevent enumerating available users.
 * */
-fun waitForStartupMessageWithValidUser(input: InputStream, username: String) : Boolean {
+fun waitForStartupMessageWithValidUser(input: InputStream, username: String): Boolean {
     while (true) { // wait for startup message
         val buff = ByteArray(8192)
         val read = input.read(buff)
@@ -67,9 +79,8 @@ fun waitForStartupMessageWithValidUser(input: InputStream, username: String) : B
     }
 }
 fun sendAuthRequest(output: OutputStream) {
-    val authRequest = AuthenticationSASLStartMessage()
+    val authRequest = createAuthenticationSASLStartMessage()
     output.writeAndFlush(authRequest)
-
 }
 fun waitUntilAuthenticated(input: InputStream, output: OutputStream, password: String, isUserValid: Boolean) {
     val handler = SASLAuthHandler(output, input, password, isUserValid)

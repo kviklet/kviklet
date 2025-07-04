@@ -11,7 +11,9 @@ import java.util.*
 import java.util.concurrent.Executors
 import kotlin.concurrent.schedule
 
-val NO_SHUTDOWN = 0L // In some instances, the proxy may run forever(or at least the JVM is kill). The 0 value was fulling this duty in the original code.
+// Magic number, if the maximum duration of a request is set to zero this is interpreted as
+// allowing the proxy to run forever.
+val NO_SHUTDOWN = 0L
 class PostgresProxy(
     targetHost: String,
     targetPort: Int,
@@ -20,7 +22,7 @@ class PostgresProxy(
     private val eventService: EventService,
     private val executionRequest: ExecutionRequest,
     private val userId: String,
-    private val tlsCertificate: TLSCertificate? = tlsCertificateFactory()
+    private val tlsCertificate: TLSCertificate? = tlsCertificateFactory(),
 ) {
     private val threadPool = Executors.newCachedThreadPool()
     private val clientConnections: ArrayList<Connection> = arrayListOf()
@@ -44,9 +46,9 @@ class PostgresProxy(
         this.proxyUsername = proxyUsername
         this.proxyPassword = proxyPassword
         Thread { this.startTcpListener(port) }.start()
-        if(maxTimeMinutes != NO_SHUTDOWN) {
+        if (maxTimeMinutes != NO_SHUTDOWN) {
             scheduleShutdown(
-                getShutdownDate(startTime, maxTimeMinutes)
+                getShutdownDate(startTime, maxTimeMinutes),
             )
         }
     }
@@ -64,12 +66,10 @@ class PostgresProxy(
         this.serverSocket.close()
     }
 
-    private fun acceptClientConnection(): Socket? {
-        return try {
-            serverSocket.accept()
-        } catch (e: Exception) {
-            null
-        }
+    private fun acceptClientConnection(): Socket? = try {
+        serverSocket.accept()
+    } catch (e: Exception) {
+        null
     }
 
     private fun startTcpListener(port: Int) {
@@ -113,7 +113,7 @@ class PostgresProxy(
             this.tlsCertificate,
             remotePgConn.getConnProps(),
             this.proxyUsername,
-            this.proxyPassword
+            this.proxyPassword,
         )
         val forwardSocket = remotePgConn.getPGStream().socket
         configuredSocket.soTimeout = 10
@@ -121,15 +121,12 @@ class PostgresProxy(
         val clientConnection = Connection(configuredSocket, forwardSocket, eventService, executionRequest, userId)
         this.clientConnections.add(clientConnection)
         clientConnection.startHandling()
-
     }
 }
 
-fun getShutdownDate(startTime: LocalDateTime, maxTimeMinutes: Long): Date {
-    return Date.from(
-        startTime
-            .plusMinutes(maxTimeMinutes)
-            .atZone(ZoneId.systemDefault())
-            .toInstant()
-    )
-}
+fun getShutdownDate(startTime: LocalDateTime, maxTimeMinutes: Long): Date = Date.from(
+    startTime
+        .plusMinutes(maxTimeMinutes)
+        .atZone(ZoneId.systemDefault())
+        .toInstant(),
+)

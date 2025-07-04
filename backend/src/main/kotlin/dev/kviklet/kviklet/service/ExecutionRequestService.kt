@@ -71,6 +71,7 @@ class ExecutionRequestService(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val proxies = mutableListOf<ExecutionProxy>()
+
     @Autowired
     lateinit var proxyTLSCerts: TLSCerts
 
@@ -714,18 +715,17 @@ class ExecutionRequestService(
                 eventService,
                 executionRequest,
                 userId,
-                tlsCertificateFactory(proxyTLSCerts.proxyCertificates())
+                tlsCertificateFactory(proxyTLSCerts.proxyCertificates()),
             ).startServer(
                 mappedPort,
                 email,
                 tempPassword,
                 startTime,
-                maxTimeMinutes
+                maxTimeMinutes,
             )
-        }
-        catch(e: Exception) {
-            // At least print the exception, otherwise it will fail silently
-            println(e.message)
+        } catch (e: Exception) {
+            // At least print the exception, otherwise it will fail silently in the background
+            logger.error("Error starting proxy for user $userId on port $port", e)
             throw e
         }
     }

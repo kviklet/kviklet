@@ -162,13 +162,9 @@ class TerminationMessage(header: Char = 'X', length: Int = 4, originalContent: B
 class MessageOrBytes(val message: ParsedMessage?, val bytes: ByteArray?, val response: ByteArray? = null)
 
 // todo: move MessageOrBytes.writableBytes() and MessageOrBytes.isTermination() to the class
-fun MessageOrBytes.writableBytes(): ByteArray {
-    return this.message?.toByteArray() ?: this.bytes!!
-}
+fun MessageOrBytes.writableBytes(): ByteArray = this.message?.toByteArray() ?: this.bytes!!
 
-fun MessageOrBytes.isTermination(): Boolean {
-    return this.message?.isTermination() ?: false
-}
+fun MessageOrBytes.isTermination(): Boolean = this.message?.isTermination() ?: false
 
 class QueryMessage(
     override val header: Char = 'Q',
@@ -280,7 +276,7 @@ class Statement(
 ) {
     override fun toString(): String =
         "Statement(query='$query', parameterFormatCodes=$parameterFormatCodes, boundParams=$boundParams)," +
-                "interpolated query: ${interpolateQuery()}"
+            "interpolated query: ${interpolateQuery()}"
 
     fun interpolateQuery(): String {
         var interpolatedQuery = query
@@ -306,8 +302,6 @@ fun readyForQuery(): ByteArray {
     return responseBuffer.array()
 }
 
-
-
 fun paramMessage(key: String, value: String): ByteArray {
     val responseBuffer = ByteBuffer.allocate(
         7 + key.toByteArray().size + value.toByteArray().size,
@@ -329,14 +323,10 @@ fun backendKeyData(): ByteArray {
     responseBuffer.putInt(0)
     return responseBuffer.array()
 }
-fun isStartupMessage(byteArray: ByteArray): Boolean {
-    return byteArray[4] == 0x00.toByte() &&
-            byteArray[5] == 0x03.toByte() &&
-            byteArray[6] == 0x00.toByte() &&
-            byteArray[7] == 0x00.toByte()
-}
-fun startupMessageContainsValidUser(message: ByteArray, msgLen: Int, username : String) : Boolean{
-    return !String(message).subSequence(8, msgLen).contains(username)
-}
+fun isStartupMessage(byteArray: ByteArray): Boolean = byteArray[4] == 0x00.toByte() &&
+    byteArray[5] == 0x03.toByte() &&
+    byteArray[6] == 0x00.toByte() &&
+    byteArray[7] == 0x00.toByte()
+fun startupMessageContainsValidUser(message: ByteArray, msgLen: Int, username: String): Boolean =
+    !String(message).subSequence(8, msgLen).contains(username)
 fun ByteArray.toHexString() = joinToString("") { "%02x".format(it) }
-

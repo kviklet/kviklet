@@ -20,7 +20,7 @@ import java.net.URI
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.sql.Statement
-import java.util.HexFormat
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 data class TestCredentialsResult(val success: Boolean, val message: String)
@@ -69,7 +69,6 @@ class JDBCExecutor {
 
                         hasResults = statement.moreResults
                     }
-                    println(dataSource.password)
                     return queryResults
                 }
             } catch (e: SQLException) {
