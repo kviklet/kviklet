@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.service
 
+import dev.kviklet.kviklet.TLSCerts
 import dev.kviklet.kviklet.controller.CreateCommentRequest
 import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
 import dev.kviklet.kviklet.controller.CreateExecutionRequestRequest
@@ -12,7 +13,8 @@ import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.ReviewPayload
 import dev.kviklet.kviklet.db.UserAdapter
-import dev.kviklet.kviklet.proxy.PostgresProxy
+import dev.kviklet.kviklet.proxy.postgres.PostgresProxy
+import dev.kviklet.kviklet.proxy.postgres.tlsCertificateFactory
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.security.UserDetailsWithId
@@ -65,6 +67,7 @@ class ExecutionRequestService(
     private val mongoDBExecutor: MongoDBExecutor,
     private val connectionService: ConnectionService,
     private val userAdapter: UserAdapter,
+    private val proxyTLSCerts: TLSCerts,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val proxies = mutableListOf<ExecutionProxy>()
@@ -700,21 +703,28 @@ class ExecutionRequestService(
         startTime: LocalDateTime,
         maxTimeMinutes: Long,
     ): CompletableFuture<Void>? = CompletableFuture.runAsync {
-        PostgresProxy(
-            hostname,
-            port,
-            databaseName,
-            authenticationDetails,
-            eventService,
-            executionRequest,
-            userId,
-        ).startServer(
-            mappedPort,
-            email,
-            tempPassword,
-            startTime,
-            maxTimeMinutes,
-        )
+        try {
+            PostgresProxy(
+                hostname,
+                port,
+                databaseName,
+                authenticationDetails,
+                eventService,
+                executionRequest,
+                userId,
+                tlsCertificateFactory(proxyTLSCerts.proxyCertificates()),
+            ).startServer(
+                mappedPort,
+                email,
+                tempPassword,
+                startTime,
+                maxTimeMinutes,
+            )
+        } catch (e: Exception) {
+            // At least print the exception, otherwise it will fail silently in the background
+            logger.error("Error starting proxy for user $userId on port $port", e)
+            throw e
+        }
     }
 }
 
