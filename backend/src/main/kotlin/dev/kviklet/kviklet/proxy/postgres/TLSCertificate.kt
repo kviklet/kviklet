@@ -51,10 +51,10 @@ fun preprocessPEMObject(pem: String): String {
         "-----ENDRSAPRIVATEKEY-----",
         "-----BEGINCERTIFICATE-----",
         "-----ENDCERTIFICATE-----",
-        "-----BEGINRSAPRIVATEKEY-----",
-        "-----ENDRSAPRIVATEKEY-----",
         "-----BEGINECPRIVATEKEY-----",
         "-----ENDECPRIVATEKEY-----",
+        "-----BEGINPRIVATEKEY-----",
+        "-----ENDPRIVATEKEY-----"
     )
     for (header in headers) {
         processedPem = processedPem.replace(header, "")
