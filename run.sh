@@ -1,6 +1,6 @@
 #!/bin/bash
 # Set default JAVA_OPTS if not already set
-JAVA_OPTS=${JAVA_OPTS:-"-Xmx64m" "-Xms64m"}
+JAVA_OPTS=${JAVA_OPTS:-"-Xmx64m -Xms64m"}
 
 # Start Nginx
 nginx -g 'daemon off;' &
