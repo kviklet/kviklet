@@ -1,10 +1,13 @@
 #!/bin/bash
+# Set default JAVA_OPTS if not already set
+JAVA_OPTS=${JAVA_OPTS:-"-Xmx64m" "-Xms64m"}
+
 # Start Nginx
 nginx -g 'daemon off;' &
 NGINX_PID=$!
 
 # Start Spring Boot Service
-java -jar /app/app.jar &
+java $JAVA_OPTS -jar /app/app.jar &
 SPRING_PID=$!
 
 # Wait for either process to exit
