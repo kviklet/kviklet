@@ -16,6 +16,7 @@ import dev.kviklet.kviklet.service.dto.KubernetesConnection
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
+import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 import org.springframework.http.HttpStatus
@@ -91,6 +92,7 @@ data class CreateDatasourceConnectionRequest(
     val temporaryAccessEnabled: Boolean = true,
     val explainEnabled: Boolean = false,
     val roleArn: String? = null,
+    @field:Min(0)
     val maxTemporaryAccessDuration: Long? = null,
 ) : ConnectionRequest()
 
@@ -143,6 +145,7 @@ data class UpdateDatasourceConnectionRequest(
 
     val explainEnabled: Boolean? = null,
 
+    @field:Min(0)
     val maxTemporaryAccessDuration: Long? = null,
 ) : UpdateConnectionRequest()
 
