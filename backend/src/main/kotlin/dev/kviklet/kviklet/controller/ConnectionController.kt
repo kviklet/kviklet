@@ -142,7 +142,7 @@ data class UpdateDatasourceConnectionRequest(
     val temporaryAccessEnabled: Boolean? = null,
 
     val explainEnabled: Boolean? = null,
-    
+
     val maxTemporaryAccessDuration: Long? = null,
 ) : UpdateConnectionRequest()
 

@@ -72,17 +72,18 @@ class ExecutionRequestService(
     private val logger = LoggerFactory.getLogger(javaClass)
     private val proxies = mutableListOf<ExecutionProxy>()
 
-    private fun validateTemporaryAccessDuration(
-        connection: DatasourceConnection,
-        requestedDurationMinutes: Long?,
-    ) {
+    private fun validateTemporaryAccessDuration(connection: DatasourceConnection, requestedDurationMinutes: Long?) {
         if (requestedDurationMinutes != null && requestedDurationMinutes == 0L) {
-            throw IllegalArgumentException("Duration cannot be 0. Use null for infinite access or a positive value for limited access")
+            throw IllegalArgumentException(
+                "Duration cannot be 0. Use null for infinite access or a positive value for limited access",
+            )
         }
-        
+
         connection.maxTemporaryAccessDuration?.let { maxDuration ->
             if (requestedDurationMinutes == null) {
-                throw IllegalArgumentException("Infinite access not allowed for this connection. Maximum duration is $maxDuration minutes")
+                throw IllegalArgumentException(
+                    "Infinite access not allowed for this connection. Maximum duration is $maxDuration minutes",
+                )
             }
             if (requestedDurationMinutes > maxDuration) {
                 throw IllegalArgumentException("Duration exceeds maximum allowed: $maxDuration minutes")
@@ -279,7 +280,9 @@ class ExecutionRequestService(
                 if (newDuration != executionRequestDetails.request.temporaryAccessDuration) {
                     // Validate the new duration if it's for a temporary access request
                     if (executionRequestDetails.request.type == RequestType.TemporaryAccess) {
-                        val connection = connectionService.getDatasourceConnection(executionRequestDetails.request.connection.id)
+                        val connection = connectionService.getDatasourceConnection(
+                            executionRequestDetails.request.connection.id,
+                        )
                         if (connection is DatasourceConnection) {
                             validateTemporaryAccessDuration(connection, request.temporaryAccessDuration)
                         }
@@ -688,7 +691,9 @@ class ExecutionRequestService(
             executionRequest = executionRequest.request,
             userId = userDetails.id,
             firstEventTime,
-            maxTimeMinutes = executionRequest.request.temporaryAccessDuration?.toMinutes() ?: 60,
+            maxTimeMinutes =
+            executionRequest.request.temporaryAccessDuration?.toMinutes()
+                ?: dev.kviklet.kviklet.proxy.postgres.INFINITE_ACCESS,
         )
         logger.info("Started proxy for user ${connection.auth.username} on port 5438")
         val proxy = ExecutionProxy(

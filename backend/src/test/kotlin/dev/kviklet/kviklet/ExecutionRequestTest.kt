@@ -5,10 +5,14 @@ import dev.kviklet.kviklet.helper.ExecutionRequestDetailsFactory
 import dev.kviklet.kviklet.helper.ExecutionRequestFactory
 import dev.kviklet.kviklet.helper.UserFactory
 import dev.kviklet.kviklet.service.dto.Event
+import dev.kviklet.kviklet.service.dto.ExecutionStatus
+import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewStatus
+import dev.kviklet.kviklet.service.dto.utcTimeNow
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
+import java.time.Duration
 import java.time.LocalDateTime
 
 @SpringBootTest
@@ -94,5 +98,92 @@ class ExecutionRequestTest {
             events = events,
         )
         assert(details.resolveReviewStatus() == ReviewStatus.AWAITING_APPROVAL)
+    }
+
+    @Test
+    fun `test execution status changes from ACTIVE to EXECUTED when max duration expires`() {
+        // Create a temporary access request with 30 minute duration
+        val request = executionRequestFactory.createDatasourceExecutionRequest(
+            type = RequestType.TemporaryAccess,
+            temporaryAccessDuration = Duration.ofMinutes(30),
+        )
+
+        // Create an execute event that happened 45 minutes ago (exceeding the 30 minute limit)
+        val executor = userFactory.createUser()
+        val executeTime = utcTimeNow().minusMinutes(45)
+        val events = mutableSetOf<Event>(
+            eventFactory.createReviewApprovedEvent(
+                request = request,
+                author = executor,
+                createdAt = executeTime.minusMinutes(1),
+            ),
+            eventFactory.createExecuteEvent(request = request, author = executor, createdAt = executeTime),
+        )
+
+        val details = executionRequestDetailsFactory.createExecutionRequestDetails(
+            request = request,
+            events = events,
+        )
+
+        // Since 45 minutes have passed and the limit was 30 minutes, status should be EXECUTED
+        assert(details.resolveExecutionStatus() == ExecutionStatus.EXECUTED)
+    }
+
+    @Test
+    fun `test execution status remains ACTIVE when max duration has not expired`() {
+        // Create a temporary access request with 60 minute duration
+        val request = executionRequestFactory.createDatasourceExecutionRequest(
+            type = RequestType.TemporaryAccess,
+            temporaryAccessDuration = Duration.ofMinutes(60),
+        )
+
+        // Create an execute event that happened 30 minutes ago (within the 60 minute limit)
+        val executor = userFactory.createUser()
+        val executeTime = utcTimeNow().minusMinutes(30)
+        val events = mutableSetOf<Event>(
+            eventFactory.createReviewApprovedEvent(
+                request = request,
+                author = executor,
+                createdAt = executeTime.minusMinutes(1),
+            ),
+            eventFactory.createExecuteEvent(request = request, author = executor, createdAt = executeTime),
+        )
+
+        val details = executionRequestDetailsFactory.createExecutionRequestDetails(
+            request = request,
+            events = events,
+        )
+
+        // Since only 30 minutes have passed and the limit is 60 minutes, status should be ACTIVE
+        assert(details.resolveExecutionStatus() == ExecutionStatus.ACTIVE)
+    }
+
+    @Test
+    fun `test execution status remains ACTIVE for infinite access (null duration)`() {
+        // Create a temporary access request with null duration (infinite access)
+        val request = executionRequestFactory.createDatasourceExecutionRequest(
+            type = RequestType.TemporaryAccess,
+            temporaryAccessDuration = null,
+        )
+
+        // Create an execute event that happened 5 days ago
+        val executor = userFactory.createUser()
+        val executeTime = utcTimeNow().minusDays(5)
+        val events = mutableSetOf<Event>(
+            eventFactory.createReviewApprovedEvent(
+                request = request,
+                author = executor,
+                createdAt = executeTime.minusMinutes(1),
+            ),
+            eventFactory.createExecuteEvent(request = request, author = executor, createdAt = executeTime),
+        )
+
+        val details = executionRequestDetailsFactory.createExecutionRequestDetails(
+            request = request,
+            events = events,
+        )
+
+        // With infinite access (null duration), status should always be ACTIVE regardless of time passed
+        assert(details.resolveExecutionStatus() == ExecutionStatus.ACTIVE)
     }
 }

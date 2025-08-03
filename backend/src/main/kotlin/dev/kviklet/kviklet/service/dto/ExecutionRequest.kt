@@ -247,7 +247,7 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
                 if (request.temporaryAccessDuration == null) {
                     return ExecutionStatus.ACTIVE
                 }
-                
+
                 val duration = request.temporaryAccessDuration
                 return if (firstExecution.createdAt.plus(duration) < utcTimeNow()) {
                     ExecutionStatus.EXECUTED
