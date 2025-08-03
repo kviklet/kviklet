@@ -67,6 +67,7 @@ class ConnectionService(
             temporaryAccessEnabled = request.temporaryAccessEnabled ?: connection.temporaryAccessEnabled,
             explainEnabled = request.explainEnabled ?: connection.explainEnabled,
             roleArn = request.roleArn,
+            maxTemporaryAccessDuration = request.maxTemporaryAccessDuration ?: connection.maxTemporaryAccessDuration,
         )
     }
 
@@ -160,6 +161,7 @@ class ConnectionService(
         temporaryAccessEnabled: Boolean,
         explainEnabled: Boolean,
         roleArn: String?,
+        maxTemporaryAccessDuration: Long?,
     ): Connection {
         if (authenticationType == AuthenticationType.USER_PASSWORD && password == null) {
             throw IllegalArgumentException("Password is required for USER_PASSWORD authentication")
@@ -185,6 +187,7 @@ class ConnectionService(
             temporaryAccessEnabled,
             explainEnabled,
             roleArn,
+            maxTemporaryAccessDuration,
         )
     }
 
@@ -208,6 +211,7 @@ class ConnectionService(
         temporaryAccessEnabled: Boolean,
         explainEnabled: Boolean,
         roleArn: String?,
+        maxTemporaryAccessDuration: Long? = null,
     ): TestConnectionResult {
         val connection = DatasourceConnection(
             connectionId,
@@ -229,6 +233,7 @@ class ConnectionService(
             dumpsEnabled,
             temporaryAccessEnabled,
             explainEnabled,
+            maxTemporaryAccessDuration,
         )
         val accessibleDatabases = mutableListOf<String>()
         if (!databaseName.isNullOrBlank()) {

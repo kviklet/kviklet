@@ -90,6 +90,7 @@ data class DatasourceConnection(
     val dumpsEnabled: Boolean,
     val temporaryAccessEnabled: Boolean,
     val explainEnabled: Boolean,
+    val maxTemporaryAccessDuration: Long? = null,
 ) : Connection(id, displayName, description, reviewConfig, maxExecutions) {
     fun getConnectionString(): String = when (auth) {
         is AuthenticationDetails.UserPassword -> when (type) {

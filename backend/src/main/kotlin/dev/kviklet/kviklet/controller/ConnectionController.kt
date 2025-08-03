@@ -91,6 +91,7 @@ data class CreateDatasourceConnectionRequest(
     val temporaryAccessEnabled: Boolean = true,
     val explainEnabled: Boolean = false,
     val roleArn: String? = null,
+    val maxTemporaryAccessDuration: Long? = null,
 ) : ConnectionRequest()
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
@@ -141,6 +142,8 @@ data class UpdateDatasourceConnectionRequest(
     val temporaryAccessEnabled: Boolean? = null,
 
     val explainEnabled: Boolean? = null,
+    
+    val maxTemporaryAccessDuration: Long? = null,
 ) : UpdateConnectionRequest()
 
 data class UpdateKubernetesConnectionRequest(
@@ -191,6 +194,7 @@ data class DatasourceConnectionResponse(
     val temporaryAccessEnabled: Boolean,
     val explainEnabled: Boolean,
     val roleArn: String?,
+    val maxTemporaryAccessDuration: Long?,
 ) : ConnectionResponse(ConnectionType.DATASOURCE) {
     companion object {
         fun fromDto(datasourceConnection: DatasourceConnection) = DatasourceConnectionResponse(
@@ -216,6 +220,7 @@ data class DatasourceConnectionResponse(
                 is AuthenticationDetails.AwsIam -> datasourceConnection.auth.roleArn
                 else -> null
             },
+            maxTemporaryAccessDuration = datasourceConnection.maxTemporaryAccessDuration,
         )
     }
 }
@@ -284,6 +289,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             temporaryAccessEnabled = request.temporaryAccessEnabled,
             explainEnabled = request.explainEnabled,
             roleArn = request.roleArn,
+            maxTemporaryAccessDuration = request.maxTemporaryAccessDuration,
         )
 
     private fun testDatabaseConnection(request: CreateDatasourceConnectionRequest): TestConnectionResult =
@@ -306,6 +312,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             temporaryAccessEnabled = request.temporaryAccessEnabled,
             explainEnabled = request.explainEnabled,
             roleArn = request.roleArn,
+            maxTemporaryAccessDuration = request.maxTemporaryAccessDuration,
         )
 
     private fun createKubernetesConnection(request: CreateKubernetesConnectionRequest): Connection =
