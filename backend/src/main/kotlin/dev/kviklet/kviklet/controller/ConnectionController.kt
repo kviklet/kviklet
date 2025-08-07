@@ -92,7 +92,7 @@ data class CreateDatasourceConnectionRequest(
     val temporaryAccessEnabled: Boolean = true,
     val explainEnabled: Boolean = false,
     val roleArn: String? = null,
-    @field:Min(0)
+    @field:Min(1)
     val maxTemporaryAccessDuration: Long? = null,
 ) : ConnectionRequest()
 
@@ -145,7 +145,7 @@ data class UpdateDatasourceConnectionRequest(
 
     val explainEnabled: Boolean? = null,
 
-    @field:Min(0)
+    @field:Min(1)
     val maxTemporaryAccessDuration: Long? = null,
 
     // Using an extra clear flag because the patch requests don't differentiate between
