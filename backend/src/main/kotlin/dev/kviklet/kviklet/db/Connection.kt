@@ -78,6 +78,7 @@ class ConnectionEntity(
     var temporaryAccessEnabled: Boolean = true,
     var explainEnabled: Boolean = false,
     var roleArn: String? = null,
+    var maxTemporaryAccessDuration: Long? = null,
 ) {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
@@ -184,6 +185,7 @@ class ConnectionAdapter(
         temporaryAccessEnabled: Boolean,
         explainEnabled: Boolean,
         roleArn: String? = null,
+        maxTemporaryAccessDuration: Long? = null,
     ): Connection = decryptCredentialsIfNeeded(
         save(
             ConnectionEntity(
@@ -207,6 +209,7 @@ class ConnectionAdapter(
                 temporaryAccessEnabled = temporaryAccessEnabled,
                 explainEnabled = explainEnabled,
                 roleArn = roleArn,
+                maxTemporaryAccessDuration = maxTemporaryAccessDuration,
             ),
         ),
     )
@@ -229,6 +232,7 @@ class ConnectionAdapter(
         temporaryAccessEnabled: Boolean,
         explainEnabled: Boolean,
         roleArn: String? = null,
+        maxTemporaryAccessDuration: Long? = null,
     ): Connection {
         val datasourceConnection = connectionRepository.findByIdOrNull(id.toString())
             ?: throw EntityNotFound(
@@ -259,6 +263,7 @@ class ConnectionAdapter(
         datasourceConnection.temporaryAccessEnabled = temporaryAccessEnabled
         datasourceConnection.explainEnabled = explainEnabled
         datasourceConnection.roleArn = roleArn
+        datasourceConnection.maxTemporaryAccessDuration = maxTemporaryAccessDuration
 
         return decryptCredentialsIfNeeded(save(datasourceConnection))
     }
@@ -346,6 +351,7 @@ class ConnectionAdapter(
                 dumpsEnabled = connection.dumpsEnabled,
                 temporaryAccessEnabled = connection.temporaryAccessEnabled,
                 explainEnabled = connection.explainEnabled,
+                maxTemporaryAccessDuration = connection.maxTemporaryAccessDuration,
             )
         ConnectionType.KUBERNETES ->
             KubernetesConnection(

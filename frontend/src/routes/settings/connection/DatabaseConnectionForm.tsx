@@ -50,6 +50,7 @@ const baseConnectionSchema = z.object({
   dumpsEnabled: z.boolean(),
   temporaryAccessEnabled: z.boolean().default(true),
   explainEnabled: z.boolean().default(false),
+  maxTemporaryAccessDuration: z.coerce.number().nullable().optional(),
   connectionType: z.literal("DATASOURCE").default("DATASOURCE"),
 });
 
@@ -404,11 +405,24 @@ export default function DatabaseConnectionForm(props: {
                           Enable Temporary Access
                         </label>
                         <input
+                          id="temporaryAccessEnabled"
                           type="checkbox"
                           className="my-auto h-4 w-4"
                           {...register("temporaryAccessEnabled")}
                         />
                       </div>
+                      {watch("temporaryAccessEnabled") && (
+                        <InputField
+                          id="maxTemporaryAccessDuration"
+                          label="Max Access Duration"
+                          placeholder="Leave empty for unlimited"
+                          tooltip="Maximum duration (in minutes) for temporary access requests. Leave empty for unlimited."
+                          type="number"
+                          min="1"
+                          {...register("maxTemporaryAccessDuration")}
+                          error={errors.maxTemporaryAccessDuration?.message}
+                        />
+                      )}
                       <div className="flex w-full justify-between">
                         <label
                           htmlFor="explainEnabled"

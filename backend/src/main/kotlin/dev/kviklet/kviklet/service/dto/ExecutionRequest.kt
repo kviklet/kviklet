@@ -243,12 +243,12 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
                 }
                 val firstExecution = executions.minBy { it.createdAt }
                 // Default to 1 hour if not set, can be for old temporary access requests all new ones should have this set
-                val duration = request.temporaryAccessDuration ?: Duration.ofMinutes(60)
-
-                if (duration.isZero) {
-                    // If duration is zero, the request is always active
+                // If temporaryAccessDuration is null, it means infinite access
+                if (request.temporaryAccessDuration == null) {
                     return ExecutionStatus.ACTIVE
                 }
+
+                val duration = request.temporaryAccessDuration
                 return if (firstExecution.createdAt.plus(duration) < utcTimeNow()) {
                     ExecutionStatus.EXECUTED
                 } else {

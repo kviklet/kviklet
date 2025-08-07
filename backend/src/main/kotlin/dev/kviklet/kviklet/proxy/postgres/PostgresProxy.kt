@@ -11,9 +11,9 @@ import java.util.*
 import java.util.concurrent.Executors
 import kotlin.concurrent.schedule
 
-// Magic number, if the maximum duration of a request is set to zero this is interpreted as
-// allowing the proxy to run forever.
-val NO_SHUTDOWN = 0L
+// When temporaryAccessDuration is null, it indicates infinite access
+// This constant is used to represent that case in the proxy
+val INFINITE_ACCESS = -1L
 class PostgresProxy(
     targetHost: String,
     targetPort: Int,
@@ -46,7 +46,7 @@ class PostgresProxy(
         this.proxyUsername = proxyUsername
         this.proxyPassword = proxyPassword
         Thread { this.startTcpListener(port) }.start()
-        if (maxTimeMinutes != NO_SHUTDOWN) {
+        if (maxTimeMinutes != INFINITE_ACCESS) {
             scheduleShutdown(
                 getShutdownDate(startTime, maxTimeMinutes),
             )

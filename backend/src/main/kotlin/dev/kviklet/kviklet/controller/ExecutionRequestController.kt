@@ -43,6 +43,7 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
+import jakarta.validation.constraints.Min
 import org.bson.Document
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
@@ -71,6 +72,7 @@ sealed class CreateExecutionRequestRequest(
     open val title: String,
     open val type: RequestType,
     open val description: String,
+    @field:Min(0)
     open val temporaryAccessDuration: Long? = null,
 )
 
@@ -80,6 +82,7 @@ data class CreateDatasourceExecutionRequestRequest(
     override val type: RequestType,
     override val description: String,
     val statement: String?,
+    @field:Min(0)
     override val temporaryAccessDuration: Long? = null,
 ) : CreateExecutionRequestRequest(connectionId, title, type, description, temporaryAccessDuration)
 
@@ -92,6 +95,7 @@ data class CreateKubernetesExecutionRequestRequest(
     val podName: String,
     val containerName: String?,
     val command: String,
+    @field:Min(0)
     override val temporaryAccessDuration: Long? = null,
 ) : CreateExecutionRequestRequest(connectionId, title, type, description, temporaryAccessDuration)
 
@@ -103,6 +107,7 @@ data class UpdateExecutionRequestRequest(
     val podName: String? = null,
     val containerName: String? = null,
     val command: String? = null,
+    @field:Min(0)
     val temporaryAccessDuration: Long? = null,
 )
 

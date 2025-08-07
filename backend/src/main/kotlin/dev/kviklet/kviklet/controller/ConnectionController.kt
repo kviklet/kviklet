@@ -16,6 +16,7 @@ import dev.kviklet.kviklet.service.dto.KubernetesConnection
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
+import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
 import org.springframework.http.HttpStatus
@@ -91,6 +92,8 @@ data class CreateDatasourceConnectionRequest(
     val temporaryAccessEnabled: Boolean = true,
     val explainEnabled: Boolean = false,
     val roleArn: String? = null,
+    @field:Min(1)
+    val maxTemporaryAccessDuration: Long? = null,
 ) : ConnectionRequest()
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
@@ -141,6 +144,13 @@ data class UpdateDatasourceConnectionRequest(
     val temporaryAccessEnabled: Boolean? = null,
 
     val explainEnabled: Boolean? = null,
+
+    @field:Min(1)
+    val maxTemporaryAccessDuration: Long? = null,
+
+    // Using an extra clear flag because the patch requests don't differentiate between
+    // null and not present.
+    val clearMaxTempDuration: Boolean = false,
 ) : UpdateConnectionRequest()
 
 data class UpdateKubernetesConnectionRequest(
@@ -191,6 +201,7 @@ data class DatasourceConnectionResponse(
     val temporaryAccessEnabled: Boolean,
     val explainEnabled: Boolean,
     val roleArn: String?,
+    val maxTemporaryAccessDuration: Long?,
 ) : ConnectionResponse(ConnectionType.DATASOURCE) {
     companion object {
         fun fromDto(datasourceConnection: DatasourceConnection) = DatasourceConnectionResponse(
@@ -216,6 +227,7 @@ data class DatasourceConnectionResponse(
                 is AuthenticationDetails.AwsIam -> datasourceConnection.auth.roleArn
                 else -> null
             },
+            maxTemporaryAccessDuration = datasourceConnection.maxTemporaryAccessDuration,
         )
     }
 }
@@ -284,6 +296,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             temporaryAccessEnabled = request.temporaryAccessEnabled,
             explainEnabled = request.explainEnabled,
             roleArn = request.roleArn,
+            maxTemporaryAccessDuration = request.maxTemporaryAccessDuration,
         )
 
     private fun testDatabaseConnection(request: CreateDatasourceConnectionRequest): TestConnectionResult =
@@ -306,6 +319,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             temporaryAccessEnabled = request.temporaryAccessEnabled,
             explainEnabled = request.explainEnabled,
             roleArn = request.roleArn,
+            maxTemporaryAccessDuration = request.maxTemporaryAccessDuration,
         )
 
     private fun createKubernetesConnection(request: CreateKubernetesConnectionRequest): Connection =

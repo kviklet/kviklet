@@ -348,6 +348,83 @@ class ConnectionTest(
     }
 
     @Test
+    fun `test clearMaxTempDuration with raw JSON`() {
+        val testUser = userHelper.createUser(listOf("*"))
+        val cookie = userHelper.login(mockMvc = mockMvc)
+
+        // Create a connection with max duration using raw JSON
+        val createJson = """
+            {
+                "connectionType": "DATASOURCE",
+                "id": "json-max-duration-conn",
+                "displayName": "JSON Max Duration Test",
+                "username": "root",
+                "password": "root",
+                "type": "MYSQL",
+                "hostname": "localhost",
+                "port": 3306,
+                "temporaryAccessEnabled": true,
+                "maxTemporaryAccessDuration": 180,
+                "reviewConfig": {
+                    "numTotalRequired": 1
+                }
+            }
+        """.trimIndent()
+
+        mockMvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/connections/")
+                .cookie(cookie)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(createJson),
+        )
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk)
+            .andExpect(
+                org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath(
+                    "$.maxTemporaryAccessDuration",
+                )
+                    .value(180),
+            )
+
+        // Update with clearMaxTempDuration=true using raw JSON
+        val updateJson = """
+            {
+                "connectionType": "DATASOURCE",
+                "clearMaxTempDuration": true
+            }
+        """.trimIndent()
+
+        mockMvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .patch("/connections/json-max-duration-conn")
+                .cookie(cookie)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content(updateJson),
+        )
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk)
+            .andExpect(
+                org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath(
+                    "$.maxTemporaryAccessDuration",
+                )
+                    .doesNotExist(),
+            )
+
+        // Verify the value is cleared by fetching the connection
+        mockMvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(
+                "/connections/json-max-duration-conn",
+            )
+                .cookie(cookie),
+        )
+            .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk)
+            .andExpect(
+                org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath(
+                    "$.maxTemporaryAccessDuration",
+                )
+                    .doesNotExist(),
+            )
+    }
+
+    @Test
     fun `test role ARN is passed correctly`() {
         // Create a connection with AWS IAM authentication and role ARN
         val roleArn = "arn:aws:iam::123456789012:role/example-role"

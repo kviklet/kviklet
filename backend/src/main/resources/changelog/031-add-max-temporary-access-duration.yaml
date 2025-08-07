@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 031-add-max-temporary-access-duration
+      author: jascha
+      changes:
+        - addColumn:
+            tableName: connection
+            columns:
+              - column:
+                  name: max_temporary_access_duration
+                  type: BIGINT
+                  constraints:
+                    nullable: true
+        - update:
+            tableName: execution_request
+            columns:
+              - column:
+                  name: temporary_access_duration
+                  value: NULL
+            where: temporary_access_duration = 0

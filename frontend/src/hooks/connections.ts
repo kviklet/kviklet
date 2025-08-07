@@ -35,7 +35,14 @@ const useConnections = () => {
   }, []);
 
   const createConnection = async (connection: ConnectionPayload) => {
+    if (connection.connectionType === "DATASOURCE") {
+      const duration = connection.maxTemporaryAccessDuration;
+      if (!duration || duration === 0) {
+        connection.maxTemporaryAccessDuration = null;
+      }
+    }
     const response = await addConnection(connection);
+
     if (isApiErrorResponse(response)) {
       addNotification({
         title: "Failed to create connection",
@@ -93,6 +100,13 @@ const useConnection = (id: string) => {
     ) {
       // ensure that the password is not updated if the user didn't provide a new one
       patchedConnection.password = undefined;
+    }
+    if (patchedConnection.connectionType === "DATASOURCE") {
+      const duration = patchedConnection.maxTemporaryAccessDuration;
+      if (!duration || duration === 0) {
+        patchedConnection.maxTemporaryAccessDuration = null;
+        patchedConnection.clearMaxTempDuration = true;
+      }
     }
     const response = await patchConnection(patchedConnection, connection.id);
     if (isApiErrorResponse(response)) {

@@ -49,6 +49,7 @@ const databaseConnectionResponseSchema = withType(
     temporaryAccessEnabled: z.boolean(),
     explainEnabled: z.boolean(),
     roleArn: z.string().nullable(),
+    maxTemporaryAccessDuration: z.number().nullable().optional(),
   }),
   "DATASOURCE",
 );
@@ -95,6 +96,10 @@ interface DatabaseConnectionBase extends ConnectionBase {
   hostname: string;
   port: number;
   additionalJDBCOptions?: string;
+  dumpsEnabled: boolean;
+  temporaryAccessEnabled: boolean;
+  explainEnabled: boolean;
+  maxTemporaryAccessDuration?: number | null;
 }
 
 type DatabaseConnection =
@@ -122,7 +127,12 @@ type AllNullableExcept<T, K extends keyof T> = {
 // Use a distributive conditional type to preserve the union structure
 type PatchDatabaseConnectionPayload = DatabaseConnection extends infer T
   ? T extends DatabaseConnection
-    ? Omit<AllNullableExcept<T, "connectionType" | "authenticationType">, "id">
+    ? Omit<
+        AllNullableExcept<T, "connectionType" | "authenticationType">,
+        "id"
+      > & {
+        clearMaxTempDuration?: boolean;
+      }
     : never
   : never;
 
