@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
       id: 031-add-max-temporary-access-duration
-      author: claude
+      author: jascha
       changes:
         - addColumn:
             tableName: connection
