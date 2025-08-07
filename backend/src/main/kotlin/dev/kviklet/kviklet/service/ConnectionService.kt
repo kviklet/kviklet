@@ -67,7 +67,11 @@ class ConnectionService(
             temporaryAccessEnabled = request.temporaryAccessEnabled ?: connection.temporaryAccessEnabled,
             explainEnabled = request.explainEnabled ?: connection.explainEnabled,
             roleArn = request.roleArn,
-            maxTemporaryAccessDuration = request.maxTemporaryAccessDuration ?: connection.maxTemporaryAccessDuration,
+            maxTemporaryAccessDuration = if (request.clearMaxTempDuration) {
+                null
+            } else {
+                (request.maxTemporaryAccessDuration ?: connection.maxTemporaryAccessDuration)
+            },
         )
     }
 

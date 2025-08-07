@@ -44,6 +44,7 @@ const baseConnectionFormSchema = z.object({
   dumpsEnabled: z.boolean(),
   temporaryAccessEnabled: z.boolean(),
   explainEnabled: z.boolean(),
+  maxTemporaryAccessDuration: z.coerce.number().nullable().optional(),
   connectionType: z.literal("DATASOURCE").default("DATASOURCE"),
 });
 
@@ -135,6 +136,7 @@ export default function UpdateDatasourceConnectionForm({
       dumpsEnabled: connection.dumpsEnabled,
       temporaryAccessEnabled: connection.temporaryAccessEnabled,
       explainEnabled: connection.explainEnabled,
+      maxTemporaryAccessDuration: connection.maxTemporaryAccessDuration,
       roleArn: connection.roleArn,
     },
     schema: connectionFormSchema,
@@ -322,6 +324,18 @@ export default function UpdateDatasourceConnectionForm({
                           {...register("temporaryAccessEnabled")}
                         />
                       </div>
+                      {watch("temporaryAccessEnabled") && (
+                        <InputField
+                          id="maxTemporaryAccessDuration"
+                          label="Max Temporary Access Duration"
+                          placeholder="Leave empty for unlimited"
+                          tooltip="Maximum duration (in minutes) for temporary access requests. Leave empty for unlimited."
+                          type="number"
+                          min="1"
+                          {...register("maxTemporaryAccessDuration")}
+                          error={errors.maxTemporaryAccessDuration?.message}
+                        />
+                      )}
                       <div className="flex w-full justify-between">
                         <label
                           htmlFor="explainEnabled"

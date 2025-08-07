@@ -274,7 +274,7 @@ function DatasourceRequestBox({
         </div>
       </div>
       <div className="relative mt-3 flex items-center justify-between">
-        {request?.temporaryAccessDuration != null && (
+        {request?.type === "TemporaryAccess" && (
           <AccessDurationInfo duration={request?.temporaryAccessDuration} />
         )}
         <div className="ml-auto flex">
@@ -337,10 +337,10 @@ function DatasourceRequestBox({
   );
 }
 
-function AccessDurationInfo({ duration }: { duration: number }) {
+function AccessDurationInfo({ duration }: { duration: number | null }) {
   return (
     <div className="text-sm text-slate-500">
-      {duration > 0
+      {duration !== null
         ? `The session will be valid for ${duration} minutes.`
         : "The session will be valid indefinitely."}
     </div>

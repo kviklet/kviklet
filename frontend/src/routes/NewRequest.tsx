@@ -60,7 +60,7 @@ const DatasourceExecutionRequestSchema = z
     description: z.string(),
     statement: z.string().optional(),
     connectionId: z.string().min(1),
-    temporaryAccessDuration: z.coerce.number().optional(),
+    temporaryAccessDuration: z.coerce.number().nullable().optional(),
   })
   .refine(
     (data) =>
@@ -90,7 +90,7 @@ const KubernetesExecutionRequestSchema = z
     namespace: z.string().min(1).default("default"),
     podName: z.string().min(1),
     containerName: z.string().optional(),
-    temporaryAccessDuration: z.coerce.number().optional(),
+    temporaryAccessDuration: z.coerce.number().nullable().optional(),
   })
   .refine(
     (data) =>
@@ -316,6 +316,8 @@ const DatasourceExecutionRequestForm = ({
     resolver: zodResolver(DatasourceExecutionRequestSchema),
   });
 
+  const [infiniteAccess, setInfiniteAccess] = useState(false);
+
   useEffect(() => {
     const state = location.state as PreConfiguredStateDatasource;
     setValue("connectionType", "DATASOURCE");
@@ -334,6 +336,10 @@ const DatasourceExecutionRequestForm = ({
   const onSubmit: SubmitHandler<DatasourceExecutionRequest> = async (
     data: DatasourceExecutionRequest,
   ) => {
+    // Convert infinite access to null
+    if (infiniteAccess && data.type === "TemporaryAccess") {
+      data.temporaryAccessDuration = null;
+    }
     const response = await addRequest(data);
     if (isApiErrorResponse(response)) {
       addNotification({
@@ -424,24 +430,59 @@ const DatasourceExecutionRequestForm = ({
           )}
         </div>
         {mode === "TemporaryAccess" && (
-          <div className="my-3 rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
-            <label
-              htmlFor="temporaryAccessDuration-input"
-              className="block text-xs font-medium text-slate-900 dark:text-slate-50"
-            >
-              Duration (in minutes)
-            </label>
-            <input
-              className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
-              id="temporaryAccessDuration-input"
-              type="number"
-              {...register("temporaryAccessDuration")}
-            />
-            {errors.temporaryAccessDuration && (
-              <p className="mt-2 text-xs italic text-red-500">
-                {errors.temporaryAccessDuration?.message}
-              </p>
-            )}
+          <div className="my-3 space-y-3">
+            {connection._type === "DATASOURCE" &&
+              connection.maxTemporaryAccessDuration && (
+                <div className="rounded-md bg-blue-50 p-3 text-sm text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
+                  Maximum temporary access duration:{" "}
+                  {connection.maxTemporaryAccessDuration} minutes
+                </div>
+              )}
+            <div className="rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
+              <label
+                htmlFor="temporaryAccessDuration-input"
+                className="block text-xs font-medium text-slate-900 dark:text-slate-50"
+              >
+                Duration (in minutes)
+              </label>
+              <input
+                className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
+                id="temporaryAccessDuration-input"
+                type="number"
+                disabled={infiniteAccess}
+                {...register("temporaryAccessDuration")}
+              />
+              {errors.temporaryAccessDuration && (
+                <p className="mt-2 text-xs italic text-red-500">
+                  {errors.temporaryAccessDuration?.message}
+                </p>
+              )}
+            </div>
+            {connection._type === "DATASOURCE" &&
+              !connection.maxTemporaryAccessDuration && (
+                <div className="flex items-center">
+                  <input
+                    id="infinite-access"
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
+                    checked={infiniteAccess}
+                    onChange={(e) => {
+                      setInfiniteAccess(e.target.checked);
+                      if (e.target.checked) {
+                        setValue("temporaryAccessDuration", null);
+                      } else {
+                        setValue("temporaryAccessDuration", 60);
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor="infinite-access"
+                    className="ml-2 text-sm text-slate-700 dark:text-slate-300"
+                  >
+                    Request infinite access
+                  </label>
+                </div>
+              )}
           </div>
         )}
         {mode === "SingleExecution" && (
@@ -526,6 +567,8 @@ const KubernetesExecutionRequestForm = ({
     resolver: zodResolver(KubernetesExecutionRequestSchema),
   });
 
+  const [infiniteAccess, setInfiniteAccess] = useState(false);
+
   const { pods, loading } = usePods();
 
   const [chosenPod, setChosenPod] = useState<Pod | undefined>(undefined);
@@ -560,6 +603,10 @@ const KubernetesExecutionRequestForm = ({
   const onSubmit: SubmitHandler<KubernetesExecutionRequest> = async (
     data: KubernetesExecutionRequest,
   ) => {
+    // Convert infinite access to null
+    if (infiniteAccess && data.type === "TemporaryAccess") {
+      data.temporaryAccessDuration = null;
+    }
     const response = await addRequest(data);
     if (isApiErrorResponse(response)) {
       addNotification({
@@ -729,24 +776,49 @@ const KubernetesExecutionRequestForm = ({
             )}
           </div>
           {mode === "TemporaryAccess" && (
-            <div className="my-3 rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
-              <label
-                htmlFor="temporaryAccessDuration-input"
-                className="block text-xs font-medium text-slate-900 dark:text-slate-50"
-              >
-                Duration (in minutes)
-              </label>
-              <input
-                className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
-                id="temporaryAccessDuration-input"
-                type="number"
-                {...register("temporaryAccessDuration")}
-              />
-              {errors.temporaryAccessDuration && (
-                <p className="mt-2 text-xs italic text-red-500">
-                  {errors.temporaryAccessDuration?.message}
-                </p>
-              )}
+            <div className="my-3 space-y-3">
+              <div className="rounded-md px-3 pb-1.5 pt-2.5 shadow-sm ring-1 ring-inset ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-600 dark:ring-slate-700">
+                <label
+                  htmlFor="temporaryAccessDuration-input"
+                  className="block text-xs font-medium text-slate-900 dark:text-slate-50"
+                >
+                  Duration (in minutes)
+                </label>
+                <input
+                  className="block w-full bg-slate-50 p-0 text-slate-900 ring-0 placeholder:text-slate-400 focus:ring-0 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-slate-950 dark:text-slate-50 sm:text-sm sm:leading-6"
+                  id="temporaryAccessDuration-input"
+                  type="number"
+                  disabled={infiniteAccess}
+                  {...register("temporaryAccessDuration")}
+                />
+                {errors.temporaryAccessDuration && (
+                  <p className="mt-2 text-xs italic text-red-500">
+                    {errors.temporaryAccessDuration?.message}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center">
+                <input
+                  id="infinite-access-k8s"
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
+                  checked={infiniteAccess}
+                  onChange={(e) => {
+                    setInfiniteAccess(e.target.checked);
+                    if (e.target.checked) {
+                      setValue("temporaryAccessDuration", null);
+                    } else {
+                      setValue("temporaryAccessDuration", 60);
+                    }
+                  }}
+                />
+                <label
+                  htmlFor="infinite-access-k8s"
+                  className="ml-2 text-sm text-slate-700 dark:text-slate-300"
+                >
+                  Request infinite access
+                </label>
+              </div>
             </div>
           )}
           {mode === "SingleExecution" && (

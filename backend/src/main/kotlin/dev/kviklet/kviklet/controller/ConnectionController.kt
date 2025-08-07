@@ -147,6 +147,10 @@ data class UpdateDatasourceConnectionRequest(
 
     @field:Min(0)
     val maxTemporaryAccessDuration: Long? = null,
+
+    // Using an extra clear flag because the patch requests don't differentiate between
+    // null and not present.
+    val clearMaxTempDuration: Boolean = false,
 ) : UpdateConnectionRequest()
 
 data class UpdateKubernetesConnectionRequest(

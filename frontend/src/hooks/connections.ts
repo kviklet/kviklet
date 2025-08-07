@@ -94,6 +94,15 @@ const useConnection = (id: string) => {
       // ensure that the password is not updated if the user didn't provide a new one
       patchedConnection.password = undefined;
     }
+    // Handle maxTemporaryAccessDuration - convert NaN or 0 to null for unlimited access
+    console.log(patchedConnection);
+    if (patchedConnection.connectionType === "DATASOURCE") {
+      const duration = patchedConnection.maxTemporaryAccessDuration;
+      if (!duration || duration === 0) {
+        patchedConnection.maxTemporaryAccessDuration = null;
+        patchedConnection.clearMaxTempDuration = true;
+      }
+    }
     const response = await patchConnection(patchedConnection, connection.id);
     if (isApiErrorResponse(response)) {
       addNotification({
