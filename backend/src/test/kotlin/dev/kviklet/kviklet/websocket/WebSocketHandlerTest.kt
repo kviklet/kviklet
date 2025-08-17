@@ -31,6 +31,7 @@ import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
 import java.net.URI
+import java.net.URLEncoder
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
@@ -295,7 +296,8 @@ class WebSocketHandlerTest {
         sessionId: String,
         messages: CompletableFuture<List<String>>,
     ): WebSocketSession {
-        val url = "ws://localhost:$port/sql/$executionRequestId"
+        val encodedRequestId = URLEncoder.encode(executionRequestId, "UTF-8")
+        val url = "ws://localhost:$port/sql/$encodedRequestId"
         val headers = WebSocketHttpHeaders()
         headers.add("Cookie", "SESSION=$sessionId")
 

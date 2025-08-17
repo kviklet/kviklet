@@ -8,3 +8,5 @@ mongodb-data
 mariadb-data
 lib
 *.tgz
+.idea
+.aider*

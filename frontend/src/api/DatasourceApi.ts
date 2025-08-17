@@ -238,7 +238,7 @@ const getConnection = async (
   );
 };
 
-const deleteConnection = async (id: string): Promise<ApiResponse<null>> => {
+const deleteConnection = async (id: string): Promise<ApiResponse<void>> => {
   return fetchEmptyWithErrorHandling(`${baseUrl}/connections/${id}`, {
     method: "DELETE",
     headers: {

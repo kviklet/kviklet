@@ -1,0 +1,47 @@
+databaseChangeLog:
+  - changeSet:
+      id: 029-add-api-keys-table
+      author: jascha
+      changes:
+        - createTable:
+            tableName: api_keys
+            columns:
+              - column:
+                  name: id
+                  type: CHAR(22)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: key_hash
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: datetime
+                  defaultValueDate: 'now()'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: expires_at
+                  type: datetime
+                  constraints:
+                    nullable: true
+              - column:
+                  name: last_used_at
+                  type: datetime
+                  constraints:
+                    nullable: true
+              - column:
+                  name: user_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_api_keys_user_id
+                    references: user(id)

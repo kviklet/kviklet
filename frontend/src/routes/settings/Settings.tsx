@@ -2,6 +2,7 @@ import {
   CircleStackIcon,
   Cog6ToothIcon,
   ClipboardDocumentListIcon,
+  KeyIcon,
   UserCircleIcon,
   UserIcon,
   UsersIcon,
@@ -18,6 +19,7 @@ import NewRoleView from "./NewRoleView";
 import GeneralSettings from "./GeneralSettings";
 import ConnectionDetails from "./connection/details/ConnectionDetails";
 import LicenseSettings from "./LicenseSettings";
+import ApiKeyPage from "./ApiKeySettings";
 
 const Tab = (props: {
   children: React.ReactNode;
@@ -134,6 +136,18 @@ const Settings = () => {
       ),
       link: "/settings/license",
     },
+    {
+      name: "api-keys",
+      tabContent: (
+        <div className="flex flex-col">
+          <div className={tabStyles}>
+            <KeyIcon className="mr-2 h-6" />
+            API Keys
+          </div>
+        </div>
+      ),
+      link: "/settings/api-keys",
+    },
   ];
 
   return (
@@ -170,6 +184,7 @@ const Settings = () => {
               <Route path="/roles/:roleId" element={<RoleDetailsView />} />
               <Route path="profile" element={<ProfileSettings />} />
               <Route path="license" element={<LicenseSettings />} />
+              <Route path="api-keys" element={<ApiKeyPage />} />
             </Routes>
             <Outlet></Outlet>
           </div>
