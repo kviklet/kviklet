@@ -1,9 +1,9 @@
 import { MagnifyingGlassIcon } from "@heroicons/react/20/solid";
-import { forwardRef } from "react";
+import { ChangeEvent, forwardRef } from "react";
 
 type SearchInputProps = {
   value: string;
-  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   className?: string;
 };

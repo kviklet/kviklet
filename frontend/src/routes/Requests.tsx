@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import {
   ExecutionRequestResponse,
   getRequests,
@@ -150,7 +150,7 @@ function Requests() {
             <div className="mb-2 mt-4 flex flex-row items-center justify-between">
               <SearchInput
                 value={searchTerm}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
                   setSearchTerm(e.target.value)
                 }
                 placeholder="Search requests..."

@@ -19,8 +19,7 @@ const checklogin = async (): Promise<StatusResponse | false> => {
     return false;
   }
   const json: unknown = await response.json();
-  const parsedResponse = StatusResponse.parse(json);
-  return parsedResponse;
+  return StatusResponse.parse(json);
 };
 
 export { checklogin };

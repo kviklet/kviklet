@@ -3,7 +3,7 @@ import Settings from "./routes/settings/Settings";
 import DefaultLayout from "./layout/DefaultLayout";
 import { Requests } from "./routes/Requests";
 import Login from "./routes/Login";
-import { useContext } from "react";
+import { ReactElement, useContext } from "react";
 import {
   UserStatusContext,
   UserStatusProvider,
@@ -17,12 +17,12 @@ import LiveSessionWebsockets from "./routes/LiveSessionWebsockets";
 import LiveSession from "./routes/LiveSession";
 
 export interface ProtectedRouteProps {
-  children: JSX.Element;
+  children: ReactElement;
 }
 
 export const ProtectedRoute = ({
   children,
-}: ProtectedRouteProps): JSX.Element => {
+}: ProtectedRouteProps): ReactElement => {
   const userContext = useContext(UserStatusContext);
 
   if (userContext.userStatus === undefined) {

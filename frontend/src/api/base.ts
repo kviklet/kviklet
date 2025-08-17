@@ -3,7 +3,7 @@ import { z } from "zod";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 const apiBasePath = import.meta.env.VITE_API_BASE_PATH;
 
-let baseUrl = "";
+let baseUrl: string;
 if (!apiBasePath) {
   // Setting the baseurl for running the frontend and backend locally without the container setup with nginx
   baseUrl = `${window.location.protocol}//${window.location.hostname}:8081`;
@@ -11,7 +11,7 @@ if (!apiBasePath) {
   baseUrl = `${window.location.protocol}//${window.location.host}${apiBasePath}`;
 }
 
-let websocketBaseUrl = "";
+let websocketBaseUrl: string;
 if (!apiBasePath) {
   // Setting the baseurl for running the frontend and backend locally without the container setup with nginx
   websocketBaseUrl = `ws://${window.location.hostname}:8081`;

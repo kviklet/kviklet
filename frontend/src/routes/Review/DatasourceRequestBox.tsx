@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   DatasourceExecutionRequestResponseWithComments,
@@ -34,9 +34,7 @@ function DatasourceRequestBox({
   const [showSQLDumpModal, setShowSQLDumpModal] = useState(false);
   const navigate = useNavigate();
   const [statement, setStatement] = useState(request?.statement || "");
-  const changeStatement = async (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
-  ) => {
+  const changeStatement = async (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     await updateRequest({ statement });
     setEditMode(false);
