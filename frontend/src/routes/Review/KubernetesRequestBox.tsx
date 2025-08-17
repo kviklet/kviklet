@@ -5,7 +5,7 @@ import Button from "../../components/Button";
 import { timeSince } from "../Requests";
 import MenuDropDown from "../../components/MenuDropdown";
 import { Highlighter } from "./components/Highlighter";
-import { useEffect, useState } from "react";
+import { FC, useEffect, useState, MouseEvent } from "react";
 
 interface KubernetesRequestBoxProps {
   request: KubernetesExecutionRequestResponseWithComments;
@@ -14,7 +14,7 @@ interface KubernetesRequestBoxProps {
   updateRequest: (request: { command?: string }) => Promise<void>;
 }
 
-const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
+const KubernetesRequestBox: FC<KubernetesRequestBoxProps> = ({
   request,
   updateRequest,
   runQuery,
@@ -28,9 +28,7 @@ const KubernetesRequestBox: React.FC<KubernetesRequestBoxProps> = ({
     setCommand(request?.command || "");
   }, [request?.command]);
 
-  const changeCommand = async (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
-  ) => {
+  const changeCommand = async (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     await updateRequest({ command: command });
     setEditMode(false);

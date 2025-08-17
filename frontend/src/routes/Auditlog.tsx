@@ -15,7 +15,7 @@ import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import InitialBubble from "../components/InitialBubble";
 import { Link } from "react-router-dom";
 import { ExecutionLogResponse, getExecutions } from "../api/ExecutionsApi";
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { timeSince } from "./Requests";
 import { isApiErrorResponse } from "../api/Errors";
 import SearchInput from "../components/SearchInput";
@@ -52,7 +52,7 @@ function List() {
     <div>
       <SearchInput
         value={searchTerm}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+        onChange={(e: ChangeEvent<HTMLInputElement>) => {
           setSearchTerm(e.target.value);
         }}
         placeholder="Search Auditlog"
