@@ -20,3 +20,4 @@ server:
         secure: true
 app:
   name: "Kviklet"
+  in-docker: true
