@@ -22,8 +22,9 @@ import javax.sql.DataSource
 
 @Component
 @ConfigurationProperties("app")
-class MyProperties {
+class ApplicationProperties {
     lateinit var name: String
+    var inDocker: Boolean = false
 }
 
 data class ErrorResponse(val code: Int, val type: String, val message: String, val detail: String? = null)

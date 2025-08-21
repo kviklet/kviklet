@@ -1,6 +1,7 @@
 // This file is not MIT licensed
 package dev.kviklet.kviklet.security
 
+import dev.kviklet.kviklet.ApplicationProperties
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.service.LicenseRestrictionException
@@ -22,7 +23,10 @@ import java.security.cert.X509Certificate
 
 @Configuration
 @ConditionalOnProperty(prefix = "saml", name = ["enabled"], havingValue = "true")
-class SamlConfig(private val samlProperties: SamlProperties) {
+class SamlConfig(
+    private val samlProperties: SamlProperties,
+    private val applicationProperties: ApplicationProperties,
+) {
 
     @Bean
     fun relyingPartyRegistrationRepository(): RelyingPartyRegistrationRepository {
@@ -36,8 +40,30 @@ class SamlConfig(private val samlProperties: SamlProperties) {
 
         val verificationCredential = Saml2X509Credential.verification(certificate)
 
+        // Conditionally set the SAML URLs based on deployment environment
+        val assertionConsumerServiceLocation = if (applicationProperties.inDocker) {
+            // When running in Docker behind nginx reverse proxy, include /api prefix
+            "{baseUrl}/api/login/saml2/sso/{registrationId}"
+        } else {
+            // Default location for direct access
+            "{baseUrl}/login/saml2/sso/{registrationId}"
+        }
+
+        val entityId = if (applicationProperties.inDocker) {
+            "{baseUrl}/api/saml2/service-provider-metadata/{registrationId}"
+        } else {
+            "{baseUrl}/saml2/service-provider-metadata/{registrationId}"
+        }
+
+        val singleLogoutServiceLocation = if (applicationProperties.inDocker) {
+            "{baseUrl}/api/logout/saml2/slo"
+        } else {
+            "{baseUrl}/logout/saml2/slo"
+        }
+
         val registration = RelyingPartyRegistration
             .withRegistrationId("saml")
+            .entityId(entityId)
             .assertingPartyMetadata { party ->
                 party
                     .entityId(samlProperties.entityId!!)
@@ -45,7 +71,10 @@ class SamlConfig(private val samlProperties: SamlProperties) {
                     .wantAuthnRequestsSigned(false)
                     .verificationX509Credentials { c -> c.add(verificationCredential) }
             }
+            .assertionConsumerServiceLocation(assertionConsumerServiceLocation)
             .assertionConsumerServiceBinding(Saml2MessageBinding.REDIRECT)
+            .singleLogoutServiceLocation(singleLogoutServiceLocation)
+            .singleLogoutServiceBinding(Saml2MessageBinding.REDIRECT)
             .build()
 
         return InMemoryRelyingPartyRegistrationRepository(registration)
