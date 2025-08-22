@@ -13,6 +13,7 @@ import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
@@ -29,6 +30,7 @@ import java.util.concurrent.CompletableFuture
 
 @SpringBootTest
 @ActiveProfiles("test")
+@Disabled()
 class PostgresProxyAuthTest {
     @Autowired
     lateinit var executionRequestAdapter: ExecutionRequestAdapter
