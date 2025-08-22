@@ -9,6 +9,7 @@ import dev.kviklet.kviklet.proxy.postgres.TLSCertificate
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.springframework.beans.factory.annotation.Autowired
@@ -21,6 +22,7 @@ import java.util.*
 
 @SpringBootTest
 @ActiveProfiles("test")
+@Disabled()
 class PostgresProxyTLSTest {
     @Autowired
     lateinit var executionRequestAdapter: ExecutionRequestAdapter

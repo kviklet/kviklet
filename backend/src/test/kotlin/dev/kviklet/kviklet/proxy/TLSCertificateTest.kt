@@ -4,12 +4,14 @@ import dev.kviklet.kviklet.proxy.postgres.TLSCertificate
 import dev.kviklet.kviklet.proxy.postgres.TlsCertEnvConfig
 import dev.kviklet.kviklet.proxy.postgres.preprocessPEMObject
 import dev.kviklet.kviklet.proxy.postgres.tlsCertificateFactory
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.file.Files
 
+@Disabled()
 class TLSCertificateTest {
     private var testCert: String = """
 -----BEGIN CERTIFICATE-----

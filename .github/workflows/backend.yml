@@ -2,9 +2,25 @@ name: Backend
 on: [pull_request]
 jobs:
   tests:
-    name: Tests
-    # Run our kotlin test suite via gradle on JVM 1.9
+    name: Tests (${{ matrix.test-group }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test-group:
+          - group-1
+          - group-2
+          - group-3
+        include:
+          - test-group: group-1
+            test-pattern: "**/[A-I]*"
+            description: "Tests A-I"
+          - test-group: group-2
+            test-pattern: "**/[J-O]*"
+            description: "Tests J-O"
+          - test-group: group-3
+            test-pattern: "**/[P-Z]*"
+            description: "Tests P-Z"
     defaults:
       run:
         working-directory: ./backend
@@ -14,11 +30,11 @@ jobs:
         uses: actions/setup-java@v2
         with:
           java-version: "21"
-          distribution: "temurin" # You can use 'adopt' or 'temurin' as the distribution
+          distribution: "temurin"
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
-      - name: Build with Gradle
-        run: ./gradlew build --stacktrace --info
+      - name: Run tests for ${{ matrix.description }}
+        run: ./gradlew test --tests ${{ matrix.test-pattern }} --stacktrace --info
   ktlint:
     name: Ktlint
     runs-on: ubuntu-latest
