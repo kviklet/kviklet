@@ -7,7 +7,7 @@ import {
   deleteApiKey,
 } from "../../api/ApiKeyApi";
 import { Error, Success } from "../../components/Alert";
-import { format } from "date-fns";
+
 import {
   PlusIcon,
   TrashIcon,
@@ -124,9 +124,17 @@ export default function ApiKeyPage() {
     );
   };
 
-  const formatDate = (date: string | null) => {
+  const formatDate = (date: string | null): string => {
     if (!date) return "Never";
-    return format(date, "MMM d, yyyy h:mm a");
+    const dateObj = new Date(date);
+    return dateObj.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
   };
 
   const isExpired = (expiresAt: string | null) => {
