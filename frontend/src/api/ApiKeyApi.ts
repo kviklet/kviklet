@@ -68,7 +68,7 @@ export async function createApiKey(
   );
 }
 
-export async function deleteApiKey(id: string): Promise<ApiResponse<void>> {
+export async function deleteApiKey(id: string): Promise<ApiResponse<null>> {
   return fetchEmptyWithErrorHandling(`${baseUrl}/api-key/${id}`, {
     method: "DELETE",
   });
