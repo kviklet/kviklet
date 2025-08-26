@@ -1,30 +1,22 @@
 package dev.kviklet.kviklet.service
 
-import dev.kviklet.kviklet.db.ApiKey
 import dev.kviklet.kviklet.db.ApiKeyAdapter
-import dev.kviklet.kviklet.db.ApiKeyId
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.db.UserId
+import dev.kviklet.kviklet.security.NoPolicy
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
+import dev.kviklet.kviklet.service.dto.ApiKey
+import dev.kviklet.kviklet.service.dto.ApiKeyId
 import dev.kviklet.kviklet.service.dto.utcTimeNow
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.security.MessageDigest
 import java.security.SecureRandom
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
 import java.util.*
 
 private const val KEY_LENGTH = 32
-
-data class ApiKeyCreationResult(
-    val id: String,
-    val name: String,
-    val key: String,
-    val createdAt: ZonedDateTime,
-    val expiresAt: ZonedDateTime?,
-)
 
 @Service
 class ApiKeyService(
@@ -32,9 +24,15 @@ class ApiKeyService(
     private val userAdapter: UserAdapter,
     private val passwordEncoder: PasswordEncoder,
 ) {
+    
+    private fun hashApiKey(apiKey: String): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val hashBytes = digest.digest(apiKey.toByteArray())
+        return Base64.getEncoder().encodeToString(hashBytes)
+    }
     @Transactional
     @Policy(Permission.API_KEY_CREATE)
-    fun createApiKey(userId: String, name: String, expiresInDays: Int? = null): ApiKeyCreationResult {
+    fun createApiKey(userId: String, name: String, expiresInDays: Int? = null): ApiKey {
         try {
             userAdapter.findById(userId)
         } catch (e: EntityNotFound) {
@@ -47,39 +45,29 @@ class ApiKeyService(
 
         val keyValue = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
 
-        val keyHash = passwordEncoder.encode(keyValue)
+        val keyHash = hashApiKey(keyValue)
 
-        // TODO consider if this is correct. Should API keys be zone independent or not?
-        val now = utcTimeNow().atZone(ZoneOffset.UTC)
+        val now = utcTimeNow()
         val expiresAt = expiresInDays?.let { now.plusDays(it.toLong()) }
 
-        val apiKeyEntity = ApiKey(
+        val apiKey = ApiKey(
             name = name,
             createdAt = now,
             expiresAt = expiresAt,
             userId = UserId(userId),
             keyHash = keyHash,
-        )
-        val savedApiKey = apiKeyAdapter.create(apiKeyEntity)
-
-        return ApiKeyCreationResult(
-            id = savedApiKey.id?.toString() ?: throw EntityNotFound(
-                "API key ID not found",
-                "API key $savedApiKey has no ID",
-            ),
-            name = savedApiKey.name,
             key = keyValue,
-            createdAt = savedApiKey.createdAt,
-            expiresAt = savedApiKey.expiresAt,
         )
+        val savedApiKey = apiKeyAdapter.create(apiKey)
+        return savedApiKey.copy(key = keyValue) // ensuring we return the keyvalue on create
     }
 
     @Transactional(readOnly = true)
     @Policy(Permission.API_KEY_GET)
-    fun listApiKeysForUser(userId: UserId): List<ApiKey> = apiKeyAdapter.findAllByUserId(userId.toString())
+    fun listApiKeys(): List<ApiKey> = apiKeyAdapter.findAll()
 
     @Transactional
-    @Policy(Permission.API_KEY_DELETE)
+    @Policy(Permission.API_KEY_EDIT)
     fun deleteApiKey(id: ApiKeyId) {
         apiKeyAdapter.deleteApiKey(id)
     }
@@ -91,6 +79,18 @@ class ApiKeyService(
     @Transactional
     @Policy(Permission.API_KEY_GET)
     fun updateLastUsed(id: String) {
-        apiKeyAdapter.updateLastUsed(id, utcTimeNow().atZone(ZoneOffset.UTC))
+        apiKeyAdapter.updateApiKey(id, utcTimeNow())
+    }
+
+    @Transactional(readOnly = true)
+    @NoPolicy
+    fun checkKey(apiKey: String): ApiKey? {
+        val keyHash = hashApiKey(apiKey)
+        val key = apiKeyAdapter.findByHash(keyHash)
+        val now = utcTimeNow()
+        if (key?.expiresAt?.isBefore(now) == true) {
+            return null
+        }
+        return key
     }
 }

@@ -1,11 +1,9 @@
 package dev.kviklet.kviklet.security
 
-import dev.kviklet.kviklet.db.ApiKeyId
 import dev.kviklet.kviklet.service.ApiKeyService
 import dev.kviklet.kviklet.service.EntityNotFound
 import dev.kviklet.kviklet.service.UserService
 import dev.kviklet.kviklet.service.dto.Role
-import dev.kviklet.kviklet.service.dto.utcTimeNow
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -15,7 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 
-private const val API_KEY_HEADER = "X-API-Key"
+private const val API_KEY_HEADER = "Authorization"
 
 @Component
 class ApiKeyAuthFilter(
@@ -32,32 +30,23 @@ class ApiKeyAuthFilter(
         }
 
         try {
-            val apiKeyEntity = apiKeyService.getApiKey(ApiKeyId(apiKey))
-
-            if (!passwordEncoder.matches(apiKey, apiKeyEntity.keyHash)) {
+            val apiKeyWithoutBearer = apiKey.removePrefix("Bearer").trim()
+            val apiKeyDto = apiKeyService.checkKey(apiKeyWithoutBearer)
+            if (apiKeyDto == null) {
                 chain.doFilter(request, response)
                 return
             }
 
-            val now = utcTimeNow().atZone(apiKeyEntity.expiresAt?.offset)
-            if (apiKeyEntity.expiresAt?.isBefore(now) == true) {
-                chain.doFilter(request, response)
-                return
-            }
-
-            val apiKeyId = apiKeyEntity.id ?: throw EntityNotFound(
-                "API key ID not found",
-                "API key $apiKey has no ID",
-            )
+            val apiKeyId = apiKeyDto.id!!
 
             // Update last used timestamp
             apiKeyService.updateLastUsed(apiKeyId.toString())
 
             // Get the user associated with this API key
-            val user = userService.getUser(apiKeyEntity.userId)
+            val user = userService.getUser(apiKeyDto.userId)
             val userId = user.getId() ?: throw EntityNotFound(
                 "User not found",
-                "User with ID ${apiKeyEntity.userId} not found",
+                "User with ID ${apiKeyDto.userId} not found",
             )
 
             // Create authentication token

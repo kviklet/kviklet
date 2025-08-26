@@ -1,7 +1,6 @@
 package dev.kviklet.kviklet.service
 
 import dev.kviklet.kviklet.db.ApiKeyAdapter
-import dev.kviklet.kviklet.db.ApiKeyId
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.EventAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
@@ -11,6 +10,7 @@ import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.security.SecuredDomainId
 import dev.kviklet.kviklet.security.SecuredDomainObject
+import dev.kviklet.kviklet.service.dto.ApiKeyId
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.EventId
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId

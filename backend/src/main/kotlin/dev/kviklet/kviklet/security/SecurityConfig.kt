@@ -140,7 +140,6 @@ class SecurityConfig(
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http.invoke {
-            // TODO is this the right before filter?
             addFilterBefore<UsernamePasswordAuthenticationFilter>(
                 ApiKeyAuthFilter(
                     apiKeyService = apiKeyService,

@@ -9,17 +9,17 @@ import baseUrl from "./base";
 const ApiKeyResponseSchema = z.object({
   id: z.string(),
   name: z.string(),
-  createdAt: z.string().datetime({ offset: true }),
-  expiresAt: z.string().datetime({ offset: true }).nullable(),
-  lastUsedAt: z.string().datetime({ offset: true }).nullable(),
+  createdAt: z.coerce.date(),
+  expiresAt: z.coerce.date().nullable(),
+  lastUsedAt: z.coerce.date(),
 });
 
 const ApiKeyWithSecretResponseSchema = z.object({
   id: z.string(),
   name: z.string(),
   key: z.string(),
-  createdAt: z.string().datetime({ offset: true }),
-  expiresAt: z.string().datetime({ offset: true }).nullable(),
+  createdAt: z.coerce.date(),
+  expiresAt: z.coerce.date().nullable(),
 });
 
 const CreateApiKeyRequestSchema = z.object({
@@ -41,12 +41,13 @@ export type ApiKeysResponse = z.infer<typeof ApiKeysResponseSchema>;
 
 export async function listApiKeys(): Promise<ApiResponse<ApiKeysResponse>> {
   return await fetchWithErrorHandling(
-    `${baseUrl}/api-key`,
+    `${baseUrl}/api-keys/`,
     {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
     },
     ApiKeysResponseSchema,
   );
@@ -56,20 +57,22 @@ export async function createApiKey(
   request: CreateApiKeyRequest,
 ): Promise<ApiResponse<ApiKeyWithSecretResponse>> {
   return fetchWithErrorHandling(
-    `${baseUrl}/api-key`,
+    `${baseUrl}/api-keys/`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(request),
+      credentials: "include",
     },
     ApiKeyWithSecretResponseSchema,
   );
 }
 
 export async function deleteApiKey(id: string): Promise<ApiResponse<null>> {
-  return fetchEmptyWithErrorHandling(`${baseUrl}/api-key/${id}`, {
+  return fetchEmptyWithErrorHandling(`${baseUrl}/api-keys/${id}`, {
     method: "DELETE",
+    credentials: "include",
   });
 }
