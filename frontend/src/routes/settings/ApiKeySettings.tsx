@@ -6,10 +6,9 @@ import {
   createApiKey,
   deleteApiKey,
 } from "../../api/ApiKeyApi";
-import { Error, Success } from "../../components/Alert";
+import { Error } from "../../components/Alert";
 
 import {
-  PlusIcon,
   TrashIcon,
   ClipboardIcon,
   CheckIcon,
@@ -17,12 +16,13 @@ import {
 } from "@heroicons/react/24/outline";
 import { isApiErrorResponse } from "../../api/Errors";
 import useNotification from "../../hooks/useNotification";
+import Button from "../../components/Button";
+import Modal from "../../components/Modal";
 
 export default function ApiKeyPage() {
   const [apiKeys, setApiKeys] = useState<ApiKeyResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newKeyName, setNewKeyName] = useState("");
   const [expiresInDays, setExpiresInDays] = useState<number | null>(30);
@@ -85,7 +85,6 @@ export default function ApiKeyPage() {
         setNewApiKey(createdKey);
         setShowCreateForm(false);
         setNewKeyName("");
-        setSuccess("API key created successfully");
         await loadApiKeys();
       }
     } catch (err) {
@@ -102,7 +101,6 @@ export default function ApiKeyPage() {
       setError(null);
       await deleteApiKey(id);
       setDeleteConfirmId(null);
-      setSuccess("API key deleted successfully");
       await loadApiKeys();
     } catch (err) {
       setError("Failed to delete API key");
@@ -124,10 +122,9 @@ export default function ApiKeyPage() {
     );
   };
 
-  const formatDate = (date: string | null): string => {
+  const formatDate = (date: Date | null): string => {
     if (!date) return "Never";
-    const dateObj = new Date(date);
-    return dateObj.toLocaleDateString("en-US", {
+    return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -137,7 +134,7 @@ export default function ApiKeyPage() {
     });
   };
 
-  const isExpired = (expiresAt: string | null) => {
+  const isExpired = (expiresAt: Date | null) => {
     if (!expiresAt) return false;
     return new Date() > new Date(expiresAt);
   };
@@ -145,20 +142,19 @@ export default function ApiKeyPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">API Keys</h1>
+        <h1 className="text-lg">API Keys</h1>
         {!showCreateForm && !newApiKey && (
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="flex items-center rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-          >
-            <PlusIcon className="mr-2 h-5 w-5" />
+          <Button onClick={() => setShowCreateForm(true)} type="submit">
             Create API Key
-          </button>
+          </Button>
         )}
       </div>
 
-      {error && <Error>{error}</Error>}
-      {success && <Success>{success}</Success>}
+      {error && (
+        <div className="mb-4">
+          <Error>{error}</Error>
+        </div>
+      )}
 
       {newApiKey && (
         <div className="mb-8 rounded-md border border-green-300 bg-green-50 p-4 dark:border-green-700 dark:bg-green-900/20">
@@ -197,67 +193,61 @@ export default function ApiKeyPage() {
       )}
 
       {showCreateForm && (
-        <div className="mb-8 rounded-md border bg-gray-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-          <h2 className="mb-4 text-lg font-semibold">Create New API Key</h2>
-          <form onSubmit={(event) => void handleCreateKey(event)}>
-            <div className="mb-4">
-              <label
-                htmlFor="keyName"
-                className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
-              >
-                Key Name
-              </label>
-              <input
-                type="text"
-                id="keyName"
-                value={newKeyName}
-                onChange={(e) => setNewKeyName(e.target.value)}
-                className="w-full rounded border p-2 dark:border-slate-600 dark:bg-slate-700"
-                placeholder="My API Key"
-                required
-              />
-            </div>
-            <div className="mb-4">
-              <label
-                htmlFor="expiration"
-                className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
-              >
-                Expires In (Days)
-              </label>
-              <select
-                id="expiration"
-                value={expiresInDays === null ? "" : expiresInDays}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setExpiresInDays(val === "" ? null : parseInt(val, 10));
-                }}
-                className="w-full rounded border p-2 dark:border-slate-600 dark:bg-slate-700"
-              >
-                <option value="">Never</option>
-                <option value="7">7 days</option>
-                <option value="30">30 days</option>
-                <option value="90">90 days</option>
-                <option value="365">1 year</option>
-              </select>
-            </div>
-            <div className="flex justify-end space-x-2">
-              <button
-                type="button"
-                onClick={() => setShowCreateForm(false)}
-                className="rounded border px-4 py-2 hover:bg-gray-100 dark:border-slate-600 dark:hover:bg-slate-700"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-                disabled={loading}
-              >
-                {loading ? "Creating..." : "Create"}
-              </button>
-            </div>
-          </form>
-        </div>
+        <Modal setVisible={setShowCreateForm}>
+          <div className="mb-8 rounded-md border bg-gray-50 p-4 dark:border-slate-700 dark:bg-slate-800">
+            <h2 className="mb-4 text-lg font-semibold">Create New API Key</h2>
+            <form onSubmit={(event) => void handleCreateKey(event)}>
+              <div className="mb-4">
+                <label
+                  htmlFor="keyName"
+                  className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Key Name
+                </label>
+                <input
+                  type="text"
+                  id="keyName"
+                  value={newKeyName}
+                  onChange={(e) => setNewKeyName(e.target.value)}
+                  className="w-full rounded border p-2 dark:border-slate-600 dark:bg-slate-700"
+                  placeholder="My API Key"
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label
+                  htmlFor="expiration"
+                  className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Expires In (Days)
+                </label>
+                <select
+                  id="expiration"
+                  value={expiresInDays === null ? "" : expiresInDays}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setExpiresInDays(val === "" ? null : parseInt(val, 10));
+                  }}
+                  className="w-full rounded border p-2 dark:border-slate-600 dark:bg-slate-700"
+                >
+                  <option value="">Never</option>
+                  <option value="7">7 days</option>
+                  <option value="30">30 days</option>
+                  <option value="90">90 days</option>
+                  <option value="365">1 year</option>
+                </select>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button type="button" onClick={() => setShowCreateForm(false)}>
+                  Cancel
+                </Button>
+                <Button type={loading ? "disabled" : "submit"}>
+                  {loading ? "Creating..." : "Create"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </Modal>
       )}
 
       {loading && !newApiKey && !showCreateForm ? (

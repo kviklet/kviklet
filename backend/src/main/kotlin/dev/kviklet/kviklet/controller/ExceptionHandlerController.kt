@@ -108,7 +108,7 @@ class ExceptionHandlerController {
     @ExceptionHandler(EntityNotFound::class)
     fun handleEntityNotFound(ex: EntityNotFound, request: HttpServletRequest): ResponseEntity<Any> {
         logger.error("Entity not found at ${request.requestURI}", ex)
-        return ResponseEntity(ErrorResponse(ex.message ?: "Not found"), HttpStatus.NOT_FOUND)
+        return ResponseEntity(ErrorResponse(ex.message), HttpStatus.NOT_FOUND)
     }
 
     @ExceptionHandler(Exception::class)
