@@ -1,9 +1,11 @@
-FROM gradle:jdk21-noble AS build
+FROM gradle:8.14.3-jdk21 AS build
 WORKDIR /home/gradle/src
 
 COPY --chown=gradle:gradle ./backend .
 
-RUN ./gradlew build  -x kaptTestKotlin -x compileTestKotlin -x test --no-daemon
+RUN gradle --version --no-daemon
+
+RUN gradle build  -x kaptTestKotlin -x compileTestKotlin -x test --no-daemon
 
 FROM node:22 AS build-frontend
 WORKDIR /app
