@@ -408,8 +408,9 @@ Kviklet supports API keys for programmatic access to the system. This is an ente
 ![API Keys](images/ApiKeys_dark.png#gh-dark-mode-only)
 
 Use it as such:
+
 ```bash
-curl --location 'localhost:8081/api-keys/' \
+curl --location '[kviklet_host]/api/connections/' \
 --header 'Authorization: Bearer your-api-key'
 ```
 
@@ -418,7 +419,6 @@ API Keys inherit the permissions of the user that creates them. Currently only a
 Some rudimentary API docs can be found at `[kviklet_host]/api/swagger-ui/index.html`. But keep in mind that this is a work in progress and the API might change in future versions.
 
 In the end the truth is in the code, so you can always look at the controller to see how the API is defined. If you have any questions feel free to open an issue.
-
 
 ## Experimental Features
 
@@ -460,6 +460,7 @@ PROXY_TLS_CERTIFICATE_SOURCE=file
 PROXY_TLS_CERTIFICATE_CERT_FILE=path/to/cert.pem
 PROXY_TLS_CERTIFICATE_KEY_FILE=path/to/key.pem
 ```
+
 Either way the certificate and key must be stored in [pem format](https://en.wikipedia.org/wiki/Privacy-Enhanced_Mail).
 
 ## Questions? Contributions?
