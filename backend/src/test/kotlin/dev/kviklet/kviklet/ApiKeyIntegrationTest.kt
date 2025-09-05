@@ -529,4 +529,40 @@ class ApiKeyIntegrationTest {
             .andExpect(jsonPath("$.lastUsedAt", notNullValue()))
             .andReturn()
     }
+
+    @Test
+    fun `test API key authentication does not create session`() {
+        // Create user with all permissions
+        val user = userHelper.createUser(permissions = listOf("*"))
+        val apiKey = createApiKey(user)
+
+        // Make a request with API key and verify no session cookie is returned
+        val result = mockMvc.perform(
+            get("/connections/")
+                .header("Authorization", "Bearer $apiKey")
+        )
+            .andExpect(status().isOk)
+            .andReturn()
+
+        // Check that no SESSION cookie is set in the response
+        val cookies = result.response.cookies
+        assert(cookies.isEmpty() || !cookies.any { it.name == "SESSION" }) {
+            "Expected no SESSION cookie, but found: ${cookies.map { "${it.name}=${it.value}" }}"
+        }
+
+        // Make another request with the same API key to verify it still works
+        // (not relying on session)
+        mockMvc.perform(
+            get("/connections/")
+                .header("Authorization", "Bearer $apiKey")
+        )
+            .andExpect(status().isOk)
+            .andReturn()
+            .also {
+                val secondRequestCookies = it.response.cookies
+                assert(secondRequestCookies.isEmpty() || !secondRequestCookies.any { cookie -> cookie.name == "SESSION" }) {
+                    "Expected no SESSION cookie on second request, but found: ${secondRequestCookies.map { cookie -> "${cookie.name}=${cookie.value}" }}"
+                }
+            }
+    }
 }

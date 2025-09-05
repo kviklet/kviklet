@@ -5,6 +5,7 @@ import {
   fetchWithErrorHandling,
 } from "./Errors";
 import baseUrl from "./base";
+import { userResponseSchema } from "./UserApi";
 
 const utcDate = z.string().transform((str): Date => {
   const utcString =
@@ -29,6 +30,7 @@ const ApiKeyResponseSchema = z.object({
   createdAt: utcDate,
   expiresAt: utcDateNullable,
   lastUsedAt: utcDateNullable,
+  user: userResponseSchema,
 });
 
 const ApiKeyWithSecretResponseSchema = z.object({

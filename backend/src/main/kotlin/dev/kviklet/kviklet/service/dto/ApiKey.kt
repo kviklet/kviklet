@@ -1,6 +1,6 @@
 package dev.kviklet.kviklet.service.dto
 
-import dev.kviklet.kviklet.db.UserId
+import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.security.Resource
 import dev.kviklet.kviklet.security.SecuredDomainId
 import dev.kviklet.kviklet.security.SecuredDomainObject
@@ -19,7 +19,7 @@ data class ApiKey(
     val createdAt: LocalDateTime,
     val expiresAt: LocalDateTime? = null,
     val lastUsedAt: LocalDateTime? = null,
-    val userId: UserId,
+    val user: User,
     val keyHash: String? = null,
     val key: String? = null,
 ) : SecuredDomainObject {

@@ -2,7 +2,6 @@ package dev.kviklet.kviklet.security
 
 import dev.kviklet.kviklet.service.ApiKeyService
 import dev.kviklet.kviklet.service.EntityNotFound
-import dev.kviklet.kviklet.service.UserService
 import dev.kviklet.kviklet.service.dto.Role
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
@@ -16,15 +15,13 @@ import org.springframework.web.filter.OncePerRequestFilter
 private const val API_KEY_HEADER = "Authorization"
 
 @Component
-class ApiKeyAuthFilter(
-    private val apiKeyService: ApiKeyService,
-    private val userService: UserService,
-    private val passwordEncoder: PasswordEncoder,
-) : OncePerRequestFilter() {
+class ApiKeyAuthFilter(private val apiKeyService: ApiKeyService, private val passwordEncoder: PasswordEncoder) :
+    OncePerRequestFilter() {
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
         val apiKey = request.getHeader(API_KEY_HEADER)
 
-        if (apiKey == null) {
+        // Only process if we have an Authorization header that looks like an API key
+        if (apiKey == null || !apiKey.startsWith("Bearer ")) {
             chain.doFilter(request, response)
             return
         }
@@ -43,16 +40,18 @@ class ApiKeyAuthFilter(
             apiKeyService.updateLastUsed(apiKeyId.toString())
 
             // Get the user associated with this API key
-            val user = userService.getUser(apiKeyDto.userId)
+            val user = apiKeyDto.user
             val userId = user.getId() ?: throw EntityNotFound(
                 "User not found",
-                "User with ID ${apiKeyDto.userId} not found",
+                "User not found for API key",
             )
 
             // Create authentication token
             val policies = user.roles.flatMap(Role::policies).map(::PolicyGrantedAuthority)
             val userDetails = UserDetailsWithId(userId, user.email, user.password, policies)
             val authentication = UsernamePasswordAuthenticationToken(userDetails, user.password, policies)
+
+            // Set authentication in context
             SecurityContextHolder.getContext().authentication = authentication
         } catch (e: EntityNotFound) {
             logger.error("Error finding API key", e)

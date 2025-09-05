@@ -2,7 +2,6 @@ package dev.kviklet.kviklet.service
 
 import dev.kviklet.kviklet.db.ApiKeyAdapter
 import dev.kviklet.kviklet.db.UserAdapter
-import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.security.NoPolicy
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
@@ -33,7 +32,7 @@ class ApiKeyService(
     @Transactional
     @Policy(Permission.API_KEY_CREATE)
     fun createApiKey(userId: String, name: String, expiresInDays: Int? = null): ApiKey {
-        try {
+        val user = try {
             userAdapter.findById(userId)
         } catch (e: EntityNotFound) {
             throw EntityNotFound("User with ID $userId not found", e.message)
@@ -54,7 +53,7 @@ class ApiKeyService(
             name = name,
             createdAt = now,
             expiresAt = expiresAt,
-            userId = UserId(userId),
+            user = user,
             keyHash = keyHash,
             key = keyValue,
         )

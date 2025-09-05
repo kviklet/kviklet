@@ -7,6 +7,9 @@ import dev.kviklet.kviklet.service.dto.ApiKeyId
 import dev.kviklet.kviklet.service.dto.utcTimeNow
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
+import jakarta.persistence.FetchType
+import jakarta.persistence.JoinColumn
+import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.repository.findByIdOrNull
@@ -17,24 +20,26 @@ import java.time.LocalDateTime
 
 @Entity
 @Table(name = "api_keys")
-class ApiKeyEntity : BaseEntity() {
+class ApiKeyEntity(
     @Column(name = "name", nullable = false)
-    var name: String = ""
+    var name: String = "",
 
     @Column(name = "key_hash", nullable = false)
-    var keyHash: String = ""
+    var keyHash: String = "",
 
     @Column(name = "created_at", nullable = false)
-    var createdAt: LocalDateTime = utcTimeNow()
+    var createdAt: LocalDateTime = utcTimeNow(),
 
     @Column(name = "expires_at", nullable = true)
-    var expiresAt: LocalDateTime? = null
+    var expiresAt: LocalDateTime? = null,
 
     @Column(name = "last_used_at", nullable = true)
-    var lastUsedAt: LocalDateTime? = null
+    var lastUsedAt: LocalDateTime? = null,
 
-    @Column(name = "user_id", nullable = false)
-    var userId: String? = null
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "user_id")
+    var user: UserEntity? = null,
+) : BaseEntity() {
 
     fun toDto() = ApiKey(
         id = id?.let { ApiKeyId(it) },
@@ -42,7 +47,7 @@ class ApiKeyEntity : BaseEntity() {
         createdAt = createdAt,
         expiresAt = expiresAt,
         lastUsedAt = lastUsedAt,
-        userId = UserId(userId!!),
+        user = user!!.toDto(),
     )
 }
 
@@ -61,19 +66,26 @@ class ApiKeyAdapter(private val apiKeyRepository: ApiKeyRepository) {
     fun findAll(): List<ApiKey> = apiKeyRepository.findAll().map { it.toDto() }
 
     @Transactional
-    fun create(apiKey: ApiKey): ApiKey = apiKeyRepository.save(
-        ApiKeyEntity().apply {
-            this.name = apiKey.name
-            this.createdAt = apiKey.createdAt
-            this.expiresAt = apiKey.expiresAt
-            this.lastUsedAt = apiKey.lastUsedAt
-            this.keyHash = apiKey.keyHash ?: throw EntityNotFound(
-                "API key hash not found",
-                "API key ${apiKey.id} has no hash",
-            )
-            this.userId = apiKey.userId.toString()
-        },
-    ).toDto()
+    fun create(apiKey: ApiKey): ApiKey {
+        val savedEntity = apiKeyRepository.save(
+            ApiKeyEntity().apply {
+                this.name = apiKey.name
+                this.createdAt = apiKey.createdAt
+                this.expiresAt = apiKey.expiresAt
+                this.lastUsedAt = apiKey.lastUsedAt
+                this.keyHash = apiKey.keyHash ?: throw EntityNotFound(
+                    "API key hash not found",
+                    "API key ${apiKey.id} has no hash",
+                )
+                this.user = UserEntity().apply {
+                    this.id = apiKey.user.getId()
+                }
+            },
+        )
+        // Reload the entity to fetch the user relationship
+        return apiKeyRepository.findByIdOrNull(savedEntity.id!!)?.toDto()
+            ?: throw EntityNotFound("API Key not found", "Failed to reload API key after creation")
+    }
 
     @Transactional
     fun updateApiKey(id: String, lastUsedAt: LocalDateTime) {

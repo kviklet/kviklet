@@ -217,6 +217,12 @@ class ApiKeyControllerTest {
             .andExpect(jsonPath("$.apiKeys.length()", `is`(2)))
             .andExpect(jsonPath("$.apiKeys[0].name", notNullValue()))
             .andExpect(jsonPath("$.apiKeys[0].key").doesNotExist()) // Key should not be exposed
+            .andExpect(jsonPath("$.apiKeys[0].user.id", `is`(user.getId())))
+            .andExpect(jsonPath("$.apiKeys[0].user.email", `is`(user.email)))
+            .andExpect(jsonPath("$.apiKeys[0].user.fullName", `is`(user.fullName)))
+            .andExpect(jsonPath("$.apiKeys[1].user.id", `is`(user.getId())))
+            .andExpect(jsonPath("$.apiKeys[1].user.email", `is`(user.email)))
+            .andExpect(jsonPath("$.apiKeys[1].user.fullName", `is`(user.fullName)))
             .andExpect(jsonPath("$.apiKeys[1].name", notNullValue()))
             .andExpect(jsonPath("$.apiKeys[1].key").doesNotExist()) // Key should not be exposed
     }
@@ -259,6 +265,9 @@ class ApiKeyControllerTest {
             .andExpect(jsonPath("$.createdAt", notNullValue()))
             .andExpect(jsonPath("$.expiresAt", notNullValue()))
             .andExpect(jsonPath("$.key").doesNotExist()) // Key should not be exposed
+            .andExpect(jsonPath("$.user.id", `is`(user.getId())))
+            .andExpect(jsonPath("$.user.email", `is`(user.email)))
+            .andExpect(jsonPath("$.user.fullName", `is`(user.fullName)))
     }
 
     @Test

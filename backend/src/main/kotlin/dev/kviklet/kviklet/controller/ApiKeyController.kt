@@ -28,6 +28,7 @@ data class ApiKeyResponse(
     val createdAt: LocalDateTime,
     val expiresAt: LocalDateTime?,
     val lastUsedAt: LocalDateTime?,
+    val user: UserResponse,
 )
 
 data class ApiKeyWithSecretResponse(
@@ -62,6 +63,7 @@ class ApiKeyController(private val apiKeyService: ApiKeyService) {
                     createdAt = apiKey.createdAt,
                     expiresAt = apiKey.expiresAt,
                     lastUsedAt = apiKey.lastUsedAt,
+                    user = UserResponse(apiKey.user),
                 )
             },
         )
@@ -80,6 +82,7 @@ class ApiKeyController(private val apiKeyService: ApiKeyService) {
             createdAt = apiKey.createdAt,
             expiresAt = apiKey.expiresAt,
             lastUsedAt = apiKey.lastUsedAt,
+            user = UserResponse(apiKey.user),
         )
     }
 
