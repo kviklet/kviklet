@@ -75,7 +75,7 @@ data class ConfigResponse(
 @Validated
 @RequestMapping("/config")
 @Tag(
-    name = "Controller",
+    name = "Config",
     description = "Configure Kviklet in general.",
 )
 class ConfigController(

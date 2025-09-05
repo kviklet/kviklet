@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.security
 
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.service.IdResolver
+import dev.kviklet.kviklet.service.LicenseService
 import org.aopalliance.aop.Advice
 import org.aopalliance.intercept.MethodInterceptor
 import org.aopalliance.intercept.MethodInvocation
@@ -9,6 +10,7 @@ import org.springframework.aop.Advisor
 import org.springframework.aop.Pointcut
 import org.springframework.aop.PointcutAdvisor
 import org.springframework.aop.framework.AopInfrastructureBean
+import org.springframework.aop.support.DefaultPointcutAdvisor
 import org.springframework.aop.support.annotation.AnnotationMatchingPointcut
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.config.BeanDefinition.ROLE_INFRASTRUCTURE
@@ -17,6 +19,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Role
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.AnnotationUtils
+import org.springframework.core.annotation.Order
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.authorization.AuthorizationDecision
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
@@ -33,18 +36,19 @@ enum class Resource(val resourceName: String) {
     ROLE("role"),
     USER("user"),
     CONFIGURATION("configuration"),
+    API_KEY("api_key"),
 }
 
 enum class Permission(
     val resource: Resource,
     // if action is null, only the parent requiredPermission is checked
     val action: String?,
-    val requiredPermission: Permission?,
+    val requiredPermission: Permission? = null,
 ) {
-    CONFIGURATION_GET(Resource.CONFIGURATION, "get", null),
+    CONFIGURATION_GET(Resource.CONFIGURATION, "get"),
     CONFIGURATION_EDIT(Resource.CONFIGURATION, "edit", CONFIGURATION_GET),
 
-    DATASOURCE_CONNECTION_GET(Resource.DATASOURCE_CONNECTION, "get", null),
+    DATASOURCE_CONNECTION_GET(Resource.DATASOURCE_CONNECTION, "get"),
     DATASOURCE_CONNECTION_EDIT(Resource.DATASOURCE_CONNECTION, "edit", DATASOURCE_CONNECTION_GET),
     DATASOURCE_CONNECTION_CREATE(Resource.DATASOURCE_CONNECTION, "create", DATASOURCE_CONNECTION_GET),
 
@@ -53,13 +57,17 @@ enum class Permission(
     EXECUTION_REQUEST_REVIEW(Resource.EXECUTION_REQUEST, "review", EXECUTION_REQUEST_GET),
     EXECUTION_REQUEST_EXECUTE(Resource.EXECUTION_REQUEST, "execute", EXECUTION_REQUEST_GET),
 
-    ROLE_GET(Resource.ROLE, "get", null),
+    ROLE_GET(Resource.ROLE, "get"),
     ROLE_EDIT(Resource.ROLE, "edit", ROLE_GET),
 
-    USER_GET(Resource.USER, "get", null),
+    USER_GET(Resource.USER, "get"),
     USER_EDIT(Resource.USER, "edit", USER_GET),
     USER_CREATE(Resource.USER, "create", USER_GET),
     USER_EDIT_ROLES(Resource.USER, "edit_roles", USER_GET),
+
+    API_KEY_GET(Resource.API_KEY, "get"),
+    API_KEY_CREATE(Resource.API_KEY, "create", API_KEY_GET),
+    API_KEY_EDIT(Resource.API_KEY, "edit", API_KEY_GET),
     ;
 
     fun getPermissionString(): String = "${this.resource.resourceName}:${this.action}"
@@ -97,6 +105,14 @@ class MethodSecurityConfig(private val idResolver: IdResolver) {
             manager,
             idResolver,
         )
+
+    @Bean
+    @Order(400) // Run before @Policy (which is at 500)
+    fun enterpriseOnlyAdvisor(licenseService: LicenseService): Advisor {
+        val pointcut = AnnotationMatchingPointcut(null, EnterpriseOnly::class.java, true)
+        val interceptor = EnterpriseOnlyInterceptor(licenseService)
+        return DefaultPointcutAdvisor(pointcut, interceptor)
+    }
 }
 
 @Component

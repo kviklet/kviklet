@@ -1,7 +1,9 @@
 package dev.kviklet.kviklet.controller
 
+import dev.kviklet.kviklet.security.EnterpriseFeatureException
 import dev.kviklet.kviklet.service.AlreadyExecutedException
 import dev.kviklet.kviklet.service.EmailAlreadyExistsException
+import dev.kviklet.kviklet.service.EntityNotFound
 import dev.kviklet.kviklet.service.InvalidLicenseException
 import dev.kviklet.kviklet.service.InvalidReviewException
 import dev.kviklet.kviklet.service.LicenseRestrictionException
@@ -58,6 +60,18 @@ class ExceptionHandlerController {
         return ResponseEntity(ErrorResponse(ex.message ?: "License restriction"), HttpStatus.BAD_REQUEST)
     }
 
+    @ExceptionHandler(EnterpriseFeatureException::class)
+    fun handleEnterpriseFeatureException(
+        ex: EnterpriseFeatureException,
+        request: HttpServletRequest,
+    ): ResponseEntity<Any> {
+        logger.error("Enterprise feature access attempt at ${request.requestURI}: ${ex.message}")
+        return ResponseEntity(
+            ErrorResponse(ex.message ?: "This feature requires a valid enterprise license"),
+            HttpStatus.PAYMENT_REQUIRED,
+        )
+    }
+
     @ExceptionHandler(InvalidLicenseException::class)
     fun handleInvalidLicenseException(ex: InvalidLicenseException, request: HttpServletRequest): ResponseEntity<Any> {
         logger.error("Invalid license at ${request.requestURI}", ex)
@@ -89,6 +103,12 @@ class ExceptionHandlerController {
     fun handleBadCredentialsException(ex: BadCredentialsException, request: HttpServletRequest): ResponseEntity<Any> {
         logger.error("Bad credentials at ${request.requestURI}", ex)
         return ResponseEntity(ErrorResponse(ex.message ?: "Bad Credentials"), HttpStatus.UNAUTHORIZED)
+    }
+
+    @ExceptionHandler(EntityNotFound::class)
+    fun handleEntityNotFound(ex: EntityNotFound, request: HttpServletRequest): ResponseEntity<Any> {
+        logger.error("Entity not found at ${request.requestURI}", ex)
+        return ResponseEntity(ErrorResponse(ex.message), HttpStatus.NOT_FOUND)
     }
 
     @ExceptionHandler(Exception::class)

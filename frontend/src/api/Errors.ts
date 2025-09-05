@@ -1,4 +1,4 @@
-import { ZodSchema, z } from "zod";
+import { ZodSchema, ZodTypeDef, z } from "zod";
 
 export const ApiErrorResponseSchema = z.object({
   message: z.string(),
@@ -12,14 +12,15 @@ export function isApiErrorResponse(
   return ApiErrorResponseSchema.safeParse(response).success;
 }
 
-export const parseSchemaOrError = <T>(
-  schema: ZodSchema<T>,
+export const parseSchemaOrError = <Output, Input = Output>(
+  schema: ZodSchema<Output, ZodTypeDef, Input>,
   data: unknown,
-): T | ApiErrorResponse => {
+): Output | ApiErrorResponse => {
   const result = z.union([schema, ApiErrorResponseSchema]).safeParse(data);
   if (result.success) {
     return result.data;
   } else {
+    console.error(result.error);
     return {
       message: "Invalid server response.",
     };
@@ -28,11 +29,11 @@ export const parseSchemaOrError = <T>(
 
 export type ApiResponse<T> = T | ApiErrorResponse;
 
-export async function fetchWithErrorHandling<T>(
+export async function fetchWithErrorHandling<Output, Input = Output>(
   url: string,
   options: RequestInit,
-  schema: ZodSchema<T>,
-): Promise<ApiResponse<T>> {
+  schema: ZodSchema<Output, ZodTypeDef, Input>,
+): Promise<ApiResponse<Output>> {
   try {
     const response = await fetch(url, options);
     const json: unknown = await response.json();

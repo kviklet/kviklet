@@ -89,3 +89,6 @@ databaseChangeLog:
   - include:
       file: 031-add-max-temporary-access-duration.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 032-add-api-keys-table.yaml
+      relativeToChangelogFile: true

@@ -4,8 +4,10 @@ import dev.kviklet.kviklet.controller.ServerUrlInterceptor
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.service.ApiKeyService
 import dev.kviklet.kviklet.service.LicenseRestrictionException
 import dev.kviklet.kviklet.service.LicenseService
+import dev.kviklet.kviklet.service.UserService
 import dev.kviklet.kviklet.service.dto.Role
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -16,6 +18,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.annotation.Order
 import org.springframework.ldap.core.DirContextAdapter
 import org.springframework.ldap.core.DirContextOperations
 import org.springframework.ldap.core.support.LdapContextSource
@@ -50,9 +53,11 @@ import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler
 import org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher
+import org.springframework.security.web.util.matcher.RequestMatcher
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
 import org.springframework.web.cors.CorsConfiguration
@@ -87,6 +92,9 @@ class SecurityConfig(
     private val samlProperties: SamlProperties,
     private val contextSource: LdapContextSource,
     private val userDetailsService: UserDetailsServiceImpl,
+    private val apiKeyService: ApiKeyService,
+    private val userService: UserService,
+    private val passwordEncoder: PasswordEncoder,
     private val corsSettings: CorsSettings,
 ) {
 
@@ -132,8 +140,60 @@ class SecurityConfig(
     }
 
     @Bean
+    @Order(1) // Process this filter chain first
+    fun apiKeySecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
+        // Create a custom RequestMatcher for Bearer token
+        val bearerTokenMatcher = RequestMatcher { request ->
+            request.getHeader("Authorization")?.startsWith("Bearer ") ?: false
+        }
+
+        http.invoke {
+            // Only apply this chain to requests with Bearer token
+            securityMatcher(bearerTokenMatcher)
+
+            // Add the API key filter
+            addFilterBefore<UsernamePasswordAuthenticationFilter>(
+                ApiKeyAuthFilter(
+                    apiKeyService = apiKeyService,
+                    passwordEncoder = passwordEncoder,
+                ),
+            )
+
+            // CORS if needed
+            if (corsSettings.allowedOrigins.isNotEmpty()) {
+                cors { }
+            }
+
+            // Exception handling
+            exceptionHandling {
+                authenticationEntryPoint = CustomAuthenticationEntryPoint()
+                accessDeniedHandler = CustomAccessDeniedHandler()
+            }
+
+            // Authorization rules
+            authorizeHttpRequests {
+                authorize(anyRequest, authenticated)
+            }
+
+            // STATELESS session management - no sessions created
+            sessionManagement {
+                sessionCreationPolicy = SessionCreationPolicy.STATELESS
+            }
+
+            // Disable CSRF for API requests
+            csrf {
+                disable()
+            }
+        }
+
+        return http.build()
+    }
+
+    @Bean
+    @Order(2) // Process this filter chain second
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http.invoke {
+            // Don't add ApiKeyAuthFilter here - it's handled by the API key chain
             addFilterBefore<WebAsyncManagerIntegrationFilter>(ForwardedHeaderFilter())
             if (corsSettings.allowedOrigins.isNotEmpty()) {
                 cors { }
