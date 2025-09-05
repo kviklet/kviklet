@@ -23,12 +23,13 @@ class ApiKeyService(
     private val userAdapter: UserAdapter,
     private val passwordEncoder: PasswordEncoder,
 ) {
-    
+
     private fun hashApiKey(apiKey: String): String {
         val digest = MessageDigest.getInstance("SHA-256")
         val hashBytes = digest.digest(apiKey.toByteArray())
         return Base64.getEncoder().encodeToString(hashBytes)
     }
+
     @Transactional
     @Policy(Permission.API_KEY_CREATE)
     fun createApiKey(userId: String, name: String, expiresInDays: Int? = null): ApiKey {

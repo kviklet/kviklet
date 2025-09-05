@@ -61,14 +61,14 @@ class ApiKeyControllerTest {
         val licenseFile = LicenseFile(
             fileContent = licenseJson,
             fileName = "test-license.json",
-            createdAt = LocalDateTime.now()
+            createdAt = LocalDateTime.now(),
         )
         licenseAdapter.createLicense(licenseFile)
     }
 
     @AfterEach
     fun tearDown() {
-        apiKeyRepository.deleteAll()  // Delete API keys first due to foreign key constraints
+        apiKeyRepository.deleteAll() // Delete API keys first due to foreign key constraints
         userHelper.deleteAll()
         roleHelper.deleteAll()
         licenseAdapter.deleteAll()
@@ -91,7 +91,7 @@ class ApiKeyControllerTest {
             post("/api-keys/")
                 .cookie(cookie)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(createRequest)
+                .content(createRequest),
         )
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.id", notNullValue()))
@@ -117,7 +117,7 @@ class ApiKeyControllerTest {
             post("/api-keys/")
                 .cookie(cookie)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(createRequest)
+                .content(createRequest),
         )
             .andExpect(status().isCreated)
             .andExpect(jsonPath("$.id", notNullValue()))
@@ -145,7 +145,7 @@ class ApiKeyControllerTest {
             post("/api-keys/")
                 .cookie(cookie)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(createRequest)
+                .content(createRequest),
         )
             .andExpect(status().isPaymentRequired)
     }
@@ -167,7 +167,7 @@ class ApiKeyControllerTest {
             post("/api-keys/")
                 .cookie(cookie)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(createRequest)
+                .content(createRequest),
         )
             .andExpect(status().isForbidden)
     }
@@ -197,20 +197,20 @@ class ApiKeyControllerTest {
             post("/api-keys/")
                 .cookie(cookie)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(createRequest1)
+                .content(createRequest1),
         ).andExpect(status().isCreated)
 
         mockMvc.perform(
             post("/api-keys/")
                 .cookie(cookie)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(createRequest2)
+                .content(createRequest2),
         ).andExpect(status().isCreated)
 
         // List API keys
         mockMvc.perform(
             get("/api-keys/")
-                .cookie(cookie)
+                .cookie(cookie),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.apiKeys", notNullValue()))
@@ -244,7 +244,7 @@ class ApiKeyControllerTest {
             post("/api-keys/")
                 .cookie(cookie)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(createRequest)
+                .content(createRequest),
         )
             .andExpect(status().isCreated)
             .andReturn()
@@ -257,7 +257,7 @@ class ApiKeyControllerTest {
         // Get specific API key
         mockMvc.perform(
             get("/api-keys/$apiKeyId")
-                .cookie(cookie)
+                .cookie(cookie),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.id", `is`(apiKeyId)))
@@ -287,7 +287,7 @@ class ApiKeyControllerTest {
             post("/api-keys/")
                 .cookie(cookie)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(createRequest)
+                .content(createRequest),
         )
             .andExpect(status().isCreated)
             .andReturn()
@@ -300,14 +300,14 @@ class ApiKeyControllerTest {
         // Delete the API key
         mockMvc.perform(
             delete("/api-keys/$apiKeyId")
-                .cookie(cookie)
+                .cookie(cookie),
         )
             .andExpect(status().isNoContent)
 
         // Verify it's deleted by trying to get it
         mockMvc.perform(
             get("/api-keys/$apiKeyId")
-                .cookie(cookie)
+                .cookie(cookie),
         )
             .andExpect(status().isNotFound)
     }
@@ -330,7 +330,7 @@ class ApiKeyControllerTest {
             post("/api-keys/")
                 .cookie(cookie)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(createRequest)
+                .content(createRequest),
         )
             .andExpect(status().isCreated)
             .andReturn()
@@ -343,7 +343,7 @@ class ApiKeyControllerTest {
         // Try to delete without permission
         mockMvc.perform(
             delete("/api-keys/$apiKeyId")
-                .cookie(cookie)
+                .cookie(cookie),
         )
             .andExpect(status().isForbidden)
     }
@@ -361,28 +361,28 @@ class ApiKeyControllerTest {
             post("/api-keys/")
                 .cookie(cookie)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""{"name": "Test", "expiresInDays": 30}""")
+                .content("""{"name": "Test", "expiresInDays": 30}"""),
         )
             .andExpect(status().isPaymentRequired)
 
         // Test list endpoint
         mockMvc.perform(
             get("/api-keys/")
-                .cookie(cookie)
+                .cookie(cookie),
         )
             .andExpect(status().isPaymentRequired)
 
         // Test get endpoint
         mockMvc.perform(
             get("/api-keys/test-id")
-                .cookie(cookie)
+                .cookie(cookie),
         )
             .andExpect(status().isPaymentRequired)
 
         // Test delete endpoint
         mockMvc.perform(
             delete("/api-keys/test-id")
-                .cookie(cookie)
+                .cookie(cookie),
         )
             .andExpect(status().isPaymentRequired)
     }

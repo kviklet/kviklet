@@ -105,7 +105,7 @@ class MethodSecurityConfig(private val idResolver: IdResolver) {
             manager,
             idResolver,
         )
-    
+
     @Bean
     @Order(400) // Run before @Policy (which is at 500)
     fun enterpriseOnlyAdvisor(licenseService: LicenseService): Advisor {

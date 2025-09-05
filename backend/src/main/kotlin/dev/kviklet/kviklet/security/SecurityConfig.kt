@@ -140,17 +140,17 @@ class SecurityConfig(
     }
 
     @Bean
-    @Order(1)  // Process this filter chain first
+    @Order(1) // Process this filter chain first
     fun apiKeySecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
         // Create a custom RequestMatcher for Bearer token
         val bearerTokenMatcher = RequestMatcher { request ->
             request.getHeader("Authorization")?.startsWith("Bearer ") ?: false
         }
-        
+
         http.invoke {
             // Only apply this chain to requests with Bearer token
             securityMatcher(bearerTokenMatcher)
-            
+
             // Add the API key filter
             addFilterBefore<UsernamePasswordAuthenticationFilter>(
                 ApiKeyAuthFilter(
@@ -158,39 +158,39 @@ class SecurityConfig(
                     passwordEncoder = passwordEncoder,
                 ),
             )
-            
+
             // CORS if needed
             if (corsSettings.allowedOrigins.isNotEmpty()) {
                 cors { }
             }
-            
+
             // Exception handling
             exceptionHandling {
                 authenticationEntryPoint = CustomAuthenticationEntryPoint()
                 accessDeniedHandler = CustomAccessDeniedHandler()
             }
-            
+
             // Authorization rules
             authorizeHttpRequests {
                 authorize(anyRequest, authenticated)
             }
-            
+
             // STATELESS session management - no sessions created
             sessionManagement {
                 sessionCreationPolicy = SessionCreationPolicy.STATELESS
             }
-            
+
             // Disable CSRF for API requests
             csrf {
                 disable()
             }
         }
-        
+
         return http.build()
     }
 
     @Bean
-    @Order(2)  // Process this filter chain second
+    @Order(2) // Process this filter chain second
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http.invoke {
             // Don't add ApiKeyAuthFilter here - it's handled by the API key chain

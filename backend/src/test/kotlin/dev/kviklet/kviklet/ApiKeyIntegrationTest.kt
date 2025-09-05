@@ -7,11 +7,7 @@ import dev.kviklet.kviklet.db.ExecutionRequestRepository
 import dev.kviklet.kviklet.db.LicenseAdapter
 import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
-import dev.kviklet.kviklet.service.dto.AuthenticationType
-import dev.kviklet.kviklet.service.dto.DatabaseProtocol
-import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.LicenseFile
-import dev.kviklet.kviklet.service.dto.RequestType
 import org.hamcrest.CoreMatchers.`is`
 import org.hamcrest.CoreMatchers.notNullValue
 import org.junit.jupiter.api.AfterEach
@@ -73,7 +69,7 @@ class ApiKeyIntegrationTest {
         val licenseFile = LicenseFile(
             fileContent = licenseJson,
             fileName = "test-license.json",
-            createdAt = LocalDateTime.now()
+            createdAt = LocalDateTime.now(),
         )
         licenseAdapter.createLicense(licenseFile)
     }
@@ -82,32 +78,36 @@ class ApiKeyIntegrationTest {
     fun tearDown() {
         executionRequestRepository.deleteAll()
         connectionRepository.deleteAll()
-        apiKeyRepository.deleteAll()  // Delete API keys before users due to foreign key constraints
+        apiKeyRepository.deleteAll() // Delete API keys before users due to foreign key constraints
         userHelper.deleteAll()
         roleHelper.deleteAll()
         licenseAdapter.deleteAll()
     }
 
     // Helper function to create an API key for a user
-    private fun createApiKey(user: dev.kviklet.kviklet.db.User, name: String = "Test API Key", expiresInDays: Int? = 30): String {
+    private fun createApiKey(
+        user: dev.kviklet.kviklet.db.User,
+        name: String = "Test API Key",
+        expiresInDays: Int? = 30,
+    ): String {
         val cookie = userHelper.login(mockMvc = mockMvc, email = user.email)
-        
+
         val createRequest = """
             {
                 "name": "$name",
                 "expiresInDays": ${expiresInDays ?: "null"}
             }
         """.trimIndent()
-        
+
         val result = mockMvc.perform(
             post("/api-keys/")
                 .cookie(cookie)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(createRequest)
+                .content(createRequest),
         )
             .andExpect(status().isCreated)
             .andReturn()
-        
+
         val response = objectMapper.readTree(result.response.contentAsString)
         return response["key"]?.asText() ?: throw IllegalStateException("API key creation failed - no key returned")
     }
@@ -141,7 +141,7 @@ class ApiKeyIntegrationTest {
             post("/connections/")
                 .header("Authorization", "Bearer $apiKey")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(connectionRequest)
+                .content(connectionRequest),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.id", `is`("test-conn-1")))
@@ -176,7 +176,7 @@ class ApiKeyIntegrationTest {
             post("/connections/")
                 .header("Authorization", "Bearer $apiKey")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(connectionRequest)
+                .content(connectionRequest),
         )
             .andExpect(status().isForbidden)
     }
@@ -190,7 +190,7 @@ class ApiKeyIntegrationTest {
         // Create a connection first (using admin permissions)
         val adminUser = userHelper.createUser(permissions = listOf("*"))
         val adminCookie = userHelper.login(mockMvc = mockMvc, email = adminUser.email)
-        
+
         val connectionRequest = """
             {
                 "connectionType": "DATASOURCE",
@@ -212,14 +212,14 @@ class ApiKeyIntegrationTest {
             post("/connections/")
                 .cookie(adminCookie)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(connectionRequest)
+                .content(connectionRequest),
         )
             .andExpect(status().isOk)
 
         // Now list connections using API key
         mockMvc.perform(
             get("/connections/")
-                .header("Authorization", "Bearer $apiKey")
+                .header("Authorization", "Bearer $apiKey"),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$[0].id", `is`("test-conn-3")))
@@ -234,7 +234,7 @@ class ApiKeyIntegrationTest {
         // Create a connection first (using admin permissions)
         val adminUser = userHelper.createUser(permissions = listOf("*"))
         val adminCookie = userHelper.login(mockMvc = mockMvc, email = adminUser.email)
-        
+
         val connectionRequest = """
             {
                 "connectionType": "DATASOURCE",
@@ -256,7 +256,7 @@ class ApiKeyIntegrationTest {
             post("/connections/")
                 .cookie(adminCookie)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(connectionRequest)
+                .content(connectionRequest),
         )
             .andExpect(status().isOk)
 
@@ -272,7 +272,7 @@ class ApiKeyIntegrationTest {
             patch("/connections/test-conn-4")
                 .header("Authorization", "Bearer $apiKey")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(updateRequest)
+                .content(updateRequest),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.displayName", `is`("Updated Name")))
@@ -289,7 +289,7 @@ class ApiKeyIntegrationTest {
         // Create a connection first (using admin permissions)
         val adminUser = userHelper.createUser(permissions = listOf("*"))
         val adminCookie = userHelper.login(mockMvc = mockMvc, email = adminUser.email)
-        
+
         val connectionRequest = """
             {
                 "connectionType": "DATASOURCE",
@@ -311,7 +311,7 @@ class ApiKeyIntegrationTest {
             post("/connections/")
                 .cookie(adminCookie)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(connectionRequest)
+                .content(connectionRequest),
         )
             .andExpect(status().isOk)
 
@@ -331,7 +331,7 @@ class ApiKeyIntegrationTest {
             post("/execution-requests/")
                 .header("Authorization", "Bearer $apiKey")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(executionRequest)
+                .content(executionRequest),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.title", `is`("Test Query")))
@@ -360,7 +360,7 @@ class ApiKeyIntegrationTest {
             post("/execution-requests/")
                 .header("Authorization", "Bearer $apiKey")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(executionRequest)
+                .content(executionRequest),
         )
             .andExpect(status().isForbidden)
     }
@@ -371,14 +371,14 @@ class ApiKeyIntegrationTest {
     fun `test expired API key is rejected`() {
         // Create user with all permissions
         val user = userHelper.createUser(permissions = listOf("*"))
-        
+
         // Create an API key with 0 days expiration (expires immediately)
         val apiKey = createApiKey(user, "Expired Key", expiresInDays = 0)
 
         // Try to use the expired API key
         mockMvc.perform(
             get("/connections/")
-                .header("Authorization", "Bearer $apiKey")
+                .header("Authorization", "Bearer $apiKey"),
         )
             .andExpect(status().isUnauthorized)
     }
@@ -387,11 +387,10 @@ class ApiKeyIntegrationTest {
     fun `test invalid API key is rejected`() {
         mockMvc.perform(
             get("/connections/")
-                .header("Authorization", "Bearer invalid-api-key-12345")
+                .header("Authorization", "Bearer invalid-api-key-12345"),
         )
             .andExpect(status().isUnauthorized)
     }
-
 
     // ============= Permission Inheritance Tests =============
 
@@ -423,21 +422,21 @@ class ApiKeyIntegrationTest {
             post("/connections/")
                 .header("Authorization", "Bearer $apiKey")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(connectionRequest)
+                .content(connectionRequest),
         )
             .andExpect(status().isOk)
 
         // Should also be able to list connections
         mockMvc.perform(
             get("/connections/")
-                .header("Authorization", "Bearer $apiKey")
+                .header("Authorization", "Bearer $apiKey"),
         )
             .andExpect(status().isOk)
 
         // Should be able to delete the connection
         mockMvc.perform(
             delete("/connections/test-conn-wildcard")
-                .header("Authorization", "Bearer $apiKey")
+                .header("Authorization", "Bearer $apiKey"),
         )
             .andExpect(status().isNoContent)
     }
@@ -446,13 +445,15 @@ class ApiKeyIntegrationTest {
     fun `test API key respects permission boundaries`() {
         // Create user with limited permissions (only read, no create/edit/delete)
         // They also have api_key permissions to create the key
-        val user = userHelper.createUser(permissions = listOf("datasource_connection:get", "api_key:create", "api_key:get"))
+        val user = userHelper.createUser(
+            permissions = listOf("datasource_connection:get", "api_key:create", "api_key:get"),
+        )
         val apiKey = createApiKey(user)
 
         // Should be able to list connections
         mockMvc.perform(
             get("/connections/")
-                .header("Authorization", "Bearer $apiKey")
+                .header("Authorization", "Bearer $apiKey"),
         )
             .andExpect(status().isOk)
 
@@ -478,7 +479,7 @@ class ApiKeyIntegrationTest {
             post("/connections/")
                 .header("Authorization", "Bearer $apiKey")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(connectionRequest)
+                .content(connectionRequest),
         )
             .andExpect(status().isForbidden)
     }
@@ -493,7 +494,7 @@ class ApiKeyIntegrationTest {
         val cookie = userHelper.login(mockMvc = mockMvc, email = user.email)
         val apiKeysResponse = mockMvc.perform(
             get("/api-keys/")
-                .cookie(cookie)
+                .cookie(cookie),
         )
             .andExpect(status().isOk)
             .andReturn()
@@ -505,7 +506,7 @@ class ApiKeyIntegrationTest {
         // Check initial lastUsedAt (should be null)
         val initialApiKey = mockMvc.perform(
             get("/api-keys/$apiKeyId")
-                .cookie(cookie)
+                .cookie(cookie),
         )
             .andExpect(status().isOk)
             .andReturn()
@@ -516,14 +517,14 @@ class ApiKeyIntegrationTest {
         // Use the API key
         mockMvc.perform(
             get("/connections/")
-                .header("Authorization", "Bearer $apiKey")
+                .header("Authorization", "Bearer $apiKey"),
         )
             .andExpect(status().isOk)
 
         // Check that lastUsedAt was updated
         val updatedApiKey = mockMvc.perform(
             get("/api-keys/$apiKeyId")
-                .cookie(cookie)
+                .cookie(cookie),
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.lastUsedAt", notNullValue()))
@@ -539,7 +540,7 @@ class ApiKeyIntegrationTest {
         // Make a request with API key and verify no session cookie is returned
         val result = mockMvc.perform(
             get("/connections/")
-                .header("Authorization", "Bearer $apiKey")
+                .header("Authorization", "Bearer $apiKey"),
         )
             .andExpect(status().isOk)
             .andReturn()
@@ -554,14 +555,21 @@ class ApiKeyIntegrationTest {
         // (not relying on session)
         mockMvc.perform(
             get("/connections/")
-                .header("Authorization", "Bearer $apiKey")
+                .header("Authorization", "Bearer $apiKey"),
         )
             .andExpect(status().isOk)
             .andReturn()
             .also {
                 val secondRequestCookies = it.response.cookies
-                assert(secondRequestCookies.isEmpty() || !secondRequestCookies.any { cookie -> cookie.name == "SESSION" }) {
-                    "Expected no SESSION cookie on second request, but found: ${secondRequestCookies.map { cookie -> "${cookie.name}=${cookie.value}" }}"
+                assert(
+                    secondRequestCookies.isEmpty() ||
+                        !secondRequestCookies.any { cookie ->
+                            cookie.name == "SESSION"
+                        },
+                ) {
+                    "Expected no SESSION cookie on second request, but found: ${secondRequestCookies.map { cookie ->
+                        "${cookie.name}=${cookie.value}"
+                    }}"
                 }
             }
     }
