@@ -400,6 +400,26 @@ ENCRYPTION_KEY_CURRENT=another-secret
 
 Kviklet will re-encrypt all connections on startup, so that you can then restart the contaienr with the previous key removed.
 
+## API Keys
+
+Kviklet supports API keys for programmatic access to the system. This is an enterprise-only feature and requires a valid license. You can create API keys in the Settings -> API Keys section.
+
+![API Keys](images/ApiKeys_light.png#gh-light-mode-only)
+![API Keys](images/ApiKeys_dark.png#gh-dark-mode-only)
+
+Use it as such:
+```bash
+curl --location 'localhost:8081/api-keys/' \
+--header 'Authorization: Bearer your-api-key'
+```
+
+API Keys inherit the permissions of the user that creates them. Currently only admins can manage API keys and all actions performed with an API key are attributed to the user that created the key.
+
+Some rudimentary API docs can be found at `[kviklet_host]/api/swagger-ui/index.html`. But keep in mind that this is a work in progress and the API might change in future versions.
+
+In the end the truth is in the code, so you can always look at the controller to see how the API is defined. If you have any questions feel free to open an issue.
+
+
 ## Experimental Features
 
 There are currently two experimental Features. That were built mostly on community feedback. Feel free to try these out and leave any input that you might have. We hope to develop into this further in the future and make it work well with the core approval flow.
