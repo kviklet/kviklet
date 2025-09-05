@@ -36,11 +36,11 @@ const Tab = (props: {
       <div
         className={
           "rounded pr-2 " +
-          (props.disabled 
-            ? "text-slate-400 dark:text-slate-600" 
-            : "hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-50 ") +
-          (props.active &&
-            "rounded bg-slate-200 hover:bg-slate-200 dark:bg-slate-900") || ""
+            (props.disabled
+              ? "text-slate-400 dark:text-slate-600"
+              : "text-slate-700 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-900 ") +
+            (props.active &&
+              "rounded bg-slate-200 hover:bg-slate-200 dark:bg-slate-900") || ""
         }
         title={props.tooltip}
       >
@@ -70,8 +70,7 @@ const Settings = () => {
   };
   const activeTab = getActiveTab(location.pathname);
 
-  const tabStyles =
-    "flex flex-row items-center justify-left text-sm p-1";
+  const tabStyles = "flex flex-row items-center justify-left text-sm p-1";
   const tabs: Array<{
     name: string;
     tabContent: React.ReactNode;
@@ -168,8 +167,8 @@ const Settings = () => {
       ),
       link: "/settings/api-keys",
       disabled: !config?.licenseValid,
-      tooltip: !config?.licenseValid 
-        ? "API Keys is an enterprise feature. Visit kviklet.dev to get a license." 
+      tooltip: !config?.licenseValid
+        ? "API Keys is an enterprise feature. Visit kviklet.dev to get a license."
         : undefined,
     },
   ];
@@ -210,31 +209,31 @@ const Settings = () => {
               <Route path="/roles/:roleId" element={<RoleDetailsView />} />
               <Route path="profile" element={<ProfileSettings />} />
               <Route path="license" element={<LicenseSettings />} />
-              <Route 
-                path="api-keys" 
+              <Route
+                path="api-keys"
                 element={
                   config?.licenseValid === true ? (
                     <ApiKeyPage />
                   ) : (
-                    <div className="flex flex-col items-center justify-center h-64 text-center">
-                      <LockClosedIcon className="h-12 w-12 text-slate-400 mb-4" />
-                      <h2 className="text-xl font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    <div className="flex h-64 flex-col items-center justify-center text-center">
+                      <LockClosedIcon className="mb-4 h-12 w-12 text-slate-400" />
+                      <h2 className="mb-2 text-xl font-semibold text-slate-700 dark:text-slate-300">
                         Enterprise Feature
                       </h2>
-                      <p className="text-slate-500 dark:text-slate-400 mb-4">
+                      <p className="mb-4 text-slate-500 dark:text-slate-400">
                         API Keys require an enterprise license.
                       </p>
-                      <a 
-                        href="https://kviklet.dev" 
-                        target="_blank" 
+                      <a
+                        href="https://kviklet.dev"
+                        target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
+                        className="text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                       >
                         Get a license at kviklet.dev
                       </a>
                     </div>
                   )
-                } 
+                }
               />
             </Routes>
             <Outlet></Outlet>
