@@ -635,6 +635,58 @@ class ExecutionRequestService(
     @Policy(Permission.EXECUTION_REQUEST_GET)
     fun getExecutions(): List<ExecuteEvent> = eventService.getAllExecutions()
 
+    // The following function is not MIT licensed
+    @Transactional
+    @Policy(Permission.EXECUTION_REQUEST_GET, checkIsPresentOnly = true)
+    fun exportExecutionsAsText(): String {
+        val executions = eventService.getAllExecutions()
+        val dateFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+
+        return buildString {
+            appendLine("=== KVIKLET AUDIT LOG EXPORT ===")
+            appendLine("Generated: ${utcTimeNow().format(dateFormatter)}")
+            appendLine("Total Executions: ${executions.size}")
+            appendLine("=".repeat(80))
+            appendLine()
+
+            executions.sortedByDescending { it.createdAt }.forEach { execution ->
+                appendLine("Timestamp: ${execution.createdAt.format(dateFormatter)}")
+                appendLine("User: ${execution.author.fullName ?: execution.author.email}")
+                appendLine("Connection: ${execution.request.connection.getId()}")
+                appendLine("Request ID: ${execution.request.getId()}")
+
+                val statement = execution.query ?: execution.command ?: ""
+                appendLine("Statement: $statement")
+
+                appendLine("Result:")
+                if (execution.results.isEmpty()) {
+                    appendLine("  No results recorded")
+                } else {
+                    execution.results.forEach { result ->
+                        when (result) {
+                            is ErrorResultLog -> {
+                                appendLine("  ERROR (Code ${result.errorCode}): ${result.message}")
+                            }
+                            is dev.kviklet.kviklet.service.dto.UpdateResultLog -> {
+                                appendLine("  SUCCESS: ${result.rowsUpdated} rows updated")
+                            }
+                            is dev.kviklet.kviklet.service.dto.QueryResultLog -> {
+                                appendLine(
+                                    "  SUCCESS: ${result.rowCount} rows returned (${result.columnCount} columns)",
+                                )
+                            }
+                            is DumpResultLog -> {
+                                appendLine("  DUMP: ${result.size} bytes")
+                            }
+                        }
+                    }
+                }
+                appendLine("-".repeat(80))
+                appendLine()
+            }
+        }
+    }
+
     private fun cleanUpProxies() {
         val now = utcTimeNow()
         val expiredProxies = proxies.filter { it.startTime.plusMinutes(60) < now }

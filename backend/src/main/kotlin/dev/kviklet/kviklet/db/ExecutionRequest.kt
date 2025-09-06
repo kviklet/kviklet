@@ -167,6 +167,7 @@ class ExecutionRequestAdapter(
     @Autowired
     private lateinit var entityManager: EntityManager
 
+    @Transactional
     fun addEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Pair<ExecutionRequestDetails, Event> {
         val executionRequestEntity = getExecutionRequestDetailsEntity(id)
         val userEntity = getUserEntity(authorId)
