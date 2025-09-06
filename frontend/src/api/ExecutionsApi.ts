@@ -34,6 +34,31 @@ const getExecutions = async (): Promise<ApiResponse<ExecutionsResponse>> => {
   );
 };
 
-export { getExecutions };
+const exportExecutions = async (): Promise<void> => {
+  const response = await fetch(`${baseUrl}/executions/export`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Export failed: ${response.statusText}`);
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const contentDisposition = response.headers.get("Content-Disposition");
+  const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+  const filename = filenameMatch ? filenameMatch[1] : "auditlog-export.txt";
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+};
+
+export { getExecutions, exportExecutions };
 
 export type { ExecutionLogResponse, ExecutionsResponse };

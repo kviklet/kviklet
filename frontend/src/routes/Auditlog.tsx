@@ -11,14 +11,97 @@ export default function Auditlog() {
   );
 }
 
-import { ChevronRightIcon } from "@heroicons/react/20/solid";
+import {
+  ChevronRightIcon,
+  ArrowDownTrayIcon,
+  LockClosedIcon,
+} from "@heroicons/react/20/solid";
 import InitialBubble from "../components/InitialBubble";
 import { Link } from "react-router-dom";
-import { ExecutionLogResponse, getExecutions } from "../api/ExecutionsApi";
+import {
+  ExecutionLogResponse,
+  getExecutions,
+  exportExecutions,
+} from "../api/ExecutionsApi";
 import { ChangeEvent, useEffect, useState } from "react";
 import { timeSince } from "./Requests";
 import { isApiErrorResponse } from "../api/Errors";
 import SearchInput from "../components/SearchInput";
+import Button from "../components/Button";
+import useConfig from "../hooks/config";
+import useNotification from "../hooks/useNotification";
+import Tooltip from "../components/Tooltip";
+
+function ExportButton() {
+  const { config } = useConfig();
+  const { addNotification } = useNotification();
+  const [isExporting, setIsExporting] = useState(false);
+
+  const hasEnterpriseLicense =
+    config?.licenseValid &&
+    config?.validUntil &&
+    config.validUntil > new Date();
+
+  const handleExport = async () => {
+    if (!hasEnterpriseLicense) {
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      await exportExecutions();
+      addNotification({
+        title: "Export successful",
+        text: "Audit log exported successfully",
+        type: "info",
+      });
+    } catch (error) {
+      console.error("Export failed:", error);
+      addNotification({
+        title: "Export failed",
+        text:
+          error instanceof Error ? error.message : "Failed to export audit log",
+        type: "error",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const buttonContent = (
+    <Button
+      type={hasEnterpriseLicense && !isExporting ? "primary" : "disabled"}
+      onClick={() => void handleExport()}
+      className={`flex items-center ${
+        !hasEnterpriseLicense ? "cursor-not-allowed" : ""
+      }`}
+    >
+      {hasEnterpriseLicense ? (
+        <>
+          <ArrowDownTrayIcon className="mr-1.5 h-4 w-4 flex-shrink-0" />
+          <span className="whitespace-nowrap">
+            {isExporting ? "Exporting..." : "Export"}
+          </span>
+        </>
+      ) : (
+        <>
+          <LockClosedIcon className="mr-1.5 h-4 w-4 flex-shrink-0" />
+          <span className="whitespace-nowrap">Export</span>
+        </>
+      )}
+    </Button>
+  );
+
+  if (!hasEnterpriseLicense) {
+    return (
+      <Tooltip content="Enterprise feature - License required">
+        {buttonContent}
+      </Tooltip>
+    );
+  }
+
+  return buttonContent;
+}
 
 function useExecutions() {
   const [executions, setExecutions] = useState<ExecutionLogResponse[]>([]);
@@ -50,14 +133,17 @@ function List() {
   );
   return (
     <div>
-      <SearchInput
-        value={searchTerm}
-        onChange={(e: ChangeEvent<HTMLInputElement>) => {
-          setSearchTerm(e.target.value);
-        }}
-        placeholder="Search Auditlog"
-        className="my-4 w-full"
-      />
+      <div className="my-4 flex gap-2">
+        <SearchInput
+          value={searchTerm}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => {
+            setSearchTerm(e.target.value);
+          }}
+          placeholder="Search Auditlog"
+          className="flex-1"
+        />
+        <ExportButton />
+      </div>
       <div className="overflow-hidden bg-white shadow dark:bg-slate-900 sm:rounded-md">
         <ul
           role="list"
