@@ -146,7 +146,8 @@ const Login = () => {
                 <Button
                   className="mt-2 w-full"
                   id="sign-in"
-                  type="submit"
+                  htmlType="submit"
+                  variant="primary"
                   dataTestId="login-button"
                 >
                   Sign in

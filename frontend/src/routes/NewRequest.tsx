@@ -509,7 +509,11 @@ const DatasourceExecutionRequestForm = ({
         )}
         <div className="-mx-3 mb-2 flex flex-wrap">
           <div className="mb-6 ml-auto px-3">
-            <Button type="submit" dataTestId="submit-button">
+            <Button
+              htmlType="submit"
+              variant="primary"
+              dataTestId="submit-button"
+            >
               Submit
             </Button>
           </div>
@@ -849,7 +853,9 @@ const KubernetesExecutionRequestForm = ({
           )}
           <div className="-mx-3 mb-2 flex flex-wrap">
             <div className="mb-6 ml-auto px-3">
-              <Button type="submit">Submit</Button>
+              <Button htmlType="submit" variant="primary">
+                Submit
+              </Button>
             </div>
           </div>
         </form>

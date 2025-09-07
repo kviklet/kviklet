@@ -139,7 +139,7 @@ const RoleSettings = () => {
       <div className="flex flex-col items-center justify-between">
         <Table roles={roles} handleDeleteRole={handleDeleteRole} />
         <Link to="/settings/roles/new" className="ml-auto">
-          <Button type="primary" className="  mt-2">
+          <Button variant="primary" className="  mt-2">
             {"Add Role"}
           </Button>
         </Link>

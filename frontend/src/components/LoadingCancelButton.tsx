@@ -9,7 +9,8 @@ function LoadingCancelButton(props: {
   className?: string;
   size?: "sm" | "md" | "lg";
   textSize?: "sm" | "md" | "lg";
-  type?: "button" | "submit" | "reset" | "primary" | "danger" | undefined;
+  variant?: "primary" | "danger" | undefined;
+  htmlType?: "button" | "submit" | "reset" | undefined;
   disabled?: boolean;
   dataTestId?: string;
   title?: string;
@@ -47,8 +48,8 @@ function LoadingCancelButton(props: {
 
   const getButtonStyle = () => {
     if (props.disabled) return disabledStyle;
-    if (props.type === "submit") return submitStyle;
-    if (props.type === "danger") return dangerStyle;
+    if (props.variant === "primary") return submitStyle;
+    if (props.variant === "danger") return dangerStyle;
     return defaultStyle;
   };
 
@@ -56,7 +57,7 @@ function LoadingCancelButton(props: {
     <button
       id={props.id}
       onClick={isLoading ? handleCancel : handleClick}
-      type={props.type === "submit" ? "submit" : "button"}
+      type={props.htmlType || "button"}
       disabled={props.disabled}
       className={`${
         props.className

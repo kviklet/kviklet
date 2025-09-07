@@ -357,7 +357,9 @@ export default function UpdateDatasourceConnectionForm({
               )}
             </Disclosure>
           </div>
-          <Button type={isDirty ? "submit" : "disabled"}>Save</Button>
+          <Button htmlType="submit" variant={isDirty ? "primary" : "disabled"}>
+            Save
+          </Button>
         </div>
       </div>
     </form>

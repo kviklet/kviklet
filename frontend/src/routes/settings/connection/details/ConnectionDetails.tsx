@@ -59,7 +59,7 @@ export default function ConnectionDetails() {
         )}
 
         <div className="flex justify-end">
-          <Button onClick={() => setShowDeleteModal(true)} type="danger">
+          <Button onClick={() => setShowDeleteModal(true)} variant="danger">
             Delete
           </Button>
         </div>

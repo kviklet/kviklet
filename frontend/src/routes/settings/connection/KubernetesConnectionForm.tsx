@@ -95,7 +95,9 @@ export default function CreateKubernetesConnectionForm(props: {
             {...register("maxExecutions")}
             error={errors.maxExecutions?.message}
           />
-          <Button type="submit">Create Connection</Button>
+          <Button htmlType="submit" variant="primary">
+            Create Connection
+          </Button>
         </div>
       </div>
     </form>

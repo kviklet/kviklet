@@ -76,7 +76,8 @@ function UserForm(props: {
         <div className="mb-3 flex flex-col">
           <Button
             className="ml-auto"
-            type="submit"
+            htmlType="submit"
+            variant="primary"
             dataTestId="create-user-button"
           >
             Create

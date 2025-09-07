@@ -144,7 +144,7 @@ export default function ApiKeyPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-lg">API Keys</h1>
         {!showCreateForm && !newApiKey && (
-          <Button onClick={() => setShowCreateForm(true)} type="submit">
+          <Button onClick={() => setShowCreateForm(true)} variant="primary">
             Create API Key
           </Button>
         )}
@@ -238,10 +238,16 @@ export default function ApiKeyPage() {
                 </select>
               </div>
               <div className="flex justify-end space-x-2">
-                <Button type="button" onClick={() => setShowCreateForm(false)}>
+                <Button
+                  htmlType="button"
+                  onClick={() => setShowCreateForm(false)}
+                >
                   Cancel
                 </Button>
-                <Button type={loading ? "disabled" : "submit"}>
+                <Button
+                  htmlType="submit"
+                  variant={loading ? "disabled" : "primary"}
+                >
                   {loading ? "Creating..." : "Create"}
                 </Button>
               </div>

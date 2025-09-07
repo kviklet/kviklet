@@ -452,7 +452,7 @@ export default function DatabaseConnectionForm(props: {
           </div>
           <div className="flex">
             <Button
-              type="submit"
+              variant="primary"
               className="ml-auto"
               onClick={(event) => void handleSubmitCreate(event)}
               dataTestId="create-connection-button"

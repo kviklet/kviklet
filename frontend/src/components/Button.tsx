@@ -7,14 +7,8 @@ function Button(props: {
   className?: string;
   size?: "sm" | "md" | "lg";
   textSize?: "sm" | "md" | "lg";
-  type?:
-    | "button"
-    | "submit"
-    | "reset"
-    | "disabled"
-    | "primary"
-    | "danger"
-    | undefined;
+  variant?: "primary" | "danger" | "disabled" | undefined;
+  htmlType?: "button" | "submit" | "reset" | undefined;
   dataTestId?: string;
   title?: string;
 }) {
@@ -27,8 +21,8 @@ function Button(props: {
   const dangerStyle =
     "bg-red-600 text-white hover:bg-red-800 transition-colors dark:hover:bg-red-400"; // this is your new "danger" style
 
-  const disabled = props.type == "disabled" ? true : undefined;
-  const submit = props.type == "submit" ? "submit" : undefined;
+  const disabled = props.variant == "disabled" ? true : undefined;
+  const htmlType = props.htmlType || "button";
 
   const size = props.size == "sm" ? "px-2 py-1" : "px-4 py-2";
   const textSize =
@@ -38,14 +32,14 @@ function Button(props: {
     <button
       id={props.id}
       onClick={props.onClick}
-      type={submit}
+      type={htmlType}
       disabled={disabled}
       data-testid={props.dataTestId}
       title={props.title}
       className={`${props.className} ${size} ${textSize} ${
-        (props.type == "submit" && submitStyle) ||
-        (props.type == "disabled" && disabledStyle) ||
-        (props.type == "danger" && dangerStyle) ||
+        (props.variant == "primary" && submitStyle) ||
+        (props.variant == "disabled" && disabledStyle) ||
+        (props.variant == "danger" && dangerStyle) ||
         defaultStyle
       }
       rounded-md align-middle  leading-5`}

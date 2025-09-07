@@ -289,7 +289,9 @@ const RoleForm = ({
         </>
       )}
 
-      <Button type="submit">Submit</Button>
+      <Button htmlType="submit" variant="primary">
+        Submit
+      </Button>
     </form>
   );
 };

@@ -142,7 +142,7 @@ const Editor = ({
             <LoadingCancelButton
               className=""
               id="runQuery"
-              type="submit"
+              variant="primary"
               disabled={request?.reviewStatus !== "APPROVED"}
               onClick={executeQuery}
               onCancel={() => void cancelQuery()}
@@ -154,7 +154,7 @@ const Editor = ({
           ) : (
             <Button
               dataTestId="run-query-button"
-              type="submit"
+              variant="primary"
               onClick={() => void executeQuery()}
             >
               {" "}

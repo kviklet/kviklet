@@ -130,7 +130,7 @@ function CommentBox({
               <div className="mb-2 flex justify-end">
                 <Button
                   id="submit"
-                  type="submit"
+                  variant="primary"
                   onClick={() => void handleReview()}
                   dataTestId="submit-review-button"
                 >

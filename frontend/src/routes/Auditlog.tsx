@@ -70,7 +70,7 @@ function ExportButton() {
 
   const buttonContent = (
     <Button
-      type={hasEnterpriseLicense && !isExporting ? "primary" : "disabled"}
+      variant={hasEnterpriseLicense && !isExporting ? "primary" : "disabled"}
       onClick={() => void handleExport()}
       className={`flex items-center ${
         !hasEnterpriseLicense ? "cursor-not-allowed" : ""

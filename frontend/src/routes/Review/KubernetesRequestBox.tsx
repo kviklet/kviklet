@@ -110,7 +110,9 @@ const KubernetesRequestBox: FC<KubernetesRequestBoxProps> = ({
         <Button
           className=""
           id="runQuery"
-          type={(request?.reviewStatus == "APPROVED" && "submit") || "disabled"}
+          variant={
+            (request?.reviewStatus == "APPROVED" && "primary") || "disabled"
+          }
           onClick={() => void runQuery(false)}
         >
           <div
