@@ -7,9 +7,7 @@ import {
   deleteApiKey,
 } from "../../api/ApiKeyApi";
 import { Error } from "../../components/Alert";
-
 import {
-  TrashIcon,
   ClipboardIcon,
   CheckIcon,
   ExclamationTriangleIcon,
@@ -18,6 +16,7 @@ import { isApiErrorResponse } from "../../api/Errors";
 import useNotification from "../../hooks/useNotification";
 import Button from "../../components/Button";
 import Modal from "../../components/Modal";
+import SettingsTable, { Column } from "../../components/SettingsTable";
 
 export default function ApiKeyPage() {
   const [apiKeys, setApiKeys] = useState<ApiKeyResponse[]>([]);
@@ -30,7 +29,6 @@ export default function ApiKeyPage() {
     null,
   );
   const [copied, setCopied] = useState(false);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const { addNotification } = useNotification();
 
@@ -95,18 +93,21 @@ export default function ApiKeyPage() {
     }
   };
 
-  const handleDeleteKey = async (id: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      await deleteApiKey(id);
-      setDeleteConfirmId(null);
+  const handleDeleteKey = async (key: ApiKeyResponse) => {
+    const response = await deleteApiKey(key.id);
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to delete API key",
+        text: response.message,
+        type: "error",
+      });
+    } else {
+      addNotification({
+        title: "API Key deleted",
+        text: `API key "${key.name}" has been deleted`,
+        type: "info",
+      });
       await loadApiKeys();
-    } catch (err) {
-      setError("Failed to delete API key");
-      console.error(err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -124,7 +125,7 @@ export default function ApiKeyPage() {
 
   const formatDate = (date: Date | null): string => {
     if (!date) return "Never";
-    return date.toLocaleDateString("en-US", {
+    return new Date(date).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -139,17 +140,53 @@ export default function ApiKeyPage() {
     return new Date() > new Date(expiresAt);
   };
 
+  const columns: Column<ApiKeyResponse>[] = [
+    {
+      header: "Name",
+      accessor: "name",
+    },
+    {
+      header: "Created By",
+      render: (key) => key.user.fullName || key.user.email,
+    },
+    {
+      header: "Created",
+      render: (key) => formatDate(key.createdAt),
+    },
+    {
+      header: "Expires",
+      render: (key) => {
+        if (!key.expiresAt) {
+          return (
+            <span className="text-slate-500 dark:text-slate-400">Never</span>
+          );
+        }
+
+        const expired = isExpired(key.expiresAt);
+        return (
+          <span
+            className={
+              expired
+                ? "text-red-500 dark:text-red-400"
+                : "text-slate-500 dark:text-slate-400"
+            }
+          >
+            {expired && (
+              <ExclamationTriangleIcon className="mr-1 inline h-4 w-4" />
+            )}
+            {formatDate(key.expiresAt)}
+          </span>
+        );
+      },
+    },
+    {
+      header: "Last Used",
+      render: (key) => formatDate(key.lastUsedAt),
+    },
+  ];
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-lg">API Keys</h1>
-        {!showCreateForm && !newApiKey && (
-          <Button onClick={() => setShowCreateForm(true)} variant="primary">
-            Create API Key
-          </Button>
-        )}
-      </div>
-
       {error && (
         <div className="mb-4">
           <Error>{error}</Error>
@@ -194,13 +231,13 @@ export default function ApiKeyPage() {
 
       {showCreateForm && (
         <Modal setVisible={setShowCreateForm}>
-          <div className="mb-8 rounded-md border bg-gray-50 p-4 dark:border-slate-700 dark:bg-slate-800">
+          <div className="mb-8 rounded-md border bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
             <h2 className="mb-4 text-lg font-semibold">Create New API Key</h2>
             <form onSubmit={(event) => void handleCreateKey(event)}>
               <div className="mb-4">
                 <label
                   htmlFor="keyName"
-                  className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
                 >
                   Key Name
                 </label>
@@ -217,7 +254,7 @@ export default function ApiKeyPage() {
               <div className="mb-4">
                 <label
                   htmlFor="expiration"
-                  className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
                 >
                   Expires In (Days)
                 </label>
@@ -256,109 +293,19 @@ export default function ApiKeyPage() {
         </Modal>
       )}
 
-      {loading && !newApiKey && !showCreateForm ? (
-        <div className="py-8 text-center">Loading...</div>
-      ) : apiKeys.length === 0 ? (
-        <div className="py-8 text-center text-gray-500 dark:text-gray-400">
-          No API keys found. Create one to get started.
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full overflow-hidden rounded-lg border bg-white dark:border-slate-700 dark:bg-slate-800">
-            <thead className="bg-gray-50 dark:bg-slate-700">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                  Created By
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                  Created
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                  Expires
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                  Last Used
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
-              {apiKeys.map((key) => (
-                <tr
-                  key={key.id}
-                  className="hover:bg-gray-50 dark:hover:bg-slate-700/50"
-                >
-                  <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-200">
-                    {key.name}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    {key.user.fullName || key.user.email}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    {formatDate(key.createdAt)}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm">
-                    {key.expiresAt ? (
-                      <span
-                        className={
-                          isExpired(key.expiresAt)
-                            ? "text-red-500 dark:text-red-400"
-                            : "text-gray-500 dark:text-gray-400"
-                        }
-                      >
-                        {isExpired(key.expiresAt) && (
-                          <ExclamationTriangleIcon className="mr-1 inline h-4 w-4" />
-                        )}
-                        {formatDate(key.expiresAt)}
-                      </span>
-                    ) : (
-                      <span className="text-gray-500 dark:text-gray-400">
-                        Never
-                      </span>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    {formatDate(key.lastUsedAt)}
-                  </td>
-                  <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                    {deleteConfirmId === key.id ? (
-                      <div className="flex items-center justify-end space-x-2">
-                        <span className="text-xs text-red-600 dark:text-red-400">
-                          Confirm?
-                        </span>
-                        <button
-                          onClick={() => void handleDeleteKey(key.id)}
-                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                        >
-                          Yes
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirmId(null)}
-                          className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300"
-                        >
-                          No
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setDeleteConfirmId(key.id)}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                        title="Delete API Key"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {!newApiKey && !showCreateForm && (
+        <SettingsTable
+          title="API Keys"
+          data={apiKeys}
+          columns={columns}
+          keyExtractor={(key) => key.id}
+          onDelete={handleDeleteKey}
+          onCreate={() => setShowCreateForm(true)}
+          createButtonLabel="Create API Key"
+          emptyMessage="No API keys found. Create one to get started."
+          loading={loading}
+          testId="api-keys-table"
+        />
       )}
     </div>
   );

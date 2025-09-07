@@ -1,13 +1,13 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ConnectionPayload,
   ConnectionResponse,
 } from "../../../api/DatasourceApi";
 import Button from "../../../components/Button";
 import Modal from "../../../components/Modal";
-import Spinner from "../../../components/Spinner";
+import SettingsTable, { Column } from "../../../components/SettingsTable";
 import CreateKubernetesConnectionForm from "./KubernetesConnectionForm";
-import ConnectionCard from "./ConnectionCard";
 import DatabaseConnectionForm from "./DatabaseConnectionForm";
 import useConnections from "../../../hooks/connections";
 
@@ -36,92 +36,133 @@ const useIdNamePair = () => {
   return { displayName, id, changeId, changeDisplayName };
 };
 
-function ConnectionSettingsList(props: {
-  connections: ConnectionResponse[];
-  addConnectionHandler: () => void;
-  addKubnernetesConnectionHandler: () => void;
-}) {
-  return (
-    <div className="flex max-h-[calc(100vh-theme(spacing.52))] w-full flex-col border-l pl-4 dark:border-slate-700  dark:bg-slate-950">
-      <div className="text-lg">Connections</div>
-      <div className="flex-grow overflow-hidden">
-        <div className=" flex h-full flex-col justify-between">
-          <div className="flex-grow overflow-y-auto">
-            {props.connections.map((connection) => (
-              <ConnectionCard key={connection.id} connection={connection} />
-            ))}
-          </div>
-          <Button
-            className="mx-2 my-1 ml-auto"
-            onClick={props.addConnectionHandler}
-            dataTestId="add-connection-button"
-          >
-            Add connection
-          </Button>
-          <Button
-            className="mx-2 my-1 ml-auto"
-            onClick={props.addKubnernetesConnectionHandler}
-          >
-            Add Kubernetes connection
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 const ConnectionSettings = () => {
   const { loading, connections, createConnection } = useConnections();
+  const navigate = useNavigate();
 
   const [showAddConnectionModal, setShowAddConnectionModal] =
     useState<boolean>(false);
-
-  const [
-    showAddKubernetesConnectionModal,
-    setShowAddKubernetesConnectionModal,
-  ] = useState<boolean>(false);
+  const [connectionTypeChoice, setConnectionTypeChoice] = useState<
+    "database" | "kubernetes" | null
+  >(null);
 
   const handleCreateConnection = async (connection: ConnectionPayload) => {
     await createConnection(connection);
     setShowAddConnectionModal(false);
-    setShowAddKubernetesConnectionModal(false);
+    setConnectionTypeChoice(null);
+  };
+
+  const handleRowClick = (connection: ConnectionResponse) => {
+    navigate(`/settings/connections/${connection.id}`);
+  };
+
+  const columns: Column<ConnectionResponse>[] = [
+    {
+      header: "Name",
+      accessor: "displayName",
+    },
+    {
+      header: "Description",
+      accessor: "description",
+    },
+    {
+      header: "Type",
+      render: (connection) => {
+        if ("_type" in connection && connection._type === "KUBERNETES") {
+          return (
+            <span className="text-slate-600 dark:text-slate-400">
+              Kubernetes
+            </span>
+          );
+        }
+        return (
+          <span className="text-slate-600 dark:text-slate-400">Database</span>
+        );
+      },
+    },
+  ];
+
+  const handleCreateClick = () => {
+    setShowAddConnectionModal(true);
   };
 
   return (
-    <div className="h-full">
-      {loading ? (
-        <Spinner />
-      ) : (
-        <div className="">
-          <div className="flex h-full w-full dark:bg-slate-950">
-            <ConnectionSettingsList
-              connections={connections}
-              addConnectionHandler={() => {
-                setShowAddConnectionModal(true);
-              }}
-              addKubnernetesConnectionHandler={() => {
-                setShowAddKubernetesConnectionModal(true);
-              }}
-            />
+    <div className="container mx-auto px-4 py-8">
+      <SettingsTable
+        title="Connections"
+        data={connections}
+        columns={columns}
+        keyExtractor={(connection) => connection.id}
+        onRowClick={handleRowClick}
+        onCreate={handleCreateClick}
+        createButtonLabel="Add Connection"
+        emptyMessage="No connections found. Add one to get started."
+        loading={loading}
+        testId="connections-table"
+      />
+
+      {showAddConnectionModal && !connectionTypeChoice && (
+        <Modal setVisible={setShowAddConnectionModal}>
+          <div className="rounded-md border bg-slate-50 p-6 dark:border-slate-700 dark:bg-slate-900">
+            <h2 className="mb-4 text-lg font-semibold">
+              Choose Connection Type
+            </h2>
+            <div className="flex flex-col gap-3">
+              <Button
+                onClick={() => setConnectionTypeChoice("database")}
+                className="w-full"
+                dataTestId="add-database-connection-button"
+              >
+                Add Database Connection
+              </Button>
+              <Button
+                onClick={() => setConnectionTypeChoice("kubernetes")}
+                className="w-full"
+              >
+                Add Kubernetes Connection
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowAddConnectionModal(false);
+                  setConnectionTypeChoice(null);
+                }}
+                className="w-full"
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
-          {showAddConnectionModal && (
-            <Modal setVisible={setShowAddConnectionModal}>
-              <DatabaseConnectionForm
-                createConnection={createConnection}
-                closeModal={() => setShowAddConnectionModal(false)}
-              />
-            </Modal>
-          )}
-          {showAddKubernetesConnectionModal && (
-            <Modal setVisible={setShowAddKubernetesConnectionModal}>
-              {
-                <CreateKubernetesConnectionForm
-                  handleCreateConnection={handleCreateConnection}
-                />
-              }
-            </Modal>
-          )}
-        </div>
+        </Modal>
+      )}
+
+      {showAddConnectionModal && connectionTypeChoice === "database" && (
+        <Modal
+          setVisible={() => {
+            setShowAddConnectionModal(false);
+            setConnectionTypeChoice(null);
+          }}
+        >
+          <DatabaseConnectionForm
+            createConnection={handleCreateConnection}
+            closeModal={() => {
+              setShowAddConnectionModal(false);
+              setConnectionTypeChoice(null);
+            }}
+          />
+        </Modal>
+      )}
+
+      {showAddConnectionModal && connectionTypeChoice === "kubernetes" && (
+        <Modal
+          setVisible={() => {
+            setShowAddConnectionModal(false);
+            setConnectionTypeChoice(null);
+          }}
+        >
+          <CreateKubernetesConnectionForm
+            handleCreateConnection={handleCreateConnection}
+          />
+        </Modal>
       )}
     </div>
   );

@@ -64,7 +64,7 @@ test.describe("E2E Tests for Multiple Databases", () => {
       port: "3306",
       database: "mysql",
       testQuery: "SELECT 1 AS result; SELECT 2 AS result;",
-      dditionalOptions: undefined,
+      additionalOptions: undefined,
     },
     {
       name: "MongoDB",
@@ -97,9 +97,8 @@ test.describe("E2E Tests for Multiple Databases", () => {
           db.database,
           db.additionalOptions
         );
-        await expect(
-          page.getByTestId(`connection-card-${connectionName}`)
-        ).toHaveText(connectionName);
+        // Verify the connection appears in the table
+        await expect(page.locator(`text=${connectionName}`)).toBeVisible();
       });
 
       test(`Create ${db.name} Request`, async ({ page }) => {

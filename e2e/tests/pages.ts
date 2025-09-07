@@ -66,7 +66,13 @@ class SettingsPage {
     additionalOptions?: string,
     requiredReviews?: number
   ) {
-    await this.page.getByTestId("add-connection-button").click();
+    // Click the Add Connection button (now in the header)
+    await this.page.getByRole("button", { name: "Add Connection" }).click();
+    
+    // Select Database Connection from the modal
+    await this.page.getByTestId("add-database-connection-button").click();
+    
+    // Fill in the connection details
     await this.page.getByTestId("connection-name").fill(name);
     await this.page.getByTestId("connection-type").selectOption(type);
     await this.page.getByTestId("connection-username").fill(username);
@@ -86,7 +92,9 @@ class SettingsPage {
         .fill(additionalOptions);
     }
     await this.page.getByTestId("create-connection-button").click();
-    await this.page.waitForSelector(`[data-testid="connection-card-${name}"]`);
+    
+    // Wait for the connection to appear in the table (table structure changed)
+    await this.page.waitForSelector(`text=${name}`, { timeout: 10000 });
   }
 }
 
