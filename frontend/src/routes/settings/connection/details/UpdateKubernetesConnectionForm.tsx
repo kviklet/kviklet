@@ -115,7 +115,8 @@ export default function UpdateKubernetesConnectionForm({
             </Disclosure>
           </div>
           <Button
-            type={isDirty ? "submit" : "disabled"}
+            htmlType="submit"
+            variant={isDirty ? "primary" : "disabled"}
             className="btn btn-primary mt-4"
           >
             Save

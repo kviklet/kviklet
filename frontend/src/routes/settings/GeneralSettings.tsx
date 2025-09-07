@@ -115,7 +115,9 @@ const ConfigForm = ({
         error={errors.liveSessionEnabled}
       ></InputField>
       <div className="flex flex-row-reverse">
-        <Button type="submit">Save</Button>
+        <Button htmlType="submit" variant="primary">
+          Save
+        </Button>
       </div>
     </form>
   );

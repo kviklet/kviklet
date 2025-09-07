@@ -241,7 +241,7 @@ function DatasourceRequestBox({
                 <div className="flex justify-end">
                   <Button
                     className="mr-2"
-                    type="reset"
+                    htmlType="reset"
                     onClick={() => {
                       setEditMode(false);
                     }}
@@ -249,7 +249,7 @@ function DatasourceRequestBox({
                     Cancel
                   </Button>
                   <Button
-                    type="submit"
+                    variant="primary"
                     onClick={(e) => void changeStatement(e)}
                   >
                     Save
@@ -281,7 +281,7 @@ function DatasourceRequestBox({
             <LoadingCancelButton
               className=""
               id="runQuery"
-              type="submit"
+              variant="primary"
               disabled={
                 request?.reviewStatus !== "APPROVED" ||
                 request?.executionStatus === "EXECUTED"
@@ -307,10 +307,10 @@ function DatasourceRequestBox({
             <Button
               className=""
               id="runQuery"
-              type={
+              variant={
                 (request?.reviewStatus == "APPROVED" &&
                   request?.executionStatus !== "EXECUTED" &&
-                  "submit") ||
+                  "primary") ||
                 "disabled"
               }
               onClick={() => void runQuery()}

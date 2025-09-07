@@ -190,7 +190,7 @@ const LicenseDropZone = ({
         {!selectedFile && "Upload a license file to activate it."}
       </p>
       <Button
-        type={selectedFile ? "submit" : "disabled"}
+        variant={selectedFile ? "primary" : "disabled"}
         className="ml-auto mt-2"
         onClick={() => {
           void handleUpload();

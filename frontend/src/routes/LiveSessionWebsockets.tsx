@@ -111,7 +111,8 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
         <div className="mb-4 flex justify-end">
           <Button
             onClick={onExecuteQueryClick}
-            type={(isLoading && "disabled") || "button"}
+            htmlType="button"
+            variant={isLoading ? "disabled" : undefined}
           >
             {isLoading ? "Running..." : "Run Query"}
           </Button>

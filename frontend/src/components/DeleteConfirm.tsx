@@ -22,7 +22,7 @@ const DeleteConfirm = (props: {
           <Button
             className="ml-2"
             onClick={() => void props.onConfirm()}
-            type="submit"
+            variant="primary"
           >
             Confirm
           </Button>
