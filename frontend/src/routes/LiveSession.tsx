@@ -149,13 +149,13 @@ const Editor = ({
         </div>
         <div className="flex flex-row">
           {request?._type === "DATASOURCE" && isRelationalDatabase(request) && (
-            <a className="mr-2 ml-auto" href="#" onClick={handleClick}>
+            <a className="ml-auto mr-2" href="#" onClick={handleClick}>
               <Button>Download as CSV</Button>
             </a>
           )}
           {request?._type === "DATASOURCE" &&
             (request.connection.type as string) === "MONGODB" && (
-              <a className="mr-2 ml-auto" href="#" onClick={handleJsonClick}>
+              <a className="ml-auto mr-2" href="#" onClick={handleJsonClick}>
                 <Button>Download as JSON</Button>
               </a>
             )}
