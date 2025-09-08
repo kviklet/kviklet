@@ -49,8 +49,8 @@ function DatasourceRequestBox({
     request?.type == "SingleExecution"
       ? " wants to execute a statement on "
       : request?.type == "TemporaryAccess"
-        ? " wants to have access to "
-        : " wants to get a SQL dump from ";
+      ? " wants to have access to "
+      : " wants to get a SQL dump from ";
 
   const navigateCopy = () => {
     navigate(`/new`, {
@@ -86,13 +86,10 @@ function DatasourceRequestBox({
             onClick: () => {},
             enabled: request?.jsonDownload?.allowed || false,
             tooltip:
-              (!request?.jsonDownload?.allowed &&
-                request?.jsonDownload?.reason) ||
+              (!request?.jsonDownload?.allowed && request?.jsonDownload?.reason) ||
               undefined,
             content: (
-              <a
-                href={`${baseUrl}/execution-requests/${request?.id}/download-json`}
-              >
+              <a href={`${baseUrl}/execution-requests/${request?.id}/download-json`}>
                 Download as JSON
               </a>
             ),
@@ -204,9 +201,7 @@ function DatasourceRequestBox({
         <SQLDumpConfirm
           title="Get SQL Dump"
           message={`Are you sure you want to get sql dump from database ${request?.connection?.displayName}?`}
-          onConfirm={() =>
-            handleStreamSQLDump(request.id, request.connection.id)
-          }
+          onConfirm={() => handleStreamSQLDump(request.id, request.connection.id)}
           onCancel={() => setShowSQLDumpModal(false)}
         />
       </Modal>
@@ -318,8 +313,8 @@ function DatasourceRequestBox({
               {request?.type === "SingleExecution"
                 ? "Run Query"
                 : request?.type === "TemporaryAccess"
-                  ? "Start Session"
-                  : "Get SQL Dump"}
+                ? "Start Session"
+                : "Get SQL Dump"}
             </LoadingCancelButton>
           ) : (
             <Button
