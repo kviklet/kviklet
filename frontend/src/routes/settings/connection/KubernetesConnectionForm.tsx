@@ -6,7 +6,7 @@ import Button from "../../../components/Button";
 import { z } from "zod";
 
 const kubernetesConnectionPayloadSchema = z.object({
-  connectionType: z.literal("KUBERNETES"),
+  connectionType: z.literal("KUBERNETES").default("KUBERNETES"),
   displayName: z.coerce.string(),
   id: z.string(),
   description: z.string(),
