@@ -94,6 +94,11 @@ const CSVDownloadSchema = z.object({
   reason: z.string(),
 });
 
+const JSONDownloadSchema = z.object({
+  allowed: z.boolean(),
+  reason: z.string(),
+});
+
 const RawDatasourceRequestSchema = z.object({
   id: z.string(),
   type: z.enum(["TemporaryAccess", "SingleExecution", "Dump"]),
@@ -107,6 +112,7 @@ const RawDatasourceRequestSchema = z.object({
   createdAt: z.coerce.date(),
   connectionName: z.string().optional(),
   csvDownload: CSVDownloadSchema.optional(),
+  jsonDownload: JSONDownloadSchema.optional(),
   temporaryAccessDuration: z.number().nullable(),
   liveSessionEnabled: z.boolean().optional(),
 });

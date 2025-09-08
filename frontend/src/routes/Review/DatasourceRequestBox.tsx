@@ -78,6 +78,21 @@ function DatasourceRequestBox({
         <span>Download as CSV</span>
       ),
     },
+    ...(request?.connection?.type === "MONGODB"
+      ? [
+          {
+            onClick: () => {},
+            enabled: request?.jsonDownload?.allowed || false,
+            tooltip:
+              (!request?.jsonDownload?.allowed && request?.jsonDownload?.reason) || undefined,
+            content: (
+              <a href={`${baseUrl}/execution-requests/${request?.id}/download-json`}>
+                Download as JSON
+              </a>
+            ),
+          },
+        ]
+      : []),
     {
       onClick: () => {
         void navigateCopy();

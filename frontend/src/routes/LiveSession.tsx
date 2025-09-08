@@ -103,6 +103,21 @@ const Editor = ({
     }/download?query=${encodeURIComponent(query || "")}`;
   };
 
+  const handleJsonClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+
+    const selection = editor?.getSelection();
+    const query =
+      (selection && editor?.getModel()?.getValueInRange(selection)) ||
+      editor?.getValue();
+
+    const downloadUrl = `${baseUrl}/execution-requests/${
+      request.id
+    }/download-json?query=${encodeURIComponent(query || "")}`;
+
+    window.location.href = downloadUrl;
+  };
+
   const executeQuery = async () => {
     const selection = editor?.getSelection();
     const text =
@@ -136,6 +151,11 @@ const Editor = ({
           {request?._type === "DATASOURCE" && isRelationalDatabase(request) && (
             <a className="ml-auto mr-2" href="#" onClick={handleClick}>
               <Button>Download as CSV</Button>
+            </a>
+          )}
+          {request?._type === "DATASOURCE" && request.connection.type === "MONGODB" && (
+            <a className="ml-auto mr-2" href="#" onClick={handleJsonClick}>
+              <Button>Download as JSON</Button>
             </a>
           )}
           {request?._type === "DATASOURCE" && isRelationalDatabase(request) ? (
