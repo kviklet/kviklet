@@ -98,9 +98,8 @@ const Editor = ({
       (selection && editor?.getModel()?.getValueInRange(selection)) ||
       editor?.getValue();
 
-    window.location.href = `${baseUrl}/execution-requests/${
-      request.id
-    }/download?query=${encodeURIComponent(query || "")}`;
+    window.location.href = `${baseUrl}/execution-requests/${request.id
+      }/download?query=${encodeURIComponent(query || "")}`;
   };
 
   const handleJsonClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
@@ -111,9 +110,8 @@ const Editor = ({
       (selection && editor?.getModel()?.getValueInRange(selection)) ||
       editor?.getValue();
 
-    const downloadUrl = `${baseUrl}/execution-requests/${
-      request.id
-    }/download-json?query=${encodeURIComponent(query || "")}`;
+    const downloadUrl = `${baseUrl}/execution-requests/${request.id
+      }/download-json?query=${encodeURIComponent(query || "")}`;
 
     window.location.href = downloadUrl;
   };

@@ -47,8 +47,8 @@ function DatasourceRequestBox({
     request?.type == "SingleExecution"
       ? " wants to execute a statement on "
       : request?.type == "TemporaryAccess"
-      ? " wants to have access to "
-      : " wants to get a SQL dump from ";
+        ? " wants to have access to "
+        : " wants to get a SQL dump from ";
 
   const navigateCopy = () => {
     navigate(`/new`, {
@@ -65,7 +65,7 @@ function DatasourceRequestBox({
 
   const menuDropDownItems = [
     {
-      onClick: () => {},
+      onClick: () => { },
       enabled: request?.csvDownload?.allowed || false,
       tooltip:
         (!request?.csvDownload?.allowed && request?.csvDownload?.reason) ||
@@ -80,18 +80,18 @@ function DatasourceRequestBox({
     },
     ...((request?.connection?.type as string) === "MONGODB"
       ? [
-          {
-            onClick: () => {},
-            enabled: request?.jsonDownload?.allowed || false,
-            tooltip:
-              (!request?.jsonDownload?.allowed && request?.jsonDownload?.reason) || undefined,
-            content: (
-              <a href={`${baseUrl}/execution-requests/${request?.id}/download-json`}>
-                Download as JSON
-              </a>
-            ),
-          },
-        ]
+        {
+          onClick: () => { },
+          enabled: request?.jsonDownload?.allowed || false,
+          tooltip:
+            (!request?.jsonDownload?.allowed && request?.jsonDownload?.reason) || undefined,
+          content: (
+            <a href={`${baseUrl}/execution-requests/${request?.id}/download-json`}>
+              Download as JSON
+            </a>
+          ),
+        },
+      ]
       : []),
     {
       onClick: () => {
@@ -102,29 +102,29 @@ function DatasourceRequestBox({
     },
     ...(request?.type == "SingleExecution"
       ? [
-          {
-            onClick: () => {
-              void runQuery(true);
-            },
-            enabled:
-              isRelationalDatabase(request) &&
-              request?.connection?.explainEnabled &&
-              (request?.reviewStatus === "APPROVED" ||
-                request?.reviewStatus === "AWAITING_APPROVAL"),
-            content: "Explain",
+        {
+          onClick: () => {
+            void runQuery(true);
           },
-        ]
+          enabled:
+            isRelationalDatabase(request) &&
+            request?.connection?.explainEnabled &&
+            (request?.reviewStatus === "APPROVED" ||
+              request?.reviewStatus === "AWAITING_APPROVAL"),
+          content: "Explain",
+        },
+      ]
       : []),
     ...(request?.type == "TemporaryAccess"
       ? [
-          {
-            onClick: () => {
-              void startServer();
-            },
-            enabled: request?.reviewStatus === "APPROVED",
-            content: "Start Proxy",
+        {
+          onClick: () => {
+            void startServer();
           },
-        ]
+          enabled: request?.reviewStatus === "APPROVED",
+          content: "Start Proxy",
+        },
+      ]
       : []),
   ];
 
@@ -307,16 +307,15 @@ function DatasourceRequestBox({
               title={getDisabledReason()}
             >
               <div
-                className={`play-triangle mr-2 inline-block h-3 w-2 ${
-                  (request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
+                className={`play-triangle mr-2 inline-block h-3 w-2 ${(request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
                   "bg-slate-500"
-                }`}
+                  }`}
               ></div>
               {request?.type === "SingleExecution"
                 ? "Run Query"
                 : request?.type === "TemporaryAccess"
-                ? "Start Session"
-                : "Get SQL Dump"}
+                  ? "Start Session"
+                  : "Get SQL Dump"}
             </LoadingCancelButton>
           ) : (
             <Button
@@ -333,10 +332,9 @@ function DatasourceRequestBox({
               title={getDisabledReason()}
             >
               <div
-                className={`play-triangle mr-2 inline-block h-3 w-2 ${
-                  (request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
+                className={`play-triangle mr-2 inline-block h-3 w-2 ${(request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
                   "bg-slate-500"
-                }`}
+                  }`}
               ></div>
               {request?.type == "SingleExecution"
                 ? "Run Query"
