@@ -173,7 +173,7 @@ function DatasourceRequestBox({
           done = result.done;
           const value = result.value;
           if (value !== undefined) {
-            await writableStream.write(value);
+            await writableStream.write(new Uint8Array(value));
           }
         }
         await writableStream.close();
