@@ -89,15 +89,13 @@ const ExecuteEvent = withType(
   "EXECUTE",
 );
 
-const CSVDownloadSchema = z.object({
+const DownloadSchema = z.object({
   allowed: z.boolean(),
   reason: z.string(),
 });
 
-const JSONDownloadSchema = z.object({
-  allowed: z.boolean(),
-  reason: z.string(),
-});
+const CSVDownloadSchema = DownloadSchema;
+const JSONDownloadSchema = DownloadSchema;
 
 const RawDatasourceRequestSchema = z.object({
   id: z.string(),
