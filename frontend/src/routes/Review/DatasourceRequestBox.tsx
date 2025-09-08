@@ -65,7 +65,7 @@ function DatasourceRequestBox({
 
   const menuDropDownItems = [
     {
-      onClick: () => { },
+      onClick: () => {},
       enabled: request?.csvDownload?.allowed || false,
       tooltip:
         (!request?.csvDownload?.allowed && request?.csvDownload?.reason) ||
@@ -80,18 +80,22 @@ function DatasourceRequestBox({
     },
     ...((request?.connection?.type as string) === "MONGODB"
       ? [
-        {
-          onClick: () => { },
-          enabled: request?.jsonDownload?.allowed || false,
-          tooltip:
-            (!request?.jsonDownload?.allowed && request?.jsonDownload?.reason) || undefined,
-          content: (
-            <a href={`${baseUrl}/execution-requests/${request?.id}/download-json`}>
-              Download as JSON
-            </a>
-          ),
-        },
-      ]
+          {
+            onClick: () => {},
+            enabled: request?.jsonDownload?.allowed || false,
+            tooltip:
+              (!request?.jsonDownload?.allowed &&
+                request?.jsonDownload?.reason) ||
+              undefined,
+            content: (
+              <a
+                href={`${baseUrl}/execution-requests/${request?.id}/download-json`}
+              >
+                Download as JSON
+              </a>
+            ),
+          },
+        ]
       : []),
     {
       onClick: () => {
@@ -102,29 +106,29 @@ function DatasourceRequestBox({
     },
     ...(request?.type == "SingleExecution"
       ? [
-        {
-          onClick: () => {
-            void runQuery(true);
+          {
+            onClick: () => {
+              void runQuery(true);
+            },
+            enabled:
+              isRelationalDatabase(request) &&
+              request?.connection?.explainEnabled &&
+              (request?.reviewStatus === "APPROVED" ||
+                request?.reviewStatus === "AWAITING_APPROVAL"),
+            content: "Explain",
           },
-          enabled:
-            isRelationalDatabase(request) &&
-            request?.connection?.explainEnabled &&
-            (request?.reviewStatus === "APPROVED" ||
-              request?.reviewStatus === "AWAITING_APPROVAL"),
-          content: "Explain",
-        },
-      ]
+        ]
       : []),
     ...(request?.type == "TemporaryAccess"
       ? [
-        {
-          onClick: () => {
-            void startServer();
+          {
+            onClick: () => {
+              void startServer();
+            },
+            enabled: request?.reviewStatus === "APPROVED",
+            content: "Start Proxy",
           },
-          enabled: request?.reviewStatus === "APPROVED",
-          content: "Start Proxy",
-        },
-      ]
+        ]
       : []),
   ];
 
@@ -246,7 +250,7 @@ function DatasourceRequestBox({
             editMode ? (
               <div>
                 <textarea
-                  className="mb-2 block w-full appearance-none rounded-md border border-gray-200 bg-slate-100 p-1 leading-normal text-gray-700 transition-colors focus:border-gray-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-slate-500 dark:hover:border-slate-600 dark:focus:hover:border-slate-500"
+                  className="mb-2 block w-full appearance-none rounded-md border border-gray-200 bg-slate-100 p-1 leading-normal text-gray-700 transition-colors focus:border-gray-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:hover:border-slate-600 dark:focus:border-slate-500 dark:focus:hover:border-slate-500"
                   id="statement"
                   name="statement"
                   rows={4}
@@ -307,9 +311,10 @@ function DatasourceRequestBox({
               title={getDisabledReason()}
             >
               <div
-                className={`play-triangle mr-2 inline-block h-3 w-2 ${(request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
+                className={`play-triangle mr-2 inline-block h-3 w-2 ${
+                  (request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
                   "bg-slate-500"
-                  }`}
+                }`}
               ></div>
               {request?.type === "SingleExecution"
                 ? "Run Query"
@@ -332,9 +337,10 @@ function DatasourceRequestBox({
               title={getDisabledReason()}
             >
               <div
-                className={`play-triangle mr-2 inline-block h-3 w-2 ${(request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
+                className={`play-triangle mr-2 inline-block h-3 w-2 ${
+                  (request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
                   "bg-slate-500"
-                  }`}
+                }`}
               ></div>
               {request?.type == "SingleExecution"
                 ? "Run Query"

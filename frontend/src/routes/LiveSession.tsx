@@ -98,8 +98,9 @@ const Editor = ({
       (selection && editor?.getModel()?.getValueInRange(selection)) ||
       editor?.getValue();
 
-    window.location.href = `${baseUrl}/execution-requests/${request.id
-      }/download?query=${encodeURIComponent(query || "")}`;
+    window.location.href = `${baseUrl}/execution-requests/${
+      request.id
+    }/download?query=${encodeURIComponent(query || "")}`;
   };
 
   const handleJsonClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
@@ -110,8 +111,9 @@ const Editor = ({
       (selection && editor?.getModel()?.getValueInRange(selection)) ||
       editor?.getValue();
 
-    const downloadUrl = `${baseUrl}/execution-requests/${request.id
-      }/download-json?query=${encodeURIComponent(query || "")}`;
+    const downloadUrl = `${baseUrl}/execution-requests/${
+      request.id
+    }/download-json?query=${encodeURIComponent(query || "")}`;
 
     window.location.href = downloadUrl;
   };
@@ -147,15 +149,16 @@ const Editor = ({
         </div>
         <div className="flex flex-row">
           {request?._type === "DATASOURCE" && isRelationalDatabase(request) && (
-            <a className="ml-auto mr-2" href="#" onClick={handleClick}>
+            <a className="mr-2 ml-auto" href="#" onClick={handleClick}>
               <Button>Download as CSV</Button>
             </a>
           )}
-          {request?._type === "DATASOURCE" && (request.connection.type as string) === "MONGODB" && (
-            <a className="ml-auto mr-2" href="#" onClick={handleJsonClick}>
-              <Button>Download as JSON</Button>
-            </a>
-          )}
+          {request?._type === "DATASOURCE" &&
+            (request.connection.type as string) === "MONGODB" && (
+              <a className="mr-2 ml-auto" href="#" onClick={handleJsonClick}>
+                <Button>Download as JSON</Button>
+              </a>
+            )}
           {request?._type === "DATASOURCE" && isRelationalDatabase(request) ? (
             <LoadingCancelButton
               className=""
