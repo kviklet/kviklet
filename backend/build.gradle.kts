@@ -57,7 +57,7 @@ dependencies {
     implementation("org.springframework.security:spring-security-config")
     implementation("org.springframework:spring-context-support")
     implementation("com.github.jsqlparser:jsqlparser:4.9")
-    implementation("io.kubernetes:client-java:20.0.1")
+    implementation("io.kubernetes:client-java:24.0.0")
     implementation("software.amazon.awssdk:rds:2.30.37")
     implementation("software.amazon.awssdk:sts:2.30.37")
 
