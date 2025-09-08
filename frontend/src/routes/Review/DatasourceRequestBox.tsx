@@ -49,8 +49,8 @@ function DatasourceRequestBox({
     request?.type == "SingleExecution"
       ? " wants to execute a statement on "
       : request?.type == "TemporaryAccess"
-        ? " wants to have access to "
-        : " wants to get a SQL dump from ";
+      ? " wants to have access to "
+      : " wants to get a SQL dump from ";
 
   const navigateCopy = () => {
     navigate(`/new`, {
@@ -86,14 +86,17 @@ function DatasourceRequestBox({
             onClick: () => {},
             enabled: request?.jsonDownload?.allowed || false,
             tooltip:
-              (!request?.jsonDownload?.allowed && request?.jsonDownload?.reason) ||
+              (!request?.jsonDownload?.allowed &&
+                request?.jsonDownload?.reason) ||
               undefined,
             content: request?.jsonDownload?.allowed ? (
-              <a href={`${baseUrl}/execution-requests/${request?.id}/download-json`}>
+              <a
+                href={`${baseUrl}/execution-requests/${request?.id}/download-json`}
+              >
                 Download as JSON
               </a>
             ) : (
-              <span>Download as CSV</span>
+              <span>Download as JSON</span>
             ),
           },
         ]
@@ -317,8 +320,8 @@ function DatasourceRequestBox({
               {request?.type === "SingleExecution"
                 ? "Run Query"
                 : request?.type === "TemporaryAccess"
-                  ? "Start Session"
-                  : "Get SQL Dump"}
+                ? "Start Session"
+                : "Get SQL Dump"}
             </LoadingCancelButton>
           ) : (
             <Button
