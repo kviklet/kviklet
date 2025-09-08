@@ -78,7 +78,7 @@ function DatasourceRequestBox({
         <span>Download as CSV</span>
       ),
     },
-    ...(request?.connection?.type === (request.connection.type as string) === "MONGODB"
+    ...((request?.connection?.type as string) === "MONGODB"
       ? [
           {
             onClick: () => {},
