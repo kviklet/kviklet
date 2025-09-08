@@ -34,11 +34,13 @@ function DatasourceRequestBox({
   const [showSQLDumpModal, setShowSQLDumpModal] = useState(false);
   const navigate = useNavigate();
   const [statement, setStatement] = useState(request?.statement || "");
+
   const changeStatement = async (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     await updateRequest({ statement });
     setEditMode(false);
   };
+
   useEffect(() => {
     setStatement(request?.statement || "");
   }, [request?.statement]);
@@ -134,7 +136,6 @@ function DatasourceRequestBox({
 
   const fileHandler = async (connectionId: string) => {
     try {
-      // Create a handle for the file the user wants to save
       const fileHandle: FileSystemFileHandle = await window.showSaveFilePicker({
         suggestedName: `${connectionId}.sql`,
         types: [
@@ -153,7 +154,6 @@ function DatasourceRequestBox({
     }
   };
 
-  // Function to handle streaming the SQL dump and saving it to a file
   const handleStreamSQLDump = async (
     executionRequestId: string,
     connectionId: string,
@@ -165,7 +165,6 @@ function DatasourceRequestBox({
       const reader = responseStream.getReader();
       const writableStream = await fileHandle.createWritable();
 
-      // Handle reading from the readable stream and writing to the writable stream
       const pump = async () => {
         let done = false;
         while (!done) {
