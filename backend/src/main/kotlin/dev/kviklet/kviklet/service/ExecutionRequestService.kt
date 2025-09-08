@@ -439,6 +439,7 @@ class ExecutionRequestService(
         id: ExecutionRequestId,
         executionRequest: ExecutionRequestDetails,
         userId: String,
+        statement: String?,
     ): KubernetesExecutionResult {
         if (executionRequest.request !is KubernetesExecutionRequest) {
             throw RuntimeException("This should never happen! Probably there is a way to refactor this code")
@@ -448,7 +449,7 @@ class ExecutionRequestService(
             id,
             userId,
             ExecutePayload(
-                command = executionRequest.request.command!!,
+                command = statement ?: executionRequest.request.command!!,
                 containerName = executionRequest.request.containerName,
                 podName = executionRequest.request.podName,
                 namespace = executionRequest.request.namespace,
@@ -461,7 +462,7 @@ class ExecutionRequestService(
         val result = kubernetesApi.executeCommandOnPod(
             namespace = executionRequest.request.namespace!!,
             podName = executionRequest.request.podName!!,
-            command = executionRequest.request.command,
+            command = statement ?: executionRequest.request.command!!,
             containerName = containerName,
             timeout = 60,
         )
@@ -503,7 +504,7 @@ class ExecutionRequestService(
                 executeDatasourceRequest(id, executionRequest, connection, query, userId)
             }
             is KubernetesConnection -> {
-                executeKubernetesRequest(id, executionRequest, userId)
+                executeKubernetesRequest(id, executionRequest, userId, query)
             }
         }
     }

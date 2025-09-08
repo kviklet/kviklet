@@ -63,6 +63,7 @@ const kubernetesConnectionResponseSchema = withType(
       numTotalRequired: z.coerce.number(),
     }),
     maxExecutions: z.coerce.number().nullable(),
+    temporaryAccessEnabled: z.boolean(),
   }),
   "KUBERNETES",
 );

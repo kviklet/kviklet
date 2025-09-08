@@ -210,7 +210,7 @@ class AuthorizationManagerInterceptor(
     private fun attemptPostAuthorization(invocation: MethodInvocation, returnedObject: Any?): Any? =
         when (returnedObject) {
             is Collection<*> -> {
-                filterCollection(invocation, returnedObject as MutableCollection<*>)
+                filterCollection(invocation, returnedObject.toMutableList())
             }
 
             null -> {

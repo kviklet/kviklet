@@ -125,8 +125,8 @@ const RawKubernetesRequestSchema = z.object({
   podName: z.string(),
   namespace: z.string(),
   containerName: z.coerce.string(),
-  command: z.string().optional(),
-  temporaryAccessDuration: z.number().optional(),
+  command: z.string().optional().nullable(),
+  temporaryAccessDuration: z.number().optional().nullable(),
   liveSessionEnabled: z.boolean().optional(),
 });
 

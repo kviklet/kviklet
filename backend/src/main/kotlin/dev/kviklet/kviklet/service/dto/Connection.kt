@@ -150,4 +150,5 @@ data class KubernetesConnection(
     override val description: String,
     override val reviewConfig: ReviewConfig,
     override val maxExecutions: Int?,
+    val temporaryAccessEnabled: Boolean,
 ) : Connection(id, displayName, description, reviewConfig, maxExecutions)

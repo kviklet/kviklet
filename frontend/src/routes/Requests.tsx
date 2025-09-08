@@ -89,11 +89,6 @@ const useRequests = (onlyPending: boolean, searchTerm: string) => {
         addNotification({
           title: "Failed to fetch requests",
           text: requests.message,
-          type: "info",
-        });
-        addNotification({
-          title: "Failed to fetch requests",
-          text: requests.message,
           type: "error",
         });
         setLoading(false);
