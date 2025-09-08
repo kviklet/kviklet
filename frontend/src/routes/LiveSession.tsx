@@ -154,7 +154,7 @@ const Editor = ({
               <Button>Download as CSV</Button>
             </a>
           )}
-          {request?._type === "DATASOURCE" && request.connection.type === ConnectionType.MONGODB && (
+          {request?._type === "DATASOURCE" && request.connection.type === "MONGODB" && (
             <a className="ml-auto mr-2" href="#" onClick={handleJsonClick}>
               <Button>Download as JSON</Button>
             </a>

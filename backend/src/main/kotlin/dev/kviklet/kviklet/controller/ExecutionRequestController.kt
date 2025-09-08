@@ -680,7 +680,7 @@ class ExecutionRequestController(
 
     @Operation(
         summary = "Execute Execution Request and Download as JSON (MongoDB only)",
-        description = "Run the query and download results as JSON after the Execution Request has been approved (MongoDB Only)",
+        description = "Download results as JSON after the Execution Request has been approved (MongoDB Only)",
     )
     @GetMapping("/{executionRequestId}/download-json")
     fun downloadJson(

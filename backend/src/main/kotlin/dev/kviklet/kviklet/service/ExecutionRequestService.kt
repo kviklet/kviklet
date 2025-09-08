@@ -634,7 +634,7 @@ class ExecutionRequestService(
 
         val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
         val jsonGenerator = mapper.factory.createGenerator(outputStream)
-            .useDefaultPrettyPrinter() 
+            .useDefaultPrettyPrinter()
         jsonGenerator.writeStartArray()
 
         // streaming tanpa limit
