@@ -479,8 +479,6 @@ const executeCommand = async (
   );
 };
 
-export type ConnectionType = "MYSQL" | "POSTGRESQL" | "MONGODB";
-
 export {
   addRequest,
   getRequests,

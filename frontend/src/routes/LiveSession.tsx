@@ -17,7 +17,6 @@ import { isApiErrorResponse } from "../api/Errors";
 import baseUrl from "../api/base";
 import useRequest, { isRelationalDatabase } from "../hooks/request";
 import LoadingCancelButton from "../components/LoadingCancelButton";
-import { ConnectionType } from "../api/ExecutionRequestApi"; 
 
 interface SessionParams {
   requestId: string;
@@ -154,7 +153,7 @@ const Editor = ({
               <Button>Download as CSV</Button>
             </a>
           )}
-          {request?._type === "DATASOURCE" && request.connection.type === ConnectionType.MONGODB && (
+          {request?._type === "DATASOURCE" && (request.connection.type as string) === "MONGODB" && (
             <a className="ml-auto mr-2" href="#" onClick={handleJsonClick}>
               <Button>Download as JSON</Button>
             </a>
