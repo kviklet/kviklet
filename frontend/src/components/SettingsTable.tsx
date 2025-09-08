@@ -44,13 +44,8 @@ function SettingsTable<T>({
 
   const handleDelete = async (item: T) => {
     if (!onDelete) return;
-
-    try {
-      await onDelete(item);
-      setDeleteItem(null);
-    } finally {
-      // Delete completed
-    }
+    await onDelete(item);
+    setDeleteItem(null);
   };
 
   const getCellValue = (item: T, column: Column<T>): ReactNode => {

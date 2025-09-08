@@ -307,6 +307,7 @@ class ConnectionAdapter(
                 reviewConfig = reviewConfig,
                 connectionType = ConnectionType.KUBERNETES,
                 maxExecutions = maxExecutions,
+                temporaryAccessEnabled = true,
             ),
         ),
     )
@@ -360,6 +361,7 @@ class ConnectionAdapter(
                 description = connection.description,
                 reviewConfig = connection.reviewConfig,
                 maxExecutions = connection.maxExecutions,
+                temporaryAccessEnabled = connection.temporaryAccessEnabled,
             )
     }
 }

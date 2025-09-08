@@ -238,6 +238,7 @@ data class KubernetesConnectionResponse(
     val description: String,
     val reviewConfig: ReviewConfigResponse,
     val maxExecutions: Int?,
+    val temporaryAccessEnabled: Boolean,
 ) : ConnectionResponse(connectionType = ConnectionType.KUBERNETES) {
     companion object {
         fun fromDto(kubernetesConnection: KubernetesConnection) = KubernetesConnectionResponse(
@@ -248,6 +249,7 @@ data class KubernetesConnectionResponse(
                 kubernetesConnection.reviewConfig.numTotalRequired,
             ),
             maxExecutions = kubernetesConnection.maxExecutions,
+            temporaryAccessEnabled = kubernetesConnection.temporaryAccessEnabled,
         )
     }
 }

@@ -139,8 +139,6 @@ export default function DatabaseConnectionForm(props: {
     resolver: zodResolver(connectionFormSchema),
   });
 
-  console.log(errors);
-
   const [protocolOptions, setProtocolOptions] = useState<DatabaseProtocol[]>([
     DatabaseProtocol.POSTGRESQL,
   ]);

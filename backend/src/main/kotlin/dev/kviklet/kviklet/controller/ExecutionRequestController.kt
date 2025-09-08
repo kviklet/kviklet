@@ -94,7 +94,7 @@ data class CreateKubernetesExecutionRequestRequest(
     val namespace: String,
     val podName: String,
     val containerName: String?,
-    val command: String,
+    val command: String?,
     @field:Min(0)
     override val temporaryAccessDuration: Long? = null,
 ) : CreateExecutionRequestRequest(connectionId, title, type, description, temporaryAccessDuration)
