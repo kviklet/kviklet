@@ -479,6 +479,12 @@ const executeCommand = async (
   );
 };
 
+export enum ConnectionType {
+  MYSQL = "MYSQL",
+  POSTGRESQL = "POSTGRESQL",
+  MONGODB = "MONGODB",
+}
+
 export {
   addRequest,
   getRequests,

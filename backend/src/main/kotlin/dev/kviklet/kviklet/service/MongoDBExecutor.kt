@@ -75,7 +75,7 @@ class MongoDBExecutor {
         connectionString: String,
         databaseName: String,
         query: String,
-        onDocument: (Document) -> Unit
+        onDocument: (Document) -> Unit,
     ) {
         try {
             val settings = MongoClientSettings.builder()

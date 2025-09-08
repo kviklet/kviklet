@@ -680,7 +680,7 @@ class ExecutionRequestController(
 
     @Operation(
         summary = "Execute Execution Request and Download as JSON (MongoDB only)",
-        description = "Run the query and download results as JSON after the Execution Request has been approved. Only supported for MongoDB connections.",
+        description = "Run the query and download results as JSON after the Execution Request has been approved (MongoDB Only)",
     )
     @GetMapping("/{executionRequestId}/download-json")
     fun downloadJson(
@@ -690,7 +690,7 @@ class ExecutionRequestController(
         @RequestParam(required = false) query: String?,
     ) {
         response.contentType = MediaType.APPLICATION_JSON_VALUE
-        val fileName = "${executionRequestId}.json"
+        val fileName = "$executionRequestId.json"
         response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"$fileName\"")
         val outputStream = response.outputStream
         executionRequestService.streamResultsAsJson(executionRequestId, userDetails.id, outputStream, query)

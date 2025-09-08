@@ -606,7 +606,6 @@ class ExecutionRequestService(
         if (connection.type != DatasourceType.MONGODB) {
             throw RuntimeException("Only MongoDB requests can be downloaded as JSON")
         }
-        
         val (allowed, reason) = executionRequest.jsonDownloadAllowed(query)
         if (!allowed) {
             throw RuntimeException(reason)
@@ -636,7 +635,6 @@ class ExecutionRequestService(
         val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
         val jsonGenerator = mapper.factory.createGenerator(outputStream)
             .useDefaultPrettyPrinter() 
-
         jsonGenerator.writeStartArray()
 
         // streaming tanpa limit
@@ -651,7 +649,6 @@ class ExecutionRequestService(
         jsonGenerator.writeEndArray()
         jsonGenerator.flush()
     }
-
 
     @Policy(Permission.EXECUTION_REQUEST_GET)
     fun explain(id: ExecutionRequestId, query: String?, userId: String): DBExecutionResult {
