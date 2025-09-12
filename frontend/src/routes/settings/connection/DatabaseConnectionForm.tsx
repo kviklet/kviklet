@@ -579,6 +579,12 @@ const TestingConnectionFragment = (props: {
 
   const handleSubmitTest = props.handleSubmit(async (data: ConnectionForm) => {
     setIsTestingConnection(true);
+    if (data.connectionType === "DATASOURCE") {
+      const duration = data.maxTemporaryAccessDuration;
+      if (!duration || duration === 0) {
+        data.maxTemporaryAccessDuration = null;
+      }
+    }
     const response = await testConnection(data);
     if (isApiErrorResponse(response)) {
       addNotification({
