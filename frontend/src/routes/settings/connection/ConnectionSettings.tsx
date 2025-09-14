@@ -37,7 +37,8 @@ const useIdNamePair = () => {
 };
 
 const ConnectionSettings = () => {
-  const { loading, connections, createConnection } = useConnections();
+  const { loading, connections, createConnection, testConnection } =
+    useConnections();
   const navigate = useNavigate();
 
   const [showAddConnectionModal, setShowAddConnectionModal] =
@@ -144,6 +145,7 @@ const ConnectionSettings = () => {
         >
           <DatabaseConnectionForm
             createConnection={handleCreateConnection}
+            testConnection={testConnection}
             closeModal={() => {
               setShowAddConnectionModal(false);
               setConnectionTypeChoice(null);
