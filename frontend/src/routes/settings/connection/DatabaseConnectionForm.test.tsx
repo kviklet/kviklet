@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 
 const mockCreateConnection = vi.fn();
+const mockTestConnection = vi.fn();
 const mockCloseModal = vi.fn();
 
 describe("DatabaseConnectionForm - Max Temporary Access Duration", () => {
@@ -16,6 +17,7 @@ describe("DatabaseConnectionForm - Max Temporary Access Duration", () => {
     render(
       <DatabaseConnectionForm
         createConnection={mockCreateConnection}
+        testConnection={mockTestConnection}
         closeModal={mockCloseModal}
       />,
     );
@@ -38,6 +40,7 @@ describe("DatabaseConnectionForm - Max Temporary Access Duration", () => {
     render(
       <DatabaseConnectionForm
         createConnection={mockCreateConnection}
+        testConnection={mockTestConnection}
         closeModal={mockCloseModal}
       />,
     );
@@ -77,6 +80,7 @@ describe("DatabaseConnectionForm - Max Temporary Access Duration", () => {
     render(
       <DatabaseConnectionForm
         createConnection={mockCreateConnection}
+        testConnection={mockTestConnection}
         closeModal={mockCloseModal}
       />,
     );
@@ -115,6 +119,7 @@ describe("DatabaseConnectionForm - Max Temporary Access Duration", () => {
     render(
       <DatabaseConnectionForm
         createConnection={mockCreateConnection}
+        testConnection={mockTestConnection}
         closeModal={mockCloseModal}
       />,
     );
@@ -132,6 +137,7 @@ describe("DatabaseConnectionForm - Max Temporary Access Duration", () => {
     render(
       <DatabaseConnectionForm
         createConnection={mockCreateConnection}
+        testConnection={mockTestConnection}
         closeModal={mockCloseModal}
       />,
     );

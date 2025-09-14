@@ -3,9 +3,9 @@ import {
   ConnectionPayload,
   DatabaseProtocol,
   DatabaseType,
-  testConnection,
   TestConnectionResponse,
 } from "../../../api/DatasourceApi";
+import { ApiResponse } from "../../../api/Errors";
 import {
   FieldErrors,
   useForm,
@@ -107,6 +107,9 @@ function convertToAlphanumericDash(input: string): string {
 
 export default function DatabaseConnectionForm(props: {
   createConnection: (payload: ConnectionPayload) => Promise<void>;
+  testConnection: (
+    payload: ConnectionPayload,
+  ) => Promise<ApiResponse<TestConnectionResponse>>;
   closeModal: () => void;
 }) {
   const getProtocolOptions = (type: DatabaseType) => {
@@ -440,6 +443,7 @@ export default function DatabaseConnectionForm(props: {
                         handleSubmit={handleSubmit}
                         type={watchType}
                         createConnection={props.createConnection}
+                        testConnection={props.testConnection}
                         closeModal={props.closeModal}
                       />
                     </div>
@@ -565,6 +569,9 @@ const TestingConnectionFragment = (props: {
   handleSubmit: UseFormHandleSubmit<ConnectionForm>;
   type: DatabaseType;
   createConnection: (connection: ConnectionPayload) => Promise<void>;
+  testConnection: (
+    connection: ConnectionPayload,
+  ) => Promise<ApiResponse<TestConnectionResponse>>;
   closeModal: () => void;
 }) => {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
@@ -579,13 +586,7 @@ const TestingConnectionFragment = (props: {
 
   const handleSubmitTest = props.handleSubmit(async (data: ConnectionForm) => {
     setIsTestingConnection(true);
-    if (data.connectionType === "DATASOURCE") {
-      const duration = data.maxTemporaryAccessDuration;
-      if (!duration || duration === 0) {
-        data.maxTemporaryAccessDuration = null;
-      }
-    }
-    const response = await testConnection(data);
+    const response = await props.testConnection(data);
     if (isApiErrorResponse(response)) {
       addNotification({
         title: "Failed to test connection",

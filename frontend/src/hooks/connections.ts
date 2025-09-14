@@ -9,9 +9,32 @@ import {
   getConnection,
   getConnections,
   patchConnection,
+  testConnection as testConnectionApi,
 } from "../api/DatasourceApi";
 import useNotification from "./useNotification";
 import { isApiErrorResponse } from "../api/Errors";
+
+// Utility function to normalize maxTemporaryAccessDuration field
+// Converts 0 or falsy values to null to match backend expectations
+const normalizeMaxTemporaryAccessDuration = <
+  T extends ConnectionPayload | PatchConnectionPayload,
+>(
+  payload: T,
+): T => {
+  if (payload.connectionType === "DATASOURCE") {
+    const duration = payload.maxTemporaryAccessDuration;
+    if (!duration || duration === 0) {
+      return {
+        ...payload,
+        maxTemporaryAccessDuration: null,
+        ...("clearMaxTempDuration" in payload && {
+          clearMaxTempDuration: true,
+        }),
+      };
+    }
+  }
+  return payload;
+};
 
 const useConnections = () => {
   const [connections, setConnections] = useState<ConnectionResponse[]>([]);
@@ -35,13 +58,9 @@ const useConnections = () => {
   }, []);
 
   const createConnection = async (connection: ConnectionPayload) => {
-    if (connection.connectionType === "DATASOURCE") {
-      const duration = connection.maxTemporaryAccessDuration;
-      if (!duration || duration === 0) {
-        connection.maxTemporaryAccessDuration = null;
-      }
-    }
-    const response = await addConnection(connection);
+    const normalizedConnection =
+      normalizeMaxTemporaryAccessDuration(connection);
+    const response = await addConnection(normalizedConnection);
 
     if (isApiErrorResponse(response)) {
       addNotification({
@@ -56,10 +75,17 @@ const useConnections = () => {
     }
   };
 
+  const testConnection = async (connection: ConnectionPayload) => {
+    const normalizedConnection =
+      normalizeMaxTemporaryAccessDuration(connection);
+    return await testConnectionApi(normalizedConnection);
+  };
+
   return {
     loading,
     connections,
     createConnection,
+    testConnection,
   };
 };
 
@@ -101,14 +127,9 @@ const useConnection = (id: string) => {
       // ensure that the password is not updated if the user didn't provide a new one
       patchedConnection.password = undefined;
     }
-    if (patchedConnection.connectionType === "DATASOURCE") {
-      const duration = patchedConnection.maxTemporaryAccessDuration;
-      if (!duration || duration === 0) {
-        patchedConnection.maxTemporaryAccessDuration = null;
-        patchedConnection.clearMaxTempDuration = true;
-      }
-    }
-    const response = await patchConnection(patchedConnection, connection.id);
+    const normalizedConnection =
+      normalizeMaxTemporaryAccessDuration(patchedConnection);
+    const response = await patchConnection(normalizedConnection, connection.id);
     if (isApiErrorResponse(response)) {
       addNotification({
         title: "Failed to edit connection",
