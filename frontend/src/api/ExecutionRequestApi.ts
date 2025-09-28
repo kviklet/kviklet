@@ -76,7 +76,7 @@ const ExecuteEvent = withType(
     type: z.literal("EXECUTE"),
     author: userResponseSchema.optional(),
     query: z.string().optional().nullable(),
-    results: z.array(ResultLog),
+    results: z.array(ResultLog).optional(),
     command: z.string().optional().nullable(),
     podName: z.string().optional().nullable(),
     namespace: z.string().optional().nullable(),

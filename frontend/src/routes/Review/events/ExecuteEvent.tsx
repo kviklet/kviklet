@@ -65,7 +65,7 @@ function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
             <Highlighter>{event.command}</Highlighter>
           </div>
         )}
-        {event.results.length > 0 && (
+        {event.results && event.results.length > 0 && (
           <div className="px-4 dark:bg-slate-900">
             <Disclosure defaultOpen={true}>
               {({ open }) => (
@@ -82,7 +82,7 @@ function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
                   </Disclosure.Button>
                   <Disclosure.Panel>
                     <div className="mb-2 flex flex-col space-y-2 text-sm dark:text-slate-300">
-                      {event.results.map((result, index) => {
+                      {event.results?.map((result, index) => {
                         const renderResult = () => {
                           if (result.type === "QUERY") {
                             return (

@@ -23,6 +23,7 @@ const resultMessage = z.object({
   type: z.literal("result"),
   sessionId: z.string(),
   results: z.array(DBExecuteResponseResultSchema),
+  event: z.any().optional(), // We'll use z.any() for now as the event structure is complex
 });
 
 const errorMessage = z.object({

@@ -7,7 +7,7 @@ import useRequest from "../hooks/request";
 import { useParams } from "react-router-dom";
 import useLiveSession from "../hooks/useLiveSession";
 import useNotification from "../hooks/useNotification";
-import EventHistory from "./Review/EventHistory";
+import LiveSessionActivityLog from "./LiveSessionActivityLog";
 
 interface LiveSessionWebsocketsProps {
   requestId: string;
@@ -52,7 +52,7 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
     }
   };
 
-  const { executeQuery, updateContent, isLoading, updatedRows, results } =
+  const { executeQuery, updateContent, isLoading, updatedRows, results, websocketEvents } =
     useLiveSession(requestId, updateEditorContent);
 
   const { request } = useRequest(requestId);
@@ -125,7 +125,7 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
             (results && <MultiResult resultList={results}></MultiResult>)}
         </div>
 
-        {request && <EventHistory request={request} reverse={true} />}
+        {request && <LiveSessionActivityLog request={request} websocketEvents={websocketEvents} />}
       </div>
     </div>
   );

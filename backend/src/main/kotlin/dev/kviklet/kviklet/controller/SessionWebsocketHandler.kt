@@ -49,6 +49,7 @@ data class ResultMessage(
     val type: String = "result",
     override val sessionId: LiveSessionId,
     val results: List<ExecutionResultResponse>,
+    val event: EventResponse? = null,
 ) : ResponseMessage(sessionId)
 
 data class SessionObserver(val webSocketSession: WebSocketSession, val user: User)
@@ -142,6 +143,7 @@ class SessionWebsocketHandler(
                             val resultMessage = ResultMessage(
                                 sessionId = liveSessionId,
                                 results = executionResult.results.map { ExecutionResultResponse.fromDto(it) },
+                                event = executionResult.event?.let { EventResponse.fromEvent(it) },
                             )
                             broadcastResultMessage(liveSessionId, resultMessage)
                         }

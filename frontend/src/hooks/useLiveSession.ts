@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { websocketBaseUrl } from "../api/base";
-import { ExecuteResponseResult } from "../api/ExecutionRequestApi";
+import { ExecuteResponseResult, Execute } from "../api/ExecutionRequestApi";
 import {
   executeStatementMessage,
   responseMessage,
@@ -20,6 +20,7 @@ const useLiveSession = (
   );
   const [isLoading, setIsLoading] = useState(false);
   const [updatedRows, setUpdatedRows] = useState<number | undefined>(undefined);
+  const [websocketEvents, setWebsocketEvents] = useState<Execute[]>([]);
 
   const { addNotification } = useNotification();
 
@@ -93,19 +94,25 @@ const useLiveSession = (
         return;
       }
 
-      switch (message.data.type) {
+      const messageData = message.data;
+      switch (messageData.type) {
         case "status":
-          setContent(message.data.consoleContent);
+          setContent(messageData.consoleContent);
           break;
-        case "result":
-          setResults(message.data.results);
+        case "result": {
+          setResults(messageData.results);
           setIsLoading(false);
+          // Add the event to websocket events if it exists
+          if (messageData.event) {
+            setWebsocketEvents((prev) => [...prev, messageData.event as Execute]);
+          }
           break;
+        }
         case "error":
           addNotification({
             type: "error",
             title: "Query error",
-            text: message.data.error,
+            text: messageData.error,
           });
           break;
       }
@@ -198,6 +205,7 @@ const useLiveSession = (
     isLoading,
     results,
     updatedRows,
+    websocketEvents,
   };
 };
 
