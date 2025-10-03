@@ -35,7 +35,7 @@ data class UpdateContentMessage(val content: String) : WebSocketMessage()
 
 data class ExecuteMessage(val statement: String) : WebSocketMessage()
 
-data class CancelMessage : WebSocketMessage()
+object CancelMessage : WebSocketMessage()
 
 sealed class ResponseMessage(open val sessionId: LiveSessionId)
 data class ErrorResponseMessage(val type: String = "error", override val sessionId: LiveSessionId, val error: String) :
