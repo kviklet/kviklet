@@ -92,7 +92,7 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
     }
   }, [requestId, initialLanguage]);
 
-  const onExecuteQueryClick = () => {
+  const onExecuteQueryClick = (): Promise<void> => {
     const selection = editor?.getSelection();
     const text =
       (selection && editor?.getModel()?.getValueInRange(selection)) ||
@@ -103,7 +103,7 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
         title: "Query Error",
         text: "Cannot execute an empty query",
       });
-      return;
+      return Promise.resolve();
     }
     executeQuery(text);
     return Promise.resolve();
