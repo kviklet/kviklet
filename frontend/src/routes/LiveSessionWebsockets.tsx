@@ -92,7 +92,7 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
     }
   }, [requestId, initialLanguage]);
 
-  const onExecuteQueryClick = async () => {
+  const onExecuteQueryClick = () => {
     const selection = editor?.getSelection();
     const text =
       (selection && editor?.getModel()?.getValueInRange(selection)) ||
@@ -106,6 +106,7 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
       return;
     }
     executeQuery(text);
+    return Promise.resolve();
   };
 
   const handleCsvDownload = (event: MouseEvent<HTMLAnchorElement>) => {
