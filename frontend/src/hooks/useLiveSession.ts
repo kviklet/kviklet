@@ -5,6 +5,7 @@ import {
   executeStatementMessage,
   responseMessage,
   updateContentMessage,
+  cancelMessage,
 } from "../api/LiveSessionApi";
 import { z } from "zod";
 import debounce from "lodash/debounce";
@@ -104,7 +105,10 @@ const useLiveSession = (
           setIsLoading(false);
           // Add the event to websocket events if it exists
           if (messageData.event) {
-            setWebsocketEvents((prev) => [...prev, messageData.event as Execute]);
+            setWebsocketEvents((prev) => [
+              ...prev,
+              messageData.event as Execute,
+            ]);
           }
           break;
         }
@@ -199,9 +203,23 @@ const useLiveSession = (
     updateContent(content);
   }, 300) as (content: string) => void;
 
+  const cancelQuery = () => {
+    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
+      addNotification({
+        type: "error",
+        title: "Connection error",
+        text: "No connection to server",
+      });
+      return;
+    }
+    sendMessage(cancelMessage, { type: "cancel" });
+    setIsLoading(false);
+  };
+
   return {
     executeQuery,
     updateContent: debouncedUpdateContent,
+    cancelQuery,
     isLoading,
     results,
     updatedRows,

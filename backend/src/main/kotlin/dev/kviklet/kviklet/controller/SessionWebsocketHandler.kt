@@ -27,12 +27,15 @@ import java.util.concurrent.ConcurrentHashMap
 @JsonSubTypes(
     JsonSubTypes.Type(value = UpdateContentMessage::class, name = "update_content"),
     JsonSubTypes.Type(value = ExecuteMessage::class, name = "execute"),
+    JsonSubTypes.Type(value = CancelMessage::class, name = "cancel"),
 )
 sealed class WebSocketMessage
 
 data class UpdateContentMessage(val content: String) : WebSocketMessage()
 
 data class ExecuteMessage(val statement: String) : WebSocketMessage()
+
+data class CancelMessage(val dummy: String = "") : WebSocketMessage()
 
 sealed class ResponseMessage(open val sessionId: LiveSessionId)
 data class ErrorResponseMessage(val type: String = "error", override val sessionId: LiveSessionId, val error: String) :
@@ -149,6 +152,10 @@ class SessionWebsocketHandler(
                         }
                         else -> throw IllegalStateException("Unsupported execution result type: $executionResult")
                     }
+                }
+                is CancelMessage -> {
+                    sessionService.cancelQuery(liveSessionId)
+                    logger.info("Query cancelled for session: $liveSessionId")
                 }
             }
         } catch (e: Exception) {

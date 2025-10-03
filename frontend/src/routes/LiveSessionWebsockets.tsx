@@ -1,13 +1,15 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, MouseEvent } from "react";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import Button from "../components/Button";
 import MultiResult from "../components/MultiResult";
 import Spinner from "../components/Spinner";
-import useRequest from "../hooks/request";
+import useRequest, { isRelationalDatabase } from "../hooks/request";
 import { useParams } from "react-router-dom";
 import useLiveSession from "../hooks/useLiveSession";
 import useNotification from "../hooks/useNotification";
 import LiveSessionActivityLog from "./LiveSessionActivityLog";
+import baseUrl from "../api/base";
+import LoadingCancelButton from "../components/LoadingCancelButton";
 
 interface LiveSessionWebsocketsProps {
   requestId: string;
@@ -52,8 +54,15 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
     }
   };
 
-  const { executeQuery, updateContent, isLoading, updatedRows, results, websocketEvents } =
-    useLiveSession(requestId, updateEditorContent);
+  const {
+    executeQuery,
+    updateContent,
+    cancelQuery,
+    isLoading,
+    updatedRows,
+    results,
+    websocketEvents,
+  } = useLiveSession(requestId, updateEditorContent);
 
   const { request } = useRequest(requestId);
 
@@ -83,7 +92,7 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
     }
   }, [requestId, initialLanguage]);
 
-  const onExecuteQueryClick = () => {
+  const onExecuteQueryClick = async () => {
     const selection = editor?.getSelection();
     const text =
       (selection && editor?.getModel()?.getValueInRange(selection)) ||
@@ -99,6 +108,17 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
     executeQuery(text);
   };
 
+  const handleCsvDownload = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    const selection = editor?.getSelection();
+    const query =
+      (selection && editor?.getModel()?.getValueInRange(selection)) ||
+      editor?.getValue();
+    window.location.href = `${baseUrl}/execution-requests/${requestId}/download?query=${encodeURIComponent(
+      query || "",
+    )}`;
+  };
+
   return (
     <div className="flex h-full flex-col">
       <div className="mx-auto flex h-full w-2/3 flex-col">
@@ -108,14 +128,20 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
         >
           <div className="h-full w-full" ref={monacoEl}></div>
         </div>
-        <div className="mb-4 flex justify-end">
-          <Button
+        <div className="mb-4 flex flex-row">
+          {request?._type === "DATASOURCE" && isRelationalDatabase(request) && (
+            <a className="ml-auto mr-2" href="#" onClick={handleCsvDownload}>
+              <Button>Download as CSV</Button>
+            </a>
+          )}
+          <LoadingCancelButton
             onClick={onExecuteQueryClick}
-            htmlType="button"
-            variant={isLoading ? "disabled" : undefined}
+            onCancel={() => cancelQuery()}
+            variant="primary"
           >
-            {isLoading ? "Running..." : "Run Query"}
-          </Button>
+            <div className="play-triangle mr-2 inline-block h-3 w-2 bg-slate-50"></div>
+            Run Query
+          </LoadingCancelButton>
         </div>
         {updatedRows !== undefined && (
           <div className="mb-4 text-green-500">{updatedRows} rows updated</div>
@@ -125,7 +151,12 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
             (results && <MultiResult resultList={results}></MultiResult>)}
         </div>
 
-        {request && <LiveSessionActivityLog request={request} websocketEvents={websocketEvents} />}
+        {request && (
+          <LiveSessionActivityLog
+            request={request}
+            websocketEvents={websocketEvents}
+          />
+        )}
       </div>
     </div>
   );
