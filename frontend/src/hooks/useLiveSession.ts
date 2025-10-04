@@ -11,11 +11,14 @@ import { z } from "zod";
 import debounce from "lodash/debounce";
 import useNotification from "./useNotification";
 
+type ExecuteResolver = () => void;
+
 const useLiveSession = (
   requestId: string,
   setContent: (content: string) => void,
 ) => {
   const ws = useRef<WebSocket | null>(null);
+  const executeResolverRef = useRef<ExecuteResolver | null>(null);
   const [results, setResults] = useState<ExecuteResponseResult[] | undefined>(
     undefined,
   );
@@ -110,6 +113,11 @@ const useLiveSession = (
               messageData.event as Execute,
             ]);
           }
+          // Resolve the execute promise
+          if (executeResolverRef.current) {
+            executeResolverRef.current();
+            executeResolverRef.current = null;
+          }
           break;
         }
         case "error":
@@ -118,6 +126,12 @@ const useLiveSession = (
             title: "Query error",
             text: messageData.error,
           });
+          setIsLoading(false);
+          // Resolve the execute promise on error too
+          if (executeResolverRef.current) {
+            executeResolverRef.current();
+            executeResolverRef.current = null;
+          }
           break;
       }
     } catch (err) {
@@ -131,32 +145,41 @@ const useLiveSession = (
     }
   };
 
-  const executeQuery = (query: string) => {
-    if (!query.trim()) {
-      addNotification({
-        type: "error",
-        title: "Query error",
-        text: "Query cannot be empty",
+  const executeQuery = (query: string): Promise<void> => {
+    return new Promise((resolve) => {
+      // Store resolver to call when result arrives
+      executeResolverRef.current = resolve;
+
+      if (!query.trim()) {
+        addNotification({
+          type: "error",
+          title: "Query error",
+          text: "Query cannot be empty",
+        });
+        executeResolverRef.current = null;
+        resolve();
+        return;
+      }
+
+      if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
+        addNotification({
+          type: "error",
+          title: "Connection error",
+          text: "No connection to server. Please try again.",
+        });
+        executeResolverRef.current = null;
+        resolve();
+        return;
+      }
+
+      setIsLoading(true);
+      setResults(undefined);
+      setUpdatedRows(undefined);
+
+      sendMessage(executeStatementMessage, {
+        type: "execute",
+        statement: query,
       });
-      return;
-    }
-
-    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
-      addNotification({
-        type: "error",
-        title: "Connection error",
-        text: "No connection to server. Please try again.",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    setResults(undefined);
-    setUpdatedRows(undefined);
-
-    sendMessage(executeStatementMessage, {
-      type: "execute",
-      statement: query,
     });
   };
 
