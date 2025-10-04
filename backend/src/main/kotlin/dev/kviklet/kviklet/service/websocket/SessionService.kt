@@ -50,4 +50,10 @@ class SessionService(
 
     @Policy(Permission.EXECUTION_REQUEST_GET)
     fun getSession(sessionId: LiveSessionId): LiveSession = sessionAdapter.findById(sessionId)
+
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
+    fun cancelQuery(sessionId: LiveSessionId) {
+        val session = sessionAdapter.findById(sessionId)
+        executionRequestService.cancel(session.executionRequest.request.id!!)
+    }
 }

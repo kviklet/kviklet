@@ -27,12 +27,15 @@ import java.util.concurrent.ConcurrentHashMap
 @JsonSubTypes(
     JsonSubTypes.Type(value = UpdateContentMessage::class, name = "update_content"),
     JsonSubTypes.Type(value = ExecuteMessage::class, name = "execute"),
+    JsonSubTypes.Type(value = CancelMessage::class, name = "cancel"),
 )
 sealed class WebSocketMessage
 
 data class UpdateContentMessage(val content: String) : WebSocketMessage()
 
 data class ExecuteMessage(val statement: String) : WebSocketMessage()
+
+object CancelMessage : WebSocketMessage()
 
 sealed class ResponseMessage(open val sessionId: LiveSessionId)
 data class ErrorResponseMessage(val type: String = "error", override val sessionId: LiveSessionId, val error: String) :
@@ -49,6 +52,7 @@ data class ResultMessage(
     val type: String = "result",
     override val sessionId: LiveSessionId,
     val results: List<ExecutionResultResponse>,
+    val event: EventResponse? = null,
 ) : ResponseMessage(sessionId)
 
 data class SessionObserver(val webSocketSession: WebSocketSession, val user: User)
@@ -142,11 +146,16 @@ class SessionWebsocketHandler(
                             val resultMessage = ResultMessage(
                                 sessionId = liveSessionId,
                                 results = executionResult.results.map { ExecutionResultResponse.fromDto(it) },
+                                event = executionResult.event?.let { EventResponse.fromEvent(it) },
                             )
                             broadcastResultMessage(liveSessionId, resultMessage)
                         }
                         else -> throw IllegalStateException("Unsupported execution result type: $executionResult")
                     }
+                }
+                is CancelMessage -> {
+                    sessionService.cancelQuery(liveSessionId)
+                    logger.info("Query cancelled for session: $liveSessionId")
                 }
             }
         } catch (e: Exception) {

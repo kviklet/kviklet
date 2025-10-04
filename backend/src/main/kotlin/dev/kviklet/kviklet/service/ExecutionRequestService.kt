@@ -432,6 +432,7 @@ class ExecutionRequestService(
         return DBExecutionResult(
             executionRequest = executionRequest,
             results = result,
+            event = event,
         )
     }
 
