@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 033-add-is-executing-column
+      author: jascha
+      changes:
+        - addColumn:
+            tableName: live_session
+            columns:
+              - column:
+                  name: is_executing
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

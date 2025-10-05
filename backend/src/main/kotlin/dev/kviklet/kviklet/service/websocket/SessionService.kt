@@ -36,7 +36,9 @@ class SessionService(
 
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
     fun executeStatement(sessionId: LiveSessionId, statement: String): ExecutionResult {
-        val session = sessionAdapter.findById(sessionId)
+        // Atomically check and set executing flag - this will throw if already executing
+        val session = sessionAdapter.checkAndSetExecuting(sessionId)
+
         return executionRequestService.execute(
             session.executionRequest.request.id!!,
             statement,
@@ -50,4 +52,15 @@ class SessionService(
 
     @Policy(Permission.EXECUTION_REQUEST_GET)
     fun getSession(sessionId: LiveSessionId): LiveSession = sessionAdapter.findById(sessionId)
+
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
+    fun cancelQuery(sessionId: LiveSessionId) {
+        val session = sessionAdapter.findById(sessionId)
+        executionRequestService.cancel(session.executionRequest.request.id!!)
+    }
+
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
+    fun clearExecutingFlag(sessionId: LiveSessionId) {
+        sessionAdapter.setExecuting(sessionId, false)
+    }
 }

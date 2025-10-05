@@ -73,8 +73,11 @@ sealed class ExecutionResult(open val executionRequest: ExecutionRequestDetails)
     override fun getRelated(resource: Resource) = executionRequest.getRelated(resource)
 }
 
-data class DBExecutionResult(override val executionRequest: ExecutionRequestDetails, val results: List<QueryResult>) :
-    ExecutionResult(executionRequest)
+data class DBExecutionResult(
+    override val executionRequest: ExecutionRequestDetails,
+    val results: List<QueryResult>,
+    val event: Event? = null,
+) : ExecutionResult(executionRequest)
 
 data class KubernetesExecutionResult(
     override val executionRequest: ExecutionRequestDetails,

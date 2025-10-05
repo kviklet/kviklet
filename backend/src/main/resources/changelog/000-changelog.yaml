@@ -92,3 +92,6 @@ databaseChangeLog:
   - include:
       file: 032-add-api-keys-table.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 033-add-is-executing-column.yaml
+      relativeToChangelogFile: true

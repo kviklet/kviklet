@@ -7,8 +7,12 @@ import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.LiveSession
 import dev.kviklet.kviklet.service.dto.LiveSessionId
 import jakarta.persistence.Entity
+import jakarta.persistence.LockModeType
 import jakarta.persistence.OneToOne
+import jakarta.persistence.QueryHint
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.QueryHints
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -20,11 +24,14 @@ class LiveSessionEntity(
 
     var consoleContent: String,
 
+    var isExecuting: Boolean = false,
+
 ) : BaseEntity() {
     fun toDto(connectionDto: Connection): LiveSession = LiveSession(
         id = id?.let { LiveSessionId(it) },
         executionRequest = executionRequest.toDetailDto(connectionDto),
         consoleContent = consoleContent,
+        isExecuting = isExecuting,
     )
 }
 
@@ -92,5 +99,45 @@ class LiveSessionAdapter(
     @Transactional
     fun deleteAll() {
         liveSessionRepository.deleteAll()
+    }
+
+    @Transactional
+    fun setExecuting(id: LiveSessionId, isExecuting: Boolean): LiveSession {
+        val liveSessionEntity = liveSessionRepository.findByIdOrNull(id.toString()) ?: throw EntityNotFound(
+            "Live session not found",
+            "Live session with id $id does not exist",
+        )
+
+        liveSessionEntity.isExecuting = isExecuting
+
+        val updatedEntity = liveSessionRepository.save(liveSessionEntity)
+        return updatedEntity.toDto(connectionAdapter.toDto(updatedEntity.executionRequest.connection))
+    }
+
+    @Transactional(readOnly = true)
+    fun isExecuting(id: LiveSessionId): Boolean {
+        val liveSessionEntity = liveSessionRepository.findByIdOrNull(id.toString()) ?: throw EntityNotFound(
+            "Live session not found",
+            "Live session with id $id does not exist",
+        )
+        return liveSessionEntity.isExecuting
+    }
+
+    @Transactional
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints(QueryHint(name = "javax.persistence.lock.timeout", value = "3000"))
+    fun checkAndSetExecuting(id: LiveSessionId): LiveSession {
+        val liveSessionEntity = liveSessionRepository.findByIdOrNull(id.toString()) ?: throw EntityNotFound(
+            "Live session not found",
+            "Live session with id $id does not exist",
+        )
+
+        if (liveSessionEntity.isExecuting) {
+            throw IllegalStateException("A query is already executing for this session")
+        }
+
+        liveSessionEntity.isExecuting = true
+        val updatedEntity = liveSessionRepository.save(liveSessionEntity)
+        return updatedEntity.toDto(connectionAdapter.toDto(updatedEntity.executionRequest.connection))
     }
 }

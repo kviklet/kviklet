@@ -1,25 +1,30 @@
 import { useEffect, useRef, useState } from "react";
 import { websocketBaseUrl } from "../api/base";
-import { ExecuteResponseResult } from "../api/ExecutionRequestApi";
+import { ExecuteResponseResult, Execute } from "../api/ExecutionRequestApi";
 import {
   executeStatementMessage,
   responseMessage,
   updateContentMessage,
+  cancelMessage,
 } from "../api/LiveSessionApi";
 import { z } from "zod";
 import debounce from "lodash/debounce";
 import useNotification from "./useNotification";
+
+type ExecuteResolver = () => void;
 
 const useLiveSession = (
   requestId: string,
   setContent: (content: string) => void,
 ) => {
   const ws = useRef<WebSocket | null>(null);
+  const executeResolverRef = useRef<ExecuteResolver | null>(null);
   const [results, setResults] = useState<ExecuteResponseResult[] | undefined>(
     undefined,
   );
   const [isLoading, setIsLoading] = useState(false);
   const [updatedRows, setUpdatedRows] = useState<number | undefined>(undefined);
+  const [websocketEvents, setWebsocketEvents] = useState<Execute[]>([]);
 
   const { addNotification } = useNotification();
 
@@ -93,20 +98,51 @@ const useLiveSession = (
         return;
       }
 
-      switch (message.data.type) {
+      const messageData = message.data;
+
+      console.log(messageData);
+      switch (messageData.type) {
         case "status":
-          setContent(message.data.consoleContent);
+          setContent(messageData.consoleContent);
           break;
-        case "result":
-          setResults(message.data.results);
+        case "result": {
+          setResults(messageData.results);
           setIsLoading(false);
+          // Add the event to websocket events if it exists
+          if (messageData.event) {
+            const event = messageData.event as Execute;
+            setWebsocketEvents((prev) => {
+              // Check if event already exists by ID
+              const existingIndex = prev.findIndex((e) => e.id === event.id);
+              if (existingIndex >= 0) {
+                // Update existing event (in case results were added)
+                const updated = [...prev];
+                updated[existingIndex] = event;
+                return updated;
+              }
+              // Add new event
+              return [...prev, event];
+            });
+          }
+          // Resolve the execute promise
+          if (executeResolverRef.current) {
+            executeResolverRef.current();
+            executeResolverRef.current = null;
+          }
           break;
+        }
         case "error":
           addNotification({
             type: "error",
             title: "Query error",
-            text: message.data.error,
+            text: messageData.error,
           });
+          setIsLoading(false);
+          // Resolve the execute promise on error too
+          if (executeResolverRef.current) {
+            executeResolverRef.current();
+            executeResolverRef.current = null;
+          }
           break;
       }
     } catch (err) {
@@ -120,32 +156,41 @@ const useLiveSession = (
     }
   };
 
-  const executeQuery = (query: string) => {
-    if (!query.trim()) {
-      addNotification({
-        type: "error",
-        title: "Query error",
-        text: "Query cannot be empty",
+  const executeQuery = (query: string): Promise<void> => {
+    return new Promise((resolve) => {
+      // Store resolver to call when result arrives
+      executeResolverRef.current = resolve;
+
+      if (!query.trim()) {
+        addNotification({
+          type: "error",
+          title: "Query error",
+          text: "Query cannot be empty",
+        });
+        executeResolverRef.current = null;
+        resolve();
+        return;
+      }
+
+      if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
+        addNotification({
+          type: "error",
+          title: "Connection error",
+          text: "No connection to server. Please try again.",
+        });
+        executeResolverRef.current = null;
+        resolve();
+        return;
+      }
+
+      setIsLoading(true);
+      setResults(undefined);
+      setUpdatedRows(undefined);
+
+      sendMessage(executeStatementMessage, {
+        type: "execute",
+        statement: query,
       });
-      return;
-    }
-
-    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
-      addNotification({
-        type: "error",
-        title: "Connection error",
-        text: "No connection to server. Please try again.",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    setResults(undefined);
-    setUpdatedRows(undefined);
-
-    sendMessage(executeStatementMessage, {
-      type: "execute",
-      statement: query,
     });
   };
 
@@ -192,12 +237,27 @@ const useLiveSession = (
     updateContent(content);
   }, 300) as (content: string) => void;
 
+  const cancelQuery = () => {
+    if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
+      addNotification({
+        type: "error",
+        title: "Connection error",
+        text: "No connection to server",
+      });
+      return;
+    }
+    sendMessage(cancelMessage, { type: "cancel" });
+    setIsLoading(false);
+  };
+
   return {
     executeQuery,
     updateContent: debouncedUpdateContent,
+    cancelQuery,
     isLoading,
     results,
     updatedRows,
+    websocketEvents,
   };
 };
 

@@ -14,6 +14,7 @@ data class LiveSession(
     val id: LiveSessionId? = null,
     val executionRequest: ExecutionRequestDetails,
     val consoleContent: String,
+    val isExecuting: Boolean = false,
 ) : SecuredDomainObject {
 
     fun getId() = executionRequest.getId()
