@@ -77,8 +77,7 @@ data class DBExecutionResult(
     override val executionRequest: ExecutionRequestDetails,
     val results: List<QueryResult>,
     val event: Event? = null,
-) :
-    ExecutionResult(executionRequest)
+) : ExecutionResult(executionRequest)
 
 data class KubernetesExecutionResult(
     override val executionRequest: ExecutionRequestDetails,

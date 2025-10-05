@@ -13,6 +13,7 @@ import dev.kviklet.kviklet.service.dto.LiveSession
 import dev.kviklet.kviklet.service.dto.LiveSessionId
 import dev.kviklet.kviklet.service.websocket.SessionService
 import org.slf4j.LoggerFactory
+import org.springframework.security.concurrent.DelegatingSecurityContextExecutorService
 import org.springframework.security.core.context.SecurityContext
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
@@ -22,6 +23,7 @@ import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.handler.TextWebSocketHandler
 import org.springframework.web.util.UriComponentsBuilder
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 @JsonSubTypes(
@@ -66,6 +68,11 @@ class SessionWebsocketHandler(
     private val logger = LoggerFactory.getLogger(SessionWebsocketHandler::class.java)
     private val sessionObservers = ConcurrentHashMap<LiveSessionId, MutableSet<SessionObserver>>()
     private val sessionToLiveSessionMap = ConcurrentHashMap<String, LiveSessionId>()
+
+    // Executor that propagates SecurityContext to background threads
+    private val queryExecutor = DelegatingSecurityContextExecutorService(
+        Executors.newCachedThreadPool(),
+    )
 
     override fun afterConnectionEstablished(session: WebSocketSession) {
         val requestId = extractRequestId(session)
@@ -137,21 +144,41 @@ class SessionWebsocketHandler(
                     broadcastUpdate(updatedSession)
                 }
                 is ExecuteMessage -> {
-                    val executionResult = sessionService.executeStatement(
-                        liveSessionId,
-                        webSocketMessage.statement,
-                    )
-                    when (executionResult) {
-                        is DBExecutionResult -> {
-                            val resultMessage = ResultMessage(
-                                sessionId = liveSessionId,
-                                results = executionResult.results.map { ExecutionResultResponse.fromDto(it) },
-                                event = executionResult.event?.let { EventResponse.fromEvent(it) },
+                    // Run execution in background thread with SecurityContext propagation
+                    queryExecutor.submit {
+                        try {
+                            val executionResult = sessionService.executeStatement(
+                                liveSessionId,
+                                webSocketMessage.statement,
                             )
-                            broadcastResultMessage(liveSessionId, resultMessage)
+                            when (executionResult) {
+                                is DBExecutionResult -> {
+                                    val resultMessage = ResultMessage(
+                                        sessionId = liveSessionId,
+                                        results = executionResult.results.map { ExecutionResultResponse.fromDto(it) },
+                                        event = executionResult.event?.let { EventResponse.fromEvent(it) },
+                                    )
+                                    broadcastResultMessage(liveSessionId, resultMessage)
+                                }
+                                else -> throw IllegalStateException(
+                                    "Unsupported execution result type: $executionResult",
+                                )
+                            }
+                        } catch (e: Exception) {
+                            logger.error("Error executing query", e)
+                            sessionObservers[liveSessionId]?.forEach { sessionObserver ->
+                                sendErrorResponseMessage(
+                                    sessionObserver.webSocketSession,
+                                    "Error executing query: ${e.message}",
+                                    liveSessionId,
+                                )
+                            }
+                        } finally {
+                            // Clear the executing flag
+                            sessionService.clearExecutingFlag(liveSessionId)
                         }
-                        else -> throw IllegalStateException("Unsupported execution result type: $executionResult")
                     }
+                    // Handler returns immediately - can now process other messages!
                 }
                 is CancelMessage -> {
                     sessionService.cancelQuery(liveSessionId)

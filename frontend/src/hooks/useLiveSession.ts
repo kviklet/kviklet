@@ -99,6 +99,8 @@ const useLiveSession = (
       }
 
       const messageData = message.data;
+
+      console.log(messageData);
       switch (messageData.type) {
         case "status":
           setContent(messageData.consoleContent);
@@ -108,10 +110,19 @@ const useLiveSession = (
           setIsLoading(false);
           // Add the event to websocket events if it exists
           if (messageData.event) {
-            setWebsocketEvents((prev) => [
-              ...prev,
-              messageData.event as Execute,
-            ]);
+            const event = messageData.event as Execute;
+            setWebsocketEvents((prev) => {
+              // Check if event already exists by ID
+              const existingIndex = prev.findIndex((e) => e.id === event.id);
+              if (existingIndex >= 0) {
+                // Update existing event (in case results were added)
+                const updated = [...prev];
+                updated[existingIndex] = event;
+                return updated;
+              }
+              // Add new event
+              return [...prev, event];
+            });
           }
           // Resolve the execute promise
           if (executeResolverRef.current) {

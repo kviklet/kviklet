@@ -427,12 +427,12 @@ class ExecutionRequestService(
         val resultLogs = result.map {
             it.toResultLog()
         }
-        eventService.addResultLogs(event.eventId!!, resultLogs)
+        val savedEvent = eventService.addResultLogs(event.eventId!!, resultLogs)
 
         return DBExecutionResult(
             executionRequest = executionRequest,
             results = result,
-            event = event,
+            event = savedEvent,
         )
     }
 
