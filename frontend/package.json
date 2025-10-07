@@ -18,7 +18,7 @@
     "@types/node": "^20.5.9",
     "@types/react": "^18.2.21",
     "@types/react-dom": "^18.2.7",
-    "@vitejs/plugin-react": "^4.0.4",
+    "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.13",
     "babel-plugin-macros": "^3.1.0",
     "lodash": "^4.17.21",
@@ -75,7 +75,7 @@
     "prettier-plugin-tailwindcss": "^0.5.14",
     "ts-node": "^10.9.1",
     "typescript": "^5.2.2",
-    "vite": "^4.5.14",
+    "vite": "^7.1.9",
     "vitest": "^0.34.3"
   }
 }
