@@ -2,6 +2,7 @@
   "name": "test",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^6.3.0",
     "@fortawesome/free-regular-svg-icons": "^6.3.0",
@@ -63,7 +64,7 @@
     "@types/wicg-file-system-access": "^2023.10.5",
     "@typescript-eslint/eslint-plugin": "^6.7.0",
     "@typescript-eslint/parser": "^6.7.0",
-    "@vitest/coverage-v8": "^0.34.4",
+    "@vitest/coverage-v8": "^3.2.4",
     "eslint": "^8.49.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-react": "^7.33.2",
@@ -76,6 +77,6 @@
     "ts-node": "^10.9.1",
     "typescript": "^5.2.2",
     "vite": "^7.1.9",
-    "vitest": "^0.34.3"
+    "vitest": "^3.2.4"
   }
 }
