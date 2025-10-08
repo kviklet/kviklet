@@ -273,6 +273,8 @@ SAML_SSOSERVICELOCATION=https://your-identity-provider.com/sso
 SAML_VERIFICATIONCERTIFICATE=-----BEGIN CERTIFICATE-----\nMIICmzCCAYMCBgF4...\n-----END CERTIFICATE-----
 ```
 
+**Important**: SAML authentication requires HTTPS. Kviklet automatically configures secure session cookies when SAML is enabled, which browsers only send over HTTPS connections. Attempting to use SAML over HTTP will result in login failures.
+
 Configuration details:
 
 - `SAML_ENABLED`: Set to `true` to enable SAML authentication
@@ -375,9 +377,20 @@ Currently there are notifications for:
 - New Requests, that need approvals
 - New approvals on requests
 
-## Encryption
+## Security
 
-If you don't want the credentials to be stored in cleartext in the DB, it is recommended that you enable database encryption on the Kviklet postgres DB itself. For most hosted providers this is a simple checkbox to click.  
+### Session Cookie Security
+
+Kviklet automatically configures session cookie security based on your authentication method:
+
+- **Standard authentication (local users, OIDC, LDAP)**: Cookies use `SameSite=Lax` and `Secure=false`, allowing HTTP deployments (e.g., localhost, internal networks)
+- **SAML authentication**: Cookies automatically switch to `SameSite=None` and `Secure=true`, which is required for SAML's cross-origin flows but **requires HTTPS**
+
+For production deployments, we strongly recommend using HTTPS regardless of authentication method.
+
+### Credential Encryption
+
+If you don't want the credentials to be stored in cleartext in the DB, it is recommended that you enable database encryption on the Kviklet postgres DB itself. For most hosted providers this is a simple checkbox to click.
 Nonetheless, if the Kviklet database is somehow compromised, this is a huge security risk. As it contains the database crendetials for potentially all your production datastores. So you can enable encryption of the credentials at rest.
 
 To do this simply set the two environment variables.

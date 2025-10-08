@@ -13,11 +13,6 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 server:
   port: 8081
-  servlet:
-    session:
-      cookie:
-        same-site: none
-        secure: true
 app:
   name: "Kviklet"
   in-docker: true
