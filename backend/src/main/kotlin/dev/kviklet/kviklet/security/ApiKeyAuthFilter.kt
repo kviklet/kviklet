@@ -49,8 +49,17 @@ class ApiKeyAuthFilter(private val apiKeyService: ApiKeyService, private val pas
 
             // Create authentication token
             val policies = user.roles.flatMap(Role::policies).map(::PolicyGrantedAuthority)
-            val userDetails = UserDetailsWithId(userId, user.email, user.password, policies)
-            val authentication = UsernamePasswordAuthenticationToken(userDetails, user.password, policies)
+            val userDetails = UserDetailsWithId(
+                userId,
+                user.email,
+                user.password ?: "default password",
+                policies,
+            )
+            val authentication = UsernamePasswordAuthenticationToken(
+                userDetails,
+                user.password ?: "default password",
+                policies,
+            )
 
             // Set authentication in context
             SecurityContextHolder.getContext().authentication = authentication
