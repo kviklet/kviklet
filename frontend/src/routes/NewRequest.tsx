@@ -65,7 +65,7 @@ const DatasourceExecutionRequestSchema = z
   .refine(
     (data) =>
       data.type === "TemporaryAccess" ||
-      "Dump" ||
+      data.type === "Dump" ||
       (!!data.statement && data.type === "SingleExecution"),
     {
       message: "If you create a query request an SQL statement is required",
