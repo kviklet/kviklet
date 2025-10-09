@@ -377,7 +377,7 @@ Currently there are notifications for:
 
 ## Encryption
 
-If you don't want the credentials to be stored in cleartext in the DB, it is recommended that you enable database encryption on the Kviklet postgres DB itself. For most hosted providers this is a simple checkbox to click.  
+If you don't want the credentials to be stored in cleartext in the DB, it is recommended that you enable database encryption on the Kviklet postgres DB itself. For most hosted providers this is a simple checkbox to click.
 Nonetheless, if the Kviklet database is somehow compromised, this is a huge security risk. As it contains the database crendetials for potentially all your production datastores. So you can enable encryption of the credentials at rest.
 
 To do this simply set the two environment variables.
