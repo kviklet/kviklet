@@ -311,13 +311,13 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
             else -> return Pair(false, "Can't download results for this request type")
         }
         try {
-            val statementCount = CCJSqlParserUtil.parseStatements(queryToExecute).size
+            val statementCount = CCJSqlParserUtil.parseStatements(queryToExecute)?.size ?: 0
             if (statementCount > 1) {
                 return Pair(false, "This request contains more than one statement!")
             }
             if (CCJSqlParserUtil.parseStatements(
                     queryToExecute,
-                ).first() !is net.sf.jsqlparser.statement.select.Select
+                )?.first() !is net.sf.jsqlparser.statement.select.Select
             ) {
                 return Pair(false, "Can only download results for select queries!")
             }
