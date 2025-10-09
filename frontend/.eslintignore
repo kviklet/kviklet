@@ -1,9 +1,10 @@
 vite.config.js
 tsconfig.json
 tailwind.config.js
-postcss.config.js
+postcss.config.cjs
 sorter.js
 prettify.js
 coverage/*
 babel.config.js
-babel-plugin-macros.config.js
+.babel-plugin-macrosrc.json
+build/*
