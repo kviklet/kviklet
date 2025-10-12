@@ -341,3 +341,9 @@ data class ExecutionProxy(
 
     override fun getRelated(resource: Resource): SecuredDomainObject? = null
 }
+
+data class ExecutionRequestList(
+    val requests: List<ExecutionRequestDetails>,
+    val hasMore: Boolean,
+    val cursor: LocalDateTime?,
+)
