@@ -6,6 +6,7 @@ import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.PolicyGrantedAuthority
 import dev.kviklet.kviklet.security.Resource
+import dev.kviklet.kviklet.security.SecuredCollectionWrapper
 import dev.kviklet.kviklet.security.SecuredDomainId
 import dev.kviklet.kviklet.security.SecuredDomainObject
 import dev.kviklet.kviklet.security.UserDetailsWithId
@@ -346,4 +347,10 @@ data class ExecutionRequestList(
     val requests: List<ExecutionRequestDetails>,
     val hasMore: Boolean,
     val cursor: LocalDateTime?,
-)
+) : SecuredCollectionWrapper<ExecutionRequestDetails> {
+    override fun getCollection(): Collection<ExecutionRequestDetails> = requests
+
+    override fun withFilteredCollection(
+        filtered: Collection<ExecutionRequestDetails>,
+    ): SecuredCollectionWrapper<ExecutionRequestDetails> = copy(requests = filtered.toList())
+}

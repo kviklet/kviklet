@@ -60,7 +60,9 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
 import java.io.OutputStream
 import java.time.Duration
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
 @JsonSubTypes(
@@ -606,12 +608,14 @@ class ExecutionRequestController(
         @RequestParam(required = false) reviewStatuses: Set<ReviewStatus>?,
         @RequestParam(required = false) executionStatuses: Set<ExecutionStatus>?,
         @RequestParam(required = false) connectionId: ConnectionId?,
-        @RequestParam(required = false) after: LocalDateTime?,
+        @RequestParam(required = false) after: Instant?,
         @RequestParam(required = false, defaultValue = "20") limit: Int,
     ): ExecutionRequestListResponse {
+        val afterLocalDateTime = after?.atZone(ZoneOffset.UTC)?.toLocalDateTime()
+
         logger.info(
             "Listing execution requests with filters - reviewStatuses: $reviewStatuses, " +
-                "executionStatuses: $executionStatuses, connectionId: $connectionId, after: $after, limit: $limit",
+                "executionStatuses: $executionStatuses, connectionId: $connectionId, after: $afterLocalDateTime, limit: $limit",
         )
 
         return ExecutionRequestListResponse.fromDto(
@@ -619,7 +623,7 @@ class ExecutionRequestController(
                 reviewStatuses = reviewStatuses,
                 executionStatuses = executionStatuses,
                 connectionId = connectionId,
-                after = after,
+                after = afterLocalDateTime,
                 limit = limit,
             ),
         )
