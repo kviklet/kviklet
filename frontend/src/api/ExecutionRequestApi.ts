@@ -187,6 +187,12 @@ const ExecutionRequestResponseWithCommentsSchema = z.union([
 
 const ExecutionRequestsResponseSchema = z.array(ExecutionRequestResponseSchema);
 
+const ExecutionRequestListResponseSchema = z.object({
+  requests: z.array(ExecutionRequestResponseSchema),
+  hasMore: z.boolean(),
+  cursor: z.coerce.date().nullable(),
+});
+
 type DatasourceExecutionRequestResponseWithComments = z.infer<
   typeof DatasourceExecutionRequestResponseWithCommentsSchema
 >;
@@ -198,6 +204,9 @@ type ExecutionRequestResponseWithComments = z.infer<
 >;
 type ExecutionRequestsResponse = z.infer<
   typeof ExecutionRequestsResponseSchema
+>;
+type ExecutionRequestListResponse = z.infer<
+  typeof ExecutionRequestListResponseSchema
 >;
 type ExecutionRequestResponse = z.infer<typeof ExecutionRequestResponseSchema>;
 
@@ -269,6 +278,57 @@ const getRequests = async (): Promise<
       credentials: "include",
     },
     ExecutionRequestsResponseSchema,
+  );
+};
+
+interface GetRequestsParams {
+  reviewStatuses?: string[];
+  executionStatuses?: string[];
+  connectionId?: string;
+  after?: Date;
+  limit?: number;
+}
+
+const getRequestsPaginated = async (
+  params?: GetRequestsParams,
+): Promise<ApiResponse<ExecutionRequestListResponse>> => {
+  const searchParams = new URLSearchParams();
+
+  if (params?.reviewStatuses && params.reviewStatuses.length > 0) {
+    params.reviewStatuses.forEach((status) =>
+      searchParams.append("reviewStatuses", status),
+    );
+  }
+
+  if (params?.executionStatuses && params.executionStatuses.length > 0) {
+    params.executionStatuses.forEach((status) =>
+      searchParams.append("executionStatuses", status),
+    );
+  }
+
+  if (params?.connectionId) {
+    searchParams.append("connectionId", params.connectionId);
+  }
+
+  if (params?.after) {
+    searchParams.append("after", params.after.toISOString());
+  }
+
+  if (params?.limit) {
+    searchParams.append("limit", params.limit.toString());
+  }
+
+  const url = searchParams.toString()
+    ? `${requestUrl}?${searchParams.toString()}`
+    : requestUrl;
+
+  return fetchWithErrorHandling(
+    url,
+    {
+      method: "GET",
+      credentials: "include",
+    },
+    ExecutionRequestListResponseSchema,
   );
 };
 
@@ -476,6 +536,7 @@ const executeCommand = async (
 export {
   addRequest,
   getRequests,
+  getRequestsPaginated,
   getSingleRequest,
   addCommentToRequest,
   addReviewToRequest,
@@ -492,6 +553,8 @@ export type {
   DBExecuteResponseResult as ExecuteResponseResult,
   ExecutionRequestResponse,
   ExecutionRequestsResponse,
+  ExecutionRequestListResponse,
+  GetRequestsParams,
   DatasourceExecutionRequestResponseWithComments,
   KubernetesExecutionRequestResponseWithComments,
   ExecutionRequestResponseWithComments,

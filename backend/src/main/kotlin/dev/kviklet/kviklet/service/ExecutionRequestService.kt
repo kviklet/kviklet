@@ -33,6 +33,7 @@ import dev.kviklet.kviklet.service.dto.ExecutionProxy
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
+import dev.kviklet.kviklet.service.dto.ExecutionRequestList
 import dev.kviklet.kviklet.service.dto.ExecutionResult
 import dev.kviklet.kviklet.service.dto.ExecutionStatus
 import dev.kviklet.kviklet.service.dto.KubernetesConnection
@@ -138,7 +139,8 @@ class ExecutionRequestService(
             type = request.type,
             description = request.description,
             statement = request.statement,
-            executionStatus = "PENDING",
+            executionStatus = ExecutionStatus.EXECUTABLE,
+            reviewStatus = ReviewStatus.AWAITING_APPROVAL,
             authorId = userId,
             temporaryAccessDuration = request.temporaryAccessDuration?.let { Duration.ofMinutes(it) },
         )
@@ -153,7 +155,8 @@ class ExecutionRequestService(
         title = request.title,
         type = request.type,
         description = request.description,
-        executionStatus = "PENDING",
+        executionStatus = ExecutionStatus.EXECUTABLE,
+        reviewStatus = ReviewStatus.AWAITING_APPROVAL,
         authorId = userId,
         namespace = request.namespace,
         podName = request.podName,
@@ -313,12 +316,15 @@ class ExecutionRequestService(
             }
         }
 
+        // Recalculate statuses after edit event
+        val updatedDetails = executionRequestAdapter.getExecutionRequestDetails(id)
         return executionRequestAdapter.updateExecutionRequest(
             id = executionRequestDetails.request.id!!,
             title = request.title,
             description = request.description,
             statement = request.statement,
-            executionStatus = executionRequestDetails.request.executionStatus,
+            executionStatus = updatedDetails.resolveExecutionStatus(),
+            reviewStatus = updatedDetails.resolveReviewStatus(),
             namespace = request.namespace,
             podName = request.podName,
             containerName = request.containerName,
@@ -330,6 +336,37 @@ class ExecutionRequestService(
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
     fun list(): List<ExecutionRequestDetails> = executionRequestAdapter.listExecutionRequests()
+
+    @Transactional
+    @Policy(Permission.EXECUTION_REQUEST_GET)
+    fun list(
+        reviewStatuses: Set<ReviewStatus>?,
+        executionStatuses: Set<ExecutionStatus>?,
+        connectionId: ConnectionId?,
+        after: LocalDateTime?,
+        limit: Int = 20,
+    ): ExecutionRequestList {
+        // Fetch limit + 1 to determine if there are more results
+        val requests = executionRequestAdapter.listExecutionRequestsFiltered(
+            reviewStatuses = reviewStatuses,
+            executionStatuses = executionStatuses,
+            connectionId = connectionId,
+            after = after,
+            limit = limit + 1,
+        )
+
+        val hasMore = requests.size > limit
+        val requestsToReturn = requests.take(limit)
+
+        // The cursor is the createdAt timestamp of the last item
+        val cursor = requestsToReturn.lastOrNull()?.request?.createdAt
+
+        return ExecutionRequestList(
+            requests = requestsToReturn,
+            hasMore = hasMore,
+            cursor = cursor,
+        )
+    }
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
@@ -415,15 +452,7 @@ class ExecutionRequestService(
             }
         }
 
-        if (executionRequest.request.type == RequestType.SingleExecution) {
-            executionRequestAdapter.updateExecutionRequest(
-                id,
-                title = executionRequest.request.title,
-                description = executionRequest.request.description,
-                statement = executionRequest.request.statement,
-                executionStatus = "EXECUTED",
-            )
-        }
+        // Status will be recalculated automatically after adding result logs via event
         val resultLogs = result.map {
             it.toResultLog()
         }
