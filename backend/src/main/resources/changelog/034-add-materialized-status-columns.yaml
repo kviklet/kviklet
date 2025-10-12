@@ -1,0 +1,63 @@
+databaseChangeLog:
+  - changeSet:
+      id: 034-add-materialized-status-columns
+      author: jascha
+      changes:
+        # Add review_status column
+        - addColumn:
+            tableName: execution_request
+            columns:
+              - column:
+                  name: review_status
+                  type: TEXT
+                  defaultValue: "AWAITING_APPROVAL"
+                  constraints:
+                    nullable: false
+
+        # Add execution_status_new column (temporary)
+        - addColumn:
+            tableName: execution_request
+            columns:
+              - column:
+                  name: execution_status_new
+                  type: TEXT
+                  defaultValue: "EXECUTABLE"
+                  constraints:
+                    nullable: false
+
+        # Migrate data from old execution_status to execution_status_new
+        # Map old string values to new enum values
+        - sql:
+            sql: |
+              UPDATE execution_request
+              SET execution_status_new = CASE
+                WHEN execution_status = 'PENDING' THEN 'EXECUTABLE'
+                WHEN execution_status = 'EXECUTED' THEN 'EXECUTED'
+                WHEN execution_status = 'ACTIVE' THEN 'ACTIVE'
+                ELSE 'EXECUTABLE'
+              END;
+
+        # Drop old execution_status column
+        - dropColumn:
+            tableName: execution_request
+            columnName: execution_status
+
+        # Rename execution_status_new to execution_status
+        - renameColumn:
+            tableName: execution_request
+            oldColumnName: execution_status_new
+            newColumnName: execution_status
+            columnDataType: TEXT
+
+        # Create index for efficient pagination queries
+        - createIndex:
+            indexName: idx_execution_request_pagination
+            tableName: execution_request
+            columns:
+              - column:
+                  name: created_at
+                  descending: true
+              - column:
+                  name: review_status
+              - column:
+                  name: execution_status

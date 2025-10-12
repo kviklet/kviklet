@@ -60,7 +60,9 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody
 import java.io.OutputStream
 import java.time.Duration
+import java.time.Instant
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
 @JsonSubTypes(
@@ -527,6 +529,21 @@ data class ProxyResponse(val port: Int, val username: String, val password: Stri
 
 data class CancelQueryResponse(val success: Boolean)
 
+data class ExecutionRequestListResponse(
+    val requests: List<ExecutionRequestResponse>,
+    val hasMore: Boolean,
+    val cursor: LocalDateTime?,
+) {
+    companion object {
+        fun fromDto(dto: dev.kviklet.kviklet.service.dto.ExecutionRequestList): ExecutionRequestListResponse =
+            ExecutionRequestListResponse(
+                requests = dto.requests.map { ExecutionRequestResponse.fromDto(it) },
+                hasMore = dto.hasMore,
+                cursor = dto.cursor,
+            )
+    }
+}
+
 @RestController()
 @Validated
 @RequestMapping("/execution-requests")
@@ -538,6 +555,9 @@ class ExecutionRequestController(
     val executionRequestService: ExecutionRequestService,
     private val configurationAdapter: ConfigurationAdapter,
 ) {
+
+    private val logger = org.slf4j.LoggerFactory.getLogger(ExecutionRequestController::class.java)
+
     @Operation(
         summary = "Export Databse Request Streamed",
         description = """
@@ -584,8 +604,29 @@ class ExecutionRequestController(
 
     @Operation(summary = "List Execution Requests")
     @GetMapping("/")
-    fun list(): List<ExecutionRequestResponse> = executionRequestService.list().map {
-        ExecutionRequestResponse.fromDto(it)
+    fun list(
+        @RequestParam(required = false) reviewStatuses: Set<ReviewStatus>?,
+        @RequestParam(required = false) executionStatuses: Set<ExecutionStatus>?,
+        @RequestParam(required = false) connectionId: ConnectionId?,
+        @RequestParam(required = false) after: Instant?,
+        @RequestParam(required = false, defaultValue = "20") limit: Int,
+    ): ExecutionRequestListResponse {
+        val afterLocalDateTime = after?.atZone(ZoneOffset.UTC)?.toLocalDateTime()
+
+        logger.info(
+            "Listing execution requests with filters - reviewStatuses: $reviewStatuses, " +
+                "executionStatuses: $executionStatuses, connectionId: $connectionId, after: $afterLocalDateTime, limit: $limit",
+        )
+
+        return ExecutionRequestListResponse.fromDto(
+            executionRequestService.list(
+                reviewStatuses = reviewStatuses,
+                executionStatuses = executionStatuses,
+                connectionId = connectionId,
+                after = afterLocalDateTime,
+                limit = limit,
+            ),
+        )
     }
 
     @Operation(summary = "Review Execution Request", description = "Approve or disapprove an execution request.")

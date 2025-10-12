@@ -17,6 +17,8 @@ import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.RequestType
+import dev.kviklet.kviklet.service.dto.ExecutionStatus
+import dev.kviklet.kviklet.service.dto.ReviewStatus
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -42,7 +44,8 @@ class TestDataInitializer(
         val title = "$titlePrefix Execution Request $index"
         val description = "Description of the $titlePrefix execution request $index"
         val statement = "Select * from test;"
-        val executionStatus = if (ThreadLocalRandom.current().nextBoolean()) "SUCCESS" else "PENDING"
+        val executionStatus = if (ThreadLocalRandom.current().nextBoolean()) ExecutionStatus.EXECUTED else ExecutionStatus.EXECUTABLE
+        val reviewStatus = if (ThreadLocalRandom.current().nextBoolean()) ReviewStatus.APPROVED else ReviewStatus.AWAITING_APPROVAL
         return ExecutionRequestEntity(
             connection = connection,
             title = title,
@@ -50,6 +53,7 @@ class TestDataInitializer(
             description = description,
             statement = statement,
             executionStatus = executionStatus,
+            reviewStatus = reviewStatus,
             author = author,
             events = mutableSetOf(),
             executionRequestType = ExecutionRequestType.DATASOURCE,
