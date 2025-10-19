@@ -556,8 +556,6 @@ class ExecutionRequestController(
     private val configurationAdapter: ConfigurationAdapter,
 ) {
 
-    private val logger = org.slf4j.LoggerFactory.getLogger(ExecutionRequestController::class.java)
-
     @Operation(
         summary = "Export Databse Request Streamed",
         description = """
@@ -612,11 +610,6 @@ class ExecutionRequestController(
         @RequestParam(required = false, defaultValue = "${Int.MAX_VALUE}") limit: Int,
     ): ExecutionRequestListResponse {
         val afterLocalDateTime = after?.atZone(ZoneOffset.UTC)?.toLocalDateTime()
-
-        logger.info(
-            "Listing execution requests with filters - reviewStatuses: $reviewStatuses, " +
-                "executionStatuses: $executionStatuses, connectionId: $connectionId, after: $afterLocalDateTime, limit: $limit",
-        )
 
         return ExecutionRequestListResponse.fromDto(
             executionRequestService.list(
