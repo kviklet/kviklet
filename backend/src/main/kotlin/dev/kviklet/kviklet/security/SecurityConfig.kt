@@ -66,7 +66,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import org.springframework.web.filter.ForwardedHeaderFilter
 import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry
-import org.springframework.web.servlet.config.annotation.PathMatchConfigurer
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 import java.io.Serializable
 
@@ -295,10 +294,6 @@ class MvcConfig : WebMvcConfigurer {
 
     override fun addInterceptors(registry: InterceptorRegistry) {
         registry.addInterceptor(serverUrlInterceptor)
-    }
-
-    override fun configurePathMatch(configurer: PathMatchConfigurer) {
-        configurer.setUseTrailingSlashMatch(true)
     }
 }
 
