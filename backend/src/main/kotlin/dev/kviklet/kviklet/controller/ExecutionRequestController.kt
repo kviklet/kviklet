@@ -609,7 +609,7 @@ class ExecutionRequestController(
         @RequestParam(required = false) executionStatuses: Set<ExecutionStatus>?,
         @RequestParam(required = false) connectionId: ConnectionId?,
         @RequestParam(required = false) after: Instant?,
-        @RequestParam(required = false, defaultValue = "2147483647") limit: Int,
+        @RequestParam(required = false, defaultValue = "${Int.MAX_VALUE}") limit: Int,
     ): ExecutionRequestListResponse {
         val afterLocalDateTime = after?.atZone(ZoneOffset.UTC)?.toLocalDateTime()
 
