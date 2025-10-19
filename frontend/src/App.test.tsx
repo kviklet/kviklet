@@ -39,7 +39,14 @@ const handleLogin = http.post("http://localhost:8081/login", () => {
 const handleGetExecutionRequests = http.get(
   "http://localhost:8081/execution-requests/",
   () => {
-    return HttpResponse.json([], { status: 200 });
+    return HttpResponse.json(
+      {
+        requests: [],
+        hasMore: false,
+        cursor: null,
+      },
+      { status: 200 },
+    );
   },
 );
 
@@ -48,6 +55,8 @@ const handleConfig = http.get("http://localhost:8081/config/", () => {
     {
       licenseValid: false,
       oauthProvider: "GOOGLE",
+      ldapEnabled: false,
+      samlEnabled: false,
     },
     { status: 200 },
   );
@@ -62,6 +71,16 @@ const server = setupServer(
 
 beforeAll(() => {
   server.listen();
+  // Mock IntersectionObserver
+  global.IntersectionObserver = class IntersectionObserver {
+    constructor() {}
+    disconnect() {}
+    observe() {}
+    takeRecords() {
+      return [];
+    }
+    unobserve() {}
+  } as unknown as typeof IntersectionObserver;
 });
 afterAll(() => server.close());
 afterEach(() => server.resetHandlers());

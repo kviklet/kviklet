@@ -132,7 +132,7 @@ const useRequests = (onlyPending: boolean, searchTerm: string) => {
     }
   }, [loadingMore, hasMore, loadRequests]);
 
-  // Client-side filtering by search term (kept for multi-field search)
+  // Client-side filtering by search term (for multi-field search)
   const filteredRequests = requests.filter(
     (request) =>
       request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -227,6 +227,7 @@ function Requests() {
             {requests.map((request) => {
               return (
                 <Link
+                  key={request.id}
                   to={`/requests/${request.id}`}
                   data-testid={`request-link-${request.title}`}
                 >
