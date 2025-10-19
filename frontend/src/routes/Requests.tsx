@@ -1,7 +1,6 @@
 import { ChangeEvent, useEffect, useRef, useState, useCallback } from "react";
 import {
   ExecutionRequestResponse,
-  getRequests,
   getRequestsPaginated,
 } from "../api/ExecutionRequestApi";
 import { Link } from "react-router-dom";

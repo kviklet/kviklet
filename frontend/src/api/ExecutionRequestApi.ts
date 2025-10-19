@@ -185,8 +185,6 @@ const ExecutionRequestResponseWithCommentsSchema = z.union([
   DatasourceExecutionRequestResponseWithCommentsSchema,
 ]);
 
-const ExecutionRequestsResponseSchema = z.array(ExecutionRequestResponseSchema);
-
 const ExecutionRequestListResponseSchema = z.object({
   requests: z.array(ExecutionRequestResponseSchema),
   hasMore: z.boolean(),
@@ -201,9 +199,6 @@ type KubernetesExecutionRequestResponseWithComments = z.infer<
 >;
 type ExecutionRequestResponseWithComments = z.infer<
   typeof ExecutionRequestResponseWithCommentsSchema
->;
-type ExecutionRequestsResponse = z.infer<
-  typeof ExecutionRequestsResponseSchema
 >;
 type ExecutionRequestListResponse = z.infer<
   typeof ExecutionRequestListResponseSchema
@@ -265,19 +260,6 @@ const postStartServer = async (
       credentials: "include",
     },
     ProxyResponse,
-  );
-};
-
-const getRequests = async (): Promise<
-  ApiResponse<ExecutionRequestsResponse>
-> => {
-  return fetchWithErrorHandling(
-    requestUrl,
-    {
-      method: "GET",
-      credentials: "include",
-    },
-    ExecutionRequestsResponseSchema,
   );
 };
 
@@ -535,7 +517,6 @@ const executeCommand = async (
 
 export {
   addRequest,
-  getRequests,
   getRequestsPaginated,
   getSingleRequest,
   addCommentToRequest,
@@ -552,7 +533,6 @@ export {
 export type {
   DBExecuteResponseResult as ExecuteResponseResult,
   ExecutionRequestResponse,
-  ExecutionRequestsResponse,
   ExecutionRequestListResponse,
   GetRequestsParams,
   DatasourceExecutionRequestResponseWithComments,
