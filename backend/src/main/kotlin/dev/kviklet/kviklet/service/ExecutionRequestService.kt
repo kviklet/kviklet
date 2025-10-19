@@ -346,13 +346,19 @@ class ExecutionRequestService(
         after: LocalDateTime?,
         limit: Int = 20,
     ): ExecutionRequestList {
-        // Fetch limit + 1 to determine if there are more results
+        // Fetch limit + 1 to determine if there are more results, but avoid Int overflow
+        val fetchLimit = if (limit == Int.MAX_VALUE) {
+            limit // Don't add 1 if already at max
+        } else {
+            limit + 1
+        }
+
         val requests = executionRequestAdapter.listExecutionRequestsFiltered(
             reviewStatuses = reviewStatuses,
             executionStatuses = executionStatuses,
             connectionId = connectionId,
             after = after,
-            limit = limit + 1,
+            limit = fetchLimit,
         )
 
         val hasMore = requests.size > limit

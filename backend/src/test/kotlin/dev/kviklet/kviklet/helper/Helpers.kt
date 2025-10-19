@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.helper
 
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
+import dev.kviklet.kviklet.db.ExecutionRequestEntity
 import dev.kviklet.kviklet.db.LiveSessionAdapter
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.ReviewPayload
@@ -18,13 +19,13 @@ import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.ExecutionStatus
-import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.LiveSession
 import dev.kviklet.kviklet.service.dto.LiveSessionId
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewAction
+import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.Role
 import dev.kviklet.kviklet.service.dto.RoleId
 import jakarta.annotation.PostConstruct
@@ -37,7 +38,6 @@ import org.springframework.transaction.annotation.Transactional
 import org.testcontainers.containers.JdbcDatabaseContainer
 import org.testcontainers.containers.MongoDBContainer
 import java.time.LocalDateTime
-import dev.kviklet.kviklet.db.ExecutionRequestEntity
 
 @Component
 class UserHelper(
@@ -318,20 +318,17 @@ class ExecutionRequestHelper(
         connectionId: ConnectionId?,
         after: LocalDateTime?,
         limit: Int,
-    ): List<ExecutionRequestEntity> {
-        return executionRequestAdapter.executionRequestRepository.findAllWithDetailsFiltered(
-            reviewStatuses = reviewStatuses,
-            executionStatuses = executionStatuses,
-            connectionId = connectionId,
-            after = after,
-            limit = limit,
-        )
-    }
+    ): List<ExecutionRequestEntity> = executionRequestAdapter.executionRequestRepository.findAllWithDetailsFiltered(
+        reviewStatuses = reviewStatuses,
+        executionStatuses = executionStatuses,
+        connectionId = connectionId,
+        after = after,
+        limit = limit,
+    )
 
     @Transactional
-    fun toDetailDto(entity: ExecutionRequestEntity): ExecutionRequestDetails {
-        return entity.toDetailDto(connectionAdapter.toDto(entity.connection))
-    }
+    fun toDetailDto(entity: ExecutionRequestEntity): ExecutionRequestDetails =
+        entity.toDetailDto(connectionAdapter.toDto(entity.connection))
 
     @Transactional
     fun createApprovedRequest(

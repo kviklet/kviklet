@@ -92,7 +92,7 @@ class ExecutionRequestPaginationTest {
             executionStatuses = null,
             connectionId = null,
             after = null,
-            limit = 11,  // limit + 1
+            limit = 11, // limit + 1
         )
 
         // If we get 11 results, hasMore should be true
@@ -132,7 +132,7 @@ class ExecutionRequestPaginationTest {
             executionStatuses = null,
             connectionId = null,
             after = null,
-            limit = 11,  // limit + 1
+            limit = 11, // limit + 1
         )
 
         assertThat(firstPage.size).isEqualTo(11) // limit + 1
@@ -148,7 +148,7 @@ class ExecutionRequestPaginationTest {
             executionStatuses = null,
             connectionId = null,
             after = cursor,
-            limit = 11,  // limit + 1
+            limit = 11, // limit + 1
         )
 
         assertThat(secondPage.size).isEqualTo(11) // limit + 1
@@ -362,11 +362,13 @@ class ExecutionRequestPaginationTest {
         )
 
         assertThat(results.size).isEqualTo(5)
-        assertThat(results.all {
-            it.connection.id == connection1.id.toString() &&
-                it.reviewStatus == ReviewStatus.AWAITING_APPROVAL &&
-                it.executionStatus == ExecutionStatus.EXECUTABLE
-        }).isTrue()
+        assertThat(
+            results.all {
+                it.connection.id == connection1.id.toString() &&
+                    it.reviewStatus == ReviewStatus.AWAITING_APPROVAL &&
+                    it.executionStatus == ExecutionStatus.EXECUTABLE
+            },
+        ).isTrue()
     }
 
     @Test
@@ -399,8 +401,10 @@ class ExecutionRequestPaginationTest {
 
         // Verify results are in descending order (newest first)
         for (i in 0 until dtos.size - 1) {
-            assertThat(dtos[i].request.createdAt.isAfter(dtos[i + 1].request.createdAt) ||
-                dtos[i].request.createdAt.isEqual(dtos[i + 1].request.createdAt)).isTrue()
+            assertThat(
+                dtos[i].request.createdAt.isAfter(dtos[i + 1].request.createdAt) ||
+                    dtos[i].request.createdAt.isEqual(dtos[i + 1].request.createdAt),
+            ).isTrue()
         }
     }
 }
