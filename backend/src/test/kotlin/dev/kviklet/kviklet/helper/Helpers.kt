@@ -2,7 +2,6 @@ package dev.kviklet.kviklet.helper
 
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
-import dev.kviklet.kviklet.db.ExecutionRequestEntity
 import dev.kviklet.kviklet.db.LiveSessionAdapter
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.ReviewPayload
@@ -37,7 +36,6 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers
 import org.springframework.transaction.annotation.Transactional
 import org.testcontainers.containers.JdbcDatabaseContainer
 import org.testcontainers.containers.MongoDBContainer
-import java.time.LocalDateTime
 
 @Component
 class UserHelper(
@@ -310,25 +308,6 @@ class ExecutionRequestHelper(
             authorId = author.getId()!!,
         )
     }
-
-    @Transactional
-    fun listExecutionRequestsFiltered(
-        reviewStatuses: Set<ReviewStatus>?,
-        executionStatuses: Set<ExecutionStatus>?,
-        connectionId: ConnectionId?,
-        after: LocalDateTime?,
-        limit: Int,
-    ): List<ExecutionRequestEntity> = executionRequestAdapter.executionRequestRepository.findAllWithDetailsFiltered(
-        reviewStatuses = reviewStatuses,
-        executionStatuses = executionStatuses,
-        connectionId = connectionId,
-        after = after,
-        limit = limit,
-    )
-
-    @Transactional
-    fun toDetailDto(entity: ExecutionRequestEntity): ExecutionRequestDetails =
-        entity.toDetailDto(connectionAdapter.toDto(entity.connection))
 
     @Transactional
     fun createApprovedRequest(

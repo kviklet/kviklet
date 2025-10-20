@@ -372,11 +372,11 @@ class ExecutionRequestAdapter(
     }
 
     fun listExecutionRequestsFiltered(
-        reviewStatuses: Set<ReviewStatus>?,
-        executionStatuses: Set<ExecutionStatus>?,
-        connectionId: ConnectionId?,
-        after: LocalDateTime?,
-        limit: Int,
+        reviewStatuses: Set<ReviewStatus>? = null,
+        executionStatuses: Set<ExecutionStatus>? = null,
+        connectionId: ConnectionId? = null,
+        after: LocalDateTime? = null,
+        limit: Int = Int.MAX_VALUE,
     ): List<ExecutionRequestDetails> = executionRequestRepository.findAllWithDetailsFiltered(
         reviewStatuses = reviewStatuses,
         executionStatuses = executionStatuses,

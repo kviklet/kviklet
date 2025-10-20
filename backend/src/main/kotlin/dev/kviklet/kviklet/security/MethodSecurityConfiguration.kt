@@ -221,7 +221,7 @@ class AuthorizationManagerInterceptor(
             is SecuredCollectionWrapper<*> -> {
                 @Suppress("UNCHECKED_CAST")
                 val wrapper = returnedObject as SecuredCollectionWrapper<Any?>
-                val filtered = filterCollection(invocation, wrapper.getCollection().toMutableList())
+                val filtered = filterCollection(invocation, returnedObject.getCollection().toMutableList())
                 wrapper.withFilteredCollection(filtered)
             }
 

@@ -555,7 +555,6 @@ class ExecutionRequestController(
     val executionRequestService: ExecutionRequestService,
     private val configurationAdapter: ConfigurationAdapter,
 ) {
-
     @Operation(
         summary = "Export Databse Request Streamed",
         description = """

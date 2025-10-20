@@ -291,13 +291,6 @@ function Requests() {
                 <Spinner />
               </div>
             )}
-
-            {/* Create new request button */}
-            <div className="my-6">
-              <Link to={"/new"}>
-                <Button className="float-right">Create new Request</Button>
-              </Link>
-            </div>
           </div>
         </div>
       )}

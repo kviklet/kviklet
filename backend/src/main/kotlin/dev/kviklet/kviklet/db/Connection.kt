@@ -244,9 +244,6 @@ class ConnectionAdapter(
             throw IllegalStateException("Connection is not a Datasource Connection")
         }
 
-        // Detect if reviewConfig changed
-        val reviewConfigChanged = datasourceConnection.reviewConfig != reviewConfig
-
         datasourceConnection.displayName = displayName
         datasourceConnection.description = description
         datasourceConnection.datasourceType = type
@@ -270,14 +267,7 @@ class ConnectionAdapter(
         datasourceConnection.roleArn = roleArn
         datasourceConnection.maxTemporaryAccessDuration = maxTemporaryAccessDuration
 
-        val result = decryptCredentialsIfNeeded(save(datasourceConnection))
-
-        // Recalculate statuses if reviewConfig changed
-        if (reviewConfigChanged) {
-            recalculateStatusForOpenRequests(id)
-        }
-
-        return result
+        return decryptCredentialsIfNeeded(save(datasourceConnection))
     }
 
     fun updateKubernetesConnection(
@@ -296,22 +286,12 @@ class ConnectionAdapter(
             throw IllegalStateException("Connection is not a Kubernetes Connection")
         }
 
-        // Detect if reviewConfig changed
-        val reviewConfigChanged = datasourceConnection.reviewConfig != reviewConfig
-
         datasourceConnection.displayName = displayName
         datasourceConnection.description = description
         datasourceConnection.reviewConfig = reviewConfig
         datasourceConnection.maxExecutions = maxExecutions
 
-        val result = decryptCredentialsIfNeeded(save(datasourceConnection))
-
-        // Recalculate statuses if reviewConfig changed
-        if (reviewConfigChanged) {
-            recalculateStatusForOpenRequests(id)
-        }
-
-        return result
+        return decryptCredentialsIfNeeded(save(datasourceConnection))
     }
 
     @Transactional
@@ -346,20 +326,6 @@ class ConnectionAdapter(
     }
 
     fun toDto(connection: ConnectionEntity): Connection = decryptCredentialsIfNeeded(connection)
-
-    @Transactional
-    fun recalculateStatusForOpenRequests(connectionId: ConnectionId) {
-        val connection = connectionRepository.findByIdOrNull(connectionId.toString())
-            ?: throw EntityNotFound("Connection Not Found", "Connection $connectionId does not exist.")
-
-        // Find all execution requests for this connection that are not yet executed
-        connection.executionRequests.forEach { executionRequestEntity ->
-            val details = executionRequestEntity.toDetailDto(toDto(executionRequestEntity.connection))
-            executionRequestEntity.reviewStatus = details.resolveReviewStatus()
-            executionRequestEntity.executionStatus = details.resolveExecutionStatus()
-            executionRequestRepository.save(executionRequestEntity)
-        }
-    }
 
     private fun toDtoDirectly(connection: ConnectionEntity): Connection = when (connection.connectionType) {
         ConnectionType.DATASOURCE ->
