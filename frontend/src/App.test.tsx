@@ -12,38 +12,29 @@ import { setupServer } from "msw/node";
 import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 
-const handleStatusNotLoggedIn = http.get(
-  "http://localhost:8081/status",
-  () => {
-    return new HttpResponse(null, { status: 401 });
-  },
-);
+const handleStatusNotLoggedIn = http.get("http://localhost:8081/status", () => {
+  return new HttpResponse(null, { status: 401 });
+});
 
-const handleStatusLoggedIn = http.get(
-  "http://localhost:8081/status",
-  () => {
-    return HttpResponse.json(
-      {
-        email: "testUser@example.com",
-        fullName: "Admin User",
-        id: "qJ2HUad7BVFCtqQpWjzQpM",
-        status: "User is authenticated",
-      },
-      { status: 200 },
-    );
-  },
-);
-const handleLogin = http.post(
-  "http://localhost:8081/login",
-  () => {
-    return HttpResponse.json(
-      {
-        sessionId: "test",
-      },
-      { status: 200 },
-    );
-  },
-);
+const handleStatusLoggedIn = http.get("http://localhost:8081/status", () => {
+  return HttpResponse.json(
+    {
+      email: "testUser@example.com",
+      fullName: "Admin User",
+      id: "qJ2HUad7BVFCtqQpWjzQpM",
+      status: "User is authenticated",
+    },
+    { status: 200 },
+  );
+});
+const handleLogin = http.post("http://localhost:8081/login", () => {
+  return HttpResponse.json(
+    {
+      sessionId: "test",
+    },
+    { status: 200 },
+  );
+});
 
 const handleGetExecutionRequests = http.get(
   "http://localhost:8081/execution-requests/",
@@ -52,18 +43,15 @@ const handleGetExecutionRequests = http.get(
   },
 );
 
-const handleConfig = http.get(
-  "http://localhost:8081/config/",
-  () => {
-    return HttpResponse.json(
-      {
-        licenseValid: false,
-        oauthProvider: "GOOGLE",
-      },
-      { status: 200 },
-    );
-  },
-);
+const handleConfig = http.get("http://localhost:8081/config/", () => {
+  return HttpResponse.json(
+    {
+      licenseValid: false,
+      oauthProvider: "GOOGLE",
+    },
+    { status: 200 },
+  );
+});
 
 const server = setupServer(
   handleStatusNotLoggedIn,
