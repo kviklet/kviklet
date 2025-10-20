@@ -7,63 +7,51 @@ import {
   waitFor,
 } from "@testing-library/react";
 import App from "./App";
-import { rest } from "msw";
+import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 
-const handleStatusNotLoggedIn = rest.get(
-  "http://localhost:8081/status",
-  (req, res, ctx) => {
-    return res(ctx.status(401));
-  },
-);
+const handleStatusNotLoggedIn = http.get("http://localhost:8081/status", () => {
+  return new HttpResponse(null, { status: 401 });
+});
 
-const handleStatusLoggedIn = rest.get(
-  "http://localhost:8081/status",
-  (req, res, ctx) => {
-    return res(
-      ctx.status(200),
-      ctx.json({
-        email: "testUser@example.com",
-        fullName: "Admin User",
-        id: "qJ2HUad7BVFCtqQpWjzQpM",
-        status: "User is authenticated",
-      }),
-    );
-  },
-);
-const handleLogin = rest.post(
-  "http://localhost:8081/login",
-  (req, res, ctx) => {
-    return res(
-      ctx.status(200),
-      ctx.json({
-        sessionId: "test",
-      }),
-    );
-  },
-);
+const handleStatusLoggedIn = http.get("http://localhost:8081/status", () => {
+  return HttpResponse.json(
+    {
+      email: "testUser@example.com",
+      fullName: "Admin User",
+      id: "qJ2HUad7BVFCtqQpWjzQpM",
+      status: "User is authenticated",
+    },
+    { status: 200 },
+  );
+});
+const handleLogin = http.post("http://localhost:8081/login", () => {
+  return HttpResponse.json(
+    {
+      sessionId: "test",
+    },
+    { status: 200 },
+  );
+});
 
-const handleGetExecutionRequests = rest.get(
+const handleGetExecutionRequests = http.get(
   "http://localhost:8081/execution-requests/",
-  (req, res, ctx) => {
-    return res(ctx.status(200), ctx.json([]));
+  () => {
+    return HttpResponse.json([], { status: 200 });
   },
 );
 
-const handleConfig = rest.get(
-  "http://localhost:8081/config/",
-  (req, res, ctx) => {
-    return res(
-      ctx.status(200),
-      ctx.json({
-        licenseValid: false,
-        oauthProvider: "GOOGLE",
-      }),
-    );
-  },
-);
+const handleConfig = http.get("http://localhost:8081/config/", () => {
+  return HttpResponse.json(
+    {
+      licenseValid: false,
+      oauthProvider: "GOOGLE",
+    },
+    { status: 200 },
+  );
+});
 
 const server = setupServer(
   handleStatusNotLoggedIn,
