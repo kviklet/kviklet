@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { rest } from "msw";
+import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import ConnectionChooser from "./NewRequest";
 
@@ -10,11 +10,11 @@ describe("NewRequest - Basic functionality", () => {
   test("renders the new request page", async () => {
     // Mock an empty connections response to avoid complex setup
     const server = setupServer(
-      rest.get("http://localhost:8081/connections/", (req, res, ctx) => {
-        return res(ctx.status(200), ctx.json([]));
+      http.get("http://localhost:8081/connections/", () => {
+        return HttpResponse.json([], { status: 200 });
       }),
-      rest.get("http://localhost:8081/kubernetes/pods", (req, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ pods: [] }));
+      http.get("http://localhost:8081/kubernetes/pods", () => {
+        return HttpResponse.json({ pods: [] }, { status: 200 });
       }),
     );
 
