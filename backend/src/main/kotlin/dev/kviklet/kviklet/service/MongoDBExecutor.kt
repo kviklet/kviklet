@@ -70,4 +70,44 @@ class MongoDBExecutor {
     } catch (e: MongoException) {
         emptyList()
     }
+
+    fun executeAndStreamAll(
+        connectionString: String,
+        databaseName: String,
+        query: String,
+        onDocument: (Document) -> Unit,
+    ) {
+        try {
+            val settings = MongoClientSettings.builder()
+                .applyConnectionString(ConnectionString(connectionString))
+                .applyToClusterSettings { builder ->
+                    builder.serverSelectionTimeout(3, TimeUnit.SECONDS)
+                }
+                .applyToSocketSettings { builder ->
+                    builder.connectTimeout(3, TimeUnit.SECONDS)
+                }
+                .build()
+
+            MongoClients.create(settings).use { client ->
+                val database = client.getDatabase(databaseName)
+                val command = Document.parse(query)
+
+                // Pastikan query adalah find command
+                val collectionName = command.getString("find")
+                    ?: throw RuntimeException("JSON export only supports 'find' queries")
+
+                val filter = command.get("filter", Document::class.java) ?: Document()
+                val collection = database.getCollection(collectionName)
+
+                val cursor = collection.find(filter).iterator()
+                cursor.use {
+                    while (cursor.hasNext()) {
+                        onDocument(cursor.next())
+                    }
+                }
+            }
+        } catch (e: MongoException) {
+            throw RuntimeException("Error while streaming MongoDB query results: ${e.message}", e)
+        }
+    }
 }
