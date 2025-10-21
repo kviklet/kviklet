@@ -16,6 +16,7 @@ import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.utcTimeNow
 import jakarta.persistence.CascadeType
+import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.EntityManager
 import jakarta.persistence.EnumType
@@ -64,6 +65,7 @@ class ExecutionRequestEntity(
     @Enumerated(EnumType.STRING)
     var executionType: RequestType,
 
+    @Column(columnDefinition = "TEXT")
     var description: String,
 
     // Datasource Request specific fields

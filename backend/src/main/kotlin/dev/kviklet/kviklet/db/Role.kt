@@ -22,7 +22,7 @@ class RoleEntity : BaseEntity {
     @Column(nullable = false)
     lateinit var name: String
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     lateinit var description: String
 
     @OneToMany(cascade = [CascadeType.ALL], fetch = FetchType.LAZY, orphanRemoval = true)

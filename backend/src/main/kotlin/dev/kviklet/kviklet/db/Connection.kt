@@ -40,6 +40,7 @@ class ConnectionEntity(
     @Enumerated(EnumType.STRING)
     var connectionType: ConnectionType,
     var displayName: String,
+    @Column(columnDefinition = "TEXT")
     var description: String,
     @Column(columnDefinition = "json")
     @Convert(converter = ReviewConfigConverter::class)
