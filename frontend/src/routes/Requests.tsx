@@ -4,7 +4,6 @@ import {
   getRequestsPaginated,
 } from "../api/ExecutionRequestApi";
 import { Link } from "react-router-dom";
-import Button from "../components/Button";
 import Spinner from "../components/Spinner";
 import {
   CircleStackIcon,
