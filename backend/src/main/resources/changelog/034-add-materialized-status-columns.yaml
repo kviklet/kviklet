@@ -14,40 +14,8 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
-        # Add execution_status_new column (temporary)
-        - addColumn:
-            tableName: execution_request
-            columns:
-              - column:
-                  name: execution_status_new
-                  type: TEXT
-                  defaultValue: "EXECUTABLE"
-                  constraints:
-                    nullable: false
-
-        # Migrate data from old execution_status to execution_status_new
-        # Map old string values to new enum values
-        - sql:
-            sql: |
-              UPDATE execution_request
-              SET execution_status_new = CASE
-                WHEN execution_status = 'PENDING' THEN 'EXECUTABLE'
-                WHEN execution_status = 'EXECUTED' THEN 'EXECUTED'
-                WHEN execution_status = 'ACTIVE' THEN 'ACTIVE'
-                ELSE 'EXECUTABLE'
-              END;
-
-        # Drop old execution_status column
-        - dropColumn:
-            tableName: execution_request
-            columnName: execution_status
-
-        # Rename execution_status_new to execution_status
-        - renameColumn:
-            tableName: execution_request
-            oldColumnName: execution_status_new
-            newColumnName: execution_status
-            columnDataType: TEXT
+        - customChange:
+            class: dev.kviklet.kviklet.migration.RecalculateRequestStatuses
 
         # Create index for efficient pagination queries
         - createIndex:
@@ -61,10 +29,3 @@ databaseChangeLog:
                   name: review_status
               - column:
                   name: execution_status
-
-  - changeSet:
-      id: 034-recalculate-request-statuses
-      author: jascha
-      changes:
-        - customChange:
-            class: dev.kviklet.kviklet.migration.RecalculateRequestStatuses
