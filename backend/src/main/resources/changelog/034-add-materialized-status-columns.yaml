@@ -1,0 +1,31 @@
+databaseChangeLog:
+  - changeSet:
+      id: 034-add-materialized-status-columns
+      author: jascha
+      changes:
+        # Add review_status column
+        - addColumn:
+            tableName: execution_request
+            columns:
+              - column:
+                  name: review_status
+                  type: TEXT
+                  defaultValue: "AWAITING_APPROVAL"
+                  constraints:
+                    nullable: false
+
+        - customChange:
+            class: dev.kviklet.kviklet.migration.RecalculateRequestStatuses
+
+        # Create index for efficient pagination queries
+        - createIndex:
+            indexName: idx_execution_request_pagination
+            tableName: execution_request
+            columns:
+              - column:
+                  name: created_at
+                  descending: true
+              - column:
+                  name: review_status
+              - column:
+                  name: execution_status

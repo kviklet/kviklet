@@ -11,9 +11,11 @@ import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
+import dev.kviklet.kviklet.service.dto.ExecutionStatus
 import dev.kviklet.kviklet.service.dto.KubernetesConnection
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.RequestType
+import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.utcTimeNow
 import jakarta.persistence.CascadeType
 import jakarta.persistence.Entity
@@ -51,7 +53,11 @@ class ExecutionRequestEntity(
     @JoinColumn(name = "author_id", nullable = false)
     private val author: UserEntity,
 
-    var executionStatus: String,
+    @Enumerated(EnumType.STRING)
+    var executionStatus: ExecutionStatus,
+
+    @Enumerated(EnumType.STRING)
+    var reviewStatus: ReviewStatus,
 
     private val createdAt: LocalDateTime = utcTimeNow(),
 
@@ -91,7 +97,7 @@ class ExecutionRequestEntity(
             type = executionType,
             description = description,
             statement = statement,
-            executionStatus = executionStatus,
+            executionStatus = executionStatus.name,
             createdAt = createdAt,
             author = author.toDto(),
             temporaryAccessDuration = temporaryAccessDuration?.let { Duration.ofMinutes(it) },
@@ -103,7 +109,7 @@ class ExecutionRequestEntity(
             title = title,
             type = executionType,
             description = description,
-            executionStatus = executionStatus,
+            executionStatus = executionStatus.name,
             createdAt = createdAt,
             author = author.toDto(),
             namespace = namespace,
@@ -131,6 +137,13 @@ interface ExecutionRequestRepository :
 interface CustomExecutionRequestRepository {
     fun findByIdWithDetails(id: ExecutionRequestId): ExecutionRequestEntity?
     fun findAllWithDetails(): List<ExecutionRequestEntity>
+    fun findAllWithDetailsFiltered(
+        reviewStatuses: Set<ReviewStatus>?,
+        executionStatuses: Set<ExecutionStatus>?,
+        connectionId: ConnectionId?,
+        after: LocalDateTime?,
+        limit: Int,
+    ): List<ExecutionRequestEntity>
 }
 
 class CustomExecutionRequestRepositoryImpl(private val entityManager: EntityManager) :
@@ -154,6 +167,48 @@ class CustomExecutionRequestRepositoryImpl(private val entityManager: EntityMana
         .leftJoin(qExecutionRequestEntity.author).fetchJoin()
         .orderBy(qExecutionRequestEntity.createdAt.desc())
         .fetch()
+
+    override fun findAllWithDetailsFiltered(
+        reviewStatuses: Set<ReviewStatus>?,
+        executionStatuses: Set<ExecutionStatus>?,
+        connectionId: ConnectionId?,
+        after: LocalDateTime?,
+        limit: Int,
+    ): List<ExecutionRequestEntity> {
+        val query = JPAQuery<ExecutionRequestEntity>(entityManager)
+            .from(qExecutionRequestEntity)
+            .leftJoin(qExecutionRequestEntity.events).fetchJoin()
+            .leftJoin(qExecutionRequestEntity.connection).fetchJoin()
+            .leftJoin(qExecutionRequestEntity.author).fetchJoin()
+
+        // Apply filters
+        reviewStatuses?.let {
+            if (it.isNotEmpty()) {
+                query.where(qExecutionRequestEntity.reviewStatus.`in`(it))
+            }
+        }
+
+        executionStatuses?.let {
+            if (it.isNotEmpty()) {
+                query.where(qExecutionRequestEntity.executionStatus.`in`(it))
+            }
+        }
+
+        connectionId?.let {
+            query.where(qExecutionRequestEntity.connection.id.eq(it.toString()))
+        }
+
+        // Apply cursor-based pagination
+        after?.let {
+            query.where(qExecutionRequestEntity.createdAt.lt(it))
+        }
+
+        // Order and limit
+        return query
+            .orderBy(qExecutionRequestEntity.createdAt.desc())
+            .limit(limit.toLong())
+            .fetch()
+    }
 }
 
 @Service
@@ -181,10 +236,15 @@ class ExecutionRequestAdapter(
         val event = entityManager.merge(eventEntity)
 
         executionRequestEntity.events.add(event)
-        executionRequestRepository.saveAndFlush(executionRequestEntity)
+
+        // Recalculate and update materialized status columns
         val details = executionRequestEntity.toDetailDto(
             connectionAdapter.toDto(executionRequestEntity.connection),
         )
+        executionRequestEntity.reviewStatus = details.resolveReviewStatus()
+        executionRequestEntity.executionStatus = details.resolveExecutionStatus()
+
+        executionRequestRepository.saveAndFlush(executionRequestEntity)
         entityManager.refresh(event)
 
         return Pair(details, event.toDto(details.request, details.request.connection))
@@ -201,7 +261,8 @@ class ExecutionRequestAdapter(
         type: RequestType,
         description: String,
         statement: String? = null,
-        executionStatus: String,
+        executionStatus: ExecutionStatus,
+        reviewStatus: ReviewStatus,
         authorId: String,
         namespace: String? = null,
         podName: String? = null,
@@ -238,6 +299,7 @@ class ExecutionRequestAdapter(
                 description = description,
                 statement = statement,
                 executionStatus = executionStatus,
+                reviewStatus = reviewStatus,
                 events = mutableSetOf(),
                 author = authorEntity,
                 executionRequestType = when (connection.connectionType) {
@@ -261,7 +323,8 @@ class ExecutionRequestAdapter(
         title: String? = null,
         description: String? = null,
         statement: String? = null,
-        executionStatus: String? = null,
+        executionStatus: ExecutionStatus? = null,
+        reviewStatus: ReviewStatus? = null,
         namespace: String? = null,
         podName: String? = null,
         containerName: String? = null,
@@ -290,6 +353,7 @@ class ExecutionRequestAdapter(
         description?.let { executionRequestEntity.description = it }
         statement?.let { executionRequestEntity.statement = it }
         executionStatus?.let { executionRequestEntity.executionStatus = it }
+        reviewStatus?.let { executionRequestEntity.reviewStatus = it }
 
         namespace?.let { executionRequestEntity.namespace = it }
         podName?.let { executionRequestEntity.podName = it }
@@ -304,6 +368,22 @@ class ExecutionRequestAdapter(
     }
 
     fun listExecutionRequests(): List<ExecutionRequestDetails> = executionRequestRepository.findAllWithDetails().map {
+        it.toDetailDto(connectionAdapter.toDto(it.connection))
+    }
+
+    fun listExecutionRequestsFiltered(
+        reviewStatuses: Set<ReviewStatus>? = null,
+        executionStatuses: Set<ExecutionStatus>? = null,
+        connectionId: ConnectionId? = null,
+        after: LocalDateTime? = null,
+        limit: Int = Int.MAX_VALUE,
+    ): List<ExecutionRequestDetails> = executionRequestRepository.findAllWithDetailsFiltered(
+        reviewStatuses = reviewStatuses,
+        executionStatuses = executionStatuses,
+        connectionId = connectionId,
+        after = after,
+        limit = limit,
+    ).map {
         it.toDetailDto(connectionAdapter.toDto(it.connection))
     }
 

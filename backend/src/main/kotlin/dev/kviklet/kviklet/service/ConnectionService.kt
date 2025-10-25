@@ -31,6 +31,7 @@ class ConnectionService(
     private val connectionAdapter: ConnectionAdapter,
     private val JDBCExecutor: JDBCExecutor,
     private val mongoDBExecutor: MongoDBExecutor,
+    private val executionRequestStatusService: ExecutionRequestStatusService,
 ) {
 
     @Transactional
@@ -45,23 +46,31 @@ class ConnectionService(
             connectionId,
         ) as DatasourceConnection
 
-        return connectionAdapter.updateDatasourceConnection(
+        val newReviewConfig = request.reviewConfig?.let {
+            ReviewConfig(
+                it.numTotalRequired,
+            )
+        } ?: connection.reviewConfig
+
+        val newMaxExecutions = request.maxExecutions ?: connection.maxExecutions
+
+        // Detect if fields that affect status calculation have changed
+        val reviewConfigChanged = connection.reviewConfig != newReviewConfig
+        val maxExecutionsChanged = connection.maxExecutions != newMaxExecutions
+
+        val updatedConnection = connectionAdapter.updateDatasourceConnection(
             connectionId,
             request.displayName ?: connection.displayName,
             request.description ?: connection.description,
             request.type ?: connection.type,
             request.protocol ?: connection.protocol,
-            request.maxExecutions ?: connection.maxExecutions,
+            newMaxExecutions,
             request.hostname ?: connection.hostname,
             request.port ?: connection.port,
             request.authenticationType ?: connection.authenticationType,
             getUpdatedAuth(connection.auth, request),
             request.databaseName ?: connection.databaseName,
-            request.reviewConfig?.let {
-                ReviewConfig(
-                    it.numTotalRequired,
-                )
-            } ?: connection.reviewConfig,
+            newReviewConfig,
             request.additionalJDBCOptions ?: connection.additionalOptions,
             dumpsEnabled = request.dumpsEnabled ?: connection.dumpsEnabled,
             temporaryAccessEnabled = request.temporaryAccessEnabled ?: connection.temporaryAccessEnabled,
@@ -73,6 +82,13 @@ class ConnectionService(
                 (request.maxTemporaryAccessDuration ?: connection.maxTemporaryAccessDuration)
             },
         )
+
+        // Recalculate statuses if reviewConfig or maxExecutions changed
+        if (reviewConfigChanged || maxExecutionsChanged) {
+            executionRequestStatusService.recalculateStatusForRequests(connectionId)
+        }
+
+        return updatedConnection
     }
 
     private fun getUpdatedAuth(
@@ -115,17 +131,32 @@ class ConnectionService(
             connectionId,
         ) as KubernetesConnection
 
-        return connectionAdapter.updateKubernetesConnection(
+        val newReviewConfig = request.reviewConfig?.let {
+            ReviewConfig(
+                it.numTotalRequired,
+            )
+        } ?: connection.reviewConfig
+
+        val newMaxExecutions = request.maxExecutions ?: connection.maxExecutions
+
+        // Detect if fields that affect status calculation have changed
+        val reviewConfigChanged = connection.reviewConfig != newReviewConfig
+        val maxExecutionsChanged = connection.maxExecutions != newMaxExecutions
+
+        val updatedConnection = connectionAdapter.updateKubernetesConnection(
             connectionId,
             request.displayName ?: connection.displayName,
             request.description ?: connection.description,
-            request.reviewConfig?.let {
-                ReviewConfig(
-                    it.numTotalRequired,
-                )
-            } ?: connection.reviewConfig,
-            request.maxExecutions ?: connection.maxExecutions,
+            newReviewConfig,
+            newMaxExecutions,
         )
+
+        // Recalculate statuses if reviewConfig or maxExecutions changed
+        if (reviewConfigChanged || maxExecutionsChanged) {
+            executionRequestStatusService.recalculateStatusForRequests(connectionId)
+        }
+
+        return updatedConnection
     }
 
     @Transactional

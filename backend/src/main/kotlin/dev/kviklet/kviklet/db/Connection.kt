@@ -94,6 +94,7 @@ class ConnectionAdapter(
     val connectionRepository: ConnectionRepository,
     private val encryptionService: EncryptionService,
     private val encryptionConfig: EncryptionConfigProperties,
+    private val executionRequestRepository: ExecutionRequestRepository,
 ) {
     private fun save(connection: ConnectionEntity): ConnectionEntity {
         val unencryptedUsername = connection.username
@@ -242,6 +243,7 @@ class ConnectionAdapter(
         if (datasourceConnection.connectionType != ConnectionType.DATASOURCE) {
             throw IllegalStateException("Connection is not a Datasource Connection")
         }
+
         datasourceConnection.displayName = displayName
         datasourceConnection.description = description
         datasourceConnection.datasourceType = type
@@ -283,6 +285,7 @@ class ConnectionAdapter(
         if (datasourceConnection.connectionType != ConnectionType.KUBERNETES) {
             throw IllegalStateException("Connection is not a Kubernetes Connection")
         }
+
         datasourceConnection.displayName = displayName
         datasourceConnection.description = description
         datasourceConnection.reviewConfig = reviewConfig

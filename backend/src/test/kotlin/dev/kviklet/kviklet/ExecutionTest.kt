@@ -545,10 +545,10 @@ class ExecutionTest {
         mockMvc.perform(
             get("/execution-requests/").cookie(cookie),
         ).andExpect(status().isOk)
-            .andExpect(jsonPath("$[0].title").value("Test Execution"))
-            .andExpect(jsonPath("$[0].type").value("SingleExecution"))
-            .andExpect(jsonPath("$[0].description").value("A test execution request"))
-            .andExpect(jsonPath("$[0].statement").value("SELECT * FROM test"))
+            .andExpect(jsonPath("$.requests[0].title").value("Test Execution"))
+            .andExpect(jsonPath("$.requests[0].type").value("SingleExecution"))
+            .andExpect(jsonPath("$.requests[0].description").value("A test execution request"))
+            .andExpect(jsonPath("$.requests[0].statement").value("SELECT * FROM test"))
     }
 
     private fun performReviewActionAndAssert(

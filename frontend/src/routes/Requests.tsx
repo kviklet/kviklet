@@ -1,10 +1,9 @@
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useRef, useState, useCallback } from "react";
 import {
   ExecutionRequestResponse,
-  getRequests,
+  getRequestsPaginated,
 } from "../api/ExecutionRequestApi";
 import { Link } from "react-router-dom";
-import Button from "../components/Button";
 import Spinner from "../components/Spinner";
 import {
   CircleStackIcon,
@@ -78,33 +77,62 @@ function mapStatusToLabelColor(status?: string) {
 const useRequests = (onlyPending: boolean, searchTerm: string) => {
   const [requests, setRequests] = useState<ExecutionRequestResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
+  const [hasMore, setHasMore] = useState<boolean>(false);
+  const [cursor, setCursor] = useState<Date | null>(null);
 
   const { addNotification } = useNotification();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      const requests = await getRequests();
-      if (isApiErrorResponse(requests)) {
+  const loadRequests = useCallback(
+    async (reset: boolean = false) => {
+      if (reset) {
+        setLoading(true);
+        setRequests([]);
+        setCursor(null);
+      } else {
+        setLoadingMore(true);
+      }
+
+      const response = await getRequestsPaginated({
+        reviewStatuses: onlyPending ? ["AWAITING_APPROVAL"] : undefined,
+        after: reset ? undefined : cursor ?? undefined,
+        limit: 20,
+      });
+
+      if (isApiErrorResponse(response)) {
         addNotification({
           title: "Failed to fetch requests",
-          text: requests.message,
+          text: response.message,
           type: "error",
         });
         setLoading(false);
+        setLoadingMore(false);
         return;
       }
-      setRequests(requests);
+
+      setRequests((prev) =>
+        reset ? response.requests : [...prev, ...response.requests],
+      );
+      setHasMore(response.hasMore);
+      setCursor(response.cursor);
       setLoading(false);
-    };
-    void fetchData();
-  }, []);
+      setLoadingMore(false);
+    },
+    [onlyPending, cursor, addNotification],
+  );
 
-  const visibleRequests = onlyPending
-    ? requests.filter((r) => r.reviewStatus === "AWAITING_APPROVAL")
-    : requests;
+  useEffect(() => {
+    void loadRequests(true);
+  }, [onlyPending]);
 
-  const filteredRequests = visibleRequests.filter(
+  const loadMore = useCallback(() => {
+    if (!loadingMore && hasMore) {
+      void loadRequests(false);
+    }
+  }, [loadingMore, hasMore, loadRequests]);
+
+  // Client-side filtering by search term (for multi-field search)
+  const filteredRequests = requests.filter(
     (request) =>
       request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       request.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -116,17 +144,45 @@ const useRequests = (onlyPending: boolean, searchTerm: string) => {
       request.author.fullName?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  const sortedRequests = [...filteredRequests].sort((a, b) => {
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  });
-
-  return { requests: sortedRequests, loading };
+  return {
+    requests: filteredRequests,
+    loading,
+    loadingMore,
+    hasMore,
+    loadMore,
+  };
 };
 
 function Requests() {
   const [onlyPending, setOnlyPending] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const { requests, loading } = useRequests(onlyPending, searchTerm);
+  const { requests, loading, loadingMore, hasMore, loadMore } = useRequests(
+    onlyPending,
+    searchTerm,
+  );
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
+    };
+  }, [hasMore, loadingMore, loadMore]);
 
   return (
     <div className="h-full">
@@ -170,6 +226,7 @@ function Requests() {
             {requests.map((request) => {
               return (
                 <Link
+                  key={request.id}
                   to={`/requests/${request.id}`}
                   data-testid={`request-link-${request.title}`}
                 >
@@ -223,9 +280,16 @@ function Requests() {
                 </Link>
               );
             })}
-            <Link to={"/new"}>
-              <Button className="float-right">Create new Request</Button>
-            </Link>
+
+            {/* Infinite scroll trigger */}
+            {hasMore && <div ref={observerTarget} className="h-10" />}
+
+            {/* Loading more indicator */}
+            {loadingMore && (
+              <div className="my-4 flex justify-center">
+                <Spinner />
+              </div>
+            )}
           </div>
         </div>
       )}
