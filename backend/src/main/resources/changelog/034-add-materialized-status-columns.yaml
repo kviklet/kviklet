@@ -61,3 +61,10 @@ databaseChangeLog:
                   name: review_status
               - column:
                   name: execution_status
+
+  - changeSet:
+      id: 034-recalculate-request-statuses
+      author: jascha
+      changes:
+        - customChange:
+            class: dev.kviklet.kviklet.migration.RecalculateRequestStatuses
