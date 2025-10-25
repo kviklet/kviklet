@@ -1,6 +1,5 @@
 package dev.kviklet.kviklet.migration
 
-import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import liquibase.change.custom.CustomTaskChange
 import liquibase.database.Database
@@ -9,7 +8,6 @@ import liquibase.exception.CustomChangeException
 import liquibase.exception.SetupException
 import liquibase.exception.ValidationErrors
 import liquibase.resource.ResourceAccessor
-import java.sql.ResultSet
 import java.time.LocalDateTime
 
 /**
@@ -115,12 +113,12 @@ class RecalculateRequestStatuses : CustomTaskChange {
             requestType!!,
             maxExecutions,
             temporaryAccessDuration,
-            createdAt!!
+            createdAt!!,
         )
 
         // Update the request
         connection.prepareStatement(
-            "UPDATE execution_request SET review_status = ?, execution_status = ? WHERE id = ?"
+            "UPDATE execution_request SET review_status = ?, execution_status = ? WHERE id = ?",
         ).use { stmt ->
             stmt.setString(1, reviewStatus)
             stmt.setString(2, executionStatus)
@@ -142,24 +140,22 @@ class RecalculateRequestStatuses : CustomTaskChange {
             stmt.setString(1, requestId)
             val rs = stmt.executeQuery()
             while (rs.next()) {
-                events.add(EventData(
-                    id = rs.getString("id"),
-                    type = rs.getString("type"),
-                    payload = rs.getString("payload"),
-                    createdAt = rs.getTimestamp("created_at").toLocalDateTime(),
-                    authorId = rs.getString("author_id")
-                ))
+                events.add(
+                    EventData(
+                        id = rs.getString("id"),
+                        type = rs.getString("type"),
+                        payload = rs.getString("payload"),
+                        createdAt = rs.getTimestamp("created_at").toLocalDateTime(),
+                        authorId = rs.getString("author_id"),
+                    ),
+                )
             }
         }
 
         return events
     }
 
-    private fun calculateReviewStatus(
-        events: List<EventData>,
-        numTotalRequired: Int,
-        requestType: String
-    ): String {
+    private fun calculateReviewStatus(events: List<EventData>, numTotalRequired: Int, requestType: String): String {
         val reviewEvents = events.filter { it.type == "REVIEW" }
 
         // Check for rejection
@@ -216,7 +212,7 @@ class RecalculateRequestStatuses : CustomTaskChange {
         return changesRequested.any { changeRequest ->
             approvals.none { approval ->
                 approval.authorId == changeRequest.authorId &&
-                approval.createdAt.isAfter(changeRequest.createdAt)
+                    approval.createdAt.isAfter(changeRequest.createdAt)
             }
         }
     }
@@ -281,7 +277,7 @@ class RecalculateRequestStatuses : CustomTaskChange {
         requestType: String,
         maxExecutions: Int?,
         temporaryAccessDuration: Long?,
-        requestCreatedAt: LocalDateTime
+        requestCreatedAt: LocalDateTime,
     ): String {
         val executeEvents = events.filter { it.type == "EXECUTE" }
 
@@ -364,5 +360,5 @@ data class EventData(
     val type: String,
     val payload: String,
     val createdAt: LocalDateTime,
-    val authorId: String
+    val authorId: String,
 )
