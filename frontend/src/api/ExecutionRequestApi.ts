@@ -89,10 +89,13 @@ const ExecuteEvent = withType(
   "EXECUTE",
 );
 
-const CSVDownloadSchema = z.object({
+const DownloadSchema = z.object({
   allowed: z.boolean(),
   reason: z.string(),
 });
+
+const CSVDownloadSchema = DownloadSchema;
+const JSONDownloadSchema = DownloadSchema;
 
 const RawDatasourceRequestSchema = z.object({
   id: z.string(),
@@ -107,6 +110,7 @@ const RawDatasourceRequestSchema = z.object({
   createdAt: z.coerce.date(),
   connectionName: z.string().optional(),
   csvDownload: CSVDownloadSchema.optional(),
+  jsonDownload: JSONDownloadSchema.optional(),
   temporaryAccessDuration: z.number().nullable(),
   liveSessionEnabled: z.boolean().optional(),
 });
