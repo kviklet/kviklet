@@ -85,6 +85,11 @@ interface SecuredDomainObject {
         true
 }
 
+interface SecuredCollectionWrapper<T> {
+    fun getCollection(): Collection<T>
+    fun withFilteredCollection(filtered: Collection<T>): SecuredCollectionWrapper<T>
+}
+
 @Target(AnnotationTarget.FUNCTION)
 @Retention
 annotation class Policy(val permission: Permission, val checkIsPresentOnly: Boolean = false)
@@ -211,6 +216,13 @@ class AuthorizationManagerInterceptor(
         when (returnedObject) {
             is Collection<*> -> {
                 filterCollection(invocation, returnedObject.toMutableList())
+            }
+
+            is SecuredCollectionWrapper<*> -> {
+                @Suppress("UNCHECKED_CAST")
+                val wrapper = returnedObject as SecuredCollectionWrapper<Any?>
+                val filtered = filterCollection(invocation, returnedObject.getCollection().toMutableList())
+                wrapper.withFilteredCollection(filtered)
             }
 
             null -> {

@@ -95,3 +95,9 @@ databaseChangeLog:
   - include:
       file: 033-add-is-executing-column.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 034-add-materialized-status-columns.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: 035-add-status-index.yaml
+      relativeToChangelogFile: true

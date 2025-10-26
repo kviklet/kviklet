@@ -17,12 +17,14 @@ import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
+import dev.kviklet.kviklet.service.dto.ExecutionStatus
 import dev.kviklet.kviklet.service.dto.LiveSession
 import dev.kviklet.kviklet.service.dto.LiveSessionId
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewAction
+import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.Role
 import dev.kviklet.kviklet.service.dto.RoleId
 import jakarta.annotation.PostConstruct
@@ -280,6 +282,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
 class ExecutionRequestHelper(
     private val executionRequestAdapter: ExecutionRequestAdapter,
     private val connectionHelper: ConnectionHelper,
+    private val connectionAdapter: ConnectionAdapter,
 ) {
 
     @Transactional
@@ -290,6 +293,8 @@ class ExecutionRequestHelper(
         connection: Connection? = null,
         description: String = "A test execution request",
         requestType: RequestType = RequestType.SingleExecution,
+        reviewStatus: ReviewStatus = ReviewStatus.AWAITING_APPROVAL,
+        executionStatus: ExecutionStatus = ExecutionStatus.EXECUTABLE,
     ): ExecutionRequestDetails {
         val requestConnection = connection ?: connectionHelper.createPostgresConnection(dbcontainer!!)
         return executionRequestAdapter.createExecutionRequest(
@@ -298,7 +303,8 @@ class ExecutionRequestHelper(
             type = requestType,
             description = description,
             statement = statement,
-            executionStatus = "PENDING",
+            executionStatus = executionStatus,
+            reviewStatus = reviewStatus,
             authorId = author.getId()!!,
         )
     }
@@ -319,7 +325,8 @@ class ExecutionRequestHelper(
             type = requestType,
             description = "A test execution request",
             statement = sql,
-            executionStatus = "PENDING",
+            executionStatus = ExecutionStatus.EXECUTABLE,
+            reviewStatus = ReviewStatus.AWAITING_APPROVAL,
             authorId = author.getId()!!,
         )
         executionRequestAdapter.addEvent(
@@ -344,7 +351,8 @@ class ExecutionRequestHelper(
             title = "Test Kubernetes Execution",
             type = RequestType.SingleExecution,
             description = "A test kubernetes execution request",
-            executionStatus = "PENDING",
+            executionStatus = ExecutionStatus.EXECUTABLE,
+            reviewStatus = ReviewStatus.AWAITING_APPROVAL,
             authorId = author.getId()!!,
             namespace = "default",
             podName = "test-pod",

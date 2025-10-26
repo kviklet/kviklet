@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 035-add-status-index
+      author: jascha
+      changes:
+        # Create index for efficient pagination queries
+        - createIndex:
+            indexName: idx_execution_request_pagination
+            tableName: execution_request
+            columns:
+              - column:
+                  name: created_at
+                  descending: true
+              - column:
+                  name: review_status
+              - column:
+                  name: execution_status
