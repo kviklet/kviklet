@@ -335,7 +335,8 @@ class ExecutionRequestService(
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
-    fun list(): List<ExecutionRequestDetails> = executionRequestAdapter.listExecutionRequests()
+    fun list(): List<ExecutionRequestDetails> =
+        executionRequestAdapter.listExecutionRequests().map { ensureMaterializedStatuses(it) }
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
@@ -359,7 +360,7 @@ class ExecutionRequestService(
             connectionId = connectionId,
             after = after,
             limit = fetchLimit,
-        )
+        ).map { ensureMaterializedStatuses(it) }
 
         val hasMore = requests.size > limit
         val requestsToReturn = requests.take(limit)
@@ -376,7 +377,28 @@ class ExecutionRequestService(
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
-    fun get(id: ExecutionRequestId): ExecutionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
+    fun get(id: ExecutionRequestId): ExecutionRequestDetails =
+        ensureMaterializedStatuses(executionRequestAdapter.getExecutionRequestDetails(id))
+
+    private fun ensureMaterializedStatuses(details: ExecutionRequestDetails): ExecutionRequestDetails {
+        val storedExecutionStatus = ExecutionStatus.valueOf(details.request.executionStatus)
+        val storedReviewStatus = ReviewStatus.valueOf(details.request.reviewStatus)
+
+        val resolvedExecutionStatus = details.resolveExecutionStatus()
+        val resolvedReviewStatus = details.resolveReviewStatus()
+
+        return if (storedExecutionStatus == resolvedExecutionStatus &&
+            storedReviewStatus == resolvedReviewStatus
+        ) {
+            details
+        } else {
+            executionRequestAdapter.updateExecutionRequest(
+                id = details.request.id!!,
+                executionStatus = resolvedExecutionStatus,
+                reviewStatus = resolvedReviewStatus,
+            )
+        }
+    }
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_REVIEW)
