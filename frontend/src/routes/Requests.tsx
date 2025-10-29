@@ -95,6 +95,7 @@ const useRequests = (onlyPending: boolean, searchTerm: string) => {
 
       const response = await getRequestsPaginated({
         reviewStatuses: onlyPending ? ["AWAITING_APPROVAL"] : undefined,
+        executionStatuses: onlyPending ? ["EXECUTABLE", "ACTIVE"] : undefined,
         after: reset ? undefined : cursor ?? undefined,
         limit: 20,
       });
