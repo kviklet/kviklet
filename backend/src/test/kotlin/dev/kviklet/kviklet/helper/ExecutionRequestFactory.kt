@@ -17,12 +17,14 @@ import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
+import dev.kviklet.kviklet.service.dto.ExecutionStatus
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ResultLog
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewEvent
+import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.Role
 import dev.kviklet.kviklet.service.dto.RoleId
 import dev.kviklet.kviklet.service.dto.utcTimeNow
@@ -154,7 +156,8 @@ class ExecutionRequestFactory : Factory() {
         type: RequestType = RequestType.SingleExecution,
         description: String? = "A test request",
         statement: String = "SELECT 1;",
-        executionStatus: String = "PENDING",
+        executionStatus: ExecutionStatus = ExecutionStatus.EXECUTABLE,
+        reviewStatus: ReviewStatus = ReviewStatus.AWAITING_APPROVAL,
         createdAt: LocalDateTime = utcTimeNow(),
         author: User? = null,
         temporaryAccessDuration: Duration? = null,
@@ -166,6 +169,7 @@ class ExecutionRequestFactory : Factory() {
         description,
         statement,
         executionStatus,
+        reviewStatus,
         createdAt,
         author ?: userFactory.createUser(),
         temporaryAccessDuration,
