@@ -39,11 +39,9 @@ class WebSocketConfig : WebSocketConfigurer {
     lateinit var corsSettings: CorsSettings
 
     override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
-        val handlerRegistry = registry.addHandler(sessionWebsocketHandler, "/sql/{requestId}")
+        registry.addHandler(sessionWebsocketHandler, "/sql/{requestId}")
             .addInterceptors(AuthHandshakeInterceptor())
-        if (corsSettings.allowedOrigins.isNotEmpty()) {
-            handlerRegistry.setAllowedOrigins(*corsSettings.allowedOrigins.toTypedArray())
-        }
+            .setAllowedOriginPatterns("*")
     }
 }
 
