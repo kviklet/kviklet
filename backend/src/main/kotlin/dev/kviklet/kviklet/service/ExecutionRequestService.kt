@@ -650,6 +650,65 @@ class ExecutionRequestService(
         return field
     }
 
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
+    fun streamResultsAsJson(
+        id: ExecutionRequestId,
+        userId: String,
+        outputStream: OutputStream,
+        query: String? = null,
+    ) {
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
+        val connection = executionRequest.request.connection
+        if (connection !is DatasourceConnection || executionRequest.request !is DatasourceExecutionRequest) {
+            throw RuntimeException("Only Datasource requests can be downloaded as JSON")
+        }
+        if (connection.type != DatasourceType.MONGODB) {
+            throw RuntimeException("Only MongoDB requests can be downloaded as JSON")
+        }
+        val (allowed, reason) = executionRequest.jsonDownloadAllowed(query)
+        if (!allowed) {
+            throw RuntimeException(reason)
+        }
+
+        val queryToExecute = when (executionRequest.request.type) {
+            RequestType.SingleExecution ->
+                executionRequest.request.statement!!
+                    .trim()
+                    .removeSuffix(";")
+            RequestType.TemporaryAccess ->
+                query?.trim()?.removeSuffix(";")
+                    ?: throw MissingQueryException("For temporary access requests a query to execute is required")
+            RequestType.Dump -> throw RuntimeException("Dump requests can't be downloaded as JSON")
+        }
+
+        // simpan event eksekusi (download)
+        eventService.saveEvent(
+            id,
+            userId,
+            ExecutePayload(
+                query = queryToExecute,
+                isDownload = true,
+            ),
+        )
+
+        val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
+        val jsonGenerator = mapper.factory.createGenerator(outputStream)
+            .useDefaultPrettyPrinter()
+        jsonGenerator.writeStartArray()
+
+        // streaming tanpa limit
+        mongoDBExecutor.executeAndStreamAll(
+            connectionString = connection.getConnectionString(),
+            databaseName = connection.databaseName ?: "db",
+            query = queryToExecute,
+        ) { doc ->
+            jsonGenerator.writeObject(doc)
+        }
+
+        jsonGenerator.writeEndArray()
+        jsonGenerator.flush()
+    }
+
     @Policy(Permission.EXECUTION_REQUEST_GET)
     fun explain(id: ExecutionRequestId, query: String?, userId: String): DBExecutionResult {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
