@@ -44,24 +44,3 @@ A common helper for creating the full chart name and version as used by the char
 {{- define "kviklet.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
-
-{{/*
-Return the Postgresql Secret Name
-*/}}
-{{- define "config.datasource.secretName" -}}
-{{- if .Values.postgresql.enabled }}
-    {{- if .Values.postgresql.auth.existingSecret -}}
-        {{- printf "%s" .Values.postgresql.auth.existingSecret -}}
-    {{- else -}}
-        {{- $releaseName := .Release.Name -}}
-        {{- printf "%s" .Release.Name -}}-postgresql
-    {{- end -}}
-{{- end -}}
-{{- end -}}
-
-{{- define "config.datasourceUrl" -}}
-{{- $releaseName := .Release.Name -}}
-{{- $databaseName := default "kviklet" .Values.postgresql.auth.database}}
-{{- printf "%s" .Values.postgresql.auth.existingSecret -}}
-jdbc:postgresql://{{ $releaseName }}-postgresql.kviklet.svc:5432/{{ $databaseName }}
-{{- end -}}

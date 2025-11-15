@@ -2,7 +2,7 @@ name: Deploy Demo
 
 on:
   push:
-    branches: [main]
+    branches: [main, migrate-external-database]
 
 jobs:
   deploy:
@@ -42,11 +42,20 @@ jobs:
         with:
           version: v3.12.1
 
+      - name: Create Database Secret
+        run: |
+          kubectl create secret generic kviklet-demo-config-secret \
+            --from-literal=SPRING_DATASOURCE_URL="${{ secrets.DB_CONNECTION_URL }}" \
+            --from-literal=SPRING_DATASOURCE_USERNAME="${{ secrets.DB_USERNAME }}" \
+            --from-literal=SPRING_DATASOURCE_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+            --from-literal=INITIAL_USER_EMAIL="${{ secrets.INITIAL_USER_EMAIL }}" \
+            --from-literal=INITIAL_USER_PASSWORD="${{ secrets.INITIAL_USER_PASSWORD }}" \
+            --namespace kviklet \
+            --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy Demo Chart
         run: |
-          cd charts/kviklet
-          helm dependency build
-          cd ../kviklet-demo
+          cd charts/kviklet-demo
           helm dependency build
           helm upgrade --install kviklet-demo . \
             --namespace kviklet \
