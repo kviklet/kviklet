@@ -1,6 +1,6 @@
 # Kviklet Demo Deployment Helm Chart
 
-This helm chart is used to deploy a demo installation of Kviklet onto a GKE cluster with an external TimescaleDB PostgreSQL database.
+This helm chart is used to deploy a demo installation of Kviklet onto a GKE cluster with an external PostgreSQL database.
 
 The demo is available at [demo.kviklet.dev](https://demo.kviklet.dev). However it's gated behind Google Identity-Aware Proxy so only members of the kviklet org can access it.
 
@@ -8,7 +8,7 @@ If you want to access the demo, please reach out to me under jascha@kviklet.dev.
 
 ## Database Configuration
 
-**Database:** Uses a managed TimescaleDB instance with credentials stored in GitHub Secrets (Demo environment).
+**Database:** Uses a managed PostgreSQL instance with credentials stored in GitHub Secrets (Demo environment).
 
 Required GitHub Secrets (in "Demo" environment):
 - `DB_CONNECTION_URL` - JDBC connection string

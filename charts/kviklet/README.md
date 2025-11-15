@@ -6,7 +6,6 @@ Kviklet requires an external PostgreSQL database (version 12+). This chart does 
 
 Supported databases:
 - PostgreSQL 12+
-- TimescaleDB (PostgreSQL-based)
 
 ## Quickstart
 
