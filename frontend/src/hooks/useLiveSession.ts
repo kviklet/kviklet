@@ -20,7 +20,6 @@ const useLiveSession = (
   const ws = useRef<WebSocket | null>(null);
   const executeResolverRef = useRef<ExecuteResolver | null>(null);
   const lastSentContentRef = useRef<string>("");
-  const isTypingRef = useRef<boolean>(false);
   const [results, setResults] = useState<ExecuteResponseResult[] | undefined>(
     undefined,
   );
@@ -235,17 +234,12 @@ const useLiveSession = (
     }
   };
 
-  const updateContent = (content: string) => {
-    lastSentContentRef.current = content;
-    isTypingRef.current = false;
-    sendMessage(updateContentMessage, { type: "update_content", content });
-  };
-
-  // Memoize the debounced function to prevent recreation on every render
+  // Memoize the debounced update function to prevent recreation on every render
   const debouncedUpdateContent = useMemo(
     () =>
       debounce((content: string) => {
-        updateContent(content);
+        lastSentContentRef.current = content;
+        sendMessage(updateContentMessage, { type: "update_content", content });
       }, 300),
     [],
   );
@@ -270,15 +264,9 @@ const useLiveSession = (
     setIsLoading(false);
   };
 
-  // Wrapper to track when user is typing
-  const handleContentChange = (content: string) => {
-    isTypingRef.current = true;
-    debouncedUpdateContent(content);
-  };
-
   return {
     executeQuery,
-    updateContent: handleContentChange,
+    updateContent: debouncedUpdateContent,
     cancelQuery,
     isLoading,
     results,
