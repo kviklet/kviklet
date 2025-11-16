@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import { websocketBaseUrl } from "../api/base";
 import { ExecuteResponseResult, Execute } from "../api/ExecutionRequestApi";
 import {
@@ -234,22 +234,14 @@ const useLiveSession = (
     }
   };
 
-  // Memoize the debounced update function to prevent recreation on every render
-  const debouncedUpdateContent = useMemo(
-    () =>
-      debounce((content: string) => {
-        lastSentContentRef.current = content;
-        sendMessage(updateContentMessage, { type: "update_content", content });
-      }, 300),
-    [],
-  );
+  const updateContent = (content: string) => {
+    lastSentContentRef.current = content;
+    sendMessage(updateContentMessage, { type: "update_content", content });
+  };
 
-  // Cleanup debounced function on unmount
-  useEffect(() => {
-    return () => {
-      debouncedUpdateContent.cancel();
-    };
-  }, [debouncedUpdateContent]);
+  const debouncedUpdateContent = debounce((content: string) => {
+    updateContent(content);
+  }, 300);
 
   const cancelQuery = () => {
     if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
