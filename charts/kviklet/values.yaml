@@ -31,7 +31,7 @@ externalSecretName: "kviklet-secret"
 image:
   registry: ghcr.io
   repository: kviklet/kviklet
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   tag: main
 
 service:
