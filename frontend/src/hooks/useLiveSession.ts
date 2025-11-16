@@ -19,6 +19,7 @@ const useLiveSession = (
 ) => {
   const ws = useRef<WebSocket | null>(null);
   const executeResolverRef = useRef<ExecuteResolver | null>(null);
+  const lastSentContentRef = useRef<string>("");
   const [results, setResults] = useState<ExecuteResponseResult[] | undefined>(
     undefined,
   );
@@ -103,7 +104,11 @@ const useLiveSession = (
       console.log(messageData);
       switch (messageData.type) {
         case "status":
-          setContent(messageData.consoleContent);
+          // Only update content if it's different from what we last sent
+          // This prevents status messages from resetting editor state while typing
+          if (messageData.consoleContent !== lastSentContentRef.current) {
+            setContent(messageData.consoleContent);
+          }
           break;
         case "result": {
           setResults(messageData.results);
@@ -230,12 +235,13 @@ const useLiveSession = (
   };
 
   const updateContent = (content: string) => {
+    lastSentContentRef.current = content;
     sendMessage(updateContentMessage, { type: "update_content", content });
   };
 
   const debouncedUpdateContent = debounce((content: string) => {
     updateContent(content);
-  }, 300) as (content: string) => void;
+  }, 300);
 
   const cancelQuery = () => {
     if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
