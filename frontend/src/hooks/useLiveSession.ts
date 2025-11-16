@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { websocketBaseUrl } from "../api/base";
 import { ExecuteResponseResult, Execute } from "../api/ExecutionRequestApi";
 import {
@@ -19,6 +19,8 @@ const useLiveSession = (
 ) => {
   const ws = useRef<WebSocket | null>(null);
   const executeResolverRef = useRef<ExecuteResolver | null>(null);
+  const lastSentContentRef = useRef<string>("");
+  const isTypingRef = useRef<boolean>(false);
   const [results, setResults] = useState<ExecuteResponseResult[] | undefined>(
     undefined,
   );
@@ -103,7 +105,11 @@ const useLiveSession = (
       console.log(messageData);
       switch (messageData.type) {
         case "status":
-          setContent(messageData.consoleContent);
+          // Only update content if it's different from what we last sent
+          // This prevents status messages from resetting editor state while typing
+          if (messageData.consoleContent !== lastSentContentRef.current) {
+            setContent(messageData.consoleContent);
+          }
           break;
         case "result": {
           setResults(messageData.results);
@@ -230,12 +236,26 @@ const useLiveSession = (
   };
 
   const updateContent = (content: string) => {
+    lastSentContentRef.current = content;
+    isTypingRef.current = false;
     sendMessage(updateContentMessage, { type: "update_content", content });
   };
 
-  const debouncedUpdateContent = debounce((content: string) => {
-    updateContent(content);
-  }, 300) as (content: string) => void;
+  // Memoize the debounced function to prevent recreation on every render
+  const debouncedUpdateContent = useMemo(
+    () =>
+      debounce((content: string) => {
+        updateContent(content);
+      }, 300),
+    [],
+  );
+
+  // Cleanup debounced function on unmount
+  useEffect(() => {
+    return () => {
+      debouncedUpdateContent.cancel();
+    };
+  }, [debouncedUpdateContent]);
 
   const cancelQuery = () => {
     if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
@@ -250,9 +270,15 @@ const useLiveSession = (
     setIsLoading(false);
   };
 
+  // Wrapper to track when user is typing
+  const handleContentChange = (content: string) => {
+    isTypingRef.current = true;
+    debouncedUpdateContent(content);
+  };
+
   return {
     executeQuery,
-    updateContent: debouncedUpdateContent,
+    updateContent: handleContentChange,
     cancelQuery,
     isLoading,
     results,
