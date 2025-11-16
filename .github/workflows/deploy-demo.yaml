@@ -2,7 +2,7 @@ name: Deploy Demo
 
 on:
   push:
-    branches: [main, fix/websocket-backendconfig]
+    branches: [main]
 
 jobs:
   deploy:
