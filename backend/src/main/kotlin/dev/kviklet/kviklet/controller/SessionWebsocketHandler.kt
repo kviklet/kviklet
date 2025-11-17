@@ -33,7 +33,7 @@ import java.util.concurrent.Executors
 )
 sealed class WebSocketMessage
 
-data class UpdateContentMessage(val content: String) : WebSocketMessage()
+data class UpdateContentMessage(val content: String, val ref: String) : WebSocketMessage()
 
 data class ExecuteMessage(val statement: String) : WebSocketMessage()
 
@@ -48,6 +48,7 @@ data class StatusMessage(
     override val sessionId: LiveSessionId,
     val consoleContent: String,
     val observers: List<UserResponse>,
+    val ref: String,
 ) : ResponseMessage(sessionId)
 
 data class ResultMessage(
@@ -141,7 +142,7 @@ class SessionWebsocketHandler(
                         liveSessionId,
                         webSocketMessage.content,
                     )
-                    broadcastUpdate(updatedSession)
+                    broadcastUpdate(updatedSession, webSocketMessage.ref)
                 }
                 is ExecuteMessage -> {
                     // Run execution in background thread with SecurityContext propagation
@@ -197,11 +198,12 @@ class SessionWebsocketHandler(
         }
     }
 
-    private fun broadcastUpdate(updatedSession: LiveSession) {
+    private fun broadcastUpdate(updatedSession: LiveSession, ref: String = "") {
         val updateMessage = StatusMessage(
             sessionId = updatedSession.id!!,
             consoleContent = updatedSession.consoleContent,
             observers = sessionObservers[updatedSession.id]?.map { UserResponse(it.user) } ?: emptyList(),
+            ref = ref,
         )
         sessionObservers[updatedSession.id]?.forEach { sessionObserver ->
             sendMessage(sessionObserver.webSocketSession, updateMessage)
