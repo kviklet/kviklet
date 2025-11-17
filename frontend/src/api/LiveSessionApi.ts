@@ -32,6 +32,7 @@ const executeEventResponseSchema = withType(
 const updateContentMessage = z.object({
   type: z.literal("update_content"),
   content: z.string(),
+  ref: z.string(),
 });
 
 const executeStatementMessage = z.object({
@@ -48,6 +49,7 @@ const statusMessage = z.object({
   sessionId: z.string(),
   consoleContent: z.string(),
   observers: z.array(userResponseSchema),
+  ref: z.string(),
 });
 
 const resultMessage = z.object({
