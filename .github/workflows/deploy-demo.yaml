@@ -62,3 +62,6 @@ jobs:
             --namespace kviklet \
             --create-namespace \
             --wait
+
+      - name: Restart deployment to pull latest image
+        run: kubectl rollout restart deployment/kviklet-demo -n kviklet
