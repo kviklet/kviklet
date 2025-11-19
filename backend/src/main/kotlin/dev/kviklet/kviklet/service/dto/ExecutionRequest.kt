@@ -331,6 +331,43 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
             return Pair(false, "Error parsing query: ${e.message}")
         }
     }
+
+    fun jsonDownloadAllowed(query: String? = null): Pair<Boolean, String> {
+        if (request.type === RequestType.Dump) {
+            return false to "JSON download is not available for SQLDump"
+        }
+
+        if (request.connection !is DatasourceConnection || request !is DatasourceExecutionRequest) {
+            return false to "Only Datasource Requests can be downloaded as JSON"
+        }
+
+        if (request.connection.type != DatasourceType.MONGODB) {
+            return false to "Only MongoDB requests can be downloaded as JSON"
+        }
+
+        if (resolveReviewStatus() != ReviewStatus.APPROVED) {
+            return false to "This request has not been approved yet!"
+        }
+
+        if (resolveExecutionStatus() == ExecutionStatus.EXECUTED) {
+            return false to "This request has already been executed the maximum amount of times!"
+        }
+
+        val queryToExecute = when (request.type) {
+            RequestType.SingleExecution -> request.statement?.trim()?.removeSuffix(";")
+                ?: return false to "Statement can't be empty"
+            RequestType.TemporaryAccess -> query?.trim()?.removeSuffix(";")
+                ?: return false to "Query can't be empty"
+            else -> return false to "Can't download results for this request type"
+        }
+
+        if (queryToExecute.isBlank()) {
+            return false to "Query can't be empty"
+        }
+
+        // Untuk MongoDB kita tidak pakai JSQLParser, cukup lolos validasi di atas
+        return true to ""
+    }
 }
 
 data class ExecutionProxy(

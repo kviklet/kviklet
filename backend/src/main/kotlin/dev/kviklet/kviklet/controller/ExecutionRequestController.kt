@@ -215,6 +215,10 @@ sealed class ExecutionRequestDetailResponse(open val id: ExecutionRequestId, ope
                         allowed = dto.csvDownloadAllowed().first,
                         reason = dto.csvDownloadAllowed().second,
                     ),
+                    jsonDownload = JSONDownloadableResponse(
+                        allowed = dto.jsonDownloadAllowed().first,
+                        reason = dto.jsonDownloadAllowed().second,
+                    ),
                     temporaryAccessDuration = dto.request.temporaryAccessDuration?.toMinutes(),
                     liveSessionEnabled = liveSessionEnabled,
                 )
@@ -252,6 +256,7 @@ data class DatasourceExecutionRequestDetailResponse(
     val executionStatus: ExecutionStatus,
     val createdAt: LocalDateTime = utcTimeNow(),
     val csvDownload: CSVDownloadableResponse,
+    val jsonDownload: JSONDownloadableResponse,
     override val events: List<EventResponse>,
     val temporaryAccessDuration: Long? = null,
     val liveSessionEnabled: Boolean,
@@ -261,6 +266,8 @@ data class DatasourceExecutionRequestDetailResponse(
 )
 
 data class CSVDownloadableResponse(val allowed: Boolean, val reason: String)
+
+data class JSONDownloadableResponse(val allowed: Boolean, val reason: String)
 
 data class KubernetesExecutionRequestDetailResponse(
     override val id: ExecutionRequestId,
@@ -702,6 +709,24 @@ class ExecutionRequestController(
             response.status = HttpServletResponse.SC_INTERNAL_SERVER_ERROR
             response.outputStream.use { it.write("An error occurred: ${e.message}".toByteArray()) }
         }
+    }
+
+    @Operation(
+        summary = "Execute Execution Request and Download as JSON (MongoDB only)",
+        description = "Download results as JSON after the Execution Request has been approved (MongoDB Only)",
+    )
+    @GetMapping("/{executionRequestId}/download-json")
+    fun downloadJson(
+        @PathVariable executionRequestId: ExecutionRequestId,
+        @CurrentUser userDetails: UserDetailsWithId,
+        response: HttpServletResponse,
+        @RequestParam(required = false) query: String?,
+    ) {
+        response.contentType = MediaType.APPLICATION_JSON_VALUE
+        val fileName = "$executionRequestId.json"
+        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"$fileName\"")
+        val outputStream = response.outputStream
+        executionRequestService.streamResultsAsJson(executionRequestId, userDetails.id, outputStream, query)
     }
 
     @Operation(
