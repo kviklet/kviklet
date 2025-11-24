@@ -104,6 +104,7 @@ class ConnectionService(
                         ?: (currentAuth as? AuthenticationDetails.UserPassword)?.password
                         ?: throw IllegalArgumentException("Password required for USER_PASSWORD authentication"),
                 )
+
                 AuthenticationType.AWS_IAM -> AuthenticationDetails.AwsIam(
                     username = request.username ?: currentAuth.username,
                     roleArn = request.roleArn ?: (currentAuth as? AuthenticationDetails.AwsIam)?.roleArn,
@@ -117,6 +118,7 @@ class ConnectionService(
                 username = request.username ?: currentAuth.username,
                 password = request.password ?: currentAuth.password,
             )
+
             is AuthenticationDetails.AwsIam -> currentAuth.copy(
                 username = request.username ?: currentAuth.username,
             )
@@ -280,6 +282,7 @@ class ConnectionService(
                     connectionString = connection.getConnectionString(),
                 )
             }
+
             else ->
                 JDBCExecutor.testCredentials(
                     connectionString = connection.getConnectionString(),

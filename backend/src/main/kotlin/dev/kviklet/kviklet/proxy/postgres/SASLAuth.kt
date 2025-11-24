@@ -51,9 +51,11 @@ class SASLAuthHandler(
             AuthenticationState.WAITING_CLIENT_FIRST -> {
                 handleClientFirstMessage(buff, read)
             }
+
             AuthenticationState.WAITING_CLIENT_PROOF -> {
                 handleClientProof(buff, read)
             }
+
             AuthenticationState.DONE -> {
                 return
             }

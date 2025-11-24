@@ -98,18 +98,22 @@ data class DatasourceConnection(
                 "jdbc:postgresql://$hostname:$port/" +
                     databaseName +
                     additionalOptions
+
             DatasourceType.MYSQL ->
                 "jdbc:mysql://$hostname:$port/" +
                     databaseName +
                     additionalOptions
+
             DatasourceType.MSSQL ->
                 "jdbc:sqlserver://$hostname:$port" +
                     (databaseName?.takeIf { it.isNotBlank() }?.let { ";databaseName=$databaseName" } ?: "") +
                     additionalOptions
+
             DatasourceType.MARIADB ->
                 "jdbc:mariadb://$hostname:$port/" +
                     databaseName +
                     additionalOptions
+
             DatasourceType.MONGODB -> {
                 val credentialString = if (auth.username.isNotBlank() && auth.password.isNotBlank()) {
                     "${auth.username}:${auth.password}@"
@@ -133,11 +137,13 @@ data class DatasourceConnection(
                     val delimiter = if (additionalOptions.isEmpty()) "?" else "&"
                     baseUrl + additionalOptions + delimiter + "sslmode=require"
                 }
+
                 DatasourceType.MYSQL -> {
                     val baseUrl = "jdbc:mysql://$hostname:$port/$databaseName"
                     val delimiter = if (additionalOptions.isEmpty()) "?" else "&"
                     baseUrl + additionalOptions + delimiter + "sslMode=REQUIRED"
                 }
+
                 else -> throw IllegalArgumentException("AWS IAM is not supported for $type")
             }
         }

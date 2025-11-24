@@ -43,9 +43,11 @@ class MongoDBExecutor {
             val documents = cursor.getList("firstBatch", Document::class.java)
             MongoRecordsQueryResult(documents)
         }
+
         result.containsKey("n") -> {
             UpdateQueryResult(result.getInteger("n"))
         }
+
         else -> {
             MongoRecordsQueryResult(listOf(result))
         }

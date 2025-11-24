@@ -32,7 +32,7 @@ open class PublicConfigResponse(
     open val allowedUsers: UInt?,
 )
 
-data class ConfigRequest(val teamsUrl: String?, val slackUrl: String?, val liveSessionEnabled: Boolean?)
+data class ConfigRequest(val teamsUrl: String?, val slackUrl: String?)
 
 data class ConfigResponse(
     override val oAuthProvider: String?,
@@ -44,7 +44,6 @@ data class ConfigResponse(
     override val allowedUsers: UInt?,
     val teamsUrl: String?,
     val slackUrl: String?,
-    val liveSessionEnabled: Boolean,
 ) : PublicConfigResponse(oAuthProvider, ldapEnabled, samlEnabled, licenseValid, validUntil, createdAt, allowedUsers) {
     companion object {
         fun fromConfiguration(
@@ -65,7 +64,6 @@ data class ConfigResponse(
                 allowedUsers = licensesSorted.firstOrNull()?.allowedUsers,
                 teamsUrl = configuration.teamsUrl,
                 slackUrl = configuration.slackUrl,
-                liveSessionEnabled = configuration.liveSessionEnabled ?: false,
             )
         }
     }
@@ -119,7 +117,6 @@ class ConfigController(
             Configuration(
                 teamsUrl = request.teamsUrl,
                 slackUrl = request.slackUrl,
-                liveSessionEnabled = request.liveSessionEnabled,
             ),
         )
         return ConfigResponse.fromConfiguration(

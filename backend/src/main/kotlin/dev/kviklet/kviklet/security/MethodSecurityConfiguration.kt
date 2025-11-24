@@ -140,7 +140,9 @@ class MyAuthorizationManager(
 
         val userDetailsWithId = when (auth.principal) {
             is UserDetailsWithId -> auth.principal as UserDetailsWithId
+
             is OidcUser -> (auth.principal as CustomOidcUser).getUserDetails()
+
             is Saml2AuthenticatedPrincipal -> {
                 // Handle SAML2 authentication
                 val samlPrincipal = auth.principal as Saml2AuthenticatedPrincipal
@@ -149,7 +151,10 @@ class MyAuthorizationManager(
                 val authorities = user.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
                 UserDetailsWithId(user.getId()!!, user.email, "", authorities)
             }
-            is String -> return AuthorizationDecision(false) // anonymous user
+
+            is String -> return AuthorizationDecision(false)
+
+            // anonymous user
             else -> throw RuntimeException("Unknown principal type: ${auth.principal.javaClass}")
         }
 
