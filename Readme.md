@@ -377,7 +377,7 @@ Currently there are notifications for:
 
 #### Base URL Configuration
 
-When running Kviklet behind a reverse proxy or Kubernetes Ingress, notification links may use the internal IP address instead of your public domain. Kviklet tries to track the correct URL by looking at incoming requests but some rverser proxies do not set the Forwarded headers correctly. To fix this, set the base URL explicitly:
+When running Kviklet behind a reverse proxy or Kubernetes Ingress, notification links may use the internal IP address instead of your public domain. Kviklet tries to track the correct URL by looking at incoming requests but some reverse proxies do not set the Forwarded headers correctly. To fix this, set the base URL explicitly:
 
 ```
 KVIKLET_BASE_URL=https://kviklet.example.com
