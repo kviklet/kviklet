@@ -64,9 +64,8 @@ class NotificationTest {
         roleHelper.deleteAll()
         configService.setConfiguration(
             Configuration(
-                "",
-                "",
-                false,
+                teamsUrl = "",
+                slackUrl = "",
             ),
         )
     }
@@ -82,7 +81,6 @@ class NotificationTest {
         val config = Configuration(
             teamsUrl = "https://teams.com",
             slackUrl = "https://slack.com",
-            liveSessionEnabled = false,
         )
         configService.setConfiguration(config)
         val connection = datasourceConnectionAdapter.createDatasourceConnection(
@@ -153,7 +151,6 @@ class NotificationTest {
             val config = Configuration(
                 teamsUrl = "https://teams.com",
                 slackUrl = "https://slack.com",
-                liveSessionEnabled = false,
             )
             configService.setConfiguration(config)
             val connection = datasourceConnectionAdapter.createDatasourceConnection(

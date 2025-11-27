@@ -308,6 +308,7 @@ class RecalculateRequestStatuses : CustomTaskChange {
 
                 "EXECUTABLE"
             }
+
             "TemporaryAccess" -> {
                 if (executeEvents.isEmpty()) {
                     return "EXECUTABLE"
@@ -329,6 +330,7 @@ class RecalculateRequestStatuses : CustomTaskChange {
                     "ACTIVE"
                 }
             }
+
             else -> {
                 // Default for unknown types
                 "EXECUTABLE"

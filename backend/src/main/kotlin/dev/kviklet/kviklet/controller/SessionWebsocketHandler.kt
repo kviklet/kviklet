@@ -144,6 +144,7 @@ class SessionWebsocketHandler(
                     )
                     broadcastUpdate(updatedSession, webSocketMessage.ref)
                 }
+
                 is ExecuteMessage -> {
                     // Run execution in background thread with SecurityContext propagation
                     queryExecutor.submit {
@@ -161,6 +162,7 @@ class SessionWebsocketHandler(
                                     )
                                     broadcastResultMessage(liveSessionId, resultMessage)
                                 }
+
                                 else -> throw IllegalStateException(
                                     "Unsupported execution result type: $executionResult",
                                 )
@@ -181,6 +183,7 @@ class SessionWebsocketHandler(
                     }
                     // Handler returns immediately - can now process other messages!
                 }
+
                 is CancelMessage -> {
                     sessionService.cancelQuery(liveSessionId)
                     logger.info("Query cancelled for session: $liveSessionId")

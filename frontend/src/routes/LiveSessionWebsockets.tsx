@@ -166,6 +166,7 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
             onClick={onExecuteQueryClick}
             onCancel={() => cancelQuery()}
             variant="primary"
+            dataTestId="run-query-button"
           >
             <div className="play-triangle mr-2 inline-block h-3 w-2 bg-slate-50"></div>
             Run Query

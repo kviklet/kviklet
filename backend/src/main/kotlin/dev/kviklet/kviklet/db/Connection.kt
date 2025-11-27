@@ -340,6 +340,7 @@ class ConnectionAdapter(
                         username = connection.username!!,
                         password = connection.password!!,
                     )
+
                     AuthenticationType.AWS_IAM -> AuthenticationDetails.AwsIam(
                         username = connection.username!!,
                         roleArn = connection.roleArn,
@@ -357,6 +358,7 @@ class ConnectionAdapter(
                 explainEnabled = connection.explainEnabled,
                 maxTemporaryAccessDuration = connection.maxTemporaryAccessDuration,
             )
+
         ConnectionType.KUBERNETES ->
             KubernetesConnection(
                 id = ConnectionId(connection.id),

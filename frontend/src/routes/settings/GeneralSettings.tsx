@@ -80,7 +80,6 @@ const ConfigForm = ({
     defaultValues: {
       teamsUrl: config?.teamsUrl,
       slackUrl: config?.slackUrl,
-      liveSessionEnabled: config?.liveSessionEnabled || false,
     },
   });
 
@@ -106,13 +105,6 @@ const ConfigForm = ({
         {...register("slackUrl")}
         placeholder="Slack URL"
         error={errors.slackUrl}
-      ></InputField>
-      <span className="text-sm dark:text-slate-300">Beta Features</span>
-      <InputField
-        label="Live Session Enabled (Beta)"
-        type="checkbox"
-        {...register("liveSessionEnabled")}
-        error={errors.liveSessionEnabled}
       ></InputField>
       <div className="flex flex-row-reverse">
         <Button htmlType="submit" variant="primary">
