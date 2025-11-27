@@ -53,7 +53,7 @@ data class ConfigResponse(
             samlEnabled: Boolean,
             licenses: List<License>,
         ): ConfigResponse {
-            val licensesSorted = licenses.sortedByDescending { it.validUntil }
+            val licensesSorted = licenses.sortedByDescending { it.file.createdAt }
             return ConfigResponse(
                 oAuthProvider = oAuthProvider,
                 ldapEnabled = ldapEnabled,
@@ -87,7 +87,7 @@ class ConfigController(
     @GetMapping("/")
     fun getConfig(): PublicConfigResponse {
         val licenses = licenseService.getLicenses()
-        val licensesSorted = licenses.sortedByDescending { it.validUntil }
+        val licensesSorted = licenses.sortedByDescending { it.file.createdAt }
         try {
             val config = configService.getConfiguration()
             return ConfigResponse.fromConfiguration(

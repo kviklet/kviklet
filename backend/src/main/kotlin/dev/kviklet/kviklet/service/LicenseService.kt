@@ -78,7 +78,7 @@ class LicenseService(private val licenseAdapter: LicenseAdapter) {
     }
 
     @NoPolicy
-    fun getActiveLicense(): License? = getLicenses().filter { it.isValid() }.maxByOrNull { it.validUntil }
+    fun getActiveLicense(): License? = getLicenses().filter { it.isValid() }.maxByOrNull { it.file.createdAt }
 }
 
 class InvalidLicenseException(message: String, e: Exception? = null) : IllegalArgumentException(message, e)
