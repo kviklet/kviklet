@@ -1,16 +1,15 @@
 package dev.kviklet.kviklet.security
 
-import jakarta.annotation.PostConstruct
-import org.springframework.stereotype.Component
+import org.springframework.beans.factory.SmartInitializingSingleton
+import org.springframework.context.annotation.Configuration
 
-@Component
+@Configuration
 class AuthenticationProviderValidator(
     private val ldapProperties: LdapProperties,
     private val identityProviderProperties: IdentityProviderProperties,
     private val samlProperties: SamlProperties,
-) {
-    @PostConstruct
-    fun validateSingleAuthProvider() {
+) : SmartInitializingSingleton {
+    override fun afterSingletonsInstantiated() {
         val enabledProviders = mutableListOf<String>()
 
         if (ldapProperties.enabled) {
