@@ -103,6 +103,7 @@ class ExecutionRequestService(
             is CreateDatasourceExecutionRequestRequest -> {
                 createDatasourceRequest(connectionId, request, userId)
             }
+
             is CreateKubernetesExecutionRequestRequest -> {
                 createKubernetesRequest(connectionId, request, userId)
             }
@@ -186,6 +187,7 @@ class ExecutionRequestService(
                 )
                 sqlDumpCommand + database
             }
+
             else -> {
                 throw IllegalArgumentException("Unsupported database type: ${connection.type}")
             }
@@ -299,6 +301,7 @@ class ExecutionRequestService(
                     )
                 }
             }
+
             is KubernetesExecutionRequest -> {
                 if (request.command != executionRequestDetails.request.command) {
                     eventService.saveEvent(
@@ -449,9 +452,11 @@ class ExecutionRequestService(
 
         val queryToExecute = when (executionRequest.request.type) {
             RequestType.SingleExecution -> executionRequest.request.statement!!
+
             RequestType.TemporaryAccess -> query ?: throw MissingQueryException(
                 "For temporary access requests the query param is required",
             )
+
             RequestType.Dump -> throw RuntimeException("Dump requests can't be executed via the /execute endpoint")
         }
         val event = eventService.saveEvent(
@@ -470,6 +475,7 @@ class ExecutionRequestService(
                     query = queryToExecute,
                 )
             }
+
             else -> {
                 JDBCExecutor.execute(
                     executionRequestId = id,
@@ -561,6 +567,7 @@ class ExecutionRequestService(
             is DatasourceConnection -> {
                 executeDatasourceRequest(id, executionRequest, connection, query, userId)
             }
+
             is KubernetesConnection -> {
                 executeKubernetesRequest(id, executionRequest, userId, query)
             }
@@ -597,9 +604,11 @@ class ExecutionRequestService(
                 executionRequest.request.statement!!
                     .trim()
                     .removeSuffix(";")
+
             RequestType.TemporaryAccess ->
                 query?.trim()?.removeSuffix(";")
                     ?: throw MissingQueryException("For temporary access requests a query to execute is required")
+
             RequestType.Dump -> throw RuntimeException("Dump requests can't be downloaded as CSV")
         }
         if (!downloadAllowedAndReason.first) {
@@ -726,14 +735,17 @@ class ExecutionRequestService(
                             is ErrorResultLog -> {
                                 appendLine("  ERROR (Code ${result.errorCode}): ${result.message}")
                             }
+
                             is dev.kviklet.kviklet.service.dto.UpdateResultLog -> {
                                 appendLine("  SUCCESS: ${result.rowsUpdated} rows updated")
                             }
+
                             is dev.kviklet.kviklet.service.dto.QueryResultLog -> {
                                 appendLine(
                                     "  SUCCESS: ${result.rowCount} rows returned (${result.columnCount} columns)",
                                 )
                             }
+
                             is DumpResultLog -> {
                                 appendLine("  DUMP: ${result.size} bytes")
                             }
@@ -878,6 +890,7 @@ fun ExecutionRequestDetails.raiseIfAlreadyExecuted() {
                 throw AlreadyExecutedException(
                     "This request has already been executed, can only execute a configured amount of times!",
                 )
+
             RequestType.TemporaryAccess ->
                 throw AlreadyExecutedException(
                     "This request has timed out, temporary access is only valid for 60 minutes!",

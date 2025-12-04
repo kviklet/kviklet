@@ -375,6 +375,16 @@ Currently there are notifications for:
 - New Requests, that need approvals
 - New approvals on requests
 
+#### Base URL Configuration
+
+When running Kviklet behind a reverse proxy or Kubernetes Ingress, notification links may use the internal IP address instead of your public domain. Kviklet tries to track the correct URL by looking at incoming requests but some reverse proxies do not set the Forwarded headers correctly. To fix this, set the base URL explicitly:
+
+```
+KVIKLET_BASE_URL=https://kviklet.example.com
+```
+
+This ensures all notification links point to the correct public URL.
+
 ## Encryption
 
 If you don't want the credentials to be stored in cleartext in the DB, it is recommended that you enable database encryption on the Kviklet postgres DB itself. For most hosted providers this is a simple checkbox to click.

@@ -69,12 +69,15 @@ abstract class Event(
             payload: Payload,
         ): Event = when (payload) {
             is CommentPayload -> CommentEvent(id, request, author, createdAt, payload.comment)
+
             is ReviewPayload -> ReviewEvent(id, request, author, createdAt, payload.comment, payload.action)
+
             is EditPayload -> EditEvent(
                 id, request, author, createdAt, payload.previousQuery,
                 payload.previousCommand, payload.previousContainerName, payload.previousPodName,
                 payload.previousNamespace, payload.previousAccessDurationInMinutes,
             )
+
             is ExecutePayload -> {
                 val results = payload.results.map {
                     when (it) {

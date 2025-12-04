@@ -309,6 +309,7 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
 
         val queryToExecute = when (request.type) {
             RequestType.SingleExecution -> request.statement!!.trim().removeSuffix(";")
+
             RequestType.TemporaryAccess -> query?.trim()?.removeSuffix(
                 ";",
             ) ?: return Pair(false, "Query can't be empty")

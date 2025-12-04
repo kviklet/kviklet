@@ -12,7 +12,6 @@ const ConfigResponseSchema = z.object({
   allowedUsers: z.number().nullable().optional(),
   teamsUrl: z.string().nullable().optional(),
   slackUrl: z.string().nullable().optional(),
-  liveSessionEnabled: z.boolean().optional(),
 });
 
 export const ConfigPayloadSchema = ConfigResponseSchema.omit({

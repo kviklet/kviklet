@@ -62,7 +62,20 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
     updatedRows,
     results,
     websocketEvents,
+    isSyncing,
   } = useLiveSession(requestId, updateEditorContent);
+
+  const [showSynced, setShowSynced] = useState(false);
+
+  useEffect(() => {
+    if (!isSyncing && showSynced) {
+      // Just finished syncing, show green briefly then fade
+      const timer = setTimeout(() => setShowSynced(false), 1500);
+      return () => clearTimeout(timer);
+    } else if (isSyncing) {
+      setShowSynced(true);
+    }
+  }, [isSyncing]);
 
   const { request } = useRequest(requestId);
 
@@ -122,11 +135,26 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
   return (
     <div className="flex h-full flex-col">
       <div className="mx-auto flex h-full w-2/3 flex-col">
-        <div
-          className="my-5 h-64 resize-y overflow-auto"
-          data-testid="monaco-editor-wrapper"
-        >
-          <div className="h-full w-full" ref={monacoEl}></div>
+        <div className="relative my-5">
+          {(isSyncing || showSynced) && (
+            <div
+              className={`absolute -top-5 right-0 text-xs transition-opacity duration-500 ${
+                isSyncing
+                  ? "animate-pulse text-gray-500 dark:text-gray-400"
+                  : showSynced
+                  ? "text-green-500"
+                  : "opacity-0"
+              }`}
+            >
+              {isSyncing ? "..." : "✓"}
+            </div>
+          )}
+          <div
+            className="h-64 resize-y overflow-auto"
+            data-testid="monaco-editor-wrapper"
+          >
+            <div className="h-full w-full" ref={monacoEl}></div>
+          </div>
         </div>
         <div className="mb-4 flex flex-row">
           {request?._type === "DATASOURCE" && isRelationalDatabase(request) && (
@@ -138,6 +166,7 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
             onClick={onExecuteQueryClick}
             onCancel={() => cancelQuery()}
             variant="primary"
+            dataTestId="run-query-button"
           >
             <div className="play-triangle mr-2 inline-block h-3 w-2 bg-slate-50"></div>
             Run Query

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { websocketBaseUrl } from "../api/base";
 import { ExecuteResponseResult, Execute } from "../api/ExecutionRequestApi";
 import {
@@ -19,12 +19,14 @@ const useLiveSession = (
 ) => {
   const ws = useRef<WebSocket | null>(null);
   const executeResolverRef = useRef<ExecuteResolver | null>(null);
+  const inFlightRefsRef = useRef<Set<string>>(new Set());
   const [results, setResults] = useState<ExecuteResponseResult[] | undefined>(
     undefined,
   );
   const [isLoading, setIsLoading] = useState(false);
   const [updatedRows, setUpdatedRows] = useState<number | undefined>(undefined);
   const [websocketEvents, setWebsocketEvents] = useState<Execute[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const { addNotification } = useNotification();
 
@@ -103,7 +105,15 @@ const useLiveSession = (
       console.log(messageData);
       switch (messageData.type) {
         case "status":
-          setContent(messageData.consoleContent);
+          // If this ref is in our in-flight set, it's our own echo - ignore it
+          if (inFlightRefsRef.current.has(messageData.ref)) {
+            inFlightRefsRef.current.delete(messageData.ref);
+            setIsSyncing(inFlightRefsRef.current.size > 0);
+            // Don't update content - this is just our own message coming back
+          } else {
+            // This is from another user or a real server update - accept it
+            setContent(messageData.consoleContent);
+          }
           break;
         case "result": {
           setResults(messageData.results);
@@ -229,13 +239,20 @@ const useLiveSession = (
     }
   };
 
-  const updateContent = (content: string) => {
-    sendMessage(updateContentMessage, { type: "update_content", content });
-  };
-
-  const debouncedUpdateContent = debounce((content: string) => {
-    updateContent(content);
-  }, 300) as (content: string) => void;
+  const debouncedUpdateContent = useMemo(
+    () =>
+      debounce((content: string) => {
+        const ref = crypto.randomUUID();
+        inFlightRefsRef.current.add(ref);
+        setIsSyncing(true);
+        sendMessage(updateContentMessage, {
+          type: "update_content",
+          content,
+          ref,
+        });
+      }, 300),
+    [], // Empty dependencies - all used values are stable (refs, state setters, constants)
+  );
 
   const cancelQuery = () => {
     if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
@@ -258,6 +275,7 @@ const useLiveSession = (
     results,
     updatedRows,
     websocketEvents,
+    isSyncing,
   };
 };
 
