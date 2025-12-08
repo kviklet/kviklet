@@ -4,6 +4,7 @@ import dev.kviklet.kviklet.controller.UpdateConnectionRequest
 import dev.kviklet.kviklet.controller.UpdateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.UpdateKubernetesConnectionRequest
 import dev.kviklet.kviklet.db.ConnectionAdapter
+import dev.kviklet.kviklet.db.GroupReviewConfig
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
@@ -46,9 +47,14 @@ class ConnectionService(
             connectionId,
         ) as DatasourceConnection
 
-        val newReviewConfig = request.reviewConfig?.let {
+        val newReviewConfig = request.reviewConfig?.let { rcReq ->
             ReviewConfig(
-                it.numTotalRequired,
+                groupConfigs = rcReq.groupConfigs.map { groupReq ->
+                    GroupReviewConfig(
+                        roleId = groupReq.roleId,
+                        numRequired = groupReq.numRequired,
+                    )
+                },
             )
         } ?: connection.reviewConfig
 
@@ -133,9 +139,14 @@ class ConnectionService(
             connectionId,
         ) as KubernetesConnection
 
-        val newReviewConfig = request.reviewConfig?.let {
+        val newReviewConfig = request.reviewConfig?.let { rcReq ->
             ReviewConfig(
-                it.numTotalRequired,
+                groupConfigs = rcReq.groupConfigs.map { groupReq ->
+                    GroupReviewConfig(
+                        roleId = groupReq.roleId,
+                        numRequired = groupReq.numRequired,
+                    )
+                },
             )
         } ?: connection.reviewConfig
 
@@ -188,7 +199,7 @@ class ConnectionService(
         password: String?,
         authenticationType: AuthenticationType,
         description: String,
-        reviewsRequired: Int,
+        reviewConfig: ReviewConfig,
         port: Int,
         hostname: String,
         type: DatasourceType,
@@ -212,9 +223,7 @@ class ConnectionService(
             username,
             password,
             description,
-            ReviewConfig(
-                numTotalRequired = reviewsRequired,
-            ),
+            reviewConfig,
             port,
             hostname,
             type,
@@ -237,7 +246,7 @@ class ConnectionService(
         username: String,
         password: String?,
         description: String,
-        reviewsRequired: Int,
+        reviewConfig: ReviewConfig,
         port: Int,
         hostname: String,
         type: DatasourceType,
@@ -254,7 +263,7 @@ class ConnectionService(
             connectionId,
             displayName,
             description,
-            reviewConfig = ReviewConfig(reviewsRequired),
+            reviewConfig = reviewConfig,
             maxExecutions,
             databaseName,
             authenticationType,
@@ -304,20 +313,17 @@ class ConnectionService(
     }
 
     @Transactional
-    @Policy(Permission.DATASOURCE_CONNECTION_CREATE)
     fun createKubernetesConnection(
         connectionId: ConnectionId,
         displayName: String,
         description: String,
-        reviewsRequired: Int,
+        reviewConfig: ReviewConfig,
         maxExecutions: Int?,
     ): Connection = connectionAdapter.createKubernetesConnection(
         connectionId,
         displayName,
         description,
-        ReviewConfig(
-            numTotalRequired = reviewsRequired,
-        ),
+        reviewConfig,
         maxExecutions,
     )
 

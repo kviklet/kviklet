@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.service
 
 import dev.kviklet.kviklet.controller.ServerUrlInterceptor
 import dev.kviklet.kviklet.db.ConfigurationAdapter
+import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ReviewStatus
@@ -92,11 +93,14 @@ data class RequestCreatedEvent(
 ) : ApplicationEvent(requestId) {
 
     companion object {
+        private fun ReviewConfig.totalRequiredApprovals(): Int =
+            this.groupConfigs.sumOf { it.numRequired }
+
         fun fromRequest(request: ExecutionRequestDetails): RequestCreatedEvent = RequestCreatedEvent(
             requestId = request.request.id.toString(),
             title = request.request.title,
             author = request.request.author.fullName ?: "",
-            necessaryReviews = request.request.connection.reviewConfig.numTotalRequired,
+            necessaryReviews = request.request.connection.reviewConfig.totalRequiredApprovals(),
         )
     }
 }
@@ -110,11 +114,14 @@ data class ReviewStatusUpdatedEvent(
     val reviewer: String,
 ) : ApplicationEvent(requestId) {
     companion object {
+        private fun ReviewConfig.totalRequiredApprovals(): Int =
+            this.groupConfigs.sumOf { it.numRequired }
+
         fun from(request: ExecutionRequestDetails, event: Event): ReviewStatusUpdatedEvent = ReviewStatusUpdatedEvent(
             requestId = event.request.id.toString(),
             title = event.request.title,
             status = request.resolveReviewStatus(),
-            requiredReviews = event.request.connection.reviewConfig.numTotalRequired,
+            requiredReviews = event.request.connection.reviewConfig.totalRequiredApprovals(),
             approvals = request.getApprovalCount(),
             reviewer = event.author.fullName ?: "",
         )

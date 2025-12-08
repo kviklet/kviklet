@@ -5,9 +5,10 @@ import {
   DatabaseType,
   TestConnectionResponse,
 } from "../../../api/DatasourceApi";
-import { ApiResponse } from "../../../api/Errors";
+import { ApiResponse, isApiErrorResponse } from "../../../api/Errors";
 import {
   FieldErrors,
+  useFieldArray,
   useForm,
   UseFormHandleSubmit,
   UseFormRegister,
@@ -28,10 +29,18 @@ import {
   ChevronRightIcon,
   QuestionMarkCircleIcon,
 } from "@heroicons/react/20/solid";
-import { isApiErrorResponse } from "../../../api/Errors";
 import useNotification from "../../../hooks/useNotification";
 import Spinner from "../../../components/Spinner";
 import { supportsIamAuth } from "../../../hooks/connections";
+
+const reviewGroupSchema = z.object({
+  roleId: z.string(),
+  numRequired: z.coerce.number(),
+});
+
+const reviewConfigSchema = z.object({
+  groupConfigs: z.array(reviewGroupSchema).min(1),
+});
 
 const baseConnectionSchema = z.object({
   displayName: z.string().min(3),
@@ -42,9 +51,7 @@ const baseConnectionSchema = z.object({
   hostname: z.string().min(1),
   port: z.coerce.number(),
   databaseName: z.string(),
-  reviewConfig: z.object({
-    numTotalRequired: z.coerce.number(),
-  }),
+  reviewConfig: reviewConfigSchema,
   additionalJDBCOptions: z.string(),
   maxExecutions: z.coerce.number().nullable(),
   dumpsEnabled: z.boolean(),
@@ -138,8 +145,18 @@ export default function DatabaseConnectionForm(props: {
     watch,
     resetField,
     setValue,
+    control,
   } = useForm<ConnectionForm>({
     resolver: zodResolver(connectionFormSchema),
+  });
+
+  const {
+    fields: reviewGroups,
+    append: appendReviewGroup,
+    remove: removeReviewGroup,
+  } = useFieldArray({
+    control,
+    name: "reviewConfig.groupConfigs",
   });
 
   const [protocolOptions, setProtocolOptions] = useState<DatabaseProtocol[]>([
@@ -166,7 +183,14 @@ export default function DatabaseConnectionForm(props: {
   }, [watchDisplayName]);
 
   useEffect(() => {
-    setValue("reviewConfig", { numTotalRequired: 1 });
+    setValue("reviewConfig", {
+      groupConfigs: [
+        {
+          roleId: "*",
+          numRequired: 1,
+        },
+      ],
+    });
     setValue("port", 5432);
     setValue("type", DatabaseType.POSTGRES);
     setValue("protocol", DatabaseProtocol.POSTGRESQL);
@@ -308,16 +332,68 @@ export default function DatabaseConnectionForm(props: {
             data-testid="connection-hostname"
           />
           <InputField
-            id="reviewConfig.numTotalRequired"
-            label="Required reviews"
-            tooltip="The number of required approving reviews that's required before a request can be executed."
-            placeholder="1"
-            type="number"
-            min="0"
-            {...register("reviewConfig.numTotalRequired")}
-            error={errors.reviewConfig?.numTotalRequired?.message}
-            data-testid="connection-required-reviews"
-          />
+            id="reviewConfig"
+            label="Required reviews per role"
+            tooltip="Configure one or more approval groups. Use '*' as role ID for any role. All groups must be satisfied."
+            asChild
+          >
+            <div
+              className="space-y-2"
+              data-testid="connection-required-reviews"
+            >
+              {reviewGroups.map((group, index) => (
+                <div
+                  key={group.id ?? index}
+                  className="flex flex-row items-end space-x-2"
+                >
+                  <div className="flex-1">
+                    <InputField
+                      id={`reviewConfig.groupConfigs.${index}.roleId`}
+                      label="Role ID or *"
+                      placeholder="*"
+                      {...register(
+                        `reviewConfig.groupConfigs.${index}.roleId` as const,
+                      )}
+                      error={
+                        errors.reviewConfig?.groupConfigs?.[index]?.roleId
+                          ?.message
+                      }
+                    />
+                  </div>
+                  <div className="w-32">
+                    <InputField
+                      id={`reviewConfig.groupConfigs.${index}.numRequired`}
+                      label="# approvals"
+                      type="number"
+                      min="1"
+                      placeholder="1"
+                      {...register(
+                        `reviewConfig.groupConfigs.${index}.numRequired` as const,
+                      )}
+                      error={
+                        errors.reviewConfig?.groupConfigs?.[index]?.numRequired
+                          ?.message
+                      }
+                    />
+                  </div>
+                  <Button
+                    variant="primary"
+                    onClick={() => removeReviewGroup(index)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+              <Button
+                variant="primary"
+                onClick={() =>
+                  appendReviewGroup({ roleId: "*", numRequired: 1 })
+                }
+              >
+                Add approval group
+              </Button>
+            </div>
+          </InputField>
 
           <div className="w-full">
             <Disclosure defaultOpen={false}>

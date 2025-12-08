@@ -25,8 +25,18 @@ import {
   UseFormRegister,
   UseFormSetValue,
   UseFormWatch,
+  useFieldArray,
 } from "react-hook-form";
 import { supportsIamAuth } from "../../../../hooks/connections";
+
+const reviewGroupSchema = z.object({
+  roleId: z.string(),
+  numRequired: z.coerce.number(),
+});
+
+const reviewConfigSchema = z.object({
+  groupConfigs: z.array(reviewGroupSchema).min(1),
+});
 
 const baseConnectionFormSchema = z.object({
   displayName: z.string().min(3),
@@ -37,9 +47,7 @@ const baseConnectionFormSchema = z.object({
   port: z.coerce.number(),
   databaseName: z.string(),
   maxExecutions: z.coerce.number().nullable(),
-  reviewConfig: z.object({
-    numTotalRequired: z.coerce.number(),
-  }),
+  reviewConfig: reviewConfigSchema,
   additionalJDBCOptions: z.string(),
   dumpsEnabled: z.boolean(),
   temporaryAccessEnabled: z.boolean(),
@@ -115,6 +123,7 @@ export default function UpdateDatasourceConnectionForm({
     watch,
     setValue,
     handleFormSubmit,
+    control,
   } = useConnectionForm({
     initialValues: {
       displayName: connection.displayName,
@@ -127,7 +136,10 @@ export default function UpdateDatasourceConnectionForm({
       password: "",
       databaseName: connection.databaseName || "",
       reviewConfig: {
-        numTotalRequired: connection.reviewConfig.numTotalRequired,
+        groupConfigs: connection.reviewConfig.groupConfigs.map((group) => ({
+          roleId: group.roleId,
+          numRequired: group.numRequired,
+        })),
       },
       additionalJDBCOptions: connection.additionalJDBCOptions || "",
       maxExecutions: connection.maxExecutions,
@@ -142,6 +154,15 @@ export default function UpdateDatasourceConnectionForm({
     schema: connectionFormSchema,
     onSubmit: editConnection,
     connectionType: "DATASOURCE",
+  });
+
+  const {
+    fields: reviewGroups,
+    append: appendReviewGroup,
+    remove: removeReviewGroup,
+  } = useFieldArray<ConnectionForm>({
+    control,
+    name: "reviewConfig.groupConfigs",
   });
 
   const watchType = watch("type");
@@ -236,16 +257,73 @@ export default function UpdateDatasourceConnectionForm({
             {...register("hostname")}
             error={errors.hostname?.message}
           />
-          <InputField
-            id="reviewConfig.numTotalRequired"
-            label="Required reviews"
-            tooltip="The number of required approving reviews that's required before a request can be executed."
-            placeholder="1"
-            type="number"
-            min="0"
-            {...register("reviewConfig.numTotalRequired")}
-            error={errors.reviewConfig?.numTotalRequired?.message}
-          />
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+              Required reviews per role
+            </label>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Configure one or more approval groups. Use '*' as role ID for any role. All
+              groups must be satisfied.
+            </p>
+            <div className="space-y-2">
+              {reviewGroups.map((group, index) => (
+                <div
+                  key={group.id ?? index}
+                  className="flex flex-row items-end space-x-2"
+                >
+                  <div className="flex-1">
+                    <InputField
+                      id={`reviewConfig.groupConfigs.${index}.roleId`}
+                      label="Role ID or *"
+                      placeholder="*"
+                      {...register(`reviewConfig.groupConfigs.${index}.roleId` as const)}
+                      error={
+                        Array.isArray(errors.reviewConfig?.groupConfigs)
+                          ? errors.reviewConfig?.groupConfigs?.[index]?.roleId
+                              ?.message
+                          : undefined
+                      }
+                    />
+                  </div>
+                  <div className="w-32">
+                    <InputField
+                      id={`reviewConfig.groupConfigs.${index}.numRequired`}
+                      label="# approvals"
+                      type="number"
+                      min="1"
+                      placeholder="1"
+                      {...register(
+                        `reviewConfig.groupConfigs.${index}.numRequired` as const,
+                      )}
+                      error={
+                        Array.isArray(errors.reviewConfig?.groupConfigs)
+                          ? errors.reviewConfig?.groupConfigs?.[index]?.numRequired
+                              ?.message
+                          : undefined
+                      }
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => removeReviewGroup(index)}
+                    disabled={reviewGroups.length === 1}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() =>
+                  appendReviewGroup({ roleId: "*", numRequired: 1 } as never)
+                }
+              >
+                Add approval group
+              </Button>
+            </div>
+          </div>
 
           <div className="w-full">
             <Disclosure defaultOpen={true}>

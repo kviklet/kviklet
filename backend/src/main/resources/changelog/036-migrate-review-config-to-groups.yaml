@@ -1,0 +1,37 @@
+databaseChangeLog:
+  - changeSet:
+      id: 036-migrate-review-config-to-groups
+      author: DerkSchooltink
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: |
+              -- Migrate legacy review_config JSON from {"numTotalRequired": N}
+              -- to {"groupConfigs":[{"roleId":"*","numRequired":N}]}
+              UPDATE CONNECTION
+              SET review_config = CASE
+                WHEN review_config::jsonb ? 'groupConfigs'
+                  AND NOT (review_config::jsonb ? 'numTotalRequired') THEN (jsonb_build_object('numTotalRequired', COALESCE(
+                    (SELECT Sum((elem ->> 'numRequired')::int)
+                    FROM jsonb_array_elements(review_config::jsonb -> 'groupConfigs') elem), 0))::JSON)
+                ELSE review_config
+              END;
+      rollback:
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            sql: |
+              -- Roll back review_config JSON from groupConfigs format
+              -- back to the legacy {"numTotalRequired": N} format.
+              --
+              -- Note: if multiple groups exist, this rollback collapses them
+              -- by summing all numRequired values into a single numTotalRequired.
+              UPDATE CONNECTION
+              SET review_config = CASE
+                WHEN review_config::jsonb ? 'groupConfigs'
+                  AND NOT (review_config::jsonb ? 'numTotalRequired') THEN (jsonb_build_object('numTotalRequired', COALESCE(
+                    (SELECT Sum((elem ->> 'numRequired')::int)
+                    FROM jsonb_array_elements(review_config::jsonb -> 'groupConfigs') elem), 0))::JSON)
+                ELSE review_config
+              END;
