@@ -7,6 +7,7 @@ import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.GroupReviewConfig
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.security.Permission
+import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.AuthenticationType
@@ -33,6 +34,7 @@ class ConnectionService(
     private val JDBCExecutor: JDBCExecutor,
     private val mongoDBExecutor: MongoDBExecutor,
     private val executionRequestStatusService: ExecutionRequestStatusService,
+    private val roleAdapter: RoleAdapter,
 ) {
 
     @Transactional
@@ -57,6 +59,11 @@ class ConnectionService(
                 },
             )
         } ?: connection.reviewConfig
+
+        // Validate provided review config (only when changed)
+        if (request.reviewConfig != null) {
+            validateReviewConfig(newReviewConfig)
+        }
 
         val newMaxExecutions = request.maxExecutions ?: connection.maxExecutions
 
@@ -150,6 +157,10 @@ class ConnectionService(
             )
         } ?: connection.reviewConfig
 
+        if (request.reviewConfig != null) {
+            validateReviewConfig(newReviewConfig)
+        }
+
         val newMaxExecutions = request.maxExecutions ?: connection.maxExecutions
 
         // Detect if fields that affect status calculation have changed
@@ -214,6 +225,7 @@ class ConnectionService(
         if (authenticationType == AuthenticationType.USER_PASSWORD && password == null) {
             throw IllegalArgumentException("Password is required for USER_PASSWORD authentication")
         }
+        validateReviewConfig(reviewConfig)
         return connectionAdapter.createDatasourceConnection(
             connectionId,
             displayName,
@@ -259,6 +271,7 @@ class ConnectionService(
         roleArn: String?,
         maxTemporaryAccessDuration: Long? = null,
     ): TestConnectionResult {
+        validateReviewConfig(reviewConfig)
         val connection = DatasourceConnection(
             connectionId,
             displayName,
@@ -310,6 +323,20 @@ class ConnectionService(
             message = credentialsResult.message,
             accessibleDatabases = accessibleDatabases,
         )
+    }
+
+    private fun validateReviewConfig(reviewConfig: ReviewConfig) {
+        val ids = reviewConfig.groupConfigs.map { it.roleId }
+            .filter { it != "*" }
+        if (ids.isEmpty()) return
+        val existing = roleAdapter.findByIds(ids)
+        if (existing.size != ids.toSet().size) {
+            val existingIds = existing.mapNotNull { it.getId() }.toSet()
+            val missing = ids.toSet() - existingIds
+            if (missing.isNotEmpty()) {
+                throw IllegalArgumentException("Unknown role id(s) in review configuration: ${missing.joinToString(", ")}")
+            }
+        }
     }
 
     @Transactional

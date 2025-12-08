@@ -22,12 +22,15 @@ import { useEffect, useState } from "react";
 import { useConnectionForm } from "./ConnectionEditFormHook";
 import {
   FieldErrors,
+  useFieldArray,
   UseFormRegister,
   UseFormSetValue,
   UseFormWatch,
-  useFieldArray,
 } from "react-hook-form";
 import { supportsIamAuth } from "../../../../hooks/connections";
+import { getRoles, RoleResponse } from "../../../../api/RoleApi";
+import Spinner from "../../../../components/Spinner";
+import { isApiErrorResponse } from "../../../../api/Errors";
 
 const reviewGroupSchema = z.object({
   roleId: z.string(),
@@ -116,6 +119,8 @@ export default function UpdateDatasourceConnectionForm({
   const [protocolOptions, setProtocolOptions] = useState<DatabaseProtocol[]>(
     getProtocolOptions(connection.type),
   );
+  const [availableRoles, setAvailableRoles] = useState<RoleResponse[]>([]);
+  const [loadingRoles, setLoadingRoles] = useState<boolean>(false);
 
   const {
     register,
@@ -173,6 +178,18 @@ export default function UpdateDatasourceConnectionForm({
     }
     setProtocolOptions(protocolOptions);
   }, [watchType, connection.protocol, setValue]);
+
+  useEffect(() => {
+    const loadRoles = async () => {
+      setLoadingRoles(true);
+      const resp = await getRoles();
+      if (!isApiErrorResponse(resp)) {
+        setAvailableRoles(resp.roles);
+      }
+      setLoadingRoles(false);
+    };
+    void loadRoles();
+  }, []);
 
   return (
     <form
@@ -262,8 +279,8 @@ export default function UpdateDatasourceConnectionForm({
               Required reviews per role
             </label>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Configure one or more approval groups. Use '*' as role ID for any role. All
-              groups must be satisfied.
+              Configure one or more approval groups. Choose a role from the list
+              or select '*' for any role. All groups must be satisfied.
             </p>
             <div className="space-y-2">
               {reviewGroups.map((group, index) => (
@@ -272,18 +289,42 @@ export default function UpdateDatasourceConnectionForm({
                   className="flex flex-row items-end space-x-2"
                 >
                   <div className="flex-1">
-                    <InputField
-                      id={`reviewConfig.groupConfigs.${index}.roleId`}
-                      label="Role ID or *"
-                      placeholder="*"
-                      {...register(`reviewConfig.groupConfigs.${index}.roleId` as const)}
-                      error={
-                        Array.isArray(errors.reviewConfig?.groupConfigs)
-                          ? errors.reviewConfig?.groupConfigs?.[index]?.roleId
-                              ?.message
-                          : undefined
-                      }
-                    />
+                    <label
+                      htmlFor={`reviewConfig.groupConfigs.${index}.roleId`}
+                      className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200"
+                    >
+                      Role
+                    </label>
+                    {loadingRoles ? (
+                      <div className="py-2">
+                        <Spinner />
+                      </div>
+                    ) : (
+                      <select
+                        id={`reviewConfig.groupConfigs.${index}.roleId`}
+                        {...register(
+                          `reviewConfig.groupConfigs.${index}.roleId` as const,
+                        )}
+                        className="block w-full appearance-none rounded-md border border-slate-300 px-3 py-2 text-sm transition-colors focus:border-indigo-600 focus:outline-none hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:focus:border-gray-500 dark:hover:border-slate-600 dark:hover:focus:border-gray-500"
+                        defaultValue={group.roleId}
+                      >
+                        <option value="*">Any role (*)</option>
+                        {availableRoles.map((role) => (
+                          <option key={role.id} value={role.id}>
+                            {role.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {errors.reviewConfig?.groupConfigs?.[index]?.roleId
+                      ?.message && (
+                      <p className="mt-1 text-xs text-red-600">
+                        {
+                          errors.reviewConfig?.groupConfigs?.[index]?.roleId
+                            ?.message
+                        }
+                      </p>
+                    )}
                   </div>
                   <div className="w-32">
                     <InputField
@@ -296,26 +337,21 @@ export default function UpdateDatasourceConnectionForm({
                         `reviewConfig.groupConfigs.${index}.numRequired` as const,
                       )}
                       error={
-                        Array.isArray(errors.reviewConfig?.groupConfigs)
-                          ? errors.reviewConfig?.groupConfigs?.[index]?.numRequired
-                              ?.message
-                          : undefined
+                        errors.reviewConfig?.groupConfigs?.[index]?.numRequired
+                          ?.message
                       }
                     />
                   </div>
                   <Button
-                    type="button"
-                    variant="secondary"
+                    variant="primary"
                     onClick={() => removeReviewGroup(index)}
-                    disabled={reviewGroups.length === 1}
                   >
                     Remove
                   </Button>
                 </div>
               ))}
               <Button
-                type="button"
-                variant="secondary"
+                variant="primary"
                 onClick={() =>
                   appendReviewGroup({ roleId: "*", numRequired: 1 } as never)
                 }

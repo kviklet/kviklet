@@ -30,7 +30,6 @@ enum DatabaseProtocol {
 
 const reviewGroupResponseSchema = z.object({
   roleId: z.string(),
-  roleName: z.string().nullable(),
   numRequired: z.number(),
 });
 
@@ -88,7 +87,6 @@ const testConnectionResponseSchema = z.object({
 interface ReviewGroupConfig {
   roleId: string;
   numRequired: number;
-  roleName?: string | null;
 }
 
 interface ReviewConfig {

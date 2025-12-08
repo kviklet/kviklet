@@ -9,14 +9,14 @@ databaseChangeLog:
             sql: |
               -- Migrate legacy review_config JSON from {"numTotalRequired": N}
               -- to {"groupConfigs":[{"roleId":"*","numRequired":N}]}
-              UPDATE CONNECTION
-              SET review_config = CASE
-                WHEN review_config::jsonb ? 'groupConfigs'
-                  AND NOT (review_config::jsonb ? 'numTotalRequired') THEN (jsonb_build_object('numTotalRequired', COALESCE(
-                    (SELECT Sum((elem ->> 'numRequired')::int)
-                    FROM jsonb_array_elements(review_config::jsonb -> 'groupConfigs') elem), 0))::JSON)
-                ELSE review_config
-              END;
+             UPDATE connection
+             SET review_config = CASE
+                        WHEN jsonb_exists(review_config::jsonb, 'groupConfigs') THEN review_config
+                        ELSE (jsonb_build_object('groupConfigs',
+                                                 jsonb_build_array(
+                                                         jsonb_build_object('roleId', '*', 'numRequired',
+                                                                            COALESCE((review_config::jsonb ->> 'numTotalRequired')::int, 0))))::json
+                            ) END;
       rollback:
         - sql:
             dbms: postgresql
@@ -27,11 +27,17 @@ databaseChangeLog:
               --
               -- Note: if multiple groups exist, this rollback collapses them
               -- by summing all numRequired values into a single numTotalRequired.
-              UPDATE CONNECTION
+              UPDATE connection
               SET review_config = CASE
-                WHEN review_config::jsonb ? 'groupConfigs'
-                  AND NOT (review_config::jsonb ? 'numTotalRequired') THEN (jsonb_build_object('numTotalRequired', COALESCE(
-                    (SELECT Sum((elem ->> 'numRequired')::int)
-                    FROM jsonb_array_elements(review_config::jsonb -> 'groupConfigs') elem), 0))::JSON)
-                ELSE review_config
+                        WHEN jsonb_exists(review_config::jsonb, 'groupConfigs') AND NOT jsonb_exists(review_config::jsonb, 'numTotalRequired')
+                            THEN (
+                            jsonb_build_object(
+                                    'numTotalRequired',
+                                    COALESCE(
+                                            (SELECT SUM((elem ->> 'numRequired')::int)
+                                             FROM jsonb_array_elements(review_config::jsonb -> 'groupConfigs') elem),
+                                            0
+                                    )
+                            )::json)
+                        ELSE review_config
               END;

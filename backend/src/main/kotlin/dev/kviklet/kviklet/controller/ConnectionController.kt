@@ -168,9 +168,7 @@ data class UpdateKubernetesConnectionRequest(
 ) : UpdateConnectionRequest()
 
 data class GroupReviewConfigRequest(
-    /**
-     * Role ID this group applies to, or "*" as a wildcard for any role.
-     */
+    // Role ID this group applies to, or "*" as a wildcard for any role.
     val roleId: String,
     val numRequired: Int,
 )
@@ -181,7 +179,6 @@ data class ReviewConfigRequest(
 
 data class GroupReviewConfigResponse(
     val roleId: String,
-    val roleName: String?,
     val numRequired: Int,
 )
 
@@ -222,14 +219,13 @@ data class DatasourceConnectionResponse(
     val explainEnabled: Boolean,
     val roleArn: String?,
     val maxTemporaryAccessDuration: Long?,
-): ConnectionResponse(ConnectionType.DATASOURCE) {
+) : ConnectionResponse(ConnectionType.DATASOURCE) {
     companion object {
         fun fromDto(datasourceConnection: DatasourceConnection): DatasourceConnectionResponse {
             val reviewConfigResponse = ReviewConfigResponse(
                 groupConfigs = datasourceConnection.reviewConfig.groupConfigs.map { group ->
                     GroupReviewConfigResponse(
                         roleId = group.roleId,
-                        roleName = null,
                         numRequired = group.numRequired,
                     )
                 },
@@ -269,14 +265,13 @@ data class KubernetesConnectionResponse(
     val reviewConfig: ReviewConfigResponse,
     val maxExecutions: Int?,
     val temporaryAccessEnabled: Boolean,
-): ConnectionResponse(connectionType = ConnectionType.KUBERNETES) {
+) : ConnectionResponse(connectionType = ConnectionType.KUBERNETES) {
     companion object {
         fun fromDto(kubernetesConnection: KubernetesConnection): KubernetesConnectionResponse {
             val reviewConfigResponse = ReviewConfigResponse(
                 groupConfigs = kubernetesConnection.reviewConfig.groupConfigs.map { group ->
                     GroupReviewConfigResponse(
                         roleId = group.roleId,
-                        roleName = null,
                         numRequired = group.numRequired,
                     )
                 },
