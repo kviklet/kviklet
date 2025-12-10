@@ -99,11 +99,7 @@ export default function CreateKubernetesConnectionForm(props: {
             placeholder="1"
             type="number"
             {...register("reviewConfig.groupConfigs.0.numRequired")}
-            error={
-              Array.isArray(errors.reviewConfig?.groupConfigs)
-                ? errors.reviewConfig?.groupConfigs?.[0]?.numRequired?.message
-                : undefined
-            }
+            error={errors.reviewConfig?.groupConfigs?.[0]?.numRequired?.message}
           />
           <InputField
             id="maxExecutions"

@@ -87,11 +87,7 @@ export default function UpdateKubernetesConnectionForm({
             tooltip="Number of approvals required from any role before a request can be executed."
             type="number"
             {...register("reviewConfig.groupConfigs.0.numRequired")}
-            error={
-              Array.isArray(errors.reviewConfig?.groupConfigs)
-                ? errors.reviewConfig?.groupConfigs?.[0]?.numRequired?.message
-                : undefined
-            }
+            error={errors.reviewConfig?.groupConfigs?.[0]?.numRequired?.message}
           />
           <div className="w-full">
             <Disclosure defaultOpen={false}>

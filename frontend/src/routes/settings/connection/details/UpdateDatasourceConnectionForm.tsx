@@ -285,16 +285,10 @@ export default function UpdateDatasourceConnectionForm({
             <div className="space-y-2">
               {reviewGroups.map((group, index) => (
                 <div
-                  key={group.id ?? index}
+                  key={group.id}
                   className="flex flex-row items-end space-x-2"
                 >
                   <div className="flex-1">
-                    <label
-                      htmlFor={`reviewConfig.groupConfigs.${index}.roleId`}
-                      className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200"
-                    >
-                      Role
-                    </label>
                     {loadingRoles ? (
                       <div className="py-2">
                         <Spinner />
@@ -326,10 +320,9 @@ export default function UpdateDatasourceConnectionForm({
                       </p>
                     )}
                   </div>
-                  <div className="w-32">
+                  <div className="flex-col space-y-2">
                     <InputField
                       id={`reviewConfig.groupConfigs.${index}.numRequired`}
-                      label="# approvals"
                       type="number"
                       min="1"
                       placeholder="1"
