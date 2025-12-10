@@ -93,8 +93,7 @@ data class RequestCreatedEvent(
 ) : ApplicationEvent(requestId) {
 
     companion object {
-        private fun ReviewConfig.totalRequiredApprovals(): Int =
-            this.groupConfigs.sumOf { it.numRequired }
+        private fun ReviewConfig.totalRequiredApprovals(): Int = this.groupConfigs.sumOf { it.numRequired }
 
         fun fromRequest(request: ExecutionRequestDetails): RequestCreatedEvent = RequestCreatedEvent(
             requestId = request.request.id.toString(),
@@ -114,8 +113,7 @@ data class ReviewStatusUpdatedEvent(
     val reviewer: String,
 ) : ApplicationEvent(requestId) {
     companion object {
-        private fun ReviewConfig.totalRequiredApprovals(): Int =
-            this.groupConfigs.sumOf { it.numRequired }
+        private fun ReviewConfig.totalRequiredApprovals(): Int = this.groupConfigs.sumOf { it.numRequired }
 
         fun from(request: ExecutionRequestDetails, event: Event): ReviewStatusUpdatedEvent = ReviewStatusUpdatedEvent(
             requestId = event.request.id.toString(),

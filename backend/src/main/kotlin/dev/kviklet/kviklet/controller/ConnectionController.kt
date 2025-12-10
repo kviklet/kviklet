@@ -173,18 +173,11 @@ data class GroupReviewConfigRequest(
     val numRequired: Int,
 )
 
-data class ReviewConfigRequest(
-    val groupConfigs: List<GroupReviewConfigRequest>,
-)
+data class ReviewConfigRequest(val groupConfigs: List<GroupReviewConfigRequest>)
 
-data class GroupReviewConfigResponse(
-    val roleId: String,
-    val numRequired: Int,
-)
+data class GroupReviewConfigResponse(val roleId: String, val numRequired: Int)
 
-data class ReviewConfigResponse(
-    val groupConfigs: List<GroupReviewConfigResponse>,
-)
+data class ReviewConfigResponse(val groupConfigs: List<GroupReviewConfigResponse>)
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
 @JsonSubTypes(

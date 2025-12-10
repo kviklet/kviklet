@@ -6,8 +6,8 @@ import dev.kviklet.kviklet.controller.UpdateKubernetesConnectionRequest
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.GroupReviewConfig
 import dev.kviklet.kviklet.db.ReviewConfig
-import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.db.RoleAdapter
+import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.AuthenticationType
@@ -334,7 +334,9 @@ class ConnectionService(
             val existingIds = existing.mapNotNull { it.getId() }.toSet()
             val missing = ids.toSet() - existingIds
             if (missing.isNotEmpty()) {
-                throw IllegalArgumentException("Unknown role id(s) in review configuration: ${missing.joinToString(", ")}")
+                throw IllegalArgumentException(
+                    "Unknown role id(s) in review configuration: ${missing.joinToString(", ")}",
+                )
             }
         }
     }
