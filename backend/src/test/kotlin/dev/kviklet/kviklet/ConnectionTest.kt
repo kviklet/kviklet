@@ -7,6 +7,7 @@ import dev.kviklet.kviklet.controller.CreateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
 import dev.kviklet.kviklet.controller.DatasourceConnectionResponse
 import dev.kviklet.kviklet.controller.ExecutionRequestController
+import dev.kviklet.kviklet.controller.GroupReviewConfigRequest
 import dev.kviklet.kviklet.controller.ReviewConfigRequest
 import dev.kviklet.kviklet.controller.UpdateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.UserResponse
@@ -77,7 +78,7 @@ class ConnectionTest(
                 username = "root",
                 password = "root",
                 reviewConfig = ReviewConfigRequest(
-                    numTotalRequired = 1,
+                    groupConfigs = listOf(GroupReviewConfigRequest(roleId = "*", numRequired = 1)),
                 ),
                 type = DatasourceType.MYSQL,
                 hostname = "localhost",
@@ -129,7 +130,7 @@ class ConnectionTest(
                 username = "root",
                 password = "root",
                 reviewConfig = ReviewConfigRequest(
-                    numTotalRequired = 1,
+                    groupConfigs = listOf(GroupReviewConfigRequest(roleId = "*", numRequired = 1)),
                 ),
                 type = DatasourceType.MONGODB,
                 protocol = DatabaseProtocol.MONGODB,
@@ -152,7 +153,7 @@ class ConnectionTest(
                 username = "root",
                 password = "root",
                 reviewConfig = ReviewConfigRequest(
-                    numTotalRequired = 1,
+                    groupConfigs = listOf(GroupReviewConfigRequest(roleId = "*", numRequired = 1)),
                 ),
                 type = DatasourceType.MONGODB,
                 protocol = DatabaseProtocol.MONGODB,
@@ -168,7 +169,7 @@ class ConnectionTest(
                 username = "root",
                 password = "root",
                 reviewConfig = ReviewConfigRequest(
-                    numTotalRequired = 1,
+                    groupConfigs = listOf(GroupReviewConfigRequest(roleId = "*", numRequired = 1)),
                 ),
                 type = DatasourceType.MONGODB,
                 protocol = DatabaseProtocol.MONGODB_SRV,
@@ -206,7 +207,7 @@ class ConnectionTest(
                 username = "root",
                 password = "root",
                 reviewConfig = ReviewConfigRequest(
-                    numTotalRequired = 1,
+                    groupConfigs = listOf(GroupReviewConfigRequest(roleId = "*", numRequired = 1)),
                 ),
                 type = DatasourceType.MONGODB,
                 protocol = DatabaseProtocol.MONGODB,
@@ -275,7 +276,7 @@ class ConnectionTest(
                 username = "postgres",
                 password = "postgres",
                 reviewConfig = ReviewConfigRequest(
-                    numTotalRequired = 1,
+                    groupConfigs = listOf(GroupReviewConfigRequest(roleId = "*", numRequired = 1)),
                 ),
                 type = DatasourceType.POSTGRESQL,
                 hostname = "localhost",
@@ -309,7 +310,7 @@ class ConnectionTest(
                 username = "root",
                 password = "root",
                 reviewConfig = ReviewConfigRequest(
-                    numTotalRequired = 1,
+                    groupConfigs = listOf(GroupReviewConfigRequest(roleId = "*", numRequired = 1)),
                 ),
                 type = DatasourceType.MYSQL,
                 hostname = "localhost",
@@ -434,7 +435,7 @@ class ConnectionTest(
                 displayName = "AWS IAM Connection",
                 username = "iam_user",
                 reviewConfig = ReviewConfigRequest(
-                    numTotalRequired = 1,
+                    groupConfigs = listOf(GroupReviewConfigRequest(roleId = "*", numRequired = 1)),
                 ),
                 type = DatasourceType.POSTGRESQL,
                 hostname = "example.amazonaws.com",
@@ -483,7 +484,9 @@ class ConnectionTest(
                 username = "root",
                 password = "root",
                 reviewConfig = ReviewConfigRequest(
-                    numTotalRequired = 1,
+                    groupConfigs = listOf(
+                        GroupReviewConfigRequest(roleId = "*", numRequired = 1),
+                    ),
                 ),
                 type = DatasourceType.MYSQL,
                 hostname = "localhost",

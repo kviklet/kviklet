@@ -3,6 +3,7 @@ package dev.kviklet.kviklet
 import com.ninjasquad.springmockk.MockkBean
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
+import dev.kviklet.kviklet.db.GroupReviewConfig
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
@@ -92,8 +93,10 @@ class NotificationTest {
             "username",
             "password",
             "A test connection",
-            ReviewConfig(
-                numTotalRequired = 1,
+            reviewConfig = ReviewConfig(
+                groupConfigs = listOf(
+                    GroupReviewConfig(roleId = "*", numRequired = 1),
+                ),
             ),
             3306,
             "postgres",
@@ -162,8 +165,10 @@ class NotificationTest {
                 "username",
                 "password",
                 "A test connection",
-                ReviewConfig(
-                    numTotalRequired = 1,
+                reviewConfig = ReviewConfig(
+                    groupConfigs = listOf(
+                        GroupReviewConfig(roleId = "*", numRequired = 1),
+                    ),
                 ),
                 3306,
                 "postgres",

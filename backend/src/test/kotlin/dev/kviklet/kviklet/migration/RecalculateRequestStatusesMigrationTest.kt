@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.EventRepository
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
+import dev.kviklet.kviklet.db.GroupReviewConfig
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.util.IdGenerator
@@ -484,7 +485,7 @@ class RecalculateRequestStatusesMigrationTest {
             "root",
             "root",
             "A test connection",
-            ReviewConfig(numTotalRequired = numTotalRequired),
+            ReviewConfig(groupConfigs = listOf(GroupReviewConfig("*", numTotalRequired))),
             db.getMappedPort(5432),
             db.host,
             DatasourceType.POSTGRESQL,

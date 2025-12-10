@@ -3,6 +3,8 @@ package dev.kviklet.kviklet
 import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
 import dev.kviklet.kviklet.controller.UpdateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.UpdateExecutionRequestRequest
+import dev.kviklet.kviklet.db.GroupReviewConfig
+import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.helper.ConnectionHelper
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper
@@ -31,15 +33,20 @@ import org.testcontainers.utility.DockerImageName
 @ActiveProfiles("test")
 class MaxTemporaryAccessDurationTest {
 
-    @Autowired private lateinit var userHelper: UserHelper
+    @Autowired
+    private lateinit var userHelper: UserHelper
 
-    @Autowired private lateinit var connectionHelper: ConnectionHelper
+    @Autowired
+    private lateinit var connectionHelper: ConnectionHelper
 
-    @Autowired private lateinit var executionRequestHelper: ExecutionRequestHelper
+    @Autowired
+    private lateinit var executionRequestHelper: ExecutionRequestHelper
 
-    @Autowired private lateinit var connectionService: ConnectionService
+    @Autowired
+    private lateinit var connectionService: ConnectionService
 
-    @Autowired private lateinit var executionRequestService: ExecutionRequestService
+    @Autowired
+    private lateinit var executionRequestService: ExecutionRequestService
 
     private lateinit var testUser: User
     private lateinit var testReviewer: User
@@ -81,7 +88,11 @@ class MaxTemporaryAccessDurationTest {
             password = "root",
             authenticationType = AuthenticationType.USER_PASSWORD,
             description = "Test connection with max duration",
-            reviewsRequired = 1,
+            reviewConfig = ReviewConfig(
+                groupConfigs = listOf(
+                    GroupReviewConfig(roleId = "*", numRequired = 1),
+                ),
+            ),
             port = db.firstMappedPort,
             hostname = "localhost",
             type = DatasourceType.POSTGRESQL,
@@ -316,7 +327,11 @@ class MaxTemporaryAccessDurationTest {
             password = "root",
             authenticationType = AuthenticationType.USER_PASSWORD,
             description = "Test connection",
-            reviewsRequired = 1,
+            reviewConfig = ReviewConfig(
+                groupConfigs = listOf(
+                    GroupReviewConfig(roleId = "*", numRequired = 1),
+                ),
+            ),
             port = db.firstMappedPort,
             hostname = "localhost",
             type = DatasourceType.POSTGRESQL,

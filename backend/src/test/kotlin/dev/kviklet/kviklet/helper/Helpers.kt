@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.helper
 
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
+import dev.kviklet.kviklet.db.GroupReviewConfig
 import dev.kviklet.kviklet.db.LiveSessionAdapter
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.ReviewPayload
@@ -184,7 +185,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             "test",
             "A test connection",
             ReviewConfig(
-                numTotalRequired = 1,
+                groupConfigs = listOf(GroupReviewConfig("*", 1)),
             ),
             1,
             "localhost",
@@ -215,7 +216,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             container.password,
             "A test connection",
             ReviewConfig(
-                numTotalRequired = 1,
+                groupConfigs = listOf(GroupReviewConfig("*", 1)),
             ),
             container.getMappedPort(5432),
             container.host,
@@ -242,7 +243,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             "",
             "A test connection",
             ReviewConfig(
-                numTotalRequired = 1,
+                groupConfigs = listOf(GroupReviewConfig("*", 1)),
             ),
             container.getMappedPort(27017),
             container.host,
@@ -264,7 +265,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             "Test Kubernetes Connection $connectionCount",
             "A test kubernetes connection",
             ReviewConfig(
-                numTotalRequired = 1,
+                groupConfigs = listOf(GroupReviewConfig("*", 1)),
             ),
             1,
         )

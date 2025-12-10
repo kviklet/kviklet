@@ -92,7 +92,7 @@ class ExecutionRequestStatusRecalculationTest {
                     {
                         "connectionType": "DATASOURCE",
                         "reviewConfig": {
-                            "numTotalRequired": 2
+                            "groupConfigs": [{"roleId": "*", "numRequired": 2}]
                         }
                     }
                     """.trimIndent(),

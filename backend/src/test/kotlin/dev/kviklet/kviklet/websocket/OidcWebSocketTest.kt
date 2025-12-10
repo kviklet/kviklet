@@ -5,6 +5,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlInput
 import com.gargoylesoftware.htmlunit.html.HtmlPage
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
+import dev.kviklet.kviklet.db.GroupReviewConfig
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.db.UserId
@@ -175,7 +176,7 @@ class OidcWebSocketTest {
             db.username,
             db.password,
             "Test connection",
-            ReviewConfig(numTotalRequired = 0),
+            ReviewConfig(groupConfigs = listOf(GroupReviewConfig("*", 0))),
             db.getMappedPort(5432),
             db.host,
             DatasourceType.POSTGRESQL,

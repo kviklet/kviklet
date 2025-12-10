@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.helper
 
+import dev.kviklet.kviklet.db.GroupReviewConfig
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserId
@@ -181,7 +182,11 @@ class ConnectionFactory : Factory() {
         id: ConnectionId = ConnectionId("test-connection " + nextId()),
         displayName: String = "Test Connection",
         description: String = "A test connection",
-        reviewConfig: ReviewConfig = ReviewConfig(numTotalRequired = 1),
+        reviewConfig: ReviewConfig = ReviewConfig(
+            groupConfigs = listOf(
+                GroupReviewConfig(roleId = "*", numRequired = 1),
+            ),
+        ),
         maxExecutions: Int? = 1,
         databaseName: String? = null,
         authenticationType: AuthenticationType = AuthenticationType.USER_PASSWORD,

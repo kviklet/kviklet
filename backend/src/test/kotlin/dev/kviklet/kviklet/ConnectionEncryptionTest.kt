@@ -4,6 +4,7 @@ import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ConnectionRepository
 import dev.kviklet.kviklet.db.ConnectionType
 import dev.kviklet.kviklet.db.EncryptionConfigProperties
+import dev.kviklet.kviklet.db.GroupReviewConfig
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.AuthenticationType
@@ -67,7 +68,7 @@ class ConnectionEncryptionTest(
         username = username,
         password = password,
         description = "Test description",
-        reviewConfig = ReviewConfig(numTotalRequired = 1),
+        reviewConfig = ReviewConfig(groupConfigs = listOf(GroupReviewConfig("*", 1))),
         port = port,
         hostname = "localhost",
         type = type,
@@ -182,7 +183,7 @@ class ConnectionEncryptionTest(
                 password = "initialpassword",
             ),
             databaseName = "partialdb",
-            reviewConfig = ReviewConfig(numTotalRequired = 1),
+            reviewConfig = ReviewConfig(groupConfigs = listOf(GroupReviewConfig("*", 1))),
             additionalJDBCOptions = "",
             dumpsEnabled = false,
             temporaryAccessEnabled = true,
@@ -256,14 +257,14 @@ class ConnectionEncryptionTest(
             connectionId = connectionId,
             displayName = "Test Kubernetes Connection",
             description = "Test Kubernetes description",
-            reviewConfig = ReviewConfig(numTotalRequired = 2),
+            reviewConfig = ReviewConfig(groupConfigs = listOf(GroupReviewConfig("*", 2))),
             maxExecutions = 10,
         )
 
         kubernetesConnection.id shouldBe connectionId
         kubernetesConnection.displayName shouldBe "Test Kubernetes Connection"
         kubernetesConnection.description shouldBe "Test Kubernetes description"
-        kubernetesConnection.reviewConfig.numTotalRequired shouldBe 2
+        kubernetesConnection.reviewConfig.groupConfigs.first { it.roleId == "*" }.numRequired shouldBe 2
         kubernetesConnection.maxExecutions shouldBe 10
 
         val retrievedConnection = connectionAdapter.getConnection(connectionId)
@@ -271,7 +272,7 @@ class ConnectionEncryptionTest(
         retrievedConnection.id shouldBe connectionId
         retrievedConnection.displayName shouldBe "Test Kubernetes Connection"
         retrievedConnection.description shouldBe "Test Kubernetes description"
-        retrievedConnection.reviewConfig.numTotalRequired shouldBe 2
+        retrievedConnection.reviewConfig.groupConfigs.first { it.roleId == "*" }.numRequired shouldBe 2
         retrievedConnection.maxExecutions shouldBe 10
 
         val storedConnection = connectionRepository.findById(connectionId.toString()).get()

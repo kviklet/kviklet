@@ -2,6 +2,7 @@ package dev.kviklet.kviklet
 
 import dev.kviklet.kviklet.controller.CreateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
+import dev.kviklet.kviklet.controller.GroupReviewConfigRequest
 import dev.kviklet.kviklet.controller.ReviewConfigRequest
 import dev.kviklet.kviklet.controller.UpdateExecutionRequestRequest
 import dev.kviklet.kviklet.service.dto.ConnectionId
@@ -17,7 +18,11 @@ object TestFixtures {
             username = "username",
             password = "password",
             description = "description",
-            reviewConfig = ReviewConfigRequest(0),
+            reviewConfig = ReviewConfigRequest(
+                groupConfigs = listOf(
+                    GroupReviewConfigRequest(roleId = "*", numRequired = 1),
+                ),
+            ),
             type = DatasourceType.MYSQL,
             hostname = "localhost",
             port = 3306,
