@@ -12,6 +12,7 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
+import io.mockk.verify
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
@@ -256,5 +257,54 @@ class KubernetesApiTest {
 
         assertEquals(false, result.finished)
         assertNull(result.exitCode)
+    }
+
+    @Test
+    fun testExecuteCommandUsesCustomTimeoutMinutesWhenNotFinished() {
+        val mockExec = mockk<Exec>()
+        val mockProcess = mockk<Process>()
+        val mockApiClient = mockk<ApiClient>()
+
+        val mockCoreV1Api = mockk<CoreV1Api>()
+
+        mockkStatic(Config::class)
+        every { Config.defaultClient() } returns mockApiClient
+
+        val commandOutput = "Hello!\n".toByteArray()
+        every { mockProcess.inputStream } returns ByteArrayInputStream(commandOutput)
+        every { mockProcess.errorStream } returns ByteArrayInputStream("".toByteArray())
+
+        every {
+            mockExec.exec(
+                eq("default"),
+                eq("pod1"),
+                arrayOf("/bin/sh", "-c", "echo 'Hello!'"),
+                true,
+                false,
+            )
+        } returns mockProcess
+
+        // Force the initial "peek" wait to time out, so the async long-wait path is taken.
+        every { mockProcess.waitFor(1, TimeUnit.SECONDS) } returns false
+        every { mockProcess.waitFor(2, TimeUnit.MINUTES) } returns true
+        every { mockProcess.destroy() } returns Unit
+
+        val kubernetesApi = KubernetesApi(mockCoreV1Api)
+
+        val result = kubernetesApi.executeCommandOnPod(
+            namespace = "default",
+            podName = "pod1",
+            command = "echo 'Hello!'",
+            initialWaitTimeoutSeconds = 1,
+            timeout = 2, // minutes
+            exec = mockExec,
+        )
+
+        assertEquals(false, result.finished)
+        assertNull(result.exitCode)
+
+        // The long-wait happens asynchronously; wait briefly for it to run and verify it used our custom timeout value.
+        verify(timeout = 1_000) { mockProcess.waitFor(2, TimeUnit.MINUTES) }
+        verify(timeout = 1_000) { mockProcess.destroy() }
     }
 }
