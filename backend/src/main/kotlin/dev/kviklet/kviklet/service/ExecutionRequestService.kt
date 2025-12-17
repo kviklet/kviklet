@@ -531,7 +531,7 @@ class ExecutionRequestService(
             command = statement ?: executionRequest.request.command!!,
             containerName = containerName,
             initialWaitTimeoutSeconds = kubernetesExecProperties.initialWaitTimeoutSeconds,
-            timeout = 60,
+            timeout = kubernetesExecProperties.timeoutMinutes,
         )
         return KubernetesExecutionResult(
             executionRequest = executionRequest,
