@@ -113,6 +113,55 @@ class KubernetesApiTest {
     }
 
     @Test
+    fun testExecuteCommandOnPodWithCustomInitialWaitTimeoutSeconds() {
+        val mockExec = mockk<Exec>()
+        val mockProcess = mockk<Process>()
+        val mockApiClient = mockk<ApiClient>()
+
+        val mockCoreV1Api = mockk<CoreV1Api>()
+
+        mockkStatic(Config::class)
+        every { Config.defaultClient() } returns mockApiClient
+        every {
+            mockExec.exec(
+                eq("default"),
+                eq("pod1"),
+                arrayOf("/bin/sh", "-c", "echo 'Hello, World!'"),
+                true,
+                false,
+            )
+        } returns mockProcess
+
+        val commandOutput = "Hello, World!\n".toByteArray()
+        val errorOutput = "Error message\n".toByteArray()
+        every { mockProcess.inputStream } returns ByteArrayInputStream(commandOutput)
+        every { mockProcess.errorStream } returns ByteArrayInputStream(errorOutput)
+        every { mockProcess.waitFor(7, TimeUnit.SECONDS) } returns true
+        every { mockProcess.exitValue() } returns 0
+
+        val kubernetesApi = KubernetesApi(mockCoreV1Api)
+
+        val namespace = "default"
+        val podName = "pod1"
+        val command = "echo 'Hello, World!'"
+
+        val result = kubernetesApi.executeCommandOnPod(
+            namespace,
+            podName,
+            command = command,
+            initialWaitTimeoutSeconds = 7,
+            exec = mockExec,
+        )
+
+        assertEquals(1, result.messages.size)
+        assertEquals("Hello, World!", result.messages.first())
+        assertEquals(1, result.errors.size)
+        assertEquals("Error message", result.errors.first())
+        assertEquals(true, result.finished)
+        assertEquals(0, result.exitCode)
+    }
+
+    @Test
     fun testExecuteCommandOnPodWithContainerName() {
         val mockExec = mockk<Exec>()
         val mockProcess = mockk<Process>()

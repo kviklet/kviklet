@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.service
 
+import dev.kviklet.kviklet.KubernetesExecProperties
 import dev.kviklet.kviklet.TLSCerts
 import dev.kviklet.kviklet.controller.CreateCommentRequest
 import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
@@ -64,6 +65,7 @@ class ExecutionRequestService(
     private val JDBCExecutor: JDBCExecutor,
     private val eventService: EventService,
     private val kubernetesApi: KubernetesApi,
+    private val kubernetesExecProperties: KubernetesExecProperties,
     private val applicationEventPublisher: ApplicationEventPublisher,
     private val mongoDBExecutor: MongoDBExecutor,
     private val connectionService: ConnectionService,
@@ -528,6 +530,7 @@ class ExecutionRequestService(
             podName = executionRequest.request.podName!!,
             command = statement ?: executionRequest.request.command!!,
             containerName = containerName,
+            initialWaitTimeoutSeconds = kubernetesExecProperties.initialWaitTimeoutSeconds,
             timeout = 60,
         )
         return KubernetesExecutionResult(
