@@ -4,6 +4,7 @@ import dev.kviklet.kviklet.security.IdpIdentifier
 import dev.kviklet.kviklet.security.PolicyGrantedAuthority
 import dev.kviklet.kviklet.security.UserAuthService
 import dev.kviklet.kviklet.security.UserDetailsWithId
+import dev.kviklet.kviklet.service.RoleSyncService
 import jakarta.transaction.Transactional
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest
 import org.springframework.stereotype.Service
@@ -11,7 +12,8 @@ import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService 
 import org.springframework.security.oauth2.core.oidc.user.OidcUser as SpringOidcUser
 
 @Service
-class OidcUserService(private val userAuthService: UserAuthService) : SpringOidcUserService() {
+class OidcUserService(private val userAuthService: UserAuthService, private val roleSyncService: RoleSyncService) :
+    SpringOidcUserService() {
 
     @Transactional
     override fun loadUser(userRequest: OidcUserRequest): SpringOidcUser {
@@ -21,10 +23,14 @@ class OidcUserService(private val userAuthService: UserAuthService) : SpringOidc
         val email = oidcUser.getAttribute<String>("email")!!
         val name = oidcUser.getAttribute<String>("name")
 
+        // Extract groups from OIDC claims for role sync
+        val groups = roleSyncService.extractGroups(oidcUser.attributes)
+
         val user = userAuthService.findOrCreateUser(
             idpIdentifier = IdpIdentifier.Oidc(subject),
             email = email,
             fullName = name,
+            idpGroups = groups,
             requireLicense = false,
         )
 

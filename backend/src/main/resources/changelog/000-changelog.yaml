@@ -101,3 +101,6 @@ databaseChangeLog:
   - include:
       file: 035-add-status-index.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 036-add-role-sync-config.yaml
+      relativeToChangelogFile: true

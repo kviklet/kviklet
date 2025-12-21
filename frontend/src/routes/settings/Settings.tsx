@@ -7,6 +7,7 @@ import {
   UserIcon,
   UsersIcon,
   LockClosedIcon,
+  ArrowPathIcon,
 } from "@heroicons/react/20/solid";
 
 import { Link, Outlet, Route, Routes, useLocation } from "react-router-dom";
@@ -21,6 +22,7 @@ import GeneralSettings from "./GeneralSettings";
 import ConnectionDetails from "./connection/details/ConnectionDetails";
 import LicenseSettings from "./LicenseSettings";
 import ApiKeyPage from "./ApiKeySettings";
+import RoleSyncSettings from "./RoleSyncSettings";
 import useConfig from "../../hooks/config";
 
 const Tab = (props: {
@@ -127,6 +129,27 @@ const Settings = () => {
       link: "/settings/roles",
     },
     {
+      name: "role-sync",
+      tabContent: (
+        <div className="flex flex-col">
+          <div className={tabStyles}>
+            <div className="flex items-center">
+              <ArrowPathIcon className="mr-2 h-6" />
+              <span>Role Sync</span>
+              {!config?.licenseValid && (
+                <LockClosedIcon className="ml-1 h-4 w-4" />
+              )}
+            </div>
+          </div>
+        </div>
+      ),
+      link: "/settings/role-sync",
+      disabled: !config?.licenseValid,
+      tooltip: !config?.licenseValid
+        ? "Role Sync is an enterprise feature. Visit kviklet.dev to get a license."
+        : undefined,
+    },
+    {
       name: "profile",
       tabContent: (
         <div className="flex flex-col">
@@ -222,6 +245,32 @@ const Settings = () => {
                       </h2>
                       <p className="mb-4 text-slate-500 dark:text-slate-400">
                         API Keys require an enterprise license.
+                      </p>
+                      <a
+                        href="https://kviklet.dev"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        Get a license at kviklet.dev
+                      </a>
+                    </div>
+                  )
+                }
+              />
+              <Route
+                path="role-sync"
+                element={
+                  config?.licenseValid === true ? (
+                    <RoleSyncSettings />
+                  ) : (
+                    <div className="flex h-64 flex-col items-center justify-center text-center">
+                      <LockClosedIcon className="mb-4 h-12 w-12 text-slate-400" />
+                      <h2 className="mb-2 text-xl font-semibold text-slate-700 dark:text-slate-300">
+                        Enterprise Feature
+                      </h2>
+                      <p className="mb-4 text-slate-500 dark:text-slate-400">
+                        Role Sync requires an enterprise license.
                       </p>
                       <a
                         href="https://kviklet.dev"

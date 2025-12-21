@@ -1,0 +1,80 @@
+databaseChangeLog:
+  - changeSet:
+      id: 036-add-role-sync-config
+      author: jascha
+      changes:
+        - createTable:
+            tableName: role_sync_config
+            columns:
+              - column:
+                  name: id
+                  type: varchar(255)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: enabled
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sync_mode
+                  type: varchar(50)
+                  defaultValue: "FULL_SYNC"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: groups_attribute
+                  type: varchar(255)
+                  defaultValue: "groups"
+                  constraints:
+                    nullable: false
+
+        - insert:
+            tableName: role_sync_config
+            columns:
+              - column:
+                  name: id
+                  value: "default"
+              - column:
+                  name: enabled
+                  valueBoolean: false
+              - column:
+                  name: sync_mode
+                  value: "FULL_SYNC"
+              - column:
+                  name: groups_attribute
+                  value: "groups"
+
+        - createTable:
+            tableName: role_sync_mapping
+            columns:
+              - column:
+                  name: id
+                  type: varchar(255)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: idp_group_name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: role_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_role_sync_mapping_role
+                    references: role(id)
+                    deleteCascade: true
+              - column:
+                  name: config_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: true
+                    foreignKeyName: fk_role_sync_mapping_config
+                    references: role_sync_config(id)
+                    deleteCascade: true
