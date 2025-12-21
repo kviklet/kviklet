@@ -1,8 +1,8 @@
 package dev.kviklet.kviklet.controller
 
 import dev.kviklet.kviklet.security.IdentityProviderProperties
-import dev.kviklet.kviklet.security.LdapProperties
-import dev.kviklet.kviklet.security.SamlProperties
+import dev.kviklet.kviklet.security.ldap.LdapProperties
+import dev.kviklet.kviklet.security.saml.SamlProperties
 import dev.kviklet.kviklet.service.ConfigService
 import dev.kviklet.kviklet.service.LicenseService
 import dev.kviklet.kviklet.service.dto.Configuration

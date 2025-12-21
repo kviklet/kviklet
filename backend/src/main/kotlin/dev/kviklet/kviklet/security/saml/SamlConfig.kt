@@ -1,18 +1,15 @@
 // This file is not MIT licensed
-package dev.kviklet.kviklet.security
+package dev.kviklet.kviklet.security.saml
 
 import dev.kviklet.kviklet.ApplicationProperties
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.saml2.core.Saml2X509Credential
-import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal
 import org.springframework.security.saml2.provider.service.registration.InMemoryRelyingPartyRegistrationRepository
 import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration
 import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistrationRepository
 import org.springframework.security.saml2.provider.service.registration.Saml2MessageBinding
-import org.springframework.stereotype.Component
-import org.springframework.transaction.annotation.Transactional
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 
@@ -73,30 +70,5 @@ class SamlConfig(
             .build()
 
         return InMemoryRelyingPartyRegistrationRepository(registration)
-    }
-}
-
-@Component
-@ConditionalOnProperty(prefix = "saml", name = ["enabled"], havingValue = "true")
-class CustomSaml2UserService(
-    private val samlProperties: SamlProperties,
-    private val userAuthService: UserAuthService,
-) {
-    @Transactional
-    fun loadUser(principal: Saml2AuthenticatedPrincipal): dev.kviklet.kviklet.db.User {
-        val nameId = principal.name
-
-        val email = principal.getAttribute<String>(samlProperties.userAttributes.emailAttribute)?.firstOrNull()
-            ?: throw IllegalStateException(
-                "No email attribute found in SAML response. Available attributes: ${principal.attributes.keys}",
-            )
-        val fullName = principal.getAttribute<String>(samlProperties.userAttributes.nameAttribute)?.firstOrNull()
-
-        return userAuthService.findOrCreateUser(
-            idpIdentifier = IdpIdentifier.Saml(nameId),
-            email = email,
-            fullName = fullName,
-            requireLicense = true,
-        )
     }
 }

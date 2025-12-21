@@ -47,7 +47,7 @@ import java.util.concurrent.TimeUnit
 /**
  * Test to reproduce GitHub Issue #405:
  * WebSocket connection fails for OIDC-authenticated users with ClassCastException:
- * "class dev.kviklet.kviklet.security.CustomOidcUser cannot be cast to
+ * "class dev.kviklet.kviklet.security.oidc.OidcUser cannot be cast to
  * class dev.kviklet.kviklet.security.UserDetailsWithId"
  */
 @SpringBootTest(

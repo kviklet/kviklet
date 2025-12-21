@@ -1,6 +1,8 @@
 package dev.kviklet.kviklet.security
 
 import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.security.oidc.OidcUser
+import dev.kviklet.kviklet.security.saml.SamlUserService
 import dev.kviklet.kviklet.service.IdResolver
 import dev.kviklet.kviklet.service.LicenseService
 import org.aopalliance.aop.Advice
@@ -25,10 +27,10 @@ import org.springframework.security.authorization.AuthorizationDecision
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.security.oauth2.core.oidc.user.OidcUser
 import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal
 import org.springframework.stereotype.Component
 import java.util.function.Supplier
+import org.springframework.security.oauth2.core.oidc.user.OidcUser as SpringOidcUser
 
 enum class Resource(val resourceName: String) {
     DATASOURCE_CONNECTION("datasource_connection"),
@@ -124,7 +126,7 @@ class MethodSecurityConfig(private val idResolver: IdResolver) {
 class MyAuthorizationManager(
     val userAdapter: UserAdapter,
     @Autowired(required = false)
-    val customSaml2UserService: CustomSaml2UserService? = null,
+    val samlUserService: SamlUserService? = null,
 ) {
     fun check(
         authentication: Supplier<Authentication?>,
@@ -141,13 +143,13 @@ class MyAuthorizationManager(
         val userDetailsWithId = when (auth.principal) {
             is UserDetailsWithId -> auth.principal as UserDetailsWithId
 
-            is OidcUser -> (auth.principal as CustomOidcUser).getUserDetails()
+            is OidcUser -> (auth.principal as OidcUser).getUserDetails()
 
             is Saml2AuthenticatedPrincipal -> {
                 // Handle SAML2 authentication
                 val samlPrincipal = auth.principal as Saml2AuthenticatedPrincipal
-                val user = customSaml2UserService?.loadUser(samlPrincipal)
-                    ?: throw RuntimeException("SAML2 is enabled but CustomSaml2UserService is not available")
+                val user = samlUserService?.loadUser(samlPrincipal)
+                    ?: throw RuntimeException("SAML2 is enabled but SamlUserService is not available")
                 val authorities = user.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
                 UserDetailsWithId(user.getId()!!, user.email, "", authorities)
             }
