@@ -1,14 +1,9 @@
 package dev.kviklet.kviklet.security
 
 import dev.kviklet.kviklet.controller.ServerUrlInterceptor
-import dev.kviklet.kviklet.db.RoleAdapter
-import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.service.ApiKeyService
-import dev.kviklet.kviklet.service.LicenseRestrictionException
-import dev.kviklet.kviklet.service.LicenseService
 import dev.kviklet.kviklet.service.UserService
-import dev.kviklet.kviklet.service.dto.Role
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.transaction.Transactional
@@ -381,11 +376,7 @@ class CustomOidcUser(
 }
 
 @Service
-class CustomOidcUserService(
-    private val userAdapter: UserAdapter,
-    private val roleAdapter: RoleAdapter,
-    private val licenseService: LicenseService,
-) : OidcUserService() {
+class CustomOidcUserService(private val userAuthService: UserAuthService) : OidcUserService() {
 
     @Transactional
     override fun loadUser(userRequest: OidcUserRequest): OidcUser {
@@ -395,54 +386,16 @@ class CustomOidcUserService(
         val email = oidcUser.getAttribute<String>("email")!!
         val name = oidcUser.getAttribute<String>("name")
 
-        var user = userAdapter.findBySubject(subject)
+        val user = userAuthService.findOrCreateUser(
+            idpIdentifier = IdpIdentifier.Oidc(subject),
+            email = email,
+            fullName = name,
+            requireLicense = false,
+        )
 
-        if (user == null) {
-            // Check if a user with the same email exists
-            userAdapter.findByEmail(email)?.let {
-                // Update existing user to use SSO
-                user = it.copy(
-                    subject = subject, // Set the SSO subject
-                    email = email,
-                    fullName = name ?: it.fullName,
-                    password = null,
-                    ldapIdentifier = null,
-                )
-            } ?: run {
-                // No existing user found, create a new one
-                val license = licenseService.getActiveLicense()
-                if (license != null) {
-                    val maxUsers = license.allowedUsers
-                    if (maxUsers <= userAdapter.listUsers().size.toUInt()) {
-                        throw LicenseRestrictionException("License does not allow more users")
-                    }
-                }
-                val defaultRole = roleAdapter.findById(Role.DEFAULT_ROLE_ID)
-                user = User(
-                    subject = subject,
-                    email = email,
-                    fullName = name,
-                    roles = setOf(defaultRole),
-                )
-            }
-        } else {
-            // If the user has already signed in before, update the user's information
-            user = user!!.copy(
-                subject = subject,
-                email = email,
-                fullName = name,
-            )
-            // Update other user properties here
-        }
+        val policies = user.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
+        val userDetails = UserDetailsWithId(user.getId()!!, email, "", policies)
 
-        val savedUser = userAdapter.createOrUpdateUser(user!!)
-        // Handle your custom logic (e.g., saving the user to the database)
-        // Extract policies
-
-        val policies = savedUser.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
-        val userDetails = UserDetailsWithId(savedUser.getId()!!, email, "", policies)
-
-        // Return a CustomOidcUser with the original OidcUser, custom user details, and authorities
         return CustomOidcUser(oidcUser, userDetails, policies)
     }
 }
