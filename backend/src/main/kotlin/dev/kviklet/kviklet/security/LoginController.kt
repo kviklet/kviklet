@@ -35,7 +35,7 @@ class LoginController(private val authenticationManager: AuthenticationManager) 
         request: HttpServletRequest,
         response: HttpServletResponse,
     ): ResponseEntity<LoginResponse> {
-        // This handles username/password authentication. For Oauth see CustomOidcUserService
+        // This handles username/password authentication. For OAuth see OidcUserService
         try {
             val authenticationToken = UsernamePasswordAuthenticationToken(credentials.email, credentials.password)
             val authentication = authenticationManager.authenticate(authenticationToken)

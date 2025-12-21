@@ -5,10 +5,10 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.databind.ObjectMapper
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserId
-import dev.kviklet.kviklet.security.CustomOidcUser
-import dev.kviklet.kviklet.security.CustomSaml2UserService
 import dev.kviklet.kviklet.security.PolicyGrantedAuthority
 import dev.kviklet.kviklet.security.UserDetailsWithId
+import dev.kviklet.kviklet.security.oidc.OidcUser
+import dev.kviklet.kviklet.security.saml.SamlUserService
 import dev.kviklet.kviklet.service.UserService
 import dev.kviklet.kviklet.service.dto.DBExecutionResult
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
@@ -71,7 +71,7 @@ class SessionWebsocketHandler(
     private val objectMapper: ObjectMapper,
     private val userService: UserService,
     @Autowired(required = false)
-    private val customSaml2UserService: CustomSaml2UserService? = null,
+    private val samlUserService: SamlUserService? = null,
 ) : TextWebSocketHandler() {
     private val logger = LoggerFactory.getLogger(SessionWebsocketHandler::class.java)
     private val sessionObservers = ConcurrentHashMap<LiveSessionId, MutableSet<SessionObserver>>()
@@ -98,11 +98,11 @@ class SessionWebsocketHandler(
         val userDetailsWithId = when (principal) {
             is UserDetailsWithId -> principal
 
-            is CustomOidcUser -> principal.getUserDetails()
+            is OidcUser -> principal.getUserDetails()
 
             is Saml2AuthenticatedPrincipal -> {
-                val user = customSaml2UserService?.loadUser(principal)
-                    ?: throw IllegalStateException("SAML2 is enabled but CustomSaml2UserService is not available")
+                val user = samlUserService?.loadUser(principal)
+                    ?: throw IllegalStateException("SAML2 is enabled but SamlUserService is not available")
                 val authorities = user.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
                 UserDetailsWithId(user.getId()!!, user.email, "", authorities)
             }

@@ -1,9 +1,9 @@
 package dev.kviklet.kviklet.security
 
+import dev.kviklet.kviklet.security.oidc.OidcUser
 import org.springframework.core.MethodParameter
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.security.oauth2.core.oidc.user.OidcUser
 import org.springframework.web.bind.support.WebDataBinderFactory
 import org.springframework.web.context.request.NativeWebRequest
 import org.springframework.web.method.support.HandlerMethodArgumentResolver
@@ -24,7 +24,7 @@ class CurrentUserArgumentResolver : HandlerMethodArgumentResolver {
         val principal = SecurityContextHolder.getContext().authentication.principal
         return when (principal) {
             is UserDetailsWithId -> principal
-            is OidcUser -> (principal as CustomOidcUser).getUserDetails()
+            is OidcUser -> (principal as OidcUser).getUserDetails()
             else -> throw RuntimeException("Unknown principal type: ${principal.javaClass}")
         }
     }
