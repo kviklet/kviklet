@@ -2,11 +2,6 @@
 package dev.kviklet.kviklet.security
 
 import dev.kviklet.kviklet.ApplicationProperties
-import dev.kviklet.kviklet.db.RoleAdapter
-import dev.kviklet.kviklet.db.UserAdapter
-import dev.kviklet.kviklet.service.LicenseRestrictionException
-import dev.kviklet.kviklet.service.LicenseService
-import dev.kviklet.kviklet.service.dto.Role
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -84,19 +79,11 @@ class SamlConfig(
 @Component
 @ConditionalOnProperty(prefix = "saml", name = ["enabled"], havingValue = "true")
 class CustomSaml2UserService(
-    private val userAdapter: UserAdapter,
-    private val roleAdapter: RoleAdapter,
     private val samlProperties: SamlProperties,
-    private val licenseService: LicenseService,
+    private val userAuthService: UserAuthService,
 ) {
     @Transactional
     fun loadUser(principal: Saml2AuthenticatedPrincipal): dev.kviklet.kviklet.db.User {
-        // Check if there's a valid license before allowing any SAML authentication
-        val license = licenseService.getActiveLicense()
-        if (license == null || !license.isValid()) {
-            throw LicenseRestrictionException("SAML authentication requires a valid license")
-        }
-
         val nameId = principal.name
 
         val email = principal.getAttribute<String>(samlProperties.userAttributes.emailAttribute)?.firstOrNull()
@@ -105,51 +92,11 @@ class CustomSaml2UserService(
             )
         val fullName = principal.getAttribute<String>(samlProperties.userAttributes.nameAttribute)?.firstOrNull()
 
-        // Check if user exists by SAML NameID
-        var user = userAdapter.findBySamlNameId(nameId)
-
-        if (user == null) {
-            // Check if user exists by email
-            user = userAdapter.findByEmail(email)
-
-            if (user == null) {
-                // Create new user
-                val maxUsers = license.allowedUsers
-                if (maxUsers <= userAdapter.listUsers().size.toUInt()) {
-                    throw LicenseRestrictionException("License does not allow more users")
-                }
-                val defaultRole = roleAdapter.findById(Role.DEFAULT_ROLE_ID)
-                user = dev.kviklet.kviklet.db.User(
-                    email = email,
-                    fullName = fullName ?: email,
-                    samlNameId = nameId,
-                    roles = setOf(defaultRole),
-                )
-                user = userAdapter.createOrUpdateUser(user)
-            } else {
-                // Update existing user to use SAML
-                user = userAdapter.createOrUpdateUser(
-                    user.copy(
-                        samlNameId = nameId,
-                        fullName = fullName ?: user.fullName,
-                        password = null,
-                        subject = null,
-                        ldapIdentifier = null,
-                    ),
-                )
-            }
-        } else {
-            // Update user info if changed
-            if (user.email != email || user.fullName != fullName) {
-                user = userAdapter.createOrUpdateUser(
-                    user.copy(
-                        email = email,
-                        fullName = fullName ?: user.fullName,
-                    ),
-                )
-            }
-        }
-
-        return user
+        return userAuthService.findOrCreateUser(
+            idpIdentifier = IdpIdentifier.Saml(nameId),
+            email = email,
+            fullName = fullName,
+            requireLicense = true,
+        )
     }
 }

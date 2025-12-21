@@ -1,10 +1,6 @@
 package dev.kviklet.kviklet.security
 
-import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.UserAdapter
-import dev.kviklet.kviklet.service.LicenseRestrictionException
-import dev.kviklet.kviklet.service.LicenseService
-import dev.kviklet.kviklet.service.dto.Role
 import org.springframework.ldap.core.LdapTemplate
 import org.springframework.ldap.query.LdapQueryBuilder
 import org.springframework.security.core.GrantedAuthority
@@ -22,8 +18,7 @@ class UserDetailsServiceImpl(
     private val userAdapter: UserAdapter,
     private val ldapProperties: LdapProperties,
     private val ldapTemplate: LdapTemplate,
-    private val roleAdapter: RoleAdapter,
-    private val licenseService: LicenseService,
+    private val userAuthService: UserAuthService,
 ) : UserDetailsService {
 
     override fun loadUserByUsername(username: String): UserDetails {
@@ -76,44 +71,13 @@ class UserDetailsServiceImpl(
         val fullName = ldapUser["fullName"] ?: throw IllegalStateException("Full Name attribute in LDAP user not found")
         val uniqueId = ldapUser["uid"] ?: throw IllegalStateException("UID attribute in LDAP user not found")
 
-        var user = userAdapter.findByLdapIdentifier(uniqueId)
-
-        if (user == null) {
-            user = userAdapter.findByEmail(email)
-            if (user != null) {
-                user = user.copy(
-                    ldapIdentifier = uniqueId,
-                    fullName = fullName,
-                    password = null,
-                    subject = null,
-                )
-            } else {
-                val license = licenseService.getActiveLicense()
-                if (license != null) {
-                    val maxUsers = license.allowedUsers
-                    if (maxUsers <= userAdapter.listUsers().size.toUInt()) {
-                        throw LicenseRestrictionException("License does not allow more users")
-                    }
-                }
-                val defaultRole = roleAdapter.findById(Role.DEFAULT_ROLE_ID)
-                user = dev.kviklet.kviklet.db.User(
-                    ldapIdentifier = uniqueId,
-                    email = email,
-                    fullName = fullName,
-                    roles = setOf(defaultRole),
-                )
-            }
-        } else {
-            user = user.copy(
-                email = email,
-                fullName = fullName,
-            )
-        }
-
-        return userAdapter.createOrUpdateUser(user)
+        return userAuthService.findOrCreateUser(
+            idpIdentifier = IdpIdentifier.Ldap(uniqueId),
+            email = email,
+            fullName = fullName,
+            requireLicense = false,
+        )
     }
-
-    private fun isLdapAuthentication(): Boolean = true
 }
 
 class UserDetailsWithId(val id: String, email: String, password: String?, authorities: Collection<GrantedAuthority>) :
