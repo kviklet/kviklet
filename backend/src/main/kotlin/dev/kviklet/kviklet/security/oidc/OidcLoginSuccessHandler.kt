@@ -1,6 +1,5 @@
 package dev.kviklet.kviklet.security.oidc
 
-import dev.kviklet.kviklet.security.UserDetailsWithId
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.transaction.Transactional
