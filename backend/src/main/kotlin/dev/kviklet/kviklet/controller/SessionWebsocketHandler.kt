@@ -5,10 +5,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.databind.ObjectMapper
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserId
-import dev.kviklet.kviklet.security.PolicyGrantedAuthority
 import dev.kviklet.kviklet.security.UserDetailsWithId
-import dev.kviklet.kviklet.security.oidc.OidcUser
-import dev.kviklet.kviklet.security.saml.SamlUserService
 import dev.kviklet.kviklet.service.UserService
 import dev.kviklet.kviklet.service.dto.DBExecutionResult
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
@@ -16,11 +13,9 @@ import dev.kviklet.kviklet.service.dto.LiveSession
 import dev.kviklet.kviklet.service.dto.LiveSessionId
 import dev.kviklet.kviklet.service.websocket.SessionService
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.security.concurrent.DelegatingSecurityContextExecutorService
 import org.springframework.security.core.context.SecurityContext
 import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
@@ -70,8 +65,6 @@ class SessionWebsocketHandler(
     private val sessionService: SessionService,
     private val objectMapper: ObjectMapper,
     private val userService: UserService,
-    @Autowired(required = false)
-    private val samlUserService: SamlUserService? = null,
 ) : TextWebSocketHandler() {
     private val logger = LoggerFactory.getLogger(SessionWebsocketHandler::class.java)
     private val sessionObservers = ConcurrentHashMap<LiveSessionId, MutableSet<SessionObserver>>()
@@ -97,17 +90,7 @@ class SessionWebsocketHandler(
         val principal = SecurityContextHolder.getContext().authentication.principal
         val userDetailsWithId = when (principal) {
             is UserDetailsWithId -> principal
-
-            is OidcUser -> principal.getUserDetails()
-
-            is Saml2AuthenticatedPrincipal -> {
-                val user = samlUserService?.loadUser(principal)
-                    ?: throw IllegalStateException("SAML2 is enabled but SamlUserService is not available")
-                val authorities = user.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
-                UserDetailsWithId(user.getId()!!, user.email, "", authorities)
-            }
-
-            else -> throw IllegalStateException("Unknown principal type: ${principal.javaClass}")
+            else -> throw IllegalStateException("Expected UserDetailsWithId but got: ${principal.javaClass}")
         }
         logger.info("User id: ${userDetailsWithId.id}")
         val user = userService.getUser(UserId(userDetailsWithId.id))
