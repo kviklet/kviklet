@@ -1,5 +1,7 @@
 package dev.kviklet.kviklet.security
 
+import dev.kviklet.kviklet.security.ldap.LdapProperties
+import dev.kviklet.kviklet.security.saml.SamlProperties
 import org.springframework.beans.factory.SmartInitializingSingleton
 import org.springframework.context.annotation.Configuration
 
