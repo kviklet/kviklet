@@ -1,6 +1,5 @@
 package dev.kviklet.kviklet.security
 
-import dev.kviklet.kviklet.security.oidc.OidcUser
 import org.springframework.core.MethodParameter
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.context.SecurityContextHolder
@@ -24,8 +23,7 @@ class CurrentUserArgumentResolver : HandlerMethodArgumentResolver {
         val principal = SecurityContextHolder.getContext().authentication.principal
         return when (principal) {
             is UserDetailsWithId -> principal
-            is OidcUser -> (principal as OidcUser).getUserDetails()
-            else -> throw RuntimeException("Unknown principal type: ${principal.javaClass}")
+            else -> throw RuntimeException("Expected UserDetailsWithId but got: ${principal.javaClass}")
         }
     }
 }
