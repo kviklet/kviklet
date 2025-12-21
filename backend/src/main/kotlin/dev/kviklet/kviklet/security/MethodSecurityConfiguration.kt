@@ -30,7 +30,6 @@ import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal
 import org.springframework.stereotype.Component
 import java.util.function.Supplier
-import org.springframework.security.oauth2.core.oidc.user.OidcUser as SpringOidcUser
 
 enum class Resource(val resourceName: String) {
     DATASOURCE_CONNECTION("datasource_connection"),
