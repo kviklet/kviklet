@@ -1,8 +1,6 @@
 package dev.kviklet.kviklet.security
 
 import dev.kviklet.kviklet.db.UserAdapter
-import dev.kviklet.kviklet.security.oidc.OidcUser
-import dev.kviklet.kviklet.security.saml.SamlUserService
 import dev.kviklet.kviklet.service.IdResolver
 import dev.kviklet.kviklet.service.LicenseService
 import org.aopalliance.aop.Advice
@@ -14,7 +12,6 @@ import org.springframework.aop.PointcutAdvisor
 import org.springframework.aop.framework.AopInfrastructureBean
 import org.springframework.aop.support.DefaultPointcutAdvisor
 import org.springframework.aop.support.annotation.AnnotationMatchingPointcut
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.config.BeanDefinition.ROLE_INFRASTRUCTURE
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -27,7 +24,6 @@ import org.springframework.security.authorization.AuthorizationDecision
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal
 import org.springframework.stereotype.Component
 import java.util.function.Supplier
 
@@ -124,8 +120,6 @@ class MethodSecurityConfig(private val idResolver: IdResolver) {
 @Component
 class MyAuthorizationManager(
     val userAdapter: UserAdapter,
-    @Autowired(required = false)
-    val samlUserService: SamlUserService? = null,
 ) {
     fun check(
         authentication: Supplier<Authentication?>,
@@ -141,22 +135,8 @@ class MyAuthorizationManager(
 
         val userDetailsWithId = when (auth.principal) {
             is UserDetailsWithId -> auth.principal as UserDetailsWithId
-
-            is OidcUser -> (auth.principal as OidcUser).getUserDetails()
-
-            is Saml2AuthenticatedPrincipal -> {
-                // Handle SAML2 authentication
-                val samlPrincipal = auth.principal as Saml2AuthenticatedPrincipal
-                val user = samlUserService?.loadUser(samlPrincipal)
-                    ?: throw RuntimeException("SAML2 is enabled but SamlUserService is not available")
-                val authorities = user.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
-                UserDetailsWithId(user.getId()!!, user.email, "", authorities)
-            }
-
-            is String -> return AuthorizationDecision(false)
-
-            // anonymous user
-            else -> throw RuntimeException("Unknown principal type: ${auth.principal.javaClass}")
+            is String -> return AuthorizationDecision(false) // anonymous user
+            else -> throw RuntimeException("Expected UserDetailsWithId but got: ${auth.principal.javaClass}")
         }
 
         val user = userAdapter.findById(userDetailsWithId.id)
