@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.executor
 
+import dev.kviklet.kviklet.db.GroupReviewConfig
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.service.ColumnInfo
 import dev.kviklet.kviklet.service.JDBCExecutor
@@ -53,7 +54,9 @@ class PostgresIAMAuthExecutorTest(
             displayName = "AWS RDS Production Database",
             description = "Production PostgreSQL database hosted on AWS RDS",
             reviewConfig = ReviewConfig(
-                numTotalRequired = 0,
+                groupConfigs = listOf(
+                    GroupReviewConfig(roleId = "*", numRequired = 1),
+                ),
             ),
             maxExecutions = 10,
             databaseName = AWS_DB_NAME,

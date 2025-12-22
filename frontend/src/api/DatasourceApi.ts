@@ -28,6 +28,15 @@ enum DatabaseProtocol {
   MARIADB = "MARIADB",
 }
 
+const reviewGroupResponseSchema = z.object({
+  roleId: z.string(),
+  numRequired: z.number(),
+});
+
+const reviewConfigResponseSchema = z.object({
+  groupConfigs: z.array(reviewGroupResponseSchema),
+});
+
 const databaseConnectionResponseSchema = withType(
   z.object({
     id: z.coerce.string(),
@@ -41,9 +50,7 @@ const databaseConnectionResponseSchema = withType(
     port: z.coerce.number(),
     description: z.coerce.string(),
     databaseName: z.coerce.string().nullable(),
-    reviewConfig: z.object({
-      numTotalRequired: z.number(),
-    }),
+    reviewConfig: reviewConfigResponseSchema,
     additionalJDBCOptions: z.string().optional(),
     dumpsEnabled: z.boolean(),
     temporaryAccessEnabled: z.boolean(),
@@ -59,9 +66,7 @@ const kubernetesConnectionResponseSchema = withType(
     id: z.coerce.string(),
     displayName: z.coerce.string(),
     description: z.coerce.string(),
-    reviewConfig: z.object({
-      numTotalRequired: z.coerce.number(),
-    }),
+    reviewConfig: reviewConfigResponseSchema,
     maxExecutions: z.coerce.number().nullable(),
     temporaryAccessEnabled: z.boolean(),
   }),
@@ -79,13 +84,20 @@ const testConnectionResponseSchema = z.object({
   accessibleDatabases: z.array(z.string()),
 });
 
+interface ReviewGroupConfig {
+  roleId: string;
+  numRequired: number;
+}
+
+interface ReviewConfig {
+  groupConfigs: ReviewGroupConfig[];
+}
+
 interface ConnectionBase {
   displayName: string;
   id: string;
   description: string;
-  reviewConfig: {
-    numTotalRequired: number;
-  };
+  reviewConfig: ReviewConfig;
   maxExecutions: number | null;
 }
 

@@ -5,14 +5,21 @@ import { useEffect } from "react";
 import Button from "../../../components/Button";
 import { z } from "zod";
 
+const reviewGroupSchema = z.object({
+  roleId: z.string(),
+  numRequired: z.coerce.number(),
+});
+
+const reviewConfigSchema = z.object({
+  groupConfigs: z.array(reviewGroupSchema).min(1),
+});
+
 const kubernetesConnectionPayloadSchema = z.object({
   connectionType: z.literal("KUBERNETES").default("KUBERNETES"),
   displayName: z.coerce.string(),
   id: z.string(),
   description: z.string(),
-  reviewConfig: z.object({
-    numTotalRequired: z.coerce.number(),
-  }),
+  reviewConfig: reviewConfigSchema,
   maxExecutions: z.coerce.number().nullable(),
 });
 
@@ -43,7 +50,14 @@ export default function CreateKubernetesConnectionForm(props: {
   }, [watchDisplayName]);
 
   useEffect(() => {
-    setValue("reviewConfig", { numTotalRequired: 1 });
+    setValue("reviewConfig", {
+      groupConfigs: [
+        {
+          roleId: "*",
+          numRequired: 1,
+        },
+      ],
+    });
     setValue("maxExecutions", 1);
   }, []);
 
@@ -80,12 +94,12 @@ export default function CreateKubernetesConnectionForm(props: {
             error={errors.id?.message}
           />
           <InputField
-            label="Required reviews"
-            id="numTotalRequired"
+            label="Required reviews (wildcard only)"
+            id="numRequired"
             placeholder="1"
             type="number"
-            {...register("reviewConfig.numTotalRequired")}
-            error={errors.reviewConfig?.numTotalRequired?.message}
+            {...register("reviewConfig.groupConfigs.0.numRequired")}
+            error={errors.reviewConfig?.groupConfigs?.[0]?.numRequired?.message}
           />
           <InputField
             id="maxExecutions"

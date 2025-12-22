@@ -61,7 +61,7 @@ class KubernetesConnectionTest {
                     "displayName": "Test Kubernetes Connect",
                     "description": "A generic Kubernetes Connection",
                     "reviewConfig": {
-                        "numTotalRequired": 1
+                        "groupConfigs": [{"roleId": "*", "numRequired": 1}]
                     }
                 }
                 """.trimIndent(),
@@ -87,7 +87,7 @@ class KubernetesConnectionTest {
                     "displayName": "Test Kubernetes Connect",
                     "description": "A generic Kubernetes Connection",
                     "reviewConfig": {
-                        "numTotalRequired": 1
+                        "groupConfigs": [{"roleId": "*", "numRequired": 1}]
                     }
                 }
                 """.trimIndent(),
@@ -112,7 +112,7 @@ class KubernetesConnectionTest {
                     "displayName": "Test Kubernetes Connect",
                     "description": "A generic Kubernetes Connection",
                     "reviewConfig": {
-                        "numTotalRequired": 1
+                        "groupConfigs": [{"roleId": "*", "numRequired": 1}]
                     }
                 }
                 """.trimIndent(),

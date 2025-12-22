@@ -4,7 +4,9 @@ import dev.kviklet.kviklet.controller.UpdateConnectionRequest
 import dev.kviklet.kviklet.controller.UpdateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.UpdateKubernetesConnectionRequest
 import dev.kviklet.kviklet.db.ConnectionAdapter
+import dev.kviklet.kviklet.db.GroupReviewConfig
 import dev.kviklet.kviklet.db.ReviewConfig
+import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
@@ -32,6 +34,7 @@ class ConnectionService(
     private val JDBCExecutor: JDBCExecutor,
     private val mongoDBExecutor: MongoDBExecutor,
     private val executionRequestStatusService: ExecutionRequestStatusService,
+    private val roleAdapter: RoleAdapter,
 ) {
 
     @Transactional
@@ -46,11 +49,21 @@ class ConnectionService(
             connectionId,
         ) as DatasourceConnection
 
-        val newReviewConfig = request.reviewConfig?.let {
+        val newReviewConfig = request.reviewConfig?.let { rcReq ->
             ReviewConfig(
-                it.numTotalRequired,
+                groupConfigs = rcReq.groupConfigs.map { groupReq ->
+                    GroupReviewConfig(
+                        roleId = groupReq.roleId,
+                        numRequired = groupReq.numRequired,
+                    )
+                },
             )
         } ?: connection.reviewConfig
+
+        // Validate provided review config (only when changed)
+        if (request.reviewConfig != null) {
+            validateReviewConfig(newReviewConfig)
+        }
 
         val newMaxExecutions = request.maxExecutions ?: connection.maxExecutions
 
@@ -133,11 +146,20 @@ class ConnectionService(
             connectionId,
         ) as KubernetesConnection
 
-        val newReviewConfig = request.reviewConfig?.let {
+        val newReviewConfig = request.reviewConfig?.let { rcReq ->
             ReviewConfig(
-                it.numTotalRequired,
+                groupConfigs = rcReq.groupConfigs.map { groupReq ->
+                    GroupReviewConfig(
+                        roleId = groupReq.roleId,
+                        numRequired = groupReq.numRequired,
+                    )
+                },
             )
         } ?: connection.reviewConfig
+
+        if (request.reviewConfig != null) {
+            validateReviewConfig(newReviewConfig)
+        }
 
         val newMaxExecutions = request.maxExecutions ?: connection.maxExecutions
 
@@ -188,7 +210,7 @@ class ConnectionService(
         password: String?,
         authenticationType: AuthenticationType,
         description: String,
-        reviewsRequired: Int,
+        reviewConfig: ReviewConfig,
         port: Int,
         hostname: String,
         type: DatasourceType,
@@ -203,6 +225,7 @@ class ConnectionService(
         if (authenticationType == AuthenticationType.USER_PASSWORD && password == null) {
             throw IllegalArgumentException("Password is required for USER_PASSWORD authentication")
         }
+        validateReviewConfig(reviewConfig)
         return connectionAdapter.createDatasourceConnection(
             connectionId,
             displayName,
@@ -212,9 +235,7 @@ class ConnectionService(
             username,
             password,
             description,
-            ReviewConfig(
-                numTotalRequired = reviewsRequired,
-            ),
+            reviewConfig,
             port,
             hostname,
             type,
@@ -237,7 +258,7 @@ class ConnectionService(
         username: String,
         password: String?,
         description: String,
-        reviewsRequired: Int,
+        reviewConfig: ReviewConfig,
         port: Int,
         hostname: String,
         type: DatasourceType,
@@ -250,11 +271,12 @@ class ConnectionService(
         roleArn: String?,
         maxTemporaryAccessDuration: Long? = null,
     ): TestConnectionResult {
+        validateReviewConfig(reviewConfig)
         val connection = DatasourceConnection(
             connectionId,
             displayName,
             description,
-            reviewConfig = ReviewConfig(reviewsRequired),
+            reviewConfig = reviewConfig,
             maxExecutions,
             databaseName,
             authenticationType,
@@ -303,21 +325,34 @@ class ConnectionService(
         )
     }
 
+    private fun validateReviewConfig(reviewConfig: ReviewConfig) {
+        val ids = reviewConfig.groupConfigs.map { it.roleId }
+            .filter { it != "*" }
+        if (ids.isEmpty()) return
+        val existing = roleAdapter.findByIds(ids)
+        if (existing.size != ids.toSet().size) {
+            val existingIds = existing.mapNotNull { it.getId() }.toSet()
+            val missing = ids.toSet() - existingIds
+            if (missing.isNotEmpty()) {
+                throw IllegalArgumentException(
+                    "Unknown role id(s) in review configuration: ${missing.joinToString(", ")}",
+                )
+            }
+        }
+    }
+
     @Transactional
-    @Policy(Permission.DATASOURCE_CONNECTION_CREATE)
     fun createKubernetesConnection(
         connectionId: ConnectionId,
         displayName: String,
         description: String,
-        reviewsRequired: Int,
+        reviewConfig: ReviewConfig,
         maxExecutions: Int?,
     ): Connection = connectionAdapter.createKubernetesConnection(
         connectionId,
         displayName,
         description,
-        ReviewConfig(
-            numTotalRequired = reviewsRequired,
-        ),
+        reviewConfig,
         maxExecutions,
     )
 

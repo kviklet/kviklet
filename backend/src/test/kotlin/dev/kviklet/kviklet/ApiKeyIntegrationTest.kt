@@ -128,7 +128,7 @@ class ApiKeyIntegrationTest {
                 "username": "testuser",
                 "password": "testpass",
                 "reviewConfig": {
-                    "numTotalRequired": 1
+                    "groupConfigs": [{"roleId": "*", "numRequired": 1}]
                 },
                 "type": "POSTGRESQL",
                 "hostname": "localhost",
@@ -163,7 +163,7 @@ class ApiKeyIntegrationTest {
                 "username": "testuser",
                 "password": "testpass",
                 "reviewConfig": {
-                    "numTotalRequired": 1
+                    "groupConfigs": [{"roleId": "*", "numRequired": 1}]
                 },
                 "type": "POSTGRESQL",
                 "hostname": "localhost",
@@ -199,7 +199,7 @@ class ApiKeyIntegrationTest {
                 "username": "testuser",
                 "password": "testpass",
                 "reviewConfig": {
-                    "numTotalRequired": 1
+                    "groupConfigs": [{"roleId": "*", "numRequired": 1}]
                 },
                 "type": "POSTGRESQL",
                 "hostname": "localhost",
@@ -243,7 +243,7 @@ class ApiKeyIntegrationTest {
                 "username": "testuser",
                 "password": "testpass",
                 "reviewConfig": {
-                    "numTotalRequired": 1
+                    "groupConfigs": [{"roleId": "*", "numRequired": 1}]
                 },
                 "type": "POSTGRESQL",
                 "hostname": "localhost",
@@ -298,7 +298,7 @@ class ApiKeyIntegrationTest {
                 "username": "testuser",
                 "password": "testpass",
                 "reviewConfig": {
-                    "numTotalRequired": 1
+                    "groupConfigs": [{"roleId": "*", "numRequired": 1}]
                 },
                 "type": "POSTGRESQL",
                 "hostname": "localhost",
@@ -409,7 +409,7 @@ class ApiKeyIntegrationTest {
                 "username": "testuser",
                 "password": "testpass",
                 "reviewConfig": {
-                    "numTotalRequired": 1
+                    "groupConfigs": [{"roleId": "*", "numRequired": 1}]
                 },
                 "type": "POSTGRESQL",
                 "hostname": "localhost",
@@ -466,7 +466,7 @@ class ApiKeyIntegrationTest {
                 "username": "testuser",
                 "password": "testpass",
                 "reviewConfig": {
-                    "numTotalRequired": 1
+                    "groupConfigs": [{"roleId": "*", "numRequired": 1}]
                 },
                 "type": "POSTGRESQL",
                 "hostname": "localhost",

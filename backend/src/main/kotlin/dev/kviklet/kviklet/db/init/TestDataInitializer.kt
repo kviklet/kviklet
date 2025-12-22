@@ -6,6 +6,7 @@ import dev.kviklet.kviklet.db.ConnectionType
 import dev.kviklet.kviklet.db.ExecutionRequestEntity
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
 import dev.kviklet.kviklet.db.ExecutionRequestType
+import dev.kviklet.kviklet.db.GroupReviewConfig
 import dev.kviklet.kviklet.db.PolicyEntity
 import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.RoleEntity
@@ -162,7 +163,14 @@ class TestDataInitializer(
                 password = "postgres",
                 storedUsername = "postgres",
                 storedPassword = "postgres",
-                reviewConfig = ReviewConfig(numTotalRequired = 1),
+                reviewConfig = ReviewConfig(
+                    groupConfigs = listOf(
+                        GroupReviewConfig(
+                            roleId = "*",
+                            numRequired = 1,
+                        ),
+                    ),
+                ),
                 datasourceType = DatasourceType.POSTGRESQL,
                 hostname = "localhost",
                 port = 5432,

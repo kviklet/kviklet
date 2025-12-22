@@ -3,6 +3,8 @@ package dev.kviklet.kviklet.controller
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import dev.kviklet.kviklet.db.ConnectionType
+import dev.kviklet.kviklet.db.GroupReviewConfig
+import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.service.ConnectionService
 import dev.kviklet.kviklet.service.TestConnectionResult
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
@@ -165,9 +167,17 @@ data class UpdateKubernetesConnectionRequest(
     val maxExecutions: Int? = null,
 ) : UpdateConnectionRequest()
 
-data class ReviewConfigRequest(val numTotalRequired: Int = 0)
+data class GroupReviewConfigRequest(
+    // Role ID this group applies to, or "*" as a wildcard for any role.
+    val roleId: String,
+    val numRequired: Int,
+)
 
-data class ReviewConfigResponse(val numTotalRequired: Int = 0)
+data class ReviewConfigRequest(val groupConfigs: List<GroupReviewConfigRequest>)
+
+data class GroupReviewConfigResponse(val roleId: String, val numRequired: Int)
+
+data class ReviewConfigResponse(val groupConfigs: List<GroupReviewConfigResponse>)
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
 @JsonSubTypes(
@@ -204,31 +214,40 @@ data class DatasourceConnectionResponse(
     val maxTemporaryAccessDuration: Long?,
 ) : ConnectionResponse(ConnectionType.DATASOURCE) {
     companion object {
-        fun fromDto(datasourceConnection: DatasourceConnection) = DatasourceConnectionResponse(
-            id = datasourceConnection.id,
-            authenticationType = datasourceConnection.authenticationType,
-            displayName = datasourceConnection.displayName,
-            type = datasourceConnection.type,
-            protocol = datasourceConnection.protocol,
-            databaseName = datasourceConnection.databaseName,
-            maxExecutions = datasourceConnection.maxExecutions,
-            username = datasourceConnection.auth.username,
-            hostname = datasourceConnection.hostname,
-            port = datasourceConnection.port,
-            description = datasourceConnection.description,
-            reviewConfig = ReviewConfigResponse(
-                datasourceConnection.reviewConfig.numTotalRequired,
-            ),
-            additionalJDBCOptions = datasourceConnection.additionalOptions,
-            dumpsEnabled = datasourceConnection.dumpsEnabled,
-            temporaryAccessEnabled = datasourceConnection.temporaryAccessEnabled,
-            explainEnabled = datasourceConnection.explainEnabled,
-            roleArn = when (datasourceConnection.auth) {
-                is AuthenticationDetails.AwsIam -> datasourceConnection.auth.roleArn
-                else -> null
-            },
-            maxTemporaryAccessDuration = datasourceConnection.maxTemporaryAccessDuration,
-        )
+        fun fromDto(datasourceConnection: DatasourceConnection): DatasourceConnectionResponse {
+            val reviewConfigResponse = ReviewConfigResponse(
+                groupConfigs = datasourceConnection.reviewConfig.groupConfigs.map { group ->
+                    GroupReviewConfigResponse(
+                        roleId = group.roleId,
+                        numRequired = group.numRequired,
+                    )
+                },
+            )
+
+            return DatasourceConnectionResponse(
+                id = datasourceConnection.id,
+                authenticationType = datasourceConnection.authenticationType,
+                displayName = datasourceConnection.displayName,
+                type = datasourceConnection.type,
+                protocol = datasourceConnection.protocol,
+                databaseName = datasourceConnection.databaseName,
+                maxExecutions = datasourceConnection.maxExecutions,
+                username = datasourceConnection.auth.username,
+                hostname = datasourceConnection.hostname,
+                port = datasourceConnection.port,
+                description = datasourceConnection.description,
+                reviewConfig = reviewConfigResponse,
+                additionalJDBCOptions = datasourceConnection.additionalOptions,
+                dumpsEnabled = datasourceConnection.dumpsEnabled,
+                temporaryAccessEnabled = datasourceConnection.temporaryAccessEnabled,
+                explainEnabled = datasourceConnection.explainEnabled,
+                roleArn = when (datasourceConnection.auth) {
+                    is AuthenticationDetails.AwsIam -> datasourceConnection.auth.roleArn
+                    else -> null
+                },
+                maxTemporaryAccessDuration = datasourceConnection.maxTemporaryAccessDuration,
+            )
+        }
     }
 }
 
@@ -241,16 +260,25 @@ data class KubernetesConnectionResponse(
     val temporaryAccessEnabled: Boolean,
 ) : ConnectionResponse(connectionType = ConnectionType.KUBERNETES) {
     companion object {
-        fun fromDto(kubernetesConnection: KubernetesConnection) = KubernetesConnectionResponse(
-            id = kubernetesConnection.id,
-            displayName = kubernetesConnection.displayName,
-            description = kubernetesConnection.description,
-            reviewConfig = ReviewConfigResponse(
-                kubernetesConnection.reviewConfig.numTotalRequired,
-            ),
-            maxExecutions = kubernetesConnection.maxExecutions,
-            temporaryAccessEnabled = kubernetesConnection.temporaryAccessEnabled,
-        )
+        fun fromDto(kubernetesConnection: KubernetesConnection): KubernetesConnectionResponse {
+            val reviewConfigResponse = ReviewConfigResponse(
+                groupConfigs = kubernetesConnection.reviewConfig.groupConfigs.map { group ->
+                    GroupReviewConfigResponse(
+                        roleId = group.roleId,
+                        numRequired = group.numRequired,
+                    )
+                },
+            )
+
+            return KubernetesConnectionResponse(
+                id = kubernetesConnection.id,
+                displayName = kubernetesConnection.displayName,
+                description = kubernetesConnection.description,
+                reviewConfig = reviewConfigResponse,
+                maxExecutions = kubernetesConnection.maxExecutions,
+                temporaryAccessEnabled = kubernetesConnection.temporaryAccessEnabled,
+            )
+        }
     }
 }
 
@@ -287,7 +315,14 @@ class ConnectionController(val connectionService: ConnectionService) {
             password = request.password,
             authenticationType = request.authenticationType,
             description = request.description,
-            reviewsRequired = request.reviewConfig.numTotalRequired,
+            reviewConfig = ReviewConfig(
+                groupConfigs = request.reviewConfig.groupConfigs.map { group ->
+                    GroupReviewConfig(
+                        roleId = group.roleId,
+                        numRequired = group.numRequired,
+                    )
+                },
+            ),
             port = request.port,
             hostname = request.hostname,
             type = request.type,
@@ -309,7 +344,14 @@ class ConnectionController(val connectionService: ConnectionService) {
             username = request.username,
             password = request.password,
             description = request.description,
-            reviewsRequired = request.reviewConfig.numTotalRequired,
+            reviewConfig = ReviewConfig(
+                groupConfigs = request.reviewConfig.groupConfigs.map { group ->
+                    GroupReviewConfig(
+                        roleId = group.roleId,
+                        numRequired = group.numRequired,
+                    )
+                },
+            ),
             port = request.port,
             hostname = request.hostname,
             type = request.type,
@@ -329,7 +371,14 @@ class ConnectionController(val connectionService: ConnectionService) {
             connectionId = ConnectionId(request.id),
             displayName = request.displayName,
             description = request.description,
-            reviewsRequired = request.reviewConfig.numTotalRequired,
+            reviewConfig = ReviewConfig(
+                groupConfigs = request.reviewConfig.groupConfigs.map { group ->
+                    GroupReviewConfig(
+                        roleId = group.roleId,
+                        numRequired = group.numRequired,
+                    )
+                },
+            ),
             maxExecutions = request.maxExecutions,
         )
 

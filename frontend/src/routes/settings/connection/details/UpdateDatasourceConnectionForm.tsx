@@ -22,11 +22,24 @@ import { useEffect, useState } from "react";
 import { useConnectionForm } from "./ConnectionEditFormHook";
 import {
   FieldErrors,
+  useFieldArray,
   UseFormRegister,
   UseFormSetValue,
   UseFormWatch,
 } from "react-hook-form";
 import { supportsIamAuth } from "../../../../hooks/connections";
+import { getRoles, RoleResponse } from "../../../../api/RoleApi";
+import Spinner from "../../../../components/Spinner";
+import { isApiErrorResponse } from "../../../../api/Errors";
+
+const reviewGroupSchema = z.object({
+  roleId: z.string(),
+  numRequired: z.coerce.number(),
+});
+
+const reviewConfigSchema = z.object({
+  groupConfigs: z.array(reviewGroupSchema).min(1),
+});
 
 const baseConnectionFormSchema = z.object({
   displayName: z.string().min(3),
@@ -37,9 +50,7 @@ const baseConnectionFormSchema = z.object({
   port: z.coerce.number(),
   databaseName: z.string(),
   maxExecutions: z.coerce.number().nullable(),
-  reviewConfig: z.object({
-    numTotalRequired: z.coerce.number(),
-  }),
+  reviewConfig: reviewConfigSchema,
   additionalJDBCOptions: z.string(),
   dumpsEnabled: z.boolean(),
   temporaryAccessEnabled: z.boolean(),
@@ -108,6 +119,8 @@ export default function UpdateDatasourceConnectionForm({
   const [protocolOptions, setProtocolOptions] = useState<DatabaseProtocol[]>(
     getProtocolOptions(connection.type),
   );
+  const [availableRoles, setAvailableRoles] = useState<RoleResponse[]>([]);
+  const [loadingRoles, setLoadingRoles] = useState<boolean>(false);
 
   const {
     register,
@@ -115,6 +128,7 @@ export default function UpdateDatasourceConnectionForm({
     watch,
     setValue,
     handleFormSubmit,
+    control,
   } = useConnectionForm({
     initialValues: {
       displayName: connection.displayName,
@@ -127,7 +141,10 @@ export default function UpdateDatasourceConnectionForm({
       password: "",
       databaseName: connection.databaseName || "",
       reviewConfig: {
-        numTotalRequired: connection.reviewConfig.numTotalRequired,
+        groupConfigs: connection.reviewConfig.groupConfigs.map((group) => ({
+          roleId: group.roleId,
+          numRequired: group.numRequired,
+        })),
       },
       additionalJDBCOptions: connection.additionalJDBCOptions || "",
       maxExecutions: connection.maxExecutions,
@@ -144,6 +161,15 @@ export default function UpdateDatasourceConnectionForm({
     connectionType: "DATASOURCE",
   });
 
+  const {
+    fields: reviewGroups,
+    append: appendReviewGroup,
+    remove: removeReviewGroup,
+  } = useFieldArray<ConnectionForm>({
+    control,
+    name: "reviewConfig.groupConfigs",
+  });
+
   const watchType = watch("type");
   useEffect(() => {
     const protocolOptions = getProtocolOptions(watchType);
@@ -152,6 +178,18 @@ export default function UpdateDatasourceConnectionForm({
     }
     setProtocolOptions(protocolOptions);
   }, [watchType, connection.protocol, setValue]);
+
+  useEffect(() => {
+    const loadRoles = async () => {
+      setLoadingRoles(true);
+      const resp = await getRoles();
+      if (!isApiErrorResponse(resp)) {
+        setAvailableRoles(resp.roles);
+      }
+      setLoadingRoles(false);
+    };
+    void loadRoles();
+  }, []);
 
   return (
     <form
@@ -236,16 +274,85 @@ export default function UpdateDatasourceConnectionForm({
             {...register("hostname")}
             error={errors.hostname?.message}
           />
-          <InputField
-            id="reviewConfig.numTotalRequired"
-            label="Required reviews"
-            tooltip="The number of required approving reviews that's required before a request can be executed."
-            placeholder="1"
-            type="number"
-            min="0"
-            {...register("reviewConfig.numTotalRequired")}
-            error={errors.reviewConfig?.numTotalRequired?.message}
-          />
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+              Required reviews per role
+            </label>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Configure one or more approval groups. Choose a role from the list
+              or select '*' for any role. All groups must be satisfied.
+            </p>
+            <div className="space-y-2">
+              {reviewGroups.map((group, index) => (
+                <div
+                  key={group.id}
+                  className="flex flex-row items-end space-x-2"
+                >
+                  <div className="flex-1">
+                    {loadingRoles ? (
+                      <div className="py-2">
+                        <Spinner />
+                      </div>
+                    ) : (
+                      <select
+                        id={`reviewConfig.groupConfigs.${index}.roleId`}
+                        {...register(
+                          `reviewConfig.groupConfigs.${index}.roleId` as const,
+                        )}
+                        className="block w-full appearance-none rounded-md border border-slate-300 px-3 py-2 text-sm transition-colors focus:border-indigo-600 focus:outline-none hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:focus:border-gray-500 dark:hover:border-slate-600 dark:hover:focus:border-gray-500"
+                        defaultValue={group.roleId}
+                      >
+                        <option value="*">Any role (*)</option>
+                        {availableRoles.map((role) => (
+                          <option key={role.id} value={role.id}>
+                            {role.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {errors.reviewConfig?.groupConfigs?.[index]?.roleId
+                      ?.message && (
+                      <p className="mt-1 text-xs text-red-600">
+                        {
+                          errors.reviewConfig?.groupConfigs?.[index]?.roleId
+                            ?.message
+                        }
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex-col space-y-2">
+                    <InputField
+                      id={`reviewConfig.groupConfigs.${index}.numRequired`}
+                      type="number"
+                      min="1"
+                      placeholder="1"
+                      {...register(
+                        `reviewConfig.groupConfigs.${index}.numRequired` as const,
+                      )}
+                      error={
+                        errors.reviewConfig?.groupConfigs?.[index]?.numRequired
+                          ?.message
+                      }
+                    />
+                  </div>
+                  <Button
+                    variant="primary"
+                    onClick={() => removeReviewGroup(index)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+              <Button
+                variant="primary"
+                onClick={() =>
+                  appendReviewGroup({ roleId: "*", numRequired: 1 } as never)
+                }
+              >
+                Add approval group
+              </Button>
+            </div>
+          </div>
 
           <div className="w-full">
             <Disclosure defaultOpen={true}>

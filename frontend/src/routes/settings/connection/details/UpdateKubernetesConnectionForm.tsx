@@ -9,12 +9,19 @@ import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import Button from "../../../../components/Button";
 import { useConnectionForm } from "./ConnectionEditFormHook";
 
+const reviewGroupSchema = z.object({
+  roleId: z.string(),
+  numRequired: z.coerce.number(),
+});
+
+const reviewConfigSchema = z.object({
+  groupConfigs: z.array(reviewGroupSchema).min(1),
+});
+
 const kubernetesConnectionFormSchema = z.object({
   displayName: z.string().min(3),
   description: z.string(),
-  reviewConfig: z.object({
-    numTotalRequired: z.coerce.number(),
-  }),
+  reviewConfig: reviewConfigSchema,
   maxExecutions: z.coerce.number().nullable(),
   connectionType: z.literal("KUBERNETES").default("KUBERNETES"),
 });
@@ -37,7 +44,10 @@ export default function UpdateKubernetesConnectionForm({
       displayName: connection.displayName,
       description: connection.description,
       reviewConfig: {
-        numTotalRequired: connection.reviewConfig.numTotalRequired,
+        groupConfigs: connection.reviewConfig.groupConfigs.map((group) => ({
+          roleId: group.roleId,
+          numRequired: group.numRequired,
+        })),
       },
       maxExecutions: connection.maxExecutions,
       connectionType: "KUBERNETES",
@@ -71,13 +81,13 @@ export default function UpdateKubernetesConnectionForm({
             error={errors.description?.message}
           />
           <InputField
-            label="Required reviews"
-            id="numTotalRequired"
+            label="Required reviews (wildcard only)"
+            id="numRequired"
             placeholder="1"
-            tooltip="The number of required approving reviews that's required before a request can be executed."
+            tooltip="Number of approvals required from any role before a request can be executed."
             type="number"
-            {...register("reviewConfig.numTotalRequired")}
-            error={errors.reviewConfig?.numTotalRequired?.message}
+            {...register("reviewConfig.groupConfigs.0.numRequired")}
+            error={errors.reviewConfig?.groupConfigs?.[0]?.numRequired?.message}
           />
           <div className="w-full">
             <Disclosure defaultOpen={false}>

@@ -144,7 +144,6 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
 
     fun resolveReviewStatus(): ReviewStatus {
         val reviewConfig = request.connection.reviewConfig
-        val numReviews = getApprovalCount()
 
         if (isRejected()) {
             return ReviewStatus.REJECTED
@@ -154,13 +153,20 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
             return ReviewStatus.CHANGE_REQUESTED
         }
 
-        val reviewStatus = if (numReviews >= reviewConfig.numTotalRequired) {
+        val approvers = getApproversAfterReset()
+
+        val allGroupsSatisfied = reviewConfig.groupConfigs.all { group ->
+            val approvalsForGroup = approvers.count { user ->
+                group.roleId == "*" || user.roles.any { role -> role.getId() == group.roleId }
+            }
+            approvalsForGroup >= group.numRequired
+        }
+
+        return if (allGroupsSatisfied) {
             ReviewStatus.APPROVED
         } else {
             ReviewStatus.AWAITING_APPROVAL
         }
-
-        return reviewStatus
     }
 
     fun isRejected(): Boolean {
@@ -171,15 +177,19 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         return rejectedReview != null
     }
 
-    fun getApprovalCount(): Int {
+    fun getApprovalCount(): Int = getApproversAfterReset().size
+
+    private fun getApproversAfterReset(): Collection<User> {
         val resetTimestamp = latestResetTimestamp()
-        val numReviews = events.filter {
-            it.type == EventType.REVIEW &&
-                it is ReviewEvent &&
-                it.action == ReviewAction.APPROVE &&
-                it.createdAt > resetTimestamp
-        }.groupBy { it.author.getId() }.count()
-        return numReviews
+
+        val approvals = events.filter { it.type == EventType.REVIEW }
+            .mapNotNull { it as? ReviewEvent }
+            .filter { it.action == ReviewAction.APPROVE && it.createdAt > resetTimestamp }
+
+        return approvals
+            .groupBy { it.author.getId() }
+            .values
+            .map { it.first().author }
     }
 
     fun latestResetTimestamp(): LocalDateTime {
