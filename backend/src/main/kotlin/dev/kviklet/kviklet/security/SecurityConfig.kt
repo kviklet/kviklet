@@ -1,20 +1,19 @@
 package dev.kviklet.kviklet.security
 
 import dev.kviklet.kviklet.controller.ServerUrlInterceptor
-import dev.kviklet.kviklet.db.RoleAdapter
-import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.security.ldap.LdapProperties
+import dev.kviklet.kviklet.security.ldap.LdapUserDetailsService
+import dev.kviklet.kviklet.security.oidc.OidcLoginSuccessHandler
+import dev.kviklet.kviklet.security.oidc.OidcUserService
+import dev.kviklet.kviklet.security.saml.SamlLoginSuccessHandler
+import dev.kviklet.kviklet.security.saml.SamlProperties
 import dev.kviklet.kviklet.service.ApiKeyService
-import dev.kviklet.kviklet.service.LicenseRestrictionException
-import dev.kviklet.kviklet.service.LicenseService
 import dev.kviklet.kviklet.service.UserService
-import dev.kviklet.kviklet.service.dto.Role
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import jakarta.transaction.Transactional
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -35,7 +34,6 @@ import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.AuthenticationException
 import org.springframework.security.core.GrantedAuthority
-import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -43,22 +41,14 @@ import org.springframework.security.ldap.authentication.BindAuthenticator
 import org.springframework.security.ldap.authentication.LdapAuthenticationProvider
 import org.springframework.security.ldap.search.FilterBasedLdapUserSearch
 import org.springframework.security.ldap.userdetails.UserDetailsContextMapper
-import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest
-import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService
-import org.springframework.security.oauth2.core.oidc.OidcIdToken
-import org.springframework.security.oauth2.core.oidc.OidcUserInfo
-import org.springframework.security.oauth2.core.oidc.user.OidcUser
-import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticatedPrincipal
 import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
-import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler
 import org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher
 import org.springframework.security.web.util.matcher.RequestMatcher
-import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.CorsConfigurationSource
@@ -67,7 +57,6 @@ import org.springframework.web.filter.ForwardedHeaderFilter
 import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
-import java.io.Serializable
 
 @Configuration
 class PasswordEncoderConfig {
@@ -84,14 +73,14 @@ class CorsSettings {
 @Configuration
 @EnableWebSecurity
 class SecurityConfig(
-    private val oauth2LoginSuccessHandler: OAuth2LoginSuccessHandler,
+    private val oidcLoginSuccessHandler: OidcLoginSuccessHandler,
     private val customAuthenticationProvider: CustomAuthenticationProvider,
-    private val customOidcUserService: CustomOidcUserService,
+    private val oidcUserService: OidcUserService,
     private val idpProperties: IdentityProviderProperties,
     private val ldapProperties: LdapProperties,
     private val samlProperties: SamlProperties,
     private val contextSource: LdapContextSource,
-    private val userDetailsService: UserDetailsServiceImpl,
+    private val ldapUserDetailsService: LdapUserDetailsService,
     private val apiKeyService: ApiKeyService,
     private val userService: UserService,
     private val passwordEncoder: PasswordEncoder,
@@ -120,7 +109,7 @@ class SecurityConfig(
                     ctx: DirContextOperations,
                     username: String,
                     authorities: MutableCollection<out GrantedAuthority>,
-                ): UserDetails = userDetailsService.loadUserByLdapIdentifier(username)
+                ): UserDetails = ldapUserDetailsService.loadUserByLdapIdentifier(username)
 
                 override fun mapUserToContext(user: UserDetails, ctx: DirContextAdapter) {
                     // This method is typically used when writing back to LDAP.
@@ -202,9 +191,9 @@ class SecurityConfig(
 
             if (idpProperties.isOauth2Enabled()) {
                 oauth2Login {
-                    authenticationSuccessHandler = oauth2LoginSuccessHandler
+                    authenticationSuccessHandler = oidcLoginSuccessHandler
                     userInfoEndpoint {
-                        oidcUserService = customOidcUserService
+                        oidcUserService = this@SecurityConfig.oidcUserService
                     }
                 }
             }
@@ -351,160 +340,4 @@ class CustomAuthenticationProvider(val userAdapter: UserAdapter, val passwordEnc
 
     override fun supports(authentication: Class<*>): Boolean =
         authentication == UsernamePasswordAuthenticationToken::class.java
-}
-
-class CustomOidcUser(
-    private val oidcUser: OidcUser,
-    private val userDetails: UserDetailsWithId,
-    private val authorities: Collection<GrantedAuthority>,
-) : OidcUser,
-    Serializable {
-
-    override fun getClaims(): Map<String, Any> = oidcUser.claims
-
-    override fun getIdToken(): OidcIdToken = oidcUser.idToken
-
-    override fun getUserInfo(): OidcUserInfo = oidcUser.userInfo
-
-    override fun getName(): String = oidcUser.name
-
-    override fun getAuthorities(): Collection<GrantedAuthority> = authorities
-
-    override fun getAttributes(): Map<String, Any> = oidcUser.attributes
-
-    // Additional methods to expose userDetails
-    fun getUserDetails(): UserDetailsWithId = userDetails
-
-    companion object {
-        private const val serialVersionUID = 1L // Serializable version UID
-    }
-}
-
-@Service
-class CustomOidcUserService(
-    private val userAdapter: UserAdapter,
-    private val roleAdapter: RoleAdapter,
-    private val licenseService: LicenseService,
-) : OidcUserService() {
-
-    @Transactional
-    override fun loadUser(userRequest: OidcUserRequest): OidcUser {
-        val oidcUser = super.loadUser(userRequest)
-
-        val subject = oidcUser.getAttribute<String>("sub")!!
-        val email = oidcUser.getAttribute<String>("email")!!
-        val name = oidcUser.getAttribute<String>("name")
-
-        var user = userAdapter.findBySubject(subject)
-
-        if (user == null) {
-            // Check if a user with the same email exists
-            userAdapter.findByEmail(email)?.let {
-                // Update existing user to use SSO
-                user = it.copy(
-                    subject = subject, // Set the SSO subject
-                    email = email,
-                    fullName = name ?: it.fullName,
-                    password = null,
-                    ldapIdentifier = null,
-                )
-            } ?: run {
-                // No existing user found, create a new one
-                val license = licenseService.getActiveLicense()
-                if (license != null) {
-                    val maxUsers = license.allowedUsers
-                    if (maxUsers <= userAdapter.listUsers().size.toUInt()) {
-                        throw LicenseRestrictionException("License does not allow more users")
-                    }
-                }
-                val defaultRole = roleAdapter.findById(Role.DEFAULT_ROLE_ID)
-                user = User(
-                    subject = subject,
-                    email = email,
-                    fullName = name,
-                    roles = setOf(defaultRole),
-                )
-            }
-        } else {
-            // If the user has already signed in before, update the user's information
-            user = user!!.copy(
-                subject = subject,
-                email = email,
-                fullName = name,
-            )
-            // Update other user properties here
-        }
-
-        val savedUser = userAdapter.createOrUpdateUser(user!!)
-        // Handle your custom logic (e.g., saving the user to the database)
-        // Extract policies
-
-        val policies = savedUser.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
-        val userDetails = UserDetailsWithId(savedUser.getId()!!, email, "", policies)
-
-        // Return a CustomOidcUser with the original OidcUser, custom user details, and authorities
-        return CustomOidcUser(oidcUser, userDetails, policies)
-    }
-}
-
-@Component
-class OAuth2LoginSuccessHandler : SimpleUrlAuthenticationSuccessHandler() {
-
-    @Transactional
-    override fun onAuthenticationSuccess(
-        request: HttpServletRequest?,
-        response: HttpServletResponse?,
-        authentication: Authentication?,
-    ) {
-        val baseUrl = request?.let { getBaseUrl(it) }
-        val redirectUrl = "$baseUrl/requests"
-        redirectStrategy.sendRedirect(request, response, redirectUrl)
-    }
-
-    private fun getBaseUrl(request: HttpServletRequest): String {
-        val scheme = request.scheme
-        val serverName = request.serverName
-        val serverPort = request.serverPort
-
-        return "$scheme://$serverName${if (serverPort != 80 && serverPort != 443) ":5173" else ""}"
-    }
-}
-
-// The following class is not MIT licensed
-@Component
-@ConditionalOnProperty(prefix = "saml", name = ["enabled"], havingValue = "true")
-class SamlLoginSuccessHandler(private val customSaml2UserService: CustomSaml2UserService) :
-    SimpleUrlAuthenticationSuccessHandler() {
-
-    @Transactional
-    override fun onAuthenticationSuccess(
-        request: HttpServletRequest?,
-        response: HttpServletResponse?,
-        authentication: Authentication?,
-    ) {
-        // Convert SAML authentication to use UserDetailsWithId
-        if (authentication?.principal is Saml2AuthenticatedPrincipal) {
-            val samlPrincipal = authentication.principal as Saml2AuthenticatedPrincipal
-            val user = customSaml2UserService.loadUser(samlPrincipal)
-
-            val authorities = user.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
-            val userDetails = UserDetailsWithId(user.getId()!!, user.email, "", authorities)
-
-            // Create a new authentication token with UserDetailsWithId as principal
-            val newAuth = UsernamePasswordAuthenticationToken(userDetails, authentication.credentials, authorities)
-            SecurityContextHolder.getContext().authentication = newAuth
-        }
-
-        val baseUrl = request?.let { getBaseUrl(it) }
-        val redirectUrl = "$baseUrl/requests"
-        redirectStrategy.sendRedirect(request, response, redirectUrl)
-    }
-
-    private fun getBaseUrl(request: HttpServletRequest): String {
-        val scheme = request.scheme
-        val serverName = request.serverName
-        val serverPort = request.serverPort
-
-        return "$scheme://$serverName${if (serverPort != 80 && serverPort != 443) ":5173" else ""}"
-    }
 }

@@ -1,5 +1,7 @@
 package dev.kviklet.kviklet.security
 
+import dev.kviklet.kviklet.security.ldap.LdapProperties
+import dev.kviklet.kviklet.security.saml.SamlProperties
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.boot.autoconfigure.AutoConfigurations

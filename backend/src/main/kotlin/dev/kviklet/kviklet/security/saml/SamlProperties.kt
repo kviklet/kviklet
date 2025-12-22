@@ -1,5 +1,5 @@
 // This file is not MIT licensed
-package dev.kviklet.kviklet.security
+package dev.kviklet.kviklet.security.saml
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Configuration
