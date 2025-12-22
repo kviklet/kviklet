@@ -16,6 +16,8 @@ const kubernetesConnectionFormSchema = z.object({
     numTotalRequired: z.coerce.number(),
   }),
   maxExecutions: z.coerce.number().nullable(),
+  kubernetesExecInitialWaitTimeoutSeconds: z.coerce.number().min(1),
+  kubernetesExecTimeoutMinutes: z.coerce.number().min(1),
   connectionType: z.literal("KUBERNETES").default("KUBERNETES"),
 });
 
@@ -40,6 +42,9 @@ export default function UpdateKubernetesConnectionForm({
         numTotalRequired: connection.reviewConfig.numTotalRequired,
       },
       maxExecutions: connection.maxExecutions,
+      kubernetesExecInitialWaitTimeoutSeconds:
+        connection.kubernetesExecInitialWaitTimeoutSeconds,
+      kubernetesExecTimeoutMinutes: connection.kubernetesExecTimeoutMinutes,
       connectionType: "KUBERNETES",
     },
     schema: kubernetesConnectionFormSchema,
@@ -60,6 +65,7 @@ export default function UpdateKubernetesConnectionForm({
             label="Connection name"
             id="displayName"
             placeholder="Connection name"
+            data-testid="kubernetes-connection-name"
             {...register("displayName")}
             error={errors.displayName?.message}
           />
@@ -67,6 +73,7 @@ export default function UpdateKubernetesConnectionForm({
             label="Description"
             id="description"
             placeholder="Provides prod read access with no required reviews"
+            data-testid="kubernetes-connection-description"
             {...register("description")}
             error={errors.description?.message}
           />
@@ -76,6 +83,7 @@ export default function UpdateKubernetesConnectionForm({
             placeholder="1"
             tooltip="The number of required approving reviews that's required before a request can be executed."
             type="number"
+            data-testid="kubernetes-connection-required-reviews"
             {...register("reviewConfig.numTotalRequired")}
             error={errors.reviewConfig?.numTotalRequired?.message}
           />
@@ -83,7 +91,10 @@ export default function UpdateKubernetesConnectionForm({
             <Disclosure defaultOpen={false}>
               {({ open }) => (
                 <>
-                  <Disclosure.Button className="py-2">
+                  <Disclosure.Button
+                    className="py-2"
+                    data-testid="kubernetes-advanced-options-button"
+                  >
                     <div className="flex flex-row justify-between">
                       <div className="flex flex-row">
                         <div>Advanced Options</div>
@@ -105,8 +116,31 @@ export default function UpdateKubernetesConnectionForm({
                         placeholder="Max executions"
                         tooltip="The maximum number of times each request can be executed after it has been approved, usually 1."
                         type="number"
+                        data-testid="kubernetes-connection-max-executions"
                         {...register("maxExecutions")}
                         error={errors.maxExecutions?.message}
+                      />
+                      <InputField
+                        label="Kubernetes exec initial wait timeout (seconds)"
+                        id="kubernetesExecInitialWaitTimeoutSeconds"
+                        placeholder="5"
+                        tooltip="Maps to kubernetes.exec.initial-wait-timeout-seconds"
+                        type="number"
+                        data-testid="kubernetes-exec-initial-wait-timeout-seconds"
+                        {...register("kubernetesExecInitialWaitTimeoutSeconds")}
+                        error={
+                          errors.kubernetesExecInitialWaitTimeoutSeconds?.message
+                        }
+                      />
+                      <InputField
+                        label="Kubernetes exec timeout (minutes)"
+                        id="kubernetesExecTimeoutMinutes"
+                        placeholder="60"
+                        tooltip="Maps to kubernetes.exec.timeout-minutes"
+                        type="number"
+                        data-testid="kubernetes-exec-timeout-minutes"
+                        {...register("kubernetesExecTimeoutMinutes")}
+                        error={errors.kubernetesExecTimeoutMinutes?.message}
                       />
                     </div>
                   </Disclosure.Panel>
@@ -118,6 +152,7 @@ export default function UpdateKubernetesConnectionForm({
             htmlType="submit"
             variant={isDirty ? "primary" : "disabled"}
             className="btn btn-primary mt-4"
+            data-testid="save-kubernetes-connection-button"
           >
             Save
           </Button>

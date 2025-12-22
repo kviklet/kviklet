@@ -8,6 +8,7 @@ import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.shell.KubernetesApi
 import dev.kviklet.kviklet.shell.KubernetesResult
+import io.kubernetes.client.Exec
 import io.mockk.every
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -57,12 +58,13 @@ class KubernetesExecuteTest {
 
         every {
             kubernetesApi.executeCommandOnPod(
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
+                any<String>(),
+                any<String>(),
+                any<String>(),
+                any<String>(),
+                any<Long>(),
+                any<Long>(),
+                any<Exec>(),
             )
         } returns mockExecuteResponse
     }
@@ -89,9 +91,9 @@ class KubernetesExecuteTest {
             MockMvcRequestBuilders.post("/execution-requests/${executionRequest.getId()}/execute")
                 .cookie(cookie),
         ).andExpect(MockMvcResultMatchers.status().isOk).andExpect(
-            MockMvcResultMatchers.jsonPath("$.errors").value("some-error"),
+            MockMvcResultMatchers.jsonPath("$.errors[0]").value("some-error"),
         ).andExpect(
-            MockMvcResultMatchers.jsonPath("$.messages").value("some-message"),
+            MockMvcResultMatchers.jsonPath("$.messages[0]").value("some-message"),
         ).andExpect(
             MockMvcResultMatchers.jsonPath("$.finished").value(true),
         ).andExpect(

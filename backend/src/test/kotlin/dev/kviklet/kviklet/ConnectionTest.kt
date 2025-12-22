@@ -5,10 +5,13 @@ import dev.kviklet.kviklet.controller.ConnectionController
 import dev.kviklet.kviklet.controller.CreateCommentRequest
 import dev.kviklet.kviklet.controller.CreateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
+import dev.kviklet.kviklet.controller.CreateKubernetesConnectionRequest
 import dev.kviklet.kviklet.controller.DatasourceConnectionResponse
 import dev.kviklet.kviklet.controller.ExecutionRequestController
+import dev.kviklet.kviklet.controller.KubernetesConnectionResponse
 import dev.kviklet.kviklet.controller.ReviewConfigRequest
 import dev.kviklet.kviklet.controller.UpdateDatasourceConnectionRequest
+import dev.kviklet.kviklet.controller.UpdateKubernetesConnectionRequest
 import dev.kviklet.kviklet.controller.UserResponse
 import dev.kviklet.kviklet.db.ConnectionRepository
 import dev.kviklet.kviklet.db.EventRepository
@@ -528,5 +531,54 @@ class ConnectionTest(
             ),
             userDetails = testUserDetails,
         )
+    }
+
+    @Test
+    fun `kubernetes connection has default exec timeout settings when omitted`() {
+        val created = datasourceConnectionController.createConnection(
+            CreateKubernetesConnectionRequest(
+                id = "k8s-conn",
+                displayName = "K8s Connection",
+                description = "",
+                reviewConfig = ReviewConfigRequest(numTotalRequired = 1),
+                maxExecutions = 1,
+            ),
+        ) as KubernetesConnectionResponse
+
+        created.kubernetesExecInitialWaitTimeoutSeconds shouldBe 5L
+        created.kubernetesExecTimeoutMinutes shouldBe 60L
+
+        val retrieved = datasourceConnectionController.getConnection("k8s-conn") as KubernetesConnectionResponse
+        retrieved.kubernetesExecInitialWaitTimeoutSeconds shouldBe 5L
+        retrieved.kubernetesExecTimeoutMinutes shouldBe 60L
+    }
+
+    @Test
+    fun `kubernetes connection supports setting and updating exec timeout settings`() {
+        val created = datasourceConnectionController.createConnection(
+            CreateKubernetesConnectionRequest(
+                id = "k8s-conn2",
+                displayName = "K8s Connection 2",
+                description = "desc",
+                reviewConfig = ReviewConfigRequest(numTotalRequired = 1),
+                maxExecutions = 1,
+                kubernetesExecInitialWaitTimeoutSeconds = 10L,
+                kubernetesExecTimeoutMinutes = 120L,
+            ),
+        ) as KubernetesConnectionResponse
+
+        created.kubernetesExecInitialWaitTimeoutSeconds shouldBe 10L
+        created.kubernetesExecTimeoutMinutes shouldBe 120L
+
+        val updated = datasourceConnectionController.updateConnection(
+            "k8s-conn2",
+            UpdateKubernetesConnectionRequest(
+                kubernetesExecInitialWaitTimeoutSeconds = 2L,
+                kubernetesExecTimeoutMinutes = 30L,
+            ),
+        ) as KubernetesConnectionResponse
+
+        updated.kubernetesExecInitialWaitTimeoutSeconds shouldBe 2L
+        updated.kubernetesExecTimeoutMinutes shouldBe 30L
     }
 }

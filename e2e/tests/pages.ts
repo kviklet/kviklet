@@ -96,6 +96,48 @@ class SettingsPage {
     // Wait for the connection to appear in the table (table structure changed)
     await this.page.waitForSelector(`text=${name}`, { timeout: 10000 });
   }
+
+  async createKubernetesConnection(params: {
+    name: string;
+    id: string;
+    description?: string;
+    requiredReviews?: number;
+    maxExecutions?: number;
+    initialWaitTimeoutSeconds?: number;
+    timeoutMinutes?: number;
+  }) {
+    await this.page.getByRole("button", { name: "Add Connection" }).click();
+    await this.page.getByTestId("add-kubernetes-connection-button").click();
+
+    await this.page.getByTestId("kubernetes-connection-name").fill(params.name);
+    await this.page
+      .getByTestId("kubernetes-connection-description")
+      .fill(params.description ?? "");
+    await this.page.getByTestId("kubernetes-connection-id").fill(params.id);
+    await this.page
+      .getByTestId("kubernetes-connection-required-reviews")
+      .fill((params.requiredReviews ?? 1).toString());
+    await this.page
+      .getByTestId("kubernetes-connection-max-executions")
+      .fill((params.maxExecutions ?? 1).toString());
+
+    if (params.initialWaitTimeoutSeconds !== undefined) {
+      await this.page
+        .getByTestId("kubernetes-exec-initial-wait-timeout-seconds")
+        .fill(params.initialWaitTimeoutSeconds.toString());
+    }
+    if (params.timeoutMinutes !== undefined) {
+      await this.page
+        .getByTestId("kubernetes-exec-timeout-minutes")
+        .fill(params.timeoutMinutes.toString());
+    }
+
+    await this.page
+      .getByTestId("create-kubernetes-connection-button")
+      .click();
+
+    await this.page.waitForSelector(`text=${params.name}`, { timeout: 10000 });
+  }
 }
 
 class RequestsPage {

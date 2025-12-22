@@ -267,6 +267,8 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
                 numTotalRequired = 1,
             ),
             1,
+            kubernetesExecInitialWaitTimeoutSeconds = 5L,
+            kubernetesExecTimeoutMinutes = 60L,
         )
         connectionCount++
         return connection
