@@ -317,8 +317,8 @@ class ConnectionService(
         description: String,
         reviewsRequired: Int,
         maxExecutions: Int?,
-        kubernetesExecInitialWaitTimeoutSeconds: Int?,
-        kubernetesExecTimeoutMinutes: Int?,
+        kubernetesExecInitialWaitTimeoutSeconds: Long?,
+        kubernetesExecTimeoutMinutes: Long?,
     ): Connection = connectionAdapter.createKubernetesConnection(
         connectionId,
         displayName,
@@ -327,8 +327,8 @@ class ConnectionService(
             numTotalRequired = reviewsRequired,
         ),
         maxExecutions,
-        kubernetesExecInitialWaitTimeoutSeconds = kubernetesExecInitialWaitTimeoutSeconds ?: 5,
-        kubernetesExecTimeoutMinutes = kubernetesExecTimeoutMinutes ?: 60,
+        kubernetesExecInitialWaitTimeoutSeconds = kubernetesExecInitialWaitTimeoutSeconds ?: 5L,
+        kubernetesExecTimeoutMinutes = kubernetesExecTimeoutMinutes ?: 60L,
     )
 
     @Transactional

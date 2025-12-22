@@ -82,9 +82,9 @@ class ConnectionEntity(
 
     // Kubernetes connection fields
     @Column(name = "kubernetes_exec_initial_wait_timeout_seconds")
-    var kubernetesExecInitialWaitTimeoutSeconds: Int = 5,
+    var kubernetesExecInitialWaitTimeoutSeconds: Long = 5L,
     @Column(name = "kubernetes_exec_timeout_minutes")
-    var kubernetesExecTimeoutMinutes: Int = 60,
+    var kubernetesExecTimeoutMinutes: Long = 60L,
 ) {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
@@ -282,8 +282,8 @@ class ConnectionAdapter(
         description: String,
         reviewConfig: ReviewConfig,
         maxExecutions: Int?,
-        kubernetesExecInitialWaitTimeoutSeconds: Int,
-        kubernetesExecTimeoutMinutes: Int,
+        kubernetesExecInitialWaitTimeoutSeconds: Long,
+        kubernetesExecTimeoutMinutes: Long,
     ): Connection {
         val datasourceConnection = connectionRepository.findByIdOrNull(id.toString())
             ?: throw EntityNotFound(
@@ -311,8 +311,8 @@ class ConnectionAdapter(
         description: String,
         reviewConfig: ReviewConfig,
         maxExecutions: Int?,
-        kubernetesExecInitialWaitTimeoutSeconds: Int,
-        kubernetesExecTimeoutMinutes: Int,
+        kubernetesExecInitialWaitTimeoutSeconds: Long,
+        kubernetesExecTimeoutMinutes: Long,
     ): Connection = decryptCredentialsIfNeeded(
         save(
             ConnectionEntity(

@@ -55,10 +55,10 @@ data class CreateKubernetesConnectionRequest(
     val maxExecutions: Int? = null,
 
     @field:Min(1)
-    val kubernetesExecInitialWaitTimeoutSeconds: Int? = null,
+    val kubernetesExecInitialWaitTimeoutSeconds: Long? = null,
 
     @field:Min(1)
-    val kubernetesExecTimeoutMinutes: Int? = null,
+    val kubernetesExecTimeoutMinutes: Long? = null,
 ) : ConnectionRequest()
 
 data class CreateDatasourceConnectionRequest(
@@ -171,10 +171,10 @@ data class UpdateKubernetesConnectionRequest(
     val maxExecutions: Int? = null,
 
     @field:Min(1)
-    val kubernetesExecInitialWaitTimeoutSeconds: Int? = null,
+    val kubernetesExecInitialWaitTimeoutSeconds: Long? = null,
 
     @field:Min(1)
-    val kubernetesExecTimeoutMinutes: Int? = null,
+    val kubernetesExecTimeoutMinutes: Long? = null,
 ) : UpdateConnectionRequest()
 
 data class ReviewConfigRequest(val numTotalRequired: Int = 0)
@@ -251,8 +251,8 @@ data class KubernetesConnectionResponse(
     val reviewConfig: ReviewConfigResponse,
     val maxExecutions: Int?,
     val temporaryAccessEnabled: Boolean,
-    val kubernetesExecInitialWaitTimeoutSeconds: Int,
-    val kubernetesExecTimeoutMinutes: Int,
+    val kubernetesExecInitialWaitTimeoutSeconds: Long,
+    val kubernetesExecTimeoutMinutes: Long,
 ) : ConnectionResponse(connectionType = ConnectionType.KUBERNETES) {
     companion object {
         fun fromDto(kubernetesConnection: KubernetesConnection) = KubernetesConnectionResponse(

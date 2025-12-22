@@ -529,8 +529,8 @@ class ExecutionRequestService(
             podName = executionRequest.request.podName!!,
             command = statement ?: executionRequest.request.command!!,
             containerName = containerName,
-            initialWaitTimeoutSeconds = connection.kubernetesExecInitialWaitTimeoutSeconds.toLong(),
-            timeoutMinutes = connection.kubernetesExecTimeoutMinutes.toLong(),
+            initialWaitTimeoutSeconds = connection.kubernetesExecInitialWaitTimeoutSeconds,
+            timeoutMinutes = connection.kubernetesExecTimeoutMinutes,
         )
         return KubernetesExecutionResult(
             executionRequest = executionRequest,

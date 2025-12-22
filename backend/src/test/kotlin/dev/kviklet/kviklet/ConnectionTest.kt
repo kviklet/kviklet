@@ -545,12 +545,12 @@ class ConnectionTest(
             ),
         ) as KubernetesConnectionResponse
 
-        created.kubernetesExecInitialWaitTimeoutSeconds shouldBe 5
-        created.kubernetesExecTimeoutMinutes shouldBe 60
+        created.kubernetesExecInitialWaitTimeoutSeconds shouldBe 5L
+        created.kubernetesExecTimeoutMinutes shouldBe 60L
 
         val retrieved = datasourceConnectionController.getConnection("k8s-conn") as KubernetesConnectionResponse
-        retrieved.kubernetesExecInitialWaitTimeoutSeconds shouldBe 5
-        retrieved.kubernetesExecTimeoutMinutes shouldBe 60
+        retrieved.kubernetesExecInitialWaitTimeoutSeconds shouldBe 5L
+        retrieved.kubernetesExecTimeoutMinutes shouldBe 60L
     }
 
     @Test
@@ -562,23 +562,23 @@ class ConnectionTest(
                 description = "desc",
                 reviewConfig = ReviewConfigRequest(numTotalRequired = 1),
                 maxExecutions = 1,
-                kubernetesExecInitialWaitTimeoutSeconds = 10,
-                kubernetesExecTimeoutMinutes = 120,
+                kubernetesExecInitialWaitTimeoutSeconds = 10L,
+                kubernetesExecTimeoutMinutes = 120L,
             ),
         ) as KubernetesConnectionResponse
 
-        created.kubernetesExecInitialWaitTimeoutSeconds shouldBe 10
-        created.kubernetesExecTimeoutMinutes shouldBe 120
+        created.kubernetesExecInitialWaitTimeoutSeconds shouldBe 10L
+        created.kubernetesExecTimeoutMinutes shouldBe 120L
 
         val updated = datasourceConnectionController.updateConnection(
             "k8s-conn2",
             UpdateKubernetesConnectionRequest(
-                kubernetesExecInitialWaitTimeoutSeconds = 2,
-                kubernetesExecTimeoutMinutes = 30,
+                kubernetesExecInitialWaitTimeoutSeconds = 2L,
+                kubernetesExecTimeoutMinutes = 30L,
             ),
         ) as KubernetesConnectionResponse
 
-        updated.kubernetesExecInitialWaitTimeoutSeconds shouldBe 2
-        updated.kubernetesExecTimeoutMinutes shouldBe 30
+        updated.kubernetesExecInitialWaitTimeoutSeconds shouldBe 2L
+        updated.kubernetesExecTimeoutMinutes shouldBe 30L
     }
 }
