@@ -1,4 +1,4 @@
-package dev.kviklet.kviklet.security
+package dev.kviklet.kviklet.security.ldap
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean

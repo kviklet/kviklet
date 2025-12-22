@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.security
 
+import dev.kviklet.kviklet.security.saml.SamlProperties
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.springframework.session.web.http.DefaultCookieSerializer
