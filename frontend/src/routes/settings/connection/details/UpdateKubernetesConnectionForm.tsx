@@ -152,7 +152,7 @@ export default function UpdateKubernetesConnectionForm({
             htmlType="submit"
             variant={isDirty ? "primary" : "disabled"}
             className="btn btn-primary mt-4"
-            dataTestId="save-kubernetes-connection-button"
+            data-testid="save-kubernetes-connection-button"
           >
             Save
           </Button>
