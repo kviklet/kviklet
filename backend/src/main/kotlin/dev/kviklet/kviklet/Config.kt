@@ -27,6 +27,13 @@ class ApplicationProperties {
     var inDocker: Boolean = false
 }
 
+@Component
+@ConfigurationProperties("kviklet.kubernetes.exec")
+class KubernetesExecProperties {
+    var initialWaitTimeoutSeconds: Long = 5
+    var timeoutMinutes: Long = 60
+}
+
 data class ErrorResponse(val code: Int, val type: String, val message: String, val detail: String? = null)
 
 @Configuration

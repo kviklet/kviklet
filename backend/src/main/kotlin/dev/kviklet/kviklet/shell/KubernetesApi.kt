@@ -28,6 +28,7 @@ class KubernetesApi(private val coreV1Api: CoreV1Api) {
         podName: String,
         containerName: String? = null,
         command: String,
+        initialWaitTimeoutSeconds: Long = 5,
         timeout: Long = 5,
         exec: Exec = Exec(Config.defaultClient()),
     ): KubernetesResult {
@@ -43,7 +44,7 @@ class KubernetesApi(private val coreV1Api: CoreV1Api) {
         val inputReader = process.inputStream.bufferedReader()
         val errorReader = process.errorStream.bufferedReader()
 
-        val completed = process.waitFor(5, TimeUnit.SECONDS)
+        val completed = process.waitFor(initialWaitTimeoutSeconds, TimeUnit.SECONDS)
         var lineCount = 0
 
         while (inputReader.ready() && lineCount < 10) {

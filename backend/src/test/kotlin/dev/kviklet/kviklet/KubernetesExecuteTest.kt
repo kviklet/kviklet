@@ -8,6 +8,7 @@ import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.shell.KubernetesApi
 import dev.kviklet.kviklet.shell.KubernetesResult
+import io.kubernetes.client.Exec
 import io.mockk.every
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -57,12 +58,25 @@ class KubernetesExecuteTest {
 
         every {
             kubernetesApi.executeCommandOnPod(
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
+                any<String>(),
+                any<String>(),
+                null,
+                any<String>(),
+                any<Long>(),
+                any<Long>(),
+                any<Exec>(),
+            )
+        } returns mockExecuteResponse
+
+        every {
+            kubernetesApi.executeCommandOnPod(
+                any<String>(),
+                any<String>(),
+                any<String>(),
+                any<String>(),
+                any<Long>(),
+                any<Long>(),
+                any<Exec>(),
             )
         } returns mockExecuteResponse
     }

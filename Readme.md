@@ -440,7 +440,19 @@ If you want to use the Kubernetes Exec feature you have to create a separate kub
 
 Kviklet also uses /bin/sh to execute the command, so you will need to make sure your pods have a shell or at least a symlink in /bin/sh. If this bothers you feel free to open an issue, we can potentially make this configurable or find another solution.
 
-Kubernetes commands only wait for 5 seconds for output if the command takes longer than that Kviklet will wait for up to an hour before timing out the command. This is a a provisional solution, we are looking into websockets to make this more responsive and potentially enable terminal sessions.
+Kubernetes commands only wait for a short time for output. If the command takes longer than that, Kviklet will keep waiting up to a maximum timeout before terminating the exec process. This is a provisional solution, we are looking into websockets to make this more responsive and potentially enable terminal sessions.
+
+Both timeouts are now configurable:
+
+- **Initial output wait (seconds)**: `kviklet.kubernetes.exec.initial-wait-timeout-seconds` (default: `5`)
+- **Overall exec timeout (minutes)**: `kviklet.kubernetes.exec.timeout-minutes` (default: `60`)
+
+You can also configure them via environment variables:
+
+```
+KVIKLET_KUBERNETES_EXEC_INITIAL_WAIT_TIMEOUT_SECONDS=5
+KVIKLET_KUBERNETES_EXEC_TIMEOUT_MINUTES=60
+```
 
 ### Proxy, Postgres only
 

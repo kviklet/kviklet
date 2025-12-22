@@ -16,3 +16,12 @@ server:
 app:
   name: "Kviklet"
   in-docker: true
+
+# Kubernetes exec behaviour
+kviklet:
+  kubernetes:
+    exec:
+      # How long to wait for a kubectl exec process to finish before returning partial output.
+      initial-wait-timeout-seconds: 5
+      # How long to wait (in minutes) before destroying the kubectl exec process.
+      timeout-minutes: 60
