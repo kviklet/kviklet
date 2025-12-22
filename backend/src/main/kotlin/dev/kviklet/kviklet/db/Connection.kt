@@ -79,6 +79,12 @@ class ConnectionEntity(
     var explainEnabled: Boolean = false,
     var roleArn: String? = null,
     var maxTemporaryAccessDuration: Long? = null,
+
+    // Kubernetes connection fields
+    @Column(name = "kubernetes_exec_initial_wait_timeout_seconds")
+    var kubernetesExecInitialWaitTimeoutSeconds: Int = 5,
+    @Column(name = "kubernetes_exec_timeout_minutes")
+    var kubernetesExecTimeoutMinutes: Int = 60,
 ) {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
@@ -276,6 +282,8 @@ class ConnectionAdapter(
         description: String,
         reviewConfig: ReviewConfig,
         maxExecutions: Int?,
+        kubernetesExecInitialWaitTimeoutSeconds: Int,
+        kubernetesExecTimeoutMinutes: Int,
     ): Connection {
         val datasourceConnection = connectionRepository.findByIdOrNull(id.toString())
             ?: throw EntityNotFound(
@@ -290,6 +298,8 @@ class ConnectionAdapter(
         datasourceConnection.description = description
         datasourceConnection.reviewConfig = reviewConfig
         datasourceConnection.maxExecutions = maxExecutions
+        datasourceConnection.kubernetesExecInitialWaitTimeoutSeconds = kubernetesExecInitialWaitTimeoutSeconds
+        datasourceConnection.kubernetesExecTimeoutMinutes = kubernetesExecTimeoutMinutes
 
         return decryptCredentialsIfNeeded(save(datasourceConnection))
     }
@@ -301,6 +311,8 @@ class ConnectionAdapter(
         description: String,
         reviewConfig: ReviewConfig,
         maxExecutions: Int?,
+        kubernetesExecInitialWaitTimeoutSeconds: Int,
+        kubernetesExecTimeoutMinutes: Int,
     ): Connection = decryptCredentialsIfNeeded(
         save(
             ConnectionEntity(
@@ -311,6 +323,8 @@ class ConnectionAdapter(
                 connectionType = ConnectionType.KUBERNETES,
                 maxExecutions = maxExecutions,
                 temporaryAccessEnabled = true,
+                kubernetesExecInitialWaitTimeoutSeconds = kubernetesExecInitialWaitTimeoutSeconds,
+                kubernetesExecTimeoutMinutes = kubernetesExecTimeoutMinutes,
             ),
         ),
     )
@@ -367,6 +381,8 @@ class ConnectionAdapter(
                 reviewConfig = connection.reviewConfig,
                 maxExecutions = connection.maxExecutions,
                 temporaryAccessEnabled = connection.temporaryAccessEnabled,
+                kubernetesExecInitialWaitTimeoutSeconds = connection.kubernetesExecInitialWaitTimeoutSeconds,
+                kubernetesExecTimeoutMinutes = connection.kubernetesExecTimeoutMinutes,
             )
     }
 }

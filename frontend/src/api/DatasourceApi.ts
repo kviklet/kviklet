@@ -64,6 +64,8 @@ const kubernetesConnectionResponseSchema = withType(
     }),
     maxExecutions: z.coerce.number().nullable(),
     temporaryAccessEnabled: z.boolean(),
+    kubernetesExecInitialWaitTimeoutSeconds: z.coerce.number(),
+    kubernetesExecTimeoutMinutes: z.coerce.number(),
   }),
   "KUBERNETES",
 );
@@ -117,6 +119,8 @@ type DatabaseConnection =
 
 interface KubernetesConnection extends ConnectionBase {
   connectionType: "KUBERNETES";
+  kubernetesExecInitialWaitTimeoutSeconds?: number;
+  kubernetesExecTimeoutMinutes?: number;
 }
 
 type ConnectionPayload = DatabaseConnection | KubernetesConnection;

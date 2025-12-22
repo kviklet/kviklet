@@ -28,7 +28,8 @@ class KubernetesApi(private val coreV1Api: CoreV1Api) {
         podName: String,
         containerName: String? = null,
         command: String,
-        timeout: Long = 5,
+        initialWaitTimeoutSeconds: Long = 5,
+        timeoutMinutes: Long = 60,
         exec: Exec = Exec(Config.defaultClient()),
     ): KubernetesResult {
         val commands = arrayOf("/bin/sh", "-c", command)
@@ -43,7 +44,7 @@ class KubernetesApi(private val coreV1Api: CoreV1Api) {
         val inputReader = process.inputStream.bufferedReader()
         val errorReader = process.errorStream.bufferedReader()
 
-        val completed = process.waitFor(5, TimeUnit.SECONDS)
+        val completed = process.waitFor(initialWaitTimeoutSeconds, TimeUnit.SECONDS)
         var lineCount = 0
 
         while (inputReader.ready() && lineCount < 10) {
@@ -59,7 +60,7 @@ class KubernetesApi(private val coreV1Api: CoreV1Api) {
 
         if (!completed) {
             CompletableFuture.runAsync {
-                process.waitFor(timeout, TimeUnit.MINUTES)
+                process.waitFor(timeoutMinutes, TimeUnit.MINUTES)
                 process.destroy()
             }
         }

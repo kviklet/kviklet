@@ -146,6 +146,66 @@ test.describe("E2E Tests for Multiple Databases", () => {
   }
 });
 
+test.describe("Kubernetes Connection Timeout Settings", () => {
+  let loginPage: LoginPage;
+  let settingsPage: SettingsPage;
+
+  test.beforeEach(async ({ page }) => {
+    loginPage = new LoginPage(page);
+    settingsPage = new SettingsPage(page);
+
+    await page.goto("/");
+    await loginPage.login("admin@admin.com", "admin");
+  });
+
+  test("Create Kubernetes connection uses defaults and can be updated", async ({
+    page,
+  }) => {
+    await settingsPage.navigateToConnections();
+
+    await settingsPage.createKubernetesConnection({
+      name: "Kubernetes E2E Connection",
+      id: "kubernetes-e2e-conn",
+      requiredReviews: 1,
+      maxExecutions: 1,
+    });
+
+    // Open connection details
+    await page.getByText("Kubernetes E2E Connection").click();
+    await page.waitForURL("**/settings/connections/kubernetes-e2e-conn");
+
+    // Defaults should be present
+    await page.getByTestId("kubernetes-advanced-options-button").click();
+    await expect(
+      page.getByTestId("kubernetes-exec-initial-wait-timeout-seconds"),
+    ).toHaveValue("5");
+    await expect(page.getByTestId("kubernetes-exec-timeout-minutes")).toHaveValue(
+      "60",
+    );
+
+    // Update values
+    await page
+      .getByTestId("kubernetes-exec-initial-wait-timeout-seconds")
+      .fill("2");
+    await page.getByTestId("kubernetes-exec-timeout-minutes").fill("30");
+
+    await page.getByTestId("save-kubernetes-connection-button").click();
+    await expect(
+      page.getByTestId("save-kubernetes-connection-button"),
+    ).toBeDisabled({ timeout: 10000 });
+
+    // Reload and verify persisted
+    await page.reload();
+    await page.getByTestId("kubernetes-advanced-options-button").click();
+    await expect(
+      page.getByTestId("kubernetes-exec-initial-wait-timeout-seconds"),
+    ).toHaveValue("2");
+    await expect(page.getByTestId("kubernetes-exec-timeout-minutes")).toHaveValue(
+      "30",
+    );
+  });
+});
+
 const validateResultOfQuery = async (db: { type: string }, page: Page) => {
   if (db.type !== "MongoDB") {
     const cellCount = await page.getByTestId("result-table-cell").count();

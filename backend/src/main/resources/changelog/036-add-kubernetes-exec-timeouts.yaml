@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 036-add-kubernetes-exec-timeouts
+      author: tung
+      changes:
+        - addColumn:
+            tableName: connection
+            columns:
+              - column:
+                  name: kubernetes_exec_initial_wait_timeout_seconds
+                  type: INT
+                  defaultValueNumeric: 5
+                  constraints:
+                    nullable: false
+              - column:
+                  name: kubernetes_exec_timeout_minutes
+                  type: INT
+                  defaultValueNumeric: 60
+                  constraints:
+                    nullable: false
+

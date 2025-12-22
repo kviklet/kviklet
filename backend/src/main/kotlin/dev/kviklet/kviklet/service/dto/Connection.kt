@@ -157,4 +157,6 @@ data class KubernetesConnection(
     override val reviewConfig: ReviewConfig,
     override val maxExecutions: Int?,
     val temporaryAccessEnabled: Boolean,
+    val kubernetesExecInitialWaitTimeoutSeconds: Int = 5,
+    val kubernetesExecTimeoutMinutes: Int = 60,
 ) : Connection(id, displayName, description, reviewConfig, maxExecutions)

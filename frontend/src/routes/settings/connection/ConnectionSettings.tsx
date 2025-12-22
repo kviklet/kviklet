@@ -119,6 +119,7 @@ const ConnectionSettings = () => {
               <Button
                 onClick={() => setConnectionTypeChoice("kubernetes")}
                 className="w-full"
+                dataTestId="add-kubernetes-connection-button"
               >
                 Add Kubernetes Connection
               </Button>
