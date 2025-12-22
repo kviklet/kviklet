@@ -8,13 +8,13 @@ databaseChangeLog:
             columns:
               - column:
                   name: kubernetes_exec_initial_wait_timeout_seconds
-                  type: INT
+                  type: BIGINT
                   defaultValueNumeric: 5
                   constraints:
                     nullable: false
               - column:
                   name: kubernetes_exec_timeout_minutes
-                  type: INT
+                  type: BIGINT
                   defaultValueNumeric: 60
                   constraints:
                     nullable: false
