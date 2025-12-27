@@ -131,9 +131,12 @@ class LDAPRoleSyncTest {
             ldapContainer.execInContainer(
                 "ldapadd",
                 "-x",
-                "-D", "cn=admin,dc=example,dc=org",
-                "-w", "admin",
-                "-f", "/tmp/$prefix.ldif",
+                "-D",
+                "cn=admin,dc=example,dc=org",
+                "-w",
+                "admin",
+                "-f",
+                "/tmp/$prefix.ldif",
             )
             Files.delete(tempFile)
         }
@@ -158,9 +161,12 @@ class LDAPRoleSyncTest {
             // Try to add the module (may fail if already loaded, which is fine)
             ldapContainer.execInContainer(
                 "ldapmodify",
-                "-Y", "EXTERNAL",
-                "-H", "ldapi:///",
-                "-f", "/tmp/memberof-module.ldif",
+                "-Y",
+                "EXTERNAL",
+                "-H",
+                "ldapi:///",
+                "-f",
+                "/tmp/memberof-module.ldif",
             )
             Files.delete(tempFile)
 
@@ -186,9 +192,12 @@ class LDAPRoleSyncTest {
 
             ldapContainer.execInContainer(
                 "ldapadd",
-                "-Y", "EXTERNAL",
-                "-H", "ldapi:///",
-                "-f", "/tmp/memberof-overlay.ldif",
+                "-Y",
+                "EXTERNAL",
+                "-H",
+                "ldapi:///",
+                "-f",
+                "/tmp/memberof-overlay.ldif",
             )
             Files.delete(overlayTempFile)
 
@@ -213,9 +222,12 @@ class LDAPRoleSyncTest {
             ldapContainer.execInContainer(
                 "ldapmodify",
                 "-x",
-                "-D", "cn=admin,dc=example,dc=org",
-                "-w", "admin",
-                "-f", "/tmp/modify-group.ldif",
+                "-D",
+                "cn=admin,dc=example,dc=org",
+                "-w",
+                "admin",
+                "-f",
+                "/tmp/modify-group.ldif",
             )
             Files.delete(modifyTempFile)
         }
