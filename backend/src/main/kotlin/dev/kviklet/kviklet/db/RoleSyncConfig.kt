@@ -159,6 +159,10 @@ class RoleSyncConfigAdapter(
         mappingRepository.deleteById(id)
     }
 
+    fun deleteAllMappings() {
+        mappingRepository.deleteAll()
+    }
+
     fun getMappings(): List<RoleSyncMapping> {
         val config = configRepository.findById(DEFAULT_CONFIG_ID).orElse(null) ?: return emptyList()
         return config.mappings.map { it.toDto() }
