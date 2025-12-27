@@ -103,7 +103,10 @@ export default function RoleSyncSettings() {
                 Automatically sync user roles from identity provider groups
               </p>
             </div>
-            <Toggle active={config.enabled} onClick={() => void handleToggleEnabled()} />
+            <Toggle
+              active={config.enabled}
+              onClick={() => void handleToggleEnabled()}
+            />
           </div>
         </div>
 
