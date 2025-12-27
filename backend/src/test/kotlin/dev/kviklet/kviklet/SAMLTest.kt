@@ -9,6 +9,7 @@ import dev.kviklet.kviklet.db.RoleSyncConfigAdapter
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.service.dto.LicenseFile
 import dev.kviklet.kviklet.service.dto.Role
+import dev.kviklet.kviklet.service.dto.RoleId
 import dev.kviklet.kviklet.service.dto.SyncMode
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
@@ -388,7 +389,7 @@ class SAMLTest {
         // Clean up mappings
         roleSyncConfigAdapter.deleteAllMappings()
         // Only delete the test-created role, not all roles (the default role must remain)
-        testRole?.let { roleAdapter.delete(it.getId()!!) }
+        testRole?.let { roleAdapter.delete(RoleId(it.getId()!!)) }
         testRole = null
     }
 
