@@ -356,6 +356,43 @@ More interesting is the adding of individual permissions for Connections. Here y
 
 You can of course also make up a system that you use for your different teams inside of your organization.
 
+### Role Sync (Enterprise)
+
+Automatically sync user roles from your identity provider groups. This feature requires an enterprise license.
+
+**Configuration** is done in Settings > Role Sync:
+
+- **Enable Role Sync**: Turn synchronization on/off
+- **Sync Mode**:
+  - **Full Sync** - User roles exactly match their IdP group mappings (plus the default role)
+  - **Additive** - IdP groups add roles but don't remove existing ones
+  - **First Login Only** - Roles sync only on first login, manual changes are preserved afterward
+- **Groups Attribute**: The IdP attribute containing group memberships (default: `groups`)
+- **Role Mappings**: Map IdP group names (e.g., `engineering`) to Kviklet roles
+
+#### OIDC Setup
+
+Configure your OIDC provider to include a `groups` claim in the ID token:
+
+- **Keycloak**: See the [detailed Keycloak setup guide](docs/keycloak-role-sync-setup.md)
+- **Other OIDC providers**: Add a groups mapper/claim that includes the user's group memberships in the ID token
+
+#### LDAP Setup
+
+LDAP role sync uses the `memberOf` attribute:
+
+1. Ensure your LDAP server has the `memberOf` overlay enabled
+2. Set **Groups Attribute** to `memberOf` in Kviklet
+3. Group names are extracted from the CN component of the DN (e.g., `cn=developers,ou=groups,dc=example,dc=org` → `developers`)
+
+#### SAML Setup
+
+Configure your SAML IdP to include groups in the assertion:
+
+1. Add an attribute statement that maps user group memberships
+2. Set the **Groups Attribute** in Kviklet to match your SAML attribute name
+3. For Google Workspace: Use a custom attribute or group membership claim
+
 ### Notifications
 
 You can configure Kviklet to send notifications to a channel in Slack or Teams. This is useful to notify your team about new requests that need to be reviewed. You can configure this in Settings -> General -> Notification Settings.
