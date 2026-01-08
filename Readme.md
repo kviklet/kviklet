@@ -223,7 +223,7 @@ You get the client id and secret when you create an application in keycloack.
 For valid redirect URIs, you should configure: https://[kviklet_host]/api/login/oauth2/code/keycloak
 For Allowed Origins, simply your hosted kviklet url.
 
-After setting those environment variables the login page should show a Login with Keycloak button that redirects to your keycloak instance. We do currently not support role sync yet so you will have to manage roles directly in kviklet manually for now.
+After setting those environment variables the login page should show a Login with Keycloak button that redirects to your keycloak instance. In the enterprise edition you can enable role sync to automatically sync roles from your keycloak instance to kviklet. See the [Role Sync](#role-sync-enterprise) section for more details.
 
 #### Other OIDC providers
 
@@ -355,6 +355,70 @@ The default settings are not as relevant for most roles and you can just give Us
 More interesting is the adding of individual permissions for Connections. Here you first add a selector to select specific connections. This can either be a specific id or you use wildcards with `*` to match multiple connections. E.g. if you want to have a role that has access to all dev databases (in case you also manage acces to those with kviklet) you'd use a selector like `dev-*` and ensure the ids of the connections are set correctly.
 
 You can of course also make up a system that you use for your different teams inside of your organization.
+
+### Role Sync (Enterprise)
+
+Automatically sync user roles from your identity provider groups. This feature requires an enterprise license.
+
+**Configuration** is done in Settings > Role Sync:
+
+- **Enable Role Sync**: Turn synchronization on/off
+- **Sync Mode**:
+  - **Full Sync** - User roles exactly match their IdP group mappings (plus the default role)
+  - **Additive** - IdP groups add roles but don't remove existing ones
+  - **First Login Only** - Roles sync only on first login, manual changes are preserved afterward
+- **Groups Attribute**: The IdP attribute containing group memberships (default: `groups`)
+- **Role Mappings**: Map IdP group names (e.g., `engineering`) to Kviklet roles
+
+#### OIDC Setup
+
+Configure your OIDC provider to include a `groups` claim in the ID token:
+
+- **Keycloak**:
+
+  Keycloak doesn't include groups in tokens by default so you will need to add a mapper to the client.
+
+  1. Navigate to **Clients** in the left menu
+  2. Select your Kviklet client
+  3. Go to the **Client scopes** tab
+  4. Click on the dedicated scope (e.g., `kviklet-dedicated`)
+  5. Go to the **Mappers** tab
+  6. Click **Add mapper** → **By configuration**
+  7. Select **Group Membership**
+  8. Configure the mapper:
+
+  | Setting | Value |
+  |---------|-------|
+  | Name | `groups` |
+  | Token Claim Name | `groups` |
+  | Full group path | **OFF** |
+  | Add to ID token | **ON** |
+  | Add to access token | **ON** |
+  | Add to userinfo | **ON** |
+
+  9. Click **Save**
+
+  > **Important:** The "Token Claim Name" must match the "Groups Attribute" configured in Kviklet's Role Sync settings (default: `groups`).
+
+- **Other OIDC providers**: Add a groups mapper/claim that includes the user's group memberships in the ID token. This is typically done in the provider's admin UI.
+
+  If you run into issues feel free to create an issue, we have not tried every single OIDC provider out there (yet) and there might be slight differences in the implementation that might require updates on Kviklets side.
+
+#### LDAP Setup
+
+LDAP role sync uses the `memberOf` attribute:
+
+1. Ensure your LDAP server has the `memberOf` overlay enabled
+2. Set **Groups Attribute** to `memberOf` in Kviklet
+3. Group names are then extracted from the `memberOf` attribute in the users attributes.
+
+#### SAML Setup
+
+Configure your SAML IdP to include groups in the assertion:
+
+1. Add an attribute statement that maps user group memberships
+2. Set the **Groups Attribute** in Kviklet to match your SAML attribute name
+3. Group names are then extracted from the SAML attribute in the users attributes.
 
 ### Notifications
 

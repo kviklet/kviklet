@@ -5,6 +5,7 @@ import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.service.LicenseRestrictionException
 import dev.kviklet.kviklet.service.LicenseService
+import dev.kviklet.kviklet.service.RoleSyncService
 import dev.kviklet.kviklet.service.dto.Role
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -27,6 +28,7 @@ class UserAuthService(
     private val userAdapter: UserAdapter,
     private val roleAdapter: RoleAdapter,
     private val licenseService: LicenseService,
+    private val roleSyncService: RoleSyncService,
 ) {
     /**
      * Find existing user or create new one during authentication.
@@ -35,6 +37,7 @@ class UserAuthService(
      * @param idpIdentifier The identity provider-specific identifier
      * @param email User's email from the identity provider
      * @param fullName User's display name from the identity provider
+     * @param idpGroups List of group names from the identity provider for role sync
      * @param requireLicense If true, throws if no valid license (for SAML)
      * @return The user (existing or newly created)
      */
@@ -43,6 +46,7 @@ class UserAuthService(
         idpIdentifier: IdpIdentifier,
         email: String,
         fullName: String?,
+        idpGroups: List<String> = emptyList(),
         requireLicense: Boolean = false,
     ): User {
         // 1. Check license upfront if required (SAML only)
@@ -83,9 +87,9 @@ class UserAuthService(
         // 5. Update user with current IdP identifier, clear others consistently
         user = updateUserIdentifier(user, idpIdentifier, email, fullName)
 
-        // 6. [Future] Role sync integration point
-        // val resolvedRoles = roleSyncService.resolveRoles(idpGroups, user.roles, isNewUser)
-        // user = user.copy(roles = resolvedRoles)
+        // 6. Role sync - resolve roles based on IdP groups
+        val resolvedRoles = roleSyncService.resolveRoles(idpGroups, user.roles, isNewUser)
+        user = user.copy(roles = resolvedRoles)
 
         return userAdapter.createOrUpdateUser(user)
     }

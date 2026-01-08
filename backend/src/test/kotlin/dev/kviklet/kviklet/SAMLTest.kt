@@ -4,8 +4,13 @@ import com.gargoylesoftware.htmlunit.WebClient
 import com.gargoylesoftware.htmlunit.html.HtmlInput
 import com.gargoylesoftware.htmlunit.html.HtmlPage
 import dev.kviklet.kviklet.db.LicenseAdapter
+import dev.kviklet.kviklet.db.RoleAdapter
+import dev.kviklet.kviklet.db.RoleSyncConfigAdapter
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.service.dto.LicenseFile
+import dev.kviklet.kviklet.service.dto.Role
+import dev.kviklet.kviklet.service.dto.RoleId
+import dev.kviklet.kviklet.service.dto.SyncMode
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -47,6 +52,12 @@ class SAMLTest {
 
     @Autowired
     private lateinit var licenseAdapter: LicenseAdapter
+
+    @Autowired
+    private lateinit var roleAdapter: RoleAdapter
+
+    @Autowired
+    private lateinit var roleSyncConfigAdapter: RoleSyncConfigAdapter
 
     companion object {
 
@@ -110,7 +121,11 @@ class SAMLTest {
                 createSamlClient(adminClient, keycloakUrl, accessToken)
 
                 // Create test user
-                createTestUser(adminClient, keycloakUrl, accessToken)
+                val userId = createTestUser(adminClient, keycloakUrl, accessToken)
+
+                // Create groups and add user to them
+                val groupId = createGroup(adminClient, keycloakUrl, accessToken, "saml-developers")
+                addUserToGroup(adminClient, keycloakUrl, accessToken, userId, groupId)
             } catch (e: Exception) {
                 e.printStackTrace()
                 throw e
@@ -249,6 +264,19 @@ class SAMLTest {
                     }
                 }
                 """.trimIndent(),
+                """
+                {
+                    "name": "groups",
+                    "protocol": "saml",
+                    "protocolMapper": "saml-group-membership-mapper",
+                    "config": {
+                        "attribute.nameformat": "Basic",
+                        "single": "false",
+                        "full.path": "false",
+                        "attribute.name": "groups"
+                    }
+                }
+                """.trimIndent(),
             )
 
             mappers.forEach { mapperJson ->
@@ -267,7 +295,7 @@ class SAMLTest {
             }
         }
 
-        private fun createTestUser(client: HttpClient, keycloakUrl: String, token: String) {
+        private fun createTestUser(client: HttpClient, keycloakUrl: String, token: String): String {
             val userJson = """
                 {
                     "username": "testuser",
@@ -292,12 +320,46 @@ class SAMLTest {
                 .POST(HttpRequest.BodyPublishers.ofString(userJson))
                 .build()
 
+            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+            return extractClientIdFromLocation(response.headers().firstValue("Location").orElse(""))
+        }
+
+        private fun createGroup(client: HttpClient, keycloakUrl: String, token: String, groupName: String): String {
+            val groupJson = """{"name": "$groupName"}"""
+
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create("$keycloakUrl/admin/realms/test-saml-realm/groups"))
+                .header("Authorization", "Bearer $token")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(groupJson))
+                .build()
+
+            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+            return extractClientIdFromLocation(response.headers().firstValue("Location").orElse(""))
+        }
+
+        private fun addUserToGroup(
+            client: HttpClient,
+            keycloakUrl: String,
+            token: String,
+            userId: String,
+            groupId: String,
+        ) {
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create("$keycloakUrl/admin/realms/test-saml-realm/users/$userId/groups/$groupId"))
+                .header("Authorization", "Bearer $token")
+                .PUT(HttpRequest.BodyPublishers.noBody())
+                .build()
+
             client.send(request, HttpResponse.BodyHandlers.ofString())
         }
     }
 
     @Autowired
     private lateinit var mockMvc: MockMvc
+
+    // Track test-created role for cleanup
+    private var testRole: Role? = null
 
     @BeforeEach
     fun setUp() {
@@ -322,6 +384,13 @@ class SAMLTest {
     fun tearDown() {
         userAdapter.deleteAll()
         licenseAdapter.deleteAll()
+        // Reset role sync config
+        roleSyncConfigAdapter.updateConfig(enabled = false)
+        // Clean up mappings
+        roleSyncConfigAdapter.deleteAllMappings()
+        // Only delete the test-created role, not all roles (the default role must remain)
+        testRole?.let { roleAdapter.delete(RoleId(it.getId()!!)) }
+        testRole = null
     }
 
     @Test
@@ -511,5 +580,115 @@ class SAMLTest {
         assertThat(userAfterSaml?.subject).isNull() // OIDC subject should remain null
         assertThat(userAfterSaml?.ldapIdentifier).isNull() // LDAP identifier should remain null
         assertThat(userAfterSaml?.fullName).isEqualTo("Test") // Should update from Keycloak
+    }
+
+    @Test
+    fun `SAML login syncs roles from groups attribute`() {
+        // Create test role for mapping
+        testRole = roleAdapter.create(
+            Role(
+                id = null,
+                name = "Developer",
+                description = "Developer role for testing",
+                policies = emptySet(),
+            ),
+        )
+
+        // Setup role sync config
+        roleSyncConfigAdapter.updateConfig(
+            enabled = true,
+            syncMode = SyncMode.FULL_SYNC,
+            groupsAttribute = "groups",
+        )
+
+        // Add mapping: saml-developers group -> Developer role
+        roleSyncConfigAdapter.addMapping("saml-developers", testRole!!.getId()!!)
+
+        // Perform SAML login
+        performSamlLogin()
+
+        // Verify user was created with Developer role
+        val user = userAdapter.findByEmail("testuser@example.com")
+        assertThat(user).isNotNull
+        assertThat(user?.samlNameId).isNotNull
+
+        // Check that user has the Developer role (from role sync)
+        val roleNames = user?.roles?.map { it.name }
+        assertThat(roleNames).contains("Developer")
+    }
+
+    @Test
+    fun `SAML login without license fails`() {
+        // Remove the license
+        licenseAdapter.deleteAll()
+
+        val userCountBefore = userAdapter.listUsers().size
+
+        // Attempt SAML login - should fail due to missing license
+        try {
+            performSamlLogin()
+        } catch (e: Exception) {
+            // Expected: SAML authentication should fail without license
+            // The exception could be wrapped in various ways by WebClient
+        }
+
+        // Verify no user was created (SAML login should have been blocked)
+        assertThat(userAdapter.listUsers().size).isEqualTo(userCountBefore)
+        assertThat(userAdapter.findByEmail("testuser@example.com")).isNull()
+    }
+
+    private fun performSamlLogin() {
+        val webClient = WebClient().apply {
+            options.apply {
+                isRedirectEnabled = true
+                isJavaScriptEnabled = false
+                isThrowExceptionOnScriptError = false
+                isUseInsecureSSL = true
+                isCssEnabled = false
+            }
+        }
+
+        try {
+            val loginUrl = "http://localhost:$port/saml2/authenticate/saml"
+            val samlRedirectPage = webClient.getPage<HtmlPage>(loginUrl)
+
+            val samlForm = samlRedirectPage.forms[0]
+            val keycloakLoginPage = samlForm.getElementsByTagName("input")
+                .filterIsInstance<HtmlInput>()
+                .find { it.getAttribute("type") == "submit" }
+                ?.click<HtmlPage>() ?: throw RuntimeException("Could not find submit button in SAML form")
+
+            val usernameElement = keycloakLoginPage.getElementById("username") as HtmlInput
+            val passwordElement = keycloakLoginPage.getElementById("password") as HtmlInput
+            usernameElement.type("testuser")
+            passwordElement.type("testpass")
+
+            val submitButton = keycloakLoginPage.getElementsByTagName("input")
+                .filterIsInstance<HtmlInput>()
+                .find { it.getAttribute("type") == "submit" }
+
+            val redirectPage = submitButton?.click<HtmlPage>()
+
+            if (redirectPage?.asXml()?.contains("Authentication Redirect") == true) {
+                val samlResponseForm = redirectPage.forms[0]
+                val submitBtn = samlResponseForm.getElementsByTagName("input")
+                    .filterIsInstance<HtmlInput>()
+                    .find { it.getAttribute("type") == "submit" }
+
+                if (submitBtn != null) {
+                    try {
+                        submitBtn.click<HtmlPage>()
+                    } catch (e: RuntimeException) {
+                        if (!e.message.orEmpty().contains("HttpHostConnectException: Connect to localhost:5173")) {
+                            throw e
+                        }
+                    }
+                } else {
+                    samlResponseForm.getElementsByTagName("input")[0].click<HtmlPage>()
+                }
+            }
+        } finally {
+            webClient.close()
+        }
     }
 }
