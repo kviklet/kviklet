@@ -6,11 +6,13 @@ import Toggle from "../../components/Toggle";
 import InputField from "../../components/InputField";
 import Button from "../../components/Button";
 import { TrashIcon } from "@heroicons/react/20/solid";
+import useConfig from "../../hooks/config";
 
 export default function RoleSyncSettings() {
   const { config, loading, updateConfig, addMapping, deleteMapping } =
     useRoleSyncConfig();
   const { roles, isLoading: rolesLoading } = useRoles();
+  const { config: appConfig } = useConfig();
 
   const [idpGroupName, setIdpGroupName] = useState("");
   const [selectedRoleId, setSelectedRoleId] = useState("");
@@ -155,6 +157,16 @@ export default function RoleSyncSettings() {
             stacked
             tooltip="The name of the attribute in your IdP that contains the user's group memberships"
           />
+          {appConfig?.ldapEnabled && (
+            <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">
+              Note: For LDAP authentication, this setting is ignored. Groups are
+              always read from the{" "}
+              <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/30">
+                memberOf
+              </code>{" "}
+              attribute.
+            </p>
+          )}
         </div>
 
         {/* Role Mappings Table */}

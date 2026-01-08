@@ -129,27 +129,6 @@ const Settings = () => {
       link: "/settings/roles",
     },
     {
-      name: "role-sync",
-      tabContent: (
-        <div className="flex flex-col">
-          <div className={tabStyles}>
-            <div className="flex items-center">
-              <ArrowPathIcon className="mr-2 h-6" />
-              <span>Role Sync</span>
-              {!config?.licenseValid && (
-                <LockClosedIcon className="ml-1 h-4 w-4" />
-              )}
-            </div>
-          </div>
-        </div>
-      ),
-      link: "/settings/role-sync",
-      disabled: !config?.licenseValid,
-      tooltip: !config?.licenseValid
-        ? "Role Sync is an enterprise feature. Visit kviklet.dev to get a license."
-        : undefined,
-    },
-    {
       name: "profile",
       tabContent: (
         <div className="flex flex-col">
@@ -172,6 +151,27 @@ const Settings = () => {
         </div>
       ),
       link: "/settings/license",
+    },
+    {
+      name: "role-sync",
+      tabContent: (
+        <div className="flex flex-col">
+          <div className={tabStyles}>
+            <div className="flex items-center">
+              <ArrowPathIcon className="mr-2 h-6" />
+              <span>Role Sync</span>
+              {!config?.licenseValid && (
+                <LockClosedIcon className="ml-1 h-4 w-4" />
+              )}
+            </div>
+          </div>
+        </div>
+      ),
+      link: "/settings/role-sync",
+      disabled: !config?.licenseValid,
+      tooltip: !config?.licenseValid
+        ? "Role Sync is an enterprise feature. Visit kviklet.dev to get a license."
+        : undefined,
     },
     {
       name: "api-keys",

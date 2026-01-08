@@ -24,7 +24,7 @@ kapt {
 group = "com.example"
 version = "0.0.1-SNAPSHOT"
 val queryDslVersion = "5.0.0"
-val testcontainersVersion = "1.18.3"
+val testcontainersVersion = "1.21.3"
 java.sourceCompatibility = JavaVersion.VERSION_21
 
 configurations {
