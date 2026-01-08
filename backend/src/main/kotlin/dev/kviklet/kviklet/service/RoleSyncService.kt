@@ -10,7 +10,11 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
-class RoleSyncService(private val roleSyncConfigAdapter: RoleSyncConfigAdapter, private val roleAdapter: RoleAdapter) {
+class RoleSyncService(
+    private val roleSyncConfigAdapter: RoleSyncConfigAdapter,
+    private val roleAdapter: RoleAdapter,
+    private val licenseService: LicenseService,
+) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     /**
@@ -27,6 +31,16 @@ class RoleSyncService(private val roleSyncConfigAdapter: RoleSyncConfigAdapter, 
         logger.debug(
             "resolveRoles called: idpGroups=$idpGroups, isNewUser=$isNewUser, config.enabled=${config.enabled}, syncMode=${config.syncMode}",
         )
+
+        // If no valid license, role sync is disabled
+        if (licenseService.getActiveLicense() == null) {
+            logger.info("No valid license, role sync disabled")
+            return if (isNewUser) {
+                setOf(roleAdapter.findById(Role.DEFAULT_ROLE_ID))
+            } else {
+                existingRoles
+            }
+        }
 
         // If sync disabled, return default for new users, existing for others
         if (!config.enabled) {
