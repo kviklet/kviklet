@@ -8,7 +8,8 @@ databaseChangeLog:
             columns:
               - column:
                   name: id
-                  type: varchar(255)
+                  type: integer
+                  defaultValueNumeric: 1
                   constraints:
                     primaryKey: true
                     nullable: false
@@ -31,12 +32,15 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+        - sql:
+            sql: ALTER TABLE role_sync_config ADD CONSTRAINT role_sync_config_singleton CHECK (id = 1)
+
         - insert:
             tableName: role_sync_config
             columns:
               - column:
                   name: id
-                  value: "default"
+                  valueNumeric: 1
               - column:
                   name: enabled
                   valueBoolean: false
@@ -64,17 +68,9 @@ databaseChangeLog:
                     unique: true
               - column:
                   name: role_id
-                  type: varchar(255)
+                  type: CHAR(22)
                   constraints:
                     nullable: false
                     foreignKeyName: fk_role_sync_mapping_role
                     references: role(id)
-                    deleteCascade: true
-              - column:
-                  name: config_id
-                  type: varchar(255)
-                  constraints:
-                    nullable: true
-                    foreignKeyName: fk_role_sync_mapping_config
-                    references: role_sync_config(id)
                     deleteCascade: true
