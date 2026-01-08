@@ -24,13 +24,13 @@ class RoleSyncService(private val roleSyncConfigAdapter: RoleSyncConfigAdapter, 
     @NoPolicy
     fun resolveRoles(idpGroups: List<String>, existingRoles: Set<Role>, isNewUser: Boolean): Set<Role> {
         val config = roleSyncConfigAdapter.getConfig()
-        logger.info(
+        logger.debug(
             "resolveRoles called: idpGroups=$idpGroups, isNewUser=$isNewUser, config.enabled=${config.enabled}, syncMode=${config.syncMode}",
         )
 
         // If sync disabled, return default for new users, existing for others
         if (!config.enabled) {
-            logger.info("Role sync is disabled, returning default behavior")
+            logger.debug("Role sync is disabled, returning default behavior")
             return if (isNewUser) {
                 setOf(roleAdapter.findById(Role.DEFAULT_ROLE_ID))
             } else {
@@ -45,7 +45,7 @@ class RoleSyncService(private val roleSyncConfigAdapter: RoleSyncConfigAdapter, 
 
         // Map IdP groups to Kviklet roles
         val mappings = roleSyncConfigAdapter.getMappingsByGroupNames(idpGroups)
-        logger.info("Found ${mappings.size} mappings for groups $idpGroups: $mappings")
+        logger.debug("Found ${mappings.size} mappings for groups $idpGroups: $mappings")
         val mappedRoles = mappings
             .mapNotNull { mapping ->
                 try {
@@ -82,9 +82,9 @@ class RoleSyncService(private val roleSyncConfigAdapter: RoleSyncConfigAdapter, 
     @NoPolicy
     fun extractGroups(attributes: Map<String, Any?>): List<String> {
         val config = roleSyncConfigAdapter.getConfig()
-        logger.info("Looking for groups attribute '${config.groupsAttribute}' in attributes: ${attributes.keys}")
+        logger.debug("Looking for groups attribute '${config.groupsAttribute}' in attributes: ${attributes.keys}")
         val groupsAttr = attributes[config.groupsAttribute]
-        logger.info("Found groups attribute value: $groupsAttr (type: ${groupsAttr?.javaClass?.name})")
+        logger.debug("Found groups attribute value: $groupsAttr (type: ${groupsAttr?.javaClass?.name})")
 
         if (groupsAttr == null) {
             return emptyList()
@@ -95,7 +95,7 @@ class RoleSyncService(private val roleSyncConfigAdapter: RoleSyncConfigAdapter, 
             is String -> listOf(groupsAttr)
             else -> emptyList()
         }
-        logger.info("Extracted groups: $groups")
+        logger.debug("Extracted groups: $groups")
         return groups
     }
 

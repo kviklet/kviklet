@@ -32,8 +32,13 @@ const useRoleSyncConfig = () => {
     setLoading(false);
   };
 
-  const updateConfig = async (configUpdate: RoleSyncConfigUpdate) => {
-    setLoading(true);
+  const updateConfig = async (
+    configUpdate: RoleSyncConfigUpdate,
+    options?: { silent?: boolean },
+  ) => {
+    if (!options?.silent) {
+      setLoading(true);
+    }
     const response = await updateRoleSyncConfig(configUpdate);
     if (isApiErrorResponse(response)) {
       addNotification({
@@ -43,13 +48,17 @@ const useRoleSyncConfig = () => {
       });
     } else {
       setConfig(response);
-      addNotification({
-        title: "Configuration updated",
-        text: "Role sync configuration has been updated successfully.",
-        type: "info",
-      });
+      if (!options?.silent) {
+        addNotification({
+          title: "Configuration updated",
+          text: "Role sync configuration has been updated successfully.",
+          type: "info",
+        });
+      }
     }
-    setLoading(false);
+    if (!options?.silent) {
+      setLoading(false);
+    }
   };
 
   const addMapping = async (request: AddRoleSyncMappingRequest) => {

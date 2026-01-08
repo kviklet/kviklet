@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import debounce from "lodash/debounce";
 import useRoleSyncConfig from "../../hooks/roleSyncConfig";
 import { useRoles } from "./RolesSettings";
 import Spinner from "../../components/Spinner";
@@ -7,15 +8,65 @@ import InputField from "../../components/InputField";
 import Button from "../../components/Button";
 import { TrashIcon } from "@heroicons/react/20/solid";
 import useConfig from "../../hooks/config";
+import { RoleSyncConfigResponse } from "../../api/RoleSyncConfigApi";
 
 export default function RoleSyncSettings() {
   const { config, loading, updateConfig, addMapping, deleteMapping } =
     useRoleSyncConfig();
+
+  // Use ref to avoid recreating debounced function when updateConfig changes
+  const updateConfigRef = useRef(updateConfig);
+  updateConfigRef.current = updateConfig;
   const { roles, isLoading: rolesLoading } = useRoles();
   const { config: appConfig } = useConfig();
 
   const [idpGroupName, setIdpGroupName] = useState("");
   const [selectedRoleId, setSelectedRoleId] = useState("");
+  const [groupsAttribute, setGroupsAttribute] = useState(
+    config?.groupsAttribute ?? "groups",
+  );
+
+  // Sync local state when config loads/changes from server
+  useEffect(() => {
+    if (config) {
+      setGroupsAttribute(config.groupsAttribute);
+    }
+  }, [config?.groupsAttribute]);
+
+  // Debounced save for groups attribute - saves 1.5s after user stops typing
+  // Must be before early returns to maintain consistent hook order
+  // Uses ref to avoid recreating debounce on every render
+  const debouncedSaveGroupsAttribute = useMemo(
+    () =>
+      debounce(
+        async (newValue: string, currentConfig: RoleSyncConfigResponse) => {
+          const trimmedValue = newValue.trim();
+          if (trimmedValue && trimmedValue !== currentConfig.groupsAttribute) {
+            await updateConfigRef.current(
+              {
+                enabled: currentConfig.enabled,
+                syncMode: currentConfig.syncMode,
+                groupsAttribute: trimmedValue,
+              },
+              { silent: true },
+            );
+          }
+        },
+        1500,
+      ),
+    [],
+  );
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      debouncedSaveGroupsAttribute.cancel();
+    };
+  }, [debouncedSaveGroupsAttribute]);
+
+  const isGroupsAttributeDirty = config
+    ? groupsAttribute !== config.groupsAttribute
+    : false;
 
   if (loading || rolesLoading) {
     return <Spinner />;
@@ -50,16 +101,10 @@ export default function RoleSyncSettings() {
     });
   };
 
-  const handleGroupsAttributeChange = async (
-    event: React.FocusEvent<HTMLInputElement>,
-  ) => {
-    const newValue = event.target.value.trim();
-    if (newValue && newValue !== config.groupsAttribute) {
-      await updateConfig({
-        enabled: config.enabled,
-        syncMode: config.syncMode,
-        groupsAttribute: newValue,
-      });
+  const handleGroupsAttributeChange = (value: string) => {
+    setGroupsAttribute(value);
+    if (config) {
+      void debouncedSaveGroupsAttribute(value, config);
     }
   };
 
@@ -143,20 +188,20 @@ export default function RoleSyncSettings() {
             label="Groups Attribute Name"
             type="text"
             id="groups-attribute"
-            value={config.groupsAttribute}
+            value={groupsAttribute}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              updateConfig({
-                enabled: config.enabled,
-                syncMode: config.syncMode,
-                groupsAttribute: (e.target as HTMLInputElement).value,
-              })
+              handleGroupsAttributeChange(e.target.value)
             }
-            onBlur={handleGroupsAttributeChange}
             disabled={!config.enabled}
             placeholder="groups"
             stacked
             tooltip="The name of the attribute in your IdP that contains the user's group memberships"
           />
+          {isGroupsAttributeDirty && (
+            <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">
+              Saving...
+            </p>
+          )}
           {appConfig?.ldapEnabled && (
             <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">
               Note: For LDAP authentication, this setting is ignored. Groups are

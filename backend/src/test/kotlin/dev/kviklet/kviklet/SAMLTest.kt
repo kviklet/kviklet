@@ -618,44 +618,23 @@ class SAMLTest {
     }
 
     @Test
-    fun `SAML login without license skips role sync and user gets default role only`() {
+    fun `SAML login without license fails`() {
         // Remove the license
         licenseAdapter.deleteAll()
 
-        // Create test role for mapping (even though it won't be used)
-        testRole = roleAdapter.create(
-            Role(
-                id = null,
-                name = "Developer",
-                description = "Developer role for testing",
-                policies = emptySet(),
-            ),
-        )
+        val userCountBefore = userAdapter.listUsers().size
 
-        // Setup role sync config
-        roleSyncConfigAdapter.updateConfig(
-            enabled = true,
-            syncMode = SyncMode.FULL_SYNC,
-            groupsAttribute = "groups",
-        )
-
-        // Add mapping: saml-developers group -> Developer role
-        roleSyncConfigAdapter.addMapping("saml-developers", testRole!!.getId()!!)
-
-        // SAML login should fail without license (SAML is an enterprise feature)
-        // But if it does succeed, role sync should be skipped
+        // Attempt SAML login - should fail due to missing license
         try {
             performSamlLogin()
-            // If login succeeded (unexpected), verify role sync was skipped
-            val user = userAdapter.findByEmail("testuser@example.com")
-            if (user != null) {
-                val roleNames = user.roles.map { it.name }
-                assertThat(roleNames).doesNotContain("Developer")
-            }
         } catch (e: Exception) {
-            // Expected: SAML login should fail without license
-            // This is the expected behavior for enterprise features
+            // Expected: SAML authentication should fail without license
+            // The exception could be wrapped in various ways by WebClient
         }
+
+        // Verify no user was created (SAML login should have been blocked)
+        assertThat(userAdapter.listUsers().size).isEqualTo(userCountBefore)
+        assertThat(userAdapter.findByEmail("testuser@example.com")).isNull()
     }
 
     private fun performSamlLogin() {
