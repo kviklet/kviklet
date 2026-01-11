@@ -28,7 +28,7 @@ import { timeSince } from "./Requests";
 import { isApiErrorResponse } from "../api/Errors";
 import SearchInput from "../components/SearchInput";
 import Button from "../components/Button";
-import useConfig from "../hooks/config";
+import useConfig from "../components/ConfigProvider";
 import useNotification from "../hooks/useNotification";
 import Tooltip from "../components/Tooltip";
 

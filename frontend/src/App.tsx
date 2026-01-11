@@ -12,6 +12,7 @@ import { ThemeStatusProvider } from "./components/ThemeStatusProvider";
 import ConnectionChooser from "./routes/NewRequest";
 import Auditlog from "./routes/Auditlog";
 import { NotificationContextProvider } from "./components/NotifcationStatusProvider";
+import { ConfigProvider } from "./components/ConfigProvider";
 import RequestReview from "./routes/Review";
 import LiveSessionWebsockets from "./routes/LiveSessionWebsockets";
 
@@ -38,67 +39,69 @@ function App() {
       <UserStatusProvider>
         <ThemeStatusProvider>
           <NotificationContextProvider>
-            <Routes>
-              <Route path="/" element={<DefaultLayout />}>
-                <Route
-                  index
-                  element={
-                    <ProtectedRoute>
-                      <Requests />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="settings/*"
-                  element={
-                    <ProtectedRoute>
-                      <Settings />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="new"
-                  element={
-                    <ProtectedRoute>
-                      <ConnectionChooser></ConnectionChooser>
-                    </ProtectedRoute>
-                  }
-                ></Route>
-                <Route
-                  path="requests"
-                  element={
-                    <ProtectedRoute>
-                      <Requests />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="auditlog"
-                  element={
-                    <ProtectedRoute>
-                      <Auditlog />
-                    </ProtectedRoute>
-                  }
-                ></Route>
-                <Route
-                  path="requests/:requestId"
-                  element={
-                    <ProtectedRoute>
-                      <RequestReview />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="requests/:requestId/session"
-                  element={
-                    <ProtectedRoute>
-                      <LiveSessionWebsockets />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="login" element={<Login />} />
-              </Route>
-            </Routes>
+            <ConfigProvider>
+              <Routes>
+                <Route path="/" element={<DefaultLayout />}>
+                  <Route
+                    index
+                    element={
+                      <ProtectedRoute>
+                        <Requests />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="settings/*"
+                    element={
+                      <ProtectedRoute>
+                        <Settings />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="new"
+                    element={
+                      <ProtectedRoute>
+                        <ConnectionChooser></ConnectionChooser>
+                      </ProtectedRoute>
+                    }
+                  ></Route>
+                  <Route
+                    path="requests"
+                    element={
+                      <ProtectedRoute>
+                        <Requests />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="auditlog"
+                    element={
+                      <ProtectedRoute>
+                        <Auditlog />
+                      </ProtectedRoute>
+                    }
+                  ></Route>
+                  <Route
+                    path="requests/:requestId"
+                    element={
+                      <ProtectedRoute>
+                        <RequestReview />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="requests/:requestId/session"
+                    element={
+                      <ProtectedRoute>
+                        <LiveSessionWebsockets />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="login" element={<Login />} />
+                </Route>
+              </Routes>
+            </ConfigProvider>
           </NotificationContextProvider>
         </ThemeStatusProvider>
       </UserStatusProvider>
