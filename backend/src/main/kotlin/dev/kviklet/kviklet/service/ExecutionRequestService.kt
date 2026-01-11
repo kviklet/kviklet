@@ -40,6 +40,7 @@ import dev.kviklet.kviklet.service.dto.KubernetesConnection
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
 import dev.kviklet.kviklet.service.dto.RequestType
+import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.utcTimeNow
 import dev.kviklet.kviklet.shell.KubernetesApi
@@ -417,6 +418,26 @@ class ExecutionRequestService(
             id,
             authorId,
             ReviewPayload(comment = request.comment, action = request.action),
+        )
+        val updatedExecutionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
+        ReviewStatusUpdatedEvent.from(updatedExecutionRequestDetails, reviewEvent).let {
+            applicationEventPublisher.publishEvent(it)
+        }
+        return reviewEvent
+    }
+
+    @Transactional
+    @Policy(Permission.EXECUTION_REQUEST_EDIT)
+    fun close(id: ExecutionRequestId, comment: String, authorId: String): Event {
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
+        if (executionRequest.resolveReviewStatus() == ReviewStatus.REJECTED) {
+            throw InvalidReviewException("Can't close an already rejected request!")
+        }
+
+        val reviewEvent = eventService.saveEvent(
+            id,
+            authorId,
+            ReviewPayload(comment = comment, action = ReviewAction.REJECT),
         )
         val updatedExecutionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
         ReviewStatusUpdatedEvent.from(updatedExecutionRequestDetails, reviewEvent).let {

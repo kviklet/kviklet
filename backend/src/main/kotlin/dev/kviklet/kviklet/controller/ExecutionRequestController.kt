@@ -118,6 +118,8 @@ data class CreateReviewRequest(val comment: String, val action: ReviewAction)
 
 data class CreateCommentRequest(val comment: String)
 
+data class CloseRequest(val comment: String = "")
+
 sealed class ExecutionRequestResponse(open val id: ExecutionRequestId) {
     companion object {
         fun fromDto(dto: ExecutionRequestDetails): ExecutionRequestResponse {
@@ -624,6 +626,20 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
         @CurrentUser userDetails: UserDetailsWithId,
     ): EventResponse = EventResponse.fromEvent(
         executionRequestService.createReview(executionRequestId, request, userDetails.id),
+    )
+
+    @Operation(
+        summary = "Close Execution Request",
+        description = "Close/withdraw an execution request. Only the author can close their own request.",
+    )
+    @PostMapping("/{executionRequestId}/close")
+    fun close(
+        @PathVariable executionRequestId: ExecutionRequestId,
+        @Valid @RequestBody
+        request: CloseRequest,
+        @CurrentUser userDetails: UserDetailsWithId,
+    ): EventResponse = EventResponse.fromEvent(
+        executionRequestService.close(executionRequestId, request.comment, userDetails.id),
     )
 
     @PatchMapping("/{id}")

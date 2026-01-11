@@ -362,6 +362,24 @@ const addReviewToRequest = async (
   );
 };
 
+const closeRequest = async (
+  id: string,
+  comment: string = "",
+): Promise<ApiResponse<Review>> => {
+  return fetchWithErrorHandling(
+    requestUrl + id + "/close",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ comment }),
+    },
+    ReviewEvent,
+  );
+};
+
 const streamDump = async (
   executionRequestId: string,
 ): Promise<ReadableStream<Uint8Array>> => {
@@ -519,6 +537,7 @@ export {
   getSingleRequest,
   addCommentToRequest,
   addReviewToRequest,
+  closeRequest,
   runQuery,
   cancel,
   patchRequest,
