@@ -310,7 +310,7 @@ const DatasourceExecutionRequestForm = ({
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
     setValue,
   } = useForm<DatasourceExecutionRequest>({
     resolver: zodResolver(DatasourceExecutionRequestSchema),
@@ -511,10 +511,10 @@ const DatasourceExecutionRequestForm = ({
           <div className="mb-6 ml-auto px-3">
             <Button
               htmlType="submit"
-              variant="primary"
+              variant={isSubmitting ? "disabled" : "primary"}
               dataTestId="submit-button"
             >
-              Submit
+              {isSubmitting ? "Submitting..." : "Submit"}
             </Button>
           </div>
         </div>
@@ -565,7 +565,7 @@ const KubernetesExecutionRequestForm = ({
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
     setValue,
   } = useForm<KubernetesExecutionRequest>({
     resolver: zodResolver(KubernetesExecutionRequestSchema),
@@ -853,8 +853,12 @@ const KubernetesExecutionRequestForm = ({
           )}
           <div className="-mx-3 mb-2 flex flex-wrap">
             <div className="mb-6 ml-auto px-3">
-              <Button htmlType="submit" variant="primary">
-                Submit
+              <Button
+                htmlType="submit"
+                variant={isSubmitting ? "disabled" : "primary"}
+                dataTestId="submit-button"
+              >
+                {isSubmitting ? "Submitting..." : "Submit"}
               </Button>
             </div>
           </div>
