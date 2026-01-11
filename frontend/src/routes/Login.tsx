@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { UserStatusContext } from "../components/UserStatusProvider";
 import image from "../logo.png";
 import baseUrl from "../api/base";
-import useConfig from "../hooks/config";
+import useConfig from "../components/ConfigProvider";
 import Spinner from "../components/Spinner";
 import { isApiErrorResponse } from "../api/Errors";
 import useNotification from "../hooks/useNotification";

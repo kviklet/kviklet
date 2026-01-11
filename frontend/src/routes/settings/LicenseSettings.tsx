@@ -5,7 +5,7 @@ import { Warning } from "../../components/Alert";
 import { ArrowUpCircleIcon, DocumentTextIcon } from "@heroicons/react/20/solid";
 import Button from "../../components/Button";
 import { useUsers } from "./UserSettings";
-import useConfig from "../../hooks/config";
+import useConfig from "../../components/ConfigProvider";
 import useNotification from "../../hooks/useNotification";
 
 export default function LicenseSettings() {
