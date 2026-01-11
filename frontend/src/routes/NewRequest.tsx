@@ -7,6 +7,8 @@ import {
   CircleStackIcon,
   CloudIcon,
   CommandLineIcon,
+  Squares2X2Icon,
+  ListBulletIcon,
 } from "@heroicons/react/20/solid";
 import { useLocation, useNavigate } from "react-router-dom";
 import { SubmitHandler, useForm } from "react-hook-form";
@@ -158,6 +160,7 @@ export default function ConnectionChooser() {
     "SingleExecution" | "TemporaryAccess" | "Dump" | undefined
   >(undefined);
   const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const filteredConnections = connections.filter(
     (connection) =>
@@ -220,49 +223,83 @@ export default function ConnectionChooser() {
                     </div>
                   </DisclosureButton>
                   <DisclosurePanel>
-                    <SearchInput
-                      value={searchTerm}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                        setSearchTerm(e.target.value)
-                      }
-                      className="mb-4"
-                    />
+                    <div className="mb-4 flex items-center justify-between gap-4">
+                      <SearchInput
+                        value={searchTerm}
+                        onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                          setSearchTerm(e.target.value)
+                        }
+                        className="flex-1"
+                      />
+                      <div className="flex rounded-lg border border-slate-300 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                        <button
+                          type="button"
+                          onClick={() => setViewMode("grid")}
+                          className={`rounded-l-lg px-3 py-2 text-sm font-medium transition-colors ${
+                            viewMode === "grid"
+                              ? "bg-indigo-600 text-white"
+                              : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                          }`}
+                          title="Grid view"
+                        >
+                          <Squares2X2Icon className="h-5 w-5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setViewMode("list")}
+                          className={`rounded-r-lg px-3 py-2 text-sm font-medium transition-colors ${
+                            viewMode === "list"
+                              ? "bg-indigo-600 text-white"
+                              : "text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                          }`}
+                          title="List view"
+                        >
+                          <ListBulletIcon className="h-5 w-5" />
+                        </button>
+                      </div>
+                    </div>
                     <ul
                       role="list"
-                      className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
+                      className={
+                        viewMode === "grid"
+                          ? "grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
+                          : "flex flex-col gap-3"
+                      }
                     >
                       {filteredConnections.map((connection) => {
-                        return (
-                          <Card
-                            header={connection.displayName}
-                            subheader={connection.description}
-                            label={connection.id}
-                            key={connection.id}
-                            clickQuery={() => {
-                              setChosenConnection(connection);
-                              setChosenMode("SingleExecution");
-                              close();
-                            }}
-                            clickAccess={() => {
-                              setChosenConnection(connection);
-                              setChosenMode("TemporaryAccess");
-                              close();
-                            }}
-                            clickSQLDump={() => {
-                              setChosenConnection(connection);
-                              setChosenMode("Dump");
-                              close();
-                            }}
-                            connectionType={connection._type}
-                            sqlDumpEnabled={
-                              connection._type === "DATASOURCE" &&
-                              connection.dumpsEnabled
-                            }
-                            temporaryAccessEnabled={
-                              connection._type === "DATASOURCE" &&
-                              connection.temporaryAccessEnabled
-                            }
-                          ></Card>
+                        const commonProps = {
+                          header: connection.displayName,
+                          subheader: connection.description,
+                          label: connection.id,
+                          key: connection.id,
+                          clickQuery: () => {
+                            setChosenConnection(connection);
+                            setChosenMode("SingleExecution");
+                            close();
+                          },
+                          clickAccess: () => {
+                            setChosenConnection(connection);
+                            setChosenMode("TemporaryAccess");
+                            close();
+                          },
+                          clickSQLDump: () => {
+                            setChosenConnection(connection);
+                            setChosenMode("Dump");
+                            close();
+                          },
+                          connectionType: connection._type,
+                          sqlDumpEnabled:
+                            connection._type === "DATASOURCE" &&
+                            connection.dumpsEnabled,
+                          temporaryAccessEnabled:
+                            connection._type === "DATASOURCE" &&
+                            connection.temporaryAccessEnabled,
+                        };
+
+                        return viewMode === "grid" ? (
+                          <Card {...commonProps} />
+                        ) : (
+                          <ListItem {...commonProps} />
                         );
                       })}
                     </ul>
@@ -949,6 +986,76 @@ const Card = (props: CardProps) => {
             </div>
           )}
         </div>
+      </div>
+    </li>
+  );
+};
+
+const ListItem = (props: CardProps) => {
+  return (
+    <li className="flex items-center justify-between gap-4 rounded-lg border bg-white p-4 shadow dark:border-slate-700 dark:bg-slate-900">
+      <div className="flex min-w-0 flex-1 items-center gap-4">
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <div className="flex items-center gap-3">
+            <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900 dark:text-slate-50">
+              {props.header}
+            </span>
+            <span
+              className="inline-flex min-w-0 max-w-[40%] items-center truncate rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-400/10 dark:text-green-400"
+              title={props.label}
+            >
+              {props.label}
+            </span>
+          </div>
+          <p className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
+            {props.subheader}
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-shrink-0 gap-2">
+        <button
+          onClick={props.clickQuery}
+          className="inline-flex items-center gap-x-2 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-50 dark:ring-slate-700 dark:hover:bg-slate-700"
+          data-testid={`query-button-${props.header}`}
+        >
+          {props.connectionType === "DATASOURCE" ? (
+            <CircleStackIcon
+              className="h-4 w-4 text-slate-400 dark:text-slate-500"
+              aria-hidden="true"
+            />
+          ) : (
+            <CloudIcon
+              className="h-4 w-4 text-slate-400 dark:text-slate-500"
+              aria-hidden="true"
+            />
+          )}
+          {props.connectionType === "DATASOURCE" ? "Query" : "Command"}
+        </button>
+        {props.temporaryAccessEnabled && (
+          <button
+            onClick={props.clickAccess}
+            className="inline-flex items-center gap-x-2 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-50 dark:ring-slate-700 dark:hover:bg-slate-700"
+            data-testid={`access-button-${props.header}`}
+          >
+            <CommandLineIcon
+              className="h-4 w-4 text-slate-400 dark:text-slate-500"
+              aria-hidden="true"
+            />
+            Access
+          </button>
+        )}
+        {props.connectionType === "DATASOURCE" && props.sqlDumpEnabled && (
+          <button
+            onClick={props.clickSQLDump}
+            className="inline-flex items-center gap-x-2 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-50 dark:ring-slate-700 dark:hover:bg-slate-700"
+          >
+            <CircleStackIcon
+              className="h-4 w-4 text-slate-400 dark:text-slate-500"
+              aria-hidden="true"
+            />
+            DB Dump
+          </button>
+        )}
       </div>
     </li>
   );
