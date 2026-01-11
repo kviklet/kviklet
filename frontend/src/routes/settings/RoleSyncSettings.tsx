@@ -7,7 +7,7 @@ import Toggle from "../../components/Toggle";
 import InputField from "../../components/InputField";
 import Button from "../../components/Button";
 import { TrashIcon } from "@heroicons/react/20/solid";
-import useConfig from "../../hooks/config";
+import useConfig from "../../components/ConfigProvider";
 import { RoleSyncConfigResponse } from "../../api/RoleSyncConfigApi";
 
 export default function RoleSyncSettings() {

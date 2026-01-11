@@ -7,7 +7,7 @@ import {
 } from "../../api/ConfigApi";
 import InputField from "../../components/InputField";
 import Button from "../../components/Button";
-import useConfig from "../../hooks/config";
+import useConfig from "../../components/ConfigProvider";
 import Spinner from "../../components/Spinner";
 import {
   Disclosure,
