@@ -1,3 +1,4 @@
+// This file is not MIT licensed
 package dev.kviklet.kviklet.service
 
 import dev.kviklet.kviklet.db.RoleSyncConfigAdapter

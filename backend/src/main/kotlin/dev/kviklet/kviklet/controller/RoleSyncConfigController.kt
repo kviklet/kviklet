@@ -1,3 +1,4 @@
+// This file is not MIT licensed
 package dev.kviklet.kviklet.controller
 
 import dev.kviklet.kviklet.security.EnterpriseOnly

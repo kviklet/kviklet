@@ -1,3 +1,4 @@
+// This file is not MIT licensed
 package dev.kviklet.kviklet.db
 
 import dev.kviklet.kviklet.db.util.BaseEntity
