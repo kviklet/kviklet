@@ -23,7 +23,7 @@ import ConnectionDetails from "./connection/details/ConnectionDetails";
 import LicenseSettings from "./LicenseSettings";
 import ApiKeyPage from "./ApiKeySettings";
 import RoleSyncSettings from "./RoleSyncSettings";
-import useConfig from "../../hooks/config";
+import useConfig from "../../components/ConfigProvider";
 
 const Tab = (props: {
   children: React.ReactNode;

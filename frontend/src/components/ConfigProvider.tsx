@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   ConfigPayload,
   ConfigResponse,
@@ -6,12 +6,29 @@ import {
   putConfig,
 } from "../api/ConfigApi";
 import { isApiErrorResponse } from "../api/Errors";
-import useNotification from "./useNotification";
+import useNotification from "../hooks/useNotification";
 
-const useConfig = () => {
+type ConfigContextType = {
+  config: ConfigResponse | null;
+  loading: boolean;
+  refreshConfig: () => Promise<void>;
+  updateConfig: (config: ConfigPayload) => Promise<void>;
+};
+
+const ConfigContext = React.createContext<ConfigContextType>({
+  config: null,
+  loading: true,
+  refreshConfig: async () => {},
+  updateConfig: async () => {},
+});
+
+type Props = {
+  children: React.ReactNode;
+};
+
+export const ConfigProvider: React.FC<Props> = ({ children }) => {
   const [config, setConfig] = useState<ConfigResponse | null>(null);
   const [loading, setLoading] = useState(true);
-
   const { addNotification } = useNotification();
 
   const refreshConfig = async () => {
@@ -29,9 +46,9 @@ const useConfig = () => {
     setLoading(false);
   };
 
-  const updateConfig = async (config: ConfigPayload) => {
+  const updateConfig = async (newConfig: ConfigPayload) => {
     setLoading(true);
-    const response = await putConfig(config);
+    const response = await putConfig(newConfig);
     if (isApiErrorResponse(response)) {
       addNotification({
         title: "Error updating config",
@@ -48,7 +65,14 @@ const useConfig = () => {
     void refreshConfig();
   }, []);
 
-  return { config, loading, refreshConfig, updateConfig };
+  return (
+    <ConfigContext.Provider
+      value={{ config, loading, refreshConfig, updateConfig }}
+    >
+      {children}
+    </ConfigContext.Provider>
+  );
 };
 
+const useConfig = () => useContext(ConfigContext);
 export default useConfig;
