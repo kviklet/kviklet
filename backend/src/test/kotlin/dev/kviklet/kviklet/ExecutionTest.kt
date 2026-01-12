@@ -778,8 +778,12 @@ class ExecutionTest {
         fun `reviewer cannot close another users request`() {
             val reviewer = userHelper.createUser(
                 email = "reviewer@example.com",
-                permissions = listOf("execution_request:review", "execution_request:get"),
-                resources = listOf("*", "*"),
+                permissions = listOf(
+                    "execution_request:review",
+                    "execution_request:get",
+                    "datasource_connection:get",
+                ),
+                resources = listOf("*", "*", "*"),
             )
             val reviewerCookie = userHelper.login(email = reviewer.email, mockMvc = mockMvc)
 
