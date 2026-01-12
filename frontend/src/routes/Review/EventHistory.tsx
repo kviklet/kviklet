@@ -9,10 +9,12 @@ import Comment from "./events/Comment";
 export default function EventHistory({
   request,
   sendReview,
+  closeRequest,
   reverse,
 }: {
   request: ExecutionRequestResponseWithComments;
   sendReview?: (comment: string, type: ReviewTypes) => Promise<boolean>;
+  closeRequest?: (comment: string) => Promise<boolean>;
   reverse?: boolean;
 }) {
   const events = request?.events ? [...request.events] : [];
@@ -40,6 +42,7 @@ export default function EventHistory({
         {sendReview && (
           <CommentBox
             sendReview={sendReview}
+            closeRequest={closeRequest}
             userId={request?.author?.id}
           ></CommentBox>
         )}

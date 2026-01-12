@@ -9,6 +9,7 @@ import {
   addCommentToRequest,
   addReviewToRequest,
   cancel,
+  closeRequest as closeRequestApi,
   executeCommand,
   getSingleRequest,
   patchRequest,
@@ -24,6 +25,7 @@ enum ReviewTypes {
   Approve = "approve",
   RequestChange = "request_change",
   Reject = "reject",
+  Close = "close",
 }
 
 const isRelationalDatabase = (
@@ -198,11 +200,26 @@ const useRequest = (id: string) => {
     }
   };
 
+  const closeRequest = async (comment: string = ""): Promise<boolean> => {
+    const response = await closeRequestApi(id, comment);
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to close request",
+        text: response.message,
+        type: "error",
+      });
+      return false;
+    }
+    await loadRequest();
+    return true;
+  };
+
   return {
     request,
     sendReview,
     execute,
     cancelQuery,
+    closeRequest,
     start,
     updateRequest,
     results,

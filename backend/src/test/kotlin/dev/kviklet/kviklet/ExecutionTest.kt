@@ -739,4 +739,57 @@ class ExecutionTest {
             response.andExpect(jsonPath("$.events[-1].action").value(expectedAction))
         }
     }
+
+    private fun closeRequest(executionRequestId: String, comment: String, cookie: Cookie) = mockMvc.perform(
+        post("/execution-requests/$executionRequestId/close")
+            .cookie(cookie)
+            .content("""{"comment": "$comment"}""")
+            .contentType("application/json"),
+    )
+
+    @Nested
+    inner class CloseRequestTests {
+
+        private lateinit var testExecutionRequest: ExecutionRequestDetails
+
+        @BeforeEach
+        fun `setup execution request`() {
+            testExecutionRequest =
+                executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+        }
+
+        @Test
+        fun `author can close their own request`() {
+            val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            closeRequest(testExecutionRequest.getId(), "Closing my request", cookie)
+                .andExpect(status().isOk)
+            verifyRequestStatus(testExecutionRequest.getId(), "REJECTED", cookie)
+        }
+
+        @Test
+        fun `non-author cannot close another users request`() {
+            val otherUser = userHelper.createUser(email = "other@example.com", permissions = listOf("*"))
+            val otherCookie = userHelper.login(email = otherUser.email, mockMvc = mockMvc)
+            closeRequest(testExecutionRequest.getId(), "Trying to close", otherCookie)
+                .andExpect(status().isForbidden)
+        }
+
+        @Test
+        fun `reviewer cannot close another users request`() {
+            val reviewer = userHelper.createUser(
+                email = "reviewer@example.com",
+                permissions = listOf(
+                    "execution_request:review",
+                    "execution_request:get",
+                    "datasource_connection:get",
+                ),
+                resources = listOf("*", "*", "*"),
+            )
+            val reviewerCookie = userHelper.login(email = reviewer.email, mockMvc = mockMvc)
+
+            // Reviewer should NOT be able to close (they should use reject instead)
+            closeRequest(testExecutionRequest.getId(), "Trying to close as reviewer", reviewerCookie)
+                .andExpect(status().isForbidden)
+        }
+    }
 }

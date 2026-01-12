@@ -9,9 +9,11 @@ import ReviewRadioBox from "./ReviewRadioBox";
 
 function CommentBox({
   sendReview,
+  closeRequest,
   userId,
 }: {
   sendReview: (comment: string, type: ReviewTypes) => Promise<boolean>;
+  closeRequest?: (comment: string) => Promise<boolean>;
   userId?: string;
 }) {
   const [commentFormVisible, setCommentFormVisible] = useState<boolean>(true);
@@ -24,7 +26,12 @@ function CommentBox({
   const userContext = useContext(UserStatusContext);
 
   const handleReview = async () => {
-    const result = await sendReview(comment, chosenReviewType);
+    let result: boolean;
+    if (chosenReviewType === ReviewTypes.Close && closeRequest) {
+      result = await closeRequest(comment);
+    } else {
+      result = await sendReview(comment, chosenReviewType);
+    }
     if (result) {
       setComment("");
     }
@@ -62,6 +69,13 @@ function CommentBox({
       description: "Reject this request from ever executing",
       enabled: !isOwnRequest,
       danger: true,
+    },
+    {
+      id: ReviewTypes.Close,
+      title: "Close",
+      description: "Close this request without executing it",
+      enabled: !!(isOwnRequest && closeRequest),
+      danger: false,
     },
   ];
   return (

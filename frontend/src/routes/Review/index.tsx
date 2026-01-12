@@ -17,6 +17,7 @@ function RequestReview() {
     sendReview,
     execute,
     cancelQuery,
+    closeRequest,
     start,
     updateRequest,
     results,
@@ -80,7 +81,11 @@ function RequestReview() {
                     ></KubernetesRequestDisplay>
                   ))}
                 <div className="mt-3 w-full border-b border-slate-300 dark:border-slate-700"></div>
-                <EventHistory request={request} sendReview={sendReview} />
+                <EventHistory
+                  request={request}
+                  sendReview={sendReview}
+                  closeRequest={closeRequest}
+                />
               </div>
             </div>
           </div>
