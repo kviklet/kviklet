@@ -160,7 +160,14 @@ export default function ConnectionChooser() {
     "SingleExecution" | "TemporaryAccess" | "Dump" | undefined
   >(undefined);
   const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">(() => {
+    const saved = localStorage.getItem("connectionViewMode");
+    return saved === "list" ? "list" : "grid";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("connectionViewMode", viewMode);
+  }, [viewMode]);
 
   const filteredConnections = connections.filter(
     (connection) =>
@@ -1000,12 +1007,12 @@ const ListItem = (props: CardProps) => {
     <li className="flex items-center justify-between gap-4 rounded-lg border bg-white p-4 shadow dark:border-slate-700 dark:bg-slate-900">
       <div className="flex min-w-0 flex-1 items-center gap-4">
         <div className="min-w-0 flex-1 overflow-hidden">
-          <div className="flex items-center gap-3">
-            <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900 dark:text-slate-50">
+          <div className="flex items-center gap-2">
+            <span className="truncate text-sm font-medium text-slate-900 dark:text-slate-50">
               {props.header}
             </span>
             <span
-              className="inline-flex min-w-0 max-w-[40%] items-center truncate rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-400/10 dark:text-green-400"
+              className="flex-shrink-0 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-400/10 dark:text-green-400"
               title={props.label}
             >
               {props.label}
