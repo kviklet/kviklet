@@ -38,6 +38,9 @@ class ConnectionService(
     @Policy(Permission.DATASOURCE_CONNECTION_GET)
     fun listConnections(): List<Connection> = connectionAdapter.listConnections()
 
+    @Policy(Permission.DATASOURCE_CONNECTION_GET, checkIsPresentOnly = true)
+    fun listCategories(): List<String> = connectionAdapter.listCategories()
+
     private fun updateDatasourceConnection(
         connectionId: ConnectionId,
         request: UpdateDatasourceConnectionRequest,
@@ -81,6 +84,7 @@ class ConnectionService(
             } else {
                 (request.maxTemporaryAccessDuration ?: connection.maxTemporaryAccessDuration)
             },
+            category = request.category ?: connection.category,
         )
 
         // Recalculate statuses if reviewConfig or maxExecutions changed
@@ -151,6 +155,7 @@ class ConnectionService(
             request.description ?: connection.description,
             newReviewConfig,
             newMaxExecutions,
+            category = request.category ?: connection.category,
         )
 
         // Recalculate statuses if reviewConfig or maxExecutions changed
@@ -199,6 +204,7 @@ class ConnectionService(
         explainEnabled: Boolean,
         roleArn: String?,
         maxTemporaryAccessDuration: Long?,
+        category: String?,
     ): Connection {
         if (authenticationType == AuthenticationType.USER_PASSWORD && password == null) {
             throw IllegalArgumentException("Password is required for USER_PASSWORD authentication")
@@ -225,6 +231,7 @@ class ConnectionService(
             explainEnabled,
             roleArn,
             maxTemporaryAccessDuration,
+            category,
         )
     }
 
@@ -256,6 +263,7 @@ class ConnectionService(
             description,
             reviewConfig = ReviewConfig(reviewsRequired),
             maxExecutions,
+            category = null,
             databaseName,
             authenticationType,
             when (authenticationType) {
@@ -311,6 +319,7 @@ class ConnectionService(
         description: String,
         reviewsRequired: Int,
         maxExecutions: Int?,
+        category: String?,
     ): Connection = connectionAdapter.createKubernetesConnection(
         connectionId,
         displayName,
@@ -319,6 +328,7 @@ class ConnectionService(
             numTotalRequired = reviewsRequired,
         ),
         maxExecutions,
+        category,
     )
 
     @Transactional

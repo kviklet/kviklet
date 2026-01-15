@@ -50,6 +50,7 @@ const databaseConnectionResponseSchema = withType(
     explainEnabled: z.boolean(),
     roleArn: z.string().nullable(),
     maxTemporaryAccessDuration: z.number().nullable().optional(),
+    category: z.string().nullable(),
   }),
   "DATASOURCE",
 );
@@ -64,6 +65,7 @@ const kubernetesConnectionResponseSchema = withType(
     }),
     maxExecutions: z.coerce.number().nullable(),
     temporaryAccessEnabled: z.boolean(),
+    category: z.string().nullable(),
   }),
   "KUBERNETES",
 );
@@ -87,6 +89,7 @@ interface ConnectionBase {
     numTotalRequired: number;
   };
   maxExecutions: number | null;
+  category?: string | null;
 }
 
 interface DatabaseConnectionBase extends ConnectionBase {
@@ -249,6 +252,20 @@ const deleteConnection = async (id: string): Promise<ApiResponse<null>> => {
   });
 };
 
+const getCategories = async (): Promise<ApiResponse<string[]>> => {
+  return fetchWithErrorHandling(
+    `${baseUrl}/connections/categories`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+    },
+    z.array(z.string()),
+  );
+};
+
 export {
   addConnection,
   testConnection,
@@ -258,6 +275,7 @@ export {
   patchConnection,
   getConnections,
   getConnection,
+  getCategories,
   DatabaseType,
   DatabaseProtocol,
   deleteConnection,

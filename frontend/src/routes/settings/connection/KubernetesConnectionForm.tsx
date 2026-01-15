@@ -4,6 +4,8 @@ import InputField from "../../../components/InputField";
 import { useEffect } from "react";
 import Button from "../../../components/Button";
 import { z } from "zod";
+import { useCategories } from "../../../hooks/connections";
+import CategoryAutocomplete from "../../../components/CategoryAutocomplete";
 
 const kubernetesConnectionPayloadSchema = z.object({
   connectionType: z.literal("KUBERNETES").default("KUBERNETES"),
@@ -14,6 +16,7 @@ const kubernetesConnectionPayloadSchema = z.object({
     numTotalRequired: z.coerce.number(),
   }),
   maxExecutions: z.coerce.number().nullable(),
+  category: z.string().nullable().optional(),
 });
 
 type KubernetesConnectionPayload = z.infer<
@@ -35,6 +38,7 @@ export default function CreateKubernetesConnectionForm(props: {
     resolver: zodResolver(kubernetesConnectionPayloadSchema),
   });
 
+  const { categories } = useCategories();
   const watchDisplayName = watch("displayName");
 
   useEffect(() => {
@@ -72,6 +76,20 @@ export default function CreateKubernetesConnectionForm(props: {
             {...register("description")}
             error={errors.description?.message}
           />
+          <div className="flex w-full justify-between">
+            <label
+              htmlFor="category"
+              className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
+            >
+              Category
+            </label>
+            <CategoryAutocomplete
+              value={watch("category")}
+              onChange={(val) => setValue("category", val)}
+              availableCategories={categories}
+              placeholder="Optional: dev, staging, prod..."
+            />
+          </div>
           <InputField
             label="Connection ID"
             id="id"

@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { ConnectionResponse, DatabaseType } from "../api/DatasourceApi";
 import Spinner from "../components/Spinner";
 import {
@@ -176,6 +176,39 @@ export default function ConnectionChooser() {
       connection.id.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
+  // Group connections by category: uncategorized first, then alphabetically by category
+  const groupedConnections = useMemo(() => {
+    const grouped = new Map<string | null, ConnectionResponse[]>();
+
+    filteredConnections.forEach((conn) => {
+      const category = conn.category ?? null;
+      if (!grouped.has(category)) {
+        grouped.set(category, []);
+      }
+      grouped.get(category)!.push(conn);
+    });
+
+    const groups: { category: string | null; connections: ConnectionResponse[] }[] =
+      [];
+
+    // Add uncategorized first
+    if (grouped.has(null)) {
+      groups.push({ category: null, connections: grouped.get(null)! });
+      grouped.delete(null);
+    }
+
+    // Add categorized groups alphabetically
+    const sortedCategories = Array.from(grouped.keys())
+      .filter((k): k is string => k !== null)
+      .sort((a, b) => a.localeCompare(b));
+
+    sortedCategories.forEach((category) => {
+      groups.push({ category, connections: grouped.get(category)! });
+    });
+
+    return groups;
+  }, [filteredConnections]);
+
   const location = useLocation();
 
   useEffect(() => {
@@ -265,51 +298,62 @@ export default function ConnectionChooser() {
                         </button>
                       </div>
                     </div>
-                    <ul
-                      role="list"
-                      className={
-                        viewMode === "grid"
-                          ? "grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
-                          : "flex flex-col gap-3"
-                      }
-                    >
-                      {filteredConnections.map((connection) => {
-                        const commonProps = {
-                          header: connection.displayName,
-                          subheader: connection.description,
-                          label: connection.id,
-                          key: connection.id,
-                          clickQuery: () => {
-                            setChosenConnection(connection);
-                            setChosenMode("SingleExecution");
-                            close();
-                          },
-                          clickAccess: () => {
-                            setChosenConnection(connection);
-                            setChosenMode("TemporaryAccess");
-                            close();
-                          },
-                          clickSQLDump: () => {
-                            setChosenConnection(connection);
-                            setChosenMode("Dump");
-                            close();
-                          },
-                          connectionType: connection._type,
-                          sqlDumpEnabled:
-                            connection._type === "DATASOURCE" &&
-                            connection.dumpsEnabled,
-                          temporaryAccessEnabled:
-                            connection._type === "DATASOURCE" &&
-                            connection.temporaryAccessEnabled,
-                        };
+                    <div className="space-y-6">
+                      {groupedConnections.map((group) => (
+                        <div key={group.category ?? "uncategorized"}>
+                          {groupedConnections.length > 1 && (
+                            <h3 className="mb-3 text-sm font-semibold text-slate-600 dark:text-slate-400">
+                              {group.category ?? "Uncategorized"}
+                            </h3>
+                          )}
+                          <ul
+                            role="list"
+                            className={
+                              viewMode === "grid"
+                                ? "grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
+                                : "flex flex-col gap-3"
+                            }
+                          >
+                            {group.connections.map((connection) => {
+                              const commonProps = {
+                                header: connection.displayName,
+                                subheader: connection.description,
+                                label: connection.id,
+                                key: connection.id,
+                                clickQuery: () => {
+                                  setChosenConnection(connection);
+                                  setChosenMode("SingleExecution");
+                                  close();
+                                },
+                                clickAccess: () => {
+                                  setChosenConnection(connection);
+                                  setChosenMode("TemporaryAccess");
+                                  close();
+                                },
+                                clickSQLDump: () => {
+                                  setChosenConnection(connection);
+                                  setChosenMode("Dump");
+                                  close();
+                                },
+                                connectionType: connection._type,
+                                sqlDumpEnabled:
+                                  connection._type === "DATASOURCE" &&
+                                  connection.dumpsEnabled,
+                                temporaryAccessEnabled:
+                                  connection._type === "DATASOURCE" &&
+                                  connection.temporaryAccessEnabled,
+                              };
 
-                        return viewMode === "grid" ? (
-                          <Card {...commonProps} />
-                        ) : (
-                          <ListItem {...commonProps} />
-                        );
-                      })}
-                    </ul>
+                              return viewMode === "grid" ? (
+                                <Card {...commonProps} />
+                              ) : (
+                                <ListItem {...commonProps} />
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
                   </DisclosurePanel>
                 </>
               )}

@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 037-add-category-column
+      author: jascha
+      changes:
+        - addColumn:
+            tableName: connection
+            columns:
+              - column:
+                  name: category
+                  type: TEXT

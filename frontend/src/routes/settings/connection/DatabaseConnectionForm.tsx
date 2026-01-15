@@ -31,7 +31,8 @@ import {
 import { isApiErrorResponse } from "../../../api/Errors";
 import useNotification from "../../../hooks/useNotification";
 import Spinner from "../../../components/Spinner";
-import { supportsIamAuth } from "../../../hooks/connections";
+import { supportsIamAuth, useCategories } from "../../../hooks/connections";
+import CategoryAutocomplete from "../../../components/CategoryAutocomplete";
 
 const baseConnectionSchema = z.object({
   displayName: z.string().min(3),
@@ -52,6 +53,7 @@ const baseConnectionSchema = z.object({
   explainEnabled: z.boolean().default(false),
   maxTemporaryAccessDuration: z.coerce.number().nullable().optional(),
   connectionType: z.literal("DATASOURCE").default("DATASOURCE"),
+  category: z.string().nullable().optional(),
 });
 
 const connectionFormSchema = z.discriminatedUnion("authenticationType", [
@@ -146,6 +148,7 @@ export default function DatabaseConnectionForm(props: {
     DatabaseProtocol.POSTGRESQL,
   ]);
   const [dumpsEnabledVisible, setDumpsEnabledVisible] = useState(false);
+  const { categories } = useCategories();
 
   const watchDisplayName = watch("displayName");
   const watchId = watch("id");
@@ -293,6 +296,20 @@ export default function DatabaseConnectionForm(props: {
             error={errors.description?.message}
             data-testid="connection-description"
           />
+          <div className="flex w-full justify-between">
+            <label
+              htmlFor="category"
+              className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
+            >
+              Category
+            </label>
+            <CategoryAutocomplete
+              value={watch("category")}
+              onChange={(val) => setValue("category", val)}
+              availableCategories={categories}
+              placeholder="Optional: dev, staging, prod..."
+            />
+          </div>
           <AuthSection
             register={register}
             errors={errors}

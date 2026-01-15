@@ -6,6 +6,7 @@ import {
   PatchConnectionPayload,
   addConnection,
   deleteConnection,
+  getCategories,
   getConnection,
   getConnections,
   patchConnection,
@@ -169,9 +170,27 @@ const useConnection = (id: string) => {
   };
 };
 
+const useCategories = () => {
+  const [categories, setCategories] = useState<string[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    async function request() {
+      const response = await getCategories();
+      if (!isApiErrorResponse(response)) {
+        setCategories(response);
+      }
+      setLoading(false);
+    }
+    void request();
+  }, []);
+
+  return { categories, loading };
+};
+
 function supportsIamAuth(type: DatabaseType): boolean {
   return [DatabaseType.POSTGRES, DatabaseType.MYSQL].includes(type);
 }
 
 export default useConnections;
-export { useConnection, supportsIamAuth };
+export { useConnection, useCategories, supportsIamAuth };
