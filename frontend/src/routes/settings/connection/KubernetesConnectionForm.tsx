@@ -6,6 +6,7 @@ import Button from "../../../components/Button";
 import { z } from "zod";
 import { useCategories } from "../../../hooks/connections";
 import CategoryAutocomplete from "../../../components/CategoryAutocomplete";
+import { QuestionMarkCircleIcon } from "@heroicons/react/20/solid";
 
 const kubernetesConnectionPayloadSchema = z.object({
   connectionType: z.literal("KUBERNETES").default("KUBERNETES"),
@@ -16,6 +17,7 @@ const kubernetesConnectionPayloadSchema = z.object({
     numTotalRequired: z.coerce.number(),
   }),
   maxExecutions: z.coerce.number().nullable(),
+  storeResults: z.boolean().default(false),
   category: z.string().nullable().optional(),
 });
 
@@ -50,6 +52,7 @@ export default function CreateKubernetesConnectionForm(props: {
   useEffect(() => {
     setValue("reviewConfig", { numTotalRequired: 1 });
     setValue("maxExecutions", 1);
+    setValue("storeResults", false);
     if (props.initialCategory) {
       setValue("category", props.initialCategory);
     }
@@ -117,6 +120,21 @@ export default function CreateKubernetesConnectionForm(props: {
             {...register("maxExecutions")}
             error={errors.maxExecutions?.message}
           />
+          <div className="flex w-full justify-between">
+            <label
+              htmlFor="storeResults"
+              className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+              title="When enabled, stores command output (up to 50KB) in the event history."
+            >
+              Store Command Output
+              <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
+            </label>
+            <input
+              type="checkbox"
+              className="my-auto h-4 w-4"
+              {...register("storeResults")}
+            />
+          </div>
           <Button htmlType="submit" variant="primary">
             Create Connection
           </Button>

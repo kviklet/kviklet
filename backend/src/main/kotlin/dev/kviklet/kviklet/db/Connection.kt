@@ -77,6 +77,7 @@ class ConnectionEntity(
     var dumpsEnabled: Boolean = false,
     var temporaryAccessEnabled: Boolean = true,
     var explainEnabled: Boolean = false,
+    var storeResults: Boolean = false,
     var roleArn: String? = null,
     var maxTemporaryAccessDuration: Long? = null,
     var category: String? = null,
@@ -191,6 +192,7 @@ class ConnectionAdapter(
         dumpsEnabled: Boolean,
         temporaryAccessEnabled: Boolean,
         explainEnabled: Boolean,
+        storeResults: Boolean,
         roleArn: String? = null,
         maxTemporaryAccessDuration: Long? = null,
         category: String? = null,
@@ -216,6 +218,7 @@ class ConnectionAdapter(
                 dumpsEnabled = dumpsEnabled,
                 temporaryAccessEnabled = temporaryAccessEnabled,
                 explainEnabled = explainEnabled,
+                storeResults = storeResults,
                 roleArn = roleArn,
                 maxTemporaryAccessDuration = maxTemporaryAccessDuration,
                 category = category,
@@ -240,6 +243,7 @@ class ConnectionAdapter(
         dumpsEnabled: Boolean,
         temporaryAccessEnabled: Boolean,
         explainEnabled: Boolean,
+        storeResults: Boolean,
         roleArn: String? = null,
         maxTemporaryAccessDuration: Long? = null,
         category: String? = null,
@@ -273,6 +277,7 @@ class ConnectionAdapter(
         datasourceConnection.dumpsEnabled = dumpsEnabled
         datasourceConnection.temporaryAccessEnabled = temporaryAccessEnabled
         datasourceConnection.explainEnabled = explainEnabled
+        datasourceConnection.storeResults = storeResults
         datasourceConnection.roleArn = roleArn
         datasourceConnection.maxTemporaryAccessDuration = maxTemporaryAccessDuration
         datasourceConnection.category = category
@@ -286,6 +291,7 @@ class ConnectionAdapter(
         description: String,
         reviewConfig: ReviewConfig,
         maxExecutions: Int?,
+        storeResults: Boolean,
         category: String? = null,
     ): Connection {
         val datasourceConnection = connectionRepository.findByIdOrNull(id.toString())
@@ -301,6 +307,7 @@ class ConnectionAdapter(
         datasourceConnection.description = description
         datasourceConnection.reviewConfig = reviewConfig
         datasourceConnection.maxExecutions = maxExecutions
+        datasourceConnection.storeResults = storeResults
         datasourceConnection.category = category
 
         return decryptCredentialsIfNeeded(save(datasourceConnection))
@@ -313,6 +320,7 @@ class ConnectionAdapter(
         description: String,
         reviewConfig: ReviewConfig,
         maxExecutions: Int?,
+        storeResults: Boolean,
         category: String? = null,
     ): Connection = decryptCredentialsIfNeeded(
         save(
@@ -324,6 +332,7 @@ class ConnectionAdapter(
                 connectionType = ConnectionType.KUBERNETES,
                 maxExecutions = maxExecutions,
                 temporaryAccessEnabled = true,
+                storeResults = storeResults,
                 category = category,
             ),
         ),
@@ -372,6 +381,7 @@ class ConnectionAdapter(
                 dumpsEnabled = connection.dumpsEnabled,
                 temporaryAccessEnabled = connection.temporaryAccessEnabled,
                 explainEnabled = connection.explainEnabled,
+                storeResults = connection.storeResults,
                 maxTemporaryAccessDuration = connection.maxTemporaryAccessDuration,
                 category = connection.category,
             )
@@ -384,6 +394,7 @@ class ConnectionAdapter(
                 reviewConfig = connection.reviewConfig,
                 maxExecutions = connection.maxExecutions,
                 temporaryAccessEnabled = connection.temporaryAccessEnabled,
+                storeResults = connection.storeResults,
                 category = connection.category,
             )
     }

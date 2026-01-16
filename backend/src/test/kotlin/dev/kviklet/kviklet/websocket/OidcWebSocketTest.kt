@@ -184,6 +184,7 @@ class OidcWebSocketTest {
             dumpsEnabled = false,
             temporaryAccessEnabled = true,
             explainEnabled = false,
+            storeResults = false,
         )
 
         // Create an execution request

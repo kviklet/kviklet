@@ -5,7 +5,11 @@ import {
 } from "../../../../api/DatasourceApi";
 import InputField, { TextField } from "../../../../components/InputField";
 import { Disclosure } from "@headlessui/react";
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  QuestionMarkCircleIcon,
+} from "@heroicons/react/20/solid";
 import Button from "../../../../components/Button";
 import { useConnectionForm } from "./ConnectionEditFormHook";
 import { useCategories } from "../../../../hooks/connections";
@@ -18,6 +22,7 @@ const kubernetesConnectionFormSchema = z.object({
     numTotalRequired: z.coerce.number(),
   }),
   maxExecutions: z.coerce.number().nullable(),
+  storeResults: z.boolean(),
   connectionType: z.literal("KUBERNETES").default("KUBERNETES"),
   category: z.string().nullable().optional(),
 });
@@ -47,6 +52,7 @@ export default function UpdateKubernetesConnectionForm({
         numTotalRequired: connection.reviewConfig.numTotalRequired,
       },
       maxExecutions: connection.maxExecutions,
+      storeResults: connection.storeResults,
       connectionType: "KUBERNETES",
       category: connection.category,
     },
@@ -132,6 +138,21 @@ export default function UpdateKubernetesConnectionForm({
                         {...register("maxExecutions")}
                         error={errors.maxExecutions?.message}
                       />
+                      <div className="flex w-full justify-between">
+                        <label
+                          htmlFor="storeResults"
+                          className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+                          title="When enabled, stores command output (up to 50KB) in the event history."
+                        >
+                          Store Command Output
+                          <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
+                        </label>
+                        <input
+                          type="checkbox"
+                          className="my-auto h-4 w-4"
+                          {...register("storeResults")}
+                        />
+                      </div>
                     </div>
                   </Disclosure.Panel>
                 </>

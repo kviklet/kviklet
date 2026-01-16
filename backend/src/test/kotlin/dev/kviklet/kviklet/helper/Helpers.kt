@@ -194,6 +194,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             dumpsEnabled = false,
             temporaryAccessEnabled = true,
             explainEnabled = false,
+            storeResults = false,
         )
         connectionCount++
         return connection
@@ -225,6 +226,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             dumpsEnabled = false,
             temporaryAccessEnabled = true,
             explainEnabled = explainEnabled,
+            storeResults = false,
         )
         connectionCount++
         return connection
@@ -252,6 +254,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             dumpsEnabled = false,
             temporaryAccessEnabled = true,
             explainEnabled = false,
+            storeResults = false,
         )
         connectionCount++
         return connection
@@ -267,6 +270,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
                 numTotalRequired = 1,
             ),
             1,
+            false,
         )
         connectionCount++
         return connection

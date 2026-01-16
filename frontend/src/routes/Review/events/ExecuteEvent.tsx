@@ -86,11 +86,73 @@ function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
                         const renderResult = () => {
                           if (result.type === "QUERY") {
                             return (
-                              <div className="flex justify-between">
-                                <span>
-                                  Returned {result.columnCount} Column(s) with{" "}
-                                  {result.rowCount} row(s).
-                                </span>
+                              <div>
+                                <div className="flex justify-between">
+                                  <span>
+                                    Returned {result.columnCount} Column(s) with{" "}
+                                    {result.rowCount} row(s).
+                                  </span>
+                                </div>
+                                {result.storedRows &&
+                                  result.storedRows.length > 0 && (
+                                    <Disclosure>
+                                      {({ open }) => (
+                                        <>
+                                          <Disclosure.Button className="mt-1 flex items-center text-xs text-blue-600 hover:underline dark:text-blue-400">
+                                            View stored results (
+                                            {result.storedRowCount} of{" "}
+                                            {result.rowCount} rows)
+                                            {open ? (
+                                              <ChevronDownIcon className="ml-1 h-3 w-3" />
+                                            ) : (
+                                              <ChevronRightIcon className="ml-1 h-3 w-3" />
+                                            )}
+                                          </Disclosure.Button>
+                                          <Disclosure.Panel>
+                                            <div className="mt-2 max-h-96 overflow-auto rounded border border-slate-200 dark:border-slate-700">
+                                              <table className="min-w-full text-xs">
+                                                <thead className="bg-slate-100 dark:bg-slate-800">
+                                                  <tr>
+                                                    {result.columns?.map(
+                                                      (col, i) => (
+                                                        <th
+                                                          key={i}
+                                                          className="px-2 py-1 text-left font-medium text-slate-600 dark:text-slate-300"
+                                                        >
+                                                          {col.label}
+                                                        </th>
+                                                      ),
+                                                    )}
+                                                  </tr>
+                                                </thead>
+                                                <tbody>
+                                                  {result.storedRows?.map(
+                                                    (row, i) => (
+                                                      <tr
+                                                        key={i}
+                                                        className="border-t border-slate-200 dark:border-slate-700"
+                                                      >
+                                                        {result.columns?.map(
+                                                          (col, j) => (
+                                                            <td
+                                                              key={j}
+                                                              className="px-2 py-1 text-slate-700 dark:text-slate-300"
+                                                            >
+                                                              {row[col.label]}
+                                                            </td>
+                                                          ),
+                                                        )}
+                                                      </tr>
+                                                    ),
+                                                  )}
+                                                </tbody>
+                                              </table>
+                                            </div>
+                                          </Disclosure.Panel>
+                                        </>
+                                      )}
+                                    </Disclosure>
+                                  )}
                               </div>
                             );
                           } else if (result.type === "ERROR") {
@@ -111,6 +173,66 @@ function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
                                 </span>
                               </div>
                             );
+                          } else if (result.type === "KUBERNETES_OUTPUT") {
+                            return (
+                              <div>
+                                {result.storedOutput && (
+                                  <Disclosure>
+                                    {({ open }) => (
+                                      <>
+                                        <Disclosure.Button className="flex items-center text-xs text-blue-600 hover:underline dark:text-blue-400">
+                                          View stored output{" "}
+                                          {result.outputTruncated &&
+                                            "(truncated)"}
+                                          {open ? (
+                                            <ChevronDownIcon className="ml-1 h-3 w-3" />
+                                          ) : (
+                                            <ChevronRightIcon className="ml-1 h-3 w-3" />
+                                          )}
+                                        </Disclosure.Button>
+                                        <Disclosure.Panel>
+                                          <pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap rounded bg-slate-100 p-2 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                            {result.storedOutput}
+                                          </pre>
+                                        </Disclosure.Panel>
+                                      </>
+                                    )}
+                                  </Disclosure>
+                                )}
+                                {result.storedErrors && (
+                                  <Disclosure>
+                                    {({ open }) => (
+                                      <>
+                                        <Disclosure.Button className="mt-1 flex items-center text-xs text-red-600 hover:underline dark:text-red-400">
+                                          View errors{" "}
+                                          {result.outputTruncated &&
+                                            "(truncated)"}
+                                          {open ? (
+                                            <ChevronDownIcon className="ml-1 h-3 w-3" />
+                                          ) : (
+                                            <ChevronRightIcon className="ml-1 h-3 w-3" />
+                                          )}
+                                        </Disclosure.Button>
+                                        <Disclosure.Panel>
+                                          <pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap rounded bg-red-50 p-2 text-xs text-red-700 dark:bg-red-900/20 dark:text-red-400">
+                                            {result.storedErrors}
+                                          </pre>
+                                        </Disclosure.Panel>
+                                      </>
+                                    )}
+                                  </Disclosure>
+                                )}
+                                {result.exitCode !== null &&
+                                  result.exitCode !== undefined && (
+                                    <div className="mt-1 text-xs text-slate-500">
+                                      Exit code: {result.exitCode}
+                                    </div>
+                                  )}
+                              </div>
+                            );
+                          } else {
+                            const _exhaustiveCheck: never = result;
+                            return _exhaustiveCheck;
                           }
                         };
                         return <div key={index}>{renderResult()}</div>;

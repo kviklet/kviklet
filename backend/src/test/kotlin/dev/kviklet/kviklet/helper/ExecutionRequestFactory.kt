@@ -195,6 +195,7 @@ class ConnectionFactory : Factory() {
         dumpEnabled: Boolean = false,
         temporaryAccessEnabled: Boolean = false,
         explainEnabled: Boolean = false,
+        storeResults: Boolean = false,
         maxTemporaryAccessDuration: Long? = null,
     ): DatasourceConnection = DatasourceConnection(
         id,
@@ -214,6 +215,7 @@ class ConnectionFactory : Factory() {
         dumpEnabled,
         temporaryAccessEnabled,
         explainEnabled,
+        storeResults,
         maxTemporaryAccessDuration,
     )
 }

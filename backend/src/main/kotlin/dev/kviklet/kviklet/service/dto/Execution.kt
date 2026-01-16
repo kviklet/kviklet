@@ -11,10 +11,18 @@ sealed class QueryResult {
     abstract fun toResultLog(): ResultLog
 }
 
-data class RecordsQueryResult(val columns: List<ColumnInfo>, val data: List<Map<String, String>>) : QueryResult() {
+data class RecordsQueryResult(
+    val columns: List<ColumnInfo>,
+    val data: List<Map<String, String>>,
+    val storedRows: List<Map<String, String>>? = null,
+    val storedRowCount: Int? = null,
+) : QueryResult() {
     override fun toResultLog(): QueryResultLog = QueryResultLog(
         columnCount = columns.size,
         rowCount = data.size,
+        columns = if (storedRows != null) columns else null,
+        storedRows = storedRows,
+        storedRowCount = storedRowCount,
     )
 }
 
@@ -32,10 +40,17 @@ data class ErrorQueryResult(val errorCode: Int, val message: String) : QueryResu
     )
 }
 
-data class MongoRecordsQueryResult(val documents: List<Document>) : QueryResult() {
+data class MongoRecordsQueryResult(
+    val documents: List<Document>,
+    val storedDocuments: List<Map<String, String>>? = null,
+    val storedRowCount: Int? = null,
+) : QueryResult() {
     override fun toResultLog(): QueryResultLog = QueryResultLog(
         columnCount = documents.firstOrNull()?.keys?.size ?: 0,
         rowCount = documents.size,
+        columns = null,
+        storedRows = storedDocuments,
+        storedRowCount = storedRowCount,
     )
 }
 

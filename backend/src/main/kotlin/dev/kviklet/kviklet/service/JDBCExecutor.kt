@@ -48,6 +48,7 @@ class JDBCExecutor {
         authenticationDetails: AuthenticationDetails,
         query: String,
         MSSQLexplain: Boolean = false,
+        maxRowsToStore: Int? = null,
     ): List<QueryResult> {
         createConnection(connectionString, authenticationDetails).use { dataSource: HikariDataSource ->
             try {
@@ -64,7 +65,7 @@ class JDBCExecutor {
 
                     while (hasResults || statement.updateCount != -1) {
                         statement.resultSet?.use { resultSet ->
-                            queryResults.add(createRecordsQueryResult(resultSet))
+                            queryResults.add(createRecordsQueryResult(resultSet, maxRowsToStore))
                         } ?: queryResults.add(UpdateQueryResult(statement.updateCount))
 
                         hasResults = statement.moreResults
@@ -183,7 +184,7 @@ class JDBCExecutor {
         })
     }
 
-    private fun createRecordsQueryResult(resultSet: ResultSet): RecordsQueryResult {
+    private fun createRecordsQueryResult(resultSet: ResultSet, maxRowsToStore: Int? = null): RecordsQueryResult {
         val results: MutableList<Map<String, String>> = mutableListOf()
 
         val metadata = resultSet.metaData
@@ -204,9 +205,20 @@ class JDBCExecutor {
                 )
             },
         )
+
+        val storedRows = if (maxRowsToStore != null) {
+            results.take(maxRowsToStore)
+        } else {
+            null
+        }
+
+        val storedRowCount = storedRows?.size
+
         return RecordsQueryResult(
             columns = columns,
             data = results,
+            storedRows = storedRows,
+            storedRowCount = storedRowCount,
         )
     }
 

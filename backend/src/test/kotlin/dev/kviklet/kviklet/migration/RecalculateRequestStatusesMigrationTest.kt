@@ -493,6 +493,7 @@ class RecalculateRequestStatusesMigrationTest {
             dumpsEnabled = false,
             temporaryAccessEnabled = true,
             explainEnabled = false,
+            storeResults = false,
         )
 
     private fun createExecutionRequest(
