@@ -3,4 +3,4 @@ description: Helm Chart for kviklet
 name: kviklet
 type: application
 version: 0.1.0
-appVersion: 0.5.1
+appVersion: 0.6.0
