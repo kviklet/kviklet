@@ -188,8 +188,10 @@ export default function ConnectionChooser() {
       grouped.get(category)!.push(conn);
     });
 
-    const groups: { category: string | null; connections: ConnectionResponse[] }[] =
-      [];
+    const groups: {
+      category: string | null;
+      connections: ConnectionResponse[];
+    }[] = [];
 
     // Add uncategorized first
     if (grouped.has(null)) {

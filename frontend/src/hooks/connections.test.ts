@@ -213,6 +213,7 @@ describe("useConnections hook", () => {
         explainEnabled: false,
         roleArn: null,
         maxTemporaryAccessDuration: null,
+        category: null,
         _type: "DATASOURCE",
       };
       mockAddConnection.mockResolvedValue(connectionResponse);
