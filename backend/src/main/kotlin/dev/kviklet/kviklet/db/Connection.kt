@@ -79,6 +79,7 @@ class ConnectionEntity(
     var explainEnabled: Boolean = false,
     var roleArn: String? = null,
     var maxTemporaryAccessDuration: Long? = null,
+    var category: String? = null,
 ) {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
@@ -87,7 +88,12 @@ class ConnectionEntity(
         .toString()
 }
 
-interface ConnectionRepository : JpaRepository<ConnectionEntity, String>
+interface ConnectionRepository : JpaRepository<ConnectionEntity, String> {
+    @org.springframework.data.jpa.repository.Query(
+        "SELECT DISTINCT c.category FROM connection c WHERE c.category IS NOT NULL ORDER BY c.category",
+    )
+    fun findDistinctCategories(): List<String>
+}
 
 @Service
 class ConnectionAdapter(
@@ -187,6 +193,7 @@ class ConnectionAdapter(
         explainEnabled: Boolean,
         roleArn: String? = null,
         maxTemporaryAccessDuration: Long? = null,
+        category: String? = null,
     ): Connection = decryptCredentialsIfNeeded(
         save(
             ConnectionEntity(
@@ -211,6 +218,7 @@ class ConnectionAdapter(
                 explainEnabled = explainEnabled,
                 roleArn = roleArn,
                 maxTemporaryAccessDuration = maxTemporaryAccessDuration,
+                category = category,
             ),
         ),
     )
@@ -234,6 +242,7 @@ class ConnectionAdapter(
         explainEnabled: Boolean,
         roleArn: String? = null,
         maxTemporaryAccessDuration: Long? = null,
+        category: String? = null,
     ): Connection {
         val datasourceConnection = connectionRepository.findByIdOrNull(id.toString())
             ?: throw EntityNotFound(
@@ -266,6 +275,7 @@ class ConnectionAdapter(
         datasourceConnection.explainEnabled = explainEnabled
         datasourceConnection.roleArn = roleArn
         datasourceConnection.maxTemporaryAccessDuration = maxTemporaryAccessDuration
+        datasourceConnection.category = category
 
         return decryptCredentialsIfNeeded(save(datasourceConnection))
     }
@@ -276,6 +286,7 @@ class ConnectionAdapter(
         description: String,
         reviewConfig: ReviewConfig,
         maxExecutions: Int?,
+        category: String? = null,
     ): Connection {
         val datasourceConnection = connectionRepository.findByIdOrNull(id.toString())
             ?: throw EntityNotFound(
@@ -290,6 +301,7 @@ class ConnectionAdapter(
         datasourceConnection.description = description
         datasourceConnection.reviewConfig = reviewConfig
         datasourceConnection.maxExecutions = maxExecutions
+        datasourceConnection.category = category
 
         return decryptCredentialsIfNeeded(save(datasourceConnection))
     }
@@ -301,6 +313,7 @@ class ConnectionAdapter(
         description: String,
         reviewConfig: ReviewConfig,
         maxExecutions: Int?,
+        category: String? = null,
     ): Connection = decryptCredentialsIfNeeded(
         save(
             ConnectionEntity(
@@ -311,6 +324,7 @@ class ConnectionAdapter(
                 connectionType = ConnectionType.KUBERNETES,
                 maxExecutions = maxExecutions,
                 temporaryAccessEnabled = true,
+                category = category,
             ),
         ),
     )
@@ -320,6 +334,8 @@ class ConnectionAdapter(
     }
 
     fun listConnections(): List<Connection> = connectionRepository.findAll().map { decryptCredentialsIfNeeded(it) }
+
+    fun listCategories(): List<String> = connectionRepository.findDistinctCategories()
 
     fun deleteAll() {
         connectionRepository.deleteAll()
@@ -357,6 +373,7 @@ class ConnectionAdapter(
                 temporaryAccessEnabled = connection.temporaryAccessEnabled,
                 explainEnabled = connection.explainEnabled,
                 maxTemporaryAccessDuration = connection.maxTemporaryAccessDuration,
+                category = connection.category,
             )
 
         ConnectionType.KUBERNETES ->
@@ -367,6 +384,7 @@ class ConnectionAdapter(
                 reviewConfig = connection.reviewConfig,
                 maxExecutions = connection.maxExecutions,
                 temporaryAccessEnabled = connection.temporaryAccessEnabled,
+                category = connection.category,
             )
     }
 }

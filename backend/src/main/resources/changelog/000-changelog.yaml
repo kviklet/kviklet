@@ -104,3 +104,6 @@ databaseChangeLog:
   - include:
       file: 036-add-role-sync-config.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 037-add-category-column.yaml
+      relativeToChangelogFile: true

@@ -26,7 +26,8 @@ import {
   UseFormSetValue,
   UseFormWatch,
 } from "react-hook-form";
-import { supportsIamAuth } from "../../../../hooks/connections";
+import { supportsIamAuth, useCategories } from "../../../../hooks/connections";
+import CategoryAutocomplete from "../../../../components/CategoryAutocomplete";
 
 const baseConnectionFormSchema = z.object({
   displayName: z.string().min(3),
@@ -46,6 +47,7 @@ const baseConnectionFormSchema = z.object({
   explainEnabled: z.boolean(),
   maxTemporaryAccessDuration: z.coerce.number().nullable().optional(),
   connectionType: z.literal("DATASOURCE").default("DATASOURCE"),
+  category: z.string().nullable().optional(),
 });
 
 const connectionFormSchema = z.discriminatedUnion("authenticationType", [
@@ -108,6 +110,7 @@ export default function UpdateDatasourceConnectionForm({
   const [protocolOptions, setProtocolOptions] = useState<DatabaseProtocol[]>(
     getProtocolOptions(connection.type),
   );
+  const { categories } = useCategories();
 
   const {
     register,
@@ -138,6 +141,7 @@ export default function UpdateDatasourceConnectionForm({
       explainEnabled: connection.explainEnabled,
       maxTemporaryAccessDuration: connection.maxTemporaryAccessDuration,
       roleArn: connection.roleArn,
+      category: connection.category,
     },
     schema: connectionFormSchema,
     onSubmit: editConnection,
@@ -223,6 +227,22 @@ export default function UpdateDatasourceConnectionForm({
             {...register("description")}
             error={errors.description?.message}
           />
+          <div className="flex w-full justify-between">
+            <label
+              htmlFor="category"
+              className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
+            >
+              Category
+            </label>
+            <CategoryAutocomplete
+              value={watch("category")}
+              onChange={(val) =>
+                setValue("category", val, { shouldDirty: true })
+              }
+              availableCategories={categories}
+              placeholder="Optional: dev, staging, prod..."
+            />
+          </div>
           <AuthSection
             register={register}
             errors={errors}

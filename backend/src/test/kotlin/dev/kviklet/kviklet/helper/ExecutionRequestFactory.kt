@@ -202,6 +202,7 @@ class ConnectionFactory : Factory() {
         description,
         reviewConfig,
         maxExecutions,
+        category = null,
         databaseName,
         authenticationType,
         AuthenticationDetails.UserPassword(username, password),

@@ -92,6 +92,7 @@ class MaxTemporaryAccessDurationTest {
             explainEnabled = false,
             roleArn = null,
             maxTemporaryAccessDuration = 120L, // 2 hours max
+            category = null,
         )
 
         assertEquals(
@@ -327,6 +328,7 @@ class MaxTemporaryAccessDurationTest {
             explainEnabled = false,
             roleArn = null,
             maxTemporaryAccessDuration = maxDuration,
+            category = null,
         )
     }
 

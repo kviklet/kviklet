@@ -8,6 +8,8 @@ import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import Button from "../../../../components/Button";
 import { useConnectionForm } from "./ConnectionEditFormHook";
+import { useCategories } from "../../../../hooks/connections";
+import CategoryAutocomplete from "../../../../components/CategoryAutocomplete";
 
 const kubernetesConnectionFormSchema = z.object({
   displayName: z.string().min(3),
@@ -17,6 +19,7 @@ const kubernetesConnectionFormSchema = z.object({
   }),
   maxExecutions: z.coerce.number().nullable(),
   connectionType: z.literal("KUBERNETES").default("KUBERNETES"),
+  category: z.string().nullable().optional(),
 });
 
 interface UpdateFormProps {
@@ -28,9 +31,13 @@ export default function UpdateKubernetesConnectionForm({
   connection,
   editConnection,
 }: UpdateFormProps) {
+  const { categories } = useCategories();
+
   const {
     register,
     formState: { errors, isDirty },
+    watch,
+    setValue,
     handleFormSubmit,
   } = useConnectionForm({
     initialValues: {
@@ -41,6 +48,7 @@ export default function UpdateKubernetesConnectionForm({
       },
       maxExecutions: connection.maxExecutions,
       connectionType: "KUBERNETES",
+      category: connection.category,
     },
     schema: kubernetesConnectionFormSchema,
     onSubmit: editConnection,
@@ -70,6 +78,22 @@ export default function UpdateKubernetesConnectionForm({
             {...register("description")}
             error={errors.description?.message}
           />
+          <div className="flex w-full justify-between">
+            <label
+              htmlFor="category"
+              className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
+            >
+              Category
+            </label>
+            <CategoryAutocomplete
+              value={watch("category")}
+              onChange={(val) =>
+                setValue("category", val, { shouldDirty: true })
+              }
+              availableCategories={categories}
+              placeholder="Optional: dev, staging, prod..."
+            />
+          </div>
           <InputField
             label="Required reviews"
             id="numTotalRequired"
