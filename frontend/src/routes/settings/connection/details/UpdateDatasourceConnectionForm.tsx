@@ -236,7 +236,9 @@ export default function UpdateDatasourceConnectionForm({
             </label>
             <CategoryAutocomplete
               value={watch("category")}
-              onChange={(val) => setValue("category", val)}
+              onChange={(val) =>
+                setValue("category", val, { shouldDirty: true })
+              }
               availableCategories={categories}
               placeholder="Optional: dev, staging, prod..."
             />

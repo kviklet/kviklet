@@ -6,7 +6,7 @@ import {
   ComboboxOptions,
 } from "@headlessui/react";
 import { ChevronUpDownIcon, XMarkIcon } from "@heroicons/react/20/solid";
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, KeyboardEvent, useState } from "react";
 
 interface CategoryAutocompleteProps {
   value: string | null | undefined;
@@ -34,13 +34,6 @@ export default function CategoryAutocomplete({
           category.toLowerCase().includes(query.toLowerCase()),
         );
 
-  // Show query as option if it doesn't exactly match any existing category
-  const showCustomOption =
-    query !== "" &&
-    !availableCategories.some(
-      (cat) => cat.toLowerCase() === query.toLowerCase(),
-    );
-
   const handleSelect = (selected: string | null) => {
     onChange(selected);
     setQuery("");
@@ -49,6 +42,16 @@ export default function CategoryAutocomplete({
   const handleClear = () => {
     onChange(null);
     setQuery("");
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Tab" && query !== "") {
+      // On Tab, autofill first matching category if one exists
+      if (filteredCategories.length > 0) {
+        event.preventDefault();
+        handleSelect(filteredCategories[0]);
+      }
+    }
   };
 
   return (
@@ -64,6 +67,7 @@ export default function CategoryAutocomplete({
             onChange={(event: ChangeEvent<HTMLInputElement>) =>
               setQuery(event.target.value)
             }
+            onKeyDown={handleKeyDown}
             placeholder={placeholder}
           />
           <div className="absolute inset-y-0 right-0 flex items-center">
@@ -102,24 +106,9 @@ export default function CategoryAutocomplete({
               {category}
             </ComboboxOption>
           ))}
-          {showCustomOption && (
-            <ComboboxOption
-              value={query}
-              className={({ focus }) =>
-                classNames(
-                  "relative cursor-default select-none py-2 pl-3 pr-9",
-                  focus
-                    ? "bg-indigo-600 text-slate-50"
-                    : "text-slate-900 dark:text-slate-50",
-                )
-              }
-            >
-              Create "{query}"
-            </ComboboxOption>
-          )}
-          {filteredCategories.length === 0 && !showCustomOption && (
+          {filteredCategories.length === 0 && (
             <div className="relative cursor-default select-none px-3 py-2 text-slate-500">
-              No categories found. Start typing to create one.
+              No matching categories.
             </div>
           )}
         </ComboboxOptions>

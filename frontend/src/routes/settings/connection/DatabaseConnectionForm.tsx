@@ -113,6 +113,7 @@ export default function DatabaseConnectionForm(props: {
     payload: ConnectionPayload,
   ) => Promise<ApiResponse<TestConnectionResponse>>;
   closeModal: () => void;
+  initialCategory?: string | null;
 }) {
   const getProtocolOptions = (type: DatabaseType) => {
     if (type === DatabaseType.POSTGRES) {
@@ -178,6 +179,9 @@ export default function DatabaseConnectionForm(props: {
     setValue("dumpsEnabled", false);
     setValue("temporaryAccessEnabled", true);
     setValue("explainEnabled", false);
+    if (props.initialCategory) {
+      setValue("category", props.initialCategory);
+    }
   }, []);
 
   const updatePortIfNotTouched = (port: number) => {

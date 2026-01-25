@@ -27,6 +27,7 @@ export default function CreateKubernetesConnectionForm(props: {
   handleCreateConnection: (
     connection: KubernetesConnectionPayload,
   ) => Promise<void>;
+  initialCategory?: string | null;
 }) {
   const {
     register,
@@ -49,6 +50,9 @@ export default function CreateKubernetesConnectionForm(props: {
   useEffect(() => {
     setValue("reviewConfig", { numTotalRequired: 1 });
     setValue("maxExecutions", 1);
+    if (props.initialCategory) {
+      setValue("category", props.initialCategory);
+    }
   }, []);
 
   const onSubmit = async (data: KubernetesConnectionPayload) => {
