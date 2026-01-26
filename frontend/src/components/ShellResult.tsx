@@ -24,7 +24,8 @@ export default function ShellResult({
             </div>
             <div className="ml-3 text-sm text-yellow-700 dark:text-yellow-400">
               <p>
-                Command is still running on server and will beterminated after 5 minutes. Output below is partial.
+                Command is still running on server and will beterminated after 5
+                minutes. Output below is partial.
               </p>
             </div>
           </div>

@@ -205,6 +205,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
         container: JdbcDatabaseContainer<*>,
         explainEnabled: Boolean = true,
         maxExecutions: Int = 1,
+        storeResults: Boolean = false,
     ): Connection {
         val connection = connectionAdapter.createDatasourceConnection(
             ConnectionId("ds-conn-test-$connectionCount"),
@@ -226,7 +227,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             dumpsEnabled = false,
             temporaryAccessEnabled = true,
             explainEnabled = explainEnabled,
-            storeResults = false,
+            storeResults = storeResults,
         )
         connectionCount++
         return connection
