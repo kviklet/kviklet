@@ -16,3 +16,6 @@ server:
 app:
   name: "Kviklet"
   in-docker: true
+  version: "dev"
+  build-date: "unknown"
+  git-commit: "unknown"
