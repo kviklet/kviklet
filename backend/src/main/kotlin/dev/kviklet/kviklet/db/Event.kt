@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
 import dev.kviklet.kviklet.db.util.BaseEntity
 import dev.kviklet.kviklet.db.util.EventPayloadConverter
+import dev.kviklet.kviklet.service.ColumnInfo
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventId
@@ -73,6 +74,8 @@ data class ExecutePayload(
     JsonSubTypes.Type(value = ErrorResultLogPayload::class, name = "ERROR"),
     JsonSubTypes.Type(value = UpdateResultLogPayload::class, name = "UPDATE"),
     JsonSubTypes.Type(value = QueryResultLogPayload::class, name = "QUERY"),
+    JsonSubTypes.Type(value = DumpResultLogPayload::class, name = "DUMP"),
+    JsonSubTypes.Type(value = KubernetesOutputResultLogPayload::class, name = "KUBERNETES_OUTPUT"),
 )
 sealed class ResultLogPayload(val type: ResultType)
 
@@ -80,9 +83,23 @@ data class ErrorResultLogPayload(val errorCode: Int, val message: String) : Resu
 
 data class UpdateResultLogPayload(val rowsUpdated: Int) : ResultLogPayload(ResultType.UPDATE)
 
-data class QueryResultLogPayload(val columnCount: Int, val rowCount: Int) : ResultLogPayload(ResultType.QUERY)
+data class QueryResultLogPayload(
+    val columnCount: Int,
+    val rowCount: Int,
+    val columns: List<ColumnInfo>? = null,
+    val storedRows: List<Map<String, String>>? = null,
+    val storedRowCount: Int? = null,
+) : ResultLogPayload(ResultType.QUERY)
 
 data class DumpResultLogPayload(val size: Long) : ResultLogPayload(ResultType.DUMP)
+
+@JsonTypeName("KUBERNETES_OUTPUT")
+data class KubernetesOutputResultLogPayload(
+    val exitCode: Int?,
+    val storedOutput: String? = null,
+    val storedErrors: String? = null,
+    val outputTruncated: Boolean = false,
+) : ResultLogPayload(ResultType.KUBERNETES_OUTPUT)
 
 @Entity(name = "event")
 class EventEntity(

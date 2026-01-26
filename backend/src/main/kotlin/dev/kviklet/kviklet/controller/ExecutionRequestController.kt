@@ -24,6 +24,7 @@ import dev.kviklet.kviklet.service.dto.ExecutionResult
 import dev.kviklet.kviklet.service.dto.ExecutionStatus
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
+import dev.kviklet.kviklet.service.dto.KubernetesOutputResultLog
 import dev.kviklet.kviklet.service.dto.MongoRecordsQueryResult
 import dev.kviklet.kviklet.service.dto.QueryResult
 import dev.kviklet.kviklet.service.dto.QueryResultLog
@@ -497,6 +498,7 @@ data class ExecuteEventResponse(
     JsonSubTypes.Type(value = ErrorResultLogResponse::class, name = "ERROR"),
     JsonSubTypes.Type(value = UpdateResultLogResponse::class, name = "UPDATE"),
     JsonSubTypes.Type(value = QueryResultLogResponse::class, name = "QUERY"),
+    JsonSubTypes.Type(value = KubernetesOutputResultLogResponse::class, name = "KUBERNETES_OUTPUT"),
 )
 abstract class ResultLogResponse(val type: ResultType) {
     companion object {
@@ -513,10 +515,20 @@ abstract class ResultLogResponse(val type: ResultType) {
             is QueryResultLog -> QueryResultLogResponse(
                 columnCount = dto.columnCount,
                 rowCount = dto.rowCount,
+                columns = dto.columns,
+                storedRows = dto.storedRows,
+                storedRowCount = dto.storedRowCount,
             )
 
             is DumpResultLog -> DumpResultLogResponse(
                 size = dto.size,
+            )
+
+            is KubernetesOutputResultLog -> KubernetesOutputResultLogResponse(
+                exitCode = dto.exitCode,
+                storedOutput = dto.storedOutput,
+                storedErrors = dto.storedErrors,
+                outputTruncated = dto.outputTruncated,
             )
         }
     }
@@ -526,9 +538,22 @@ data class ErrorResultLogResponse(val errorCode: Int, val message: String) : Res
 
 data class UpdateResultLogResponse(val rowsUpdated: Int) : ResultLogResponse(ResultType.UPDATE)
 
-data class QueryResultLogResponse(val columnCount: Int, val rowCount: Int) : ResultLogResponse(ResultType.QUERY)
+data class QueryResultLogResponse(
+    val columnCount: Int,
+    val rowCount: Int,
+    val columns: List<ColumnInfo>? = null,
+    val storedRows: List<Map<String, String>>? = null,
+    val storedRowCount: Int? = null,
+) : ResultLogResponse(ResultType.QUERY)
 
 data class DumpResultLogResponse(val size: Long) : ResultLogResponse(ResultType.DUMP)
+
+data class KubernetesOutputResultLogResponse(
+    val exitCode: Int?,
+    val storedOutput: String? = null,
+    val storedErrors: String? = null,
+    val outputTruncated: Boolean = false,
+) : ResultLogResponse(ResultType.KUBERNETES_OUTPUT)
 
 data class ProxyResponse(val port: Int, val username: String, val password: String)
 

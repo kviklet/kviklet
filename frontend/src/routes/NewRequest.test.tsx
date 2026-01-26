@@ -25,6 +25,7 @@ const mockConnections = [
     temporaryAccessEnabled: true,
     explainEnabled: true,
     roleArn: null,
+    storeResults: false,
     category: null,
   },
   {
@@ -46,6 +47,7 @@ const mockConnections = [
     temporaryAccessEnabled: true,
     explainEnabled: false,
     roleArn: null,
+    storeResults: false,
     category: null,
   },
 ];
@@ -237,6 +239,7 @@ describe("NewRequest - Form submission", () => {
               explainEnabled: false,
               roleArn: null,
               maxTemporaryAccessDuration: null,
+              storeResults: false,
               category: null,
             },
           ],

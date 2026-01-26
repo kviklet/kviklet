@@ -54,6 +54,8 @@ data class CreateKubernetesConnectionRequest(
 
     val maxExecutions: Int? = null,
 
+    val storeResults: Boolean = false,
+
     val category: String? = null,
 ) : ConnectionRequest()
 
@@ -93,6 +95,7 @@ data class CreateDatasourceConnectionRequest(
     val authenticationType: AuthenticationType = AuthenticationType.USER_PASSWORD,
     val temporaryAccessEnabled: Boolean = true,
     val explainEnabled: Boolean = false,
+    val storeResults: Boolean = false,
     val roleArn: String? = null,
     @field:Min(1)
     val maxTemporaryAccessDuration: Long? = null,
@@ -148,6 +151,8 @@ data class UpdateDatasourceConnectionRequest(
 
     val explainEnabled: Boolean? = null,
 
+    val storeResults: Boolean? = null,
+
     @field:Min(1)
     val maxTemporaryAccessDuration: Long? = null,
 
@@ -168,6 +173,8 @@ data class UpdateKubernetesConnectionRequest(
     val reviewConfig: ReviewConfigRequest? = null,
 
     val maxExecutions: Int? = null,
+
+    val storeResults: Boolean? = null,
 
     val category: String? = null,
 ) : UpdateConnectionRequest()
@@ -207,6 +214,7 @@ data class DatasourceConnectionResponse(
     val dumpsEnabled: Boolean,
     val temporaryAccessEnabled: Boolean,
     val explainEnabled: Boolean,
+    val storeResults: Boolean,
     val roleArn: String?,
     val maxTemporaryAccessDuration: Long?,
     val category: String?,
@@ -231,6 +239,7 @@ data class DatasourceConnectionResponse(
             dumpsEnabled = datasourceConnection.dumpsEnabled,
             temporaryAccessEnabled = datasourceConnection.temporaryAccessEnabled,
             explainEnabled = datasourceConnection.explainEnabled,
+            storeResults = datasourceConnection.storeResults,
             roleArn = when (datasourceConnection.auth) {
                 is AuthenticationDetails.AwsIam -> datasourceConnection.auth.roleArn
                 else -> null
@@ -248,6 +257,7 @@ data class KubernetesConnectionResponse(
     val reviewConfig: ReviewConfigResponse,
     val maxExecutions: Int?,
     val temporaryAccessEnabled: Boolean,
+    val storeResults: Boolean,
     val category: String?,
 ) : ConnectionResponse(connectionType = ConnectionType.KUBERNETES) {
     companion object {
@@ -260,6 +270,7 @@ data class KubernetesConnectionResponse(
             ),
             maxExecutions = kubernetesConnection.maxExecutions,
             temporaryAccessEnabled = kubernetesConnection.temporaryAccessEnabled,
+            storeResults = kubernetesConnection.storeResults,
             category = kubernetesConnection.category,
         )
     }
@@ -311,6 +322,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             dumpsEnabled = request.dumpsEnabled,
             temporaryAccessEnabled = request.temporaryAccessEnabled,
             explainEnabled = request.explainEnabled,
+            storeResults = request.storeResults,
             roleArn = request.roleArn,
             maxTemporaryAccessDuration = request.maxTemporaryAccessDuration,
             category = request.category,
@@ -335,6 +347,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             authenticationType = request.authenticationType,
             temporaryAccessEnabled = request.temporaryAccessEnabled,
             explainEnabled = request.explainEnabled,
+            storeResults = request.storeResults,
             roleArn = request.roleArn,
             maxTemporaryAccessDuration = request.maxTemporaryAccessDuration,
         )
@@ -346,6 +359,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             description = request.description,
             reviewsRequired = request.reviewConfig.numTotalRequired,
             maxExecutions = request.maxExecutions,
+            storeResults = request.storeResults,
             category = request.category,
         )
 

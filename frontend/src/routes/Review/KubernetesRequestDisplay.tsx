@@ -34,7 +34,7 @@ function KubernetesRequestDisplay({
         startServer={start}
         updateRequest={updateRequest}
       ></KubernetesRequestBox>
-      <div className="flex justify-center">
+      <div className="mt-4 flex justify-center">
         {(dataLoading && <Spinner></Spinner>) ||
           (results && <ShellResult {...results}></ShellResult>)}
       </div>

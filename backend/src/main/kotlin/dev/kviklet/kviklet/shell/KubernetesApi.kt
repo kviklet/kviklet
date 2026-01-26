@@ -46,13 +46,13 @@ class KubernetesApi(private val coreV1Api: CoreV1Api) {
         val completed = process.waitFor(5, TimeUnit.SECONDS)
         var lineCount = 0
 
-        while (inputReader.ready() && lineCount < 10) {
+        while (inputReader.ready() && lineCount < 100) {
             outputLines.add(inputReader.readLine())
             lineCount++
         }
 
         lineCount = 0
-        while (errorReader.ready() && lineCount < 10) {
+        while (errorReader.ready() && lineCount < 100) {
             errorLines.add(errorReader.readLine())
             lineCount++
         }

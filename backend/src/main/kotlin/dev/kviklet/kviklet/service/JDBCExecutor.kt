@@ -33,6 +33,12 @@ data class ColumnInfo(
     val typeClass: String,
 )
 
+data class StreamingQueryResult(
+    val columns: List<ColumnInfo>,
+    val rowCount: Int,
+    val storedRows: List<Map<String, String>> = emptyList(),
+)
+
 @Service
 class JDBCExecutor {
 
@@ -48,6 +54,7 @@ class JDBCExecutor {
         authenticationDetails: AuthenticationDetails,
         query: String,
         MSSQLexplain: Boolean = false,
+        maxRowsToStore: Int? = null,
     ): List<QueryResult> {
         createConnection(connectionString, authenticationDetails).use { dataSource: HikariDataSource ->
             try {
@@ -64,7 +71,7 @@ class JDBCExecutor {
 
                     while (hasResults || statement.updateCount != -1) {
                         statement.resultSet?.use { resultSet ->
-                            queryResults.add(createRecordsQueryResult(resultSet))
+                            queryResults.add(createRecordsQueryResult(resultSet, maxRowsToStore))
                         } ?: queryResults.add(UpdateQueryResult(statement.updateCount))
 
                         hasResults = statement.moreResults
@@ -146,15 +153,16 @@ class JDBCExecutor {
         connectionString: String,
         authenticationDetails: AuthenticationDetails,
         query: String,
+        maxRowsToStore: Int = 0,
         callback: (List<String>) -> Unit,
-    ) {
+    ): StreamingQueryResult {
         createConnection(connectionString, authenticationDetails).use { dataSource: HikariDataSource ->
             try {
                 dataSource.connection.createStatement().use { statement ->
                     val hasResults = statement.execute(query)
                     if (hasResults) {
                         statement.resultSet?.use { resultSet ->
-                            streamResultSet(resultSet, callback)
+                            return streamResultSet(resultSet, maxRowsToStore, callback)
                         } ?: throw IllegalStateException("Can't stream a non-Select statement")
                     } else {
                         throw IllegalStateException("Can't stream a non-Select statement")
@@ -166,7 +174,11 @@ class JDBCExecutor {
         }
     }
 
-    private fun streamResultSet(resultSet: ResultSet, callback: (List<String>) -> Unit) {
+    private fun streamResultSet(
+        resultSet: ResultSet,
+        maxRowsToStore: Int,
+        callback: (List<String>) -> Unit,
+    ): StreamingQueryResult {
         val metadata = resultSet.metaData
         val columns = (1..metadata.columnCount).map { i ->
             ColumnInfo(
@@ -178,12 +190,27 @@ class JDBCExecutor {
 
         callback(columns.map { it.label })
 
+        val storedRows = mutableListOf<Map<String, String>>()
+        var rowCount = 0
+
         iterateResultSet(resultSet, columns, forEachRow = { resultMap ->
             callback(columns.map { resultMap[it.label] ?: "" })
+
+            // Only store first N rows for result storage
+            if (storedRows.size < maxRowsToStore) {
+                storedRows.add(resultMap)
+            }
+            rowCount++
         })
+
+        return StreamingQueryResult(
+            columns = columns,
+            rowCount = rowCount,
+            storedRows = storedRows,
+        )
     }
 
-    private fun createRecordsQueryResult(resultSet: ResultSet): RecordsQueryResult {
+    private fun createRecordsQueryResult(resultSet: ResultSet, maxRowsToStore: Int? = null): RecordsQueryResult {
         val results: MutableList<Map<String, String>> = mutableListOf()
 
         val metadata = resultSet.metaData
@@ -204,9 +231,20 @@ class JDBCExecutor {
                 )
             },
         )
+
+        val storedRows = if (maxRowsToStore != null) {
+            results.take(maxRowsToStore)
+        } else {
+            null
+        }
+
+        val storedRowCount = storedRows?.size
+
         return RecordsQueryResult(
             columns = columns,
             data = results,
+            storedRows = storedRows,
+            storedRowCount = storedRowCount,
         )
     }
 

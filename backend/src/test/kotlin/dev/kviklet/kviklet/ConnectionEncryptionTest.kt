@@ -76,6 +76,7 @@ class ConnectionEncryptionTest(
         dumpsEnabled = false,
         temporaryAccessEnabled = true,
         explainEnabled = false,
+        storeResults = false,
     ) as DatasourceConnection
 
     @Test
@@ -187,6 +188,7 @@ class ConnectionEncryptionTest(
             dumpsEnabled = false,
             temporaryAccessEnabled = true,
             explainEnabled = false,
+            storeResults = false,
         )
 
         val updatedStoredConnection = connectionRepository.findById(connection.id.toString()).get()
@@ -258,6 +260,7 @@ class ConnectionEncryptionTest(
             description = "Test Kubernetes description",
             reviewConfig = ReviewConfig(numTotalRequired = 2),
             maxExecutions = 10,
+            storeResults = false,
         )
 
         kubernetesConnection.id shouldBe connectionId

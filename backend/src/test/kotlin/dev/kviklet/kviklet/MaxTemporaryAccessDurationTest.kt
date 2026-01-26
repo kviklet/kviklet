@@ -90,6 +90,7 @@ class MaxTemporaryAccessDurationTest {
             dumpsEnabled = false,
             temporaryAccessEnabled = true,
             explainEnabled = false,
+            storeResults = false,
             roleArn = null,
             maxTemporaryAccessDuration = 120L, // 2 hours max
             category = null,
@@ -326,6 +327,7 @@ class MaxTemporaryAccessDurationTest {
             dumpsEnabled = false,
             temporaryAccessEnabled = true,
             explainEnabled = false,
+            storeResults = false,
             roleArn = null,
             maxTemporaryAccessDuration = maxDuration,
             category = null,

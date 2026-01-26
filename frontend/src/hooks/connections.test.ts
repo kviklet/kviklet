@@ -69,6 +69,7 @@ describe("useConnections hook", () => {
         temporaryAccessEnabled: true,
         explainEnabled: false,
         maxExecutions: null,
+        storeResults: false,
       };
 
       await act(async () => {
@@ -111,6 +112,7 @@ describe("useConnections hook", () => {
         temporaryAccessEnabled: true,
         explainEnabled: false,
         maxExecutions: null,
+        storeResults: false,
       };
 
       await act(async () => {
@@ -153,6 +155,7 @@ describe("useConnections hook", () => {
         temporaryAccessEnabled: true,
         explainEnabled: false,
         maxExecutions: null,
+        storeResults: false,
       };
 
       await act(async () => {
@@ -182,6 +185,7 @@ describe("useConnections hook", () => {
         description: "",
         reviewConfig: { numTotalRequired: 1 },
         maxExecutions: null,
+        storeResults: false,
       };
 
       await act(async () => {
@@ -213,6 +217,7 @@ describe("useConnections hook", () => {
         explainEnabled: false,
         roleArn: null,
         maxTemporaryAccessDuration: null,
+        storeResults: false,
         category: null,
         _type: "DATASOURCE",
       };
@@ -240,6 +245,7 @@ describe("useConnections hook", () => {
         temporaryAccessEnabled: true,
         explainEnabled: false,
         maxExecutions: null,
+        storeResults: false,
       };
 
       await act(async () => {

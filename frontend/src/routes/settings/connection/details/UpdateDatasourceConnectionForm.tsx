@@ -46,6 +46,7 @@ const baseConnectionFormSchema = z.object({
   temporaryAccessEnabled: z.boolean(),
   explainEnabled: z.boolean(),
   maxTemporaryAccessDuration: z.coerce.number().nullable().optional(),
+  storeResults: z.boolean(),
   connectionType: z.literal("DATASOURCE").default("DATASOURCE"),
   category: z.string().nullable().optional(),
 });
@@ -141,6 +142,7 @@ export default function UpdateDatasourceConnectionForm({
       explainEnabled: connection.explainEnabled,
       maxTemporaryAccessDuration: connection.maxTemporaryAccessDuration,
       roleArn: connection.roleArn,
+      storeResults: connection.storeResults,
       category: connection.category,
     },
     schema: connectionFormSchema,
@@ -369,6 +371,21 @@ export default function UpdateDatasourceConnectionForm({
                           type="checkbox"
                           className="my-auto h-4 w-4"
                           {...register("explainEnabled")}
+                        />
+                      </div>
+                      <div className="flex w-full justify-between">
+                        <label
+                          htmlFor="storeResults"
+                          className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+                          title="When enabled, the first 500 rows of query results will be stored in the event history."
+                        >
+                          Store Query Results
+                          <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
+                        </label>
+                        <input
+                          type="checkbox"
+                          className="my-auto h-4 w-4"
+                          {...register("storeResults")}
                         />
                       </div>
                     </div>

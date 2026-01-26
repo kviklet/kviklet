@@ -78,6 +78,7 @@ class ConnectionService(
             dumpsEnabled = request.dumpsEnabled ?: connection.dumpsEnabled,
             temporaryAccessEnabled = request.temporaryAccessEnabled ?: connection.temporaryAccessEnabled,
             explainEnabled = request.explainEnabled ?: connection.explainEnabled,
+            storeResults = request.storeResults ?: connection.storeResults,
             roleArn = request.roleArn,
             maxTemporaryAccessDuration = if (request.clearMaxTempDuration) {
                 null
@@ -155,6 +156,7 @@ class ConnectionService(
             request.description ?: connection.description,
             newReviewConfig,
             newMaxExecutions,
+            request.storeResults ?: connection.storeResults,
             category = request.category ?: connection.category,
         )
 
@@ -202,6 +204,7 @@ class ConnectionService(
         dumpsEnabled: Boolean,
         temporaryAccessEnabled: Boolean,
         explainEnabled: Boolean,
+        storeResults: Boolean,
         roleArn: String?,
         maxTemporaryAccessDuration: Long?,
         category: String?,
@@ -229,6 +232,7 @@ class ConnectionService(
             dumpsEnabled,
             temporaryAccessEnabled,
             explainEnabled,
+            storeResults,
             roleArn,
             maxTemporaryAccessDuration,
             category,
@@ -254,6 +258,7 @@ class ConnectionService(
         authenticationType: AuthenticationType,
         temporaryAccessEnabled: Boolean,
         explainEnabled: Boolean,
+        storeResults: Boolean,
         roleArn: String?,
         maxTemporaryAccessDuration: Long? = null,
     ): TestConnectionResult {
@@ -278,6 +283,7 @@ class ConnectionService(
             dumpsEnabled,
             temporaryAccessEnabled,
             explainEnabled,
+            storeResults,
             maxTemporaryAccessDuration,
         )
         val accessibleDatabases = mutableListOf<String>()
@@ -319,6 +325,7 @@ class ConnectionService(
         description: String,
         reviewsRequired: Int,
         maxExecutions: Int?,
+        storeResults: Boolean,
         category: String?,
     ): Connection = connectionAdapter.createKubernetesConnection(
         connectionId,
@@ -328,6 +335,7 @@ class ConnectionService(
             numTotalRequired = reviewsRequired,
         ),
         maxExecutions,
+        storeResults,
         category,
     )
 

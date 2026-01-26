@@ -15,7 +15,12 @@ import java.util.concurrent.TimeUnit
 @Service
 class MongoDBExecutor {
 
-    fun execute(connectionString: String, databaseName: String, query: String): List<QueryResult> {
+    fun execute(
+        connectionString: String,
+        databaseName: String,
+        query: String,
+        maxRowsToStore: Int? = null,
+    ): List<QueryResult> {
         try {
             val settings = MongoClientSettings.builder()
                 .applyConnectionString(ConnectionString(connectionString))
@@ -30,18 +35,33 @@ class MongoDBExecutor {
                 val database = client.getDatabase(databaseName)
                 val command = Document.parse(query)
                 val result = database.runCommand(command)
-                return listOf(processResult(result))
+                return listOf(processResult(result, maxRowsToStore))
             }
         } catch (e: MongoException) {
             return listOf(mongoExceptionToResult(e))
         }
     }
 
-    private fun processResult(result: Document): QueryResult = when {
+    private fun processResult(result: Document, maxRowsToStore: Int? = null): QueryResult = when {
         result.containsKey("cursor") -> {
             val cursor = result.get("cursor", Document::class.java)
             val documents = cursor.getList("firstBatch", Document::class.java)
-            MongoRecordsQueryResult(documents)
+
+            val storedDocuments = if (maxRowsToStore != null) {
+                documents.take(maxRowsToStore).map { doc ->
+                    doc.entries.associate { (key, value) -> key to (value?.toString() ?: "") }
+                }
+            } else {
+                null
+            }
+
+            val storedRowCount = storedDocuments?.size
+
+            MongoRecordsQueryResult(
+                documents = documents,
+                storedDocuments = storedDocuments,
+                storedRowCount = storedRowCount,
+            )
         }
 
         result.containsKey("n") -> {
@@ -49,7 +69,21 @@ class MongoDBExecutor {
         }
 
         else -> {
-            MongoRecordsQueryResult(listOf(result))
+            val storedDocuments = if (maxRowsToStore != null) {
+                listOf(result).map { doc ->
+                    doc.entries.associate { (key, value) -> key to (value?.toString() ?: "") }
+                }
+            } else {
+                null
+            }
+
+            val storedRowCount = storedDocuments?.size
+
+            MongoRecordsQueryResult(
+                documents = listOf(result),
+                storedDocuments = storedDocuments,
+                storedRowCount = storedRowCount,
+            )
         }
     }
 

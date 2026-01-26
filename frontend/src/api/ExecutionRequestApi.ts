@@ -67,9 +67,33 @@ const QueryResultLog = z.object({
   type: z.literal("QUERY"),
   columnCount: z.number(),
   rowCount: z.number(),
+  columns: z
+    .array(
+      z.object({
+        label: z.string(),
+        typeName: z.string(),
+        typeClass: z.string(),
+      }),
+    )
+    .optional(),
+  storedRows: z.array(z.record(z.coerce.string())).optional(),
+  storedRowCount: z.number().optional(),
 });
 
-const ResultLog = z.union([ErrorResultLog, UpdateResultLog, QueryResultLog]);
+const KubernetesOutputResultLog = z.object({
+  type: z.literal("KUBERNETES_OUTPUT"),
+  exitCode: z.number().optional().nullable(),
+  storedOutput: z.string().optional().nullable(),
+  storedErrors: z.string().optional().nullable(),
+  outputTruncated: z.boolean().optional(),
+});
+
+const ResultLog = z.union([
+  ErrorResultLog,
+  UpdateResultLog,
+  QueryResultLog,
+  KubernetesOutputResultLog,
+]);
 
 const ExecuteEvent = withType(
   z.object({
@@ -462,7 +486,7 @@ const KubernetesExecuteResponseSchema = z.object({
   errors: z.array(z.string()),
   messages: z.array(z.string()),
   finished: z.boolean(),
-  exitCode: z.number().optional(),
+  exitCode: z.number().nullable().optional(),
 });
 
 type DBExecuteResponseResult = z.infer<typeof DBExecuteResponseResultSchema>;

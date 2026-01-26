@@ -39,6 +39,8 @@ import dev.kviklet.kviklet.service.dto.ExecutionStatus
 import dev.kviklet.kviklet.service.dto.KubernetesConnection
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
+import dev.kviklet.kviklet.service.dto.KubernetesOutputResultLog
+import dev.kviklet.kviklet.service.dto.QueryResultLog
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewStatus
@@ -73,6 +75,11 @@ class ExecutionRequestService(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val proxies = mutableListOf<ExecutionProxy>()
+
+    companion object {
+        const val MAX_STORED_ROWS = 500
+        const val MAX_STORED_CHARS_K8S = 51200
+    }
 
     private fun validateTemporaryAccessDuration(connection: DatasourceConnection, requestedDurationMinutes: Long?) {
         if (requestedDurationMinutes != null && requestedDurationMinutes == 0L) {
@@ -488,12 +495,15 @@ class ExecutionRequestService(
             ),
         )
 
+        val maxRowsToStore = if (connection.storeResults) MAX_STORED_ROWS else null
+
         val result = when (connection.type) {
             DatasourceType.MONGODB -> {
                 mongoDBExecutor.execute(
                     connectionString = connection.getConnectionString(),
                     databaseName = connection.databaseName ?: "db",
                     query = queryToExecute,
+                    maxRowsToStore = maxRowsToStore,
                 )
             }
 
@@ -503,6 +513,7 @@ class ExecutionRequestService(
                     connectionString = connection.getConnectionString(),
                     authenticationDetails = connection.auth,
                     query = queryToExecute,
+                    maxRowsToStore = maxRowsToStore,
                 )
             }
         }
@@ -530,7 +541,7 @@ class ExecutionRequestService(
             throw RuntimeException("This should never happen! Probably there is a way to refactor this code")
         }
 
-        eventService.saveEvent(
+        val event = eventService.saveEvent(
             id,
             userId,
             ExecutePayload(
@@ -551,6 +562,25 @@ class ExecutionRequestService(
             containerName = containerName,
             timeout = 60,
         )
+
+        // Store results if storeResults is enabled
+        val connection = executionRequest.request.connection as KubernetesConnection
+        if (connection.storeResults) {
+            val maxChars = MAX_STORED_CHARS_K8S
+            val fullOutput = result.messages.joinToString("\n")
+            val fullErrors = result.errors.joinToString("\n")
+
+            val resultLogs = listOf(
+                KubernetesOutputResultLog(
+                    exitCode = result.exitCode,
+                    storedOutput = fullOutput.take(maxChars),
+                    storedErrors = fullErrors.take(maxChars),
+                    outputTruncated = fullOutput.length > maxChars || fullErrors.length > maxChars,
+                ),
+            )
+            eventService.addResultLogs(event.eventId!!, resultLogs)
+        }
+
         return KubernetesExecutionResult(
             executionRequest = executionRequest,
             errors = result.errors,
@@ -645,12 +675,15 @@ class ExecutionRequestService(
             ),
         ).eventId!!
 
+        val maxRowsToStore = if (connection.storeResults) MAX_STORED_ROWS else 0
+
         try {
             val writer = outputStream.writer(Charsets.UTF_8)
-            JDBCExecutor.executeAndStreamDbResponse(
+            val streamResult = JDBCExecutor.executeAndStreamDbResponse(
                 connectionString = connection.getConnectionString(),
                 authenticationDetails = connection.auth,
                 query = queryToExecute,
+                maxRowsToStore = maxRowsToStore,
             ) { row ->
                 writer.write(
                     row.joinToString(",") { field ->
@@ -658,6 +691,18 @@ class ExecutionRequestService(
                     } + "\n",
                 )
                 writer.flush()
+            }
+
+            // Store results on success if storeResults is enabled
+            if (connection.storeResults) {
+                val resultLog = QueryResultLog(
+                    columnCount = streamResult.columns.size,
+                    rowCount = streamResult.rowCount,
+                    columns = streamResult.columns,
+                    storedRows = streamResult.storedRows,
+                    storedRowCount = streamResult.storedRows.size,
+                )
+                eventService.addResultLogs(eventId, listOf(resultLog))
             }
         } catch (e: Exception) {
             eventService.addResultLogs(
@@ -769,6 +814,10 @@ class ExecutionRequestService(
 
                             is DumpResultLog -> {
                                 appendLine("  DUMP: ${result.size} bytes")
+                            }
+
+                            is KubernetesOutputResultLog -> {
+                                appendLine("  KUBERNETES OUTPUT (Exit Code: ${result.exitCode ?: "unknown"})")
                             }
                         }
                     }
