@@ -138,9 +138,7 @@ const ConnectionSettings = () => {
                   title={`Add connection to ${
                     group.category ?? "Uncategorized"
                   }`}
-                  data-testid={`add-connection-${
-                    group.category ?? "uncategorized"
-                  }`}
+                  data-testid="connections-table-create-button"
                 >
                   <span className="text-lg leading-none">+</span>
                 </button>
