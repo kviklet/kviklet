@@ -486,7 +486,7 @@ const KubernetesExecuteResponseSchema = z.object({
   errors: z.array(z.string()),
   messages: z.array(z.string()),
   finished: z.boolean(),
-  exitCode: z.number().optional(),
+  exitCode: z.number().nullable().optional(),
 });
 
 type DBExecuteResponseResult = z.infer<typeof DBExecuteResponseResultSchema>;

@@ -40,6 +40,7 @@ import dev.kviklet.kviklet.service.dto.KubernetesConnection
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
 import dev.kviklet.kviklet.service.dto.KubernetesOutputResultLog
+import dev.kviklet.kviklet.service.dto.QueryResultLog
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewStatus
@@ -674,12 +675,15 @@ class ExecutionRequestService(
             ),
         ).eventId!!
 
+        val maxRowsToStore = if (connection.storeResults) MAX_STORED_ROWS else 0
+
         try {
             val writer = outputStream.writer(Charsets.UTF_8)
-            JDBCExecutor.executeAndStreamDbResponse(
+            val streamResult = JDBCExecutor.executeAndStreamDbResponse(
                 connectionString = connection.getConnectionString(),
                 authenticationDetails = connection.auth,
                 query = queryToExecute,
+                maxRowsToStore = maxRowsToStore,
             ) { row ->
                 writer.write(
                     row.joinToString(",") { field ->
@@ -687,6 +691,18 @@ class ExecutionRequestService(
                     } + "\n",
                 )
                 writer.flush()
+            }
+
+            // Store results on success if storeResults is enabled
+            if (connection.storeResults) {
+                val resultLog = QueryResultLog(
+                    columnCount = streamResult.columns.size,
+                    rowCount = streamResult.rowCount,
+                    columns = streamResult.columns,
+                    storedRows = streamResult.storedRows,
+                    storedRowCount = streamResult.storedRows.size,
+                )
+                eventService.addResultLogs(eventId, listOf(resultLog))
             }
         } catch (e: Exception) {
             eventService.addResultLogs(
