@@ -7,6 +7,7 @@ import dev.kviklet.kviklet.db.DumpResultLogPayload
 import dev.kviklet.kviklet.db.EditPayload
 import dev.kviklet.kviklet.db.ErrorResultLogPayload
 import dev.kviklet.kviklet.db.ExecutePayload
+import dev.kviklet.kviklet.db.KubernetesOutputResultLogPayload
 import dev.kviklet.kviklet.db.Payload
 import dev.kviklet.kviklet.db.QueryResultLogPayload
 import dev.kviklet.kviklet.db.ReviewPayload
@@ -15,6 +16,7 @@ import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.security.Resource
 import dev.kviklet.kviklet.security.SecuredDomainId
 import dev.kviklet.kviklet.security.SecuredDomainObject
+import dev.kviklet.kviklet.service.ColumnInfo
 import java.io.Serializable
 import java.time.Duration
 import java.time.LocalDateTime
@@ -82,9 +84,25 @@ abstract class Event(
                 val results = payload.results.map {
                     when (it) {
                         is ErrorResultLogPayload -> ErrorResultLog(it.errorCode, it.message)
+
                         is UpdateResultLogPayload -> UpdateResultLog(it.rowsUpdated)
-                        is QueryResultLogPayload -> QueryResultLog(it.columnCount, it.rowCount)
+
+                        is QueryResultLogPayload -> QueryResultLog(
+                            it.columnCount,
+                            it.rowCount,
+                            it.columns,
+                            it.storedRows,
+                            it.storedRowCount,
+                        )
+
                         is DumpResultLogPayload -> DumpResultLog(it.size)
+
+                        is KubernetesOutputResultLogPayload -> KubernetesOutputResultLog(
+                            it.exitCode,
+                            it.storedOutput,
+                            it.storedErrors,
+                            it.outputTruncated,
+                        )
                     }
                 }
                 ExecuteEvent(
@@ -155,6 +173,7 @@ enum class ResultType {
     UPDATE,
     QUERY,
     DUMP,
+    KUBERNETES_OUTPUT,
 }
 
 sealed class ResultLog(val type: ResultType)
@@ -163,6 +182,19 @@ data class ErrorResultLog(val errorCode: Int, val message: String) : ResultLog(R
 
 data class UpdateResultLog(val rowsUpdated: Int) : ResultLog(ResultType.UPDATE)
 
-data class QueryResultLog(val columnCount: Int, val rowCount: Int) : ResultLog(ResultType.QUERY)
+data class QueryResultLog(
+    val columnCount: Int,
+    val rowCount: Int,
+    val columns: List<ColumnInfo>? = null,
+    val storedRows: List<Map<String, String>>? = null,
+    val storedRowCount: Int? = null,
+) : ResultLog(ResultType.QUERY)
 
 data class DumpResultLog(val size: Long) : ResultLog(ResultType.DUMP)
+
+data class KubernetesOutputResultLog(
+    val exitCode: Int?,
+    val storedOutput: String? = null,
+    val storedErrors: String? = null,
+    val outputTruncated: Boolean = false,
+) : ResultLog(ResultType.KUBERNETES_OUTPUT)

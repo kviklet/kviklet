@@ -92,6 +92,7 @@ data class DatasourceConnection(
     val dumpsEnabled: Boolean,
     val temporaryAccessEnabled: Boolean,
     val explainEnabled: Boolean,
+    val storeResults: Boolean,
     val maxTemporaryAccessDuration: Long? = null,
 ) : Connection(id, displayName, description, reviewConfig, maxExecutions, category) {
     fun getConnectionString(): String = when (auth) {
@@ -160,4 +161,5 @@ data class KubernetesConnection(
     override val maxExecutions: Int?,
     override val category: String? = null,
     val temporaryAccessEnabled: Boolean,
+    val storeResults: Boolean,
 ) : Connection(id, displayName, description, reviewConfig, maxExecutions, category)

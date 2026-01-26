@@ -50,6 +50,7 @@ const databaseConnectionResponseSchema = withType(
     explainEnabled: z.boolean(),
     roleArn: z.string().nullable(),
     maxTemporaryAccessDuration: z.number().nullable().optional(),
+    storeResults: z.boolean(),
     category: z.string().nullable(),
   }),
   "DATASOURCE",
@@ -65,6 +66,7 @@ const kubernetesConnectionResponseSchema = withType(
     }),
     maxExecutions: z.coerce.number().nullable(),
     temporaryAccessEnabled: z.boolean(),
+    storeResults: z.boolean(),
     category: z.string().nullable(),
   }),
   "KUBERNETES",
@@ -104,6 +106,7 @@ interface DatabaseConnectionBase extends ConnectionBase {
   temporaryAccessEnabled: boolean;
   explainEnabled: boolean;
   maxTemporaryAccessDuration?: number | null;
+  storeResults: boolean;
 }
 
 type DatabaseConnection =
@@ -120,6 +123,7 @@ type DatabaseConnection =
 
 interface KubernetesConnection extends ConnectionBase {
   connectionType: "KUBERNETES";
+  storeResults: boolean;
 }
 
 type ConnectionPayload = DatabaseConnection | KubernetesConnection;

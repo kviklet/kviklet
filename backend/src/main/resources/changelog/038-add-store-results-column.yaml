@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 037-add-store-results-column
+      author: claude
+      changes:
+        - addColumn:
+            tableName: connection
+            columns:
+              - column:
+                  name: store_results
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

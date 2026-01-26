@@ -107,3 +107,6 @@ databaseChangeLog:
   - include:
       file: 037-add-category-column.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 038-add-store-results-column.yaml
+      relativeToChangelogFile: true

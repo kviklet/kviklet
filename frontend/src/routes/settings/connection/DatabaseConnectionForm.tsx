@@ -52,6 +52,7 @@ const baseConnectionSchema = z.object({
   temporaryAccessEnabled: z.boolean().default(true),
   explainEnabled: z.boolean().default(false),
   maxTemporaryAccessDuration: z.coerce.number().nullable().optional(),
+  storeResults: z.boolean().default(false),
   connectionType: z.literal("DATASOURCE").default("DATASOURCE"),
   category: z.string().nullable().optional(),
 });
@@ -179,6 +180,7 @@ export default function DatabaseConnectionForm(props: {
     setValue("dumpsEnabled", false);
     setValue("temporaryAccessEnabled", true);
     setValue("explainEnabled", false);
+    setValue("storeResults", false);
     if (props.initialCategory) {
       setValue("category", props.initialCategory);
     }
@@ -458,6 +460,21 @@ export default function DatabaseConnectionForm(props: {
                           type="checkbox"
                           className="my-auto h-4 w-4"
                           {...register("explainEnabled")}
+                        />
+                      </div>
+                      <div className="flex w-full justify-between">
+                        <label
+                          htmlFor="storeResults"
+                          className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+                          title="When enabled, the first 500 rows of query results will be stored in the event history."
+                        >
+                          Store Query Results
+                          <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
+                        </label>
+                        <input
+                          type="checkbox"
+                          className="my-auto h-4 w-4"
+                          {...register("storeResults")}
                         />
                       </div>
                       <TestingConnectionFragment

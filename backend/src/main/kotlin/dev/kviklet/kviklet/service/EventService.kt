@@ -5,6 +5,7 @@ import dev.kviklet.kviklet.db.ErrorResultLogPayload
 import dev.kviklet.kviklet.db.EventAdapter
 import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
+import dev.kviklet.kviklet.db.KubernetesOutputResultLogPayload
 import dev.kviklet.kviklet.db.Payload
 import dev.kviklet.kviklet.db.QueryResultLogPayload
 import dev.kviklet.kviklet.db.UpdateResultLogPayload
@@ -16,6 +17,7 @@ import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventId
 import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
+import dev.kviklet.kviklet.service.dto.KubernetesOutputResultLog
 import dev.kviklet.kviklet.service.dto.QueryResultLog
 import dev.kviklet.kviklet.service.dto.ResultLog
 import dev.kviklet.kviklet.service.dto.UpdateResultLog
@@ -61,9 +63,25 @@ fun ExecuteEvent.toPayload(): Payload = ExecutePayload(
     results = results.map {
         when (it) {
             is ErrorResultLog -> ErrorResultLogPayload(it.errorCode, it.message)
+
             is UpdateResultLog -> UpdateResultLogPayload(it.rowsUpdated)
-            is QueryResultLog -> QueryResultLogPayload(it.columnCount, it.rowCount)
+
+            is QueryResultLog -> QueryResultLogPayload(
+                it.columnCount,
+                it.rowCount,
+                it.columns,
+                it.storedRows,
+                it.storedRowCount,
+            )
+
             is DumpResultLog -> DumpResultLogPayload(it.size)
+
+            is KubernetesOutputResultLog -> KubernetesOutputResultLogPayload(
+                it.exitCode,
+                it.storedOutput,
+                it.storedErrors,
+                it.outputTruncated,
+            )
         }
     },
     isDownload = isDownload,
