@@ -6,7 +6,7 @@ import {
   ComboboxOptions,
 } from "@headlessui/react";
 import { ChevronUpDownIcon, XMarkIcon } from "@heroicons/react/20/solid";
-import { ChangeEvent, KeyboardEvent, useState } from "react";
+import { ChangeEvent, useState } from "react";
 
 interface CategoryAutocompleteProps {
   value: string | null | undefined;
@@ -44,15 +44,10 @@ export default function CategoryAutocomplete({
     setQuery("");
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Tab" && query !== "") {
-      // On Tab, autofill first matching category if one exists
-      if (filteredCategories.length > 0) {
-        event.preventDefault();
-        handleSelect(filteredCategories[0]);
-      }
-    }
-  };
+  // Check if query exactly matches an existing category (case-insensitive)
+  const queryExactlyMatchesExisting = availableCategories.some(
+    (cat) => cat.toLowerCase() === query.toLowerCase(),
+  );
 
   return (
     <div className="relative basis-3/5">
@@ -67,7 +62,6 @@ export default function CategoryAutocomplete({
             onChange={(event: ChangeEvent<HTMLInputElement>) =>
               setQuery(event.target.value)
             }
-            onKeyDown={handleKeyDown}
             placeholder={placeholder}
           />
           <div className="absolute inset-y-0 right-0 flex items-center">
@@ -106,10 +100,22 @@ export default function CategoryAutocomplete({
               {category}
             </ComboboxOption>
           ))}
-          {filteredCategories.length === 0 && (
-            <div className="relative cursor-default select-none px-3 py-2 text-slate-500">
-              No matching categories.
-            </div>
+          {/* Show "Create category" option when query doesn't exactly match existing */}
+          {query !== "" && !queryExactlyMatchesExisting && (
+            <ComboboxOption
+              key={`create-${query}`}
+              value={query}
+              className={({ focus }) =>
+                classNames(
+                  "relative cursor-default select-none py-2 pl-3 pr-9",
+                  focus
+                    ? "bg-indigo-600 text-slate-50"
+                    : "text-slate-900 dark:text-slate-50",
+                )
+              }
+            >
+              Create category "{query}"
+            </ComboboxOption>
           )}
         </ComboboxOptions>
       </Combobox>
