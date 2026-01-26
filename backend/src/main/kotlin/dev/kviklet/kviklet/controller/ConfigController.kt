@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.controller
 
+import dev.kviklet.kviklet.ApplicationProperties
 import dev.kviklet.kviklet.security.IdentityProviderProperties
 import dev.kviklet.kviklet.security.ldap.LdapProperties
 import dev.kviklet.kviklet.security.saml.SamlProperties
@@ -30,6 +31,9 @@ open class PublicConfigResponse(
     open val validUntil: LocalDate?,
     open val createdAt: LocalDateTime?,
     open val allowedUsers: UInt?,
+    open val version: String,
+    open val buildDate: String,
+    open val gitCommit: String,
 )
 
 data class ConfigRequest(val teamsUrl: String?, val slackUrl: String?)
@@ -42,9 +46,23 @@ data class ConfigResponse(
     override val validUntil: LocalDate?,
     override val createdAt: LocalDateTime?,
     override val allowedUsers: UInt?,
+    override val version: String,
+    override val buildDate: String,
+    override val gitCommit: String,
     val teamsUrl: String?,
     val slackUrl: String?,
-) : PublicConfigResponse(oAuthProvider, ldapEnabled, samlEnabled, licenseValid, validUntil, createdAt, allowedUsers) {
+) : PublicConfigResponse(
+    oAuthProvider,
+    ldapEnabled,
+    samlEnabled,
+    licenseValid,
+    validUntil,
+    createdAt,
+    allowedUsers,
+    version,
+    buildDate,
+    gitCommit,
+) {
     companion object {
         fun fromConfiguration(
             configuration: Configuration,
@@ -52,6 +70,9 @@ data class ConfigResponse(
             ldapEnabled: Boolean,
             samlEnabled: Boolean,
             licenses: List<License>,
+            version: String,
+            buildDate: String,
+            gitCommit: String,
         ): ConfigResponse {
             val licensesSorted = licenses.sortedByDescending { it.file.createdAt }
             return ConfigResponse(
@@ -62,6 +83,9 @@ data class ConfigResponse(
                 validUntil = licensesSorted.firstOrNull()?.validUntil,
                 createdAt = licensesSorted.firstOrNull()?.createdAt,
                 allowedUsers = licensesSorted.firstOrNull()?.allowedUsers,
+                version = version,
+                buildDate = buildDate,
+                gitCommit = gitCommit,
                 teamsUrl = configuration.teamsUrl,
                 slackUrl = configuration.slackUrl,
             )
@@ -82,6 +106,7 @@ class ConfigController(
     val samlProperties: SamlProperties,
     val configService: ConfigService,
     val licenseService: LicenseService,
+    val applicationProperties: ApplicationProperties,
 ) {
 
     @GetMapping("/")
@@ -96,6 +121,9 @@ class ConfigController(
                 ldapProperties.enabled,
                 samlProperties.isSamlEnabled(),
                 licenses,
+                applicationProperties.version,
+                applicationProperties.buildDate,
+                applicationProperties.gitCommit,
             )
         } catch (e: AccessDeniedException) {
             return PublicConfigResponse(
@@ -106,6 +134,9 @@ class ConfigController(
                 validUntil = licensesSorted.firstOrNull()?.validUntil,
                 createdAt = licensesSorted.firstOrNull()?.createdAt,
                 allowedUsers = licensesSorted.firstOrNull()?.allowedUsers,
+                version = applicationProperties.version,
+                buildDate = applicationProperties.buildDate,
+                gitCommit = applicationProperties.gitCommit,
             )
         }
     }
@@ -125,6 +156,9 @@ class ConfigController(
             ldapProperties.enabled,
             samlProperties.isSamlEnabled(),
             licenses,
+            applicationProperties.version,
+            applicationProperties.buildDate,
+            applicationProperties.gitCommit,
         )
     }
 

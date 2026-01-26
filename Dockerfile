@@ -19,6 +19,11 @@ FROM amazoncorretto:21 AS javaruntime
 
 FROM nginxinc/nginx-unprivileged:1.27
 
+# Build arguments for version info
+ARG VERSION=dev
+ARG BUILD_DATE=unknown
+ARG GIT_COMMIT=unknown
+
 WORKDIR /app
 
 USER root
@@ -37,6 +42,11 @@ COPY --from=javaruntime /usr/lib/jvm/java-21-amazon-corretto /usr/lib/jvm/java-2
 # Set Java environment variables
 ENV JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+# Set version info environment variables (Spring Boot relaxed binding maps these)
+ENV APP_VERSION=${VERSION}
+ENV APP_BUILD_DATE=${BUILD_DATE}
+ENV APP_GIT_COMMIT=${GIT_COMMIT}
 
 USER nginx
 

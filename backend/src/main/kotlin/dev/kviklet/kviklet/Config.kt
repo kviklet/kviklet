@@ -25,6 +25,9 @@ import javax.sql.DataSource
 class ApplicationProperties {
     lateinit var name: String
     var inDocker: Boolean = false
+    var version: String = "dev"
+    var buildDate: String = "unknown"
+    var gitCommit: String = "unknown"
 }
 
 data class ErrorResponse(val code: Int, val type: String, val message: String, val detail: String? = null)

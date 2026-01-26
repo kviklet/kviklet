@@ -12,6 +12,9 @@ const ConfigResponseSchema = z.object({
   allowedUsers: z.number().nullable().optional(),
   teamsUrl: z.string().nullable().optional(),
   slackUrl: z.string().nullable().optional(),
+  version: z.string(),
+  buildDate: z.string(),
+  gitCommit: z.string(),
 });
 
 export const ConfigPayloadSchema = ConfigResponseSchema.omit({
@@ -22,6 +25,9 @@ export const ConfigPayloadSchema = ConfigResponseSchema.omit({
   validUntil: true,
   createdAt: true,
   allowedUsers: true,
+  version: true,
+  buildDate: true,
+  gitCommit: true,
 });
 
 export type ConfigResponse = z.infer<typeof ConfigResponseSchema>;
