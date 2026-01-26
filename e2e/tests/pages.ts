@@ -67,7 +67,7 @@ class SettingsPage {
     requiredReviews?: number
   ) {
     // Click the Add Connection button (now in the header)
-    await this.page.getByRole("button", { name: "Add Connection" }).click();
+    await this.page.getByTestId("connections-table-create-button").click();
     
     // Select Database Connection from the modal
     await this.page.getByTestId("add-database-connection-button").click();
