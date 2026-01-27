@@ -104,6 +104,8 @@ class NotificationTest {
             temporaryAccessEnabled = true,
             explainEnabled = false,
             storeResults = false,
+            dryRunEnabled = false,
+            dryRunRequiresApproval = true,
         )
         userHelper.createUser(permissions = listOf("*"))
         val cookie = userHelper.login(mockMvc = mockMvc)
@@ -175,6 +177,8 @@ class NotificationTest {
                 temporaryAccessEnabled = true,
                 explainEnabled = false,
                 storeResults = false,
+                dryRunEnabled = false,
+                dryRunRequiresApproval = true,
             )
             userHelper.createUser(permissions = listOf("*"))
             val cookie = userHelper.login(mockMvc = mockMvc)

@@ -72,6 +72,7 @@ class ExecutionRequestService(
     private val connectionService: ConnectionService,
     private val userAdapter: UserAdapter,
     private val proxyTLSCerts: TLSCerts,
+    private val dryRunValidator: DryRunValidator,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val proxies = mutableListOf<ExecutionProxy>()
@@ -531,6 +532,73 @@ class ExecutionRequestService(
         )
     }
 
+    private fun executeDatasourceRequestDryRun(
+        id: ExecutionRequestId,
+        executionRequest: ExecutionRequestDetails,
+        connection: DatasourceConnection,
+        query: String?,
+        userId: String,
+    ): DBExecutionResult {
+        if (executionRequest.request !is DatasourceExecutionRequest) {
+            throw RuntimeException("This should never happen! Probably there is a way to refactor this code")
+        }
+
+        val queryToExecute = when (executionRequest.request.type) {
+            RequestType.SingleExecution -> executionRequest.request.statement!!
+
+            RequestType.TemporaryAccess -> query ?: throw MissingQueryException(
+                "For temporary access requests the query param is required",
+            )
+
+            RequestType.Dump -> throw RuntimeException("Dump requests can't be executed via the /execute endpoint")
+        }
+
+        // Validate SQL for dry run
+        val validationResult = dryRunValidator.validateForDryRun(queryToExecute, connection.type)
+        if (validationResult is DryRunValidator.ValidationResult.Invalid) {
+            throw IllegalArgumentException(validationResult.reason)
+        }
+
+        val event = eventService.saveEvent(
+            id,
+            userId,
+            ExecutePayload(
+                query = queryToExecute,
+                isDryRun = true,
+            ),
+        )
+
+        val maxRowsToStore = if (connection.storeResults) MAX_STORED_ROWS else null
+
+        val result = when (connection.type) {
+            DatasourceType.MONGODB -> {
+                throw IllegalArgumentException("Dry run is not supported for MongoDB")
+            }
+
+            else -> {
+                JDBCExecutor.executeDryRun(
+                    executionRequestId = id,
+                    connectionString = connection.getConnectionString(),
+                    authenticationDetails = connection.auth,
+                    query = queryToExecute,
+                    maxRowsToStore = maxRowsToStore,
+                )
+            }
+        }
+
+        // Store results
+        val resultLogs = result.map {
+            it.toResultLog()
+        }
+        val savedEvent = eventService.addResultLogs(event.eventId!!, resultLogs)
+
+        return DBExecutionResult(
+            executionRequest = executionRequest,
+            results = result,
+            event = savedEvent,
+        )
+    }
+
     private fun executeKubernetesRequest(
         id: ExecutionRequestId,
         executionRequest: ExecutionRequestDetails,
@@ -604,23 +672,46 @@ class ExecutionRequestService(
     }
 
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
-    fun execute(id: ExecutionRequestId, query: String?, userId: String): ExecutionResult {
+    fun execute(id: ExecutionRequestId, query: String?, userId: String, dryRun: Boolean = false): ExecutionResult {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
         val connection = executionRequest.request.connection
 
-        val reviewStatus = executionRequest.resolveReviewStatus()
-        if (reviewStatus != ReviewStatus.APPROVED) {
-            throw InvalidReviewException("This request has not been approved yet!")
-        }
-
-        executionRequest.raiseIfAlreadyExecuted()
-        return when (connection) {
-            is DatasourceConnection -> {
-                executeDatasourceRequest(id, executionRequest, connection, query, userId)
+        if (dryRun) {
+            // Dry run validation
+            if (executionRequest.request.type != RequestType.SingleExecution) {
+                throw IllegalArgumentException("Dry run is only supported for SingleExecution requests")
+            }
+            if (connection !is DatasourceConnection) {
+                throw IllegalArgumentException("Dry run is only supported for datasource connections")
+            }
+            if (!connection.dryRunEnabled) {
+                throw IllegalArgumentException("Dry run is not enabled for this connection")
+            }
+            // Check approval requirement
+            if (connection.dryRunRequiresApproval) {
+                val reviewStatus = executionRequest.resolveReviewStatus()
+                if (reviewStatus != ReviewStatus.APPROVED) {
+                    throw InvalidReviewException("This request has not been approved yet!")
+                }
+            }
+            // Execute dry run
+            return executeDatasourceRequestDryRun(id, executionRequest, connection, query, userId)
+        } else {
+            // Normal execution - always requires approval
+            val reviewStatus = executionRequest.resolveReviewStatus()
+            if (reviewStatus != ReviewStatus.APPROVED) {
+                throw InvalidReviewException("This request has not been approved yet!")
             }
 
-            is KubernetesConnection -> {
-                executeKubernetesRequest(id, executionRequest, userId, query)
+            executionRequest.raiseIfAlreadyExecuted()
+            return when (connection) {
+                is DatasourceConnection -> {
+                    executeDatasourceRequest(id, executionRequest, connection, query, userId)
+                }
+
+                is KubernetesConnection -> {
+                    executeKubernetesRequest(id, executionRequest, userId, query)
+                }
             }
         }
     }

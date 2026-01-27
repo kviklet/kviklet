@@ -494,6 +494,8 @@ class RecalculateRequestStatusesMigrationTest {
             temporaryAccessEnabled = true,
             explainEnabled = false,
             storeResults = false,
+            dryRunEnabled = false,
+            dryRunRequiresApproval = true,
         )
 
     private fun createExecutionRequest(

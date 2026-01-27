@@ -45,6 +45,8 @@ const baseConnectionFormSchema = z.object({
   dumpsEnabled: z.boolean(),
   temporaryAccessEnabled: z.boolean(),
   explainEnabled: z.boolean(),
+  dryRunEnabled: z.boolean(),
+  dryRunRequiresApproval: z.boolean(),
   maxTemporaryAccessDuration: z.coerce.number().nullable().optional(),
   storeResults: z.boolean(),
   connectionType: z.literal("DATASOURCE").default("DATASOURCE"),
@@ -140,6 +142,8 @@ export default function UpdateDatasourceConnectionForm({
       dumpsEnabled: connection.dumpsEnabled,
       temporaryAccessEnabled: connection.temporaryAccessEnabled,
       explainEnabled: connection.explainEnabled,
+      dryRunEnabled: connection.dryRunEnabled,
+      dryRunRequiresApproval: connection.dryRunRequiresApproval,
       maxTemporaryAccessDuration: connection.maxTemporaryAccessDuration,
       roleArn: connection.roleArn,
       storeResults: connection.storeResults,
@@ -373,6 +377,44 @@ export default function UpdateDatasourceConnectionForm({
                           {...register("explainEnabled")}
                         />
                       </div>
+                      <div className="flex w-full justify-between">
+                        <label
+                          htmlFor="dryRunEnabled"
+                          className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+                          title="Enable dry run mode to test queries without committing changes. Warning: SQL parsing is not 100% reliable - use with caution."
+                        >
+                          Enable Dry Run
+                          <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
+                        </label>
+                        <input
+                          type="checkbox"
+                          className="my-auto h-4 w-4"
+                          disabled={watchType === DatabaseType.MONGODB}
+                          title={
+                            watchType === DatabaseType.MONGODB
+                              ? "Dry run is not supported for MongoDB"
+                              : undefined
+                          }
+                          {...register("dryRunEnabled")}
+                        />
+                      </div>
+                      {watch("dryRunEnabled") && (
+                        <div className="flex w-full justify-between">
+                          <label
+                            htmlFor="dryRunRequiresApproval"
+                            className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+                            title="When enabled, dry runs require approval before execution. Disable to allow dry runs without approval."
+                          >
+                            Require Approval for Dry Runs
+                            <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
+                          </label>
+                          <input
+                            type="checkbox"
+                            className="my-auto h-4 w-4"
+                            {...register("dryRunRequiresApproval")}
+                          />
+                        </div>
+                      )}
                       <div className="flex w-full justify-between">
                         <label
                           htmlFor="storeResults"

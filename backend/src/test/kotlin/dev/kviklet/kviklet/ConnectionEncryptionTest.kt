@@ -77,6 +77,8 @@ class ConnectionEncryptionTest(
         temporaryAccessEnabled = true,
         explainEnabled = false,
         storeResults = false,
+        dryRunEnabled = false,
+        dryRunRequiresApproval = true,
     ) as DatasourceConnection
 
     @Test

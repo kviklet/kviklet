@@ -94,6 +94,8 @@ data class DatasourceConnection(
     val explainEnabled: Boolean,
     val storeResults: Boolean,
     val maxTemporaryAccessDuration: Long? = null,
+    val dryRunEnabled: Boolean,
+    val dryRunRequiresApproval: Boolean,
 ) : Connection(id, displayName, description, reviewConfig, maxExecutions, category) {
     fun getConnectionString(): String = when (auth) {
         is AuthenticationDetails.UserPassword -> when (type) {

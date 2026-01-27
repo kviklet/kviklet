@@ -19,7 +19,7 @@ function DatasourceRequestDisplay({
   proxyResponse,
 }: {
   request: DatasourceExecutionRequestResponseWithComments | undefined;
-  run: (explain?: boolean) => Promise<void>;
+  run: (explain?: boolean, dryRun?: boolean) => Promise<void>;
   cancelQuery: () => Promise<void>;
   start: () => Promise<void>;
   updateRequest: (request: { statement?: string }) => Promise<void>;

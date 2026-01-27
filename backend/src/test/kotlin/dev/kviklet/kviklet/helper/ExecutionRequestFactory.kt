@@ -197,6 +197,8 @@ class ConnectionFactory : Factory() {
         explainEnabled: Boolean = false,
         storeResults: Boolean = false,
         maxTemporaryAccessDuration: Long? = null,
+        dryRunEnabled: Boolean = false,
+        dryRunRequiresApproval: Boolean = true,
     ): DatasourceConnection = DatasourceConnection(
         id,
         displayName,
@@ -217,6 +219,8 @@ class ConnectionFactory : Factory() {
         explainEnabled,
         storeResults,
         maxTemporaryAccessDuration,
+        dryRunEnabled,
+        dryRunRequiresApproval,
     )
 }
 

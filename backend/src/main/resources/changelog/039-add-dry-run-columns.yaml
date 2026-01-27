@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 039-add-dry-run-columns
+      author: kviklet
+      changes:
+        - addColumn:
+            tableName: connection
+            columns:
+              - column:
+                  name: dry_run_enabled
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: dry_run_requires_approval
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false

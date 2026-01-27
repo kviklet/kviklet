@@ -227,10 +227,11 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         when (request.type) {
             RequestType.SingleExecution, RequestType.Dump -> {
                 val executions = events.filter { it.type == EventType.EXECUTE }
+                    .filterIsInstance<ExecuteEvent>()
+                    .filter { !it.isDryRun }  // EXCLUDE DRY RUNS
                 // Filter out executions that resulted in errors
                 val successfulExecutions = executions.filter { executeEvent ->
-                    executeEvent !is ExecuteEvent ||
-                        executeEvent.results.none { it is ErrorResultLog }
+                    executeEvent.results.none { it is ErrorResultLog }
                 }
 
                 request.connection.maxExecutions?.let { maxExecutions ->
@@ -246,6 +247,8 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
 
             RequestType.TemporaryAccess -> {
                 val executions = events.filter { it.type == EventType.EXECUTE }
+                    .filterIsInstance<ExecuteEvent>()
+                    .filter { !it.isDryRun }  // EXCLUDE DRY RUNS
                 if (executions.isEmpty()) {
                     return ExecutionStatus.EXECUTABLE
                 }

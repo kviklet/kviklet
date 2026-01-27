@@ -86,6 +86,64 @@ class JDBCExecutor {
         }
     }
 
+    fun executeDryRun(
+        executionRequestId: ExecutionRequestId,
+        connectionString: String,
+        authenticationDetails: AuthenticationDetails,
+        query: String,
+        isMSSQL: Boolean = false,
+        maxRowsToStore: Int? = null,
+    ): List<QueryResult> {
+        createConnection(connectionString, authenticationDetails).use { dataSource: HikariDataSource ->
+            try {
+                dataSource.connection.use { connection ->
+                    // Disable auto-commit to start a transaction
+                    connection.autoCommit = false
+
+                    connection.createStatement().use { statement ->
+                        val previousValues = activeStatements.putIfAbsent(executionRequestId.toString(), statement)
+                        if (previousValues != null) {
+                            throw IllegalStateException("Request $executionRequestId already is executing a query")
+                        }
+
+                        try {
+                            // For SQL Server, enable implicit transactions
+                            if (isMSSQL) {
+                                statement.execute("SET IMPLICIT_TRANSACTIONS ON")
+                            }
+
+                            var hasResults = statement.execute(query)
+                            val queryResults = mutableListOf<QueryResult>()
+
+                            while (hasResults || statement.updateCount != -1) {
+                                statement.resultSet?.use { resultSet ->
+                                    queryResults.add(createRecordsQueryResult(resultSet, maxRowsToStore))
+                                } ?: queryResults.add(UpdateQueryResult(statement.updateCount))
+
+                                hasResults = statement.moreResults
+                            }
+
+                            return queryResults
+                        } finally {
+                            // Always rollback the transaction to undo any changes
+                            try {
+                                connection.rollback()
+                            } catch (e: SQLException) {
+                                // Log rollback failure but don't throw - we still want to return results
+                                val logger = LoggerFactory.getLogger(javaClass)
+                                logger.warn("Failed to rollback dry run transaction", e)
+                            }
+                        }
+                    }
+                }
+            } catch (e: SQLException) {
+                return listOf(sqlExceptionToResult(e))
+            } finally {
+                activeStatements.remove(executionRequestId.toString())
+            }
+        }
+    }
+
     fun cancelQuery(executionRequestId: ExecutionRequestId) {
         try {
             activeStatements[executionRequestId.toString()]?.cancel()

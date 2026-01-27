@@ -185,6 +185,8 @@ class OidcWebSocketTest {
             temporaryAccessEnabled = true,
             explainEnabled = false,
             storeResults = false,
+            dryRunEnabled = false,
+            dryRunRequiresApproval = true,
         )
 
         // Create an execution request

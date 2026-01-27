@@ -35,8 +35,15 @@ function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
           </div>
         )}
         {event?.query && (
-          <div className="text-sm text-slate-500">
-            {event?.author?.fullName} {sqlStatementText}
+          <div className="flex items-center text-sm text-slate-500">
+            <span>
+              {event?.author?.fullName} {sqlStatementText}
+            </span>
+            {event?.isDryRun && (
+              <span className="ml-2 rounded bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                Dry Run
+              </span>
+            )}
           </div>
         )}
         {event?.command && (

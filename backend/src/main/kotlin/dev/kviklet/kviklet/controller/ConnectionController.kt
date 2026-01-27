@@ -100,6 +100,8 @@ data class CreateDatasourceConnectionRequest(
     @field:Min(1)
     val maxTemporaryAccessDuration: Long? = null,
     val category: String? = null,
+    val dryRunEnabled: Boolean = false,
+    val dryRunRequiresApproval: Boolean = true,
 ) : ConnectionRequest()
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
@@ -161,6 +163,10 @@ data class UpdateDatasourceConnectionRequest(
     val clearMaxTempDuration: Boolean = false,
 
     val category: String? = null,
+
+    val dryRunEnabled: Boolean? = null,
+
+    val dryRunRequiresApproval: Boolean? = null,
 ) : UpdateConnectionRequest()
 
 data class UpdateKubernetesConnectionRequest(
@@ -218,6 +224,8 @@ data class DatasourceConnectionResponse(
     val roleArn: String?,
     val maxTemporaryAccessDuration: Long?,
     val category: String?,
+    val dryRunEnabled: Boolean,
+    val dryRunRequiresApproval: Boolean,
 ) : ConnectionResponse(ConnectionType.DATASOURCE) {
     companion object {
         fun fromDto(datasourceConnection: DatasourceConnection) = DatasourceConnectionResponse(
@@ -246,6 +254,8 @@ data class DatasourceConnectionResponse(
             },
             maxTemporaryAccessDuration = datasourceConnection.maxTemporaryAccessDuration,
             category = datasourceConnection.category,
+            dryRunEnabled = datasourceConnection.dryRunEnabled,
+            dryRunRequiresApproval = datasourceConnection.dryRunRequiresApproval,
         )
     }
 }
@@ -326,6 +336,8 @@ class ConnectionController(val connectionService: ConnectionService) {
             roleArn = request.roleArn,
             maxTemporaryAccessDuration = request.maxTemporaryAccessDuration,
             category = request.category,
+            dryRunEnabled = request.dryRunEnabled,
+            dryRunRequiresApproval = request.dryRunRequiresApproval,
         )
 
     private fun testDatabaseConnection(request: CreateDatasourceConnectionRequest): TestConnectionResult =
@@ -350,6 +362,8 @@ class ConnectionController(val connectionService: ConnectionService) {
             storeResults = request.storeResults,
             roleArn = request.roleArn,
             maxTemporaryAccessDuration = request.maxTemporaryAccessDuration,
+            dryRunEnabled = request.dryRunEnabled,
+            dryRunRequiresApproval = request.dryRunRequiresApproval,
         )
 
     private fun createKubernetesConnection(request: CreateKubernetesConnectionRequest): Connection =
