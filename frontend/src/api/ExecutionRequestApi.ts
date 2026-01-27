@@ -75,9 +75,10 @@ const QueryResultLog = z.object({
         typeClass: z.string(),
       }),
     )
-    .optional(),
-  storedRows: z.array(z.record(z.coerce.string())).optional(),
-  storedRowCount: z.number().optional(),
+    .optional()
+    .nullable(),
+  storedRows: z.array(z.record(z.coerce.string())).optional().nullable(),
+  storedRowCount: z.number().optional().nullable(),
 });
 
 const KubernetesOutputResultLog = z.object({
