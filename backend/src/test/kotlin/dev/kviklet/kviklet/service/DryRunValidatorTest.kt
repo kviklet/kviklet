@@ -117,7 +117,11 @@ class DryRunValidatorTest {
         val result = validator.validateForDryRun(query, DatasourceType.MYSQL)
 
         assertTrue(result is DryRunValidator.ValidationResult.Invalid)
-        assertTrue((result as DryRunValidator.ValidationResult.Invalid).reason.contains("Only SELECT, INSERT, UPDATE, and DELETE"))
+        assertTrue(
+            (result as DryRunValidator.ValidationResult.Invalid).reason.contains(
+                "Only SELECT, INSERT, UPDATE, and DELETE",
+            ),
+        )
     }
 
     @Test
@@ -126,7 +130,11 @@ class DryRunValidatorTest {
         val result = validator.validateForDryRun(query, DatasourceType.MYSQL)
 
         assertTrue(result is DryRunValidator.ValidationResult.Invalid)
-        assertTrue((result as DryRunValidator.ValidationResult.Invalid).reason.contains("Only SELECT, INSERT, UPDATE, and DELETE"))
+        assertTrue(
+            (result as DryRunValidator.ValidationResult.Invalid).reason.contains(
+                "Only SELECT, INSERT, UPDATE, and DELETE",
+            ),
+        )
     }
 
     @Test
@@ -135,7 +143,11 @@ class DryRunValidatorTest {
         val result = validator.validateForDryRun(query, DatasourceType.MYSQL)
 
         assertTrue(result is DryRunValidator.ValidationResult.Invalid)
-        assertTrue((result as DryRunValidator.ValidationResult.Invalid).reason.contains("Only SELECT, INSERT, UPDATE, and DELETE"))
+        assertTrue(
+            (result as DryRunValidator.ValidationResult.Invalid).reason.contains(
+                "Only SELECT, INSERT, UPDATE, and DELETE",
+            ),
+        )
     }
 
     @Test
@@ -144,7 +156,11 @@ class DryRunValidatorTest {
         val result = validator.validateForDryRun(query, DatasourceType.MYSQL)
 
         assertTrue(result is DryRunValidator.ValidationResult.Invalid)
-        assertTrue((result as DryRunValidator.ValidationResult.Invalid).reason.contains("Only SELECT, INSERT, UPDATE, and DELETE"))
+        assertTrue(
+            (result as DryRunValidator.ValidationResult.Invalid).reason.contains(
+                "Only SELECT, INSERT, UPDATE, and DELETE",
+            ),
+        )
     }
 
     @Test
@@ -153,9 +169,12 @@ class DryRunValidatorTest {
         val result = validator.validateForDryRun(query, DatasourceType.MARIADB)
 
         assertTrue(result is DryRunValidator.ValidationResult.Invalid)
-        assertTrue((result as DryRunValidator.ValidationResult.Invalid).reason.contains("Only SELECT, INSERT, UPDATE, and DELETE"))
+        assertTrue(
+            (result as DryRunValidator.ValidationResult.Invalid).reason.contains(
+                "Only SELECT, INSERT, UPDATE, and DELETE",
+            ),
+        )
     }
-
 
     @Test
     fun `should allow DML for MySQL`() {

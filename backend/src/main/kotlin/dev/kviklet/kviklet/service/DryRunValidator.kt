@@ -79,6 +79,7 @@ class DryRunValidator {
      */
     private fun checkMySqlAllowedStatements(statement: Statement): ValidationResult = when (statement) {
         is Select, is Insert, is Update, is Delete -> ValidationResult.Valid
+
         else -> ValidationResult.Invalid(
             "Only SELECT, INSERT, UPDATE, and DELETE statements are allowed in dry run mode for MySQL/MariaDB. " +
                 "Other statements (DDL, GRANT, etc.) cause implicit commits and cannot be rolled back.",

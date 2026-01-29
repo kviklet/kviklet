@@ -706,6 +706,7 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
     ): ExecutionResponse = ExecutionResponse.fromDto(
         when (request?.explain) {
             true -> executionRequestService.explain(executionRequestId, request.query, userDetails.id)
+
             else -> executionRequestService.execute(
                 executionRequestId,
                 request?.query,
