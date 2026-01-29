@@ -5,10 +5,10 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import net.sf.jsqlparser.statement.Commit
 import net.sf.jsqlparser.statement.RollbackStatement
 import net.sf.jsqlparser.statement.Statement
-import net.sf.jsqlparser.statement.alter.Alter
-import net.sf.jsqlparser.statement.create.table.CreateTable
-import net.sf.jsqlparser.statement.drop.Drop
-import net.sf.jsqlparser.statement.truncate.Truncate
+import net.sf.jsqlparser.statement.delete.Delete
+import net.sf.jsqlparser.statement.insert.Insert
+import net.sf.jsqlparser.statement.select.Select
+import net.sf.jsqlparser.statement.update.Update
 import org.springframework.stereotype.Component
 
 @Component
@@ -35,11 +35,11 @@ class DryRunValidator {
                     return transactionControlResult
                 }
 
-                // For MySQL/MariaDB, also block DDL (causes implicit commit)
+                // For MySQL/MariaDB, only allow safe DML statements (DDL causes implicit commit)
                 if (databaseType in listOf(DatasourceType.MYSQL, DatasourceType.MARIADB)) {
-                    val ddlResult = checkDDL(statement)
-                    if (ddlResult is ValidationResult.Invalid) {
-                        return ddlResult
+                    val result = checkMySqlAllowedStatements(statement)
+                    if (result is ValidationResult.Invalid) {
+                        return result
                     }
                 }
             }
@@ -73,51 +73,15 @@ class DryRunValidator {
         }
     }
 
-    private fun checkDDL(statement: Statement): ValidationResult = when (statement) {
-        is CreateTable -> ValidationResult.Invalid(
-            "CREATE TABLE statements cause implicit commit in MySQL/MariaDB and are not allowed in dry run mode",
+    /**
+     * For MySQL/MariaDB, only allow known-safe DML statements.
+     * DDL and other statements cause implicit commits and cannot be rolled back.
+     */
+    private fun checkMySqlAllowedStatements(statement: Statement): ValidationResult = when (statement) {
+        is Select, is Insert, is Update, is Delete -> ValidationResult.Valid
+        else -> ValidationResult.Invalid(
+            "Only SELECT, INSERT, UPDATE, and DELETE statements are allowed in dry run mode for MySQL/MariaDB. " +
+                "Other statements (DDL, GRANT, etc.) cause implicit commits and cannot be rolled back.",
         )
-
-        is Alter -> ValidationResult.Invalid(
-            "ALTER statements cause implicit commit in MySQL/MariaDB and are not allowed in dry run mode",
-        )
-
-        is Drop -> ValidationResult.Invalid(
-            "DROP statements cause implicit commit in MySQL/MariaDB and are not allowed in dry run mode",
-        )
-
-        is Truncate -> ValidationResult.Invalid(
-            "TRUNCATE statements cause implicit commit in MySQL/MariaDB and are not allowed in dry run mode",
-        )
-
-        else -> {
-            val stmtString = statement.toString().trim().uppercase()
-            when {
-                stmtString.startsWith("RENAME") -> ValidationResult.Invalid(
-                    "RENAME statements cause implicit commit in MySQL/MariaDB and are not allowed in dry run mode",
-                )
-
-                stmtString.startsWith("CREATE INDEX") -> ValidationResult.Invalid(
-                    "CREATE INDEX statements cause implicit commit in MySQL/MariaDB " +
-                        "and are not allowed in dry run mode",
-                )
-
-                stmtString.startsWith("CREATE DATABASE") -> ValidationResult.Invalid(
-                    "CREATE DATABASE statements cause implicit commit in MySQL/MariaDB " +
-                        "and are not allowed in dry run mode",
-                )
-
-                stmtString.startsWith("DROP DATABASE") -> ValidationResult.Invalid(
-                    "DROP DATABASE statements cause implicit commit in MySQL/MariaDB " +
-                        "and are not allowed in dry run mode",
-                )
-
-                stmtString.startsWith("CREATE") -> ValidationResult.Invalid(
-                    "CREATE statements cause implicit commit in MySQL/MariaDB and are not allowed in dry run mode",
-                )
-
-                else -> ValidationResult.Valid
-            }
-        }
     }
 }

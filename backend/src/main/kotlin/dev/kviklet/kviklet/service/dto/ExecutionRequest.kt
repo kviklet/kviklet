@@ -287,7 +287,20 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         else -> true
     }
 
-    private fun isExecutable(): Boolean = resolveReviewStatus() == ReviewStatus.APPROVED
+    private fun isExecutable(): Boolean {
+        // If approved, always executable
+        if (resolveReviewStatus() == ReviewStatus.APPROVED) {
+            return true
+        }
+        // If not approved, allow through if dry run is enabled on the connection
+        // The service layer will enforce the actual dry run vs normal execution check
+        // and provide specific error messages for approval requirements
+        val connection = request.connection
+        if (connection is DatasourceConnection && connection.dryRunEnabled) {
+            return true
+        }
+        return false
+    }
 
     fun csvDownloadAllowed(query: String? = null): Pair<Boolean, String> {
         if (request.type === RequestType.Dump) {
