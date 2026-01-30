@@ -108,7 +108,7 @@ abstract class Event(
                 ExecuteEvent(
                     id, request, author, createdAt, payload.query, results, payload.command,
                     payload.containerName, payload.podName, payload.namespace, payload.isDownload,
-                    payload.isDump,
+                    payload.isDump, payload.isDryRun,
                 )
             }
         }
@@ -164,6 +164,7 @@ data class ExecuteEvent(
     val namespace: String? = null,
     val isDownload: Boolean = false,
     val isDump: Boolean = false,
+    val isDryRun: Boolean = false,
 ) : Event(EventType.EXECUTE, createdAt, request) {
     override fun hashCode() = Objects.hash(eventId)
 }

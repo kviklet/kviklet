@@ -94,6 +94,8 @@ class MaxTemporaryAccessDurationTest {
             roleArn = null,
             maxTemporaryAccessDuration = 120L, // 2 hours max
             category = null,
+            dryRunEnabled = false,
+            dryRunRequiresApproval = true,
         )
 
         assertEquals(
@@ -331,6 +333,8 @@ class MaxTemporaryAccessDurationTest {
             roleArn = null,
             maxTemporaryAccessDuration = maxDuration,
             category = null,
+            dryRunEnabled = false,
+            dryRunRequiresApproval = true,
         )
     }
 

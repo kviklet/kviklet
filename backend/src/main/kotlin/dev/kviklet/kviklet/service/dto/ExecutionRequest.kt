@@ -227,10 +227,11 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         when (request.type) {
             RequestType.SingleExecution, RequestType.Dump -> {
                 val executions = events.filter { it.type == EventType.EXECUTE }
+                    .filterIsInstance<ExecuteEvent>()
+                    .filter { !it.isDryRun } // Exclude dry runs
                 // Filter out executions that resulted in errors
                 val successfulExecutions = executions.filter { executeEvent ->
-                    executeEvent !is ExecuteEvent ||
-                        executeEvent.results.none { it is ErrorResultLog }
+                    executeEvent.results.none { it is ErrorResultLog }
                 }
 
                 request.connection.maxExecutions?.let { maxExecutions ->
@@ -246,6 +247,8 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
 
             RequestType.TemporaryAccess -> {
                 val executions = events.filter { it.type == EventType.EXECUTE }
+                    .filterIsInstance<ExecuteEvent>()
+                    .filter { !it.isDryRun } // Temporary Access Requests cannot be dry-run but just in case
                 if (executions.isEmpty()) {
                     return ExecutionStatus.EXECUTABLE
                 }
@@ -284,7 +287,20 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         else -> true
     }
 
-    private fun isExecutable(): Boolean = resolveReviewStatus() == ReviewStatus.APPROVED
+    private fun isExecutable(): Boolean {
+        // If approved, always executable
+        if (resolveReviewStatus() == ReviewStatus.APPROVED) {
+            return true
+        }
+        // If not approved, allow through if dry run is enabled on the connection
+        // The service layer will enforce the actual dry run vs normal execution check
+        // and provide specific error messages for approval requirements
+        val connection = request.connection
+        if (connection is DatasourceConnection && connection.dryRunEnabled) {
+            return true
+        }
+        return false
+    }
 
     fun csvDownloadAllowed(query: String? = null): Pair<Boolean, String> {
         if (request.type === RequestType.Dump) {

@@ -71,6 +71,8 @@ class MysqlIAMAuthExecutorTest(
             temporaryAccessEnabled = true,
             explainEnabled = false,
             storeResults = false,
+            dryRunEnabled = false,
+            dryRunRequiresApproval = true,
         )
 
         val result = executeQueryWithIam(connection.getConnectionString(), "SELECT 1 as col1, '2' as col2")

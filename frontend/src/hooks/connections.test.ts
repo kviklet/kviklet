@@ -68,6 +68,8 @@ describe("useConnections hook", () => {
         dumpsEnabled: false,
         temporaryAccessEnabled: true,
         explainEnabled: false,
+        dryRunEnabled: false,
+        dryRunRequiresApproval: false,
         maxExecutions: null,
         storeResults: false,
       };
@@ -111,6 +113,8 @@ describe("useConnections hook", () => {
         dumpsEnabled: false,
         temporaryAccessEnabled: true,
         explainEnabled: false,
+        dryRunEnabled: false,
+        dryRunRequiresApproval: false,
         maxExecutions: null,
         storeResults: false,
       };
@@ -154,6 +158,8 @@ describe("useConnections hook", () => {
         dumpsEnabled: false,
         temporaryAccessEnabled: true,
         explainEnabled: false,
+        dryRunEnabled: false,
+        dryRunRequiresApproval: false,
         maxExecutions: null,
         storeResults: false,
       };
@@ -215,6 +221,8 @@ describe("useConnections hook", () => {
         dumpsEnabled: false,
         temporaryAccessEnabled: true,
         explainEnabled: false,
+        dryRunEnabled: false,
+        dryRunRequiresApproval: false,
         roleArn: null,
         maxTemporaryAccessDuration: null,
         storeResults: false,
@@ -244,6 +252,8 @@ describe("useConnections hook", () => {
         dumpsEnabled: false,
         temporaryAccessEnabled: true,
         explainEnabled: false,
+        dryRunEnabled: false,
+        dryRunRequiresApproval: false,
         maxExecutions: null,
         storeResults: false,
       };

@@ -81,6 +81,8 @@ class ConnectionEntity(
     var roleArn: String? = null,
     var maxTemporaryAccessDuration: Long? = null,
     var category: String? = null,
+    var dryRunEnabled: Boolean = false,
+    var dryRunRequiresApproval: Boolean = true,
 ) {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
@@ -196,6 +198,8 @@ class ConnectionAdapter(
         roleArn: String? = null,
         maxTemporaryAccessDuration: Long? = null,
         category: String? = null,
+        dryRunEnabled: Boolean = false,
+        dryRunRequiresApproval: Boolean = true,
     ): Connection = decryptCredentialsIfNeeded(
         save(
             ConnectionEntity(
@@ -222,6 +226,8 @@ class ConnectionAdapter(
                 roleArn = roleArn,
                 maxTemporaryAccessDuration = maxTemporaryAccessDuration,
                 category = category,
+                dryRunEnabled = dryRunEnabled,
+                dryRunRequiresApproval = dryRunRequiresApproval,
             ),
         ),
     )
@@ -247,6 +253,8 @@ class ConnectionAdapter(
         roleArn: String? = null,
         maxTemporaryAccessDuration: Long? = null,
         category: String? = null,
+        dryRunEnabled: Boolean = false,
+        dryRunRequiresApproval: Boolean = true,
     ): Connection {
         val datasourceConnection = connectionRepository.findByIdOrNull(id.toString())
             ?: throw EntityNotFound(
@@ -281,6 +289,8 @@ class ConnectionAdapter(
         datasourceConnection.roleArn = roleArn
         datasourceConnection.maxTemporaryAccessDuration = maxTemporaryAccessDuration
         datasourceConnection.category = category
+        datasourceConnection.dryRunEnabled = dryRunEnabled
+        datasourceConnection.dryRunRequiresApproval = dryRunRequiresApproval
 
         return decryptCredentialsIfNeeded(save(datasourceConnection))
     }
@@ -384,6 +394,8 @@ class ConnectionAdapter(
                 storeResults = connection.storeResults,
                 maxTemporaryAccessDuration = connection.maxTemporaryAccessDuration,
                 category = connection.category,
+                dryRunEnabled = connection.dryRunEnabled,
+                dryRunRequiresApproval = connection.dryRunRequiresApproval,
             )
 
         ConnectionType.KUBERNETES ->

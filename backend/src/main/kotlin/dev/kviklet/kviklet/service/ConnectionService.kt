@@ -49,6 +49,12 @@ class ConnectionService(
             connectionId,
         ) as DatasourceConnection
 
+        // Validate: MongoDB cannot have dry run enabled
+        val newDryRunEnabled = request.dryRunEnabled ?: connection.dryRunEnabled
+        if (connection.type == DatasourceType.MONGODB && newDryRunEnabled) {
+            throw IllegalArgumentException("Dry run is not supported for MongoDB connections")
+        }
+
         val newReviewConfig = request.reviewConfig?.let {
             ReviewConfig(
                 it.numTotalRequired,
@@ -86,6 +92,8 @@ class ConnectionService(
                 (request.maxTemporaryAccessDuration ?: connection.maxTemporaryAccessDuration)
             },
             category = request.category ?: connection.category,
+            dryRunEnabled = request.dryRunEnabled ?: connection.dryRunEnabled,
+            dryRunRequiresApproval = request.dryRunRequiresApproval ?: connection.dryRunRequiresApproval,
         )
 
         // Recalculate statuses if reviewConfig or maxExecutions changed
@@ -208,9 +216,15 @@ class ConnectionService(
         roleArn: String?,
         maxTemporaryAccessDuration: Long?,
         category: String?,
+        dryRunEnabled: Boolean,
+        dryRunRequiresApproval: Boolean,
     ): Connection {
         if (authenticationType == AuthenticationType.USER_PASSWORD && password == null) {
             throw IllegalArgumentException("Password is required for USER_PASSWORD authentication")
+        }
+        // Validate: MongoDB cannot have dry run enabled
+        if (type == DatasourceType.MONGODB && dryRunEnabled) {
+            throw IllegalArgumentException("Dry run is not supported for MongoDB connections")
         }
         return connectionAdapter.createDatasourceConnection(
             connectionId,
@@ -236,6 +250,8 @@ class ConnectionService(
             roleArn,
             maxTemporaryAccessDuration,
             category,
+            dryRunEnabled,
+            dryRunRequiresApproval,
         )
     }
 
@@ -261,6 +277,8 @@ class ConnectionService(
         storeResults: Boolean,
         roleArn: String?,
         maxTemporaryAccessDuration: Long? = null,
+        dryRunEnabled: Boolean,
+        dryRunRequiresApproval: Boolean,
     ): TestConnectionResult {
         val connection = DatasourceConnection(
             connectionId,
@@ -285,6 +303,8 @@ class ConnectionService(
             explainEnabled,
             storeResults,
             maxTemporaryAccessDuration,
+            dryRunEnabled = dryRunEnabled,
+            dryRunRequiresApproval = dryRunRequiresApproval,
         )
         val accessibleDatabases = mutableListOf<String>()
         if (!databaseName.isNullOrBlank()) {

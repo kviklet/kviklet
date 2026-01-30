@@ -161,10 +161,10 @@ const useRequest = (id: string) => {
     return true;
   };
 
-  const execute = async (explain: boolean) => {
+  const execute = async (explain: boolean, dryRun: boolean = false) => {
     setDataLoading(true);
     if (request?._type === "DATASOURCE") {
-      const response = await runQuery(id, undefined, explain);
+      const response = await runQuery(id, undefined, explain, dryRun);
       if (isApiErrorResponse(response)) {
         setExecutionError(response.message);
       } else {

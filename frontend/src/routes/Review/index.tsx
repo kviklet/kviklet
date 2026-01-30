@@ -30,9 +30,9 @@ function RequestReview() {
 
   const navigate = useNavigate();
 
-  const run = async (explain?: boolean) => {
+  const run = async (explain?: boolean, dryRun?: boolean) => {
     if (request?.type === "SingleExecution") {
-      await execute(explain || false);
+      await execute(explain || false, dryRun || false);
     } else {
       navigate(`/requests/${request?.id}/session`);
     }

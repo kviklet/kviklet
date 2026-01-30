@@ -195,6 +195,8 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             temporaryAccessEnabled = true,
             explainEnabled = false,
             storeResults = false,
+            dryRunEnabled = false,
+            dryRunRequiresApproval = true,
         )
         connectionCount++
         return connection
@@ -228,6 +230,8 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             temporaryAccessEnabled = true,
             explainEnabled = explainEnabled,
             storeResults = storeResults,
+            dryRunEnabled = false,
+            dryRunRequiresApproval = true,
         )
         connectionCount++
         return connection
@@ -256,6 +260,8 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             temporaryAccessEnabled = true,
             explainEnabled = false,
             storeResults = false,
+            dryRunEnabled = false,
+            dryRunRequiresApproval = true,
         )
         connectionCount++
         return connection

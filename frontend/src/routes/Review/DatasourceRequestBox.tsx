@@ -24,7 +24,7 @@ function DatasourceRequestBox({
   updateRequest,
 }: {
   request: DatasourceExecutionRequestResponseWithComments | undefined;
-  runQuery: (explain?: boolean) => Promise<void>;
+  runQuery: (explain?: boolean, dryRun?: boolean) => Promise<void>;
   cancelQuery: () => Promise<void>;
   startServer: () => Promise<void>;
   updateRequest: (request: { statement?: string }) => Promise<void>;
@@ -97,6 +97,24 @@ function DatasourceRequestBox({
               (request?.reviewStatus === "APPROVED" ||
                 request?.reviewStatus === "AWAITING_APPROVAL"),
             content: "Explain",
+          },
+        ]
+      : []),
+    ...(request?.type == "SingleExecution" && request?.connection?.dryRunEnabled
+      ? [
+          {
+            onClick: () => {
+              void runQuery(false, true);
+            },
+            enabled:
+              request?.connection?.dryRunRequiresApproval === false ||
+              request?.reviewStatus === "APPROVED",
+            tooltip:
+              request?.connection?.dryRunRequiresApproval === true &&
+              request?.reviewStatus !== "APPROVED"
+                ? "Request needs approval before dry run"
+                : undefined,
+            content: "Dry Run",
           },
         ]
       : []),

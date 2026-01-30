@@ -113,7 +113,11 @@ data class UpdateExecutionRequestRequest(
     val temporaryAccessDuration: Long? = null,
 )
 
-data class ExecuteExecutionRequestRequest(val query: String?, val explain: Boolean = false)
+data class ExecuteExecutionRequestRequest(
+    val query: String?,
+    val explain: Boolean = false,
+    val dryRun: Boolean = false,
+)
 
 data class CreateReviewRequest(val comment: String, val action: ReviewAction)
 
@@ -439,6 +443,7 @@ abstract class EventResponse(val type: EventType, open val createdAt: LocalDateT
                 event.namespace,
                 event.isDownload,
                 event.isDump,
+                event.isDryRun,
             )
 
             else -> {
@@ -491,6 +496,7 @@ data class ExecuteEventResponse(
     val namespace: String? = null,
     val isDownload: Boolean = false,
     val isDump: Boolean = false,
+    val isDryRun: Boolean = false,
 ) : EventResponse(EventType.EXECUTE, createdAt)
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
@@ -700,7 +706,13 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
     ): ExecutionResponse = ExecutionResponse.fromDto(
         when (request?.explain) {
             true -> executionRequestService.explain(executionRequestId, request.query, userDetails.id)
-            else -> executionRequestService.execute(executionRequestId, request?.query, userDetails.id)
+
+            else -> executionRequestService.execute(
+                executionRequestId,
+                request?.query,
+                userDetails.id,
+                request?.dryRun ?: false,
+            )
         },
     )
 

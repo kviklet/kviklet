@@ -110,3 +110,6 @@ databaseChangeLog:
   - include:
       file: 038-add-store-results-column.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 039-add-dry-run-columns.yaml
+      relativeToChangelogFile: true

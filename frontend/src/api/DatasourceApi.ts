@@ -48,6 +48,8 @@ const databaseConnectionResponseSchema = withType(
     dumpsEnabled: z.boolean(),
     temporaryAccessEnabled: z.boolean(),
     explainEnabled: z.boolean(),
+    dryRunEnabled: z.boolean(),
+    dryRunRequiresApproval: z.boolean(),
     roleArn: z.string().nullable(),
     maxTemporaryAccessDuration: z.number().nullable().optional(),
     storeResults: z.boolean(),
@@ -105,6 +107,8 @@ interface DatabaseConnectionBase extends ConnectionBase {
   dumpsEnabled: boolean;
   temporaryAccessEnabled: boolean;
   explainEnabled: boolean;
+  dryRunEnabled: boolean;
+  dryRunRequiresApproval: boolean;
   maxTemporaryAccessDuration?: number | null;
   storeResults: boolean;
 }

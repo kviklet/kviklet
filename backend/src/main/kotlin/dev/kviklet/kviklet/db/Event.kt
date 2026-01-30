@@ -61,6 +61,7 @@ data class ExecutePayload(
     val results: List<ResultLogPayload> = emptyList(),
     val isDownload: Boolean = false,
     val isDump: Boolean = false,
+    val isDryRun: Boolean = false,
 ) : Payload(EventType.EXECUTE)
 
 @JsonIgnoreProperties(ignoreUnknown = true)
