@@ -49,6 +49,12 @@ class ConnectionService(
             connectionId,
         ) as DatasourceConnection
 
+        // Validate: MongoDB cannot have dry run enabled
+        val newDryRunEnabled = request.dryRunEnabled ?: connection.dryRunEnabled
+        if (connection.type == DatasourceType.MONGODB && newDryRunEnabled) {
+            throw IllegalArgumentException("Dry run is not supported for MongoDB connections")
+        }
+
         val newReviewConfig = request.reviewConfig?.let {
             ReviewConfig(
                 it.numTotalRequired,

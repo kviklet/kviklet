@@ -456,6 +456,58 @@ class DryRunIntegrationTest {
                 .andExpect(status().isBadRequest)
                 .andExpect(jsonPath("$.message", containsString("MongoDB")))
         }
+
+        @Test
+        fun `testUpdateMongoConnectionWithDryRunEnabled_Fails`() {
+            val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+            // Create MongoDB connection with dryRunEnabled=false (should succeed)
+            mockMvc.perform(
+                post("/connections/")
+                    .cookie(userCookie)
+                    .content(
+                        """
+                        {
+                            "connectionType": "DATASOURCE",
+                            "id": "mongo-update-dry-run-test",
+                            "displayName": "MongoDB for Update Test",
+                            "username": "root",
+                            "password": "root",
+                            "type": "MONGODB",
+                            "protocol": "MONGODB",
+                            "hostname": "localhost",
+                            "port": 27017,
+                            "dryRunEnabled": false,
+                            "reviewConfig": {
+                                "numTotalRequired": 1
+                            }
+                        }
+                        """.trimIndent(),
+                    )
+                    .contentType("application/json"),
+            )
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.dryRunEnabled").value(false))
+
+            // Attempt to PATCH update MongoDB connection with dryRunEnabled=true (should fail)
+            mockMvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch(
+                    "/connections/mongo-update-dry-run-test",
+                )
+                    .cookie(userCookie)
+                    .content(
+                        """
+                        {
+                            "connectionType": "DATASOURCE",
+                            "dryRunEnabled": true
+                        }
+                        """.trimIndent(),
+                    )
+                    .contentType("application/json"),
+            )
+                .andExpect(status().isBadRequest)
+                .andExpect(jsonPath("$.message", containsString("MongoDB")))
+        }
     }
 
     // Helper functions
