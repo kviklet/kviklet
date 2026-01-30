@@ -536,21 +536,19 @@ class ExecutionRequestService(
         id: ExecutionRequestId,
         executionRequest: ExecutionRequestDetails,
         connection: DatasourceConnection,
-        query: String?,
         userId: String,
     ): DBExecutionResult {
         if (executionRequest.request !is DatasourceExecutionRequest) {
             throw RuntimeException("This should never happen! Probably there is a way to refactor this code")
         }
-
         val queryToExecute = when (executionRequest.request.type) {
             RequestType.SingleExecution -> executionRequest.request.statement!!
 
-            RequestType.TemporaryAccess -> query ?: throw MissingQueryException(
-                "For temporary access requests the query param is required",
+            RequestType.TemporaryAccess -> throw RuntimeException(
+                "Cannnot dry run temporary access requests just use ROLLBACK in your query",
             )
 
-            RequestType.Dump -> throw RuntimeException("Dump requests can't be executed via the /execute endpoint")
+            RequestType.Dump -> throw RuntimeException("Dump requests can't be dry run")
         }
 
         // Validate SQL for dry run
@@ -568,7 +566,7 @@ class ExecutionRequestService(
             ),
         )
 
-        val maxRowsToStore = if (connection.storeResults) MAX_STORED_ROWS else null
+        val maxRowsToStore = if (connection.storeResults) MAX_STORED_ROWS else 0
 
         val result = when (connection.type) {
             DatasourceType.MONGODB -> {
@@ -695,7 +693,12 @@ class ExecutionRequestService(
                 }
             }
             // Execute dry run
-            return executeDatasourceRequestDryRun(id, executionRequest, connection, query, userId)
+            return executeDatasourceRequestDryRun(
+                id,
+                executionRequest,
+                connection,
+                userId,
+            )
         } else {
             // Normal execution - always requires approval
             val reviewStatus = executionRequest.resolveReviewStatus()

@@ -92,7 +92,7 @@ class JDBCExecutor {
         authenticationDetails: AuthenticationDetails,
         query: String,
         isMSSQL: Boolean = false,
-        maxRowsToStore: Int? = null,
+        maxRowsToStore: Int = 0,
     ): List<QueryResult> {
         createConnection(connectionString, authenticationDetails).use { dataSource: HikariDataSource ->
             try {
