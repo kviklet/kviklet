@@ -4,8 +4,12 @@ import {
   DatabaseProtocol,
   DatabaseType,
   PatchConnectionPayload,
+  roleRequirementSchema,
 } from "../../../../api/DatasourceApi";
 import InputField, { TextField } from "../../../../components/InputField";
+import RoleRequirementsSection, {
+  RoleRequirementField,
+} from "../../../../components/RoleRequirementsSection";
 import {
   Disclosure,
   DisclosureButton,
@@ -18,7 +22,7 @@ import {
 } from "@heroicons/react/20/solid";
 import { getJDBCOptionsPlaceholder } from "../DatabaseConnectionForm";
 import Button from "../../../../components/Button";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useConnectionForm } from "./ConnectionEditFormHook";
 import {
   FieldErrors,
@@ -40,6 +44,7 @@ const baseConnectionFormSchema = z.object({
   maxExecutions: z.coerce.number().nullable(),
   reviewConfig: z.object({
     numTotalRequired: z.coerce.number(),
+    roleRequirements: z.array(roleRequirementSchema).optional(),
   }),
   additionalJDBCOptions: z.string(),
   dumpsEnabled: z.boolean(),
@@ -134,6 +139,7 @@ export default function UpdateDatasourceConnectionForm({
       databaseName: connection.databaseName || "",
       reviewConfig: {
         numTotalRequired: connection.reviewConfig.numTotalRequired,
+        roleRequirements: connection.reviewConfig.roleRequirements,
       },
       additionalJDBCOptions: connection.additionalJDBCOptions || "",
       maxExecutions: connection.maxExecutions,
@@ -153,6 +159,48 @@ export default function UpdateDatasourceConnectionForm({
     onSubmit: editConnection,
     connectionType: "DATASOURCE",
   });
+
+  const [roleRequirements, setRoleRequirements] = useState<
+    RoleRequirementField[]
+  >(connection.reviewConfig.roleRequirements ?? []);
+
+  const updateRoleRequirementsFormValue = useCallback(
+    (reqs: RoleRequirementField[]) => {
+      setValue(
+        "reviewConfig.roleRequirements" as "reviewConfig",
+        reqs.length > 0 ? (reqs as never) : (undefined as never),
+        { shouldDirty: true },
+      );
+    },
+    [setValue],
+  );
+
+  const handleAppendRole = useCallback(
+    (field: RoleRequirementField) => {
+      const updated = [...roleRequirements, field];
+      setRoleRequirements(updated);
+      updateRoleRequirementsFormValue(updated);
+    },
+    [roleRequirements, updateRoleRequirementsFormValue],
+  );
+
+  const handleRemoveRole = useCallback(
+    (index: number) => {
+      const updated = roleRequirements.filter((_, i) => i !== index);
+      setRoleRequirements(updated);
+      updateRoleRequirementsFormValue(updated);
+    },
+    [roleRequirements, updateRoleRequirementsFormValue],
+  );
+
+  const handleUpdateRole = useCallback(
+    (index: number, field: RoleRequirementField) => {
+      const updated = roleRequirements.map((f, i) => (i === index ? field : f));
+      setRoleRequirements(updated);
+      updateRoleRequirementsFormValue(updated);
+    },
+    [roleRequirements, updateRoleRequirementsFormValue],
+  );
 
   const watchType = watch("type");
   useEffect(() => {
@@ -271,6 +319,14 @@ export default function UpdateDatasourceConnectionForm({
             min="0"
             {...register("reviewConfig.numTotalRequired")}
             error={errors.reviewConfig?.numTotalRequired?.message}
+          />
+
+          <RoleRequirementsSection
+            fields={roleRequirements}
+            onAppend={handleAppendRole}
+            onRemove={handleRemoveRole}
+            onUpdate={handleUpdateRole}
+            numTotalRequired={watch("reviewConfig.numTotalRequired") || 0}
           />
 
           <div className="w-full">

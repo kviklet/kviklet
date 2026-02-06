@@ -5,6 +5,7 @@ import useRequest from "../../hooks/request";
 import KubernetesRequestDisplay from "./KubernetesRequestDisplay";
 import DatasourceRequestDisplay from "./DatasourceRequestDisplay";
 import EventHistory from "./EventHistory";
+import ApprovalProgress from "./ApprovalProgress";
 
 interface RequestReviewParams {
   requestId: string;
@@ -53,6 +54,7 @@ function RequestReview() {
                 {mapStatus(request.reviewStatus, request.executionStatus)}
               </div>
             </h1>
+            <ApprovalProgress request={request} />
             <div className="">
               <div className="">
                 {request &&

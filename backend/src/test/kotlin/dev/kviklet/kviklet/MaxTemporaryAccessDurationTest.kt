@@ -3,6 +3,7 @@ package dev.kviklet.kviklet
 import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
 import dev.kviklet.kviklet.controller.UpdateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.UpdateExecutionRequestRequest
+import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.helper.ConnectionHelper
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper
@@ -81,7 +82,7 @@ class MaxTemporaryAccessDurationTest {
             password = "root",
             authenticationType = AuthenticationType.USER_PASSWORD,
             description = "Test connection with max duration",
-            reviewsRequired = 1,
+            reviewConfig = ReviewConfig(numTotalRequired = 1),
             port = db.firstMappedPort,
             hostname = "localhost",
             type = DatasourceType.POSTGRESQL,
@@ -320,7 +321,7 @@ class MaxTemporaryAccessDurationTest {
             password = "root",
             authenticationType = AuthenticationType.USER_PASSWORD,
             description = "Test connection",
-            reviewsRequired = 1,
+            reviewConfig = ReviewConfig(numTotalRequired = 1),
             port = db.firstMappedPort,
             hostname = "localhost",
             type = DatasourceType.POSTGRESQL,

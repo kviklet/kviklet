@@ -5,6 +5,7 @@ import dev.kviklet.kviklet.controller.UpdateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.UpdateKubernetesConnectionRequest
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ReviewConfig
+import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
@@ -32,6 +33,8 @@ class ConnectionService(
     private val JDBCExecutor: JDBCExecutor,
     private val mongoDBExecutor: MongoDBExecutor,
     private val executionRequestStatusService: ExecutionRequestStatusService,
+    private val licenseService: LicenseService,
+    private val roleAdapter: RoleAdapter,
 ) {
 
     @Transactional
@@ -55,11 +58,8 @@ class ConnectionService(
             throw IllegalArgumentException("Dry run is not supported for MongoDB connections")
         }
 
-        val newReviewConfig = request.reviewConfig?.let {
-            ReviewConfig(
-                it.numTotalRequired,
-            )
-        } ?: connection.reviewConfig
+        val newReviewConfig = request.reviewConfig?.toReviewConfig() ?: connection.reviewConfig
+        validateReviewConfig(newReviewConfig, existingReviewConfig = connection.reviewConfig)
 
         val newMaxExecutions = request.maxExecutions ?: connection.maxExecutions
 
@@ -146,11 +146,8 @@ class ConnectionService(
             connectionId,
         ) as KubernetesConnection
 
-        val newReviewConfig = request.reviewConfig?.let {
-            ReviewConfig(
-                it.numTotalRequired,
-            )
-        } ?: connection.reviewConfig
+        val newReviewConfig = request.reviewConfig?.toReviewConfig() ?: connection.reviewConfig
+        validateReviewConfig(newReviewConfig, existingReviewConfig = connection.reviewConfig)
 
         val newMaxExecutions = request.maxExecutions ?: connection.maxExecutions
 
@@ -203,7 +200,7 @@ class ConnectionService(
         password: String?,
         authenticationType: AuthenticationType,
         description: String,
-        reviewsRequired: Int,
+        reviewConfig: ReviewConfig,
         port: Int,
         hostname: String,
         type: DatasourceType,
@@ -226,6 +223,7 @@ class ConnectionService(
         if (type == DatasourceType.MONGODB && dryRunEnabled) {
             throw IllegalArgumentException("Dry run is not supported for MongoDB connections")
         }
+        validateReviewConfig(reviewConfig, existingReviewConfig = null)
         return connectionAdapter.createDatasourceConnection(
             connectionId,
             displayName,
@@ -235,9 +233,7 @@ class ConnectionService(
             username,
             password,
             description,
-            ReviewConfig(
-                numTotalRequired = reviewsRequired,
-            ),
+            reviewConfig,
             port,
             hostname,
             type,
@@ -343,21 +339,22 @@ class ConnectionService(
         connectionId: ConnectionId,
         displayName: String,
         description: String,
-        reviewsRequired: Int,
+        reviewConfig: ReviewConfig,
         maxExecutions: Int?,
         storeResults: Boolean,
         category: String?,
-    ): Connection = connectionAdapter.createKubernetesConnection(
-        connectionId,
-        displayName,
-        description,
-        ReviewConfig(
-            numTotalRequired = reviewsRequired,
-        ),
-        maxExecutions,
-        storeResults,
-        category,
-    )
+    ): Connection {
+        validateReviewConfig(reviewConfig, existingReviewConfig = null)
+        return connectionAdapter.createKubernetesConnection(
+            connectionId,
+            displayName,
+            description,
+            reviewConfig,
+            maxExecutions,
+            storeResults,
+            category,
+        )
+    }
 
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_EDIT)
@@ -370,4 +367,53 @@ class ConnectionService(
     fun getDatasourceConnection(connectionId: ConnectionId): Connection = connectionAdapter.getConnection(
         connectionId = connectionId,
     )
+
+    private fun validateReviewConfig(
+        newReviewConfig: ReviewConfig,
+        existingReviewConfig: ReviewConfig?,
+    ) {
+        if (newReviewConfig.numTotalRequired < 0) {
+            throw IllegalArgumentException("numTotalRequired cannot be negative")
+        }
+
+        val newRoleRequirements = newReviewConfig.roleRequirements ?: emptyList()
+        val existingRoleRequirements = existingReviewConfig?.roleRequirements ?: emptyList()
+
+        // Removing all role requirements is always allowed
+        if (newRoleRequirements.isEmpty()) {
+            return
+        }
+
+        // Enterprise license check - only when adding or modifying role requirements
+        val isAddingOrModifying = newRoleRequirements.isNotEmpty() && (
+            existingRoleRequirements.isEmpty() ||
+                newRoleRequirements != existingRoleRequirements
+            )
+
+        if (isAddingOrModifying && licenseService.getActiveLicense() == null) {
+            throw LicenseRestrictionException("Role-based review requirements require an enterprise license")
+        }
+
+        // Validate each requirement
+        newRoleRequirements.forEach { roleReq ->
+            if (roleReq.numRequired <= 0) {
+                throw IllegalArgumentException("numRequired must be at least 1 for role ${roleReq.roleId}")
+            }
+        }
+
+        // Validate roleIds exist
+        val roleIds = newRoleRequirements.map { it.roleId }
+        val existingRoles = roleAdapter.findByIds(roleIds)
+        val existingIds = existingRoles.mapNotNull { it.getId() }.toSet()
+        val missingIds = roleIds.toSet() - existingIds
+        if (missingIds.isNotEmpty()) {
+            throw IllegalArgumentException("Unknown role id(s): ${missingIds.joinToString(", ")}")
+        }
+
+        // Check for duplicates
+        val duplicateIds = roleIds.groupBy { it }.filter { it.value.size > 1 }.keys
+        if (duplicateIds.isNotEmpty()) {
+            throw IllegalArgumentException("Duplicate role id(s): ${duplicateIds.joinToString(", ")}")
+        }
+    }
 }

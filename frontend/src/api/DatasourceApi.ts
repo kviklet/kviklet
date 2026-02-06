@@ -28,6 +28,18 @@ enum DatabaseProtocol {
   MARIADB = "MARIADB",
 }
 
+const roleRequirementSchema = z.object({
+  roleId: z.string(),
+  numRequired: z.number(),
+});
+
+type RoleRequirement = z.infer<typeof roleRequirementSchema>;
+
+const reviewConfigSchema = z.object({
+  numTotalRequired: z.number(),
+  roleRequirements: z.array(roleRequirementSchema).optional(),
+});
+
 const databaseConnectionResponseSchema = withType(
   z.object({
     id: z.coerce.string(),
@@ -41,9 +53,7 @@ const databaseConnectionResponseSchema = withType(
     port: z.coerce.number(),
     description: z.coerce.string(),
     databaseName: z.coerce.string().nullable(),
-    reviewConfig: z.object({
-      numTotalRequired: z.number(),
-    }),
+    reviewConfig: reviewConfigSchema,
     additionalJDBCOptions: z.string().optional(),
     dumpsEnabled: z.boolean(),
     temporaryAccessEnabled: z.boolean(),
@@ -63,7 +73,7 @@ const kubernetesConnectionResponseSchema = withType(
     id: z.coerce.string(),
     displayName: z.coerce.string(),
     description: z.coerce.string(),
-    reviewConfig: z.object({
+    reviewConfig: reviewConfigSchema.extend({
       numTotalRequired: z.coerce.number(),
     }),
     maxExecutions: z.coerce.number().nullable(),
@@ -91,6 +101,7 @@ interface ConnectionBase {
   description: string;
   reviewConfig: {
     numTotalRequired: number;
+    roleRequirements?: RoleRequirement[];
   };
   maxExecutions: number | null;
   category?: string | null;
@@ -287,6 +298,8 @@ export {
   DatabaseType,
   DatabaseProtocol,
   deleteConnection,
+  roleRequirementSchema,
+  reviewConfigSchema,
 };
 
 export type {
@@ -298,4 +311,5 @@ export type {
   KubernetesConnectionResponse,
   PatchDatabaseConnectionPayload,
   PatchKubernetesConnectionPayload,
+  RoleRequirement,
 };

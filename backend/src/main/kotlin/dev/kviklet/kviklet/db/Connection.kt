@@ -26,7 +26,15 @@ import org.springframework.data.repository.findByIdOrNull
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
-data class ReviewConfig(val numTotalRequired: Int)
+data class RoleRequirement(
+    val roleId: String,
+    val numRequired: Int,
+)
+
+data class ReviewConfig(
+    val numTotalRequired: Int,
+    val roleRequirements: List<RoleRequirement>? = null,
+)
 
 enum class ConnectionType {
     DATASOURCE,

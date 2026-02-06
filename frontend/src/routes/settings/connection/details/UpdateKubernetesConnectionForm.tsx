@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   KubernetesConnectionResponse,
   PatchConnectionPayload,
+  roleRequirementSchema,
 } from "../../../../api/DatasourceApi";
 import InputField, { TextField } from "../../../../components/InputField";
 import { Disclosure } from "@headlessui/react";
@@ -14,12 +15,17 @@ import Button from "../../../../components/Button";
 import { useConnectionForm } from "./ConnectionEditFormHook";
 import { useCategories } from "../../../../hooks/connections";
 import CategoryAutocomplete from "../../../../components/CategoryAutocomplete";
+import { useCallback, useState } from "react";
+import RoleRequirementsSection, {
+  RoleRequirementField,
+} from "../../../../components/RoleRequirementsSection";
 
 const kubernetesConnectionFormSchema = z.object({
   displayName: z.string().min(3),
   description: z.string(),
   reviewConfig: z.object({
     numTotalRequired: z.coerce.number(),
+    roleRequirements: z.array(roleRequirementSchema).optional(),
   }),
   maxExecutions: z.coerce.number().nullable(),
   storeResults: z.boolean(),
@@ -50,6 +56,7 @@ export default function UpdateKubernetesConnectionForm({
       description: connection.description,
       reviewConfig: {
         numTotalRequired: connection.reviewConfig.numTotalRequired,
+        roleRequirements: connection.reviewConfig.roleRequirements,
       },
       maxExecutions: connection.maxExecutions,
       storeResults: connection.storeResults,
@@ -60,6 +67,48 @@ export default function UpdateKubernetesConnectionForm({
     onSubmit: editConnection,
     connectionType: "KUBERNETES",
   });
+
+  const [roleRequirements, setRoleRequirements] = useState<
+    RoleRequirementField[]
+  >(connection.reviewConfig.roleRequirements ?? []);
+
+  const updateRoleRequirementsFormValue = useCallback(
+    (reqs: RoleRequirementField[]) => {
+      setValue(
+        "reviewConfig.roleRequirements" as "reviewConfig",
+        reqs.length > 0 ? (reqs as never) : (undefined as never),
+        { shouldDirty: true },
+      );
+    },
+    [setValue],
+  );
+
+  const handleAppendRole = useCallback(
+    (field: RoleRequirementField) => {
+      const updated = [...roleRequirements, field];
+      setRoleRequirements(updated);
+      updateRoleRequirementsFormValue(updated);
+    },
+    [roleRequirements, updateRoleRequirementsFormValue],
+  );
+
+  const handleRemoveRole = useCallback(
+    (index: number) => {
+      const updated = roleRequirements.filter((_, i) => i !== index);
+      setRoleRequirements(updated);
+      updateRoleRequirementsFormValue(updated);
+    },
+    [roleRequirements, updateRoleRequirementsFormValue],
+  );
+
+  const handleUpdateRole = useCallback(
+    (index: number, field: RoleRequirementField) => {
+      const updated = roleRequirements.map((f, i) => (i === index ? field : f));
+      setRoleRequirements(updated);
+      updateRoleRequirementsFormValue(updated);
+    },
+    [roleRequirements, updateRoleRequirementsFormValue],
+  );
 
   return (
     <form
@@ -108,6 +157,13 @@ export default function UpdateKubernetesConnectionForm({
             type="number"
             {...register("reviewConfig.numTotalRequired")}
             error={errors.reviewConfig?.numTotalRequired?.message}
+          />
+          <RoleRequirementsSection
+            fields={roleRequirements}
+            onAppend={handleAppendRole}
+            onRemove={handleRemoveRole}
+            onUpdate={handleUpdateRole}
+            numTotalRequired={watch("reviewConfig.numTotalRequired") || 0}
           />
           <div className="w-full">
             <Disclosure defaultOpen={false}>

@@ -144,7 +144,6 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
 
     fun resolveReviewStatus(): ReviewStatus {
         val reviewConfig = request.connection.reviewConfig
-        val numReviews = getApprovalCount()
 
         if (isRejected()) {
             return ReviewStatus.REJECTED
@@ -154,13 +153,28 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
             return ReviewStatus.CHANGE_REQUESTED
         }
 
-        val reviewStatus = if (numReviews >= reviewConfig.numTotalRequired) {
-            ReviewStatus.APPROVED
-        } else {
-            ReviewStatus.AWAITING_APPROVAL
+        val approvers = getApproversAfterReset()
+
+        // Check total required (always applies)
+        if (approvers.size < reviewConfig.numTotalRequired) {
+            return ReviewStatus.AWAITING_APPROVAL
         }
 
-        return reviewStatus
+        // Check role requirements (always enforced if configured, regardless of license)
+        val roleRequirements = reviewConfig.roleRequirements
+        if (!roleRequirements.isNullOrEmpty()) {
+            val allRolesSatisfied = roleRequirements.all { roleReq ->
+                val approvalsForRole = approvers.count { user ->
+                    user.roles.any { role -> role.getId() == roleReq.roleId }
+                }
+                approvalsForRole >= roleReq.numRequired
+            }
+            if (!allRolesSatisfied) {
+                return ReviewStatus.AWAITING_APPROVAL
+            }
+        }
+
+        return ReviewStatus.APPROVED
     }
 
     fun isRejected(): Boolean {
@@ -171,15 +185,34 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         return rejectedReview != null
     }
 
-    fun getApprovalCount(): Int {
+    fun getApproversAfterReset(): List<User> {
         val resetTimestamp = latestResetTimestamp()
-        val numReviews = events.filter {
+        return events.filter {
             it.type == EventType.REVIEW &&
                 it is ReviewEvent &&
                 it.action == ReviewAction.APPROVE &&
                 it.createdAt > resetTimestamp
-        }.groupBy { it.author.getId() }.count()
-        return numReviews
+        }.groupBy { it.author.getId() }
+            .map { it.value.first().author }
+    }
+
+    fun getApprovalCount(): Int = getApproversAfterReset().size
+
+    fun getMissingApprovals(): MissingApprovals {
+        val approvers = getApproversAfterReset()
+        val reviewConfig = request.connection.reviewConfig
+
+        val totalMissing = maxOf(0, reviewConfig.numTotalRequired - approvers.size)
+
+        val rolesMissing = reviewConfig.roleRequirements?.mapNotNull { roleReq ->
+            val current = approvers.count { user ->
+                user.roles.any { role -> role.getId() == roleReq.roleId }
+            }
+            val missing = roleReq.numRequired - current
+            if (missing > 0) RoleMissing(roleReq.roleId, missing) else null
+        } ?: emptyList()
+
+        return MissingApprovals(totalMissing, rolesMissing)
     }
 
     fun latestResetTimestamp(): LocalDateTime {
@@ -363,6 +396,16 @@ data class ExecutionProxy(
 
     override fun getRelated(resource: Resource): SecuredDomainObject? = null
 }
+
+data class MissingApprovals(
+    val totalMissing: Int,
+    val rolesMissing: List<RoleMissing>,
+)
+
+data class RoleMissing(
+    val roleId: String,
+    val numMissing: Int,
+)
 
 data class ExecutionRequestList(
     val requests: List<ExecutionRequestDetails>,
