@@ -135,16 +135,17 @@ data class KubernetesExecutionRequest(
     temporaryAccessDuration,
 )
 
-data class ExecutionRequestDetails(val request: ExecutionRequest, val events: MutableSet<Event>) :
-    SecuredDomainObject {
+data class ExecutionRequestDetails(
+    val request: ExecutionRequest,
+    val events: MutableSet<Event>,
+    var resolvedRoles: Map<String, dev.kviklet.kviklet.service.dto.Role> = emptyMap(),
+) : SecuredDomainObject {
     fun addEvent(event: Event): ExecutionRequestDetails {
         events.add(event)
         return this
     }
 
     fun resolveReviewStatus(): ReviewStatus {
-        val reviewConfig = request.connection.reviewConfig
-
         if (isRejected()) {
             return ReviewStatus.REJECTED
         }
@@ -153,25 +154,12 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
             return ReviewStatus.CHANGE_REQUESTED
         }
 
-        val approvers = getApproversAfterReset()
-
-        // Check total required (always applies)
-        if (approvers.size < reviewConfig.numTotalRequired) {
+        val progress = getApprovalProgress()
+        if (progress.totalCurrent < progress.totalRequired) {
             return ReviewStatus.AWAITING_APPROVAL
         }
-
-        // Check role requirements (always enforced if configured, regardless of license)
-        val roleRequirements = reviewConfig.roleRequirements
-        if (!roleRequirements.isNullOrEmpty()) {
-            val allRolesSatisfied = roleRequirements.all { roleReq ->
-                val approvalsForRole = approvers.count { user ->
-                    user.roles.any { role -> role.getId() == roleReq.roleId }
-                }
-                approvalsForRole >= roleReq.numRequired
-            }
-            if (!allRolesSatisfied) {
-                return ReviewStatus.AWAITING_APPROVAL
-            }
+        if (progress.roleProgress.any { it.numCurrent < it.numRequired }) {
+            return ReviewStatus.AWAITING_APPROVAL
         }
 
         return ReviewStatus.APPROVED
@@ -198,21 +186,36 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
 
     fun getApprovalCount(): Int = getApproversAfterReset().size
 
-    fun getMissingApprovals(): MissingApprovals {
+    fun getApprovalProgress(): ApprovalProgress {
         val approvers = getApproversAfterReset()
         val reviewConfig = request.connection.reviewConfig
 
-        val totalMissing = maxOf(0, reviewConfig.numTotalRequired - approvers.size)
+        val totalRequired = reviewConfig.numTotalRequired
+        val totalCurrent = approvers.size
 
-        val rolesMissing = reviewConfig.roleRequirements?.mapNotNull { roleReq ->
-            val current = approvers.count { user ->
+        val roleProgress = reviewConfig.roleRequirements?.map { roleReq ->
+            val approversForRole = approvers.filter { user ->
                 user.roles.any { role -> role.getId() == roleReq.roleId }
             }
-            val missing = roleReq.numRequired - current
-            if (missing > 0) RoleMissing(roleReq.roleId, missing) else null
+            val numCurrent = approversForRole.size
+            val approverNames = approversForRole.map { "${it.fullName} (${it.email})" }
+
+            val resolvedRole = resolvedRoles[roleReq.roleId]
+                ?: throw IllegalStateException("Role ${roleReq.roleId} not resolved")
+
+            RoleApprovalProgress(
+                role = resolvedRole,
+                numRequired = roleReq.numRequired,
+                numCurrent = numCurrent,
+                approverNames = approverNames,
+            )
         } ?: emptyList()
 
-        return MissingApprovals(totalMissing, rolesMissing)
+        return ApprovalProgress(
+            totalRequired = totalRequired,
+            totalCurrent = totalCurrent,
+            roleProgress = roleProgress,
+        )
     }
 
     fun latestResetTimestamp(): LocalDateTime {
@@ -397,14 +400,17 @@ data class ExecutionProxy(
     override fun getRelated(resource: Resource): SecuredDomainObject? = null
 }
 
-data class MissingApprovals(
-    val totalMissing: Int,
-    val rolesMissing: List<RoleMissing>,
+data class RoleApprovalProgress(
+    val role: dev.kviklet.kviklet.service.dto.Role,
+    val numRequired: Int,
+    val numCurrent: Int,
+    val approverNames: List<String>,
 )
 
-data class RoleMissing(
-    val roleId: String,
-    val numMissing: Int,
+data class ApprovalProgress(
+    val totalRequired: Int,
+    val totalCurrent: Int,
+    val roleProgress: List<RoleApprovalProgress>,
 )
 
 data class ExecutionRequestList(

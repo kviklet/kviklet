@@ -7,6 +7,7 @@ import dev.kviklet.kviklet.security.CurrentUser
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.ColumnInfo
 import dev.kviklet.kviklet.service.ExecutionRequestService
+import dev.kviklet.kviklet.service.dto.ApprovalProgress
 import dev.kviklet.kviklet.service.dto.CommentEvent
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DBExecutionResult
@@ -34,6 +35,7 @@ import dev.kviklet.kviklet.service.dto.ResultType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewEvent
 import dev.kviklet.kviklet.service.dto.ReviewStatus
+import dev.kviklet.kviklet.service.dto.RoleApprovalProgress
 import dev.kviklet.kviklet.service.dto.UpdateQueryResult
 import dev.kviklet.kviklet.service.dto.UpdateResultLog
 import dev.kviklet.kviklet.service.dto.utcTimeNow
@@ -222,6 +224,7 @@ sealed class ExecutionRequestDetailResponse(open val id: ExecutionRequestId, ope
                     reason = dto.csvDownloadAllowed().second,
                 ),
                 temporaryAccessDuration = dto.request.temporaryAccessDuration?.toMinutes(),
+                approvalProgress = ApprovalProgressResponse.fromDto(dto.getApprovalProgress()),
             )
 
             is KubernetesExecutionRequest -> KubernetesExecutionRequestDetailResponse(
@@ -240,6 +243,7 @@ sealed class ExecutionRequestDetailResponse(open val id: ExecutionRequestId, ope
                 events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
                 connection = ConnectionResponse.fromDto(dto.request.connection),
                 temporaryAccessDuration = dto.request.temporaryAccessDuration?.toMinutes(),
+                approvalProgress = ApprovalProgressResponse.fromDto(dto.getApprovalProgress()),
             )
         }
     }
@@ -259,12 +263,41 @@ data class DatasourceExecutionRequestDetailResponse(
     val csvDownload: CSVDownloadableResponse,
     override val events: List<EventResponse>,
     val temporaryAccessDuration: Long? = null,
+    val approvalProgress: ApprovalProgressResponse,
 ) : ExecutionRequestDetailResponse(
     id = id,
     events = events,
 )
 
 data class CSVDownloadableResponse(val allowed: Boolean, val reason: String)
+
+data class RoleApprovalProgressResponse(
+    val role: RoleResponse,
+    val numRequired: Int,
+    val numCurrent: Int,
+    val approverNames: List<String>,
+)
+
+data class ApprovalProgressResponse(
+    val totalRequired: Int,
+    val totalCurrent: Int,
+    val roleProgress: List<RoleApprovalProgressResponse>,
+) {
+    companion object {
+        fun fromDto(dto: ApprovalProgress): ApprovalProgressResponse = ApprovalProgressResponse(
+            totalRequired = dto.totalRequired,
+            totalCurrent = dto.totalCurrent,
+            roleProgress = dto.roleProgress.map { roleProgress ->
+                RoleApprovalProgressResponse(
+                    role = RoleResponse.fromDto(roleProgress.role),
+                    numRequired = roleProgress.numRequired,
+                    numCurrent = roleProgress.numCurrent,
+                    approverNames = roleProgress.approverNames,
+                )
+            },
+        )
+    }
+}
 
 data class KubernetesExecutionRequestDetailResponse(
     override val id: ExecutionRequestId,
@@ -282,6 +315,7 @@ data class KubernetesExecutionRequestDetailResponse(
     val command: String?,
     override val events: List<EventResponse>,
     val temporaryAccessDuration: Long? = null,
+    val approvalProgress: ApprovalProgressResponse,
 ) : ExecutionRequestDetailResponse(
     id = id,
     events = events,

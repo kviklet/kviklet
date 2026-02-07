@@ -73,6 +73,7 @@ class ExecutionRequestService(
     private val userAdapter: UserAdapter,
     private val proxyTLSCerts: TLSCerts,
     private val dryRunValidator: DryRunValidator,
+    private val roleAdapter: dev.kviklet.kviklet.db.RoleAdapter,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val proxies = mutableListOf<ExecutionProxy>()
@@ -393,6 +394,16 @@ class ExecutionRequestService(
         ensureMaterializedStatuses(executionRequestAdapter.getExecutionRequestDetails(id))
 
     private fun ensureMaterializedStatuses(details: ExecutionRequestDetails): ExecutionRequestDetails {
+        // Resolve roles for role requirements
+        val roleRequirements = details.request.connection.reviewConfig.roleRequirements
+        if (!roleRequirements.isNullOrEmpty()) {
+            val roleIds = roleRequirements.map { it.roleId }
+            val resolvedRoles = roleAdapter.findByIds(roleIds)
+            details.resolvedRoles = resolvedRoles.associateBy { it.getId()!! }
+        } else {
+            details.resolvedRoles = emptyMap()
+        }
+
         val storedExecutionStatus = ExecutionStatus.valueOf(details.request.executionStatus)
         val storedReviewStatus = ReviewStatus.valueOf(details.request.reviewStatus)
 

@@ -67,6 +67,7 @@ class RoleBasedReviewTest {
             request = request,
             events = events,
         )
+        details.resolvedRoles = mapOf(dbaRole.getId()!! to dbaRole)
         details.resolveReviewStatus() shouldBe ReviewStatus.AWAITING_APPROVAL
     }
 
@@ -90,6 +91,7 @@ class RoleBasedReviewTest {
             request = request,
             events = events,
         )
+        details.resolvedRoles = mapOf(dbaRole.getId()!! to dbaRole)
         details.resolveReviewStatus() shouldBe ReviewStatus.APPROVED
     }
 
@@ -120,6 +122,10 @@ class RoleBasedReviewTest {
             request = request,
             events = events,
         )
+        details.resolvedRoles = mapOf(
+            dbaRole.getId()!! to dbaRole,
+            securityRole.getId()!! to securityRole,
+        )
         details.resolveReviewStatus() shouldBe ReviewStatus.APPROVED
     }
 
@@ -149,6 +155,10 @@ class RoleBasedReviewTest {
         val details = executionRequestDetailsFactory.createExecutionRequestDetails(
             request = request,
             events = events,
+        )
+        details.resolvedRoles = mapOf(
+            dbaRole.getId()!! to dbaRole,
+            securityRole.getId()!! to securityRole,
         )
         details.resolveReviewStatus() shouldBe ReviewStatus.AWAITING_APPROVAL
     }
@@ -181,6 +191,10 @@ class RoleBasedReviewTest {
             request = request,
             events = events,
         )
+        details.resolvedRoles = mapOf(
+            dbaRole.getId()!! to dbaRole,
+            securityRole.getId()!! to securityRole,
+        )
         details.resolveReviewStatus() shouldBe ReviewStatus.APPROVED
     }
 
@@ -209,6 +223,10 @@ class RoleBasedReviewTest {
             request = request,
             events = events,
         )
+        details.resolvedRoles = mapOf(
+            dbaRole.getId()!! to dbaRole,
+            securityRole.getId()!! to securityRole,
+        )
         details.resolveReviewStatus() shouldBe ReviewStatus.AWAITING_APPROVAL
     }
 
@@ -236,6 +254,7 @@ class RoleBasedReviewTest {
             request = request,
             events = events,
         )
+        details.resolvedRoles = mapOf(dbaRole.getId()!! to dbaRole)
         details.resolveReviewStatus() shouldBe ReviewStatus.AWAITING_APPROVAL
 
         // 1 DBA + 2 others -> approved
@@ -249,6 +268,7 @@ class RoleBasedReviewTest {
             request = request,
             events = allEvents,
         )
+        detailsWithThree.resolvedRoles = mapOf(dbaRole.getId()!! to dbaRole)
         detailsWithThree.resolveReviewStatus() shouldBe ReviewStatus.APPROVED
     }
 
@@ -273,7 +293,7 @@ class RoleBasedReviewTest {
     }
 
     @Test
-    fun `getMissingApprovals returns correct missing info`() {
+    fun `getApprovalProgress returns correct progress info`() {
         val dbaRole = roleFactory.createRole(name = "DBA")
         val securityRole = roleFactory.createRole(name = "Security")
 
@@ -297,16 +317,28 @@ class RoleBasedReviewTest {
             request = request,
             events = events,
         )
+        details.resolvedRoles = mapOf(
+            dbaRole.getId()!! to dbaRole,
+            securityRole.getId()!! to securityRole,
+        )
 
-        val missing = details.getMissingApprovals()
-        missing.totalMissing shouldBe 2 // need 3 total, have 1
-        missing.rolesMissing.size shouldBe 1 // DBA is satisfied, security is missing
-        missing.rolesMissing[0].roleId shouldBe securityRole.getId()!!
-        missing.rolesMissing[0].numMissing shouldBe 1
+        val progress = details.getApprovalProgress()
+        progress.totalRequired shouldBe 3
+        progress.totalCurrent shouldBe 1
+        progress.roleProgress.size shouldBe 2
+
+        // Find DBA and Security progress
+        val dbaProgress = progress.roleProgress.find { it.role.getId() == dbaRole.getId() }!!
+        dbaProgress.numRequired shouldBe 1
+        dbaProgress.numCurrent shouldBe 1
+
+        val securityProgress = progress.roleProgress.find { it.role.getId() == securityRole.getId() }!!
+        securityProgress.numRequired shouldBe 1
+        securityProgress.numCurrent shouldBe 0
     }
 
     @Test
-    fun `getMissingApprovals returns empty when all satisfied`() {
+    fun `getApprovalProgress returns all satisfied when complete`() {
         val dbaRole = roleFactory.createRole(name = "DBA")
 
         val connection = connectionFactory.createDatasourceConnection(
@@ -325,9 +357,64 @@ class RoleBasedReviewTest {
             request = request,
             events = events,
         )
+        details.resolvedRoles = mapOf(dbaRole.getId()!! to dbaRole)
 
-        val missing = details.getMissingApprovals()
-        missing.totalMissing shouldBe 0
-        missing.rolesMissing shouldBe emptyList()
+        val progress = details.getApprovalProgress()
+        progress.totalRequired shouldBe 1
+        progress.totalCurrent shouldBe 1
+        progress.roleProgress.size shouldBe 1
+        progress.roleProgress[0].numRequired shouldBe 1
+        progress.roleProgress[0].numCurrent shouldBe 1
+    }
+
+    @Test
+    fun `getApprovalProgress returns empty roleProgress when no role requirements`() {
+        val connection = connectionFactory.createDatasourceConnection(
+            reviewConfig = ReviewConfig(numTotalRequired = 2, roleRequirements = null),
+        )
+        val request = executionRequestFactory.createDatasourceExecutionRequest(connection = connection)
+
+        val approver1 = userFactory.createUser()
+        val events = mutableSetOf<Event>(
+            eventFactory.createReviewApprovedEvent(request = request, author = approver1),
+        )
+        val details = executionRequestDetailsFactory.createExecutionRequestDetails(
+            request = request,
+            events = events,
+        )
+        details.resolvedRoles = emptyMap()
+
+        val progress = details.getApprovalProgress()
+        progress.totalRequired shouldBe 2
+        progress.totalCurrent shouldBe 1
+        progress.roleProgress shouldBe emptyList()
+    }
+
+    @Test
+    fun `getApprovalProgress includes approver names`() {
+        val dbaRole = roleFactory.createRole(name = "DBA")
+
+        val connection = connectionFactory.createDatasourceConnection(
+            reviewConfig = ReviewConfig(
+                numTotalRequired = 1,
+                roleRequirements = listOf(RoleRequirement(roleId = dbaRole.getId()!!, numRequired = 1)),
+            ),
+        )
+        val request = executionRequestFactory.createDatasourceExecutionRequest(connection = connection)
+
+        val dba = userFactory.createUser(fullName = "John Doe", email = "john@example.com", roles = setOf(dbaRole))
+        val events = mutableSetOf<Event>(
+            eventFactory.createReviewApprovedEvent(request = request, author = dba),
+        )
+        val details = executionRequestDetailsFactory.createExecutionRequestDetails(
+            request = request,
+            events = events,
+        )
+        details.resolvedRoles = mapOf(dbaRole.getId()!! to dbaRole)
+
+        val progress = details.getApprovalProgress()
+        progress.roleProgress.size shouldBe 1
+        progress.roleProgress[0].approverNames.size shouldBe 1
+        progress.roleProgress[0].approverNames[0] shouldBe "John Doe (john@example.com)"
     }
 }

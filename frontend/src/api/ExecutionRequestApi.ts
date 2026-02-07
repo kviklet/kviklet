@@ -4,6 +4,7 @@ import {
   connectionResponseSchema,
   databaseConnectionResponseSchema,
 } from "./DatasourceApi";
+import { roleResponseSchema } from "./RoleApi";
 import baseUrl from "./base";
 import {
   ApiErrorResponse,
@@ -120,6 +121,19 @@ const CSVDownloadSchema = z.object({
   reason: z.string(),
 });
 
+const RoleApprovalProgressSchema = z.object({
+  role: roleResponseSchema,
+  numRequired: z.number(),
+  numCurrent: z.number(),
+  approverNames: z.array(z.string()),
+});
+
+const ApprovalProgressSchema = z.object({
+  totalRequired: z.number(),
+  totalCurrent: z.number(),
+  roleProgress: z.array(RoleApprovalProgressSchema),
+});
+
 const RawDatasourceRequestSchema = z.object({
   id: z.string(),
   type: z.enum(["TemporaryAccess", "SingleExecution", "Dump"]),
@@ -134,6 +148,7 @@ const RawDatasourceRequestSchema = z.object({
   connectionName: z.string().optional(),
   csvDownload: CSVDownloadSchema.optional(),
   temporaryAccessDuration: z.number().nullable(),
+  approvalProgress: ApprovalProgressSchema,
 });
 
 const RawKubernetesRequestSchema = z.object({
@@ -152,6 +167,7 @@ const RawKubernetesRequestSchema = z.object({
   containerName: z.coerce.string(),
   command: z.string().optional().nullable(),
   temporaryAccessDuration: z.number().optional().nullable(),
+  approvalProgress: ApprovalProgressSchema,
 });
 
 const ProxyResponse = z.object({
@@ -228,6 +244,8 @@ type ExecutionRequestListResponse = z.infer<
   typeof ExecutionRequestListResponseSchema
 >;
 type ExecutionRequestResponse = z.infer<typeof ExecutionRequestResponseSchema>;
+type RoleApprovalProgress = z.infer<typeof RoleApprovalProgressSchema>;
+type ApprovalProgress = z.infer<typeof ApprovalProgressSchema>;
 
 type ChangeExecutionRequestPayload = z.infer<
   typeof ChangeExecutionRequestPayloadSchema
@@ -597,4 +615,6 @@ export type {
   QueryResult,
   ProxyResponse,
   KubernetesExecuteResponse,
+  RoleApprovalProgress,
+  ApprovalProgress,
 };

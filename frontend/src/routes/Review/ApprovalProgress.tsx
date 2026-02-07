@@ -1,75 +1,14 @@
 import { ExecutionRequestResponseWithComments } from "../../api/ExecutionRequestApi";
-import { RoleRequirement } from "../../api/DatasourceApi";
-
-interface RoleProgress {
-  roleId: string;
-  roleName: string;
-  numRequired: number;
-  numCurrent: number;
-  approverNames: string[];
-}
-
-function computeApprovalProgress(
-  request: ExecutionRequestResponseWithComments,
-): {
-  totalRequired: number;
-  totalCurrent: number;
-  roleProgress: RoleProgress[];
-} | null {
-  const reviewConfig = request.connection.reviewConfig;
-  const roleRequirements = reviewConfig.roleRequirements;
-
-  if (!roleRequirements || roleRequirements.length === 0) {
-    return null;
-  }
-
-  // Find all approval events (considering only the latest non-reset state)
-  const approvals = request.events.filter(
-    (e) => e._type === "REVIEW" && e.action === "APPROVE",
-  );
-
-  const totalRequired = reviewConfig.numTotalRequired;
-  const totalCurrent = approvals.length;
-
-  const roleProgress: RoleProgress[] = roleRequirements.map(
-    (req: RoleRequirement) => {
-      const approversForRole = approvals.filter(
-        (a) =>
-          a._type === "REVIEW" &&
-          a.author?.roles?.some((role) => role.id === req.roleId),
-      );
-
-      const approverNames = approversForRole
-        .map((a) => (a._type === "REVIEW" && a.author?.fullName) || "Unknown")
-        .filter((name): name is string => name !== null);
-
-      // Get the role name from the first matching approver's role, or fall back to roleId
-      const roleName =
-        approvals
-          .flatMap((a) => (a._type === "REVIEW" ? a.author?.roles ?? [] : []))
-          .find((r) => r.id === req.roleId)?.name ?? req.roleId;
-
-      return {
-        roleId: req.roleId,
-        roleName,
-        numRequired: req.numRequired,
-        numCurrent: approversForRole.length,
-        approverNames,
-      };
-    },
-  );
-
-  return { totalRequired, totalCurrent, roleProgress };
-}
 
 export default function ApprovalProgress({
   request,
 }: {
   request: ExecutionRequestResponseWithComments;
 }) {
-  const progress = computeApprovalProgress(request);
+  const progress = request.approvalProgress;
 
-  if (!progress) {
+  // Hide entirely when there are no review requirements
+  if (progress.totalRequired === 0 && progress.roleProgress.length === 0) {
     return null;
   }
 
@@ -93,9 +32,9 @@ export default function ApprovalProgress({
         {/* Role-specific progress */}
         {progress.roleProgress.map((rp) => (
           <ProgressRow
-            key={rp.roleId}
+            key={rp.role.id}
             satisfied={rp.numCurrent >= rp.numRequired}
-            label={`${rp.numCurrent} of ${rp.numRequired} ${rp.roleName} approval(s)`}
+            label={`${rp.numCurrent} of ${rp.numRequired} ${rp.role.name} approval(s)`}
             detail={
               rp.numCurrent > 0
                 ? `(${rp.approverNames.join(", ")})`
@@ -109,7 +48,7 @@ export default function ApprovalProgress({
       {missingRoles.length > 0 && (
         <div className="mt-3 rounded-md border border-yellow-200 bg-yellow-50 p-2.5 dark:border-yellow-800 dark:bg-yellow-900/20">
           <p className="text-xs text-yellow-800 dark:text-yellow-200">
-            Waiting for {missingRoles.map((rp) => rp.roleName).join(" and ")}{" "}
+            Waiting for {missingRoles.map((rp) => rp.role.name).join(" and ")}{" "}
             approval before this request can be executed.
           </p>
         </div>
