@@ -368,10 +368,7 @@ class ConnectionService(
         connectionId = connectionId,
     )
 
-    private fun validateReviewConfig(
-        newReviewConfig: ReviewConfig,
-        existingReviewConfig: ReviewConfig?,
-    ) {
+    private fun validateReviewConfig(newReviewConfig: ReviewConfig, existingReviewConfig: ReviewConfig?) {
         if (newReviewConfig.numTotalRequired < 0) {
             throw IllegalArgumentException("numTotalRequired cannot be negative")
         }

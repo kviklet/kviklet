@@ -187,15 +187,9 @@ data class UpdateKubernetesConnectionRequest(
     val category: String? = null,
 ) : UpdateConnectionRequest()
 
-data class RoleRequirementRequest(
-    val roleId: String,
-    val numRequired: Int,
-)
+data class RoleRequirementRequest(val roleId: String, val numRequired: Int)
 
-data class RoleRequirementResponse(
-    val roleId: String,
-    val numRequired: Int,
-)
+data class RoleRequirementResponse(val roleId: String, val numRequired: Int)
 
 data class ReviewConfigRequest(
     val numTotalRequired: Int = 0,
