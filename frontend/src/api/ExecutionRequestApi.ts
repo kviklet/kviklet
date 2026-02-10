@@ -148,7 +148,7 @@ const RawDatasourceRequestSchema = z.object({
   connectionName: z.string().optional(),
   csvDownload: CSVDownloadSchema.optional(),
   temporaryAccessDuration: z.number().nullable(),
-  approvalProgress: ApprovalProgressSchema,
+  approvalProgress: ApprovalProgressSchema.optional(),
 });
 
 const RawKubernetesRequestSchema = z.object({
@@ -167,7 +167,7 @@ const RawKubernetesRequestSchema = z.object({
   containerName: z.coerce.string(),
   command: z.string().optional().nullable(),
   temporaryAccessDuration: z.number().optional().nullable(),
-  approvalProgress: ApprovalProgressSchema,
+  approvalProgress: ApprovalProgressSchema.optional(),
 });
 
 const ProxyResponse = z.object({

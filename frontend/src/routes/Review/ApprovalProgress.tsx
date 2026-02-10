@@ -7,8 +7,11 @@ export default function ApprovalProgress({
 }) {
   const progress = request.approvalProgress;
 
-  // Hide entirely when there are no review requirements
-  if (progress.totalRequired === 0 && progress.roleProgress.length === 0) {
+  // Hide when no progress data or no review requirements
+  if (
+    !progress ||
+    (progress.totalRequired === 0 && progress.roleProgress.length === 0)
+  ) {
     return null;
   }
 

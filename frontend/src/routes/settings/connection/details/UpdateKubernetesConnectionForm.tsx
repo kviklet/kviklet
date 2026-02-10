@@ -56,7 +56,8 @@ export default function UpdateKubernetesConnectionForm({
       description: connection.description,
       reviewConfig: {
         numTotalRequired: connection.reviewConfig.numTotalRequired,
-        roleRequirements: connection.reviewConfig.roleRequirements,
+        roleRequirements:
+          connection.reviewConfig.roleRequirements ?? undefined,
       },
       maxExecutions: connection.maxExecutions,
       storeResults: connection.storeResults,

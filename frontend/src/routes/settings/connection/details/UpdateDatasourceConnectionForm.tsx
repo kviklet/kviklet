@@ -139,7 +139,8 @@ export default function UpdateDatasourceConnectionForm({
       databaseName: connection.databaseName || "",
       reviewConfig: {
         numTotalRequired: connection.reviewConfig.numTotalRequired,
-        roleRequirements: connection.reviewConfig.roleRequirements,
+        roleRequirements:
+          connection.reviewConfig.roleRequirements ?? undefined,
       },
       additionalJDBCOptions: connection.additionalJDBCOptions || "",
       maxExecutions: connection.maxExecutions,

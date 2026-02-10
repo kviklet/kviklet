@@ -37,7 +37,7 @@ type RoleRequirement = z.infer<typeof roleRequirementSchema>;
 
 const reviewConfigSchema = z.object({
   numTotalRequired: z.number(),
-  roleRequirements: z.array(roleRequirementSchema).optional(),
+  roleRequirements: z.array(roleRequirementSchema).nullable().optional(),
 });
 
 const databaseConnectionResponseSchema = withType(
