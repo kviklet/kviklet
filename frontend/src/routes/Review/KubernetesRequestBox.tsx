@@ -114,7 +114,7 @@ const KubernetesRequestBox: FC<KubernetesRequestBoxProps> = ({
         </div>
 
         {/* Right: approval status + actions */}
-        <div className="flex flex-col items-end justify-between border-slate-200 sm:border-l sm:pl-4 dark:border-slate-700">
+        <div className="flex flex-col items-end justify-between border-slate-200 dark:border-slate-700 sm:border-l sm:pl-4">
           <ApprovalProgress request={request} />
           <div className="flex">
             <MenuDropDown items={menuDropDownItems}></MenuDropDown>

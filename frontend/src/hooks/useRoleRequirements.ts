@@ -1,10 +1,14 @@
 import { useState, useCallback } from "react";
-import { UseFormSetValue, UseFormGetValues } from "react-hook-form";
+import {
+  UseFormSetValue,
+  UseFormGetValues,
+  FieldValues,
+} from "react-hook-form";
 import { RoleRequirementField } from "../components/RoleRequirementsSection";
 
-export function useRoleRequirements(
-  setValue: UseFormSetValue<any>,
-  getValues: UseFormGetValues<any>,
+export function useRoleRequirements<T extends FieldValues>(
+  setValue: UseFormSetValue<T>,
+  getValues: UseFormGetValues<T>,
   initialRequirements: RoleRequirementField[] = [],
 ) {
   const [roleRequirements, setRoleRequirements] =
@@ -17,20 +21,28 @@ export function useRoleRequirements(
 
   const updateRoleRequirementsFormValue = useCallback(
     (reqs: RoleRequirementField[]) => {
-      setValue(
-        "reviewConfig.roleRequirements" as "reviewConfig",
-        reqs.length > 0 ? (reqs as never) : (undefined as never),
+      (setValue as UseFormSetValue<FieldValues>)(
+        "reviewConfig.roleRequirements",
+        reqs.length > 0 ? reqs : undefined,
         { shouldDirty: true },
       );
 
       // Auto-bump numTotalRequired if it's BELOW the new minimum
       const newMin =
         reqs.length > 0 ? Math.max(...reqs.map((r) => r.numRequired)) : 0;
-      const current = Number(getValues("reviewConfig.numTotalRequired"));
+      const current = Number(
+        (getValues as UseFormGetValues<FieldValues>)(
+          "reviewConfig.numTotalRequired",
+        ),
+      );
       if (current < newMin) {
-        setValue("reviewConfig.numTotalRequired", newMin, {
-          shouldDirty: true,
-        });
+        (setValue as UseFormSetValue<FieldValues>)(
+          "reviewConfig.numTotalRequired",
+          newMin,
+          {
+            shouldDirty: true,
+          },
+        );
       }
       // NEVER auto-lower: if user manually set it higher, leave it alone
     },
