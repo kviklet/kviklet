@@ -2,7 +2,6 @@ package dev.kviklet.kviklet.service.dto
 
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonValue
-import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.security.Resource
 import dev.kviklet.kviklet.security.SecuredDomainId
 import dev.kviklet.kviklet.security.SecuredDomainObject
@@ -38,6 +37,11 @@ enum class AuthenticationType {
     USER_PASSWORD,
     AWS_IAM,
     // other: aws iam, gpc, env var
+}
+
+enum class ConnectionType {
+    DATASOURCE,
+    KUBERNETES,
 }
 
 data class ConnectionId

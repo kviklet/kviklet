@@ -1,7 +1,7 @@
 package dev.kviklet.kviklet
 
 import dev.kviklet.kviklet.db.ConnectionAdapter
-import dev.kviklet.kviklet.db.ReviewConfig
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.helper.ConnectionHelper
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper

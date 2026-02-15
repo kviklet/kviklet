@@ -2,9 +2,9 @@ package dev.kviklet.kviklet.controller
 
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
-import dev.kviklet.kviklet.db.ConnectionType
-import dev.kviklet.kviklet.db.ReviewConfig
-import dev.kviklet.kviklet.db.RoleRequirement
+import dev.kviklet.kviklet.service.dto.ConnectionType
+import dev.kviklet.kviklet.service.dto.ReviewConfig
+import dev.kviklet.kviklet.service.dto.RoleRequirement
 import dev.kviklet.kviklet.service.ConnectionService
 import dev.kviklet.kviklet.service.TestConnectionResult
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
@@ -381,7 +381,6 @@ class ConnectionController(val connectionService: ConnectionService) {
             additionalJDBCOptions = request.additionalJDBCOptions,
             maxExecutions = request.maxExecutions,
             dumpsEnabled = request.dumpsEnabled,
-
             authenticationType = request.authenticationType,
             temporaryAccessEnabled = request.temporaryAccessEnabled,
             explainEnabled = request.explainEnabled,

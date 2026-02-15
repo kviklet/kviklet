@@ -3,7 +3,7 @@ package dev.kviklet.kviklet
 import com.ninjasquad.springmockk.MockkBean
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
-import dev.kviklet.kviklet.db.ReviewConfig
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.ConfigService

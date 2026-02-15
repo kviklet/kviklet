@@ -2,12 +2,12 @@ package dev.kviklet.kviklet.db.init
 
 import dev.kviklet.kviklet.db.ConnectionEntity
 import dev.kviklet.kviklet.db.ConnectionRepository
-import dev.kviklet.kviklet.db.ConnectionType
+import dev.kviklet.kviklet.service.dto.ConnectionType
 import dev.kviklet.kviklet.db.ExecutionRequestEntity
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
 import dev.kviklet.kviklet.db.ExecutionRequestType
 import dev.kviklet.kviklet.db.PolicyEntity
-import dev.kviklet.kviklet.db.ReviewConfig
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.db.RoleEntity
 import dev.kviklet.kviklet.db.RoleRepository
 import dev.kviklet.kviklet.db.UserEntity

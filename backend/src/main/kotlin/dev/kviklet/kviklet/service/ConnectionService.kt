@@ -4,7 +4,7 @@ import dev.kviklet.kviklet.controller.UpdateConnectionRequest
 import dev.kviklet.kviklet.controller.UpdateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.UpdateKubernetesConnectionRequest
 import dev.kviklet.kviklet.db.ConnectionAdapter
-import dev.kviklet.kviklet.db.ReviewConfig
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy

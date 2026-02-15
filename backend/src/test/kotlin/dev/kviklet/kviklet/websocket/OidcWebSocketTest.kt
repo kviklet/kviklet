@@ -5,7 +5,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlInput
 import com.gargoylesoftware.htmlunit.html.HtmlPage
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
-import dev.kviklet.kviklet.db.ReviewConfig
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.helper.RoleHelper

@@ -1,6 +1,6 @@
 package dev.kviklet.kviklet.helper
 
-import dev.kviklet.kviklet.db.ReviewConfig
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails

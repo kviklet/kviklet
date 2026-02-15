@@ -1,7 +1,7 @@
 package dev.kviklet.kviklet
 
-import dev.kviklet.kviklet.db.ReviewConfig
-import dev.kviklet.kviklet.db.RoleRequirement
+import dev.kviklet.kviklet.service.dto.ReviewConfig
+import dev.kviklet.kviklet.service.dto.RoleRequirement
 import dev.kviklet.kviklet.helper.ConnectionFactory
 import dev.kviklet.kviklet.helper.EventFactory
 import dev.kviklet.kviklet.helper.ExecutionRequestDetailsFactory

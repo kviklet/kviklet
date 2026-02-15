@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.EventRepository
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
-import dev.kviklet.kviklet.db.ReviewConfig
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.util.IdGenerator
 import dev.kviklet.kviklet.helper.ConnectionHelper

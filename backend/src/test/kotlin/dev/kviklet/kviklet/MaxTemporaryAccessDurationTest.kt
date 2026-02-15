@@ -3,7 +3,7 @@ package dev.kviklet.kviklet
 import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
 import dev.kviklet.kviklet.controller.UpdateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.UpdateExecutionRequestRequest
-import dev.kviklet.kviklet.db.ReviewConfig
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.helper.ConnectionHelper
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper

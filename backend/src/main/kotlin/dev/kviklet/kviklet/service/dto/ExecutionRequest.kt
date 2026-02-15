@@ -43,6 +43,10 @@ enum class RequestType {
     Dump,
 }
 
+data class RoleRequirement(val roleId: String, val numRequired: Int)
+
+data class ReviewConfig(val numTotalRequired: Int, val roleRequirements: List<RoleRequirement>? = null)
+
 /**
  * A DTO for the {@link dev.kviklet.kviklet.db.ExecutionRequestEntity} entity
  */

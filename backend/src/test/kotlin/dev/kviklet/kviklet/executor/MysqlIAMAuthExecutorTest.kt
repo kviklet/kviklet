@@ -1,6 +1,6 @@
 package dev.kviklet.kviklet.executor
 
-import dev.kviklet.kviklet.db.ReviewConfig
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.service.ColumnInfo
 import dev.kviklet.kviklet.service.JDBCExecutor
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
