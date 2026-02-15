@@ -300,7 +300,7 @@ data class ApprovalProgressResponse(
                         role = role?.let { RoleResponse.fromDto(it) }
                             ?: RoleResponse(
                                 id = rp.roleId,
-                                name = rp.roleId,
+                                name = "Role that no longer with id: ${rp.roleId}",
                                 description = "",
                                 policies = emptyList(),
                                 isDefault = false,
