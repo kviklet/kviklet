@@ -412,5 +412,14 @@ class ConnectionService(
         if (duplicateIds.isNotEmpty()) {
             throw IllegalArgumentException("Duplicate role id(s): ${duplicateIds.joinToString(", ")}")
         }
+
+        // Validate numTotalRequired is at least as large as the largest individual role requirement
+        val maxRoleRequired = newRoleRequirements.maxOfOrNull { it.numRequired } ?: 0
+        if (newReviewConfig.numTotalRequired < maxRoleRequired) {
+            throw IllegalArgumentException(
+                "numTotalRequired (${newReviewConfig.numTotalRequired}) must be at least $maxRoleRequired " +
+                    "(the largest individual role requirement)",
+            )
+        }
     }
 }

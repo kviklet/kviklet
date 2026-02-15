@@ -10,7 +10,7 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "kviklet.metaLabels" . | nindent 8 }}
+      {{- include "kviklet.selectorLabels" . | nindent 8 }}
   strategy:
     rollingUpdate:
       maxSurge: 1

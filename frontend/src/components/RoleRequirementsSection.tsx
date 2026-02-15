@@ -136,7 +136,7 @@ function LicensedEditUI({
         {fields.map((field, index) => (
           <div
             key={index}
-            className="flex items-center gap-3 rounded-md bg-slate-100 p-3 dark:bg-slate-700/50"
+            className="flex items-center gap-3 rounded-md bg-slate-100 p-3 dark:bg-slate-950"
           >
             <span className="whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">
               Require
@@ -153,8 +153,8 @@ function LicensedEditUI({
               }
               className="w-16 rounded-md border border-slate-300 bg-white px-2 py-1.5
                          text-center text-sm text-slate-900 focus:border-blue-500
-                         focus:ring-2 focus:ring-blue-500 dark:border-slate-600
-                         dark:bg-slate-700 dark:text-slate-100"
+                         focus:ring-2 focus:ring-blue-500 dark:border-slate-700
+                         dark:bg-slate-900 dark:text-slate-100"
             />
             <span className="whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">
               approval(s) from
@@ -166,7 +166,7 @@ function LicensedEditUI({
               }
               className="flex-1 rounded-md border border-slate-300 bg-white px-3 py-1.5
                          text-sm text-slate-900 focus:border-blue-500 focus:ring-2
-                         focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700
+                         focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900
                          dark:text-slate-100"
             >
               {roles.map((role) => (
@@ -179,8 +179,7 @@ function LicensedEditUI({
               type="button"
               onClick={() => onRemove(index)}
               className="rounded p-1.5 text-slate-400 transition-colors
-                         hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20
-                         dark:hover:text-red-400"
+                         hover:text-red-500 dark:hover:text-red-400"
               title="Remove requirement"
             >
               <XMarkIcon className="h-5 w-5" />
@@ -223,7 +222,7 @@ function ExpiredWithRequirementsUI({
         {fields.map((field, index) => (
           <div
             key={index}
-            className="flex items-center gap-3 rounded-md bg-slate-100 p-3 opacity-75 dark:bg-slate-700/30"
+            className="flex items-center gap-3 rounded-md bg-slate-100 p-3 opacity-75 dark:bg-slate-950"
           >
             <span className="text-sm text-slate-500">Require</span>
             <span className="w-16 px-2 py-1.5 text-center text-sm text-slate-600 dark:text-slate-400">
@@ -253,7 +252,7 @@ function LockedUI() {
   return (
     <div className="relative opacity-60">
       <div className="absolute inset-0 z-10 flex items-center justify-center">
-        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 shadow-lg dark:border-slate-600 dark:bg-slate-800">
+        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 shadow-lg dark:border-slate-600 dark:bg-slate-800 dark:shadow-none">
           <LockClosedIcon className="h-5 w-5 text-slate-500" />
           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
             Enterprise feature
@@ -261,7 +260,7 @@ function LockedUI() {
         </div>
       </div>
       <div className="pointer-events-none">
-        <div className="h-20 rounded-md bg-slate-100 dark:bg-slate-700/50"></div>
+        <div className="h-20 rounded-md bg-slate-100 dark:bg-slate-950"></div>
       </div>
     </div>
   );

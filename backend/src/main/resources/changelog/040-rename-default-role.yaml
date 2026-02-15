@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - changeSet:
+      id: 20260214-rename-default-role
+      author: jascha
+      changes:
+        - sql:
+            sql: "UPDATE role SET name = 'Default' WHERE id = '7WoJJYKT2hhrLp49YrT2yr' AND name = 'Default Role'"

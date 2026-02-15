@@ -232,7 +232,7 @@ function Requests() {
                   data-testid={`request-link-${request.title}`}
                 >
                   <div
-                    className="my-4 rounded-md border border-slate-200 bg-white px-4 py-4 shadow-md transition-colors hover:bg-slate-50 dark:border dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
+                    className="my-4 rounded-md border border-slate-200 bg-white px-4 py-4 shadow-md transition-colors hover:bg-slate-50 dark:border dark:border-slate-700 dark:bg-slate-900 dark:shadow-none dark:hover:bg-slate-800"
                     key={request.id}
                   >
                     <div className="flex">

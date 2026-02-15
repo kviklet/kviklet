@@ -1,16 +1,15 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import InputField from "../../../components/InputField";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Button from "../../../components/Button";
 import { z } from "zod";
 import { useCategories } from "../../../hooks/connections";
 import CategoryAutocomplete from "../../../components/CategoryAutocomplete";
 import { QuestionMarkCircleIcon } from "@heroicons/react/20/solid";
 import { roleRequirementSchema } from "../../../api/DatasourceApi";
-import RoleRequirementsSection, {
-  RoleRequirementField,
-} from "../../../components/RoleRequirementsSection";
+import RoleRequirementsSection from "../../../components/RoleRequirementsSection";
+import { useRoleRequirements } from "../../../hooks/useRoleRequirements";
 
 const kubernetesConnectionPayloadSchema = z.object({
   connectionType: z.literal("KUBERNETES").default("KUBERNETES"),
@@ -42,58 +41,26 @@ export default function CreateKubernetesConnectionForm(props: {
     formState: { errors },
     watch,
     setValue,
+    getValues,
   } = useForm<KubernetesConnectionPayload>({
     resolver: zodResolver(kubernetesConnectionPayloadSchema),
   });
 
   const { categories } = useCategories();
-  const [roleRequirements, setRoleRequirements] = useState<
-    RoleRequirementField[]
-  >([]);
   const watchDisplayName = watch("displayName");
+
+  const {
+    roleRequirements,
+    handleAppendRole,
+    handleRemoveRole,
+    handleUpdateRole,
+    minRequired,
+  } = useRoleRequirements(setValue, getValues);
 
   useEffect(() => {
     const lowerCasedString = watchDisplayName?.toLowerCase() || "";
     setValue("id", lowerCasedString.replace(/\s+/g, "-"));
   }, [watchDisplayName]);
-
-  const updateRoleRequirementsFormValue = useCallback(
-    (reqs: RoleRequirementField[]) => {
-      setValue(
-        "reviewConfig.roleRequirements" as "reviewConfig",
-        reqs.length > 0 ? (reqs as never) : (undefined as never),
-        { shouldDirty: true },
-      );
-    },
-    [setValue],
-  );
-
-  const handleAppendRole = useCallback(
-    (field: RoleRequirementField) => {
-      const updated = [...roleRequirements, field];
-      setRoleRequirements(updated);
-      updateRoleRequirementsFormValue(updated);
-    },
-    [roleRequirements, updateRoleRequirementsFormValue],
-  );
-
-  const handleRemoveRole = useCallback(
-    (index: number) => {
-      const updated = roleRequirements.filter((_, i) => i !== index);
-      setRoleRequirements(updated);
-      updateRoleRequirementsFormValue(updated);
-    },
-    [roleRequirements, updateRoleRequirementsFormValue],
-  );
-
-  const handleUpdateRole = useCallback(
-    (index: number, field: RoleRequirementField) => {
-      const updated = roleRequirements.map((f, i) => (i === index ? field : f));
-      setRoleRequirements(updated);
-      updateRoleRequirementsFormValue(updated);
-    },
-    [roleRequirements, updateRoleRequirementsFormValue],
-  );
 
   useEffect(() => {
     setValue("reviewConfig", { numTotalRequired: 1 });
@@ -155,6 +122,7 @@ export default function CreateKubernetesConnectionForm(props: {
             id="numTotalRequired"
             placeholder="1"
             type="number"
+            min={minRequired}
             {...register("reviewConfig.numTotalRequired")}
             error={errors.reviewConfig?.numTotalRequired?.message}
           />

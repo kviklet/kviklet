@@ -16,12 +16,11 @@ import {
   UseFormWatch,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import InputField, { TextField } from "../../../components/InputField";
 import Button from "../../../components/Button";
-import RoleRequirementsSection, {
-  RoleRequirementField,
-} from "../../../components/RoleRequirementsSection";
+import RoleRequirementsSection from "../../../components/RoleRequirementsSection";
+import { useRoleRequirements } from "../../../hooks/useRoleRequirements";
 import {
   Disclosure,
   DisclosureButton,
@@ -149,6 +148,7 @@ export default function DatabaseConnectionForm(props: {
     watch,
     resetField,
     setValue,
+    getValues,
   } = useForm<ConnectionForm>({
     resolver: zodResolver(connectionFormSchema),
   });
@@ -157,10 +157,15 @@ export default function DatabaseConnectionForm(props: {
     DatabaseProtocol.POSTGRESQL,
   ]);
   const [dumpsEnabledVisible, setDumpsEnabledVisible] = useState(false);
-  const [roleRequirements, setRoleRequirements] = useState<
-    RoleRequirementField[]
-  >([]);
   const { categories } = useCategories();
+
+  const {
+    roleRequirements,
+    handleAppendRole,
+    handleRemoveRole,
+    handleUpdateRole,
+    minRequired,
+  } = useRoleRequirements(setValue, getValues);
 
   const watchDisplayName = watch("displayName");
   const watchId = watch("id");
@@ -207,44 +212,6 @@ export default function DatabaseConnectionForm(props: {
       setValue("additionalJDBCOptions", options);
     }
   };
-
-  const updateRoleRequirementsFormValue = useCallback(
-    (reqs: RoleRequirementField[]) => {
-      setValue(
-        "reviewConfig.roleRequirements" as "reviewConfig",
-        reqs.length > 0 ? (reqs as never) : (undefined as never),
-        { shouldDirty: true },
-      );
-    },
-    [setValue],
-  );
-
-  const handleAppendRole = useCallback(
-    (field: RoleRequirementField) => {
-      const updated = [...roleRequirements, field];
-      setRoleRequirements(updated);
-      updateRoleRequirementsFormValue(updated);
-    },
-    [roleRequirements, updateRoleRequirementsFormValue],
-  );
-
-  const handleRemoveRole = useCallback(
-    (index: number) => {
-      const updated = roleRequirements.filter((_, i) => i !== index);
-      setRoleRequirements(updated);
-      updateRoleRequirementsFormValue(updated);
-    },
-    [roleRequirements, updateRoleRequirementsFormValue],
-  );
-
-  const handleUpdateRole = useCallback(
-    (index: number, field: RoleRequirementField) => {
-      const updated = roleRequirements.map((f, i) => (i === index ? field : f));
-      setRoleRequirements(updated);
-      updateRoleRequirementsFormValue(updated);
-    },
-    [roleRequirements, updateRoleRequirementsFormValue],
-  );
 
   const protocol = watch("protocol");
 
@@ -384,7 +351,7 @@ export default function DatabaseConnectionForm(props: {
             tooltip="The number of required approving reviews that's required before a request can be executed."
             placeholder="1"
             type="number"
-            min="0"
+            min={minRequired}
             {...register("reviewConfig.numTotalRequired")}
             error={errors.reviewConfig?.numTotalRequired?.message}
             data-testid="connection-required-reviews"

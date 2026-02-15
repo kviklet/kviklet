@@ -67,7 +67,6 @@ class RoleBasedReviewTest {
             request = request,
             events = events,
         )
-        details.resolvedRoles = mapOf(dbaRole.getId()!! to dbaRole)
         details.resolveReviewStatus() shouldBe ReviewStatus.AWAITING_APPROVAL
     }
 
@@ -91,7 +90,6 @@ class RoleBasedReviewTest {
             request = request,
             events = events,
         )
-        details.resolvedRoles = mapOf(dbaRole.getId()!! to dbaRole)
         details.resolveReviewStatus() shouldBe ReviewStatus.APPROVED
     }
 
@@ -122,10 +120,6 @@ class RoleBasedReviewTest {
             request = request,
             events = events,
         )
-        details.resolvedRoles = mapOf(
-            dbaRole.getId()!! to dbaRole,
-            securityRole.getId()!! to securityRole,
-        )
         details.resolveReviewStatus() shouldBe ReviewStatus.APPROVED
     }
 
@@ -155,10 +149,6 @@ class RoleBasedReviewTest {
         val details = executionRequestDetailsFactory.createExecutionRequestDetails(
             request = request,
             events = events,
-        )
-        details.resolvedRoles = mapOf(
-            dbaRole.getId()!! to dbaRole,
-            securityRole.getId()!! to securityRole,
         )
         details.resolveReviewStatus() shouldBe ReviewStatus.AWAITING_APPROVAL
     }
@@ -191,10 +181,6 @@ class RoleBasedReviewTest {
             request = request,
             events = events,
         )
-        details.resolvedRoles = mapOf(
-            dbaRole.getId()!! to dbaRole,
-            securityRole.getId()!! to securityRole,
-        )
         details.resolveReviewStatus() shouldBe ReviewStatus.APPROVED
     }
 
@@ -223,10 +209,6 @@ class RoleBasedReviewTest {
             request = request,
             events = events,
         )
-        details.resolvedRoles = mapOf(
-            dbaRole.getId()!! to dbaRole,
-            securityRole.getId()!! to securityRole,
-        )
         details.resolveReviewStatus() shouldBe ReviewStatus.AWAITING_APPROVAL
     }
 
@@ -254,7 +236,6 @@ class RoleBasedReviewTest {
             request = request,
             events = events,
         )
-        details.resolvedRoles = mapOf(dbaRole.getId()!! to dbaRole)
         details.resolveReviewStatus() shouldBe ReviewStatus.AWAITING_APPROVAL
 
         // 1 DBA + 2 others -> approved
@@ -268,7 +249,6 @@ class RoleBasedReviewTest {
             request = request,
             events = allEvents,
         )
-        detailsWithThree.resolvedRoles = mapOf(dbaRole.getId()!! to dbaRole)
         detailsWithThree.resolveReviewStatus() shouldBe ReviewStatus.APPROVED
     }
 
@@ -317,22 +297,17 @@ class RoleBasedReviewTest {
             request = request,
             events = events,
         )
-        details.resolvedRoles = mapOf(
-            dbaRole.getId()!! to dbaRole,
-            securityRole.getId()!! to securityRole,
-        )
-
         val progress = details.getApprovalProgress()
         progress.totalRequired shouldBe 3
         progress.totalCurrent shouldBe 1
         progress.roleProgress.size shouldBe 2
 
         // Find DBA and Security progress
-        val dbaProgress = progress.roleProgress.find { it.role.getId() == dbaRole.getId() }!!
+        val dbaProgress = progress.roleProgress.find { it.roleId == dbaRole.getId() }!!
         dbaProgress.numRequired shouldBe 1
         dbaProgress.numCurrent shouldBe 1
 
-        val securityProgress = progress.roleProgress.find { it.role.getId() == securityRole.getId() }!!
+        val securityProgress = progress.roleProgress.find { it.roleId == securityRole.getId() }!!
         securityProgress.numRequired shouldBe 1
         securityProgress.numCurrent shouldBe 0
     }
@@ -357,8 +332,6 @@ class RoleBasedReviewTest {
             request = request,
             events = events,
         )
-        details.resolvedRoles = mapOf(dbaRole.getId()!! to dbaRole)
-
         val progress = details.getApprovalProgress()
         progress.totalRequired shouldBe 1
         progress.totalCurrent shouldBe 1
@@ -382,8 +355,6 @@ class RoleBasedReviewTest {
             request = request,
             events = events,
         )
-        details.resolvedRoles = emptyMap()
-
         val progress = details.getApprovalProgress()
         progress.totalRequired shouldBe 2
         progress.totalCurrent shouldBe 1
@@ -410,8 +381,6 @@ class RoleBasedReviewTest {
             request = request,
             events = events,
         )
-        details.resolvedRoles = mapOf(dbaRole.getId()!! to dbaRole)
-
         val progress = details.getApprovalProgress()
         progress.roleProgress.size shouldBe 1
         progress.roleProgress[0].approverNames.size shouldBe 1

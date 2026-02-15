@@ -200,11 +200,8 @@ data class ExecutionRequestDetails(
             val numCurrent = approversForRole.size
             val approverNames = approversForRole.map { "${it.fullName} (${it.email})" }
 
-            val resolvedRole = resolvedRoles[roleReq.roleId]
-                ?: throw IllegalStateException("Role ${roleReq.roleId} not resolved")
-
             RoleApprovalProgress(
-                role = resolvedRole,
+                roleId = roleReq.roleId,
                 numRequired = roleReq.numRequired,
                 numCurrent = numCurrent,
                 approverNames = approverNames,
@@ -401,7 +398,7 @@ data class ExecutionProxy(
 }
 
 data class RoleApprovalProgress(
-    val role: dev.kviklet.kviklet.service.dto.Role,
+    val roleId: String,
     val numRequired: Int,
     val numCurrent: Int,
     val approverNames: List<String>,

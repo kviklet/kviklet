@@ -7,9 +7,8 @@ import {
   roleRequirementSchema,
 } from "../../../../api/DatasourceApi";
 import InputField, { TextField } from "../../../../components/InputField";
-import RoleRequirementsSection, {
-  RoleRequirementField,
-} from "../../../../components/RoleRequirementsSection";
+import RoleRequirementsSection from "../../../../components/RoleRequirementsSection";
+import { useRoleRequirements } from "../../../../hooks/useRoleRequirements";
 import {
   Disclosure,
   DisclosureButton,
@@ -22,7 +21,7 @@ import {
 } from "@heroicons/react/20/solid";
 import { getJDBCOptionsPlaceholder } from "../DatabaseConnectionForm";
 import Button from "../../../../components/Button";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useConnectionForm } from "./ConnectionEditFormHook";
 import {
   FieldErrors,
@@ -125,6 +124,7 @@ export default function UpdateDatasourceConnectionForm({
     formState: { errors, isDirty },
     watch,
     setValue,
+    getValues,
     handleFormSubmit,
   } = useConnectionForm({
     initialValues: {
@@ -139,8 +139,7 @@ export default function UpdateDatasourceConnectionForm({
       databaseName: connection.databaseName || "",
       reviewConfig: {
         numTotalRequired: connection.reviewConfig.numTotalRequired,
-        roleRequirements:
-          connection.reviewConfig.roleRequirements ?? undefined,
+        roleRequirements: connection.reviewConfig.roleRequirements ?? undefined,
       },
       additionalJDBCOptions: connection.additionalJDBCOptions || "",
       maxExecutions: connection.maxExecutions,
@@ -161,46 +160,16 @@ export default function UpdateDatasourceConnectionForm({
     connectionType: "DATASOURCE",
   });
 
-  const [roleRequirements, setRoleRequirements] = useState<
-    RoleRequirementField[]
-  >(connection.reviewConfig.roleRequirements ?? []);
-
-  const updateRoleRequirementsFormValue = useCallback(
-    (reqs: RoleRequirementField[]) => {
-      setValue(
-        "reviewConfig.roleRequirements" as "reviewConfig",
-        reqs.length > 0 ? (reqs as never) : (undefined as never),
-        { shouldDirty: true },
-      );
-    },
-    [setValue],
-  );
-
-  const handleAppendRole = useCallback(
-    (field: RoleRequirementField) => {
-      const updated = [...roleRequirements, field];
-      setRoleRequirements(updated);
-      updateRoleRequirementsFormValue(updated);
-    },
-    [roleRequirements, updateRoleRequirementsFormValue],
-  );
-
-  const handleRemoveRole = useCallback(
-    (index: number) => {
-      const updated = roleRequirements.filter((_, i) => i !== index);
-      setRoleRequirements(updated);
-      updateRoleRequirementsFormValue(updated);
-    },
-    [roleRequirements, updateRoleRequirementsFormValue],
-  );
-
-  const handleUpdateRole = useCallback(
-    (index: number, field: RoleRequirementField) => {
-      const updated = roleRequirements.map((f, i) => (i === index ? field : f));
-      setRoleRequirements(updated);
-      updateRoleRequirementsFormValue(updated);
-    },
-    [roleRequirements, updateRoleRequirementsFormValue],
+  const {
+    roleRequirements,
+    handleAppendRole,
+    handleRemoveRole,
+    handleUpdateRole,
+    minRequired,
+  } = useRoleRequirements(
+    setValue,
+    getValues,
+    connection.reviewConfig.roleRequirements ?? [],
   );
 
   const watchType = watch("type");
@@ -317,7 +286,7 @@ export default function UpdateDatasourceConnectionForm({
             tooltip="The number of required approving reviews that's required before a request can be executed."
             placeholder="1"
             type="number"
-            min="0"
+            min={minRequired}
             {...register("reviewConfig.numTotalRequired")}
             error={errors.reviewConfig?.numTotalRequired?.message}
           />

@@ -85,7 +85,7 @@ function CommentBox({
           {" "}
         </div>
       </div>
-      <div className=" relative mb-5 rounded-md shadow-md dark:border dark:border-slate-700">
+      <div className=" relative mb-5 rounded-md shadow-md dark:border dark:border-slate-700 dark:shadow-none">
         <InitialBubble
           name={
             (userContext.userStatus && userContext.userStatus?.fullName) || ""

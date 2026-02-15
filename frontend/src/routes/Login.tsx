@@ -120,7 +120,7 @@ const Login = () => {
             />
           </div>
           <div className="mb-6 text-center text-2xl">Sign in to Kviklet</div>
-          <div className=" rounded-md p-6 shadow-xl dark:bg-slate-900">
+          <div className=" rounded-md p-6 shadow-xl dark:bg-slate-900 dark:shadow-none">
             <form onSubmit={(e) => void login(e)}>
               <div className="flex flex-col">
                 <label className="py-2 text-sm" htmlFor="email">
