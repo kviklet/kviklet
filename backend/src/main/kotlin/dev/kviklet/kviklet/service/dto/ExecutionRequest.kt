@@ -142,7 +142,6 @@ data class KubernetesExecutionRequest(
 data class ExecutionRequestDetails(
     val request: ExecutionRequest,
     val events: MutableSet<Event>,
-    var resolvedRoles: Map<String, dev.kviklet.kviklet.service.dto.Role> = emptyMap(),
 ) : SecuredDomainObject {
     fun addEvent(event: Event): ExecutionRequestDetails {
         events.add(event)
@@ -385,6 +384,18 @@ data class ExecutionRequestDetails(
             return Pair(false, "Error parsing query: ${e.message}")
         }
     }
+}
+
+data class ExecutionRequestDetailsWithRoles(
+    val details: ExecutionRequestDetails,
+    val resolvedRoles: Map<String, Role>,
+) : SecuredDomainObject by details {
+    val request get() = details.request
+    val events get() = details.events
+    fun resolveReviewStatus() = details.resolveReviewStatus()
+    fun resolveExecutionStatus() = details.resolveExecutionStatus()
+    fun csvDownloadAllowed(query: String? = null) = details.csvDownloadAllowed(query)
+    fun getApprovalProgress() = details.getApprovalProgress()
 }
 
 data class ExecutionProxy(
