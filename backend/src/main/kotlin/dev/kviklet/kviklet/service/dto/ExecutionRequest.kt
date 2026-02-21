@@ -153,11 +153,11 @@ data class ExecutionRequestDetails(
             return ReviewStatus.REJECTED
         }
 
-        if (activeRequestedChanges() > 0) {
+        val progress = getApprovalProgress()
+
+        if (progress.changeRequestedBy.isNotEmpty()) {
             return ReviewStatus.CHANGE_REQUESTED
         }
-
-        val progress = getApprovalProgress()
         if (progress.totalCurrent < progress.totalRequired) {
             return ReviewStatus.AWAITING_APPROVAL
         }
@@ -178,19 +178,35 @@ data class ExecutionRequestDetails(
 
     fun getApproversAfterReset(): List<User> {
         val resetTimestamp = latestResetTimestamp()
-        return events.filter {
-            it.type == EventType.REVIEW &&
-                it is ReviewEvent &&
-                it.action == ReviewAction.APPROVE &&
-                it.createdAt > resetTimestamp
-        }.groupBy { it.author.getId() }
-            .map { it.value.first().author }
+        val reviewEventsAfterReset = events.filter {
+            it.type == EventType.REVIEW && it is ReviewEvent && it.createdAt > resetTimestamp
+        }.mapNotNull { it as? ReviewEvent }
+
+        return reviewEventsAfterReset
+            .groupBy { it.author.getId() }
+            .filter { (_, userEvents) -> userEvents.maxByOrNull { it.createdAt }?.action == ReviewAction.APPROVE }
+            .map { (_, userEvents) -> userEvents.first().author }
     }
 
     fun getApprovalCount(): Int = getApproversAfterReset().size
 
+    fun getActiveChangeRequesters(): List<User> {
+        val resetTimestamp = latestResetTimestamp()
+        val reviewEventsAfterReset = events.filter {
+            it.type == EventType.REVIEW && it is ReviewEvent && it.createdAt > resetTimestamp
+        }.mapNotNull { it as? ReviewEvent }
+
+        return reviewEventsAfterReset
+            .groupBy { it.author.getId() }
+            .filter { (_, userEvents) ->
+                userEvents.maxByOrNull { it.createdAt }?.action == ReviewAction.REQUEST_CHANGE
+            }
+            .map { (_, userEvents) -> userEvents.first().author }
+    }
+
     fun getApprovalProgress(): ApprovalProgress {
         val approvers = getApproversAfterReset()
+        val changeRequesters = getActiveChangeRequesters()
         val reviewConfig = request.connection.reviewConfig
 
         val totalRequired = reviewConfig.numTotalRequired
@@ -215,6 +231,7 @@ data class ExecutionRequestDetails(
             totalRequired = totalRequired,
             totalCurrent = totalCurrent,
             roleProgress = roleProgress,
+            changeRequestedBy = changeRequesters.map { it.fullName ?: it.email },
         )
     }
 
@@ -241,22 +258,6 @@ data class ExecutionRequestDetails(
             latestErrorTimeStamp
         }
         return latestResetTimeStamp
-    }
-
-    fun activeRequestedChanges(): Int {
-        val changesRequested = events.filter { it.type == EventType.REVIEW }
-            .mapNotNull { it as? ReviewEvent }
-            .filter { it.action == ReviewAction.REQUEST_CHANGE }
-
-        val approvals = events.filter { it.type == EventType.REVIEW }
-            .mapNotNull { it as? ReviewEvent }
-            .filter { it.action == ReviewAction.APPROVE }
-
-        val openChangeRequests = changesRequested.filter { requestChange ->
-            approvals.none { it.author == requestChange.author && it.createdAt.isAfter(requestChange.createdAt) }
-        }
-
-        return openChangeRequests.size
     }
 
     fun resolveExecutionStatus(): ExecutionStatus {
@@ -423,6 +424,7 @@ data class ApprovalProgress(
     val totalRequired: Int,
     val totalCurrent: Int,
     val roleProgress: List<RoleApprovalProgress>,
+    val changeRequestedBy: List<String> = emptyList(),
 )
 
 data class ExecutionRequestList(

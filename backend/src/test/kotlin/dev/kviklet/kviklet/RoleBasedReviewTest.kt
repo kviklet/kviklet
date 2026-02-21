@@ -1,7 +1,5 @@
 package dev.kviklet.kviklet
 
-import dev.kviklet.kviklet.service.dto.ReviewConfig
-import dev.kviklet.kviklet.service.dto.RoleRequirement
 import dev.kviklet.kviklet.helper.ConnectionFactory
 import dev.kviklet.kviklet.helper.EventFactory
 import dev.kviklet.kviklet.helper.ExecutionRequestDetailsFactory
@@ -9,11 +7,15 @@ import dev.kviklet.kviklet.helper.ExecutionRequestFactory
 import dev.kviklet.kviklet.helper.RoleFactory
 import dev.kviklet.kviklet.helper.UserFactory
 import dev.kviklet.kviklet.service.dto.Event
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.service.dto.ReviewStatus
+import dev.kviklet.kviklet.service.dto.RoleRequirement
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
+import java.time.LocalDateTime
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -26,8 +28,12 @@ class RoleBasedReviewTest {
     private val roleFactory = RoleFactory()
     private val connectionFactory = ConnectionFactory()
 
+    private val t1 = LocalDateTime.of(2025, 1, 1, 10, 0)
+    private val t2 = LocalDateTime.of(2025, 1, 1, 11, 0)
+    private val t3 = LocalDateTime.of(2025, 1, 1, 12, 0)
+
     @Test
-    fun `request with only numTotalRequired works as before`() {
+    fun `request with only numTotalRequired is approved when count is met`() {
         val connection = connectionFactory.createDatasourceConnection(
             reviewConfig = ReviewConfig(numTotalRequired = 2),
         )
@@ -385,5 +391,91 @@ class RoleBasedReviewTest {
         progress.roleProgress.size shouldBe 1
         progress.roleProgress[0].approverNames.size shouldBe 1
         progress.roleProgress[0].approverNames[0] shouldBe "John Doe (john@example.com)"
+    }
+
+    @Test
+    fun `approver who later requests changes is not counted as approver`() {
+        val connection = connectionFactory.createDatasourceConnection(
+            reviewConfig = ReviewConfig(numTotalRequired = 1),
+        )
+        val request = executionRequestFactory.createDatasourceExecutionRequest(connection = connection)
+        val reviewer = userFactory.createUser(fullName = "Alice", email = "alice@example.com")
+
+        val events = mutableSetOf<Event>(
+            eventFactory.createReviewApprovedEvent(request = request, author = reviewer, createdAt = t1),
+            eventFactory.createReviewRequestedChangeEvent(request = request, author = reviewer, createdAt = t2),
+        )
+        val details = executionRequestDetailsFactory.createExecutionRequestDetails(
+            request = request,
+            events = events,
+        )
+
+        val progress = details.getApprovalProgress()
+        progress.totalCurrent shouldBe 0
+        progress.changeRequestedBy.size shouldBe 1
+        progress.changeRequestedBy[0] shouldBe "Alice"
+
+        details.resolveReviewStatus() shouldBe ReviewStatus.CHANGE_REQUESTED
+    }
+
+    @Test
+    fun `approver who requests changes then re-approves is counted`() {
+        val connection = connectionFactory.createDatasourceConnection(
+            reviewConfig = ReviewConfig(numTotalRequired = 1),
+        )
+        val request = executionRequestFactory.createDatasourceExecutionRequest(connection = connection)
+        val reviewer = userFactory.createUser()
+
+        val events = mutableSetOf<Event>(
+            eventFactory.createReviewApprovedEvent(request = request, author = reviewer, createdAt = t1),
+            eventFactory.createReviewRequestedChangeEvent(request = request, author = reviewer, createdAt = t2),
+            eventFactory.createReviewApprovedEvent(request = request, author = reviewer, createdAt = t3),
+        )
+        val details = executionRequestDetailsFactory.createExecutionRequestDetails(
+            request = request,
+            events = events,
+        )
+
+        val progress = details.getApprovalProgress()
+        progress.totalCurrent shouldBe 1
+        progress.changeRequestedBy.shouldBeEmpty()
+
+        details.resolveReviewStatus() shouldBe ReviewStatus.APPROVED
+    }
+
+    @Test
+    fun `mixed approver and change requester with role requirements`() {
+        val dbaRole = roleFactory.createRole(name = "DBA")
+
+        val connection = connectionFactory.createDatasourceConnection(
+            reviewConfig = ReviewConfig(
+                numTotalRequired = 2,
+                roleRequirements = listOf(RoleRequirement(roleId = dbaRole.getId()!!, numRequired = 1)),
+            ),
+        )
+        val request = executionRequestFactory.createDatasourceExecutionRequest(connection = connection)
+
+        val dbaA = userFactory.createUser(fullName = "DBA Alice", email = "dba-a@example.com", roles = setOf(dbaRole))
+        val dbaB = userFactory.createUser(fullName = "DBA Bob", email = "dba-b@example.com", roles = setOf(dbaRole))
+
+        val events = mutableSetOf<Event>(
+            eventFactory.createReviewApprovedEvent(request = request, author = dbaA, createdAt = t1),
+            eventFactory.createReviewApprovedEvent(request = request, author = dbaB, createdAt = t2),
+            eventFactory.createReviewRequestedChangeEvent(request = request, author = dbaB, createdAt = t3),
+        )
+        val details = executionRequestDetailsFactory.createExecutionRequestDetails(
+            request = request,
+            events = events,
+        )
+
+        val progress = details.getApprovalProgress()
+        progress.totalCurrent shouldBe 1
+        progress.changeRequestedBy.size shouldBe 1
+        progress.changeRequestedBy[0] shouldBe "DBA Bob"
+
+        val dbaProgress = progress.roleProgress.find { it.roleId == dbaRole.getId() }!!
+        dbaProgress.numCurrent shouldBe 1
+
+        details.resolveReviewStatus() shouldBe ReviewStatus.CHANGE_REQUESTED
     }
 }

@@ -21,13 +21,21 @@ export function useRoleRequirements<T extends FieldValues>(
 
   const updateRoleRequirementsFormValue = useCallback(
     (reqs: RoleRequirementField[]) => {
+      // Compute previous minimum BEFORE updating form (needed for auto-lower check)
+      const oldReqs = (getValues as UseFormGetValues<FieldValues>)(
+        "reviewConfig.roleRequirements",
+      ) as RoleRequirementField[] | undefined;
+      const oldMin =
+        Array.isArray(oldReqs) && oldReqs.length > 0
+          ? Math.max(...oldReqs.map((r) => r.numRequired))
+          : 0;
+
       (setValue as UseFormSetValue<FieldValues>)(
         "reviewConfig.roleRequirements",
         reqs.length > 0 ? reqs : undefined,
         { shouldDirty: true },
       );
 
-      // Auto-bump numTotalRequired if it's BELOW the new minimum
       const newMin =
         reqs.length > 0 ? Math.max(...reqs.map((r) => r.numRequired)) : 0;
       const current = Number(
@@ -35,16 +43,23 @@ export function useRoleRequirements<T extends FieldValues>(
           "reviewConfig.numTotalRequired",
         ),
       );
+
+      // Auto-bump if below new minimum
       if (current < newMin) {
         (setValue as UseFormSetValue<FieldValues>)(
           "reviewConfig.numTotalRequired",
           newMin,
-          {
-            shouldDirty: true,
-          },
+          { shouldDirty: true },
         );
       }
-      // NEVER auto-lower: if user manually set it higher, leave it alone
+      // Auto-lower only if the total was exactly the previous minimum
+      else if (current === oldMin && newMin < current) {
+        (setValue as UseFormSetValue<FieldValues>)(
+          "reviewConfig.numTotalRequired",
+          newMin,
+          { shouldDirty: true },
+        );
+      }
     },
     [setValue, getValues],
   );

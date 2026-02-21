@@ -1,4 +1,4 @@
-import { CheckIcon } from "@heroicons/react/20/solid";
+import { CheckIcon, ExclamationTriangleIcon } from "@heroicons/react/20/solid";
 import { ExecutionRequestResponseWithComments } from "../../api/ExecutionRequestApi";
 
 export default function ApprovalProgress({
@@ -32,6 +32,15 @@ export default function ApprovalProgress({
           Total {progress.totalCurrent}/{progress.totalRequired}
         </ProgressItem>
       )}
+      {progress.changeRequestedBy.map((name) => (
+        <span
+          key={name}
+          className="flex items-center gap-1 text-amber-600 dark:text-amber-400"
+        >
+          <ExclamationTriangleIcon className="h-3.5 w-3.5 shrink-0" />
+          {name} requested changes
+        </span>
+      ))}
     </div>
   );
 }
