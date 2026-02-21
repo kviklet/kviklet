@@ -3,7 +3,6 @@ package dev.kviklet.kviklet
 import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
 import dev.kviklet.kviklet.controller.UpdateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.UpdateExecutionRequestRequest
-import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.helper.ConnectionHelper
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper
@@ -16,6 +15,7 @@ import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.RequestType
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull

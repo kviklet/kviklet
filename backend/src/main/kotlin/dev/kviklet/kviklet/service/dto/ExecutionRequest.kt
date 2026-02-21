@@ -139,10 +139,8 @@ data class KubernetesExecutionRequest(
     temporaryAccessDuration,
 )
 
-data class ExecutionRequestDetails(
-    val request: ExecutionRequest,
-    val events: MutableSet<Event>,
-) : SecuredDomainObject {
+data class ExecutionRequestDetails(val request: ExecutionRequest, val events: MutableSet<Event>) :
+    SecuredDomainObject {
     fun addEvent(event: Event): ExecutionRequestDetails {
         events.add(event)
         return this

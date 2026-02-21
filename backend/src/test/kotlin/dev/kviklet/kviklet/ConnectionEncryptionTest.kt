@@ -2,15 +2,15 @@ package dev.kviklet.kviklet
 
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ConnectionRepository
-import dev.kviklet.kviklet.service.dto.ConnectionType
 import dev.kviklet.kviklet.db.EncryptionConfigProperties
-import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.ConnectionId
+import dev.kviklet.kviklet.service.dto.ConnectionType
 import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceType
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.types.shouldBeInstanceOf

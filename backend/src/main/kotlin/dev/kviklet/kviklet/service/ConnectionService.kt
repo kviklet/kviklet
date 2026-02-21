@@ -4,7 +4,6 @@ import dev.kviklet.kviklet.controller.UpdateConnectionRequest
 import dev.kviklet.kviklet.controller.UpdateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.UpdateKubernetesConnectionRequest
 import dev.kviklet.kviklet.db.ConnectionAdapter
-import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
@@ -16,6 +15,7 @@ import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.KubernetesConnection
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
 
@@ -392,9 +392,12 @@ class ConnectionService(
         }
 
         // If the review config is changing and still contains role requirements, license must be active
-        if (newRoleRequirements.isNotEmpty() && newReviewConfig != existingReviewConfig && licenseService.getActiveLicense() == null) {
+        if (newRoleRequirements.isNotEmpty() && newReviewConfig != existingReviewConfig &&
+            licenseService.getActiveLicense() == null
+        ) {
             throw LicenseRestrictionException(
-                "Cannot modify review configuration while role requirements are present without an enterprise license. " +
+                "Cannot modify review configuration while role requirements are present " +
+                    "without an enterprise license. " +
                     "Remove all role requirements first, or obtain a valid license.",
             )
         }

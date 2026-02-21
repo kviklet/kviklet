@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.EventRepository
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
-import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.util.IdGenerator
 import dev.kviklet.kviklet.helper.ConnectionHelper
@@ -16,6 +15,7 @@ import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.RequestType
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import org.junit.jupiter.api.AfterEach

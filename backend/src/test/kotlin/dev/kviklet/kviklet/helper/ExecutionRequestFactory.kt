@@ -1,6 +1,5 @@
 package dev.kviklet.kviklet.helper
 
-import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
@@ -23,6 +22,7 @@ import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ResultLog
 import dev.kviklet.kviklet.service.dto.ReviewAction
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.service.dto.ReviewEvent
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.Role

@@ -1,7 +1,6 @@
 package dev.kviklet.kviklet
 
 import dev.kviklet.kviklet.db.ConnectionAdapter
-import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.helper.ConnectionHelper
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper
@@ -12,6 +11,7 @@ import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceType
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import jakarta.servlet.http.Cookie
 import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.AfterEach

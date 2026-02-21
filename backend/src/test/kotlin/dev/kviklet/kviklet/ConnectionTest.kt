@@ -568,7 +568,10 @@ class ConnectionTest(
                 |"signature": "VWT9Bo5HuN4Y+bkT6FK7EtrCXavJhyI+Tk62FnfbzkJaqyOOAh3qnyFMGz12enLQjmMLIwaqyoogjkOeJXezyfEcJRFDTadk3IdXYMZWz8MPMHVHbGmvA18+5vJRZ1cXnNClEkHg3aanbNgtRNlFzp2fen5UVUCAwn/oI0MlQqxwR6qyi2ZST5v0s1PhhI20Byo7gjCDMjOtpWSsn0rTLeDsADS7WR5/26+VhHvt3s1AQlJ6n0gOGOWBruluZkO/NOqIqF2y9NSufJjuF8WkbJt9JxhmPApScMa+nCuqDgDRXIAQa0I65xCwMWixDMz9S/vLb5XlqlJZhGJnC1KKMUzOB87wFtVFmrkhvxSaOH/ejX8rrTDMKyG9ztlKZf+qiff0nZ7GWkHltmc+YLQPoBJt39aDrpW75/2GOQKWLHjwcaB45EPzEv7Tsz4gG5eqWG4kMG3UigJKrEQwoUp10LEMH0YIOFO9WAcjNQB7RpND91VvDESsBKUbwtS/J3rG"}
             """.trimMargin()
             val mockFile = MockMultipartFile(
-                "file", "license.json", "application/json", licenseContent.toByteArray(),
+                "file",
+                "license.json",
+                "application/json",
+                licenseContent.toByteArray(),
             )
             mockMvc.perform(multipart("/config/license/").file(mockFile).cookie(cookie))
                 .andExpect(status().isOk)

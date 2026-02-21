@@ -5,7 +5,6 @@ import com.gargoylesoftware.htmlunit.html.HtmlInput
 import com.gargoylesoftware.htmlunit.html.HtmlPage
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
-import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.helper.RoleHelper
@@ -16,6 +15,7 @@ import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ExecutionStatus
 import dev.kviklet.kviklet.service.dto.RequestType
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.Role
 import org.junit.jupiter.api.AfterEach

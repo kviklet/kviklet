@@ -2,19 +2,19 @@ package dev.kviklet.kviklet.controller
 
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
-import dev.kviklet.kviklet.service.dto.ConnectionType
-import dev.kviklet.kviklet.service.dto.ReviewConfig
-import dev.kviklet.kviklet.service.dto.RoleRequirement
 import dev.kviklet.kviklet.service.ConnectionService
 import dev.kviklet.kviklet.service.TestConnectionResult
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
+import dev.kviklet.kviklet.service.dto.ConnectionType
 import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.KubernetesConnection
+import dev.kviklet.kviklet.service.dto.ReviewConfig
+import dev.kviklet.kviklet.service.dto.RoleRequirement
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid

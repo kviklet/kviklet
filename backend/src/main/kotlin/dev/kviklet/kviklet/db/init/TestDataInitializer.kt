@@ -2,22 +2,22 @@ package dev.kviklet.kviklet.db.init
 
 import dev.kviklet.kviklet.db.ConnectionEntity
 import dev.kviklet.kviklet.db.ConnectionRepository
-import dev.kviklet.kviklet.service.dto.ConnectionType
 import dev.kviklet.kviklet.db.ExecutionRequestEntity
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
 import dev.kviklet.kviklet.db.ExecutionRequestType
 import dev.kviklet.kviklet.db.PolicyEntity
-import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.db.RoleEntity
 import dev.kviklet.kviklet.db.RoleRepository
 import dev.kviklet.kviklet.db.UserEntity
 import dev.kviklet.kviklet.db.UserRepository
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.service.dto.AuthenticationType
+import dev.kviklet.kviklet.service.dto.ConnectionType
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ExecutionStatus
 import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.RequestType
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Bean

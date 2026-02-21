@@ -3,7 +3,6 @@ package dev.kviklet.kviklet.helper
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.LiveSessionAdapter
-import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.db.ReviewPayload
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
@@ -24,6 +23,7 @@ import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewAction
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.Role
 import dev.kviklet.kviklet.service.dto.RoleId
