@@ -391,6 +391,14 @@ class ConnectionService(
             throw LicenseRestrictionException("Role-based review requirements require an enterprise license")
         }
 
+        // If the review config is changing and still contains role requirements, license must be active
+        if (newRoleRequirements.isNotEmpty() && newReviewConfig != existingReviewConfig && licenseService.getActiveLicense() == null) {
+            throw LicenseRestrictionException(
+                "Cannot modify review configuration while role requirements are present without an enterprise license. " +
+                    "Remove all role requirements first, or obtain a valid license.",
+            )
+        }
+
         // Validate each requirement
         newRoleRequirements.forEach { roleReq ->
             if (roleReq.numRequired <= 0) {

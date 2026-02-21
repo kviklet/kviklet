@@ -13,6 +13,8 @@ import dev.kviklet.kviklet.controller.UserResponse
 import dev.kviklet.kviklet.db.ConnectionRepository
 import dev.kviklet.kviklet.db.EventRepository
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
+import dev.kviklet.kviklet.db.LicenseAdapter
+import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.ExecutionRequestService
@@ -28,11 +30,22 @@ import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.mockito.Mockito
+import org.mockito.Mockito.mockStatic
+import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.http.MediaType
+import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.time.LocalDate
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -51,12 +64,20 @@ class ConnectionTest(
     @Autowired
     private lateinit var userHelper: UserHelper
 
+    @Autowired
+    private lateinit var roleHelper: RoleHelper
+
+    @Autowired
+    private lateinit var licenseAdapter: LicenseAdapter
+
     @AfterEach
     fun tearDownRequests() {
         eventRepository.deleteAllInBatch()
         executionRequestRepository.deleteAllInBatch()
         connectionRepository.deleteAllInBatch()
         userHelper.deleteAll()
+        roleHelper.deleteAll()
+        licenseAdapter.deleteAll()
     }
 
     @Test
@@ -528,5 +549,111 @@ class ConnectionTest(
             ),
             userDetails = testUserDetails,
         )
+    }
+
+    @Test
+    fun `test editing review config with role requirements after license expiry`() {
+        val date = LocalDate.of(2023, 1, 1)
+        lateinit var roleId: String
+
+        mockStatic(LocalDate::class.java, Mockito.CALLS_REAL_METHODS).use {
+            `when`(LocalDate.now()).thenReturn(date)
+
+            // Create user and login while license is valid
+            userHelper.createUser(permissions = listOf("*"))
+            val cookie = userHelper.login(mockMvc = mockMvc)
+
+            // Upload a valid license (expires 2024-01-01)
+            val licenseContent = """{"license_data":{"max_users":20,"expiry_date":"2024-01-01"},
+                |"signature": "VWT9Bo5HuN4Y+bkT6FK7EtrCXavJhyI+Tk62FnfbzkJaqyOOAh3qnyFMGz12enLQjmMLIwaqyoogjkOeJXezyfEcJRFDTadk3IdXYMZWz8MPMHVHbGmvA18+5vJRZ1cXnNClEkHg3aanbNgtRNlFzp2fen5UVUCAwn/oI0MlQqxwR6qyi2ZST5v0s1PhhI20Byo7gjCDMjOtpWSsn0rTLeDsADS7WR5/26+VhHvt3s1AQlJ6n0gOGOWBruluZkO/NOqIqF2y9NSufJjuF8WkbJt9JxhmPApScMa+nCuqDgDRXIAQa0I65xCwMWixDMz9S/vLb5XlqlJZhGJnC1KKMUzOB87wFtVFmrkhvxSaOH/ejX8rrTDMKyG9ztlKZf+qiff0nZ7GWkHltmc+YLQPoBJt39aDrpW75/2GOQKWLHjwcaB45EPzEv7Tsz4gG5eqWG4kMG3UigJKrEQwoUp10LEMH0YIOFO9WAcjNQB7RpND91VvDESsBKUbwtS/J3rG"}
+            """.trimMargin()
+            val mockFile = MockMultipartFile(
+                "file", "license.json", "application/json", licenseContent.toByteArray(),
+            )
+            mockMvc.perform(multipart("/config/license/").file(mockFile).cookie(cookie))
+                .andExpect(status().isOk)
+
+            // Create a role
+            val roleResult = mockMvc.perform(
+                post("/roles/")
+                    .cookie(cookie)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""{"name": "DBA", "description": "Database Admin"}"""),
+            )
+                .andExpect(status().isOk)
+                .andReturn()
+
+            roleId = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
+                .readTree(roleResult.response.contentAsString)["id"].asText()
+
+            // Create a connection with role requirements
+            val createJson = """
+                {
+                    "connectionType": "DATASOURCE",
+                    "id": "license-test-conn",
+                    "displayName": "License Test Connection",
+                    "username": "root",
+                    "password": "root",
+                    "type": "MYSQL",
+                    "hostname": "localhost",
+                    "port": 3306,
+                    "reviewConfig": {
+                        "numTotalRequired": 2,
+                        "roleRequirements": [{"roleId": "$roleId", "numRequired": 1}]
+                    }
+                }
+            """.trimIndent()
+
+            mockMvc.perform(
+                post("/connections/")
+                    .cookie(cookie)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(createJson),
+            )
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.reviewConfig.numTotalRequired").value(2))
+                .andExpect(jsonPath("$.reviewConfig.roleRequirements[0].roleId").value(roleId))
+        }
+
+        // License is now expired (real date > 2024-01-01)
+        val cookie = userHelper.login(mockMvc = mockMvc)
+
+        // Try to update numTotalRequired while keeping role requirements -> should fail
+        val updateWithRolesJson = """
+            {
+                "connectionType": "DATASOURCE",
+                "reviewConfig": {
+                    "numTotalRequired": 3,
+                    "roleRequirements": [{"roleId": "$roleId", "numRequired": 1}]
+                }
+            }
+        """.trimIndent()
+
+        mockMvc.perform(
+            patch("/connections/license-test-conn")
+                .cookie(cookie)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(updateWithRolesJson),
+        )
+            .andExpect(status().isBadRequest)
+
+        // Remove role requirements and change numTotalRequired -> should succeed
+        val updateWithoutRolesJson = """
+            {
+                "connectionType": "DATASOURCE",
+                "reviewConfig": {
+                    "numTotalRequired": 3
+                }
+            }
+        """.trimIndent()
+
+        mockMvc.perform(
+            patch("/connections/license-test-conn")
+                .cookie(cookie)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(updateWithoutRolesJson),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.reviewConfig.numTotalRequired").value(3))
     }
 }
