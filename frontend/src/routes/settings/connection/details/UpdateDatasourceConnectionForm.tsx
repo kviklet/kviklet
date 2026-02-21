@@ -4,8 +4,11 @@ import {
   DatabaseProtocol,
   DatabaseType,
   PatchConnectionPayload,
+  roleRequirementSchema,
 } from "../../../../api/DatasourceApi";
 import InputField, { TextField } from "../../../../components/InputField";
+import RoleRequirementsSection from "../../../../components/RoleRequirementsSection";
+import { useRoleRequirements } from "../../../../hooks/useRoleRequirements";
 import {
   Disclosure,
   DisclosureButton,
@@ -40,6 +43,7 @@ const baseConnectionFormSchema = z.object({
   maxExecutions: z.coerce.number().nullable(),
   reviewConfig: z.object({
     numTotalRequired: z.coerce.number(),
+    roleRequirements: z.array(roleRequirementSchema).optional(),
   }),
   additionalJDBCOptions: z.string(),
   dumpsEnabled: z.boolean(),
@@ -120,6 +124,7 @@ export default function UpdateDatasourceConnectionForm({
     formState: { errors, isDirty },
     watch,
     setValue,
+    getValues,
     handleFormSubmit,
   } = useConnectionForm({
     initialValues: {
@@ -134,6 +139,7 @@ export default function UpdateDatasourceConnectionForm({
       databaseName: connection.databaseName || "",
       reviewConfig: {
         numTotalRequired: connection.reviewConfig.numTotalRequired,
+        roleRequirements: connection.reviewConfig.roleRequirements ?? undefined,
       },
       additionalJDBCOptions: connection.additionalJDBCOptions || "",
       maxExecutions: connection.maxExecutions,
@@ -153,6 +159,18 @@ export default function UpdateDatasourceConnectionForm({
     onSubmit: editConnection,
     connectionType: "DATASOURCE",
   });
+
+  const {
+    roleRequirements,
+    handleAppendRole,
+    handleRemoveRole,
+    handleUpdateRole,
+    minRequired,
+  } = useRoleRequirements(
+    setValue,
+    getValues,
+    connection.reviewConfig.roleRequirements ?? [],
+  );
 
   const watchType = watch("type");
   useEffect(() => {
@@ -268,9 +286,17 @@ export default function UpdateDatasourceConnectionForm({
             tooltip="The number of required approving reviews that's required before a request can be executed."
             placeholder="1"
             type="number"
-            min="0"
+            min={minRequired}
             {...register("reviewConfig.numTotalRequired")}
             error={errors.reviewConfig?.numTotalRequired?.message}
+          />
+
+          <RoleRequirementsSection
+            fields={roleRequirements}
+            onAppend={handleAppendRole}
+            onRemove={handleRemoveRole}
+            onUpdate={handleUpdateRole}
+            numTotalRequired={watch("reviewConfig.numTotalRequired") || 0}
           />
 
           <div className="w-full">

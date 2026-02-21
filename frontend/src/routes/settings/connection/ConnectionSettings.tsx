@@ -202,7 +202,7 @@ const ConnectionSettings = () => {
             <div className="flex gap-4">
               <button
                 onClick={() => setConnectionTypeChoice("database")}
-                className="flex flex-1 flex-col items-center rounded-lg border-2 border-slate-200 bg-white p-6 transition-all hover:border-indigo-500 hover:shadow-md dark:border-slate-600 dark:bg-slate-900 dark:hover:border-indigo-400"
+                className="flex flex-1 flex-col items-center rounded-lg border-2 border-slate-200 bg-white p-6 transition-all hover:border-indigo-500 hover:shadow-md dark:border-slate-600 dark:bg-slate-900 dark:hover:border-indigo-400 dark:hover:shadow-none"
                 data-testid="add-database-connection-button"
               >
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900">
@@ -230,7 +230,7 @@ const ConnectionSettings = () => {
 
               <button
                 onClick={() => setConnectionTypeChoice("kubernetes")}
-                className="flex flex-1 flex-col items-center rounded-lg border-2 border-slate-200 bg-white p-6 transition-all hover:border-indigo-500 hover:shadow-md dark:border-slate-600 dark:bg-slate-900 dark:hover:border-indigo-400"
+                className="flex flex-1 flex-col items-center rounded-lg border-2 border-slate-200 bg-white p-6 transition-all hover:border-indigo-500 hover:shadow-md dark:border-slate-600 dark:bg-slate-900 dark:hover:border-indigo-400 dark:hover:shadow-none"
                 data-testid="add-kubernetes-connection-button"
               >
                 <div className="relative mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900">

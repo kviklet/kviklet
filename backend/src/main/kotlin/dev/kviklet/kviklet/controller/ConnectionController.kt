@@ -2,17 +2,19 @@ package dev.kviklet.kviklet.controller
 
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
-import dev.kviklet.kviklet.db.ConnectionType
 import dev.kviklet.kviklet.service.ConnectionService
 import dev.kviklet.kviklet.service.TestConnectionResult
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
+import dev.kviklet.kviklet.service.dto.ConnectionType
 import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.KubernetesConnection
+import dev.kviklet.kviklet.service.dto.ReviewConfig
+import dev.kviklet.kviklet.service.dto.RoleRequirement
 import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
@@ -185,9 +187,26 @@ data class UpdateKubernetesConnectionRequest(
     val category: String? = null,
 ) : UpdateConnectionRequest()
 
-data class ReviewConfigRequest(val numTotalRequired: Int = 0)
+data class RoleRequirementRequest(val roleId: String, val numRequired: Int)
 
-data class ReviewConfigResponse(val numTotalRequired: Int = 0)
+data class RoleRequirementResponse(val roleId: String, val numRequired: Int)
+
+data class ReviewConfigRequest(
+    val numTotalRequired: Int = 0,
+    val roleRequirements: List<RoleRequirementRequest>? = null,
+) {
+    fun toReviewConfig() = ReviewConfig(
+        numTotalRequired = numTotalRequired,
+        roleRequirements = roleRequirements?.map {
+            RoleRequirement(roleId = it.roleId, numRequired = it.numRequired)
+        },
+    )
+}
+
+data class ReviewConfigResponse(
+    val numTotalRequired: Int = 0,
+    val roleRequirements: List<RoleRequirementResponse>? = null,
+)
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
 @JsonSubTypes(
@@ -241,7 +260,10 @@ data class DatasourceConnectionResponse(
             port = datasourceConnection.port,
             description = datasourceConnection.description,
             reviewConfig = ReviewConfigResponse(
-                datasourceConnection.reviewConfig.numTotalRequired,
+                numTotalRequired = datasourceConnection.reviewConfig.numTotalRequired,
+                roleRequirements = datasourceConnection.reviewConfig.roleRequirements?.map {
+                    RoleRequirementResponse(roleId = it.roleId, numRequired = it.numRequired)
+                },
             ),
             additionalJDBCOptions = datasourceConnection.additionalOptions,
             dumpsEnabled = datasourceConnection.dumpsEnabled,
@@ -276,7 +298,10 @@ data class KubernetesConnectionResponse(
             displayName = kubernetesConnection.displayName,
             description = kubernetesConnection.description,
             reviewConfig = ReviewConfigResponse(
-                kubernetesConnection.reviewConfig.numTotalRequired,
+                numTotalRequired = kubernetesConnection.reviewConfig.numTotalRequired,
+                roleRequirements = kubernetesConnection.reviewConfig.roleRequirements?.map {
+                    RoleRequirementResponse(roleId = it.roleId, numRequired = it.numRequired)
+                },
             ),
             maxExecutions = kubernetesConnection.maxExecutions,
             temporaryAccessEnabled = kubernetesConnection.temporaryAccessEnabled,
@@ -322,7 +347,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             password = request.password,
             authenticationType = request.authenticationType,
             description = request.description,
-            reviewsRequired = request.reviewConfig.numTotalRequired,
+            reviewConfig = request.reviewConfig.toReviewConfig(),
             port = request.port,
             hostname = request.hostname,
             type = request.type,
@@ -371,7 +396,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             connectionId = ConnectionId(request.id),
             displayName = request.displayName,
             description = request.description,
-            reviewsRequired = request.reviewConfig.numTotalRequired,
+            reviewConfig = request.reviewConfig.toReviewConfig(),
             maxExecutions = request.maxExecutions,
             storeResults = request.storeResults,
             category = request.category,

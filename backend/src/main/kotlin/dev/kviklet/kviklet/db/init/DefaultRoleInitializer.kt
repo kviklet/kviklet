@@ -17,7 +17,7 @@ class DefaultRoleInitializer(private val roleRepository: RoleRepository, private
     fun createDefaultRole(): Role {
         val role = RoleEntity(
             id = Role.DEFAULT_ROLE_ID.toString(),
-            name = "Default Role",
+            name = "Default",
             description = "This is the default role and gives permission to read connections and requests",
             policies = Role.DEFAULT_ROLE_POLICIES.map {
                 PolicyEntity(

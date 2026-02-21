@@ -113,3 +113,6 @@ databaseChangeLog:
   - include:
       file: 039-add-dry-run-columns.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 040-rename-default-role.yaml
+      relativeToChangelogFile: true

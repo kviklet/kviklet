@@ -1,6 +1,5 @@
 package dev.kviklet.kviklet.executor
 
-import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.service.ColumnInfo
 import dev.kviklet.kviklet.service.JDBCExecutor
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
@@ -11,6 +10,7 @@ import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.RecordsQueryResult
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test

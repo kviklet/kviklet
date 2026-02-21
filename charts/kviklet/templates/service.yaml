@@ -18,4 +18,4 @@ spec:
       port: {{ .Values.service.port }}
       targetPort: http
   selector:
-      {{- include "kviklet.metaLabels" . | nindent 8 }}
+      {{- include "kviklet.selectorLabels" . | nindent 8 }}

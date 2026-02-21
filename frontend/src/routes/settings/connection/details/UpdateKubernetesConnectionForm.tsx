@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   KubernetesConnectionResponse,
   PatchConnectionPayload,
+  roleRequirementSchema,
 } from "../../../../api/DatasourceApi";
 import InputField, { TextField } from "../../../../components/InputField";
 import { Disclosure } from "@headlessui/react";
@@ -14,12 +15,15 @@ import Button from "../../../../components/Button";
 import { useConnectionForm } from "./ConnectionEditFormHook";
 import { useCategories } from "../../../../hooks/connections";
 import CategoryAutocomplete from "../../../../components/CategoryAutocomplete";
+import RoleRequirementsSection from "../../../../components/RoleRequirementsSection";
+import { useRoleRequirements } from "../../../../hooks/useRoleRequirements";
 
 const kubernetesConnectionFormSchema = z.object({
   displayName: z.string().min(3),
   description: z.string(),
   reviewConfig: z.object({
     numTotalRequired: z.coerce.number(),
+    roleRequirements: z.array(roleRequirementSchema).optional(),
   }),
   maxExecutions: z.coerce.number().nullable(),
   storeResults: z.boolean(),
@@ -43,6 +47,7 @@ export default function UpdateKubernetesConnectionForm({
     formState: { errors, isDirty },
     watch,
     setValue,
+    getValues,
     handleFormSubmit,
   } = useConnectionForm({
     initialValues: {
@@ -50,6 +55,7 @@ export default function UpdateKubernetesConnectionForm({
       description: connection.description,
       reviewConfig: {
         numTotalRequired: connection.reviewConfig.numTotalRequired,
+        roleRequirements: connection.reviewConfig.roleRequirements ?? undefined,
       },
       maxExecutions: connection.maxExecutions,
       storeResults: connection.storeResults,
@@ -60,6 +66,18 @@ export default function UpdateKubernetesConnectionForm({
     onSubmit: editConnection,
     connectionType: "KUBERNETES",
   });
+
+  const {
+    roleRequirements,
+    handleAppendRole,
+    handleRemoveRole,
+    handleUpdateRole,
+    minRequired,
+  } = useRoleRequirements(
+    setValue,
+    getValues,
+    connection.reviewConfig.roleRequirements ?? [],
+  );
 
   return (
     <form
@@ -106,8 +124,16 @@ export default function UpdateKubernetesConnectionForm({
             placeholder="1"
             tooltip="The number of required approving reviews that's required before a request can be executed."
             type="number"
+            min={minRequired}
             {...register("reviewConfig.numTotalRequired")}
             error={errors.reviewConfig?.numTotalRequired?.message}
+          />
+          <RoleRequirementsSection
+            fields={roleRequirements}
+            onAppend={handleAppendRole}
+            onRemove={handleRemoveRole}
+            onUpdate={handleUpdateRole}
+            numTotalRequired={watch("reviewConfig.numTotalRequired") || 0}
           />
           <div className="w-full">
             <Disclosure defaultOpen={false}>

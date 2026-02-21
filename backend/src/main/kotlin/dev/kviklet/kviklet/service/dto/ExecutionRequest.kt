@@ -43,6 +43,10 @@ enum class RequestType {
     Dump,
 }
 
+data class RoleRequirement(val roleId: String, val numRequired: Int)
+
+data class ReviewConfig(val numTotalRequired: Int, val roleRequirements: List<RoleRequirement>? = null)
+
 /**
  * A DTO for the {@link dev.kviklet.kviklet.db.ExecutionRequestEntity} entity
  */
@@ -143,24 +147,23 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
     }
 
     fun resolveReviewStatus(): ReviewStatus {
-        val reviewConfig = request.connection.reviewConfig
-        val numReviews = getApprovalCount()
-
         if (isRejected()) {
             return ReviewStatus.REJECTED
         }
 
-        if (activeRequestedChanges() > 0) {
+        val progress = getApprovalProgress()
+
+        if (progress.changeRequestedBy.isNotEmpty()) {
             return ReviewStatus.CHANGE_REQUESTED
         }
-
-        val reviewStatus = if (numReviews >= reviewConfig.numTotalRequired) {
-            ReviewStatus.APPROVED
-        } else {
-            ReviewStatus.AWAITING_APPROVAL
+        if (progress.totalCurrent < progress.totalRequired) {
+            return ReviewStatus.AWAITING_APPROVAL
+        }
+        if (progress.roleProgress.any { it.numCurrent < it.numRequired }) {
+            return ReviewStatus.AWAITING_APPROVAL
         }
 
-        return reviewStatus
+        return ReviewStatus.APPROVED
     }
 
     fun isRejected(): Boolean {
@@ -171,15 +174,63 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         return rejectedReview != null
     }
 
-    fun getApprovalCount(): Int {
+    fun getApproversAfterReset(): List<User> {
         val resetTimestamp = latestResetTimestamp()
-        val numReviews = events.filter {
-            it.type == EventType.REVIEW &&
-                it is ReviewEvent &&
-                it.action == ReviewAction.APPROVE &&
-                it.createdAt > resetTimestamp
-        }.groupBy { it.author.getId() }.count()
-        return numReviews
+        val reviewEventsAfterReset = events.filter {
+            it.type == EventType.REVIEW && it is ReviewEvent && it.createdAt > resetTimestamp
+        }.mapNotNull { it as? ReviewEvent }
+
+        return reviewEventsAfterReset
+            .groupBy { it.author.getId() }
+            .filter { (_, userEvents) -> userEvents.maxByOrNull { it.createdAt }?.action == ReviewAction.APPROVE }
+            .map { (_, userEvents) -> userEvents.first().author }
+    }
+
+    fun getApprovalCount(): Int = getApproversAfterReset().size
+
+    fun getActiveChangeRequesters(): List<User> {
+        val resetTimestamp = latestResetTimestamp()
+        val reviewEventsAfterReset = events.filter {
+            it.type == EventType.REVIEW && it is ReviewEvent && it.createdAt > resetTimestamp
+        }.mapNotNull { it as? ReviewEvent }
+
+        return reviewEventsAfterReset
+            .groupBy { it.author.getId() }
+            .filter { (_, userEvents) ->
+                userEvents.maxByOrNull { it.createdAt }?.action == ReviewAction.REQUEST_CHANGE
+            }
+            .map { (_, userEvents) -> userEvents.first().author }
+    }
+
+    fun getApprovalProgress(): ApprovalProgress {
+        val approvers = getApproversAfterReset()
+        val changeRequesters = getActiveChangeRequesters()
+        val reviewConfig = request.connection.reviewConfig
+
+        val totalRequired = reviewConfig.numTotalRequired
+        val totalCurrent = approvers.size
+
+        val roleProgress = reviewConfig.roleRequirements?.map { roleReq ->
+            val approversForRole = approvers.filter { user ->
+                user.roles.any { role -> role.getId() == roleReq.roleId }
+            }
+            val numCurrent = approversForRole.size
+            val approverNames = approversForRole.map { "${it.fullName} (${it.email})" }
+
+            RoleApprovalProgress(
+                roleId = roleReq.roleId,
+                numRequired = roleReq.numRequired,
+                numCurrent = numCurrent,
+                approverNames = approverNames,
+            )
+        } ?: emptyList()
+
+        return ApprovalProgress(
+            totalRequired = totalRequired,
+            totalCurrent = totalCurrent,
+            roleProgress = roleProgress,
+            changeRequestedBy = changeRequesters.map { it.fullName ?: it.email },
+        )
     }
 
     fun latestResetTimestamp(): LocalDateTime {
@@ -205,22 +256,6 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
             latestErrorTimeStamp
         }
         return latestResetTimeStamp
-    }
-
-    fun activeRequestedChanges(): Int {
-        val changesRequested = events.filter { it.type == EventType.REVIEW }
-            .mapNotNull { it as? ReviewEvent }
-            .filter { it.action == ReviewAction.REQUEST_CHANGE }
-
-        val approvals = events.filter { it.type == EventType.REVIEW }
-            .mapNotNull { it as? ReviewEvent }
-            .filter { it.action == ReviewAction.APPROVE }
-
-        val openChangeRequests = changesRequested.filter { requestChange ->
-            approvals.none { it.author == requestChange.author && it.createdAt.isAfter(requestChange.createdAt) }
-        }
-
-        return openChangeRequests.size
     }
 
     fun resolveExecutionStatus(): ExecutionStatus {
@@ -350,6 +385,18 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
     }
 }
 
+data class ExecutionRequestDetailsWithRoles(
+    val details: ExecutionRequestDetails,
+    val resolvedRoles: Map<String, Role>,
+) : SecuredDomainObject by details {
+    val request get() = details.request
+    val events get() = details.events
+    fun resolveReviewStatus() = details.resolveReviewStatus()
+    fun resolveExecutionStatus() = details.resolveExecutionStatus()
+    fun csvDownloadAllowed(query: String? = null) = details.csvDownloadAllowed(query)
+    fun getApprovalProgress() = details.getApprovalProgress()
+}
+
 data class ExecutionProxy(
     val request: ExecutionRequest,
     val port: Int,
@@ -363,6 +410,20 @@ data class ExecutionProxy(
 
     override fun getRelated(resource: Resource): SecuredDomainObject? = null
 }
+
+data class RoleApprovalProgress(
+    val roleId: String,
+    val numRequired: Int,
+    val numCurrent: Int,
+    val approverNames: List<String>,
+)
+
+data class ApprovalProgress(
+    val totalRequired: Int,
+    val totalCurrent: Int,
+    val roleProgress: List<RoleApprovalProgress>,
+    val changeRequestedBy: List<String> = emptyList(),
+)
 
 data class ExecutionRequestList(
     val requests: List<ExecutionRequestDetails>,

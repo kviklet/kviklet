@@ -89,7 +89,7 @@ class PoliciesTest {
                     {
                         "roles": [
                             {
-                                "name": "Default Role"
+                                "name": "Default"
                             },
                             {
                                 "name": "User 1 Role",
@@ -150,7 +150,7 @@ class PoliciesTest {
                     {
                         "roles": [
                             {
-                                "name": "Default Role"
+                                "name": "Default"
                             },
                             {
                                 "name": "User 1 Role",
@@ -226,7 +226,7 @@ class PoliciesTest {
                       "roles": [
                         {
                           "id": "7WoJJYKT2hhrLp49YrT2yr",
-                          "name": "Default Role",
+                          "name": "Default",
                           "description": "This is the default role and gives permission to read connections and requests",
                           "policies": [
                             {

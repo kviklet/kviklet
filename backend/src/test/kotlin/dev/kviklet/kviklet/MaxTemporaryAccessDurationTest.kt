@@ -15,6 +15,7 @@ import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.RequestType
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -81,7 +82,7 @@ class MaxTemporaryAccessDurationTest {
             password = "root",
             authenticationType = AuthenticationType.USER_PASSWORD,
             description = "Test connection with max duration",
-            reviewsRequired = 1,
+            reviewConfig = ReviewConfig(numTotalRequired = 1),
             port = db.firstMappedPort,
             hostname = "localhost",
             type = DatasourceType.POSTGRESQL,
@@ -320,7 +321,7 @@ class MaxTemporaryAccessDurationTest {
             password = "root",
             authenticationType = AuthenticationType.USER_PASSWORD,
             description = "Test connection",
-            reviewsRequired = 1,
+            reviewConfig = ReviewConfig(numTotalRequired = 1),
             port = db.firstMappedPort,
             hostname = "localhost",
             type = DatasourceType.POSTGRESQL,

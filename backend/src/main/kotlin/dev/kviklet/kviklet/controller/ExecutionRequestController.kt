@@ -7,6 +7,7 @@ import dev.kviklet.kviklet.security.CurrentUser
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.ColumnInfo
 import dev.kviklet.kviklet.service.ExecutionRequestService
+import dev.kviklet.kviklet.service.dto.ApprovalProgress
 import dev.kviklet.kviklet.service.dto.CommentEvent
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DBExecutionResult
@@ -19,6 +20,7 @@ import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventType
 import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
+import dev.kviklet.kviklet.service.dto.ExecutionRequestDetailsWithRoles
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.ExecutionResult
 import dev.kviklet.kviklet.service.dto.ExecutionStatus
@@ -34,6 +36,7 @@ import dev.kviklet.kviklet.service.dto.ResultType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewEvent
 import dev.kviklet.kviklet.service.dto.ReviewStatus
+import dev.kviklet.kviklet.service.dto.Role
 import dev.kviklet.kviklet.service.dto.UpdateQueryResult
 import dev.kviklet.kviklet.service.dto.UpdateResultLog
 import dev.kviklet.kviklet.service.dto.utcTimeNow
@@ -204,43 +207,54 @@ sealed class ExecutionRequestResponse(open val id: ExecutionRequestId) {
 sealed class ExecutionRequestDetailResponse(open val id: ExecutionRequestId, open val events: List<EventResponse>) {
 
     companion object {
-        fun fromDto(dto: ExecutionRequestDetails): ExecutionRequestDetailResponse = when (dto.request) {
-            is DatasourceExecutionRequest -> DatasourceExecutionRequestDetailResponse(
-                id = dto.request.id!!,
-                author = UserResponse(dto.request.author),
-                type = dto.request.type,
-                title = dto.request.title,
-                description = dto.request.description,
-                statement = dto.request.statement,
-                reviewStatus = dto.resolveReviewStatus(),
-                executionStatus = dto.resolveExecutionStatus(),
-                createdAt = dto.request.createdAt,
-                events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
-                connection = ConnectionResponse.fromDto(dto.request.connection),
-                csvDownload = CSVDownloadableResponse(
-                    allowed = dto.csvDownloadAllowed().first,
-                    reason = dto.csvDownloadAllowed().second,
-                ),
-                temporaryAccessDuration = dto.request.temporaryAccessDuration?.toMinutes(),
-            )
+        fun fromDto(dto: ExecutionRequestDetailsWithRoles): ExecutionRequestDetailResponse {
+            val request = dto.request
+            return when (request) {
+                is DatasourceExecutionRequest -> DatasourceExecutionRequestDetailResponse(
+                    id = request.id!!,
+                    author = UserResponse(request.author),
+                    type = request.type,
+                    title = request.title,
+                    description = request.description,
+                    statement = request.statement,
+                    reviewStatus = dto.resolveReviewStatus(),
+                    executionStatus = dto.resolveExecutionStatus(),
+                    createdAt = request.createdAt,
+                    events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
+                    connection = ConnectionResponse.fromDto(request.connection),
+                    csvDownload = CSVDownloadableResponse(
+                        allowed = dto.csvDownloadAllowed().first,
+                        reason = dto.csvDownloadAllowed().second,
+                    ),
+                    temporaryAccessDuration = request.temporaryAccessDuration?.toMinutes(),
+                    approvalProgress = ApprovalProgressResponse.fromDto(
+                        dto.getApprovalProgress(),
+                        dto.resolvedRoles,
+                    ),
+                )
 
-            is KubernetesExecutionRequest -> KubernetesExecutionRequestDetailResponse(
-                id = dto.request.id!!,
-                author = UserResponse(dto.request.author),
-                type = dto.request.type,
-                title = dto.request.title,
-                description = dto.request.description,
-                reviewStatus = dto.resolveReviewStatus(),
-                executionStatus = dto.resolveExecutionStatus(),
-                createdAt = dto.request.createdAt,
-                namespace = dto.request.namespace,
-                podName = dto.request.podName,
-                containerName = dto.request.containerName,
-                command = dto.request.command,
-                events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
-                connection = ConnectionResponse.fromDto(dto.request.connection),
-                temporaryAccessDuration = dto.request.temporaryAccessDuration?.toMinutes(),
-            )
+                is KubernetesExecutionRequest -> KubernetesExecutionRequestDetailResponse(
+                    id = request.id!!,
+                    author = UserResponse(request.author),
+                    type = request.type,
+                    title = request.title,
+                    description = request.description,
+                    reviewStatus = dto.resolveReviewStatus(),
+                    executionStatus = dto.resolveExecutionStatus(),
+                    createdAt = request.createdAt,
+                    namespace = request.namespace,
+                    podName = request.podName,
+                    containerName = request.containerName,
+                    command = request.command,
+                    events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
+                    connection = ConnectionResponse.fromDto(request.connection),
+                    temporaryAccessDuration = request.temporaryAccessDuration?.toMinutes(),
+                    approvalProgress = ApprovalProgressResponse.fromDto(
+                        dto.getApprovalProgress(),
+                        dto.resolvedRoles,
+                    ),
+                )
+            }
         }
     }
 }
@@ -259,12 +273,52 @@ data class DatasourceExecutionRequestDetailResponse(
     val csvDownload: CSVDownloadableResponse,
     override val events: List<EventResponse>,
     val temporaryAccessDuration: Long? = null,
+    val approvalProgress: ApprovalProgressResponse,
 ) : ExecutionRequestDetailResponse(
     id = id,
     events = events,
 )
 
 data class CSVDownloadableResponse(val allowed: Boolean, val reason: String)
+
+data class RoleApprovalProgressResponse(
+    val role: RoleResponse,
+    val numRequired: Int,
+    val numCurrent: Int,
+    val approverNames: List<String>,
+)
+
+data class ApprovalProgressResponse(
+    val totalRequired: Int,
+    val totalCurrent: Int,
+    val roleProgress: List<RoleApprovalProgressResponse>,
+    val changeRequestedBy: List<String>,
+) {
+    companion object {
+        fun fromDto(dto: ApprovalProgress, resolvedRoles: Map<String, Role>): ApprovalProgressResponse =
+            ApprovalProgressResponse(
+                totalRequired = dto.totalRequired,
+                totalCurrent = dto.totalCurrent,
+                roleProgress = dto.roleProgress.map { rp ->
+                    val role = resolvedRoles[rp.roleId]
+                    RoleApprovalProgressResponse(
+                        role = role?.let { RoleResponse.fromDto(it) }
+                            ?: RoleResponse(
+                                id = rp.roleId,
+                                name = "Role that no longer with id: ${rp.roleId}",
+                                description = "",
+                                policies = emptyList(),
+                                isDefault = false,
+                            ),
+                        numRequired = rp.numRequired,
+                        numCurrent = rp.numCurrent,
+                        approverNames = rp.approverNames,
+                    )
+                },
+                changeRequestedBy = dto.changeRequestedBy,
+            )
+    }
+}
 
 data class KubernetesExecutionRequestDetailResponse(
     override val id: ExecutionRequestId,
@@ -282,6 +336,7 @@ data class KubernetesExecutionRequestDetailResponse(
     val command: String?,
     override val events: List<EventResponse>,
     val temporaryAccessDuration: Long? = null,
+    val approvalProgress: ApprovalProgressResponse,
 ) : ExecutionRequestDetailResponse(
     id = id,
     events = events,

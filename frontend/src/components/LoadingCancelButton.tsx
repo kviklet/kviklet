@@ -18,7 +18,7 @@ function LoadingCancelButton(props: {
   const [isLoading, setIsLoading] = useState(false);
 
   const submitStyle =
-    "bg-indigo-700 font-semibold text-white hover:bg-sky-900 dark:hover:bg-indigo-600 dark:bg-indigo-700 dark:text-slate-50 transition-colors dark:shadow-sm";
+    "bg-indigo-700 font-medium text-white hover:bg-indigo-800 dark:hover:bg-indigo-600 dark:bg-indigo-700 dark:text-slate-50 transition-colors";
   const dangerStyle =
     "bg-red-600 text-white hover:bg-red-800 transition-colors dark:hover:bg-red-400";
   const defaultStyle =
@@ -26,9 +26,9 @@ function LoadingCancelButton(props: {
   const disabledStyle =
     "bg-slate-300 text-slate-500 hover:bg-slate-300 hover:border-slate-300 dark:bg-slate-700 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:border-slate-700 dark:hover:text-slate-500 cursor-not-allowed";
 
-  const size = props.size === "sm" ? "px-2 py-1" : "px-4 py-2";
+  const size = props.size === "sm" ? "px-2 py-0.5" : "px-3 py-1";
   const textSize =
-    (props.textSize || props.size) === "sm" ? "text-sm" : "text-base";
+    (props.textSize || props.size) === "sm" ? "text-sm" : "text-sm";
 
   const handleClick = async () => {
     if (props.disabled) return;
@@ -61,7 +61,7 @@ function LoadingCancelButton(props: {
       disabled={props.disabled}
       className={`${
         props.className
-      } ${size} ${textSize} ${getButtonStyle()} flex items-center justify-center rounded-md align-middle leading-5`}
+      } ${size} ${textSize} ${getButtonStyle()} flex items-center justify-center rounded align-middle leading-5`}
       data-testid={props.dataTestId}
       title={props.title}
     >

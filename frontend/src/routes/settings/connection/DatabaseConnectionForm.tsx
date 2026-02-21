@@ -4,6 +4,7 @@ import {
   DatabaseProtocol,
   DatabaseType,
   TestConnectionResponse,
+  roleRequirementSchema,
 } from "../../../api/DatasourceApi";
 import { ApiResponse } from "../../../api/Errors";
 import {
@@ -18,6 +19,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import InputField, { TextField } from "../../../components/InputField";
 import Button from "../../../components/Button";
+import RoleRequirementsSection from "../../../components/RoleRequirementsSection";
+import { useRoleRequirements } from "../../../hooks/useRoleRequirements";
 import {
   Disclosure,
   DisclosureButton,
@@ -45,6 +48,7 @@ const baseConnectionSchema = z.object({
   databaseName: z.string(),
   reviewConfig: z.object({
     numTotalRequired: z.coerce.number(),
+    roleRequirements: z.array(roleRequirementSchema).optional(),
   }),
   additionalJDBCOptions: z.string(),
   maxExecutions: z.coerce.number().nullable(),
@@ -144,6 +148,7 @@ export default function DatabaseConnectionForm(props: {
     watch,
     resetField,
     setValue,
+    getValues,
   } = useForm<ConnectionForm>({
     resolver: zodResolver(connectionFormSchema),
   });
@@ -153,6 +158,14 @@ export default function DatabaseConnectionForm(props: {
   ]);
   const [dumpsEnabledVisible, setDumpsEnabledVisible] = useState(false);
   const { categories } = useCategories();
+
+  const {
+    roleRequirements,
+    handleAppendRole,
+    handleRemoveRole,
+    handleUpdateRole,
+    minRequired,
+  } = useRoleRequirements(setValue, getValues);
 
   const watchDisplayName = watch("displayName");
   const watchId = watch("id");
@@ -338,10 +351,18 @@ export default function DatabaseConnectionForm(props: {
             tooltip="The number of required approving reviews that's required before a request can be executed."
             placeholder="1"
             type="number"
-            min="0"
+            min={minRequired}
             {...register("reviewConfig.numTotalRequired")}
             error={errors.reviewConfig?.numTotalRequired?.message}
             data-testid="connection-required-reviews"
+          />
+
+          <RoleRequirementsSection
+            fields={roleRequirements}
+            onAppend={handleAppendRole}
+            onRemove={handleRemoveRole}
+            onUpdate={handleUpdateRole}
+            numTotalRequired={watch("reviewConfig.numTotalRequired") || 0}
           />
 
           <div className="w-full">

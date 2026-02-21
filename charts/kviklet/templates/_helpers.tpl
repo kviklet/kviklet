@@ -23,6 +23,11 @@ Includes existing labels for passivity, new standard labels, and user-defined ex
 https://helm.sh/docs/chart_best_practices/labels/
 https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/#labels
 */}}
+{{- define "kviklet.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "fullname" . }}
+app.kubernetes.io/instance: "{{ .Release.Name }}"
+{{- end }}
+
 {{- define "kviklet.metaLabels" -}}
 {{- /* Allow an app suffix name to be passed in to append to the fullname */}}
 {{- $defaultAppName := include "fullname" . }}

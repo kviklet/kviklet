@@ -97,7 +97,7 @@ function TopBanner() {
                   leaveTo="opacity-0 translate-y-1"
                 >
                   <PopoverPanel className="absolute left-1/2 z-10 mt-5 flex w-screen max-w-min -translate-x-1/2 px-4">
-                    <div className="dark:border-px w-40 shrink rounded-xl bg-white p-4 text-sm font-semibold leading-6 shadow-lg ring-1 ring-slate-900/5 dark:border dark:border-slate-700 dark:bg-slate-900">
+                    <div className="dark:border-px w-40 shrink rounded-xl bg-white p-4 text-sm font-semibold leading-6 shadow-lg ring-1 ring-slate-900/5 dark:border dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
                       <PopoverButton as={Link} to="/settings">
                         <p className="p-2 text-slate-900 hover:text-sky-500 dark:text-slate-50 dark:hover:text-sky-400">
                           Settings

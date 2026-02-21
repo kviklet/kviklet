@@ -103,7 +103,7 @@ const JsonViewer = ({ data }: { data: unknown }) => {
 
   return (
     <div className="space-y-4">
-      <div className="overflow-hidden rounded-lg bg-gray-100 font-mono text-sm shadow-md dark:border dark:border-slate-700 dark:bg-slate-950">
+      <div className="overflow-hidden rounded-lg bg-gray-100 font-mono text-sm shadow-md dark:border dark:border-slate-700 dark:bg-slate-950 dark:shadow-none">
         <div className="overflow-auto">
           <div className="min-h-full p-4">
             {isCodeView ? (

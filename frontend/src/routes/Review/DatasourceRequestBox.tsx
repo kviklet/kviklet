@@ -15,6 +15,7 @@ import Modal from "../../components/Modal";
 import SQLDumpConfirm from "../../components/SQLDumpConfirm";
 import useNotification from "../../hooks/useNotification";
 import { Highlighter } from "./components/Highlighter";
+import ApprovalProgress from "./ApprovalProgress";
 
 function DatasourceRequestBox({
   request,
@@ -231,124 +232,122 @@ function DatasourceRequestBox({
   };
 
   return (
-    <div>
-      <div className="relative border-slate-500 dark:border dark:border-slate-950 dark:bg-slate-950">
-        <InitialBubble name={request?.author.fullName} />
-        <div className="flex bg-slate-50 py-2 text-sm text-slate-800 dark:border-none dark:bg-slate-950 dark:text-slate-50">
-          <div>
-            {request?.author?.fullName + questionText}
-            <span className="italic">{request?.connection.displayName}</span>
+    <div className="relative border-slate-500 dark:border dark:border-slate-950 dark:bg-slate-950">
+      <InitialBubble name={request?.author.fullName} />
+      <div className="flex flex-col gap-4 py-2 sm:flex-row sm:items-stretch">
+        {/* Left: request data */}
+        <div className="min-w-0 flex-1">
+          <div className="flex text-sm text-slate-800 dark:text-slate-50">
+            <div>
+              {request?.author?.fullName + questionText}
+              <span className="italic">{request?.connection.displayName}</span>
+            </div>
+            <div className="ml-auto dark:text-slate-500">
+              {timeSince(new Date(request?.createdAt ?? ""))}
+            </div>
           </div>
-          <div className="ml-auto dark:text-slate-500">
-            {timeSince(new Date(request?.createdAt ?? ""))}
-          </div>
-        </div>
-        <div className="py-3">
-          <p className="pb-6 text-slate-500">{request?.description}</p>
-          {request?.type == "SingleExecution" ? (
-            editMode ? (
-              <div>
-                <textarea
-                  className="mb-2 block w-full appearance-none rounded-md border border-gray-200 bg-slate-100 p-1 leading-normal text-gray-700 transition-colors focus:border-gray-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-slate-500 dark:hover:border-slate-600 dark:focus:hover:border-slate-500"
-                  id="statement"
-                  name="statement"
-                  rows={4}
-                  onChange={(event) => setStatement(event.target.value)}
-                  value={statement}
-                ></textarea>
-                <div className="flex justify-end">
-                  <Button
-                    className="mr-2"
-                    htmlType="reset"
-                    onClick={() => {
-                      setEditMode(false);
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={(e) => void changeStatement(e)}
-                  >
-                    Save
-                  </Button>
+          <div className="py-3">
+            <p className="pb-6 text-slate-500">{request?.description}</p>
+            {request?.type == "SingleExecution" ? (
+              editMode ? (
+                <div>
+                  <textarea
+                    className="mb-2 block w-full appearance-none rounded-md border border-gray-200 bg-slate-100 p-1 leading-normal text-gray-700 transition-colors focus:border-gray-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus:border-slate-500 dark:hover:border-slate-600 dark:focus:hover:border-slate-500"
+                    id="statement"
+                    name="statement"
+                    rows={4}
+                    onChange={(event) => setStatement(event.target.value)}
+                    value={statement}
+                  ></textarea>
+                  <div className="flex justify-end">
+                    <Button
+                      className="mr-2"
+                      htmlType="reset"
+                      onClick={() => {
+                        setEditMode(false);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={(e) => void changeStatement(e)}
+                    >
+                      Save
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div
+                  className="rounded border border-slate-300 transition-colors dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-500"
+                  onClick={() => setEditMode(true)}
+                >
+                  <Highlighter>
+                    {request === undefined ? "404" : request.statement || ""}
+                  </Highlighter>
+                </div>
+              )
             ) : (
-              <div
-                className="rounded border border-slate-300 transition-colors dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-500"
-                onClick={() => setEditMode(true)}
-              >
-                <Highlighter>
-                  {request === undefined ? "404" : request.statement || ""}
-                </Highlighter>
+              ""
+            )}
+            {request?.type === "TemporaryAccess" && (
+              <div className="pt-3">
+                <AccessDurationInfo
+                  duration={request?.temporaryAccessDuration}
+                />
               </div>
-            )
-          ) : (
-            ""
-          )}
+            )}
+          </div>
+        </div>
+
+        {/* Right: approval status + actions */}
+        <div className="flex flex-col items-end justify-between border-slate-200 dark:border-slate-700 sm:border-l sm:pl-4">
+          {request && <ApprovalProgress request={request} />}
+          <div className="flex">
+            <MenuDropDown items={menuDropDownItems}></MenuDropDown>
+            {isRelationalDatabase(request) ? (
+              <LoadingCancelButton
+                className=""
+                id="runQuery"
+                variant="primary"
+                disabled={
+                  request?.reviewStatus !== "APPROVED" ||
+                  request?.executionStatus === "EXECUTED"
+                }
+                onClick={handleButtonClick}
+                onCancel={() => void cancelQuery()}
+                dataTestId="run-query-button"
+                title={getDisabledReason()}
+              >
+                {request?.type === "SingleExecution"
+                  ? "Run Query"
+                  : request?.type === "TemporaryAccess"
+                  ? "Start Session"
+                  : "Get SQL Dump"}
+              </LoadingCancelButton>
+            ) : (
+              <Button
+                className=""
+                id="runQuery"
+                variant={
+                  (request?.reviewStatus == "APPROVED" &&
+                    request?.executionStatus !== "EXECUTED" &&
+                    "primary") ||
+                  "disabled"
+                }
+                onClick={() => void runQuery()}
+                dataTestId="run-query-button"
+                title={getDisabledReason()}
+              >
+                {request?.type == "SingleExecution"
+                  ? "Run Query"
+                  : "Start Session"}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
-      <div className="relative mt-3 flex items-center justify-between">
-        {request?.type === "TemporaryAccess" && (
-          <AccessDurationInfo duration={request?.temporaryAccessDuration} />
-        )}
-        <div className="ml-auto flex">
-          <MenuDropDown items={menuDropDownItems}></MenuDropDown>
-          {isRelationalDatabase(request) ? (
-            <LoadingCancelButton
-              className=""
-              id="runQuery"
-              variant="primary"
-              disabled={
-                request?.reviewStatus !== "APPROVED" ||
-                request?.executionStatus === "EXECUTED"
-              }
-              onClick={handleButtonClick}
-              onCancel={() => void cancelQuery()}
-              dataTestId="run-query-button"
-              title={getDisabledReason()}
-            >
-              <div
-                className={`play-triangle mr-2 inline-block h-3 w-2 ${
-                  (request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
-                  "bg-slate-500"
-                }`}
-              ></div>
-              {request?.type === "SingleExecution"
-                ? "Run Query"
-                : request?.type === "TemporaryAccess"
-                ? "Start Session"
-                : "Get SQL Dump"}
-            </LoadingCancelButton>
-          ) : (
-            <Button
-              className=""
-              id="runQuery"
-              variant={
-                (request?.reviewStatus == "APPROVED" &&
-                  request?.executionStatus !== "EXECUTED" &&
-                  "primary") ||
-                "disabled"
-              }
-              onClick={() => void runQuery()}
-              dataTestId="run-query-button"
-              title={getDisabledReason()}
-            >
-              <div
-                className={`play-triangle mr-2 inline-block h-3 w-2 ${
-                  (request?.reviewStatus == "APPROVED" && "bg-slate-50") ||
-                  "bg-slate-500"
-                }`}
-              ></div>
-              {request?.type == "SingleExecution"
-                ? "Run Query"
-                : "Start Session"}
-            </Button>
-          )}
-        </div>
-        <SQLDumpModal />
-      </div>
+      <SQLDumpModal />
     </div>
   );
 }

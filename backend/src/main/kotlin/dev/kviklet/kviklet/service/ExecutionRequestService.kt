@@ -32,6 +32,7 @@ import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionProxy
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
+import dev.kviklet.kviklet.service.dto.ExecutionRequestDetailsWithRoles
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.ExecutionRequestList
 import dev.kviklet.kviklet.service.dto.ExecutionResult
@@ -73,6 +74,7 @@ class ExecutionRequestService(
     private val userAdapter: UserAdapter,
     private val proxyTLSCerts: TLSCerts,
     private val dryRunValidator: DryRunValidator,
+    private val roleAdapter: dev.kviklet.kviklet.db.RoleAdapter,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val proxies = mutableListOf<ExecutionProxy>()
@@ -278,7 +280,7 @@ class ExecutionRequestService(
         id: ExecutionRequestId,
         request: UpdateExecutionRequestRequest,
         userId: String,
-    ): ExecutionRequestDetails {
+    ): ExecutionRequestDetailsWithRoles {
         val executionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
 
         when (executionRequestDetails.request) {
@@ -330,7 +332,7 @@ class ExecutionRequestService(
 
         // Recalculate statuses after edit event
         val updatedDetails = executionRequestAdapter.getExecutionRequestDetails(id)
-        return executionRequestAdapter.updateExecutionRequest(
+        val result = executionRequestAdapter.updateExecutionRequest(
             id = executionRequestDetails.request.id!!,
             title = request.title,
             description = request.description,
@@ -343,6 +345,7 @@ class ExecutionRequestService(
             command = request.command,
             temporaryAccessDuration = request.temporaryAccessDuration?.let { Duration.ofMinutes(it) },
         )
+        return resolveRoles(result)
     }
 
     @Transactional
@@ -389,8 +392,8 @@ class ExecutionRequestService(
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
-    fun get(id: ExecutionRequestId): ExecutionRequestDetails =
-        ensureMaterializedStatuses(executionRequestAdapter.getExecutionRequestDetails(id))
+    fun get(id: ExecutionRequestId): ExecutionRequestDetailsWithRoles =
+        resolveRoles(ensureMaterializedStatuses(executionRequestAdapter.getExecutionRequestDetails(id)))
 
     private fun ensureMaterializedStatuses(details: ExecutionRequestDetails): ExecutionRequestDetails {
         val storedExecutionStatus = ExecutionStatus.valueOf(details.request.executionStatus)
@@ -410,6 +413,17 @@ class ExecutionRequestService(
                 reviewStatus = resolvedReviewStatus,
             )
         }
+    }
+
+    private fun resolveRoles(details: ExecutionRequestDetails): ExecutionRequestDetailsWithRoles {
+        val roleRequirements = details.request.connection.reviewConfig.roleRequirements
+        val resolvedRoles = if (!roleRequirements.isNullOrEmpty()) {
+            val roleIds = roleRequirements.map { it.roleId }
+            roleAdapter.findByIds(roleIds).associateBy { it.getId()!! }
+        } else {
+            emptyMap()
+        }
+        return ExecutionRequestDetailsWithRoles(details = details, resolvedRoles = resolvedRoles)
     }
 
     @Transactional

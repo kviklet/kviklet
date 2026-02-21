@@ -7,6 +7,9 @@ import { z } from "zod";
 import { useCategories } from "../../../hooks/connections";
 import CategoryAutocomplete from "../../../components/CategoryAutocomplete";
 import { QuestionMarkCircleIcon } from "@heroicons/react/20/solid";
+import { roleRequirementSchema } from "../../../api/DatasourceApi";
+import RoleRequirementsSection from "../../../components/RoleRequirementsSection";
+import { useRoleRequirements } from "../../../hooks/useRoleRequirements";
 
 const kubernetesConnectionPayloadSchema = z.object({
   connectionType: z.literal("KUBERNETES").default("KUBERNETES"),
@@ -15,6 +18,7 @@ const kubernetesConnectionPayloadSchema = z.object({
   description: z.string(),
   reviewConfig: z.object({
     numTotalRequired: z.coerce.number(),
+    roleRequirements: z.array(roleRequirementSchema).optional(),
   }),
   maxExecutions: z.coerce.number().nullable(),
   storeResults: z.boolean().default(false),
@@ -37,12 +41,21 @@ export default function CreateKubernetesConnectionForm(props: {
     formState: { errors },
     watch,
     setValue,
+    getValues,
   } = useForm<KubernetesConnectionPayload>({
     resolver: zodResolver(kubernetesConnectionPayloadSchema),
   });
 
   const { categories } = useCategories();
   const watchDisplayName = watch("displayName");
+
+  const {
+    roleRequirements,
+    handleAppendRole,
+    handleRemoveRole,
+    handleUpdateRole,
+    minRequired,
+  } = useRoleRequirements(setValue, getValues);
 
   useEffect(() => {
     const lowerCasedString = watchDisplayName?.toLowerCase() || "";
@@ -109,8 +122,16 @@ export default function CreateKubernetesConnectionForm(props: {
             id="numTotalRequired"
             placeholder="1"
             type="number"
+            min={minRequired}
             {...register("reviewConfig.numTotalRequired")}
             error={errors.reviewConfig?.numTotalRequired?.message}
+          />
+          <RoleRequirementsSection
+            fields={roleRequirements}
+            onAppend={handleAppendRole}
+            onRemove={handleRemoveRole}
+            onUpdate={handleUpdateRole}
+            numTotalRequired={watch("reviewConfig.numTotalRequired") || 0}
           />
           <InputField
             id="maxExecutions"

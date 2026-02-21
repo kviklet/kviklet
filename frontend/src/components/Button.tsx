@@ -13,7 +13,7 @@ function Button(props: {
   title?: string;
 }) {
   const submitStyle =
-    "bg-indigo-700 font-semibold text-white hover:bg-sky-900 dark:hover:bg-indigo-600 dark:bg-indigo-700 dark:text-slate-50 transition-colors dark:shadow-sm";
+    "bg-indigo-700 font-medium text-white hover:bg-indigo-800 dark:hover:bg-indigo-600 dark:bg-indigo-700 dark:text-slate-50 transition-colors";
   const disabledStyle =
     "bg-slate-300 text-slate-500 hover:bg-slate-300 hover:border-slate-300 dark:bg-slate-700 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:border-slate-700 dark:hover:text-slate-500";
   const defaultStyle =
@@ -24,9 +24,9 @@ function Button(props: {
   const disabled = props.variant == "disabled" ? true : undefined;
   const htmlType = props.htmlType || "button";
 
-  const size = props.size == "sm" ? "px-2 py-1" : "px-4 py-2";
+  const size = props.size == "sm" ? "px-2 py-0.5" : "px-3 py-1";
   const textSize =
-    (props.textSize || props.size) == "sm" ? "text-sm" : "text-base";
+    (props.textSize || props.size) == "sm" ? "text-sm" : "text-sm";
 
   return (
     <button
@@ -42,7 +42,7 @@ function Button(props: {
         (props.variant == "danger" && dangerStyle) ||
         defaultStyle
       }
-      rounded-md align-middle  leading-5`}
+      rounded align-middle  leading-5`}
     >
       {props.children}
     </button>

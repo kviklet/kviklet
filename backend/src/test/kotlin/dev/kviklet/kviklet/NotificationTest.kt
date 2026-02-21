@@ -3,7 +3,6 @@ package dev.kviklet.kviklet
 import com.ninjasquad.springmockk.MockkBean
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
-import dev.kviklet.kviklet.db.ReviewConfig
 import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.ConfigService
@@ -12,6 +11,7 @@ import dev.kviklet.kviklet.service.dto.Configuration
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceType
+import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.service.notifications.SlackApiClient
 import dev.kviklet.kviklet.service.notifications.TeamsApiClient
 import io.mockk.every
