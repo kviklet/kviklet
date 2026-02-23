@@ -2,6 +2,7 @@ import {
   ExecutionRequestResponseWithComments,
   Execute,
 } from "../api/ExecutionRequestApi";
+import { DatabaseType } from "../api/DatasourceApi";
 import EditEvent from "./Review/events/EditEvent";
 import ExecuteEvent from "./Review/events/ExecuteEvent";
 import ReviewEvent from "./Review/events/ReviewEvent";
@@ -38,6 +39,9 @@ export default function LiveSessionActivityLog({
     return dateB - dateA; // Reverse order
   });
 
+  const connectionType: DatabaseType | undefined =
+    request._type === "DATASOURCE" ? request.connection.type : undefined;
+
   return (
     <>
       <div className="mt-6">
@@ -48,7 +52,14 @@ export default function LiveSessionActivityLog({
           if (event?._type === "EDIT")
             return <EditEvent key={event.id} event={event} index={index} />;
           if (event?._type === "EXECUTE")
-            return <ExecuteEvent key={event.id} event={event} index={index} />;
+            return (
+              <ExecuteEvent
+                key={event.id}
+                event={event}
+                index={index}
+                connectionType={connectionType}
+              />
+            );
           if (event?._type === "COMMENT")
             return <Comment key={event.id} event={event} index={index} />;
           if (event?._type === "REVIEW")
