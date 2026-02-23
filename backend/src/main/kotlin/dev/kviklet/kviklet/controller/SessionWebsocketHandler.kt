@@ -13,6 +13,7 @@ import dev.kviklet.kviklet.service.dto.LiveSession
 import dev.kviklet.kviklet.service.dto.LiveSessionId
 import dev.kviklet.kviklet.service.websocket.SessionService
 import org.slf4j.LoggerFactory
+import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.concurrent.DelegatingSecurityContextExecutorService
 import org.springframework.security.core.context.SecurityContext
 import org.springframework.security.core.context.SecurityContextHolder
@@ -171,6 +172,15 @@ class SessionWebsocketHandler(
                                     "Unsupported execution result type: $executionResult",
                                 )
                             }
+                        } catch (e: AccessDeniedException) {
+                            logger.warn("Access denied for session: $liveSessionId", e)
+                            sessionObservers[liveSessionId]?.forEach { sessionObserver ->
+                                sendErrorResponseMessage(
+                                    sessionObserver.webSocketSession,
+                                    "You don't have permission to execute on this session",
+                                    liveSessionId,
+                                )
+                            }
                         } catch (e: Exception) {
                             logger.error("Error executing query", e)
                             sessionObservers[liveSessionId]?.forEach { sessionObserver ->
@@ -193,6 +203,9 @@ class SessionWebsocketHandler(
                     logger.info("Query cancelled for session: $liveSessionId")
                 }
             }
+        } catch (e: AccessDeniedException) {
+            logger.warn("Access denied for session: $liveSessionId", e)
+            sendErrorResponseMessage(session, "You don't have permission to perform this action", liveSessionId)
         } catch (e: Exception) {
             logger.error("Error processing message", e)
             sendErrorResponseMessage(session, "Error processing message", liveSessionId)
