@@ -168,4 +168,6 @@ data class KubernetesConnection(
     override val category: String? = null,
     val temporaryAccessEnabled: Boolean,
     val storeResults: Boolean,
+    val kubernetesExecInitialWaitTimeoutSeconds: Long = 5L,
+    val kubernetesExecTimeoutMinutes: Long = 60L,
 ) : Connection(id, displayName, description, reviewConfig, maxExecutions, category)

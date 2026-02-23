@@ -23,6 +23,8 @@ const kubernetesConnectionPayloadSchema = z.object({
   maxExecutions: z.coerce.number().nullable(),
   storeResults: z.boolean().default(false),
   category: z.string().nullable().optional(),
+  kubernetesExecInitialWaitTimeoutSeconds: z.coerce.number().default(5),
+  kubernetesExecTimeoutMinutes: z.coerce.number().default(60),
 });
 
 type KubernetesConnectionPayload = z.infer<
@@ -69,6 +71,8 @@ export default function CreateKubernetesConnectionForm(props: {
     if (props.initialCategory) {
       setValue("category", props.initialCategory);
     }
+    setValue("kubernetesExecInitialWaitTimeoutSeconds", 5);
+    setValue("kubernetesExecTimeoutMinutes", 60);
   }, []);
 
   const onSubmit = async (data: KubernetesConnectionPayload) => {
@@ -86,6 +90,7 @@ export default function CreateKubernetesConnectionForm(props: {
             label="Connection name"
             id="displayName"
             placeholder="Connection name"
+            data-testid="kubernetes-connection-name"
             {...register("displayName")}
             error={errors.displayName?.message}
           />
@@ -93,6 +98,7 @@ export default function CreateKubernetesConnectionForm(props: {
             label="Description"
             id="description"
             placeholder="Provides prod read access with no required reviews"
+            data-testid="kubernetes-connection-description"
             {...register("description")}
             error={errors.description?.message}
           />
@@ -114,6 +120,7 @@ export default function CreateKubernetesConnectionForm(props: {
             label="Connection ID"
             id="id"
             placeholder="datasource-id"
+            data-testid="kubernetes-connection-id"
             {...register("id")}
             error={errors.id?.message}
           />
@@ -123,6 +130,7 @@ export default function CreateKubernetesConnectionForm(props: {
             placeholder="1"
             type="number"
             min={minRequired}
+            data-testid="kubernetes-connection-required-reviews"
             {...register("reviewConfig.numTotalRequired")}
             error={errors.reviewConfig?.numTotalRequired?.message}
           />
@@ -138,6 +146,7 @@ export default function CreateKubernetesConnectionForm(props: {
             label="Max executions"
             placeholder="Max executions"
             type="number"
+            data-testid="kubernetes-connection-max-executions"
             {...register("maxExecutions")}
             error={errors.maxExecutions?.message}
           />
@@ -156,7 +165,31 @@ export default function CreateKubernetesConnectionForm(props: {
               {...register("storeResults")}
             />
           </div>
-          <Button htmlType="submit" variant="primary">
+          <InputField
+            label="Kubernetes exec initial wait timeout (seconds)"
+            id="kubernetesExecInitialWaitTimeoutSeconds"
+            placeholder="5"
+            tooltip="Maps to kubernetes.exec.initial-wait-timeout-seconds"
+            type="number"
+            data-testid="kubernetes-exec-initial-wait-timeout-seconds"
+            {...register("kubernetesExecInitialWaitTimeoutSeconds")}
+            error={errors.kubernetesExecInitialWaitTimeoutSeconds?.message}
+          />
+          <InputField
+            label="Kubernetes exec timeout (minutes)"
+            id="kubernetesExecTimeoutMinutes"
+            placeholder="60"
+            tooltip="Maps to kubernetes.exec.timeout-minutes"
+            type="number"
+            data-testid="kubernetes-exec-timeout-minutes"
+            {...register("kubernetesExecTimeoutMinutes")}
+            error={errors.kubernetesExecTimeoutMinutes?.message}
+          />
+          <Button
+            htmlType="submit"
+            variant="primary"
+            data-testid="create-kubernetes-connection-button"
+          >
             Create Connection
           </Button>
         </div>
