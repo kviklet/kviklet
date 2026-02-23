@@ -1,4 +1,5 @@
 import { Execute } from "../../../api/ExecutionRequestApi";
+import { DatabaseType } from "../../../api/DatasourceApi";
 import { timeSince } from "../../Requests";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
@@ -6,8 +7,17 @@ import { AbsoluteInitialBubble as InitialBubble } from "../../../components/Init
 import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import { Highlighter } from "../components/Highlighter";
+import JsonViewer from "../../../components/JsonViewer";
 
-function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
+function ExecuteEvent({
+  event,
+  index,
+  connectionType,
+}: {
+  event: Execute;
+  index: number;
+  connectionType?: DatabaseType;
+}) {
   const isDownload = event.isDownload || false;
   const sqlStatementText = isDownload
     ? "downloaded the results for the following statement:"
@@ -107,43 +117,54 @@ function ExecuteEvent({ event, index }: { event: Execute; index: number }) {
                                         Stored {result.storedRowCount} of{" "}
                                         {result.rowCount} rows
                                       </div>
-                                      <div className="mt-2 max-h-96 overflow-auto rounded border border-slate-200 dark:border-slate-700">
-                                        <table className="min-w-full text-xs">
-                                          <thead className="bg-slate-100 dark:bg-slate-800">
-                                            <tr>
-                                              {result.columns?.map((col, i) => (
-                                                <th
-                                                  key={i}
-                                                  className="px-2 py-1 text-left font-medium text-slate-600 dark:text-slate-300"
-                                                >
-                                                  {col.label}
-                                                </th>
-                                              ))}
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {result.storedRows?.map(
-                                              (row, i) => (
-                                                <tr
-                                                  key={i}
-                                                  className="border-t border-slate-200 dark:border-slate-700"
-                                                >
-                                                  {result.columns?.map(
-                                                    (col, j) => (
-                                                      <td
-                                                        key={j}
-                                                        className="px-2 py-1 text-slate-700 dark:text-slate-300"
-                                                      >
-                                                        {row[col.label]}
-                                                      </td>
-                                                    ),
-                                                  )}
-                                                </tr>
-                                              ),
-                                            )}
-                                          </tbody>
-                                        </table>
-                                      </div>
+                                      {connectionType ===
+                                      DatabaseType.MONGODB ? (
+                                        <div className="mt-2">
+                                          <JsonViewer
+                                            data={result.storedRows}
+                                          />
+                                        </div>
+                                      ) : (
+                                        <div className="mt-2 max-h-96 overflow-auto rounded border border-slate-200 dark:border-slate-700">
+                                          <table className="min-w-full text-xs">
+                                            <thead className="bg-slate-100 dark:bg-slate-800">
+                                              <tr>
+                                                {result.columns?.map(
+                                                  (col, i) => (
+                                                    <th
+                                                      key={i}
+                                                      className="px-2 py-1 text-left font-medium text-slate-600 dark:text-slate-300"
+                                                    >
+                                                      {col.label}
+                                                    </th>
+                                                  ),
+                                                )}
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {result.storedRows?.map(
+                                                (row, i) => (
+                                                  <tr
+                                                    key={i}
+                                                    className="border-t border-slate-200 dark:border-slate-700"
+                                                  >
+                                                    {result.columns?.map(
+                                                      (col, j) => (
+                                                        <td
+                                                          key={j}
+                                                          className="px-2 py-1 text-slate-700 dark:text-slate-300"
+                                                        >
+                                                          {row[col.label]}
+                                                        </td>
+                                                      ),
+                                                    )}
+                                                  </tr>
+                                                ),
+                                              )}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      )}
                                     </>
                                   )}
                               </div>

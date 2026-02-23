@@ -1,4 +1,5 @@
 import { ExecutionRequestResponseWithComments } from "../../api/ExecutionRequestApi";
+import { DatabaseType } from "../../api/DatasourceApi";
 import { ReviewTypes } from "../../hooks/request";
 import CommentBox from "./CommentBox";
 import EditEvent from "./events/EditEvent";
@@ -22,6 +23,9 @@ export default function EventHistory({
     events.reverse();
   }
 
+  const connectionType: DatabaseType | undefined =
+    request._type === "DATASOURCE" ? request.connection.type : undefined;
+
   return (
     <>
       <div className="mt-6">
@@ -32,7 +36,13 @@ export default function EventHistory({
           if (event?._type === "EDIT")
             return <EditEvent event={event} index={index}></EditEvent>;
           if (event?._type === "EXECUTE")
-            return <ExecuteEvent event={event} index={index}></ExecuteEvent>;
+            return (
+              <ExecuteEvent
+                event={event}
+                index={index}
+                connectionType={connectionType}
+              ></ExecuteEvent>
+            );
           if (event?._type === "COMMENT")
             return <Comment event={event} index={index}></Comment>;
           if (event?._type === "REVIEW")
