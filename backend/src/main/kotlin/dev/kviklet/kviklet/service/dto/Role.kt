@@ -31,6 +31,11 @@ data class Role(
                 effect = PolicyEffect.ALLOW,
                 resource = "*",
             ),
+            Policy(
+                action = Permission.USER_GET.getPermissionString(),
+                effect = PolicyEffect.ALLOW,
+                resource = "*",
+            ),
         )
         fun create(id: RoleId, name: String, description: String, policies: Set<Policy>): Role = Role(
             id = id,
