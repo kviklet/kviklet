@@ -116,3 +116,6 @@ databaseChangeLog:
   - include:
       file: 040-rename-default-role.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 041-add-user-get-to-default-role.yaml
+      relativeToChangelogFile: true

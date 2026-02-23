@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 20260223-add-user-get-to-default-role
+      author: jascha
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: role
+        - sqlCheck:
+            expectedResult: 1
+            sql: "SELECT COUNT(*) FROM role WHERE id = '7WoJJYKT2hhrLp49YrT2yr'"
+      changes:
+        - sql:
+            sql: "INSERT INTO policy (id, role_id, action, effect, resource) VALUES ('user-get-default-pol', '7WoJJYKT2hhrLp49YrT2yr', 'user:get', 'ALLOW', '*')"
