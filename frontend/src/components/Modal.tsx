@@ -6,7 +6,7 @@ const Modal = (props: {
 }) => {
   return (
     <div
-      className="fixed inset-0 h-full w-full overflow-y-auto bg-gray-600 bg-opacity-50"
+      className="fixed inset-0 z-50 h-full w-full overflow-y-auto bg-gray-600 bg-opacity-50"
       onClick={(event) => {
         if (event.target === event.currentTarget) {
           props.setVisible(false);

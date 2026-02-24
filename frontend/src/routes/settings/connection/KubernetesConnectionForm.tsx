@@ -6,7 +6,16 @@ import Button from "../../../components/Button";
 import { z } from "zod";
 import { useCategories } from "../../../hooks/connections";
 import CategoryAutocomplete from "../../../components/CategoryAutocomplete";
-import { QuestionMarkCircleIcon } from "@heroicons/react/20/solid";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  QuestionMarkCircleIcon,
+} from "@heroicons/react/20/solid";
+import {
+  Disclosure,
+  DisclosureButton,
+  DisclosurePanel,
+} from "@headlessui/react";
 import { roleRequirementSchema } from "../../../api/DatasourceApi";
 import RoleRequirementsSection from "../../../components/RoleRequirementsSection";
 import { useRoleRequirements } from "../../../hooks/useRoleRequirements";
@@ -141,50 +150,82 @@ export default function CreateKubernetesConnectionForm(props: {
             onUpdate={handleUpdateRole}
             numTotalRequired={watch("reviewConfig.numTotalRequired") || 0}
           />
-          <InputField
-            id="maxExecutions"
-            label="Max executions"
-            placeholder="Max executions"
-            type="number"
-            data-testid="kubernetes-connection-max-executions"
-            {...register("maxExecutions")}
-            error={errors.maxExecutions?.message}
-          />
-          <div className="flex w-full justify-between">
-            <label
-              htmlFor="storeResults"
-              className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
-              title="When enabled, stores command output (up to 50KB) in the event history."
-            >
-              Store Command Output
-              <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
-            </label>
-            <input
-              type="checkbox"
-              className="my-auto h-4 w-4"
-              {...register("storeResults")}
-            />
+          <div className="w-full">
+            <Disclosure defaultOpen={false}>
+              {({ open }) => (
+                <>
+                  <DisclosureButton
+                    className="py-2"
+                    data-testid="advanced-options-button"
+                  >
+                    <div className="flex flex-row justify-between">
+                      <div className="flex flex-row">
+                        <div>Advanced Options</div>
+                      </div>
+                      <div className="flex flex-row">
+                        {open ? (
+                          <ChevronDownIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronDownIcon>
+                        ) : (
+                          <ChevronRightIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronRightIcon>
+                        )}
+                      </div>
+                    </div>
+                  </DisclosureButton>
+                  <DisclosurePanel unmount={false}>
+                    <div className="flex-col space-y-2">
+                      <InputField
+                        id="maxExecutions"
+                        label="Max executions"
+                        placeholder="Max executions"
+                        type="number"
+                        data-testid="kubernetes-connection-max-executions"
+                        {...register("maxExecutions")}
+                        error={errors.maxExecutions?.message}
+                      />
+                      <div className="flex w-full justify-between">
+                        <label
+                          htmlFor="storeResults"
+                          className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
+                          title="When enabled, stores command output (up to 50KB) in the event history."
+                        >
+                          Store Command Output
+                          <QuestionMarkCircleIcon className="ml-1 inline h-4 w-4 align-text-bottom text-slate-400"></QuestionMarkCircleIcon>
+                        </label>
+                        <input
+                          type="checkbox"
+                          className="my-auto h-4 w-4"
+                          {...register("storeResults")}
+                        />
+                      </div>
+                      <InputField
+                        label="Kubernetes exec initial wait timeout (seconds)"
+                        id="kubernetesExecInitialWaitTimeoutSeconds"
+                        placeholder="5"
+                        tooltip="Maps to kubernetes.exec.initial-wait-timeout-seconds"
+                        type="number"
+                        data-testid="kubernetes-exec-initial-wait-timeout-seconds"
+                        {...register("kubernetesExecInitialWaitTimeoutSeconds")}
+                        error={
+                          errors.kubernetesExecInitialWaitTimeoutSeconds
+                            ?.message
+                        }
+                      />
+                      <InputField
+                        label="Kubernetes exec timeout (minutes)"
+                        id="kubernetesExecTimeoutMinutes"
+                        placeholder="60"
+                        tooltip="Maps to kubernetes.exec.timeout-minutes"
+                        type="number"
+                        data-testid="kubernetes-exec-timeout-minutes"
+                        {...register("kubernetesExecTimeoutMinutes")}
+                        error={errors.kubernetesExecTimeoutMinutes?.message}
+                      />
+                    </div>
+                  </DisclosurePanel>
+                </>
+              )}
+            </Disclosure>
           </div>
-          <InputField
-            label="Kubernetes exec initial wait timeout (seconds)"
-            id="kubernetesExecInitialWaitTimeoutSeconds"
-            placeholder="5"
-            tooltip="Maps to kubernetes.exec.initial-wait-timeout-seconds"
-            type="number"
-            data-testid="kubernetes-exec-initial-wait-timeout-seconds"
-            {...register("kubernetesExecInitialWaitTimeoutSeconds")}
-            error={errors.kubernetesExecInitialWaitTimeoutSeconds?.message}
-          />
-          <InputField
-            label="Kubernetes exec timeout (minutes)"
-            id="kubernetesExecTimeoutMinutes"
-            placeholder="60"
-            tooltip="Maps to kubernetes.exec.timeout-minutes"
-            type="number"
-            data-testid="kubernetes-exec-timeout-minutes"
-            {...register("kubernetesExecTimeoutMinutes")}
-            error={errors.kubernetesExecTimeoutMinutes?.message}
-          />
           <Button
             htmlType="submit"
             variant="primary"
