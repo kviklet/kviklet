@@ -106,7 +106,7 @@ class SettingsPage {
     initialWaitTimeoutSeconds?: number;
     timeoutMinutes?: number;
   }) {
-    await this.page.getByRole("button", { name: "Add Connection" }).click();
+    await this.page.getByTestId("connections-table-create-button").first().click();
     await this.page.getByTestId("add-kubernetes-connection-button").click();
 
     await this.page.getByTestId("kubernetes-connection-name").fill(params.name);
