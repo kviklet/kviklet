@@ -263,6 +263,8 @@ class ConnectionEncryptionTest(
             reviewConfig = ReviewConfig(numTotalRequired = 2),
             maxExecutions = 10,
             storeResults = false,
+            kubernetesExecInitialWaitTimeoutSeconds = 5L,
+            kubernetesExecTimeoutMinutes = 60L,
         )
 
         kubernetesConnection.id shouldBe connectionId

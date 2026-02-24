@@ -80,6 +80,8 @@ const kubernetesConnectionResponseSchema = withType(
     temporaryAccessEnabled: z.boolean(),
     storeResults: z.boolean(),
     category: z.string().nullable(),
+    kubernetesExecInitialWaitTimeoutSeconds: z.coerce.number(),
+    kubernetesExecTimeoutMinutes: z.coerce.number(),
   }),
   "KUBERNETES",
 );
@@ -139,6 +141,8 @@ type DatabaseConnection =
 interface KubernetesConnection extends ConnectionBase {
   connectionType: "KUBERNETES";
   storeResults: boolean;
+  kubernetesExecInitialWaitTimeoutSeconds?: number;
+  kubernetesExecTimeoutMinutes?: number;
 }
 
 type ConnectionPayload = DatabaseConnection | KubernetesConnection;

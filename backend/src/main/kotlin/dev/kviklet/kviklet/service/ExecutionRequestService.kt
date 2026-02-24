@@ -614,6 +614,7 @@ class ExecutionRequestService(
     private fun executeKubernetesRequest(
         id: ExecutionRequestId,
         executionRequest: ExecutionRequestDetails,
+        connection: KubernetesConnection,
         userId: String,
         statement: String?,
     ): KubernetesExecutionResult {
@@ -640,7 +641,8 @@ class ExecutionRequestService(
             podName = executionRequest.request.podName!!,
             command = statement ?: executionRequest.request.command!!,
             containerName = containerName,
-            timeout = 60,
+            initialWaitTimeoutSeconds = connection.kubernetesExecInitialWaitTimeoutSeconds,
+            timeoutMinutes = connection.kubernetesExecTimeoutMinutes,
         )
 
         // Store results if storeResults is enabled
@@ -727,7 +729,7 @@ class ExecutionRequestService(
                 }
 
                 is KubernetesConnection -> {
-                    executeKubernetesRequest(id, executionRequest, userId, query)
+                    executeKubernetesRequest(id, executionRequest, connection, userId, query)
                 }
             }
         }
