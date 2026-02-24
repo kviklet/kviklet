@@ -168,7 +168,7 @@ const Login = () => {
               <div className="mt-4 text-center">
                 <button
                   onClick={() => setShowBasicAuth(!showBasicAuth)}
-                  className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 underline"
+                  className="text-sm text-indigo-600 underline hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
                 >
                   {showBasicAuth ? "Hide" : "Use"} username and password
                 </button>
