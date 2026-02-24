@@ -37,12 +37,16 @@ const StyledInput = (props: {
 const Login = () => {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [showBasicAuth, setShowBasicAuth] = useState<boolean>(false);
   const navigate = useNavigate();
   const userContext = useContext(UserStatusContext);
 
   const { config, loading } = useConfig();
 
   const { addNotification } = useNotification();
+
+  const isOidcConfigured = !!config?.oauthProvider;
+  const shouldHideBasicAuth = isOidcConfigured && !showBasicAuth;
 
   const login = async (event: FormEvent) => {
     event.preventDefault();
@@ -121,42 +125,55 @@ const Login = () => {
           </div>
           <div className="mb-6 text-center text-2xl">Sign in to Kviklet</div>
           <div className=" rounded-md p-6 shadow-xl dark:bg-slate-900 dark:shadow-none">
-            <form onSubmit={(e) => void login(e)}>
-              <div className="flex flex-col">
-                <label className="py-2 text-sm" htmlFor="email">
-                  {(config?.ldapEnabled && "LDAP login") || "Email"}
-                </label>
-                <StyledInput
-                  name="email"
-                  type="text"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  dataTestId="email-input"
-                ></StyledInput>
-                <label className="py-2 text-sm" htmlFor="password">
-                  Password
-                </label>
-                <StyledInput
-                  name="password"
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event?.target.value)}
-                  dataTestId="password-input"
-                ></StyledInput>
-                <Button
-                  className="mt-2 w-full"
-                  id="sign-in"
-                  htmlType="submit"
-                  variant="primary"
-                  dataTestId="login-button"
-                >
-                  Sign in
-                </Button>
-              </div>
-            </form>
-
             {oAuthButton()}
             {samlButton()}
+
+            {!shouldHideBasicAuth && (
+              <form onSubmit={(e) => void login(e)}>
+                <div className="flex flex-col">
+                  <label className="py-2 text-sm" htmlFor="email">
+                    {(config?.ldapEnabled && "LDAP login") || "Email"}
+                  </label>
+                  <StyledInput
+                    name="email"
+                    type="text"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    dataTestId="email-input"
+                  ></StyledInput>
+                  <label className="py-2 text-sm" htmlFor="password">
+                    Password
+                  </label>
+                  <StyledInput
+                    name="password"
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event?.target.value)}
+                    dataTestId="password-input"
+                  ></StyledInput>
+                  <Button
+                    className="mt-2 w-full"
+                    id="sign-in"
+                    htmlType="submit"
+                    variant="primary"
+                    dataTestId="login-button"
+                  >
+                    Sign in
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {isOidcConfigured && (
+              <div className="mt-4 text-center">
+                <button
+                  onClick={() => setShowBasicAuth(!showBasicAuth)}
+                  className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 underline"
+                >
+                  {showBasicAuth ? "Hide" : "Use"} username and password
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
