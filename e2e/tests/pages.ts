@@ -117,6 +117,7 @@ class SettingsPage {
     await this.page
       .getByTestId("kubernetes-connection-required-reviews")
       .fill((params.requiredReviews ?? 1).toString());
+    await this.page.getByTestId("advanced-options-button").click();
     await this.page
       .getByTestId("kubernetes-connection-max-executions")
       .fill((params.maxExecutions ?? 1).toString());
