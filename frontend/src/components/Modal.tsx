@@ -13,7 +13,7 @@ const Modal = (props: {
         }
       }}
     >
-      <div className="relative top-20 mx-auto max-w-xl">{props.children}</div>
+      <div className="mt-20 mx-auto max-w-xl pb-20">{props.children}</div>
     </div>
   );
 };
