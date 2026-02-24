@@ -229,7 +229,7 @@ export default function CreateKubernetesConnectionForm(props: {
           <Button
             htmlType="submit"
             variant="primary"
-            data-testid="create-kubernetes-connection-button"
+            dataTestId="create-kubernetes-connection-button"
           >
             Create Connection
           </Button>
