@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 043-clear-spring-sessions
+      author: jascha
+      comment: >
+        Clear existing Spring Sessions to avoid ClassNotFoundException when
+        deserializing old OIDC sessions that reference the removed
+        CustomOidcUser class (renamed in PR#411, removed in PR#412).
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: spring_session
+      changes:
+        - delete:
+            tableName: spring_session_attributes
+        - delete:
+            tableName: spring_session
