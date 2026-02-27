@@ -9,9 +9,9 @@ databaseChangeLog:
       preConditions:
         - onFail: MARK_RAN
         - tableExists:
-            tableName: SPRING_SESSION
+            tableName: spring_session
       changes:
         - delete:
-            tableName: SPRING_SESSION_ATTRIBUTES
+            tableName: spring_session_attributes
         - delete:
-            tableName: SPRING_SESSION
+            tableName: spring_session
