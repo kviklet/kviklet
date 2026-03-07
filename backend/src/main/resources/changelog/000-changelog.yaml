@@ -119,3 +119,9 @@ databaseChangeLog:
   - include:
       file: 041-add-user-get-to-default-role.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 042-add-kubernetes-exec-timeouts.yaml
+      relativeToChangelogFile: true
+  - include:
+      file: 043-clear-spring-sessions.yaml
+      relativeToChangelogFile: true

@@ -151,6 +151,10 @@ class ConnectionService(
 
         val newMaxExecutions = request.maxExecutions ?: connection.maxExecutions
 
+        val newInitialWaitTimeoutSeconds =
+            request.kubernetesExecInitialWaitTimeoutSeconds ?: connection.kubernetesExecInitialWaitTimeoutSeconds
+        val newTimeoutMinutes = request.kubernetesExecTimeoutMinutes ?: connection.kubernetesExecTimeoutMinutes
+
         // Detect if fields that affect status calculation have changed
         val reviewConfigChanged = connection.reviewConfig != newReviewConfig
         val maxExecutionsChanged = connection.maxExecutions != newMaxExecutions
@@ -163,6 +167,8 @@ class ConnectionService(
             newMaxExecutions,
             request.storeResults ?: connection.storeResults,
             category = request.category ?: connection.category,
+            kubernetesExecInitialWaitTimeoutSeconds = newInitialWaitTimeoutSeconds,
+            kubernetesExecTimeoutMinutes = newTimeoutMinutes,
         )
 
         // Recalculate statuses if reviewConfig or maxExecutions changed
@@ -343,6 +349,8 @@ class ConnectionService(
         maxExecutions: Int?,
         storeResults: Boolean,
         category: String?,
+        kubernetesExecInitialWaitTimeoutSeconds: Long?,
+        kubernetesExecTimeoutMinutes: Long?,
     ): Connection {
         validateReviewConfig(reviewConfig, existingReviewConfig = null)
         return connectionAdapter.createKubernetesConnection(
@@ -353,6 +361,8 @@ class ConnectionService(
             maxExecutions,
             storeResults,
             category,
+            kubernetesExecInitialWaitTimeoutSeconds = kubernetesExecInitialWaitTimeoutSeconds ?: 5L,
+            kubernetesExecTimeoutMinutes = kubernetesExecTimeoutMinutes ?: 60L,
         )
     }
 

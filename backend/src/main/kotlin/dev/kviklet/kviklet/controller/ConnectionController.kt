@@ -59,6 +59,12 @@ data class CreateKubernetesConnectionRequest(
     val storeResults: Boolean = false,
 
     val category: String? = null,
+
+    @field:Min(1)
+    val kubernetesExecInitialWaitTimeoutSeconds: Long? = null,
+
+    @field:Min(1)
+    val kubernetesExecTimeoutMinutes: Long? = null,
 ) : ConnectionRequest()
 
 data class CreateDatasourceConnectionRequest(
@@ -185,6 +191,12 @@ data class UpdateKubernetesConnectionRequest(
     val storeResults: Boolean? = null,
 
     val category: String? = null,
+
+    @field:Min(1)
+    val kubernetesExecInitialWaitTimeoutSeconds: Long? = null,
+
+    @field:Min(1)
+    val kubernetesExecTimeoutMinutes: Long? = null,
 ) : UpdateConnectionRequest()
 
 data class RoleRequirementRequest(val roleId: String, val numRequired: Int)
@@ -291,6 +303,8 @@ data class KubernetesConnectionResponse(
     val temporaryAccessEnabled: Boolean,
     val storeResults: Boolean,
     val category: String?,
+    val kubernetesExecInitialWaitTimeoutSeconds: Long,
+    val kubernetesExecTimeoutMinutes: Long,
 ) : ConnectionResponse(connectionType = ConnectionType.KUBERNETES) {
     companion object {
         fun fromDto(kubernetesConnection: KubernetesConnection) = KubernetesConnectionResponse(
@@ -307,6 +321,8 @@ data class KubernetesConnectionResponse(
             temporaryAccessEnabled = kubernetesConnection.temporaryAccessEnabled,
             storeResults = kubernetesConnection.storeResults,
             category = kubernetesConnection.category,
+            kubernetesExecInitialWaitTimeoutSeconds = kubernetesConnection.kubernetesExecInitialWaitTimeoutSeconds,
+            kubernetesExecTimeoutMinutes = kubernetesConnection.kubernetesExecTimeoutMinutes,
         )
     }
 }
@@ -400,6 +416,8 @@ class ConnectionController(val connectionService: ConnectionService) {
             maxExecutions = request.maxExecutions,
             storeResults = request.storeResults,
             category = request.category,
+            kubernetesExecInitialWaitTimeoutSeconds = request.kubernetesExecInitialWaitTimeoutSeconds,
+            kubernetesExecTimeoutMinutes = request.kubernetesExecTimeoutMinutes,
         )
 
     @PostMapping("/")

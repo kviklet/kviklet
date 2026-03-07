@@ -9,7 +9,7 @@ Secure access to production environments without impairing developer productivit
 
 Kviklet (pronounced Quick-let) embraces the **Four-Eyes Principle** and a high level of configurability to allow a **Pull Request-like Review and Approval** flow for individual SQL statements or Database sessions. This allows engineering teams to self regulate on who gets access to what data and when, allowing organizations to stay secure and compliant while embracing modern, empowering and truly "DevOps" workflows.
 
-Kviklet is a self hosted docker container, that provides you with a Single Page Web app. Login to create SQL requests or approve the ones of others.
+Kviklet is a self hosted docker container, that provides you with a Single Page Web app. Login to create SQL requests or approve the ones of others. An optional enterprise license unlocks advanced features like SAML authentication, role-based review requirements, role sync, and API keys. You can request an enterprise license at [kviklet.dev](https://kviklet.dev).
 
 We currently support **Postgres**, **MySQL**, **MS SQL Server** and **MongoDB**.
 
@@ -27,6 +27,9 @@ Kviklet ships with a variety of features that an engineering team needs to manag
 - **RBAC**: Configure which team has access to which database/table to as fine of a granularity as the DB Engine allows.
 - **Postgres Proxy**: Start a proxy server to use the DB Client of your choice, but everything will be stored in the Kviklet Auditlog.
 - **Kubernetes Exec**: Execute a statement on a pod in your kubernetes cluster. (Currently only supports Execution of a single command no live session yet)
+- **Role-Based Review Gates**: Require approvals from specific roles before execution. (Enterprise only)
+- **Role Sync**: Automatically sync user roles from your identity provider groups. (Enterprise only)
+- **API Keys**: Programmatic access to the Kviklet API. (Enterprise only)
 
 ## Feature by Database/Connection Type
 
@@ -45,7 +48,7 @@ Most features are available for all databases (SSO, LDAP, RBAC, Review/Approval 
 
 Kviklet ships as a simple docker container.
 You can find the available versions under [Releases](https://github.com/kviklet/kviklet/releases). We recommend regularly updating the version you are using as we continue to build new features.  
-The latest one currently is `ghcr.io/kviklet/kviklet:0.6.0`, you can also use `:main` but it might happen every now and then that we accidentally merge something buggy. Though we try to avoid that.
+The latest one currently is `ghcr.io/kviklet/kviklet:0.7.0`, you can also use `:main` but it might happen every now and then that we accidentally merge something buggy. Though we try to avoid that.
 
 ### Quick Start
 
@@ -310,7 +313,7 @@ After starting Kviklet you first have to configure a database connection. Go to 
 ![Add Connection](images/CreateConnection_light.png#gh-light-mode-only)
 ![Add Connection](images/CreateConnection_dark.png#gh-dark-mode-only)
 
-Here you can configure how many reviews are required to run Requests on this connection. You can also configure how often a request can be run. The default is 1 and we recommend to stick to this for most use cases. As a special config, setting this to 0 any request on the connection can be run an infinite amount of times.
+Here you can configure review requirements and execution limits for each connection. See [Review Gates](#review-gates) for details.
 
 #### AWS IAM AUTH
 
@@ -332,6 +335,32 @@ The main two points are:
 
 - Create a DB user with the IAM auth option and correct permissions
 - Create an IAM policy that allows the AWS entity to generate tokens for this user
+
+### Review Gates
+
+By default Kviklet allows a simple review count configuration. You can configure how many approvals requests on a specific connection need before they can be executed.
+
+The approval status of a request is calculated based on each reviewer's latest action. If a reviewer approves and later requests changes, only the change request counts — their earlier approval is removed. Editing a request always resets all prior approvals, ensuring that no changes can be executed without being reviewed first. Similarly, if an execution fails (e.g. due to a SQL syntax error), approvals are reset so the request can be corrected and re-approved without having to create a new one.
+
+You can also configure a **max executions** limit per connection to control how often a single approved request can be executed. The default is 1. Setting this to 0 allows unlimited executions. Failed executions do not count toward this limit.
+
+#### Role-Based Review Requirements (Enterprise)
+
+With a Kviklet Enterprise License you can configure individual connections to require approvals from users with specific roles. This allows you to e.g. require approval from the team that maintains a given database or gate sensitive connections behind DBA or management approvals.
+
+**How it works:**
+
+Each connection has a **total reviews required** count (`numTotalRequired`) which acts as a floor — the minimum number of distinct approvals needed regardless of roles. On top of that you can add **role requirements** that specify how many approvals must come from users with a particular role (e.g., "1 from DBA, 1 from Security").
+
+A request is only approved when **both** conditions are met:
+- The total number of distinct approvals meets `numTotalRequired`
+- Each role requirement is individually satisfied
+
+If a user belongs to multiple roles, a single approval from that user counts toward all matching role requirements. However, it still only counts as one approval toward the total count.
+
+**Example:** A connection requires 3 total approvals including 1 from a DBA and 1 from Security. A user who has both the DBA and Security role approves — this satisfies both role requirements but only counts as 1 of the 3 total approvals needed. Two more approvals from any users are still required.
+
+If your enterprise license expires, existing role-based review requirements remain enforced but can no longer be modified. You can only remove them to fall back to the simple total reviews configuration.
 
 ### Roles
 

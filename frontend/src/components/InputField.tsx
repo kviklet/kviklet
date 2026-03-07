@@ -29,7 +29,7 @@ const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
 
     const labelClassName = isCheckbox
       ? "ml-2 text-sm font-medium text-slate-700 dark:text-slate-200"
-      : "my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200";
+      : "my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200";
 
     const renderInput = () => (
       <input
