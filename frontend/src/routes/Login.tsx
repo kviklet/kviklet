@@ -37,12 +37,16 @@ const StyledInput = (props: {
 const Login = () => {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  const [showLocalLogin, setShowLocalLogin] = useState(false);
   const navigate = useNavigate();
   const userContext = useContext(UserStatusContext);
 
   const { config, loading } = useConfig();
 
   const { addNotification } = useNotification();
+
+  const hasSso = !!config?.oauthProvider || !!config?.samlEnabled;
+  const showForm = !hasSso || showLocalLogin;
 
   const login = async (event: FormEvent) => {
     event.preventDefault();
@@ -66,7 +70,7 @@ const Login = () => {
         return (
           <a
             href={`${baseUrl}/oauth2/authorization/google`}
-            className="mt-8 block w-full"
+            className="block w-full"
           >
             <GoogleButton type="light" className="m-auto"></GoogleButton>
           </a>
@@ -76,7 +80,7 @@ const Login = () => {
         return (
           <a
             href={`${baseUrl}/oauth2/authorization/keycloak`}
-            className="mt-8 block w-full"
+            className="block w-full"
           >
             <Button className="mx-auto w-full">Login with Keycloak</Button>
           </a>
@@ -85,7 +89,7 @@ const Login = () => {
         return (
           <a
             href={`${baseUrl}/oauth2/authorization/${config.oauthProvider}`}
-            className="mt-8 block w-full"
+            className="block w-full"
           >
             <Button className="mx-auto w-full">
               Login with {config.oauthProvider}
@@ -99,10 +103,7 @@ const Login = () => {
   const samlButton = () => {
     if (config?.samlEnabled) {
       return (
-        <a
-          href={`${baseUrl}/saml2/authenticate/saml`}
-          className="mt-8 block w-full"
-        >
+        <a href={`${baseUrl}/saml2/authenticate/saml`} className="block w-full">
           <Button className="mx-auto w-full">Login with SAML</Button>
         </a>
       );
@@ -120,43 +121,64 @@ const Login = () => {
             />
           </div>
           <div className="mb-6 text-center text-2xl">Sign in to Kviklet</div>
-          <div className=" rounded-md p-6 shadow-xl dark:bg-slate-900 dark:shadow-none">
-            <form onSubmit={(e) => void login(e)}>
-              <div className="flex flex-col">
-                <label className="py-2 text-sm" htmlFor="email">
-                  {(config?.ldapEnabled && "LDAP login") || "Email"}
-                </label>
-                <StyledInput
-                  name="email"
-                  type="text"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  dataTestId="email-input"
-                ></StyledInput>
-                <label className="py-2 text-sm" htmlFor="password">
-                  Password
-                </label>
-                <StyledInput
-                  name="password"
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event?.target.value)}
-                  dataTestId="password-input"
-                ></StyledInput>
-                <Button
-                  className="mt-2 w-full"
-                  id="sign-in"
-                  htmlType="submit"
-                  variant="primary"
-                  dataTestId="login-button"
-                >
-                  Sign in
-                </Button>
-              </div>
-            </form>
-
+          <div className="rounded-md p-6 shadow-xl dark:bg-slate-900 dark:shadow-none">
             {oAuthButton()}
             {samlButton()}
+
+            {hasSso && showForm && (
+              <div className="my-6 flex items-center">
+                <div className="flex-grow border-t border-slate-300 dark:border-slate-600" />
+                <span className="mx-4 text-sm text-slate-500 dark:text-slate-400">
+                  or
+                </span>
+                <div className="flex-grow border-t border-slate-300 dark:border-slate-600" />
+              </div>
+            )}
+
+            {hasSso && !showLocalLogin && (
+              <button
+                onClick={() => setShowLocalLogin(true)}
+                className="mt-6 w-full text-center text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+              >
+                Sign in with email instead
+              </button>
+            )}
+
+            {showForm && (
+              <form onSubmit={(e) => void login(e)}>
+                <div className="flex flex-col">
+                  <label className="py-2 text-sm" htmlFor="email">
+                    {(config?.ldapEnabled && "LDAP login") || "Email"}
+                  </label>
+                  <StyledInput
+                    name="email"
+                    type="text"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    dataTestId="email-input"
+                  ></StyledInput>
+                  <label className="py-2 text-sm" htmlFor="password">
+                    Password
+                  </label>
+                  <StyledInput
+                    name="password"
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event?.target.value)}
+                    dataTestId="password-input"
+                  ></StyledInput>
+                  <Button
+                    className="mt-2 w-full"
+                    id="sign-in"
+                    htmlType="submit"
+                    variant="primary"
+                    dataTestId="login-button"
+                  >
+                    Sign in
+                  </Button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
