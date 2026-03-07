@@ -5,6 +5,7 @@ import {
 } from "../api/ExecutionRequestApi";
 import { Link } from "react-router-dom";
 import Spinner from "../components/Spinner";
+import InitialBubble from "../components/InitialBubble";
 import {
   CircleStackIcon,
   ClockIcon,
@@ -142,7 +143,12 @@ const useRequests = (onlyPending: boolean, searchTerm: string) => {
       request.executionStatus
         .toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
-      request.author.fullName?.toLowerCase().includes(searchTerm.toLowerCase()),
+      request.author.fullName
+        ?.toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      request.connection.displayName
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()),
   );
 
   return {
@@ -232,49 +238,73 @@ function Requests() {
                   data-testid={`request-link-${request.title}`}
                 >
                   <div
-                    className="my-4 rounded-md border border-slate-200 bg-white px-4 py-4 shadow-md transition-colors hover:bg-slate-50 dark:border dark:border-slate-700 dark:bg-slate-900 dark:shadow-none dark:hover:bg-slate-800"
+                    className="my-3 rounded-lg border border-slate-200 bg-white px-4 py-3.5 shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none dark:hover:bg-slate-800"
                     key={request.id}
                   >
-                    <div className="flex">
-                      <div className="mb-2 flex flex-col">
-                        <h2 className="text-md">{request.title}</h2>
-                        <p className="text-slate-600 dark:text-slate-400">
-                          {request.description}
-                        </p>
-                        {(request._type === "DATASOURCE" && (
-                          <CircleStackIcon className="mt-auto w-4 text-slate-400 dark:text-slate-600"></CircleStackIcon>
-                        )) || (
-                          <CloudIcon className="mt-auto w-4 text-slate-400 dark:text-slate-600"></CloudIcon>
-                        )}
-                      </div>
-                      <div className="ml-auto flex flex-col items-end">
-                        <div
-                          className="mb-2 text-sm text-slate-600 dark:text-slate-400"
-                          title={
-                            new Date(request.createdAt).toLocaleString() +
-                            " UTC"
-                          }
-                        >
-                          {timeSince(new Date(request.createdAt))}
+                    <div className="flex items-start gap-3.5">
+                      <InitialBubble
+                        name={request.author.fullName || request.author.email}
+                        className="h-9 w-9 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h2 className="truncate text-sm font-medium">
+                              {request.title}
+                            </h2>
+                            <p className="mt-0.5 flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
+                              <span className="truncate font-medium text-slate-600 dark:text-slate-300">
+                                {request.author.fullName ||
+                                  request.author.email}
+                              </span>
+                              <span className="shrink-0">→</span>
+                              <span className="inline-flex shrink-0 items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
+                                {request._type === "DATASOURCE" ? (
+                                  <CircleStackIcon className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                                ) : (
+                                  <CloudIcon className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                                )}
+                                {request.connection.displayName}
+                              </span>
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <span
+                              className={`rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${mapStatusToLabelColor(
+                                mapStatus(
+                                  request?.reviewStatus,
+                                  request?.executionStatus,
+                                ),
+                              )}`}
+                            >
+                              {mapStatus(
+                                request?.reviewStatus,
+                                request?.executionStatus,
+                              )}
+                            </span>
+                            <span className="rounded-md bg-cyan-50 px-2 py-0.5 text-xs font-medium text-cyan-600 ring-1 ring-inset ring-cyan-500/10 dark:bg-cyan-400/10 dark:text-cyan-500 dark:ring-cyan-400/20">
+                              {request.type}
+                            </span>
+                          </div>
                         </div>
-                        <span
-                          className={`${mapStatusToLabelColor(
-                            mapStatus(
-                              request?.reviewStatus,
-                              request?.executionStatus,
-                            ),
-                          )} mt-2 rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset`}
-                        >
-                          {mapStatus(
-                            request?.reviewStatus,
-                            request?.executionStatus,
+                        <div className="mt-1 flex items-center justify-between">
+                          {request.description ? (
+                            <p className="line-clamp-1 text-sm text-slate-500 dark:text-slate-400">
+                              {request.description}
+                            </p>
+                          ) : (
+                            <div />
                           )}
-                        </span>
-                        <span
-                          className={`mt-2 w-min rounded-md bg-cyan-50 px-2 py-1 text-xs  font-medium text-cyan-600 ring-1 ring-inset ring-cyan-500/10 dark:bg-cyan-400/10 dark:text-cyan-500 dark:ring-cyan-400/20`}
-                        >
-                          {request.type}
-                        </span>
+                          <span
+                            className="shrink-0 pl-3 text-xs text-slate-400 dark:text-slate-500"
+                            title={
+                              new Date(request.createdAt).toLocaleString() +
+                              " UTC"
+                            }
+                          >
+                            {timeSince(new Date(request.createdAt))}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
