@@ -276,7 +276,7 @@ function Requests() {
                   data-testid={`request-link-${request.title}`}
                 >
                   <div
-                    className={`my-2 rounded-lg border border-l-4 border-slate-200 bg-white px-4 py-3 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800 ${mapStatusToBorderColor(
+                    className={`my-2 rounded-lg border border-l-4 border-slate-200 bg-white px-4 py-3 shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none dark:hover:bg-slate-800 ${mapStatusToBorderColor(
                       mapStatus(
                         request?.reviewStatus,
                         request?.executionStatus,
