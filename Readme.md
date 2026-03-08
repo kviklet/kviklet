@@ -1,6 +1,6 @@
 # Kviklet
 
-[Kviklet.dev](https://kviklet.dev) | [Release Notes](https://github.com/kviklet/kviklet/releases)
+[Kviklet.dev](https://kviklet.dev) | [Release Notes](https://github.com/kviklet/kviklet/releases) | [Discord](https://discord.gg/7SmPJfeP6e)
 
 Secure access to production environments without impairing developer productivity.
 
@@ -138,7 +138,7 @@ If you just want to try out how it works:
 
 ### DB Setup
 
-Kviklet needs it's own postgres database (or at least schema) to save metadata about queries, connections, approvals, etc.
+Kviklet needs its own postgres database (or at least schema) to save metadata about queries, connections, approvals, etc.
 You can find their official image here: https://hub.docker.com/_/postgres, or use a cloud hosted version by your cloud provider of choice.
 
 When starting the kviklet container you will then need to set these three environment variables accordingly:
@@ -166,7 +166,7 @@ SPRING_DATASOURCE_URL = jdbc:postgresql://[host]:[port]/[database]?currentSchema
 
 ### Initial User
 
-You will need an intial admin user for configuration purposes. For this set the 2 env variables:
+You will need an initial admin user for configuration purposes. For this set the 2 env variables:
 `INITIAL_USER_EMAIL` and `INITIAL_USER_PASSWORD` so that you can login into the web interface. You can change the password afterwards via the UI.  
 Example:
 
@@ -175,9 +175,9 @@ INITIAL_USER_EMAIL=admin@example.com
 INITIAL_USER_PASSWORD=someverysecurepassword
 ```
 
-We publish our containers do the github packages for now, so with all this set you can run `ghcr.io/kviklet/kviklet:main` don't forget to map port `8080` which is the default port Kviklet spins up on.
+We publish our containers to GitHub packages for now, so with all this set you can run `ghcr.io/kviklet/kviklet:main` don't forget to map port `8080` which is the default port Kviklet spins up on.
 
-An example docker run could looks like this:
+An example docker run could look like this:
 
 ```
 docker run \
@@ -222,7 +222,7 @@ KVIKLET_IDENTITYPROVIDER_TYPE=keycloak
 KVIKLET_IDENTITYPROVIDER_ISSUERURI=http://[host]:[port]/realms/[realm]
 ```
 
-You get the client id and secret when you create an application in keycloack.
+You get the client id and secret when you create an application in Keycloak.
 For valid redirect URIs, you should configure: https://[kviklet_host]/api/login/oauth2/code/keycloak
 For Allowed Origins, simply your hosted kviklet url.
 
@@ -230,8 +230,8 @@ After setting those environment variables the login page should show a Login wit
 
 #### Other OIDC providers
 
-Other OIDC providers should work similarly to Keycloak. Note that the `redirect URI` will change depending on they type you choose, so if you choose `gitlab` it will be `https://[kviklet_host]/api/login/oauth2/code/gitlab`.
-If you run into issues feel free to create an issue, we have not tried every single OIDC provider out there (yet) and there might be slight differences in the implementation that might require updates on Kviklets side.
+Other OIDC providers should work similarly to Keycloak. Note that the `redirect URI` will change depending on the type you choose, so if you choose `gitlab` it will be `https://[kviklet_host]/api/login/oauth2/code/gitlab`.
+If you run into issues feel free to create an issue, we have not tried every single OIDC provider out there (yet) and there might be slight differences in the implementation that might require updates on Kviklet's side.
 
 ### LDAP
 
@@ -322,7 +322,7 @@ Kviklet supports using IAM Auth for Postgres and MySQL Database Connections for 
 ![IAM Auth](images/CreateConnectionIAM_light.png#gh-light-mode-only)
 ![IAM Auth](images/CreateConnectionIAM_dark.png#gh-dark-mode-only)
 
-This will remove the option to set a password and instead user AWS credentials to connect to the database.
+This will remove the option to set a password and instead use AWS credentials to connect to the database.
 
 Kviklet uses AWS's `DefaultCredentialsProvider` to find credentials and generate the token for the connection. This means all typical places should work (env vars or associated instance roles) exact order is documented here: https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/auth/credentials/DefaultCredentialsProvider.html
 
@@ -371,7 +371,7 @@ Kviklet ships with 3 roles, Default, Admins and Developers.
 - Developers can create Requests as well as approve and comment on them and of course execute the actual statements.
 
 You can customize Roles and e.g. give a role only access to a specific connection or a group of DB connections.
-This is useful e.g. if you have different teams with different databases and want to controll access to those more granularly.
+This is useful e.g. if you have different teams with different databases and want to control access to those more granularly.
 
 #### Creating a new Role
 
@@ -381,7 +381,7 @@ Creating a new role works as follows. Go to Settings -> Roles -> Add Role.
 ![Add Role](images/CreateRole_dark.png#gh-dark-mode-only)
 
 The default settings are not as relevant for most roles and you can just give User Read and RoleView Access and leave it at that.
-More interesting is the adding of individual permissions for Connections. Here you first add a selector to select specific connections. This can either be a specific id or you use wildcards with `*` to match multiple connections. E.g. if you want to have a role that has access to all dev databases (in case you also manage acces to those with kviklet) you'd use a selector like `dev-*` and ensure the ids of the connections are set correctly.
+More interesting is the adding of individual permissions for Connections. Here you first add a selector to select specific connections. This can either be a specific id or you use wildcards with `*` to match multiple connections. E.g. if you want to have a role that has access to all dev databases (in case you also manage access to those with kviklet) you'd use a selector like `dev-*` and ensure the ids of the connections are set correctly.
 
 You can of course also make up a system that you use for your different teams inside of your organization.
 
@@ -431,7 +431,7 @@ Configure your OIDC provider to include a `groups` claim in the ID token:
 
 - **Other OIDC providers**: Add a groups mapper/claim that includes the user's group memberships in the ID token. This is typically done in the provider's admin UI.
 
-  If you run into issues feel free to create an issue, we have not tried every single OIDC provider out there (yet) and there might be slight differences in the implementation that might require updates on Kviklets side.
+  If you run into issues feel free to create an issue, we have not tried every single OIDC provider out there (yet) and there might be slight differences in the implementation that might require updates on Kviklet's side.
 
 #### LDAP Setup
 
@@ -481,7 +481,7 @@ This ensures all notification links point to the correct public URL.
 ## Encryption
 
 If you don't want the credentials to be stored in cleartext in the DB, it is recommended that you enable database encryption on the Kviklet postgres DB itself. For most hosted providers this is a simple checkbox to click.
-Nonetheless, if the Kviklet database is somehow compromised, this is a huge security risk. As it contains the database crendetials for potentially all your production datastores. So you can enable encryption of the credentials at rest.
+Nonetheless, if the Kviklet database is somehow compromised, this is a huge security risk. As it contains the database credentials for potentially all your production datastores. So you can enable encryption of the credentials at rest.
 
 To do this simply set the two environment variables.
 
@@ -501,7 +501,7 @@ ENCRYPTION_KEY_PREVIOUS=some-secret
 ENCRYPTION_KEY_CURRENT=another-secret
 ```
 
-Kviklet will re-encrypt all connections on startup, so that you can then restart the contaienr with the previous key removed.
+Kviklet will re-encrypt all connections on startup, so that you can then restart the container with the previous key removed.
 
 ## API Keys
 
@@ -543,7 +543,7 @@ The user can then create a temporary access request, and click "Start Proxy" onc
 Note that the message parsing on the proxy side hasn't been tested with all clients, so if you run into issues with e.g. statements not being logged feel free to open an issue.
 
 ![Postgres Proxy](images/PostgresProxy_light.png#gh-light-mode-only)
-![Postgres Proxy](fiimages/PostgresProxy_dark.png#gh-dark-mode-only)
+![Postgres Proxy](images/PostgresProxy_dark.png#gh-dark-mode-only)
 
 #### Postgres Proxy - TLS
 
@@ -568,9 +568,8 @@ Either way the certificate and key must be stored in [pem format](https://en.wik
 
 ## Questions? Contributions?
 
-If you have any questions, feel free to create a github issue I try to answer within a reasonable amount of time and am also happy to develop feature for your use case if it fits the general vision of the tool.
-Kviklet is currently fully open-source and although I dream of making it pay my bills eventually there is currently no concrete plans on how to approach this.
+If you have any questions, want to provide feedback, or need help with setup, join our [Discord community](https://discord.gg/7SmPJfeP6e). You can also create a [GitHub issue](https://github.com/kviklet/kviklet/issues) for bug reports and feature requests.
 
-If you want to contribute, feel free to fork and create PRs for small things. If you plan bigger features, I'd appreciate some discussion upfront in a github issue or similar.
+If you want to contribute, feel free to fork and create PRs for small things. If you plan bigger features, I'd appreciate some discussion upfront in a GitHub issue or on Discord.
 
 You can also contact me at jascha@kviklet.dev.
