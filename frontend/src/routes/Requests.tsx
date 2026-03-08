@@ -22,26 +22,19 @@ function timeSince(date: Date) {
     Math.floor((new Date().getTime() - date.getTime()) / 1000) +
     new Date().getTimezoneOffset() * 60;
 
-  let interval = seconds / 31536000;
+  const units: [number, string][] = [
+    [31536000, "year"],
+    [2592000, "month"],
+    [86400, "day"],
+    [3600, "hour"],
+    [60, "minute"],
+  ];
 
-  if (interval > 1) {
-    return Math.floor(interval) + " years ago";
-  }
-  interval = seconds / 2592000;
-  if (interval > 1) {
-    return Math.floor(interval) + " months ago";
-  }
-  interval = seconds / 86400;
-  if (interval > 1) {
-    return Math.floor(interval) + " days ago";
-  }
-  interval = seconds / 3600;
-  if (interval > 1) {
-    return Math.floor(interval) + " hours ago";
-  }
-  interval = seconds / 60;
-  if (interval > 1) {
-    return Math.floor(interval) + " minutes ago";
+  for (const [divisor, unit] of units) {
+    const value = Math.floor(seconds / divisor);
+    if (value > 0) {
+      return `${value} ${unit}${value !== 1 ? "s" : ""} ago`;
+    }
   }
   return Math.floor(seconds) + " seconds ago";
 }
@@ -75,6 +68,53 @@ function mapStatusToLabelColor(status?: string) {
       return "dark:ring-gray-400/10 dark:text-gray-500 ring-gray-500/10 text-gray-600 bg-gray-50 dark:bg-gray-400/10";
   }
 }
+function mapStatusToBorderColor(status?: string) {
+  switch (status) {
+    case "Ready":
+    case "Executed":
+      return "border-l-lime-500 dark:border-l-lime-500";
+    case "Pending":
+      return "border-l-yellow-500 dark:border-l-yellow-500";
+    case "Active":
+      return "border-l-sky-500 dark:border-l-sky-500";
+    case "Change Requested":
+    case "Rejected":
+      return "border-l-red-500 dark:border-l-red-500";
+    default:
+      return "border-l-gray-400 dark:border-l-gray-500";
+  }
+}
+
+function mapStatusToTextColor(status?: string) {
+  switch (status) {
+    case "Ready":
+    case "Executed":
+      return "text-lime-600 dark:text-lime-500";
+    case "Pending":
+      return "text-yellow-600 dark:text-yellow-500";
+    case "Active":
+      return "text-sky-600 dark:text-sky-500";
+    case "Change Requested":
+    case "Rejected":
+      return "text-red-600 dark:text-red-500";
+    default:
+      return "text-gray-500 dark:text-gray-400";
+  }
+}
+
+function shortTypeLabel(type: string) {
+  switch (type) {
+    case "SingleExecution":
+      return "Query";
+    case "TemporaryAccess":
+      return "Session";
+    case "Dump":
+      return "Export";
+    default:
+      return type;
+  }
+}
+
 const useRequests = (onlyPending: boolean, searchTerm: string) => {
   const [requests, setRequests] = useState<ExecutionRequestResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -193,38 +233,36 @@ function Requests() {
 
   return (
     <div className="h-full">
-      <div className=" border-b border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
-        <h1 className=" m-5 mx-auto max-w-5xl pl-1.5 text-xl">
-          {" "}
-          Open Requests
-        </h1>
+      <div className="border-b border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
+        <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-xl font-medium">Open Requests</h1>
+          <div className="flex items-center gap-3">
+            <SearchInput
+              value={searchTerm}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                setSearchTerm(e.target.value)
+              }
+              placeholder="Search requests..."
+              className="w-full sm:w-64"
+            />
+            <Tooltip position="bottom" content="Show only pending requests">
+              <div className="flex shrink-0 items-center">
+                <ClockIcon className="mr-2 h-5 w-5 text-slate-400" />
+                <Toggle
+                  active={onlyPending}
+                  onClick={() => setOnlyPending(!onlyPending)}
+                />
+              </div>
+            </Tooltip>
+          </div>
+        </div>
       </div>
       {(loading && <Spinner></Spinner>) || (
         <div
           className="h-full bg-slate-50 dark:bg-slate-950"
           data-testid="requests-list"
         >
-          <div className="mx-auto max-w-5xl ">
-            <div className="mb-2 mt-4 flex flex-row items-center justify-between">
-              <SearchInput
-                value={searchTerm}
-                onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                  setSearchTerm(e.target.value)
-                }
-                placeholder="Search requests..."
-                className="w-full"
-              />
-              <Tooltip position="bottom" content="Show only pending requests">
-                <div className="ml-4 flex items-center">
-                  <ClockIcon className="mr-2 h-5 w-5 text-slate-400" />
-                  <Toggle
-                    active={onlyPending}
-                    onClick={() => setOnlyPending(!onlyPending)}
-                  />
-                </div>
-              </Tooltip>
-            </div>
-
+          <div className="mx-auto max-w-3xl px-4 pt-2">
             {requests.length === 0 && (
               <div className="mx-2 my-4 px-4 py-2">
                 <h2 className="text-center text-lg">No open requests</h2>
@@ -238,65 +276,26 @@ function Requests() {
                   data-testid={`request-link-${request.title}`}
                 >
                   <div
-                    className="my-3 rounded-lg border border-slate-200 bg-white px-4 py-3.5 shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none dark:hover:bg-slate-800"
+                    className={`my-2 rounded-lg border border-l-4 border-slate-200 bg-white px-4 py-3 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800 ${mapStatusToBorderColor(
+                      mapStatus(
+                        request?.reviewStatus,
+                        request?.executionStatus,
+                      ),
+                    )}`}
                     key={request.id}
                   >
-                    <div className="flex items-start gap-3.5">
+                    <div className="flex items-start gap-3">
                       <InitialBubble
                         name={request.author.fullName || request.author.email}
                         className="h-9 w-9 shrink-0"
                       />
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <h2 className="truncate text-sm font-medium">
-                              {request.title}
-                            </h2>
-                            <p className="mt-0.5 flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
-                              <span className="truncate font-medium text-slate-600 dark:text-slate-300">
-                                {request.author.fullName ||
-                                  request.author.email}
-                              </span>
-                              <span className="shrink-0">→</span>
-                              <span className="inline-flex shrink-0 items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
-                                {request._type === "DATASOURCE" ? (
-                                  <CircleStackIcon className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
-                                ) : (
-                                  <CloudIcon className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
-                                )}
-                                {request.connection.displayName}
-                              </span>
-                            </p>
-                          </div>
-                          <div className="flex shrink-0 items-center gap-2">
-                            <span
-                              className={`rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${mapStatusToLabelColor(
-                                mapStatus(
-                                  request?.reviewStatus,
-                                  request?.executionStatus,
-                                ),
-                              )}`}
-                            >
-                              {mapStatus(
-                                request?.reviewStatus,
-                                request?.executionStatus,
-                              )}
-                            </span>
-                            <span className="rounded-md bg-cyan-50 px-2 py-0.5 text-xs font-medium text-cyan-600 ring-1 ring-inset ring-cyan-500/10 dark:bg-cyan-400/10 dark:text-cyan-500 dark:ring-cyan-400/20">
-                              {request.type}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="mt-1 flex items-center justify-between">
-                          {request.description ? (
-                            <p className="line-clamp-1 text-sm text-slate-500 dark:text-slate-400">
-                              {request.description}
-                            </p>
-                          ) : (
-                            <div />
-                          )}
+                        <div className="flex items-start justify-between gap-2">
+                          <h2 className="truncate text-sm font-medium">
+                            {request.title}
+                          </h2>
                           <span
-                            className="shrink-0 pl-3 text-xs text-slate-400 dark:text-slate-500"
+                            className="shrink-0 text-xs text-slate-400 dark:text-slate-500"
                             title={
                               new Date(request.createdAt).toLocaleString() +
                               " UTC"
@@ -305,6 +304,42 @@ function Requests() {
                             {timeSince(new Date(request.createdAt))}
                           </span>
                         </div>
+                        <p className="mt-0.5 flex flex-wrap items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
+                          <span className="truncate font-medium text-slate-600 dark:text-slate-300">
+                            {request.author.fullName || request.author.email}
+                          </span>
+                          <span className="shrink-0">→</span>
+                          <span className="inline-flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
+                            {request._type === "DATASOURCE" ? (
+                              <CircleStackIcon className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                            ) : (
+                              <CloudIcon className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                            )}
+                            {request.connection.displayName}
+                          </span>
+                        </p>
+                        {request.description && (
+                          <p className="mt-0.5 line-clamp-1 text-sm text-slate-500 dark:text-slate-400">
+                            {request.description}
+                          </p>
+                        )}
+                        <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
+                          <span>{shortTypeLabel(request.type)}</span>
+                          <span className="mx-1.5">·</span>
+                          <span
+                            className={mapStatusToTextColor(
+                              mapStatus(
+                                request?.reviewStatus,
+                                request?.executionStatus,
+                              ),
+                            )}
+                          >
+                            {mapStatus(
+                              request?.reviewStatus,
+                              request?.executionStatus,
+                            )}
+                          </span>
+                        </p>
                       </div>
                     </div>
                   </div>
