@@ -40,7 +40,7 @@ function RequestReview() {
 
   return (
     <div>
-      {(loading && <Spinner />) ||
+      {(loading && <Spinner size="lg" />) ||
         (request && (
           <div className="m-auto mt-10 max-w-3xl">
             <h1 className="my-2 flex w-full items-start text-3xl">

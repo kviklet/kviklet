@@ -257,7 +257,7 @@ function Requests() {
           </div>
         </div>
       </div>
-      {(loading && <Spinner></Spinner>) || (
+      {(loading && <Spinner size="lg" />) || (
         <div
           className="h-full bg-slate-50 dark:bg-slate-950"
           data-testid="requests-list"
@@ -353,7 +353,7 @@ function Requests() {
             {/* Loading more indicator */}
             {loadingMore && (
               <div className="my-4 flex justify-center">
-                <Spinner />
+                <Spinner size="sm" />
               </div>
             )}
           </div>

@@ -29,7 +29,7 @@ export default function RoleDetailsView() {
       <div className="mb-3 border-b border-slate-300 dark:border-slate-700">
         <h1 className="text-xl">{role && role.name}</h1>
       </div>
-      {loading && <Spinner></Spinner>}
+      {loading && <Spinner size="lg" />}
       {role && (
         <RoleForm role={transformRole(role)} onSubmit={submit}></RoleForm>
       )}
