@@ -1,4 +1,10 @@
-import React, { useEffect, useRef, useState, MouseEvent } from "react";
+import React, {
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  MouseEvent,
+} from "react";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import Button from "../components/Button";
 import MultiResult from "../components/MultiResult";
@@ -10,6 +16,10 @@ import useNotification from "../hooks/useNotification";
 import LiveSessionActivityLog from "./LiveSessionActivityLog";
 import baseUrl from "../api/base";
 import LoadingCancelButton from "../components/LoadingCancelButton";
+import {
+  ThemeContext,
+  ThemeStatusContext,
+} from "../components/ThemeStatusProvider";
 
 interface LiveSessionWebsocketsProps {
   requestId: string;
@@ -45,6 +55,8 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
   const [editor, setEditor] =
     useState<monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoEl = useRef(null);
+  const { currentTheme } = useContext<ThemeContext>(ThemeStatusContext);
+  const monacoTheme = currentTheme === "dark" ? "vs-dark" : "vs";
 
   const { addNotification } = useNotification();
   const updateEditorContent = (newContent: string) => {
@@ -84,7 +96,7 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
       const newEditor = monaco.editor.create(monacoEl.current, {
         value: "",
         language: initialLanguage,
-        theme: "vs-dark",
+        theme: monacoTheme,
         minimap: { enabled: false },
       });
       setEditor(newEditor);
@@ -104,6 +116,10 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
       };
     }
   }, [requestId, initialLanguage]);
+
+  useEffect(() => {
+    monaco.editor.setTheme(monacoTheme);
+  }, [monacoTheme]);
 
   const onExecuteQueryClick = async (): Promise<void> => {
     const selection = editor?.getSelection();
