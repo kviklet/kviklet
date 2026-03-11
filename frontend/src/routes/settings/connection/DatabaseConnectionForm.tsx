@@ -725,7 +725,7 @@ const TestingConnectionFragment = (props: {
 
   return (
     <div className="flex-col">
-      {isTestingConnection && <Spinner />}
+      {isTestingConnection && <Spinner size="sm" />}
       {!isTestingConnection && testConnectionResponse && (
         <div className="flex flex-col space-y-2">
           <div>

@@ -112,7 +112,7 @@ const Login = () => {
 
   return (
     <div>
-      {(loading && <Spinner></Spinner>) || (
+      {(loading && <Spinner size="lg" />) || (
         <div className="mx-auto my-2 mt-6 max-w-sm dark:bg-slate-950">
           <div className="text-center">
             <img

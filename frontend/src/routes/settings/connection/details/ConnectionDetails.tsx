@@ -30,7 +30,7 @@ export default function ConnectionDetails() {
   };
 
   if (loading) {
-    return <Spinner />;
+    return <Spinner size="lg" />;
   }
 
   if (!connection) {
