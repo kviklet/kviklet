@@ -133,8 +133,8 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="mx-auto flex h-full w-2/3 flex-col">
+    <div className="flex h-full flex-col overflow-x-hidden">
+      <div className="mx-auto flex h-full w-full max-w-5xl flex-col px-4">
         <div className="relative my-5">
           {(isSyncing || showSynced) && (
             <div
@@ -150,15 +150,15 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
             </div>
           )}
           <div
-            className="h-64 resize-y overflow-auto"
+            className="h-40 resize-y overflow-auto sm:h-64"
             data-testid="monaco-editor-wrapper"
           >
             <div className="h-full w-full" ref={monacoEl}></div>
           </div>
         </div>
-        <div className="mb-4 flex flex-row">
+        <div className="mb-4 flex flex-row items-center justify-end gap-2">
           {request?._type === "DATASOURCE" && isRelationalDatabase(request) && (
-            <a className="ml-auto mr-2" href="#" onClick={handleCsvDownload}>
+            <a href="#" onClick={handleCsvDownload}>
               <Button>Download as CSV</Button>
             </a>
           )}

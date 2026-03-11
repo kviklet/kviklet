@@ -24,7 +24,7 @@ const MultiResult: FC<{ resultList: ExecuteResponseResult[] }> = ({
   const selectedContent = resultList[currentIndex];
   return (
     <div
-      className="flex w-screen flex-col justify-center"
+      className="flex w-full flex-col justify-center"
       data-testid="result-component"
     >
       {resultList.length > 1 && (
