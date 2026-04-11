@@ -5,6 +5,8 @@ import { updateUser } from "../../api/UserApi";
 import { UserStatusContext } from "../../components/UserStatusProvider";
 import { isApiErrorResponse } from "../../api/Errors";
 import useNotification from "../../hooks/useNotification";
+import useTimezone from "../../hooks/useTimezone";
+import { localTimezoneLabel } from "../../utils/timeFormat";
 
 function ProfileSettings() {
   const [newPassword, setNewPassword] = useState<string>("");
@@ -32,8 +34,40 @@ function ProfileSettings() {
     }
   };
 
+  const { timezone, setTimezone } = useTimezone();
+
   return (
     <div>
+      <div className="mb-6">
+        <div className="mb-2 text-sm font-medium text-slate-900 dark:text-slate-50">
+          Timezone
+        </div>
+        <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
+          Choose how timestamps are displayed across the application.
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setTimezone("local")}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              timezone === "local"
+                ? "bg-indigo-800 text-white"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            }`}
+          >
+            Local (UTC{localTimezoneLabel()})
+          </button>
+          <button
+            onClick={() => setTimezone("utc")}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              timezone === "utc"
+                ? "bg-indigo-800 text-white"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            }`}
+          >
+            UTC
+          </button>
+        </div>
+      </div>
       <div>
         <div>Change Password</div>
         <label

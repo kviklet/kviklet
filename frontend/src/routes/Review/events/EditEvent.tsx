@@ -1,12 +1,12 @@
 import { Edit } from "../../../api/ExecutionRequestApi";
-import { formatAbsoluteTime, timeSince } from "../../../utils/timeFormat";
-import Tooltip from "../../../components/Tooltip";
+import useTimezone from "../../../hooks/useTimezone";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 import { AbsoluteInitialBubble as InitialBubble } from "../../../components/InitialBubble";
 import { Highlighter } from "../components/Highlighter";
 
 function EditEvent({ event, index }: { event: Edit; index: number }) {
+  const { formatTime } = useTimezone();
   return (
     <div>
       <div className="relative ml-4 flex py-4">
@@ -31,18 +31,11 @@ function EditEvent({ event, index }: { event: Edit; index: number }) {
       <div className="relative rounded-md border shadow-md dark:border-slate-700 dark:shadow-none">
         <InitialBubble name={event?.author?.fullName} />
         <p className="flex justify-between rounded-t-md px-4 pt-2 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-500">
-          <Tooltip
-            position="bottom"
-            content={
-              event?.createdAt ? timeSince(event.createdAt) : ""
-            }
-          >
-            <span className="mr-4">
-              {event?.createdAt
-                ? formatAbsoluteTime(event.createdAt)
-                : ""}
-            </span>
-          </Tooltip>
+          <span className="mr-4">
+            {event?.createdAt
+              ? formatTime(event.createdAt)
+              : ""}
+          </span>
           {event?.previousQuery && (
             <div>
               <p>Previous Statement</p>

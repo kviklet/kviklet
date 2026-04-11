@@ -2,8 +2,7 @@ import { useNavigate } from "react-router-dom";
 
 import { KubernetesExecutionRequestResponseWithComments } from "../../api/ExecutionRequestApi";
 import Button from "../../components/Button";
-import { formatAbsoluteTime, timeSince } from "../../utils/timeFormat";
-import Tooltip from "../../components/Tooltip";
+import useTimezone from "../../hooks/useTimezone";
 import MenuDropDown from "../../components/MenuDropdown";
 import { Highlighter } from "./components/Highlighter";
 import { FC, useEffect, useState, MouseEvent } from "react";
@@ -23,6 +22,7 @@ const KubernetesRequestBox: FC<KubernetesRequestBoxProps> = ({
 }) => {
   const [editMode, setEditMode] = useState(false);
   const [command, setCommand] = useState(request?.command || "");
+  const { formatTime } = useTimezone();
 
   const navigate = useNavigate();
 
@@ -73,14 +73,9 @@ const KubernetesRequestBox: FC<KubernetesRequestBoxProps> = ({
               in:
               <span className="italic"> {request?.connection.displayName}</span>
             </div>
-            <Tooltip
-              position="bottom"
-              content={timeSince(new Date(request?.createdAt ?? ""))}
-            >
-              <span className="ml-auto dark:text-slate-500">
-                {formatAbsoluteTime(new Date(request?.createdAt ?? ""))}
-              </span>
-            </Tooltip>
+            <span className="ml-auto dark:text-slate-500">
+              {formatTime(new Date(request?.createdAt ?? ""))}
+            </span>
           </div>
           <div className="px-4 py-3">
             <p className="pb-6 text-slate-500">{request?.description}</p>

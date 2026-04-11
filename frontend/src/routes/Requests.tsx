@@ -17,7 +17,7 @@ import useNotification from "../hooks/useNotification";
 import Toggle from "../components/Toggle";
 import SearchInput from "../components/SearchInput";
 import Tooltip from "../components/Tooltip";
-import { formatAbsoluteTime, timeSince } from "../utils/timeFormat";
+import useTimezone from "../hooks/useTimezone";
 
 function mapStatus(reviewStatus: string, executionStatus: string) {
   if (reviewStatus === "AWAITING_APPROVAL" && executionStatus !== "EXECUTED")
@@ -200,6 +200,7 @@ function Requests() {
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFrom, setDateFrom] = useState<Date | null>(null);
   const [dateTo, setDateTo] = useState<Date | null>(null);
+  const { timezone, formatTime } = useTimezone();
   const { requests, loading, loadingMore, hasMore, loadMore } = useRequests(
     onlyPending,
     searchTerm,
@@ -267,7 +268,10 @@ function Requests() {
               onChange={(e) =>
                 setDateFrom(
                   e.target.value
-                    ? new Date(e.target.value + "T00:00:00")
+                    ? new Date(
+                        e.target.value +
+                          (timezone === "utc" ? "T00:00:00Z" : "T00:00:00"),
+                      )
                     : null,
                 )
               }
@@ -282,7 +286,10 @@ function Requests() {
               onChange={(e) =>
                 setDateTo(
                   e.target.value
-                    ? new Date(e.target.value + "T23:59:59")
+                    ? new Date(
+                        e.target.value +
+                          (timezone === "utc" ? "T23:59:59Z" : "T23:59:59"),
+                      )
                     : null,
                 )
               }
@@ -340,14 +347,9 @@ function Requests() {
                           <h2 className="truncate text-sm font-medium">
                             {request.title}
                           </h2>
-                          <Tooltip
-                            position="bottom"
-                            content={timeSince(new Date(request.createdAt))}
-                          >
-                            <span className="shrink-0 text-xs text-slate-400 dark:text-slate-500">
-                              {formatAbsoluteTime(new Date(request.createdAt))}
-                            </span>
-                          </Tooltip>
+                          <span className="shrink-0 text-xs text-slate-400 dark:text-slate-500">
+                            {formatTime(new Date(request.createdAt))}
+                          </span>
                         </div>
                         <p className="mt-0.5 flex flex-wrap items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
                           <span className="truncate font-medium text-slate-600 dark:text-slate-300">

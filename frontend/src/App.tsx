@@ -9,6 +9,7 @@ import {
   UserStatusProvider,
 } from "./components/UserStatusProvider";
 import { ThemeStatusProvider } from "./components/ThemeStatusProvider";
+import { TimezoneProvider } from "./components/TimezoneProvider";
 import ConnectionChooser from "./routes/NewRequest";
 import Auditlog from "./routes/Auditlog";
 import { NotificationContextProvider } from "./components/NotifcationStatusProvider";
@@ -38,8 +39,9 @@ function App() {
     <div className="min-h-screen bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-50">
       <UserStatusProvider>
         <ThemeStatusProvider>
-          <NotificationContextProvider>
-            <ConfigProvider>
+          <TimezoneProvider>
+            <NotificationContextProvider>
+              <ConfigProvider>
               <Routes>
                 <Route path="/" element={<DefaultLayout />}>
                   <Route
@@ -101,8 +103,9 @@ function App() {
                   <Route path="login" element={<Login />} />
                 </Route>
               </Routes>
-            </ConfigProvider>
-          </NotificationContextProvider>
+              </ConfigProvider>
+            </NotificationContextProvider>
+          </TimezoneProvider>
         </ThemeStatusProvider>
       </UserStatusProvider>
     </div>

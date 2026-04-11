@@ -1,8 +1,19 @@
+import type { TimezoneMode } from "../components/TimezoneProvider";
+
 function pad(n: number): string {
   return n.toString().padStart(2, "0");
 }
 
-function formatAbsoluteTime(date: Date): string {
+function formatAbsoluteTime(
+  date: Date,
+  timezone: TimezoneMode = "local",
+): string {
+  if (timezone === "utc") {
+    return (
+      `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}` +
+      `T${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}Z`
+    );
+  }
   const tz = -date.getTimezoneOffset();
   const sign = tz >= 0 ? "+" : "-";
   const absH = pad(Math.floor(Math.abs(tz) / 60));
@@ -14,24 +25,13 @@ function formatAbsoluteTime(date: Date): string {
   );
 }
 
-function timeSince(date: Date): string {
-  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
-
-  const units: [number, string][] = [
-    [31536000, "year"],
-    [2592000, "month"],
-    [86400, "day"],
-    [3600, "hour"],
-    [60, "minute"],
-  ];
-
-  for (const [divisor, unit] of units) {
-    const value = Math.floor(seconds / divisor);
-    if (value > 0) {
-      return `${value} ${unit}${value !== 1 ? "s" : ""} ago`;
-    }
-  }
-  return Math.floor(seconds) + " seconds ago";
+/** Get the local timezone offset label, e.g. "+09:00" */
+function localTimezoneLabel(): string {
+  const tz = -new Date().getTimezoneOffset();
+  const sign = tz >= 0 ? "+" : "-";
+  const h = pad(Math.floor(Math.abs(tz) / 60));
+  const m = pad(Math.abs(tz) % 60);
+  return `${sign}${h}:${m}`;
 }
 
-export { formatAbsoluteTime, timeSince };
+export { formatAbsoluteTime, localTimezoneLabel };

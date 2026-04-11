@@ -24,7 +24,7 @@ import {
   exportExecutions,
 } from "../api/ExecutionsApi";
 import { ChangeEvent, useEffect, useState } from "react";
-import { formatAbsoluteTime } from "../utils/timeFormat";
+import useTimezone from "../hooks/useTimezone";
 import { isApiErrorResponse } from "../api/Errors";
 import SearchInput from "../components/SearchInput";
 import Button from "../components/Button";
@@ -182,6 +182,7 @@ function ItemSkeleton() {
 }
 
 function Item({ execution }: { execution: ExecutionLogResponse }) {
+  const { formatTime } = useTimezone();
   return (
     <Link to={`/requests/${execution.requestId}`}>
       <li
@@ -208,7 +209,7 @@ function Item({ execution }: { execution: ExecutionLogResponse }) {
             <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
               Executed{" "}
               <time dateTime={execution.executionTime.toISOString()}>
-                {formatAbsoluteTime(execution.executionTime)}
+                {formatTime(execution.executionTime)}
               </time>
             </p>
           </div>

@@ -5,8 +5,7 @@ import {
   streamDump,
 } from "../../api/ExecutionRequestApi";
 import Button from "../../components/Button";
-import { formatAbsoluteTime, timeSince } from "../../utils/timeFormat";
-import Tooltip from "../../components/Tooltip";
+import useTimezone from "../../hooks/useTimezone";
 import { AbsoluteInitialBubble as InitialBubble } from "../../components/InitialBubble";
 import MenuDropDown from "../../components/MenuDropdown";
 import baseUrl from "../../api/base";
@@ -33,6 +32,7 @@ function DatasourceRequestBox({
 }) {
   const [editMode, setEditMode] = useState(false);
   const { addNotification } = useNotification();
+  const { formatTime } = useTimezone();
   const [showSQLDumpModal, setShowSQLDumpModal] = useState(false);
   const navigate = useNavigate();
   const [statement, setStatement] = useState(request?.statement || "");
@@ -243,14 +243,9 @@ function DatasourceRequestBox({
               {request?.author?.fullName + questionText}
               <span className="italic">{request?.connection.displayName}</span>
             </div>
-            <Tooltip
-              position="bottom"
-              content={timeSince(new Date(request?.createdAt ?? ""))}
-            >
-              <span className="ml-auto dark:text-slate-500">
-                {formatAbsoluteTime(new Date(request?.createdAt ?? ""))}
-              </span>
-            </Tooltip>
+            <span className="ml-auto dark:text-slate-500">
+              {formatTime(new Date(request?.createdAt ?? ""))}
+            </span>
           </div>
           <div className="py-3">
             <p className="pb-6 text-slate-500">{request?.description}</p>
