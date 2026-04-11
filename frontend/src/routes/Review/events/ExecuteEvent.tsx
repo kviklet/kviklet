@@ -65,7 +65,7 @@ function ExecuteEvent({
       </div>
       <div className="relative rounded-md border shadow-md dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
         <InitialBubble name={event?.author?.fullName} />
-        <div className="flex justify-between rounded-t-md px-4 pt-2 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-500">
+        <div className="flex justify-between rounded-t-md px-4 pt-2 text-sm text-slate-900 dark:bg-slate-900 dark:text-slate-50">
           <span className="mr-4">
             {event?.createdAt
               ? formatTime(event.createdAt)

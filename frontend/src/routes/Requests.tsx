@@ -39,7 +39,7 @@ function mapStatusToLabelColor(status?: string) {
     case "Active":
       return "dark:ring-sky-400/10 dark:text-sky-500 ring-sky-500/10 text-sky-600 bg-sky-50 dark:bg-sky-400/10";
     case "Executed":
-      return "dark:ring-lime-400/10 dark:text-lime-500 ring-lime-500/10 text-lime-600 bg-lime-50 dark:bg-lime-400/10";
+      return "dark:ring-slate-400/10 dark:text-slate-400 ring-slate-500/10 text-slate-500 bg-slate-50 dark:bg-slate-400/10";
     case "Change Requested":
       return "dark:ring-red-400/10 dark:text-red-500 ring-red-500/10 text-red-600 bg-red-50 dark:bg-red-400/10";
     case "Rejected":
@@ -51,8 +51,9 @@ function mapStatusToLabelColor(status?: string) {
 function mapStatusToBorderColor(status?: string) {
   switch (status) {
     case "Ready":
-    case "Executed":
       return "border-l-lime-500 dark:border-l-lime-500";
+    case "Executed":
+      return "border-l-slate-400 dark:border-l-slate-500";
     case "Pending":
       return "border-l-yellow-500 dark:border-l-yellow-500";
     case "Active":
@@ -68,8 +69,9 @@ function mapStatusToBorderColor(status?: string) {
 function mapStatusToTextColor(status?: string) {
   switch (status) {
     case "Ready":
-    case "Executed":
       return "text-lime-600 dark:text-lime-500";
+    case "Executed":
+      return "text-slate-500 dark:text-slate-400";
     case "Pending":
       return "text-yellow-600 dark:text-yellow-500";
     case "Active":
@@ -347,7 +349,7 @@ function Requests() {
                           <h2 className="truncate text-sm font-medium">
                             {request.title}
                           </h2>
-                          <span className="shrink-0 text-xs text-slate-400 dark:text-slate-500">
+                          <span className="shrink-0 text-xs">
                             {formatTime(new Date(request.createdAt))}
                           </span>
                         </div>
