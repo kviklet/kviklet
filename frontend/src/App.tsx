@@ -42,67 +42,67 @@ function App() {
           <TimezoneProvider>
             <NotificationContextProvider>
               <ConfigProvider>
-              <Routes>
-                <Route path="/" element={<DefaultLayout />}>
-                  <Route
-                    index
-                    element={
-                      <ProtectedRoute>
-                        <Requests />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="settings/*"
-                    element={
-                      <ProtectedRoute>
-                        <Settings />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="new"
-                    element={
-                      <ProtectedRoute>
-                        <ConnectionChooser></ConnectionChooser>
-                      </ProtectedRoute>
-                    }
-                  ></Route>
-                  <Route
-                    path="requests"
-                    element={
-                      <ProtectedRoute>
-                        <Requests />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="auditlog"
-                    element={
-                      <ProtectedRoute>
-                        <Auditlog />
-                      </ProtectedRoute>
-                    }
-                  ></Route>
-                  <Route
-                    path="requests/:requestId"
-                    element={
-                      <ProtectedRoute>
-                        <RequestReview />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="requests/:requestId/session"
-                    element={
-                      <ProtectedRoute>
-                        <LiveSessionWebsockets />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route path="login" element={<Login />} />
-                </Route>
-              </Routes>
+                <Routes>
+                  <Route path="/" element={<DefaultLayout />}>
+                    <Route
+                      index
+                      element={
+                        <ProtectedRoute>
+                          <Requests />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="settings/*"
+                      element={
+                        <ProtectedRoute>
+                          <Settings />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="new"
+                      element={
+                        <ProtectedRoute>
+                          <ConnectionChooser></ConnectionChooser>
+                        </ProtectedRoute>
+                      }
+                    ></Route>
+                    <Route
+                      path="requests"
+                      element={
+                        <ProtectedRoute>
+                          <Requests />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="auditlog"
+                      element={
+                        <ProtectedRoute>
+                          <Auditlog />
+                        </ProtectedRoute>
+                      }
+                    ></Route>
+                    <Route
+                      path="requests/:requestId"
+                      element={
+                        <ProtectedRoute>
+                          <RequestReview />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="requests/:requestId/session"
+                      element={
+                        <ProtectedRoute>
+                          <LiveSessionWebsockets />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route path="login" element={<Login />} />
+                  </Route>
+                </Routes>
               </ConfigProvider>
             </NotificationContextProvider>
           </TimezoneProvider>

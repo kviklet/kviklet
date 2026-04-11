@@ -17,8 +17,7 @@ type Props = {
 };
 
 export const TimezoneProvider: React.FC<Props> = ({ children }) => {
-  const stored =
-    (localStorage.getItem("timezone") as TimezoneMode) || "local";
+  const stored = (localStorage.getItem("timezone") as TimezoneMode) || "local";
   const [timezone, setTimezoneState] = useState<TimezoneMode>(stored);
 
   const setTimezone = useCallback((tz: TimezoneMode) => {

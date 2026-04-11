@@ -10,8 +10,12 @@ function formatAbsoluteTime(
 ): string {
   if (timezone === "utc") {
     return (
-      `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}` +
-      `T${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}Z`
+      `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(
+        date.getUTCDate(),
+      )}` +
+      `T${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(
+        date.getUTCSeconds(),
+      )}Z`
     );
   }
   const tz = -date.getTimezoneOffset();
@@ -20,7 +24,9 @@ function formatAbsoluteTime(
   const absM = pad(Math.abs(tz) % 60);
   return (
     `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
-    `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(
+      date.getSeconds(),
+    )}` +
     `${sign}${absH}:${absM}`
   );
 }

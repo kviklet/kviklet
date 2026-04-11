@@ -1,15 +1,22 @@
-import { useContext } from "react";
+import { useContext, useCallback } from "react";
 import { TimezoneStatusContext } from "../components/TimezoneProvider";
+import type { TimezoneMode } from "../components/TimezoneProvider";
 import { formatAbsoluteTime } from "../utils/timeFormat";
 
 function useTimezone() {
-  const { timezone, setTimezone } = useContext(TimezoneStatusContext);
+  const ctx = useContext(TimezoneStatusContext);
 
-  const formatTime = (date: Date): string => {
-    return formatAbsoluteTime(date, timezone);
-  };
+  const formatTime = useCallback(
+    (date: Date): string => formatAbsoluteTime(date, ctx.timezone),
+    [ctx.timezone],
+  );
 
-  return { timezone, setTimezone, formatTime };
+  const setTimezone = useCallback(
+    (tz: TimezoneMode) => ctx.setTimezone(tz),
+    [ctx],
+  );
+
+  return { timezone: ctx.timezone, setTimezone, formatTime };
 }
 
 export default useTimezone;

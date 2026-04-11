@@ -67,9 +67,7 @@ function ExecuteEvent({
         <InitialBubble name={event?.author?.fullName} />
         <div className="flex justify-between rounded-t-md px-4 pt-2 text-sm text-slate-900 dark:bg-slate-900 dark:text-slate-50">
           <span className="mr-4">
-            {event?.createdAt
-              ? formatTime(event.createdAt)
-              : ""}
+            {event?.createdAt ? formatTime(event.createdAt) : ""}
           </span>
         </div>
         {event?.query && (
