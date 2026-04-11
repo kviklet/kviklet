@@ -24,7 +24,7 @@ import {
   exportExecutions,
 } from "../api/ExecutionsApi";
 import { ChangeEvent, useEffect, useState } from "react";
-import { timeSince } from "./Requests";
+import { formatAbsoluteTime } from "../utils/timeFormat";
 import { isApiErrorResponse } from "../api/Errors";
 import SearchInput from "../components/SearchInput";
 import Button from "../components/Button";
@@ -208,7 +208,7 @@ function Item({ execution }: { execution: ExecutionLogResponse }) {
             <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
               Executed{" "}
               <time dateTime={execution.executionTime.toISOString()}>
-                {timeSince(execution.executionTime)}
+                {formatAbsoluteTime(execution.executionTime)}
               </time>
             </p>
           </div>

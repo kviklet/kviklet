@@ -689,8 +689,12 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
         @RequestParam(required = false) connectionId: ConnectionId?,
         @RequestParam(required = false) after: Instant?,
         @RequestParam(required = false, defaultValue = "${Int.MAX_VALUE}") limit: Int,
+        @RequestParam(required = false) createdBefore: Instant?,
+        @RequestParam(required = false) createdAfter: Instant?,
     ): ExecutionRequestListResponse {
         val afterLocalDateTime = after?.atZone(ZoneOffset.UTC)?.toLocalDateTime()
+        val createdBeforeLocalDateTime = createdBefore?.atZone(ZoneOffset.UTC)?.toLocalDateTime()
+        val createdAfterLocalDateTime = createdAfter?.atZone(ZoneOffset.UTC)?.toLocalDateTime()
 
         return ExecutionRequestListResponse.fromDto(
             executionRequestService.list(
@@ -699,6 +703,8 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
                 connectionId = connectionId,
                 after = afterLocalDateTime,
                 limit = limit,
+                createdBefore = createdBeforeLocalDateTime,
+                createdAfter = createdAfterLocalDateTime,
             ),
         )
     }

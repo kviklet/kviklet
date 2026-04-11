@@ -146,6 +146,8 @@ interface CustomExecutionRequestRepository {
         connectionId: ConnectionId?,
         after: LocalDateTime?,
         limit: Int,
+        createdBefore: LocalDateTime? = null,
+        createdAfter: LocalDateTime? = null,
     ): List<ExecutionRequestEntity>
 }
 
@@ -177,6 +179,8 @@ class CustomExecutionRequestRepositoryImpl(private val entityManager: EntityMana
         connectionId: ConnectionId?,
         after: LocalDateTime?,
         limit: Int,
+        createdBefore: LocalDateTime?,
+        createdAfter: LocalDateTime?,
     ): List<ExecutionRequestEntity> {
         val query = JPAQuery<ExecutionRequestEntity>(entityManager)
             .from(qExecutionRequestEntity)
@@ -204,6 +208,14 @@ class CustomExecutionRequestRepositoryImpl(private val entityManager: EntityMana
         // Apply cursor-based pagination
         after?.let {
             query.where(qExecutionRequestEntity.createdAt.lt(it))
+        }
+
+        // Apply date-range filters
+        createdAfter?.let {
+            query.where(qExecutionRequestEntity.createdAt.goe(it))
+        }
+        createdBefore?.let {
+            query.where(qExecutionRequestEntity.createdAt.loe(it))
         }
 
         // Order and limit
@@ -380,12 +392,16 @@ class ExecutionRequestAdapter(
         connectionId: ConnectionId? = null,
         after: LocalDateTime? = null,
         limit: Int = Int.MAX_VALUE,
+        createdBefore: LocalDateTime? = null,
+        createdAfter: LocalDateTime? = null,
     ): List<ExecutionRequestDetails> = executionRequestRepository.findAllWithDetailsFiltered(
         reviewStatuses = reviewStatuses,
         executionStatuses = executionStatuses,
         connectionId = connectionId,
         after = after,
         limit = limit,
+        createdBefore = createdBefore,
+        createdAfter = createdAfter,
     ).map {
         it.toDetailDto(connectionAdapter.toDto(it.connection))
     }

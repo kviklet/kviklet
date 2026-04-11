@@ -10,34 +10,14 @@ import {
   CircleStackIcon,
   ClockIcon,
   CloudIcon,
+  XMarkIcon,
 } from "@heroicons/react/20/solid";
 import { isApiErrorResponse } from "../api/Errors";
 import useNotification from "../hooks/useNotification";
 import Toggle from "../components/Toggle";
 import SearchInput from "../components/SearchInput";
 import Tooltip from "../components/Tooltip";
-
-function timeSince(date: Date) {
-  const seconds =
-    Math.floor((new Date().getTime() - date.getTime()) / 1000) +
-    new Date().getTimezoneOffset() * 60;
-
-  const units: [number, string][] = [
-    [31536000, "year"],
-    [2592000, "month"],
-    [86400, "day"],
-    [3600, "hour"],
-    [60, "minute"],
-  ];
-
-  for (const [divisor, unit] of units) {
-    const value = Math.floor(seconds / divisor);
-    if (value > 0) {
-      return `${value} ${unit}${value !== 1 ? "s" : ""} ago`;
-    }
-  }
-  return Math.floor(seconds) + " seconds ago";
-}
+import { formatAbsoluteTime, timeSince } from "../utils/timeFormat";
 
 function mapStatus(reviewStatus: string, executionStatus: string) {
   if (reviewStatus === "AWAITING_APPROVAL" && executionStatus !== "EXECUTED")
@@ -115,7 +95,12 @@ function shortTypeLabel(type: string) {
   }
 }
 
-const useRequests = (onlyPending: boolean, searchTerm: string) => {
+const useRequests = (
+  onlyPending: boolean,
+  searchTerm: string,
+  dateFrom: Date | null,
+  dateTo: Date | null,
+) => {
   const [requests, setRequests] = useState<ExecutionRequestResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
@@ -139,6 +124,8 @@ const useRequests = (onlyPending: boolean, searchTerm: string) => {
         executionStatuses: onlyPending ? ["EXECUTABLE", "ACTIVE"] : undefined,
         after: reset ? undefined : cursor ?? undefined,
         limit: 20,
+        createdAfter: dateFrom ?? undefined,
+        createdBefore: dateTo ?? undefined,
       });
 
       if (isApiErrorResponse(response)) {
@@ -165,7 +152,7 @@ const useRequests = (onlyPending: boolean, searchTerm: string) => {
 
   useEffect(() => {
     void loadRequests(true);
-  }, [onlyPending]);
+  }, [onlyPending, dateFrom, dateTo]);
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {
@@ -200,14 +187,27 @@ const useRequests = (onlyPending: boolean, searchTerm: string) => {
   };
 };
 
+function toDateInputValue(date: Date | null): string {
+  if (!date) return "";
+  const y = date.getFullYear();
+  const m = (date.getMonth() + 1).toString().padStart(2, "0");
+  const d = date.getDate().toString().padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function Requests() {
   const [onlyPending, setOnlyPending] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateFrom, setDateFrom] = useState<Date | null>(null);
+  const [dateTo, setDateTo] = useState<Date | null>(null);
   const { requests, loading, loadingMore, hasMore, loadMore } = useRequests(
     onlyPending,
     searchTerm,
+    dateFrom,
+    dateTo,
   );
   const observerTarget = useRef<HTMLDivElement>(null);
+  const hasDateFilter = dateFrom !== null || dateTo !== null;
 
   // Infinite scroll observer
   useEffect(() => {
@@ -234,26 +234,72 @@ function Requests() {
   return (
     <div className="h-full">
       <div className="border-b border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
-        <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-xl font-medium">Open Requests</h1>
-          <div className="flex items-center gap-3">
-            <SearchInput
-              value={searchTerm}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                setSearchTerm(e.target.value)
+        <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 py-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h1 className="text-xl font-medium">Open Requests</h1>
+            <div className="flex items-center gap-3">
+              <SearchInput
+                value={searchTerm}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setSearchTerm(e.target.value)
+                }
+                placeholder="Search requests..."
+                className="w-full sm:w-64"
+              />
+              <Tooltip position="bottom" content="Show only pending requests">
+                <div className="flex shrink-0 items-center">
+                  <ClockIcon className="mr-2 h-5 w-5 text-slate-400" />
+                  <Toggle
+                    active={onlyPending}
+                    onClick={() => setOnlyPending(!onlyPending)}
+                  />
+                </div>
+              </Tooltip>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-xs text-slate-500 dark:text-slate-400">
+              From
+            </label>
+            <input
+              type="date"
+              value={toDateInputValue(dateFrom)}
+              onChange={(e) =>
+                setDateFrom(
+                  e.target.value
+                    ? new Date(e.target.value + "T00:00:00")
+                    : null,
+                )
               }
-              placeholder="Search requests..."
-              className="w-full sm:w-64"
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
             />
-            <Tooltip position="bottom" content="Show only pending requests">
-              <div className="flex shrink-0 items-center">
-                <ClockIcon className="mr-2 h-5 w-5 text-slate-400" />
-                <Toggle
-                  active={onlyPending}
-                  onClick={() => setOnlyPending(!onlyPending)}
-                />
-              </div>
-            </Tooltip>
+            <label className="text-xs text-slate-500 dark:text-slate-400">
+              To
+            </label>
+            <input
+              type="date"
+              value={toDateInputValue(dateTo)}
+              onChange={(e) =>
+                setDateTo(
+                  e.target.value
+                    ? new Date(e.target.value + "T23:59:59")
+                    : null,
+                )
+              }
+              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
+            />
+            {hasDateFilter && (
+              <button
+                onClick={() => {
+                  setDateFrom(null);
+                  setDateTo(null);
+                }}
+                className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700"
+              >
+                <XMarkIcon className="h-3.5 w-3.5" />
+                Clear
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -294,15 +340,14 @@ function Requests() {
                           <h2 className="truncate text-sm font-medium">
                             {request.title}
                           </h2>
-                          <span
-                            className="shrink-0 text-xs text-slate-400 dark:text-slate-500"
-                            title={
-                              new Date(request.createdAt).toLocaleString() +
-                              " UTC"
-                            }
+                          <Tooltip
+                            position="bottom"
+                            content={timeSince(new Date(request.createdAt))}
                           >
-                            {timeSince(new Date(request.createdAt))}
-                          </span>
+                            <span className="shrink-0 text-xs text-slate-400 dark:text-slate-500">
+                              {formatAbsoluteTime(new Date(request.createdAt))}
+                            </span>
+                          </Tooltip>
                         </div>
                         <p className="mt-0.5 flex flex-wrap items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
                           <span className="truncate font-medium text-slate-600 dark:text-slate-300">
@@ -363,4 +408,4 @@ function Requests() {
   );
 }
 
-export { Requests, mapStatusToLabelColor, mapStatus, timeSince };
+export { Requests, mapStatusToLabelColor, mapStatus };

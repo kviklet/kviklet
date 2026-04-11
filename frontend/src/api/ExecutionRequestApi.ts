@@ -312,6 +312,8 @@ interface GetRequestsParams {
   connectionId?: string;
   after?: Date;
   limit?: number;
+  createdBefore?: Date;
+  createdAfter?: Date;
 }
 
 const getRequestsPaginated = async (
@@ -341,6 +343,14 @@ const getRequestsPaginated = async (
 
   if (params?.limit) {
     searchParams.append("limit", params.limit.toString());
+  }
+
+  if (params?.createdBefore) {
+    searchParams.append("createdBefore", params.createdBefore.toISOString());
+  }
+
+  if (params?.createdAfter) {
+    searchParams.append("createdAfter", params.createdAfter.toISOString());
   }
 
   const url = searchParams.toString()

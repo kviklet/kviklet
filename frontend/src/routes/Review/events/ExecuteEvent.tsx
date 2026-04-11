@@ -1,6 +1,7 @@
 import { Execute } from "../../../api/ExecutionRequestApi";
 import { DatabaseType } from "../../../api/DatasourceApi";
-import { timeSince } from "../../Requests";
+import { formatAbsoluteTime, timeSince } from "../../../utils/timeFormat";
+import Tooltip from "../../../components/Tooltip";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 import { AbsoluteInitialBubble as InitialBubble } from "../../../components/InitialBubble";
@@ -65,11 +66,18 @@ function ExecuteEvent({
       <div className="relative rounded-md border shadow-md dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
         <InitialBubble name={event?.author?.fullName} />
         <div className="flex justify-between rounded-t-md px-4 pt-2 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-500">
-          <div className="mr-4">
-            {((event?.createdAt && timeSince(event.createdAt)) as
-              | string
-              | undefined) || ""}
-          </div>
+          <Tooltip
+            position="bottom"
+            content={
+              event?.createdAt ? timeSince(event.createdAt) : ""
+            }
+          >
+            <span className="mr-4">
+              {event?.createdAt
+                ? formatAbsoluteTime(event.createdAt)
+                : ""}
+            </span>
+          </Tooltip>
         </div>
         {event?.query && (
           <div className="rounded-b-md px-4 py-3 dark:bg-slate-900">

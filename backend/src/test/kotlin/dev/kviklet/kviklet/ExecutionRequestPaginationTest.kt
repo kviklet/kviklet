@@ -318,6 +318,171 @@ class ExecutionRequestPaginationTest {
     }
 
     @Nested
+    inner class DateRangeFilterTests {
+
+        @Test
+        fun `createdAfter parameter returns only requests created on or after the given timestamp`() {
+            val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+            val req1 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+            Thread.sleep(10)
+            val req2 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+            Thread.sleep(10)
+            val req3 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+
+            val createdAfterTimestamp = req2.request.createdAt.atZone(java.time.ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_INSTANT)
+
+            // Should return req2 and req3 (created on or after req2's timestamp)
+            mockMvc.perform(
+                get("/execution-requests/")
+                    .param("createdAfter", createdAfterTimestamp)
+                    .cookie(cookie),
+            ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.requests", hasSize<Collection<*>>(2)))
+                .andExpect(jsonPath("$.requests[0].id").value(req3.getId()))
+                .andExpect(jsonPath("$.requests[1].id").value(req2.getId()))
+        }
+
+        @Test
+        fun `createdBefore parameter returns only requests created on or before the given timestamp`() {
+            val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+            val req1 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+            Thread.sleep(10)
+            val req2 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+            Thread.sleep(10)
+            val req3 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+
+            val createdBeforeTimestamp = req2.request.createdAt.atZone(java.time.ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_INSTANT)
+
+            // Should return req1 and req2 (created on or before req2's timestamp)
+            mockMvc.perform(
+                get("/execution-requests/")
+                    .param("createdBefore", createdBeforeTimestamp)
+                    .cookie(cookie),
+            ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.requests", hasSize<Collection<*>>(2)))
+                .andExpect(jsonPath("$.requests[0].id").value(req2.getId()))
+                .andExpect(jsonPath("$.requests[1].id").value(req1.getId()))
+        }
+
+        @Test
+        fun `createdAfter and createdBefore together define a date range window`() {
+            val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+            val req1 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+            Thread.sleep(10)
+            val req2 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+            Thread.sleep(10)
+            val req3 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+            Thread.sleep(10)
+            val req4 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+            Thread.sleep(10)
+            val req5 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+
+            val createdAfterTimestamp = req2.request.createdAt.atZone(java.time.ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_INSTANT)
+            val createdBeforeTimestamp = req4.request.createdAt.atZone(java.time.ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_INSTANT)
+
+            // Should return req2, req3, req4 (within the date range)
+            mockMvc.perform(
+                get("/execution-requests/")
+                    .param("createdAfter", createdAfterTimestamp)
+                    .param("createdBefore", createdBeforeTimestamp)
+                    .cookie(cookie),
+            ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.requests", hasSize<Collection<*>>(3)))
+                .andExpect(jsonPath("$.requests[0].id").value(req4.getId()))
+                .andExpect(jsonPath("$.requests[1].id").value(req3.getId()))
+                .andExpect(jsonPath("$.requests[2].id").value(req2.getId()))
+        }
+
+        @Test
+        fun `date range filter works with cursor pagination`() {
+            val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+            val requests = mutableListOf<ExecutionRequestDetails>()
+            repeat(5) {
+                requests.add(executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection))
+                Thread.sleep(10)
+            }
+
+            val createdAfterTimestamp = requests[0].request.createdAt.atZone(java.time.ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_INSTANT)
+            val createdBeforeTimestamp = requests[4].request.createdAt.atZone(java.time.ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_INSTANT)
+
+            // First page with limit=2 and date range covering all 5
+            val firstPage = mockMvc.perform(
+                get("/execution-requests/")
+                    .param("createdAfter", createdAfterTimestamp)
+                    .param("createdBefore", createdBeforeTimestamp)
+                    .param("limit", "2")
+                    .cookie(cookie),
+            ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.requests", hasSize<Collection<*>>(2)))
+                .andExpect(jsonPath("$.hasMore").value(true))
+                .andReturn()
+
+            val cursorRaw = com.jayway.jsonpath.JsonPath.read<String>(
+                firstPage.response.contentAsString,
+                "$.cursor",
+            )
+            val cursor = java.time.LocalDateTime.parse(cursorRaw)
+                .atZone(java.time.ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_INSTANT)
+
+            // Second page with cursor + date range
+            mockMvc.perform(
+                get("/execution-requests/")
+                    .param("createdAfter", createdAfterTimestamp)
+                    .param("createdBefore", createdBeforeTimestamp)
+                    .param("after", cursor)
+                    .param("limit", "2")
+                    .cookie(cookie),
+            ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.requests", hasSize<Collection<*>>(2)))
+                .andExpect(jsonPath("$.hasMore").value(true))
+        }
+
+        @Test
+        fun `date range filter works with status filters`() {
+            val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            val reviewer = userHelper.createUser(permissions = listOf("*"))
+            val reviewerCookie = userHelper.login(email = reviewer.email, mockMvc = mockMvc)
+
+            val req1 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+            Thread.sleep(10)
+            val req2 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+            Thread.sleep(10)
+            val req3 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+
+            // Approve req2
+            approveRequest(req2.getId(), "Approved", reviewerCookie)
+
+            val createdAfterTimestamp = req1.request.createdAt.atZone(java.time.ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_INSTANT)
+            val createdBeforeTimestamp = req3.request.createdAt.atZone(java.time.ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_INSTANT)
+
+            // Filter for AWAITING_APPROVAL within date range (should be req1 and req3)
+            mockMvc.perform(
+                get("/execution-requests/")
+                    .param("createdAfter", createdAfterTimestamp)
+                    .param("createdBefore", createdBeforeTimestamp)
+                    .param("reviewStatuses", "AWAITING_APPROVAL")
+                    .cookie(cookie),
+            ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.requests", hasSize<Collection<*>>(2)))
+                .andExpect(jsonPath("$.requests[0].id").value(req3.getId()))
+                .andExpect(jsonPath("$.requests[1].id").value(req1.getId()))
+        }
+    }
+
+    @Nested
     inner class AuthorizationFilteringTests {
 
         @Test

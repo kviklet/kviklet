@@ -5,7 +5,8 @@ import {
   streamDump,
 } from "../../api/ExecutionRequestApi";
 import Button from "../../components/Button";
-import { timeSince } from "../Requests";
+import { formatAbsoluteTime, timeSince } from "../../utils/timeFormat";
+import Tooltip from "../../components/Tooltip";
 import { AbsoluteInitialBubble as InitialBubble } from "../../components/InitialBubble";
 import MenuDropDown from "../../components/MenuDropdown";
 import baseUrl from "../../api/base";
@@ -242,9 +243,14 @@ function DatasourceRequestBox({
               {request?.author?.fullName + questionText}
               <span className="italic">{request?.connection.displayName}</span>
             </div>
-            <div className="ml-auto dark:text-slate-500">
-              {timeSince(new Date(request?.createdAt ?? ""))}
-            </div>
+            <Tooltip
+              position="bottom"
+              content={timeSince(new Date(request?.createdAt ?? ""))}
+            >
+              <span className="ml-auto dark:text-slate-500">
+                {formatAbsoluteTime(new Date(request?.createdAt ?? ""))}
+              </span>
+            </Tooltip>
           </div>
           <div className="py-3">
             <p className="pb-6 text-slate-500">{request?.description}</p>

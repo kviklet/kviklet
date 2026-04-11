@@ -2,7 +2,8 @@ import { useNavigate } from "react-router-dom";
 
 import { KubernetesExecutionRequestResponseWithComments } from "../../api/ExecutionRequestApi";
 import Button from "../../components/Button";
-import { timeSince } from "../Requests";
+import { formatAbsoluteTime, timeSince } from "../../utils/timeFormat";
+import Tooltip from "../../components/Tooltip";
 import MenuDropDown from "../../components/MenuDropdown";
 import { Highlighter } from "./components/Highlighter";
 import { FC, useEffect, useState, MouseEvent } from "react";
@@ -72,9 +73,14 @@ const KubernetesRequestBox: FC<KubernetesRequestBoxProps> = ({
               in:
               <span className="italic"> {request?.connection.displayName}</span>
             </div>
-            <div className="ml-auto dark:text-slate-500">
-              {timeSince(new Date(request?.createdAt ?? ""))}
-            </div>
+            <Tooltip
+              position="bottom"
+              content={timeSince(new Date(request?.createdAt ?? ""))}
+            >
+              <span className="ml-auto dark:text-slate-500">
+                {formatAbsoluteTime(new Date(request?.createdAt ?? ""))}
+              </span>
+            </Tooltip>
           </div>
           <div className="px-4 py-3">
             <p className="pb-6 text-slate-500">{request?.description}</p>

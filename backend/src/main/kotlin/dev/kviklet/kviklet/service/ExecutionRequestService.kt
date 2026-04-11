@@ -361,6 +361,8 @@ class ExecutionRequestService(
         connectionId: ConnectionId?,
         after: LocalDateTime?,
         limit: Int = 20,
+        createdBefore: LocalDateTime? = null,
+        createdAfter: LocalDateTime? = null,
     ): ExecutionRequestList {
         // Fetch limit + 1 to determine if there are more results, but avoid Int overflow
         val fetchLimit = if (limit == Int.MAX_VALUE) {
@@ -375,6 +377,8 @@ class ExecutionRequestService(
             connectionId = connectionId,
             after = after,
             limit = fetchLimit,
+            createdBefore = createdBefore,
+            createdAfter = createdAfter,
         ).map { ensureMaterializedStatuses(it) }
 
         val hasMore = requests.size > limit
