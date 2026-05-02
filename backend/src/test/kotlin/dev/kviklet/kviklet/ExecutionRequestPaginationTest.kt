@@ -270,14 +270,10 @@ class ExecutionRequestPaginationTest {
                 .andExpect(jsonPath("$.cursor").exists())
                 .andReturn()
 
-            val cursorRaw = com.jayway.jsonpath.JsonPath.read<String>(
+            val cursor = com.jayway.jsonpath.JsonPath.read<String>(
                 firstPage.response.contentAsString,
                 "$.cursor",
             )
-            // Add 'Z' timezone to cursor for use in next request
-            val cursor = java.time.LocalDateTime.parse(cursorRaw)
-                .atZone(java.time.ZoneOffset.UTC)
-                .format(DateTimeFormatter.ISO_INSTANT)
 
             // Second page: use cursor
             mockMvc.perform(
@@ -297,14 +293,10 @@ class ExecutionRequestPaginationTest {
                     .cookie(cookie),
             ).andReturn()
 
-            val cursor2Raw = com.jayway.jsonpath.JsonPath.read<String>(
+            val cursor2 = com.jayway.jsonpath.JsonPath.read<String>(
                 secondPage.response.contentAsString,
                 "$.cursor",
             )
-            // Add 'Z' timezone to cursor for use in next request
-            val cursor2 = java.time.LocalDateTime.parse(cursor2Raw)
-                .atZone(java.time.ZoneOffset.UTC)
-                .format(DateTimeFormatter.ISO_INSTANT)
 
             mockMvc.perform(
                 get("/execution-requests/")
