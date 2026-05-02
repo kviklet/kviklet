@@ -18,9 +18,7 @@ import SearchInput from "../components/SearchInput";
 import Tooltip from "../components/Tooltip";
 
 function timeSince(date: Date) {
-  const seconds =
-    Math.floor((new Date().getTime() - date.getTime()) / 1000) +
-    new Date().getTimezoneOffset() * 60;
+  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
 
   const units: [number, string][] = [
     [31536000, "year"],
@@ -296,10 +294,7 @@ function Requests() {
                           </h2>
                           <span
                             className="shrink-0 text-xs text-slate-400 dark:text-slate-500"
-                            title={
-                              new Date(request.createdAt).toLocaleString() +
-                              " UTC"
-                            }
+                            title={new Date(request.createdAt).toLocaleString()}
                           >
                             {timeSince(new Date(request.createdAt))}
                           </span>

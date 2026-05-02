@@ -65,7 +65,7 @@ function ExecuteEvent({
       <div className="relative rounded-md border shadow-md dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
         <InitialBubble name={event?.author?.fullName} />
         <div className="flex justify-between rounded-t-md px-4 pt-2 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-500">
-          <div className="mr-4">
+          <div className="mr-4" title={event?.createdAt?.toLocaleString()}>
             {((event?.createdAt && timeSince(event.createdAt)) as
               | string
               | undefined) || ""}

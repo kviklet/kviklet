@@ -72,7 +72,14 @@ const KubernetesRequestBox: FC<KubernetesRequestBoxProps> = ({
               in:
               <span className="italic"> {request?.connection.displayName}</span>
             </div>
-            <div className="ml-auto dark:text-slate-500">
+            <div
+              className="ml-auto dark:text-slate-500"
+              title={
+                request?.createdAt
+                  ? new Date(request.createdAt).toLocaleString()
+                  : undefined
+              }
+            >
               {timeSince(new Date(request?.createdAt ?? ""))}
             </div>
           </div>

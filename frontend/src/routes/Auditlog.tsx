@@ -186,6 +186,7 @@ function Item({ execution }: { execution: ExecutionLogResponse }) {
     <Link to={`/requests/${execution.requestId}`}>
       <li
         key={execution.statement}
+        title={execution.executionTime.toLocaleString()}
         className="relative flex justify-between gap-x-6 border-b px-2 py-5 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
       >
         <div className="flex min-w-0 items-center gap-x-4">
@@ -205,7 +206,10 @@ function Item({ execution }: { execution: ExecutionLogResponse }) {
             <span className="inline-flex flex-shrink-0 items-center rounded-full bg-green-50 px-1.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-400/10 dark:text-green-400">
               {execution.connectionId}
             </span>
-            <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+            <p
+              className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400"
+              title={execution.executionTime.toLocaleString()}
+            >
               Executed{" "}
               <time dateTime={execution.executionTime.toISOString()}>
                 {timeSince(execution.executionTime)}
