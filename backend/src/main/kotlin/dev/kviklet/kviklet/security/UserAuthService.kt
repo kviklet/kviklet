@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.security
 
+import dev.kviklet.kviklet.db.ConfigurationAdapter
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
@@ -29,6 +30,7 @@ class UserAuthService(
     private val roleAdapter: RoleAdapter,
     private val licenseService: LicenseService,
     private val roleSyncService: RoleSyncService,
+    private val configurationAdapter: ConfigurationAdapter,
 ) {
     /**
      * Find existing user or create new one during authentication.
@@ -75,10 +77,13 @@ class UserAuthService(
                 }
 
                 val defaultRole = roleAdapter.findById(Role.DEFAULT_ROLE_ID)
+                val newUserRoleIds = (configurationAdapter.getConfiguration("newUserRoleIds") as String?)
+                    ?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+                val newUserRoles = roleAdapter.findByIds(newUserRoleIds).toSet()
                 user = User(
                     email = email,
                     fullName = fullName ?: email,
-                    roles = setOf(defaultRole),
+                    roles = setOf(defaultRole) + newUserRoles,
                 )
                 isNewUser = true
             }
