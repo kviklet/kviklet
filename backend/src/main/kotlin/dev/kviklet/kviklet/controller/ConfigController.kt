@@ -36,7 +36,7 @@ open class PublicConfigResponse(
     open val gitCommit: String,
 )
 
-data class ConfigRequest(val teamsUrl: String?, val slackUrl: String?)
+data class ConfigRequest(val teamsUrl: String?, val slackUrl: String?, val newUserRoleIds: List<String> = emptyList())
 
 data class ConfigResponse(
     override val oAuthProvider: String?,
@@ -51,6 +51,7 @@ data class ConfigResponse(
     override val gitCommit: String,
     val teamsUrl: String?,
     val slackUrl: String?,
+    val newUserRoleIds: List<String>,
 ) : PublicConfigResponse(
     oAuthProvider,
     ldapEnabled,
@@ -88,6 +89,7 @@ data class ConfigResponse(
                 gitCommit = gitCommit,
                 teamsUrl = configuration.teamsUrl,
                 slackUrl = configuration.slackUrl,
+                newUserRoleIds = configuration.newUserRoleIds,
             )
         }
     }
@@ -148,6 +150,7 @@ class ConfigController(
             Configuration(
                 teamsUrl = request.teamsUrl,
                 slackUrl = request.slackUrl,
+                newUserRoleIds = request.newUserRoleIds,
             ),
         )
         return ConfigResponse.fromConfiguration(
