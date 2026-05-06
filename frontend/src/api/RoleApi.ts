@@ -1,6 +1,11 @@
 import { z } from "zod";
 import baseUrl from "./base";
-import { ApiResponse, fetchWithErrorHandling } from "./Errors";
+import {
+  ApiErrorResponse,
+  ApiResponse,
+  fetchEmptyWithErrorHandling,
+  fetchWithErrorHandling,
+} from "./Errors";
 
 const policyResponseSchema = z.object({
   id: z.string(),
@@ -83,15 +88,11 @@ const createRole = async (
   );
 };
 
-const removeRole = async (id: string): Promise<ApiResponse<void>> => {
-  return fetchWithErrorHandling(
-    `${baseUrl}/roles/${id}`,
-    {
-      method: "DELETE",
-      credentials: "include",
-    },
-    z.undefined(),
-  );
+const removeRole = async (id: string): Promise<ApiErrorResponse | null> => {
+  return fetchEmptyWithErrorHandling(`${baseUrl}/roles/${id}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
 };
 
 const patchRole = async (
