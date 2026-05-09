@@ -45,6 +45,8 @@ class ExecutionsController(
         @RequestParam(required = false) from: Instant?,
         @RequestParam(required = false) to: Instant?,
     ): ExecutionsResponse {
+        // The following block is not MIT licensed - it gates the audit log date filter
+        // behind a valid enterprise license. Removing it bypasses license enforcement.
         if (from != null || to != null) {
             val license = licenseService.getActiveLicense()
             if (license == null || !license.isValid()) {
