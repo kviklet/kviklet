@@ -23,6 +23,7 @@ import dev.kviklet.kviklet.service.dto.ResultLog
 import dev.kviklet.kviklet.service.dto.UpdateResultLog
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
+import java.time.LocalDateTime
 
 @Service
 class EventService(
@@ -51,7 +52,8 @@ class EventService(
     }
 
     @Policy(Permission.EXECUTION_REQUEST_GET)
-    fun getAllExecutions(): List<ExecuteEvent> = eventAdapter.getExecutions()
+    fun getAllExecutions(from: LocalDateTime? = null, to: LocalDateTime? = null): List<ExecuteEvent> =
+        eventAdapter.getExecutions(from, to)
 }
 
 fun ExecuteEvent.toPayload(): Payload = ExecutePayload(

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
+import com.querydsl.jpa.impl.JPAQuery
 import dev.kviklet.kviklet.db.util.BaseEntity
 import dev.kviklet.kviklet.db.util.EventPayloadConverter
 import dev.kviklet.kviklet.service.ColumnInfo
@@ -19,6 +20,7 @@ import dev.kviklet.kviklet.service.dto.utcTimeNow
 import jakarta.persistence.Column
 import jakarta.persistence.Convert
 import jakarta.persistence.Entity
+import jakarta.persistence.EntityManager
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.JoinColumn
@@ -142,14 +144,38 @@ class EventEntity(
     }
 }
 
-interface EventRepository : JpaRepository<EventEntity, String> {
+interface CustomEventRepository {
+    fun findExecutionsFiltered(from: LocalDateTime?, to: LocalDateTime?): List<EventEntity>
+}
+
+class CustomEventRepositoryImpl(private val entityManager: EntityManager) : CustomEventRepository {
+
+    private val qEventEntity: QEventEntity = QEventEntity.eventEntity
+
+    override fun findExecutionsFiltered(from: LocalDateTime?, to: LocalDateTime?): List<EventEntity> {
+        val query = JPAQuery<EventEntity>(entityManager)
+            .from(qEventEntity)
+            .where(qEventEntity.type.eq(EventType.EXECUTE))
+
+        from?.let { query.where(qEventEntity.createdAt.goe(it)) }
+        to?.let { query.where(qEventEntity.createdAt.loe(it)) }
+
+        return query
+            .orderBy(qEventEntity.createdAt.desc())
+            .fetch()
+    }
+}
+
+interface EventRepository :
+    JpaRepository<EventEntity, String>,
+    CustomEventRepository {
     fun findByType(type: EventType): List<EventEntity>
 }
 
 @Service
 class EventAdapter(private val eventRepository: EventRepository, private val connectionAdapter: ConnectionAdapter) {
-    fun getExecutions(): List<ExecuteEvent> {
-        val events = eventRepository.findByType(EventType.EXECUTE)
+    fun getExecutions(from: LocalDateTime? = null, to: LocalDateTime? = null): List<ExecuteEvent> {
+        val events = eventRepository.findExecutionsFiltered(from, to)
         return events.map {
             it.toDto(
                 connection = connectionAdapter.toDto(it.executionRequest.connection),
