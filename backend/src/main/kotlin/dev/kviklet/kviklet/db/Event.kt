@@ -157,6 +157,8 @@ class CustomEventRepositoryImpl(private val entityManager: EntityManager) : Cust
             .from(qEventEntity)
             .where(qEventEntity.type.eq(EventType.EXECUTE))
 
+        // The following two lines are not MIT licensed - they implement the date-range
+        // filter, an enterprise feature gated in ExecutionsController.getExecutions.
         from?.let { query.where(qEventEntity.createdAt.goe(it)) }
         to?.let { query.where(qEventEntity.createdAt.loe(it)) }
 
