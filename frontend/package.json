@@ -22,7 +22,7 @@
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.13",
     "babel-plugin-macros": "^3.1.0",
-    "lodash": "^4.17.23",
+    "lodash": "^4.18.0",
     "monaco-sql-languages": "^0.12.0-beta.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -75,10 +75,18 @@
     "prettier": "^3.0.3",
     "prettier-plugin-tailwindcss": "^0.5.14",
     "typescript": "^5.2.2",
-    "vite": "^7.1.12",
+    "vite": "^7.3.2",
     "vitest": "^3.2.4"
   },
   "overrides": {
-    "prismjs": "^1.30.0"
+    "prismjs": "^1.30.0",
+    "@tootallnate/once": "^3.0.1",
+    "brace-expansion@1": "^1.1.13",
+    "brace-expansion@2": "^2.0.3",
+    "flatted": "^3.4.2",
+    "picomatch@2": "^2.3.2",
+    "picomatch@4": "^4.0.4",
+    "yaml@1": "^1.10.3",
+    "yaml@2": "^2.8.3"
   }
 }
