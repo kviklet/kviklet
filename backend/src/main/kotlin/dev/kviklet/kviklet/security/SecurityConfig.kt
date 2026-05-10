@@ -4,6 +4,7 @@ import dev.kviklet.kviklet.controller.ServerUrlInterceptor
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.security.ldap.LdapProperties
 import dev.kviklet.kviklet.security.ldap.LdapUserDetailsService
+import dev.kviklet.kviklet.security.oauth2.GithubOAuth2UserService
 import dev.kviklet.kviklet.security.oidc.OidcLoginSuccessHandler
 import dev.kviklet.kviklet.security.oidc.OidcUserService
 import dev.kviklet.kviklet.security.saml.SamlLoginSuccessHandler
@@ -76,6 +77,7 @@ class SecurityConfig(
     private val oidcLoginSuccessHandler: OidcLoginSuccessHandler,
     private val customAuthenticationProvider: CustomAuthenticationProvider,
     private val oidcUserService: OidcUserService,
+    private val githubOAuth2UserService: GithubOAuth2UserService,
     private val idpProperties: IdentityProviderProperties,
     private val ldapProperties: LdapProperties,
     private val samlProperties: SamlProperties,
@@ -194,6 +196,7 @@ class SecurityConfig(
                     authenticationSuccessHandler = oidcLoginSuccessHandler
                     userInfoEndpoint {
                         oidcUserService = this@SecurityConfig.oidcUserService
+                        userService = this@SecurityConfig.githubOAuth2UserService
                     }
                 }
             }

@@ -190,7 +190,7 @@ docker run \
 ghcr.io/kviklet/kviklet:main
 ```
 
-### SSO via OIDC
+### SSO via OIDC / OAuth2
 
 #### Google
 
@@ -228,9 +228,28 @@ For Allowed Origins, simply your hosted kviklet url.
 
 After setting those environment variables the login page should show a Login with Keycloak button that redirects to your keycloak instance. In the enterprise edition you can enable role sync to automatically sync roles from your keycloak instance to kviklet. See the [Role Sync](#role-sync-enterprise) section for more details.
 
+#### GitHub
+
+GitHub is not OIDC-compliant (it's pure OAuth 2.0), so it has dedicated support in Kviklet. Set these environment variables:
+
+```
+KVIKLET_IDENTITYPROVIDER_CLIENTID
+KVIKLET_IDENTITYPROVIDER_CLIENTSECRET
+KVIKLET_IDENTITYPROVIDER_TYPE=github
+```
+
+Create a GitHub OAuth App at https://github.com/settings/developers and configure:
+
+- Authorization callback URL: `https://[kviklet_host]/api/login/oauth2/code/github`
+- Homepage URL: your hosted Kviklet URL
+
+Kviklet requests the `read:user` and `user:email` scopes, so users with private email addresses on their GitHub account will still log in successfully — Kviklet falls back to the GitHub `/user/emails` endpoint to fetch the primary verified email.
+
+After setting those environment variables a "Login with github" button appears on the login page. As with the other SSO methods, new users have no permissions by default — assign them a role after their first login.
+
 #### Other OIDC providers
 
-Other OIDC providers should work similarly to Keycloak. Note that the `redirect URI` will change depending on the type you choose, so if you choose `gitlab` it will be `https://[kviklet_host]/api/login/oauth2/code/gitlab`.
+Other OIDC-compliant providers (GitLab, Auth0, Okta, etc.) should work similarly to Keycloak. Note that the `redirect URI` will change depending on the type you choose, so if you choose `gitlab` it will be `https://[kviklet_host]/api/login/oauth2/code/gitlab`.
 If you run into issues feel free to create an issue, we have not tried every single OIDC provider out there (yet) and there might be slight differences in the implementation that might require updates on Kviklet's side.
 
 ### LDAP

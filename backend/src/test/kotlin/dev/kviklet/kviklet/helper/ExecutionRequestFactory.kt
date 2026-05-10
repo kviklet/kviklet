@@ -237,14 +237,14 @@ class UserFactory : Factory() {
         email: String = "test" + nextId() + "@user.com",
         roles: Set<Role>? = null,
     ): User = User(
-        id,
-        fullName,
-        password,
-        subject,
-        ldapIdentifier,
-        samlNameId,
-        email,
-        roles ?: setOf(roleFactory.createRole()),
+        id = id,
+        fullName = fullName,
+        password = password,
+        subject = subject,
+        ldapIdentifier = ldapIdentifier,
+        samlNameId = samlNameId,
+        email = email,
+        roles = roles ?: setOf(roleFactory.createRole()),
     )
 }
 

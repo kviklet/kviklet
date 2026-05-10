@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 044-add-github-id-column
+      author: Jascha
+      changes:
+        - addColumn:
+            tableName: user
+            columns:
+              - column:
+                  name: github_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: true
+                    unique: true
