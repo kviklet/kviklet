@@ -20,9 +20,20 @@ const ExecutionsResponseSchema = z.object({
 type ExecutionLogResponse = z.infer<typeof ExecutionLogResponseSchema>;
 type ExecutionsResponse = z.infer<typeof ExecutionsResponseSchema>;
 
-const getExecutions = async (): Promise<ApiResponse<ExecutionsResponse>> => {
+const getExecutions = async (params?: {
+  from?: Date;
+  to?: Date;
+}): Promise<ApiResponse<ExecutionsResponse>> => {
+  const searchParams = new URLSearchParams();
+  if (params?.from) {
+    searchParams.append("from", params.from.toISOString());
+  }
+  if (params?.to) {
+    searchParams.append("to", params.to.toISOString());
+  }
+  const query = searchParams.toString();
   return await fetchWithErrorHandling(
-    `${baseUrl}/executions/`,
+    `${baseUrl}/executions/${query ? `?${query}` : ""}`,
     {
       method: "GET",
       headers: {

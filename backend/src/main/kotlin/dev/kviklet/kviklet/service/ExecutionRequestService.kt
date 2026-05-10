@@ -877,7 +877,8 @@ class ExecutionRequestService(
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
-    fun getExecutions(): List<ExecuteEvent> = eventService.getAllExecutions()
+    fun getExecutions(from: LocalDateTime? = null, to: LocalDateTime? = null): List<ExecuteEvent> =
+        eventService.getAllExecutions(from, to)
 
     // The following function is not MIT licensed
     @Transactional
