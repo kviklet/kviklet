@@ -80,6 +80,7 @@ class GitHubOAuthTest {
                             java.net.URLEncoder.encode(state, Charsets.UTF_8)
                         MockResponse().setResponseCode(302).addHeader("Location", location)
                     }
+
                     path.startsWith("/login/oauth/access_token") -> {
                         MockResponse()
                             .setResponseCode(200)
@@ -89,18 +90,21 @@ class GitHubOAuthTest {
                                     """"scope":"read:user,user:email"}""",
                             )
                     }
+
                     path == "/user" -> {
                         MockResponse()
                             .setResponseCode(200)
                             .addHeader("Content-Type", "application/json")
                             .setBody(userJson)
                     }
+
                     path == "/user/emails" -> {
                         MockResponse()
                             .setResponseCode(200)
                             .addHeader("Content-Type", "application/json")
                             .setBody(emailsJson ?: "[]")
                     }
+
                     else -> MockResponse().setResponseCode(404)
                 }
             }
@@ -175,10 +179,12 @@ class GitHubOAuthTest {
     fun `private email falls back to user emails endpoint`() {
         setDispatcher(
             userJson = """{"id":67890,"login":"private-user","name":"Private User","email":null}""",
-            emailsJson = """[
-                {"email":"old@example.com","primary":false,"verified":true},
-                {"email":"primary@example.com","primary":true,"verified":true}
-            ]""".trimIndent(),
+            emailsJson = """
+                [
+                    {"email":"old@example.com","primary":false,"verified":true},
+                    {"email":"primary@example.com","primary":true,"verified":true}
+                ]
+            """.trimIndent(),
         )
         val before = userAdapter.listUsers().size
 
