@@ -36,8 +36,7 @@ class ConfigurationAdapter(private val configurationRepository: ConfigurationRep
             listOfNotNull(
                 configuration.teamsUrl?.let { ConfigurationEntity("teamsUrl", it) },
                 configuration.slackUrl?.let { ConfigurationEntity("slackUrl", it) },
-                configuration.newUserRoleIds.takeIf { it.isNotEmpty() }
-                    ?.let { ConfigurationEntity("newUserRoleIds", it.joinToString(",")) },
+                ConfigurationEntity("newUserRoleIds", configuration.newUserRoleIds.joinToString(",")),
             ),
         )
         return configurationEntities.toDto()

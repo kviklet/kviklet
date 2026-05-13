@@ -36,7 +36,7 @@ open class PublicConfigResponse(
     open val gitCommit: String,
 )
 
-data class ConfigRequest(val teamsUrl: String?, val slackUrl: String?, val newUserRoleIds: List<String> = emptyList())
+data class ConfigRequest(val teamsUrl: String?, val slackUrl: String?, val newUserRoleIds: List<String>? = null)
 
 data class ConfigResponse(
     override val oAuthProvider: String?,
@@ -146,11 +146,12 @@ class ConfigController(
     @PutMapping("/")
     fun createConfig(@RequestBody request: ConfigRequest): ConfigResponse {
         val licenses = licenseService.getLicenses()
+        val existing = configService.getConfiguration()
         val config = configService.setConfiguration(
             Configuration(
-                teamsUrl = request.teamsUrl,
-                slackUrl = request.slackUrl,
-                newUserRoleIds = request.newUserRoleIds,
+                teamsUrl = request.teamsUrl ?: existing.teamsUrl,
+                slackUrl = request.slackUrl ?: existing.slackUrl,
+                newUserRoleIds = request.newUserRoleIds ?: existing.newUserRoleIds,
             ),
         )
         return ConfigResponse.fromConfiguration(
