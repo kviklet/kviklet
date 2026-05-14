@@ -125,7 +125,7 @@ interface DatabaseConnectionBase extends ConnectionBase {
   dryRunRequiresApproval: boolean;
   maxTemporaryAccessDuration?: number | null;
   storeResults: boolean;
-  maskedColumns?: string[];
+  maskedColumns?: string | string[];
 }
 
 type DatabaseConnection =
