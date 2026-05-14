@@ -41,7 +41,9 @@ import dev.kviklet.kviklet.service.dto.KubernetesConnection
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
 import dev.kviklet.kviklet.service.dto.KubernetesOutputResultLog
+import dev.kviklet.kviklet.service.dto.QueryResult
 import dev.kviklet.kviklet.service.dto.QueryResultLog
+import dev.kviklet.kviklet.service.dto.RecordsQueryResult
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewStatus
@@ -533,15 +535,17 @@ class ExecutionRequestService(
             }
         }
 
+        val maskedResult = applyColumnMasking(result, connection.maskedColumns)
+
         // Status will be recalculated automatically after adding result logs via event
-        val resultLogs = result.map {
+        val resultLogs = maskedResult.map {
             it.toResultLog()
         }
         val savedEvent = eventService.addResultLogs(event.eventId!!, resultLogs)
 
         return DBExecutionResult(
             executionRequest = executionRequest,
-            results = result,
+            results = maskedResult,
             event = savedEvent,
         )
     }
@@ -598,15 +602,17 @@ class ExecutionRequestService(
             }
         }
 
+        val maskedResult = applyColumnMasking(result, connection.maskedColumns)
+
         // Store results
-        val resultLogs = result.map {
+        val resultLogs = maskedResult.map {
             it.toResultLog()
         }
         val savedEvent = eventService.addResultLogs(event.eventId!!, resultLogs)
 
         return DBExecutionResult(
             executionRequest = executionRequest,
-            results = result,
+            results = maskedResult,
             event = savedEvent,
         )
     }
@@ -789,28 +795,39 @@ class ExecutionRequestService(
 
         try {
             val writer = outputStream.writer(Charsets.UTF_8)
+            val maskedLabels = connection.maskedColumns.toSet()
+            var headers = emptyList<String>()
+
             val streamResult = JDBCExecutor.executeAndStreamDbResponse(
                 connectionString = connection.getConnectionString(),
                 authenticationDetails = connection.auth,
                 query = queryToExecute,
                 maxRowsToStore = maxRowsToStore,
-            ) { row ->
-                writer.write(
-                    row.joinToString(",") { field ->
-                        escapeCsvField(field)
-                    } + "\n",
-                )
-                writer.flush()
-            }
+                onHeader = { columnLabels ->
+                    headers = columnLabels
+                    writer.write(columnLabels.joinToString(",") { escapeCsvField(it) } + "\n")
+                    writer.flush()
+                },
+                onRow = { row ->
+                    val outputRow = row.mapIndexed { idx, value ->
+                        if (headers[idx] in maskedLabels) "***" else value
+                    }
+                    writer.write(outputRow.joinToString(",") { escapeCsvField(it) } + "\n")
+                    writer.flush()
+                },
+            )
 
             // Store results on success if storeResults is enabled
             if (connection.storeResults) {
+                val maskedStoredRows = streamResult.storedRows.map { row ->
+                    maskRow(row, maskedLabels)
+                }
                 val resultLog = QueryResultLog(
                     columnCount = streamResult.columns.size,
                     rowCount = streamResult.rowCount,
                     columns = streamResult.columns,
-                    storedRows = streamResult.storedRows,
-                    storedRowCount = streamResult.storedRows.size,
+                    storedRows = maskedStoredRows,
+                    storedRowCount = maskedStoredRows.size,
                 )
                 eventService.addResultLogs(eventId, listOf(resultLog))
             }
@@ -833,6 +850,25 @@ class ExecutionRequestService(
             return "\"" + field.replace("\"", "\"\"") + "\""
         }
         return field
+    }
+
+    private fun maskRow(row: Map<String, String>, maskedColumnLabels: Set<String>): Map<String, String> =
+        row.mapValues { (key, value) ->
+            if (key in maskedColumnLabels) "***" else value
+        }
+
+    private fun applyColumnMasking(results: List<QueryResult>, maskedColumns: List<String>): List<QueryResult> {
+        if (maskedColumns.isEmpty()) return results
+        val maskedLabels = maskedColumns.toSet()
+        return results.map { result ->
+            when (result) {
+                is RecordsQueryResult -> result.copy(
+                    data = result.data.map { maskRow(it, maskedLabels) },
+                    storedRows = result.storedRows?.map { maskRow(it, maskedLabels) },
+                )
+                else -> result
+            }
+        }
     }
 
     @Policy(Permission.EXECUTION_REQUEST_GET)

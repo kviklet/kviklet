@@ -100,6 +100,7 @@ data class DatasourceConnection(
     val maxTemporaryAccessDuration: Long? = null,
     val dryRunEnabled: Boolean,
     val dryRunRequiresApproval: Boolean,
+    val maskedColumns: List<String> = emptyList(),
 ) : Connection(id, displayName, description, reviewConfig, maxExecutions, category) {
     fun getConnectionString(): String = when (auth) {
         is AuthenticationDetails.UserPassword -> when (type) {

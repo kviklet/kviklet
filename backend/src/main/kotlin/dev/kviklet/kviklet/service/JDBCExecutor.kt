@@ -184,7 +184,7 @@ class JDBCExecutor {
             try {
                 dataSource.connection.createStatement().use { statement ->
                     val query = """
-                    SELECT d.datname 
+                    SELECT d.datname
                     FROM pg_catalog.pg_database d
                     WHERE pg_catalog.has_database_privilege(current_user, d.datname, 'CONNECT')
                 """
@@ -212,7 +212,8 @@ class JDBCExecutor {
         authenticationDetails: AuthenticationDetails,
         query: String,
         maxRowsToStore: Int = 0,
-        callback: (List<String>) -> Unit,
+        onHeader: (List<String>) -> Unit,
+        onRow: (List<String>) -> Unit,
     ): StreamingQueryResult {
         createConnection(connectionString, authenticationDetails).use { dataSource: HikariDataSource ->
             try {
@@ -220,7 +221,7 @@ class JDBCExecutor {
                     val hasResults = statement.execute(query)
                     if (hasResults) {
                         statement.resultSet?.use { resultSet ->
-                            return streamResultSet(resultSet, maxRowsToStore, callback)
+                            return streamResultSet(resultSet, maxRowsToStore, onHeader, onRow)
                         } ?: throw IllegalStateException("Can't stream a non-Select statement")
                     } else {
                         throw IllegalStateException("Can't stream a non-Select statement")
@@ -235,7 +236,8 @@ class JDBCExecutor {
     private fun streamResultSet(
         resultSet: ResultSet,
         maxRowsToStore: Int,
-        callback: (List<String>) -> Unit,
+        onHeader: (List<String>) -> Unit,
+        onRow: (List<String>) -> Unit,
     ): StreamingQueryResult {
         val metadata = resultSet.metaData
         val columns = (1..metadata.columnCount).map { i ->
@@ -246,13 +248,13 @@ class JDBCExecutor {
             )
         }
 
-        callback(columns.map { it.label })
+        onHeader(columns.map { it.label })
 
         val storedRows = mutableListOf<Map<String, String>>()
         var rowCount = 0
 
         iterateResultSet(resultSet, columns, forEachRow = { resultMap ->
-            callback(columns.map { resultMap[it.label] ?: "" })
+            onRow(columns.map { resultMap[it.label] ?: "" })
 
             // Only store first N rows for result storage
             if (storedRows.size < maxRowsToStore) {

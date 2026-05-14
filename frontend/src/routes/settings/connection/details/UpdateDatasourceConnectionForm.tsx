@@ -55,6 +55,7 @@ const baseConnectionFormSchema = z.object({
   storeResults: z.boolean(),
   connectionType: z.literal("DATASOURCE").default("DATASOURCE"),
   category: z.string().nullable().optional(),
+  maskedColumnsRaw: z.string().optional().default(""),
 });
 
 const connectionFormSchema = z.discriminatedUnion("authenticationType", [
@@ -154,9 +155,16 @@ export default function UpdateDatasourceConnectionForm({
       roleArn: connection.roleArn,
       storeResults: connection.storeResults,
       category: connection.category,
+      maskedColumnsRaw: (connection.maskedColumns ?? []).join(", "),
     },
     schema: connectionFormSchema,
-    onSubmit: editConnection,
+    onSubmit: (data) => {
+      const maskedColumns = (data.maskedColumnsRaw ?? "")
+        .split(",")
+        .map((s: string) => s.trim())
+        .filter((s: string) => s.length > 0);
+      return editConnection({ ...data, maskedColumns });
+    },
     connectionType: "DATASOURCE",
   });
 
@@ -455,6 +463,36 @@ export default function UpdateDatasourceConnectionForm({
                           className="my-auto h-4 w-4"
                           {...register("storeResults")}
                         />
+                      </div>
+                      <div className="flex w-full flex-col gap-1">
+                        <label
+                          htmlFor="maskedColumnsRaw"
+                          className="flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+                          title="Comma-separated list of column names to mask with *** in query results, history, and CSV exports."
+                        >
+                          Masked Columns
+                          <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
+                        </label>
+                        <input
+                          id="maskedColumnsRaw"
+                          type="text"
+                          placeholder="e.g. password, email, ssn"
+                          className="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm
+                            transition-colors focus:border-indigo-600 focus:outline-none
+                            hover:border-slate-400 focus:hover:border-indigo-600
+                            dark:border-slate-700 dark:bg-slate-900 dark:focus:border-gray-500
+                            dark:hover:border-slate-600 dark:hover:focus:border-gray-500"
+                          {...register("maskedColumnsRaw")}
+                        />
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Values in these columns are replaced with *** in results, history, and CSV exports.
+                        </p>
+                        <p className="text-xs text-amber-600 dark:text-amber-400">
+                          ⚠ This is an application-level workaround. For production data protection, prefer
+                          native database anonymization (e.g. PostgreSQL anonymizer, column-level security,
+                          or masked views) which enforce masking at the database layer regardless of how
+                          data is accessed.
+                        </p>
                       </div>
                     </div>
                   </DisclosurePanel>
