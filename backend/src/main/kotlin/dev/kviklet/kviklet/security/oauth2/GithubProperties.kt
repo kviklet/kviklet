@@ -10,4 +10,10 @@ class GithubProperties {
     var tokenUri: String = "https://github.com/login/oauth/access_token"
     var userInfoUri: String = "https://api.github.com/user"
     var emailsUri: String = "https://api.github.com/user/emails"
+    var orgsUri: String = "https://api.github.com/user/orgs"
+    var allowedOrgs: List<String> = emptyList()
+
+    fun normalizedAllowedOrgs(): Set<String> = allowedOrgs.map {
+        it.trim().lowercase()
+    }.filter { it.isNotBlank() }.toSet()
 }

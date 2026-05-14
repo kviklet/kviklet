@@ -236,6 +236,7 @@ GitHub is not OIDC-compliant (it's pure OAuth 2.0), so it has dedicated support 
 KVIKLET_IDENTITYPROVIDER_CLIENTID
 KVIKLET_IDENTITYPROVIDER_CLIENTSECRET
 KVIKLET_IDENTITYPROVIDER_TYPE=github
+KVIKLET_IDENTITYPROVIDER_GITHUB_ALLOWEDORGS=your-org,another-org
 ```
 
 Create a GitHub OAuth App at https://github.com/settings/developers and configure:
@@ -243,7 +244,9 @@ Create a GitHub OAuth App at https://github.com/settings/developers and configur
 - Authorization callback URL: `https://[kviklet_host]/api/login/oauth2/code/github`
 - Homepage URL: your hosted Kviklet URL
 
-Kviklet requests the `read:user` and `user:email` scopes, so users with private email addresses on their GitHub account will still log in successfully — Kviklet falls back to the GitHub `/user/emails` endpoint to fetch the primary verified email.
+`KVIKLET_IDENTITYPROVIDER_GITHUB_ALLOWEDORGS` is **required** (Kviklet refuses to start without it). GitHub OAuth Apps cannot restrict who is allowed to authenticate — any user on github.com can complete the OAuth flow against your app — so Kviklet enforces this on its side by calling `/user/orgs` after authentication and rejecting users who are not a member of at least one configured org. Org names are compared case-insensitively; up to 100 of the user's orgs are checked.
+
+Kviklet requests the `read:user`, `user:email` and `read:org` scopes. `read:org` is needed for the membership check and to surface private org memberships. Users with private email addresses on their GitHub account still log in successfully — Kviklet falls back to the GitHub `/user/emails` endpoint to fetch the primary verified email.
 
 After setting those environment variables a "Login with github" button appears on the login page. As with the other SSO methods, new users have no permissions by default — assign them a role after their first login.
 

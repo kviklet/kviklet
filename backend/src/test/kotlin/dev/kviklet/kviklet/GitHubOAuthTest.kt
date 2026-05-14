@@ -21,7 +21,7 @@ import org.springframework.test.context.DynamicPropertySource
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
-    properties = ["server.port=8082"],
+    properties = ["server.port=8084"],
 )
 @ActiveProfiles("test")
 class GitHubOAuthTest {
@@ -52,6 +52,8 @@ class GitHubOAuthTest {
             registry.add("kviklet.identity-provider.github.token-uri") { "$base/login/oauth/access_token" }
             registry.add("kviklet.identity-provider.github.user-info-uri") { "$base/user" }
             registry.add("kviklet.identity-provider.github.emails-uri") { "$base/user/emails" }
+            registry.add("kviklet.identity-provider.github.orgs-uri") { "$base/user/orgs" }
+            registry.add("kviklet.identity-provider.github.allowed-orgs") { "kviklet" }
         }
     }
 
@@ -60,7 +62,11 @@ class GitHubOAuthTest {
         userAdapter.deleteAll()
     }
 
-    private fun setDispatcher(userJson: String, emailsJson: String? = null) {
+    private fun setDispatcher(
+        userJson: String,
+        emailsJson: String? = null,
+        orgsJson: String = """[{"login":"kviklet"}]""",
+    ) {
         mockGithub.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val path = request.path ?: ""
@@ -87,7 +93,7 @@ class GitHubOAuthTest {
                             .addHeader("Content-Type", "application/json")
                             .setBody(
                                 """{"access_token":"fake-access-token","token_type":"bearer",""" +
-                                    """"scope":"read:user,user:email"}""",
+                                    """"scope":"read:user,user:email,read:org"}""",
                             )
                     }
 
@@ -105,6 +111,13 @@ class GitHubOAuthTest {
                             .setBody(emailsJson ?: "[]")
                     }
 
+                    path.startsWith("/user/orgs") -> {
+                        MockResponse()
+                            .setResponseCode(200)
+                            .addHeader("Content-Type", "application/json")
+                            .setBody(orgsJson)
+                    }
+
                     else -> MockResponse().setResponseCode(404)
                 }
             }
@@ -117,6 +130,10 @@ class GitHubOAuthTest {
                 isRedirectEnabled = true
                 isJavaScriptEnabled = false
                 isThrowExceptionOnScriptError = false
+                // Success path redirects to localhost:5173 (frontend) and fails with a connect
+                // exception; rejection path redirects to /login?error which 404s on the backend.
+                // Suppress the latter so both flows are observable via DB state.
+                isThrowExceptionOnFailingStatusCode = false
                 isUseInsecureSSL = true
                 isCssEnabled = false
             }
@@ -136,20 +153,27 @@ class GitHubOAuthTest {
     }
 
     @Test
-    fun `new user is created when GitHub returns email directly`() {
+    fun `primary verified email is used and user-profile email is ignored`() {
         setDispatcher(
-            userJson = """{"id":12345,"login":"octocat","name":"Octo Cat","email":"octo@example.com"}""",
+            userJson = """{"id":12345,"login":"octocat","name":"Octo Cat","email":"public@example.com"}""",
+            emailsJson = """
+                [
+                    {"email":"public@example.com","primary":false,"verified":true},
+                    {"email":"primary@example.com","primary":true,"verified":true}
+                ]
+            """.trimIndent(),
         )
         val before = userAdapter.listUsers().size
 
         runOauthFlow()
 
         assertThat(userAdapter.listUsers().size).isEqualTo(before + 1)
-        val user = userAdapter.findByEmail("octo@example.com")
+        val user = userAdapter.findByEmail("primary@example.com")
         assertThat(user).isNotNull
         assertThat(user!!.githubId).isEqualTo("12345")
         assertThat(user.fullName).isEqualTo("Octo Cat")
         assertThat(user.password).isNull()
+        assertThat(userAdapter.findByEmail("public@example.com")).isNull()
     }
 
     @Test
@@ -165,6 +189,7 @@ class GitHubOAuthTest {
 
         setDispatcher(
             userJson = """{"id":12345,"login":"octocat","name":"Octo Cat","email":"octo@example.com"}""",
+            emailsJson = """[{"email":"octo@example.com","primary":true,"verified":true}]""",
         )
         runOauthFlow()
 
@@ -176,23 +201,56 @@ class GitHubOAuthTest {
     }
 
     @Test
-    fun `private email falls back to user emails endpoint`() {
+    fun `unverified primary email is ignored even if it matches an existing user`() {
+        userAdapter.createUser(
+            User(
+                email = "victim@example.com",
+                fullName = "Real User",
+                password = "some-bcrypt-hash",
+            ),
+        )
+        val before = userAdapter.listUsers().size
+
         setDispatcher(
-            userJson = """{"id":67890,"login":"private-user","name":"Private User","email":null}""",
-            emailsJson = """
-                [
-                    {"email":"old@example.com","primary":false,"verified":true},
-                    {"email":"primary@example.com","primary":true,"verified":true}
-                ]
-            """.trimIndent(),
+            userJson = """{"id":42,"login":"attacker","name":"Attacker","email":"victim@example.com"}""",
+            emailsJson = """[{"email":"victim@example.com","primary":true,"verified":false}]""",
+        )
+        runOauthFlow()
+
+        // No verified email → login fails, existing user is untouched.
+        assertThat(userAdapter.listUsers().size).isEqualTo(before)
+        val victim = userAdapter.findByEmail("victim@example.com")
+        assertThat(victim).isNotNull
+        assertThat(victim!!.githubId).isNull()
+        assertThat(victim.password).isEqualTo("some-bcrypt-hash")
+    }
+
+    @Test
+    fun `login is rejected when user is not in an allowed org`() {
+        setDispatcher(
+            userJson = """{"id":99999,"login":"outsider","name":"Outsider","email":"out@example.com"}""",
+            orgsJson = """[{"login":"some-other-org"}]""",
+        )
+        val before = userAdapter.listUsers().size
+
+        runOauthFlow()
+
+        assertThat(userAdapter.listUsers().size).isEqualTo(before)
+        assertThat(userAdapter.findByEmail("out@example.com")).isNull()
+    }
+
+    @Test
+    fun `org name comparison is case-insensitive`() {
+        setDispatcher(
+            userJson = """{"id":11111,"login":"mixedcase","name":"Mixed Case","email":"mixed@example.com"}""",
+            emailsJson = """[{"email":"mixed@example.com","primary":true,"verified":true}]""",
+            orgsJson = """[{"login":"KVIKLET"}]""",
         )
         val before = userAdapter.listUsers().size
 
         runOauthFlow()
 
         assertThat(userAdapter.listUsers().size).isEqualTo(before + 1)
-        val user = userAdapter.findByEmail("primary@example.com")
-        assertThat(user).isNotNull
-        assertThat(user!!.githubId).isEqualTo("67890")
+        assertThat(userAdapter.findByEmail("mixed@example.com")).isNotNull
     }
 }

@@ -1,6 +1,7 @@
 package dev.kviklet.kviklet.security
 
 import dev.kviklet.kviklet.security.ldap.LdapProperties
+import dev.kviklet.kviklet.security.oauth2.GithubProperties
 import dev.kviklet.kviklet.security.saml.SamlProperties
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -22,6 +23,7 @@ class AuthenticationProviderValidatorTest {
             LdapProperties::class.java,
             IdentityProviderProperties::class.java,
             SamlProperties::class.java,
+            GithubProperties::class.java,
             AuthenticationProviderValidator::class.java,
         )
         .withPropertyValues(
@@ -153,6 +155,59 @@ class AuthenticationProviderValidatorTest {
                     .hasMessageContaining("Only one external authentication provider can be enabled at a time")
                     .hasMessageContaining("OAuth2/OIDC")
                     .hasMessageContaining("SAML")
+            }
+    }
+
+    @Test
+    fun `context fails when GitHub is enabled without allowed orgs`() {
+        contextRunner
+            .withPropertyValues(
+                "ldap.enabled=false",
+                "saml.enabled=false",
+                "kviklet.identity-provider.type=github",
+                "kviklet.identity-provider.client-id=test-client",
+                "kviklet.identity-provider.client-secret=test-secret",
+            )
+            .run { context ->
+                assertThat(context).hasFailed()
+                assertThat(context.startupFailure)
+                    .isInstanceOf(IllegalStateException::class.java)
+                    .hasMessageContaining("kviklet.identity-provider.github.allowed-orgs")
+            }
+    }
+
+    @Test
+    fun `context fails when GitHub allowed orgs contains only blank entries`() {
+        contextRunner
+            .withPropertyValues(
+                "ldap.enabled=false",
+                "saml.enabled=false",
+                "kviklet.identity-provider.type=github",
+                "kviklet.identity-provider.client-id=test-client",
+                "kviklet.identity-provider.client-secret=test-secret",
+                "kviklet.identity-provider.github.allowed-orgs=  , ",
+            )
+            .run { context ->
+                assertThat(context).hasFailed()
+                assertThat(context.startupFailure)
+                    .isInstanceOf(IllegalStateException::class.java)
+                    .hasMessageContaining("kviklet.identity-provider.github.allowed-orgs")
+            }
+    }
+
+    @Test
+    fun `context loads when GitHub is enabled with allowed orgs`() {
+        contextRunner
+            .withPropertyValues(
+                "ldap.enabled=false",
+                "saml.enabled=false",
+                "kviklet.identity-provider.type=github",
+                "kviklet.identity-provider.client-id=test-client",
+                "kviklet.identity-provider.client-secret=test-secret",
+                "kviklet.identity-provider.github.allowed-orgs=my-org",
+            )
+            .run { context ->
+                assertThat(context).hasNotFailed()
             }
     }
 

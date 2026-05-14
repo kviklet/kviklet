@@ -74,7 +74,7 @@ data class IdentityProviderConfig(
                 .clientId(properties.clientId)
                 .clientSecret(properties.clientSecret)
                 .redirectUri(redirectUri)
-                .scope("read:user", "user:email")
+                .scope("read:user", "user:email", "read:org")
                 .authorizationUri(githubProperties.authorizationUri)
                 .tokenUri(githubProperties.tokenUri)
                 .userInfoUri(githubProperties.userInfoUri)
