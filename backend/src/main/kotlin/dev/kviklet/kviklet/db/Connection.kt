@@ -78,6 +78,8 @@ class ConnectionEntity(
     var category: String? = null,
     var dryRunEnabled: Boolean = false,
     var dryRunRequiresApproval: Boolean = true,
+    @Column(name = "masked_columns")
+    var maskedColumns: String? = null,
 
     // Kubernetes connection fields
     @Column(name = "kubernetes_exec_initial_wait_timeout_seconds")
@@ -201,6 +203,7 @@ class ConnectionAdapter(
         category: String? = null,
         dryRunEnabled: Boolean = false,
         dryRunRequiresApproval: Boolean = true,
+        maskedColumns: List<String> = emptyList(),
     ): Connection = decryptCredentialsIfNeeded(
         save(
             ConnectionEntity(
@@ -229,6 +232,7 @@ class ConnectionAdapter(
                 category = category,
                 dryRunEnabled = dryRunEnabled,
                 dryRunRequiresApproval = dryRunRequiresApproval,
+                maskedColumns = maskedColumns.joinToString(",").ifEmpty { null },
             ),
         ),
     )
@@ -256,6 +260,7 @@ class ConnectionAdapter(
         category: String? = null,
         dryRunEnabled: Boolean = false,
         dryRunRequiresApproval: Boolean = true,
+        maskedColumns: List<String> = emptyList(),
     ): Connection {
         val datasourceConnection = connectionRepository.findByIdOrNull(id.toString())
             ?: throw EntityNotFound(
@@ -292,6 +297,7 @@ class ConnectionAdapter(
         datasourceConnection.category = category
         datasourceConnection.dryRunEnabled = dryRunEnabled
         datasourceConnection.dryRunRequiresApproval = dryRunRequiresApproval
+        datasourceConnection.maskedColumns = maskedColumns.joinToString(",").ifEmpty { null }
 
         return decryptCredentialsIfNeeded(save(datasourceConnection))
     }
@@ -405,6 +411,11 @@ class ConnectionAdapter(
                 category = connection.category,
                 dryRunEnabled = connection.dryRunEnabled,
                 dryRunRequiresApproval = connection.dryRunRequiresApproval,
+                maskedColumns = connection.maskedColumns
+                    ?.split(",")
+                    ?.map { it.trim() }
+                    ?.filter { it.isNotEmpty() }
+                    ?: emptyList(),
             )
 
         ConnectionType.KUBERNETES ->

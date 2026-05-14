@@ -64,6 +64,7 @@ const databaseConnectionResponseSchema = withType(
     maxTemporaryAccessDuration: z.number().nullable().optional(),
     storeResults: z.boolean(),
     category: z.string().nullable(),
+    maskedColumns: z.array(z.string()).optional().default([]),
   }),
   "DATASOURCE",
 );
@@ -124,6 +125,7 @@ interface DatabaseConnectionBase extends ConnectionBase {
   dryRunRequiresApproval: boolean;
   maxTemporaryAccessDuration?: number | null;
   storeResults: boolean;
+  maskedColumns?: string | string[];
 }
 
 type DatabaseConnection =

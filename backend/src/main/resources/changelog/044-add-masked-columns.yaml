@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: 044-add-masked-columns
+      author: azhurbilo
+      changes:
+        - addColumn:
+            tableName: connection
+            columns:
+              - column:
+                  name: masked_columns
+                  type: text
+                  constraints:
+                    nullable: true

@@ -94,6 +94,7 @@ class ConnectionService(
             category = request.category ?: connection.category,
             dryRunEnabled = request.dryRunEnabled ?: connection.dryRunEnabled,
             dryRunRequiresApproval = request.dryRunRequiresApproval ?: connection.dryRunRequiresApproval,
+            maskedColumns = request.maskedColumns ?: connection.maskedColumns,
         )
 
         // Recalculate statuses if reviewConfig or maxExecutions changed
@@ -221,6 +222,7 @@ class ConnectionService(
         category: String?,
         dryRunEnabled: Boolean,
         dryRunRequiresApproval: Boolean,
+        maskedColumns: List<String> = emptyList(),
     ): Connection {
         if (authenticationType == AuthenticationType.USER_PASSWORD && password == null) {
             throw IllegalArgumentException("Password is required for USER_PASSWORD authentication")
@@ -254,6 +256,7 @@ class ConnectionService(
             category,
             dryRunEnabled,
             dryRunRequiresApproval,
+            maskedColumns,
         )
     }
 

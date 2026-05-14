@@ -55,6 +55,7 @@ const baseConnectionFormSchema = z.object({
   storeResults: z.boolean(),
   connectionType: z.literal("DATASOURCE").default("DATASOURCE"),
   category: z.string().nullable().optional(),
+  maskedColumns: z.string().optional().default(""),
 });
 
 const connectionFormSchema = z.discriminatedUnion("authenticationType", [
@@ -154,9 +155,10 @@ export default function UpdateDatasourceConnectionForm({
       roleArn: connection.roleArn,
       storeResults: connection.storeResults,
       category: connection.category,
+      maskedColumns: (connection.maskedColumns ?? []).join(", "),
     },
     schema: connectionFormSchema,
-    onSubmit: editConnection,
+    onSubmit: (data) => editConnection(data),
     connectionType: "DATASOURCE",
   });
 
@@ -456,6 +458,21 @@ export default function UpdateDatasourceConnectionForm({
                           {...register("storeResults")}
                         />
                       </div>
+                      {watchType !== DatabaseType.MONGODB && (
+                        <div className="flex flex-col gap-1">
+                          <InputField
+                            id="maskedColumnsRaw"
+                            label="Masked Columns"
+                            placeholder="e.g. password, email, ssn"
+                            tooltip="Comma-separated column names masked with *** in results, history, and CSV exports."
+                            {...register("maskedColumns")}
+                          />
+                          <p className="text-xs text-amber-600 dark:text-amber-400">
+                            ⚠ Application-level masking only. For production data protection prefer native
+                            DB anonymization (e.g. column-level security, masked views).
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </DisclosurePanel>
                 </>

@@ -110,6 +110,7 @@ data class CreateDatasourceConnectionRequest(
     val category: String? = null,
     val dryRunEnabled: Boolean = false,
     val dryRunRequiresApproval: Boolean = true,
+    val maskedColumns: List<String> = emptyList(),
 ) : ConnectionRequest()
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "connectionType")
@@ -175,6 +176,8 @@ data class UpdateDatasourceConnectionRequest(
     val dryRunEnabled: Boolean? = null,
 
     val dryRunRequiresApproval: Boolean? = null,
+
+    val maskedColumns: List<String>? = null,
 ) : UpdateConnectionRequest()
 
 data class UpdateKubernetesConnectionRequest(
@@ -257,6 +260,7 @@ data class DatasourceConnectionResponse(
     val category: String?,
     val dryRunEnabled: Boolean,
     val dryRunRequiresApproval: Boolean,
+    val maskedColumns: List<String>,
 ) : ConnectionResponse(ConnectionType.DATASOURCE) {
     companion object {
         fun fromDto(datasourceConnection: DatasourceConnection) = DatasourceConnectionResponse(
@@ -290,6 +294,7 @@ data class DatasourceConnectionResponse(
             category = datasourceConnection.category,
             dryRunEnabled = datasourceConnection.dryRunEnabled,
             dryRunRequiresApproval = datasourceConnection.dryRunRequiresApproval,
+            maskedColumns = datasourceConnection.maskedColumns,
         )
     }
 }
@@ -379,6 +384,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             category = request.category,
             dryRunEnabled = request.dryRunEnabled,
             dryRunRequiresApproval = request.dryRunRequiresApproval,
+            maskedColumns = request.maskedColumns,
         )
 
     private fun testDatabaseConnection(request: CreateDatasourceConnectionRequest): TestConnectionResult =

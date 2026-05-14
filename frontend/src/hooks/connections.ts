@@ -15,6 +15,14 @@ import {
 import useNotification from "./useNotification";
 import { isApiErrorResponse } from "../api/Errors";
 
+const parseMaskedColumns = (raw: string | string[]): string[] =>
+  typeof raw === "string"
+    ? raw
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : raw;
+
 // Utility function to normalize maxTemporaryAccessDuration field
 // Converts 0 or falsy values to null to match backend expectations
 const normalizeMaxTemporaryAccessDuration = <
@@ -120,13 +128,19 @@ const useConnection = (id: string) => {
       return;
     }
     setLoading(true);
-    if (
-      patchedConnection.connectionType === "DATASOURCE" &&
-      patchedConnection.authenticationType === "USER_PASSWORD" &&
-      patchedConnection.password === ""
-    ) {
-      // ensure that the password is not updated if the user didn't provide a new one
-      patchedConnection.password = undefined;
+    if (patchedConnection.connectionType === "DATASOURCE") {
+      if (
+        patchedConnection.authenticationType === "USER_PASSWORD" &&
+        patchedConnection.password === ""
+      ) {
+        // ensure that the password is not updated if the user didn't provide a new one
+        patchedConnection.password = undefined;
+      }
+      if (patchedConnection.maskedColumns !== undefined) {
+        patchedConnection.maskedColumns = parseMaskedColumns(
+          patchedConnection.maskedColumns,
+        );
+      }
     }
     const normalizedConnection =
       normalizeMaxTemporaryAccessDuration(patchedConnection);
