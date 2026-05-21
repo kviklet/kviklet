@@ -380,7 +380,12 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
             }
             return Pair(true, "")
         } catch (e: JSQLParserException) {
-            return Pair(false, "Error parsing query: ${e.message}")
+            // JSQLParser doesn't support all database-specific syntax (e.g. JSON_TABLE).
+            // Fall back to a simple check that the query starts with SELECT.
+            if (queryToExecute.trimStart().uppercase().startsWith("SELECT")) {
+                return Pair(true, "")
+            }
+            return Pair(false, "Can only download results for select queries!")
         }
     }
 }
