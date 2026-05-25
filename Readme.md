@@ -228,7 +228,9 @@ For Allowed Origins, simply your hosted kviklet url.
 
 After setting those environment variables the login page should show a Login with Keycloak button that redirects to your keycloak instance. In the enterprise edition you can enable role sync to automatically sync roles from your keycloak instance to kviklet. See the [Role Sync](#role-sync-enterprise) section for more details.
 
-#### GitHub
+#### GitHub (Beta)
+
+> **Beta:** GitHub authentication is new and does **not** support [role sync](#role-sync-enterprise) yet — every new user lands with the default role and has to be assigned roles manually.
 
 GitHub is not OIDC-compliant (it's pure OAuth 2.0), so it has dedicated support in Kviklet. Set these environment variables:
 
@@ -244,11 +246,11 @@ Create a GitHub OAuth App at https://github.com/settings/developers and configur
 - Authorization callback URL: `https://[kviklet_host]/api/login/oauth2/code/github`
 - Homepage URL: your hosted Kviklet URL
 
-`KVIKLET_IDENTITYPROVIDER_GITHUB_ALLOWEDORGS` is **required** (Kviklet refuses to start without it). GitHub OAuth Apps cannot restrict who is allowed to authenticate — any user on github.com can complete the OAuth flow against your app — so Kviklet enforces this on its side by calling `/user/orgs` after authentication and rejecting users who are not a member of at least one configured org. Org names are compared case-insensitively; up to 100 of the user's orgs are checked.
+`KVIKLET_IDENTITYPROVIDER_GITHUB_ALLOWEDORGS` is **required** (Kviklet refuses to start without it). GitHub OAuth Apps can't restrict who completes the OAuth flow, so Kviklet calls `/user/orgs` after authentication and rejects users who are not a member of at least one allowlisted org (case-insensitive, first 100 orgs checked).
 
-Kviklet requests the `read:user`, `user:email` and `read:org` scopes. `read:org` is needed for the membership check and to surface private org memberships. Users with private email addresses on their GitHub account still log in successfully — Kviklet falls back to the GitHub `/user/emails` endpoint to fetch the primary verified email.
+For the org check to see a user's membership, the user must click **Grant** (or **Request**) next to each allowlisted org on the OAuth consent screen. If the org has "Restrict third-party OAuth applications" enabled, an org owner also has to approve the OAuth app once before any member's membership becomes visible.
 
-After setting those environment variables a "Login with github" button appears on the login page. As with the other SSO methods, new users have no permissions by default — assign them a role after their first login.
+Kviklet requests the `read:user`, `user:email` and `read:org` scopes. Emails are always read from `/user/emails` and only a `primary && verified` entry is accepted, so users with private email addresses still log in successfully.
 
 #### Other OIDC providers
 
