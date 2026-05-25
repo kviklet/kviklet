@@ -17,6 +17,7 @@ sealed class IdpIdentifier {
     data class Saml(val nameId: String) : IdpIdentifier()
     data class Oidc(val subject: String) : IdpIdentifier()
     data class Ldap(val identifier: String) : IdpIdentifier()
+    data class GitHub(val id: String) : IdpIdentifier()
 }
 
 /**
@@ -98,6 +99,7 @@ class UserAuthService(
         is IdpIdentifier.Saml -> userAdapter.findBySamlNameId(idpIdentifier.nameId)
         is IdpIdentifier.Oidc -> userAdapter.findBySubject(idpIdentifier.subject)
         is IdpIdentifier.Ldap -> userAdapter.findByLdapIdentifier(idpIdentifier.identifier)
+        is IdpIdentifier.GitHub -> userAdapter.findByGithubId(idpIdentifier.id)
     }
 
     private fun updateUserIdentifier(
@@ -112,6 +114,7 @@ class UserAuthService(
                 samlNameId = idpIdentifier.nameId,
                 subject = null,
                 ldapIdentifier = null,
+                githubId = null,
                 password = null,
                 email = email,
                 fullName = fullName ?: user.fullName,
@@ -121,6 +124,7 @@ class UserAuthService(
                 subject = idpIdentifier.subject,
                 samlNameId = null,
                 ldapIdentifier = null,
+                githubId = null,
                 password = null,
                 email = email,
                 fullName = fullName ?: user.fullName,
@@ -130,6 +134,17 @@ class UserAuthService(
                 ldapIdentifier = idpIdentifier.identifier,
                 subject = null,
                 samlNameId = null,
+                githubId = null,
+                password = null,
+                email = email,
+                fullName = fullName ?: user.fullName,
+            )
+
+            is IdpIdentifier.GitHub -> user.copy(
+                githubId = idpIdentifier.id,
+                subject = null,
+                samlNameId = null,
+                ldapIdentifier = null,
                 password = null,
                 email = email,
                 fullName = fullName ?: user.fullName,

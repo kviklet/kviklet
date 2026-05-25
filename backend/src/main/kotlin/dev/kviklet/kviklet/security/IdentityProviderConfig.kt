@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.security
 
+import dev.kviklet.kviklet.security.oauth2.GithubProperties
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
@@ -7,6 +8,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.Order
 import org.springframework.core.env.Environment
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
+import org.springframework.security.config.oauth2.client.CommonOAuth2Provider
 import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClientService
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService
 import org.springframework.security.oauth2.client.endpoint.DefaultAuthorizationCodeTokenResponseClient
@@ -50,6 +52,7 @@ class IdentityProviderProperties {
 @EnableWebSecurity
 data class IdentityProviderConfig(
     private val properties: IdentityProviderProperties,
+    private val githubProperties: GithubProperties,
     private val environment: Environment,
 ) {
 
@@ -64,6 +67,19 @@ data class IdentityProviderConfig(
             "{baseUrl}/api/login/oauth2/code/{registrationId}"
         } else {
             "{baseUrl}/login/oauth2/code/{registrationId}"
+        }
+        if (properties.type == "github") {
+            val registration = CommonOAuth2Provider.GITHUB
+                .getBuilder("github")
+                .clientId(properties.clientId)
+                .clientSecret(properties.clientSecret)
+                .redirectUri(redirectUri)
+                .scope("read:user", "user:email", "read:org")
+                .authorizationUri(githubProperties.authorizationUri)
+                .tokenUri(githubProperties.tokenUri)
+                .userInfoUri(githubProperties.userInfoUri)
+                .build()
+            return InMemoryClientRegistrationRepository(registration)
         }
         if (properties.getIssuer().isNullOrBlank() &&
             (
