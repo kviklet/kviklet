@@ -75,6 +75,7 @@ class CorsSettings {
 @EnableWebSecurity
 class SecurityConfig(
     private val oidcLoginSuccessHandler: OidcLoginSuccessHandler,
+    private val ssoAuthenticationFailureHandler: SsoAuthenticationFailureHandler,
     private val customAuthenticationProvider: CustomAuthenticationProvider,
     private val oidcUserService: OidcUserService,
     private val githubOAuth2UserService: GithubOAuth2UserService,
@@ -194,6 +195,7 @@ class SecurityConfig(
             if (idpProperties.isOauth2Enabled()) {
                 oauth2Login {
                     authenticationSuccessHandler = oidcLoginSuccessHandler
+                    authenticationFailureHandler = ssoAuthenticationFailureHandler
                     userInfoEndpoint {
                         oidcUserService = this@SecurityConfig.oidcUserService
                         userService = this@SecurityConfig.githubOAuth2UserService
@@ -204,6 +206,7 @@ class SecurityConfig(
             if (samlProperties.isSamlEnabled()) {
                 saml2Login {
                     samlLoginSuccessHandler?.let { authenticationSuccessHandler = it }
+                    authenticationFailureHandler = ssoAuthenticationFailureHandler
                 }
 
                 saml2Metadata { }

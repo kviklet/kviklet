@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.authentication.BadCredentialsException
+import org.springframework.web.HttpRequestMethodNotSupportedException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -109,6 +110,15 @@ class ExceptionHandlerController {
     fun handleEntityNotFound(ex: EntityNotFound, request: HttpServletRequest): ResponseEntity<Any> {
         logger.error("Entity not found at ${request.requestURI}", ex)
         return ResponseEntity(ErrorResponse(ex.message), HttpStatus.NOT_FOUND)
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException::class)
+    fun handleMethodNotSupported(
+        ex: HttpRequestMethodNotSupportedException,
+        request: HttpServletRequest,
+    ): ResponseEntity<Any> {
+        logger.info("Method not allowed at ${request.requestURI}: ${ex.message}")
+        return ResponseEntity(ErrorResponse(ex.message ?: "Method not allowed"), HttpStatus.METHOD_NOT_ALLOWED)
     }
 
     @ExceptionHandler(Exception::class)
