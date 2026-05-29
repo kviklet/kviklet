@@ -76,9 +76,8 @@ fun buildInitialHandshake(connectionId: Int, salt: ByteArray): ByteArray {
     
     // Capability flags lower 2 bytes (0x820c)
     // CLIENT_LONG_PASSWORD | CLIENT_FOUND_ROWS | CLIENT_CONNECT_WITH_DB | CLIENT_PROTOCOL_41 | CLIENT_SECURE_CONNECTION
-    // Also add CLIENT_SSL (0x0800) if we want to allow SSL!
     bos.write(0x0c)
-    bos.write(0x8a) // 0x8a has CLIENT_SSL set! (0x82 | 0x08)
+    bos.write(0x82) 
     
     bos.write(45) // Character set: utf8mb4_general_ci
     
@@ -270,24 +269,30 @@ fun setupClientMySql(
     }
 
     // 4. Parse Handshake Response
+    println("Parsing Handshake Response. Payload size: ${payload.size}")
     val response = HandshakeResponse.parse(payload)
+    println("Parsed Handshake Response. Username: '${response.username}', Database: '${response.database}', Plugin: '${response.authPluginName}'")
 
     // 5. Verify username and password
     if (response.username != username) {
+        println("Username mismatch: expected '$username', got '${response.username}'")
         val errPayload = buildErrPacket(1045, "28000", "Access denied for user '${response.username}'")
         writePacket(output, (seqId + 1).toByte(), errPayload)
         throw IOException("Authentication failed: invalid username '${response.username}'")
     }
 
     if (!verifyPassword(salt, password, response.authResponse)) {
+        println("Password validation failed")
         val errPayload = buildErrPacket(1045, "28000", "Access denied for user '${response.username}' (using password: YES)")
         writePacket(output, (seqId + 1).toByte(), errPayload)
         throw IOException("Authentication failed: invalid password")
     }
 
+    println("Authentication successful! Sending OK packet...")
     // 6. Send OK packet
     val okPayload = buildOkPacket()
     writePacket(output, (seqId + 1).toByte(), okPayload)
+    println("OK packet sent with sequence ID: ${(seqId + 1)}")
 
     return finalSocket
 }
