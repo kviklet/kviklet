@@ -4,6 +4,7 @@ import dev.kviklet.kviklet.helper.ExecutionRequestFactory
 import dev.kviklet.kviklet.proxy.mysql.MySqlProxy
 import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
+import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.db.ExecutePayload
 import io.mockk.every
 import io.mockk.mockk
@@ -35,6 +36,7 @@ class ManualIntegrationTest {
         }
 
         val proxy = MySqlProxy(
+            datasourceType = DatasourceType.MYSQL,
             targetHost = "127.0.0.1",
             targetPort = 33066,
             databaseName = "testdb",

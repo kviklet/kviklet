@@ -57,7 +57,7 @@ fun generateRandomSalt(): ByteArray {
     return salt
 }
 
-fun buildInitialHandshake(connectionId: Int, salt: ByteArray): ByteArray {
+fun buildInitialHandshake(connectionId: Int, salt: ByteArray, supportSsl: Boolean): ByteArray {
     val serverVersion = "8.0.35-kviklet"
     val bos = ByteArrayOutputStream()
     bos.write(10) // Protocol version
@@ -74,10 +74,14 @@ fun buildInitialHandshake(connectionId: Int, salt: ByteArray): ByteArray {
     bos.write(salt, 0, 8)
     bos.write(0) // filler
     
-    // Capability flags lower 2 bytes (0x820c)
+    // Capability flags lower 2 bytes (0x820c or 0x8a0c)
     // CLIENT_LONG_PASSWORD | CLIENT_FOUND_ROWS | CLIENT_CONNECT_WITH_DB | CLIENT_PROTOCOL_41 | CLIENT_SECURE_CONNECTION
     bos.write(0x0c)
-    bos.write(0x82) 
+    if (supportSsl) {
+        bos.write(0x8a) // 0x8a has CLIENT_SSL set! (0x82 | 0x08)
+    } else {
+        bos.write(0x82)
+    } 
     
     bos.write(45) // Character set: utf8mb4_general_ci
     
@@ -239,7 +243,7 @@ fun setupClientMySql(
 
     // 1. Send Initial Handshake
     val salt = generateRandomSalt()
-    val handshakePayload = buildInitialHandshake(1, salt)
+    val handshakePayload = buildInitialHandshake(1, salt, tlsCert != null)
     writePacket(output, 0, handshakePayload)
 
     // 2. Read Client Handshake Response
@@ -273,19 +277,15 @@ fun setupClientMySql(
     val response = HandshakeResponse.parse(payload)
     println("Parsed Handshake Response. Username: '${response.username}', Database: '${response.database}', Plugin: '${response.authPluginName}'")
 
-    // 5. Verify username and password
-    if (response.username != username) {
-        println("Username mismatch: expected '$username', got '${response.username}'")
-        val errPayload = buildErrPacket(1045, "28000", "Access denied for user '${response.username}'")
-        writePacket(output, (seqId + 1).toByte(), errPayload)
-        throw IOException("Authentication failed: invalid username '${response.username}'")
-    }
+    // 5. Verify username and password (indistinguishable paths to prevent username enumeration and timing attacks)
+    val isUsernameValid = (response.username == username)
+    val isPasswordValid = verifyPassword(salt, password, response.authResponse)
 
-    if (!verifyPassword(salt, password, response.authResponse)) {
-        println("Password validation failed")
+    if (!isUsernameValid || !isPasswordValid) {
+        println("Authentication failed for user '${response.username}'")
         val errPayload = buildErrPacket(1045, "28000", "Access denied for user '${response.username}' (using password: YES)")
         writePacket(output, (seqId + 1).toByte(), errPayload)
-        throw IOException("Authentication failed: invalid password")
+        throw IOException("Authentication failed: Access denied for user '${response.username}'")
     }
 
     println("Authentication successful! Sending OK packet...")

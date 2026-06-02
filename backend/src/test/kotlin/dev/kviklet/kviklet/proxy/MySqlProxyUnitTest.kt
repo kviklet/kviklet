@@ -1,6 +1,7 @@
 package dev.kviklet.kviklet.proxy
 
 import dev.kviklet.kviklet.proxy.mysql.MySqlClientPacketParser
+import dev.kviklet.kviklet.proxy.mysql.MySqlServerPacketParser
 import dev.kviklet.kviklet.proxy.mysql.buildInitialHandshake
 import dev.kviklet.kviklet.proxy.mysql.buildErrPacket
 import dev.kviklet.kviklet.proxy.mysql.buildOkPacket
@@ -51,9 +52,12 @@ class MySqlProxyUnitTest {
     @Test
     fun `test MySqlClientPacketParser parses COM_QUERY successfully`() {
         var parsedQuery = ""
-        val parser = MySqlClientPacketParser { query ->
-            parsedQuery = query
-        }
+        val parser = MySqlClientPacketParser(
+            onQuery = { parsedQuery = it },
+            onPrepare = {},
+            onExecute = {},
+            onQuit = {}
+        )
 
         val sql = "SELECT * FROM users WHERE id = 1"
         val sqlBytes = sql.toByteArray(Charsets.UTF_8)
@@ -77,9 +81,12 @@ class MySqlProxyUnitTest {
     @Test
     fun `test MySqlClientPacketParser parses COM_STMT_PREPARE successfully`() {
         var parsedQuery = ""
-        val parser = MySqlClientPacketParser { query ->
-            parsedQuery = query
-        }
+        val parser = MySqlClientPacketParser(
+            onQuery = {},
+            onPrepare = { parsedQuery = it },
+            onExecute = {},
+            onQuit = {}
+        )
 
         val sql = "INSERT INTO logs (message) VALUES (?)"
         val sqlBytes = sql.toByteArray(Charsets.UTF_8)
@@ -100,9 +107,87 @@ class MySqlProxyUnitTest {
     }
 
     @Test
+    fun `test MySqlClientPacketParser parses COM_STMT_EXECUTE successfully`() {
+        var executedStmtId = 0
+        val parser = MySqlClientPacketParser(
+            onQuery = {},
+            onPrepare = {},
+            onExecute = { executedStmtId = it },
+            onQuit = {}
+        )
+
+        val bos = ByteArrayOutputStream()
+        val length = 5 // 1 cmd + 4 stmtId
+        bos.write(length and 0xFF)
+        bos.write((length ushr 8) and 0xFF)
+        bos.write((length ushr 16) and 0xFF)
+        bos.write(0) // Sequence ID
+        
+        bos.write(0x17) // COM_STMT_EXECUTE command byte
+        bos.write(42 and 0xFF) // stmtId byte 1
+        bos.write(0)
+        bos.write(0)
+        bos.write(0)
+
+        parser.addBytes(bos.toByteArray())
+
+        assertEquals(42, executedStmtId)
+    }
+
+    @Test
+    fun `test MySqlClientPacketParser parses COM_QUIT successfully`() {
+        var quitCalled = false
+        val parser = MySqlClientPacketParser(
+            onQuery = {},
+            onPrepare = {},
+            onExecute = {},
+            onQuit = { quitCalled = true }
+        )
+
+        val bos = ByteArrayOutputStream()
+        val length = 1
+        bos.write(length and 0xFF)
+        bos.write((length ushr 8) and 0xFF)
+        bos.write((length ushr 16) and 0xFF)
+        bos.write(0) // Sequence ID
+        
+        bos.write(0x01) // COM_QUIT command byte
+
+        parser.addBytes(bos.toByteArray())
+
+        assertTrue(quitCalled)
+    }
+
+    @Test
+    fun `test MySqlServerPacketParser parses STMT_PREPARE_OK successfully`() {
+        var returnedStmtId = 0
+        val parser = MySqlServerPacketParser { returnedStmtId = it }
+
+        val bos = ByteArrayOutputStream()
+        val length = 12 // 1 status + 4 stmt_id + 2 columns + 2 params + 1 filler + 2 warnings
+        bos.write(length and 0xFF)
+        bos.write((length ushr 8) and 0xFF)
+        bos.write((length ushr 16) and 0xFF)
+        bos.write(1) // Sequence ID
+
+        bos.write(0x00) // status
+        bos.write(99 and 0xFF) // stmtId byte 1
+        bos.write(0)
+        bos.write(0)
+        bos.write(0)
+        
+        // Filler columns, params, warning
+        for (i in 0 until 7) bos.write(0)
+
+        parser.addBytes(bos.toByteArray())
+
+        assertEquals(99, returnedStmtId)
+    }
+
+    @Test
     fun `test buildInitialHandshake structure`() {
         val salt = ByteArray(20) { it.toByte() }
-        val handshake = buildInitialHandshake(1234, salt)
+        val handshake = buildInitialHandshake(1234, salt, false)
         
         // Protocol version must be 10
         assertEquals(10.toByte(), handshake[0])

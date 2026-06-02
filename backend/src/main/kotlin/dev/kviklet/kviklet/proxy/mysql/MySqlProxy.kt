@@ -6,6 +6,7 @@ import dev.kviklet.kviklet.proxy.postgres.getShutdownDate
 import dev.kviklet.kviklet.proxy.postgres.tlsCertificateFactory
 import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
+import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import java.net.ServerSocket
 import java.net.Socket
@@ -15,6 +16,7 @@ import java.util.concurrent.Executors
 import kotlin.concurrent.schedule
 
 class MySqlProxy(
+    datasourceType: DatasourceType,
     targetHost: String,
     targetPort: Int,
     databaseName: String,
@@ -32,7 +34,7 @@ class MySqlProxy(
     private val maxConnections = 15
     private var currentConnections = 0
     private var targetMySql: TargetMySqlSocketFactory =
-        TargetMySqlSocketFactory(authenticationDetails, databaseName, targetHost, targetPort)
+        TargetMySqlSocketFactory(datasourceType, authenticationDetails, databaseName, targetHost, targetPort)
     var isRunning: Boolean = false
         private set
 

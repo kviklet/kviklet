@@ -1064,6 +1064,7 @@ class ExecutionRequestService(
                 )
             } else if (datasourceType == DatasourceType.MYSQL || datasourceType == DatasourceType.MARIADB) {
                 MySqlProxy(
+                    datasourceType,
                     hostname,
                     port,
                     databaseName,
