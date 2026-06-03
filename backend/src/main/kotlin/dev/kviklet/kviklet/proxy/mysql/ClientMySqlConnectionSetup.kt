@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.proxy.mysql
 
 import dev.kviklet.kviklet.proxy.postgres.TLSCertificate
 import dev.kviklet.kviklet.proxy.postgres.enableSSL
+import org.slf4j.LoggerFactory
 import java.io.ByteArrayOutputStream
 import java.io.EOFException
 import java.io.IOException
@@ -13,6 +14,8 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.security.MessageDigest
 import java.security.SecureRandom
+
+private val logger = LoggerFactory.getLogger("ClientMySqlConnectionSetup")
 
 fun readPacket(input: InputStream): Pair<Byte, ByteArray> {
     val header = ByteArray(4)
@@ -282,26 +285,25 @@ fun setupClientMySql(
     }
 
     // 4. Parse Handshake Response
-    println("Parsing Handshake Response. Payload size: ${payload.size}")
+    logger.debug("Parsing handshake response, payload size: {}", payload.size)
     val response = HandshakeResponse.parse(payload)
-    println("Parsed Handshake Response. Username: '${response.username}', Database: '${response.database}', Plugin: '${response.authPluginName}'")
 
     // 5. Verify username and password (indistinguishable paths to prevent username enumeration and timing attacks)
     val isUsernameValid = (response.username == username)
     val isPasswordValid = verifyPassword(salt, password, response.authResponse)
 
     if (!isUsernameValid || !isPasswordValid) {
-        println("Authentication failed for user '${response.username}'")
+        // Echo the client-supplied username back in the wire-protocol error packet only;
+        // never log it or embed it in the server-side exception to avoid leaking attempted usernames.
         val errPayload = buildErrPacket(1045, "28000", "Access denied for user '${response.username}' (using password: YES)")
         writePacket(output, (seqId + 1).toByte(), errPayload)
-        throw IOException("Authentication failed: Access denied for user '${response.username}'")
+        throw IOException("Authentication failed: access denied")
     }
 
-    println("Authentication successful! Sending OK packet...")
     // 6. Send OK packet
     val okPayload = buildOkPacket()
     writePacket(output, (seqId + 1).toByte(), okPayload)
-    println("OK packet sent with sequence ID: ${(seqId + 1)}")
+    logger.debug("Authentication successful, OK packet sent")
 
     return finalSocket
 }

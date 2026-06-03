@@ -9,6 +9,7 @@ import dev.kviklet.kviklet.db.ExecutePayload
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.sql.DriverManager
@@ -60,7 +61,7 @@ class ManualIntegrationTest {
             Thread.sleep(1000)
             sleepCycle++
         }
-        assert(proxy.isRunning)
+        assertTrue(proxy.isRunning)
 
         // Connect via JDBC to the Proxy
         val props = Properties()

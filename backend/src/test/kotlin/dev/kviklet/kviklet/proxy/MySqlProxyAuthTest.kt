@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.proxy
 
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
@@ -7,6 +8,6 @@ import org.junit.jupiter.api.Test
 class MySqlProxyAuthTest {
     @Test
     fun dummyTest() {
-        assert(true)
+        assertTrue(true)
     }
 }

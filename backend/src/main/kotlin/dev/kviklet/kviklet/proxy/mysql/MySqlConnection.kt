@@ -43,20 +43,34 @@ class MySqlConnection(
                 auditQuery(query)
             }
         },
+        onClose = { stmtId ->
+            // Release the stored query when the client closes the prepared statement
+            preparedQueries.remove(stmtId)
+        },
         onQuit = {
             terminationMessageReceived = true
         }
     )
 
-    private val serverParser = MySqlServerPacketParser { stmtId ->
-        synchronized(this) {
-            if (awaitingPrepareResponse) {
-                lastPreparedQuery?.let { preparedQueries[stmtId] = it }
+    private val serverParser = MySqlServerPacketParser(
+        onPrepareOk = { stmtId ->
+            synchronized(this) {
+                if (awaitingPrepareResponse) {
+                    lastPreparedQuery?.let { preparedQueries[stmtId] = it }
+                    awaitingPrepareResponse = false
+                    lastPreparedQuery = null
+                }
+            }
+        },
+        onPrepareErr = {
+            // The server rejected the COM_STMT_PREPARE; drop the pending state so the
+            // next unrelated OK packet is not mistaken for this prepare's response.
+            synchronized(this) {
                 awaitingPrepareResponse = false
                 lastPreparedQuery = null
             }
-        }
-    }
+        },
+    )
 
     private fun auditQuery(query: String) {
         try {
@@ -132,6 +146,7 @@ class MySqlClientPacketParser(
     private val onQuery: (String) -> Unit,
     private val onPrepare: (String) -> Unit,
     private val onExecute: (Int) -> Unit,
+    private val onClose: (Int) -> Unit = {},
     private val onQuit: () -> Unit
 ) {
     private val buffer = ByteArrayOutputStream()
@@ -186,6 +201,15 @@ class MySqlClientPacketParser(
                                 onExecute(stmtId)
                             }
                         }
+                        0x19 -> { // COM_STMT_CLOSE
+                            if (payload.size >= 5) {
+                                val stmtId = (payload[1].toInt() and 0xFF) or
+                                             ((payload[2].toInt() and 0xFF) shl 8) or
+                                             ((payload[3].toInt() and 0xFF) shl 16) or
+                                             ((payload[4].toInt() and 0xFF) shl 24)
+                                onClose(stmtId)
+                            }
+                        }
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -202,7 +226,10 @@ class MySqlClientPacketParser(
     }
 }
 
-class MySqlServerPacketParser(private val onPrepareOk: (Int) -> Unit) {
+class MySqlServerPacketParser(
+    private val onPrepareOk: (Int) -> Unit,
+    private val onPrepareErr: () -> Unit = {},
+) {
     private val buffer = ByteArrayOutputStream()
 
     fun addBytes(bytes: ByteArray) {
@@ -229,8 +256,13 @@ class MySqlServerPacketParser(private val onPrepareOk: (Int) -> Unit) {
             
             if (payload.isNotEmpty()) {
                 val status = payload[0].toInt() and 0xFF
-                // STMT_PREPARE_OK starts with 0x00 status and is 12 bytes long
-                if (status == 0x00 && payload.size >= 9) {
+                // COM_STMT_PREPARE_OK has a fixed 12-byte payload (0x00 status + 4 stmt_id
+                // + 2 columns + 2 params + 1 reserved + 2 warnings). Requiring the exact
+                // length avoids mistaking a generic OK packet (also 0x00) for a prepare-ok.
+                // ERR packets (0xFF) clear any pending prepare so a later OK is not misread.
+                if (status == 0xFF) {
+                    onPrepareErr()
+                } else if (status == 0x00 && payload.size == 12) {
                     try {
                         val stmtId = (payload[1].toInt() and 0xFF) or
                                      ((payload[2].toInt() and 0xFF) shl 8) or
