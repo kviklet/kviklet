@@ -8,6 +8,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.Socket
+import java.nio.BufferUnderflowException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.security.MessageDigest
@@ -118,64 +119,72 @@ class HandshakeResponse(
 ) {
     companion object {
         fun parse(payload: ByteArray): HandshakeResponse {
-            val buffer = ByteBuffer.wrap(payload).order(ByteOrder.LITTLE_ENDIAN)
-            val capabilities = buffer.int
-            val maxPacketSize = buffer.int
-            val charset = buffer.get()
-            // Skip 23 bytes of reserved/filler
-            for (i in 0 until 23) {
-                buffer.get()
-            }
-            // Read null-terminated username
-            val usernameBytes = ByteArrayOutputStream()
-            while (true) {
-                val b = buffer.get()
-                if (b == 0.toByte()) break
-                usernameBytes.write(b.toInt())
-            }
-            val username = String(usernameBytes.toByteArray(), Charsets.UTF_8)
-            
-            // Read auth response
-            var authResponseLen = 0
-            val hasSecureConnection = (capabilities and 0x8000) != 0
-            val authResponse = if (hasSecureConnection) {
-                authResponseLen = buffer.get().toInt() and 0xFF
-                val authBytes = ByteArray(authResponseLen)
-                buffer.get(authBytes)
-                authBytes
-            } else {
-                val authBytesStream = ByteArrayOutputStream()
+            try {
+                val buffer = ByteBuffer.wrap(payload).order(ByteOrder.LITTLE_ENDIAN)
+                val capabilities = buffer.int
+                val maxPacketSize = buffer.int
+                val charset = buffer.get()
+                // Skip 23 bytes of reserved/filler
+                for (i in 0 until 23) {
+                    buffer.get()
+                }
+                // Read null-terminated username
+                val usernameBytes = ByteArrayOutputStream()
                 while (true) {
                     val b = buffer.get()
                     if (b == 0.toByte()) break
-                    authBytesStream.write(b.toInt())
+                    usernameBytes.write(b.toInt())
                 }
-                authBytesStream.toByteArray()
-            }
-            
-            var database: String? = null
-            if ((capabilities and 0x0008) != 0) {
-                val dbBytes = ByteArrayOutputStream()
-                while (buffer.hasRemaining()) {
-                    val b = buffer.get()
-                    if (b == 0.toByte()) break
-                    dbBytes.write(b.toInt())
+                val username = String(usernameBytes.toByteArray(), Charsets.UTF_8)
+
+                // Reject lenenc-encoded auth data — we don't advertise this capability
+                if ((capabilities and 0x00200000) != 0) {
+                    throw IOException("CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA is not supported by this proxy")
                 }
-                database = String(dbBytes.toByteArray(), Charsets.UTF_8)
-            }
-            
-            var authPluginName: String? = null
-            if ((capabilities and 0x00080000) != 0) {
-                val pluginBytes = ByteArrayOutputStream()
-                while (buffer.hasRemaining()) {
-                    val b = buffer.get()
-                    if (b == 0.toByte()) break
-                    pluginBytes.write(b.toInt())
+
+                // Read auth response
+                val hasSecureConnection = (capabilities and 0x8000) != 0
+                val authResponse = if (hasSecureConnection) {
+                    val authResponseLen = buffer.get().toInt() and 0xFF
+                    val authBytes = ByteArray(authResponseLen)
+                    buffer.get(authBytes)
+                    authBytes
+                } else {
+                    val authBytesStream = ByteArrayOutputStream()
+                    while (true) {
+                        val b = buffer.get()
+                        if (b == 0.toByte()) break
+                        authBytesStream.write(b.toInt())
+                    }
+                    authBytesStream.toByteArray()
                 }
-                authPluginName = String(pluginBytes.toByteArray(), Charsets.UTF_8)
+
+                var database: String? = null
+                if ((capabilities and 0x0008) != 0) {
+                    val dbBytes = ByteArrayOutputStream()
+                    while (buffer.hasRemaining()) {
+                        val b = buffer.get()
+                        if (b == 0.toByte()) break
+                        dbBytes.write(b.toInt())
+                    }
+                    database = String(dbBytes.toByteArray(), Charsets.UTF_8)
+                }
+
+                var authPluginName: String? = null
+                if ((capabilities and 0x00080000) != 0) {
+                    val pluginBytes = ByteArrayOutputStream()
+                    while (buffer.hasRemaining()) {
+                        val b = buffer.get()
+                        if (b == 0.toByte()) break
+                        pluginBytes.write(b.toInt())
+                    }
+                    authPluginName = String(pluginBytes.toByteArray(), Charsets.UTF_8)
+                }
+
+                return HandshakeResponse(username, authResponse, database, authPluginName)
+            } catch (e: BufferUnderflowException) {
+                throw IOException("Malformed HandshakeResponse packet (truncated)", e)
             }
-            
-            return HandshakeResponse(username, authResponse, database, authPluginName)
         }
     }
 }
@@ -205,7 +214,7 @@ fun verifyPassword(scramble: ByteArray, password: String, clientHash: ByteArray)
     val sha1Concat = sha1(concat)
     val expectedClientHash = xor(sha1Password, sha1Concat)
     
-    return expectedClientHash.contentEquals(clientHash)
+    return MessageDigest.isEqual(expectedClientHash, clientHash)
 }
 
 fun buildOkPacket(): ByteArray {

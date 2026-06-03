@@ -12,7 +12,9 @@ import java.net.ServerSocket
 import java.net.Socket
 import java.time.LocalDateTime
 import java.util.*
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.schedule
 
 class MySqlProxy(
@@ -27,15 +29,15 @@ class MySqlProxy(
     private val tlsCertificate: TLSCertificate? = tlsCertificateFactory(),
 ) {
     private val threadPool = Executors.newCachedThreadPool()
-    private val clientConnections: ArrayList<MySqlConnection> = arrayListOf()
+    private val clientConnections: CopyOnWriteArrayList<MySqlConnection> = CopyOnWriteArrayList()
     private lateinit var serverSocket: ServerSocket
     private var proxyUsername = "mysql"
     private var proxyPassword = "mysql"
     private val maxConnections = 15
-    private var currentConnections = 0
+    private val currentConnections = AtomicInteger(0)
     private var targetMySql: TargetMySqlSocketFactory =
         TargetMySqlSocketFactory(datasourceType, authenticationDetails, databaseName, targetHost, targetPort)
-    var isRunning: Boolean = false
+    @Volatile var isRunning: Boolean = false
         private set
 
     fun startServer(
@@ -82,8 +84,8 @@ class MySqlProxy(
 
     private fun startListeningLoop() {
         while (this.isRunning) {
-            if (currentConnections >= maxConnections) {
-                Thread.sleep(1000)
+            if (currentConnections.get() >= maxConnections) {
+                Thread.sleep(100)
                 continue
             }
 
@@ -95,32 +97,38 @@ class MySqlProxy(
     private fun handleClientConnection(clientSocket: Socket) {
         threadPool.submit {
             try {
-                currentConnections++
+                currentConnections.incrementAndGet()
                 handleClient(clientSocket)
             } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
-                if (!clientSocket.isClosed) {
-                    clientSocket.close()
-                }
-                currentConnections--
+                // Guard for the case where handleClient threw before MySqlConnection took ownership
+                if (!clientSocket.isClosed) clientSocket.close()
+                currentConnections.decrementAndGet()
             }
         }
     }
 
     private fun handleClient(clientSocket: Socket) {
         val remoteMySqlConn = targetMySql.createTargetMySqlConnection()
-        val configuredSocket = setupClientMySql(
-            clientSocket,
-            this.tlsCertificate,
-            this.proxyUsername,
-            this.proxyPassword,
-        )
         val forwardSocket = remoteMySqlConn.socket
-        configuredSocket.soTimeout = 10
-        forwardSocket.soTimeout = 10
-        val clientConnection = MySqlConnection(configuredSocket, forwardSocket, eventService, executionRequest, userId)
-        this.clientConnections.add(clientConnection)
-        clientConnection.startHandling()
+        try {
+            val configuredSocket = setupClientMySql(
+                clientSocket,
+                this.tlsCertificate,
+                this.proxyUsername,
+                this.proxyPassword,
+            )
+            val clientConnection = MySqlConnection(configuredSocket, forwardSocket, eventService, executionRequest, userId)
+            clientConnections.add(clientConnection)
+            try {
+                clientConnection.startHandling()
+            } finally {
+                clientConnections.remove(clientConnection)
+            }
+        } catch (e: Exception) {
+            if (!forwardSocket.isClosed) forwardSocket.close()
+            throw e
+        }
     }
 }

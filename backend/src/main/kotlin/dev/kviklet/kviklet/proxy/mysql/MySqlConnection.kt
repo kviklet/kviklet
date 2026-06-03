@@ -7,11 +7,10 @@ import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.Socket
-import java.net.SocketTimeoutException
 
 class MySqlConnection(
-    clientSocket: Socket,
-    targetSocket: Socket,
+    private val clientSocket: Socket,
+    private val targetSocket: Socket,
     private val eventService: EventService,
     private val executionRequest: ExecutionRequest,
     private val userId: String,
@@ -20,8 +19,8 @@ class MySqlConnection(
     private var clientOutput: OutputStream = clientSocket.getOutputStream()
     private var serverInput: InputStream = targetSocket.getInputStream()
     private var serverOutput: OutputStream = targetSocket.getOutputStream()
-    private var terminationMessageReceived: Boolean = false
-    private var serverTerminating: Boolean = false
+    @Volatile private var terminationMessageReceived: Boolean = false
+    @Volatile private var serverTerminating: Boolean = false
 
     @Volatile
     private var awaitingPrepareResponse = false
@@ -69,22 +68,47 @@ class MySqlConnection(
     }
 
     fun close() {
-        this.serverTerminating = true
+        serverTerminating = true
+        // Close both sockets to unblock any pending reads in the forwarding threads
+        try { clientSocket.close() } catch (_: Exception) {}
+        try { targetSocket.close() } catch (_: Exception) {}
     }
 
     fun startHandling() {
-        try {
-            while (!terminationMessageReceived && !serverTerminating) {
-                val clientOk = readFromAnyStream(clientInput) { handleClientData(it) }
-                if (!clientOk) break
-                val serverOk = readFromAnyStream(serverInput) { handleServerData(it) }
-                if (!serverOk) break
+        val clientToServer = Thread {
+            try {
+                val buf = ByteArray(8192)
+                while (!terminationMessageReceived && !serverTerminating) {
+                    val n = try { clientInput.read(buf) } catch (_: Exception) { -1 }
+                    if (n < 0) break
+                    if (n > 0) handleClientData(buf.copyOfRange(0, n))
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                close()
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            close()
         }
+        val serverToClient = Thread {
+            try {
+                val buf = ByteArray(8192)
+                while (!serverTerminating) {
+                    val n = try { serverInput.read(buf) } catch (_: Exception) { -1 }
+                    if (n < 0) break
+                    if (n > 0) handleServerData(buf.copyOfRange(0, n))
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                close()
+            }
+        }
+        clientToServer.isDaemon = true
+        serverToClient.isDaemon = true
+        clientToServer.start()
+        serverToClient.start()
+        clientToServer.join()
+        serverToClient.join()
     }
 
     private fun handleClientData(clientBuffer: ByteArray) {
@@ -227,34 +251,6 @@ class MySqlServerPacketParser(private val onPrepareOk: (Int) -> Unit) {
             buffer.write(data, offset, data.size - offset)
         }
     }
-}
-
-fun readFromAnyStream(input: InputStream, onInputAvailable: (input: ByteArray) -> Unit): Boolean {
-    val singleByte = ByteArray(1)
-    val bytesRead: Int = try {
-        input.read(singleByte, 0, 1)
-    } catch (e: SocketTimeoutException) {
-        0
-    }
-
-    if (bytesRead < 0) {
-        return false // Connection reached EOF / was closed
-    }
-
-    if (bytesRead > 0) {
-        val buff = ByteArray(8192)
-        val read: Int = try {
-            input.read(buff)
-        } catch (e: SocketTimeoutException) {
-            0
-        }
-        if (read > 0) {
-            onInputAvailable(singleByte + buff.copyOfRange(0, read))
-        } else {
-            onInputAvailable(singleByte)
-        }
-    }
-    return true
 }
 
 fun OutputStream.writeAndFlush(b: ByteArray) {

@@ -1080,6 +1080,8 @@ class ExecutionRequestService(
                     startTime,
                     maxTimeMinutes,
                 )
+            } else {
+                throw IllegalArgumentException("Unsupported datasource type for proxying: $datasourceType")
             }
         } catch (e: Exception) {
             // At least print the exception, otherwise it will fail silently in the background
