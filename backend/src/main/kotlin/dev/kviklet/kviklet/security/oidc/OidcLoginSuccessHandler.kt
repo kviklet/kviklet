@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.security.oidc
 
+import dev.kviklet.kviklet.security.KvikletOAuthPrincipal
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.transaction.Transactional
@@ -18,10 +19,10 @@ class OidcLoginSuccessHandler : SimpleUrlAuthenticationSuccessHandler() {
         response: HttpServletResponse?,
         authentication: Authentication?,
     ) {
-        // Convert OIDC authentication to use UserDetailsWithId as principal
-        if (authentication?.principal is OidcUser) {
-            val oidcUser = authentication.principal as OidcUser
-            val userDetails = oidcUser.getUserDetails()
+        // Convert OAuth/OIDC authentication to use UserDetailsWithId as principal
+        val principal = authentication?.principal
+        if (principal is KvikletOAuthPrincipal) {
+            val userDetails = principal.getUserDetails()
             val newAuth = UsernamePasswordAuthenticationToken(
                 userDetails,
                 authentication.credentials,

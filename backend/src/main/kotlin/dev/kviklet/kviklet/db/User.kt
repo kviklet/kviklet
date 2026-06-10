@@ -44,6 +44,9 @@ class UserEntity(
     var samlNameId: String? = null,
 
     @Column(unique = true)
+    var githubId: String? = null,
+
+    @Column(unique = true)
     var email: String = "",
 
     @ManyToMany(cascade = [CascadeType.PERSIST], fetch = FetchType.LAZY)
@@ -61,6 +64,7 @@ class UserEntity(
         subject = subject,
         ldapIdentifier = ldapIdentifier,
         samlNameId = samlNameId,
+        githubId = githubId,
         email = email,
         roles = roles.map { it.toDto() }.toMutableSet(),
     )
@@ -82,6 +86,7 @@ data class User(
     val subject: String? = null,
     val ldapIdentifier: String? = null,
     val samlNameId: String? = null,
+    val githubId: String? = null,
     val email: String = "",
     val roles: Set<Role> = HashSet(),
 ) : SecuredDomainObject {
@@ -122,6 +127,8 @@ interface UserRepository : JpaRepository<UserEntity, String> {
     fun findByLdapIdentifier(ldapIdentifier: String): UserEntity?
 
     fun findBySamlNameId(samlNameId: String): UserEntity?
+
+    fun findByGithubId(githubId: String): UserEntity?
 }
 
 @Service
@@ -151,6 +158,12 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
     }
 
     @Transactional(readOnly = true)
+    fun findByGithubId(githubId: String): User? {
+        val userEntity = userRepository.findByGithubId(githubId) ?: return null
+        return userEntity.toDto()
+    }
+
+    @Transactional(readOnly = true)
     fun findById(id: String): User {
         val userEntity = userRepository.findByIdOrNull(id) ?: throw EntityNotFound(
             "User not found",
@@ -167,6 +180,7 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
             password = user.password,
             subject = user.subject,
             samlNameId = user.samlNameId,
+            githubId = user.githubId,
             email = user.email,
             roles = roleRepository.findAllById(user.roles.map { it.getId() }.toSet()).toMutableSet(),
         )
@@ -188,6 +202,7 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
             userEntity.password = user.password
             userEntity.subject = user.subject
             userEntity.samlNameId = user.samlNameId
+            userEntity.githubId = user.githubId
             userEntity.email = user.email
             userEntity.roles = roleRepository.findAllById(user.roles.map { it.getId() }.toSet()).toMutableSet()
             val savedUserEntity = userRepository.save(userEntity)
@@ -205,6 +220,7 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
         userEntity.password = user.password
         userEntity.subject = user.subject
         userEntity.samlNameId = user.samlNameId
+        userEntity.githubId = user.githubId
         userEntity.email = user.email
         // update Roles
         user.roles.let { newRoleIds ->

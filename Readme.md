@@ -190,7 +190,7 @@ docker run \
 ghcr.io/kviklet/kviklet:main
 ```
 
-### SSO via OIDC
+### SSO via OIDC / OAuth2
 
 #### Google
 
@@ -228,9 +228,33 @@ For Allowed Origins, simply your hosted kviklet url.
 
 After setting those environment variables the login page should show a Login with Keycloak button that redirects to your keycloak instance. In the enterprise edition you can enable role sync to automatically sync roles from your keycloak instance to kviklet. See the [Role Sync](#role-sync-enterprise) section for more details.
 
+#### GitHub (Beta)
+
+> **Beta:** GitHub authentication is new and does **not** support [role sync](#role-sync-enterprise) yet — every new user lands with the default role and has to be assigned roles manually.
+
+GitHub is not OIDC-compliant (it's pure OAuth 2.0), so it has dedicated support in Kviklet. Set these environment variables:
+
+```
+KVIKLET_IDENTITYPROVIDER_CLIENTID
+KVIKLET_IDENTITYPROVIDER_CLIENTSECRET
+KVIKLET_IDENTITYPROVIDER_TYPE=github
+KVIKLET_IDENTITYPROVIDER_GITHUB_ALLOWEDORGS=your-org,another-org
+```
+
+Create a GitHub OAuth App at https://github.com/settings/developers and configure:
+
+- Authorization callback URL: `https://[kviklet_host]/api/login/oauth2/code/github`
+- Homepage URL: your hosted Kviklet URL
+
+`KVIKLET_IDENTITYPROVIDER_GITHUB_ALLOWEDORGS` is **required** (Kviklet refuses to start without it). GitHub OAuth Apps can't restrict who completes the OAuth flow, so Kviklet calls `/user/orgs` after authentication and rejects users who are not a member of at least one allowlisted org (case-insensitive, first 100 orgs checked).
+
+For the org check to see a user's membership, the user must click **Grant** (or **Request**) next to each allowlisted org on the OAuth consent screen. If the org has "Restrict third-party OAuth applications" enabled, an org owner also has to approve the OAuth app once before any member's membership becomes visible.
+
+Kviklet requests the `read:user`, `user:email` and `read:org` scopes. Emails are always read from `/user/emails` and only a `primary && verified` entry is accepted, so users with private email addresses still log in successfully.
+
 #### Other OIDC providers
 
-Other OIDC providers should work similarly to Keycloak. Note that the `redirect URI` will change depending on the type you choose, so if you choose `gitlab` it will be `https://[kviklet_host]/api/login/oauth2/code/gitlab`.
+Other OIDC-compliant providers (GitLab, Auth0, Okta, etc.) should work similarly to Keycloak. Note that the `redirect URI` will change depending on the type you choose, so if you choose `gitlab` it will be `https://[kviklet_host]/api/login/oauth2/code/gitlab`.
 If you run into issues feel free to create an issue, we have not tried every single OIDC provider out there (yet) and there might be slight differences in the implementation that might require updates on Kviklet's side.
 
 ### LDAP
