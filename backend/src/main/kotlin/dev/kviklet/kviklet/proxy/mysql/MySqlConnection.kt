@@ -3,10 +3,13 @@ package dev.kviklet.kviklet.proxy.mysql
 import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
+import org.slf4j.LoggerFactory
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.Socket
+
+private val logger = LoggerFactory.getLogger("MySqlConnection")
 
 class MySqlConnection(
     private val clientSocket: Socket,
@@ -79,7 +82,7 @@ class MySqlConnection(
             val executePayload = ExecutePayload(query = query)
             eventService.saveEvent(executionRequest.id!!, userId, executePayload)
         } catch (e: Exception) {
-            e.printStackTrace()
+            logger.error("Failed to audit query", e)
         }
     }
 
@@ -108,7 +111,7 @@ class MySqlConnection(
                     if (n > 0) handleClientData(buf.copyOfRange(0, n))
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                logger.error("Error forwarding client-to-server traffic", e)
             } finally {
                 close()
             }
@@ -126,7 +129,7 @@ class MySqlConnection(
                     if (n > 0) handleServerData(buf.copyOfRange(0, n))
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                logger.error("Error forwarding server-to-client traffic", e)
             } finally {
                 close()
             }
@@ -230,7 +233,7 @@ class MySqlClientPacketParser(
                         }
                     }
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    logger.error("Error parsing client packet", e)
                 }
             }
 
@@ -285,7 +288,7 @@ class MySqlServerPacketParser(private val onPrepareOk: (Int) -> Unit, private va
                             ((payload[4].toInt() and 0xFF) shl 24)
                         onPrepareOk(stmtId)
                     } catch (e: Exception) {
-                        e.printStackTrace()
+                        logger.error("Error parsing server prepare-ok packet", e)
                     }
                 }
             }

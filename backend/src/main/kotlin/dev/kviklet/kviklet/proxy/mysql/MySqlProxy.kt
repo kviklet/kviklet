@@ -8,6 +8,7 @@ import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
+import org.slf4j.LoggerFactory
 import java.net.ServerSocket
 import java.net.Socket
 import java.time.LocalDateTime
@@ -16,6 +17,8 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.schedule
+
+private val logger = LoggerFactory.getLogger("MySqlProxy")
 
 class MySqlProxy(
     datasourceType: DatasourceType,
@@ -101,7 +104,7 @@ class MySqlProxy(
                 currentConnections.incrementAndGet()
                 handleClient(clientSocket)
             } catch (e: Exception) {
-                e.printStackTrace()
+                logger.error("Error handling client connection", e)
             } finally {
                 // Guard for the case where handleClient threw before MySqlConnection took ownership
                 if (!clientSocket.isClosed) clientSocket.close()
