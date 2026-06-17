@@ -1,11 +1,11 @@
 package dev.kviklet.kviklet.proxy
 
+import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.helper.ExecutionRequestFactory
 import dev.kviklet.kviklet.proxy.mysql.MySqlProxy
 import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.DatasourceType
-import dev.kviklet.kviklet.db.ExecutePayload
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -25,7 +25,7 @@ class ManualIntegrationTest {
         val connAuth = AuthenticationDetails.UserPassword("test", "test")
         val executionRequestFactory = ExecutionRequestFactory()
         val request = executionRequestFactory.createDatasourceExecutionRequest()
-        
+
         val capturedQueries = mutableListOf<String>()
         val eventService = mockk<EventService>(relaxed = true)
         every { eventService.saveEvent(any(), any(), any()) } answers {
@@ -44,7 +44,7 @@ class ManualIntegrationTest {
             authenticationDetails = connAuth,
             eventService = eventService,
             executionRequest = request,
-            userId = "integration-test-user"
+            userId = "integration-test-user",
         )
 
         val port = 13307
@@ -54,7 +54,7 @@ class ManualIntegrationTest {
         CompletableFuture.runAsync {
             proxy.startServer(port, tempUser, tempPassword, LocalDateTime.now(), 10)
         }
-        
+
         // Wait for proxy to start
         var sleepCycle = 0
         while (!proxy.isRunning && sleepCycle < 10) {
@@ -68,8 +68,11 @@ class ManualIntegrationTest {
         props.setProperty("user", tempUser)
         props.setProperty("password", tempPassword)
         Class.forName("com.mysql.cj.jdbc.Driver")
-        
-        val conn = DriverManager.getConnection("jdbc:mysql://127.0.0.1:$port/testdb?sslMode=DISABLED&allowPublicKeyRetrieval=true", props)
+
+        val conn = DriverManager.getConnection(
+            "jdbc:mysql://127.0.0.1:$port/testdb?sslMode=DISABLED&allowPublicKeyRetrieval=true",
+            props,
+        )
         conn.use {
             val stmt = conn.createStatement()
             stmt.execute("CREATE TABLE IF NOT EXISTS auto_test (id INT)")

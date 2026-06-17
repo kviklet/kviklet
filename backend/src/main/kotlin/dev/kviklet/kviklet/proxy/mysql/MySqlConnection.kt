@@ -19,7 +19,9 @@ class MySqlConnection(
     private var clientOutput: OutputStream = clientSocket.getOutputStream()
     private var serverInput: InputStream = targetSocket.getInputStream()
     private var serverOutput: OutputStream = targetSocket.getOutputStream()
+
     @Volatile private var terminationMessageReceived: Boolean = false
+
     @Volatile private var serverTerminating: Boolean = false
 
     @Volatile
@@ -49,7 +51,7 @@ class MySqlConnection(
         },
         onQuit = {
             terminationMessageReceived = true
-        }
+        },
     )
 
     private val serverParser = MySqlServerPacketParser(
@@ -84,8 +86,12 @@ class MySqlConnection(
     fun close() {
         serverTerminating = true
         // Close both sockets to unblock any pending reads in the forwarding threads
-        try { clientSocket.close() } catch (_: Exception) {}
-        try { targetSocket.close() } catch (_: Exception) {}
+        try {
+            clientSocket.close()
+        } catch (_: Exception) {}
+        try {
+            targetSocket.close()
+        } catch (_: Exception) {}
     }
 
     fun startHandling() {
@@ -93,7 +99,11 @@ class MySqlConnection(
             try {
                 val buf = ByteArray(8192)
                 while (!terminationMessageReceived && !serverTerminating) {
-                    val n = try { clientInput.read(buf) } catch (_: Exception) { -1 }
+                    val n = try {
+                        clientInput.read(buf)
+                    } catch (_: Exception) {
+                        -1
+                    }
                     if (n < 0) break
                     if (n > 0) handleClientData(buf.copyOfRange(0, n))
                 }
@@ -107,7 +117,11 @@ class MySqlConnection(
             try {
                 val buf = ByteArray(8192)
                 while (!serverTerminating) {
-                    val n = try { serverInput.read(buf) } catch (_: Exception) { -1 }
+                    val n = try {
+                        serverInput.read(buf)
+                    } catch (_: Exception) {
+                        -1
+                    }
                     if (n < 0) break
                     if (n > 0) handleServerData(buf.copyOfRange(0, n))
                 }
@@ -128,7 +142,7 @@ class MySqlConnection(
     private fun handleClientData(clientBuffer: ByteArray) {
         // Feed raw bytes to client parser for query/prepare/execute/quit auditing
         clientParser.addBytes(clientBuffer)
-        
+
         // Forward raw bytes to the server
         serverOutput.writeAndFlush(clientBuffer)
     }
@@ -136,7 +150,7 @@ class MySqlConnection(
     private fun handleServerData(serverBuffer: ByteArray) {
         // Feed raw bytes to server parser to match generated statement IDs
         serverParser.addBytes(serverBuffer)
-        
+
         // Forward raw bytes to the client
         clientOutput.writeAndFlush(serverBuffer)
     }
@@ -147,7 +161,7 @@ class MySqlClientPacketParser(
     private val onPrepare: (String) -> Unit,
     private val onExecute: (Int) -> Unit,
     private val onClose: (Int) -> Unit = {},
-    private val onQuit: () -> Unit
+    private val onQuit: () -> Unit,
 ) {
     private val buffer = ByteArrayOutputStream()
 
@@ -163,16 +177,16 @@ class MySqlClientPacketParser(
         var offset = 0
         while (data.size - offset >= 4) {
             val length = (data[offset].toInt() and 0xFF) or
-                         ((data[offset + 1].toInt() and 0xFF) shl 8) or
-                         ((data[offset + 2].toInt() and 0xFF) shl 16)
-            
+                ((data[offset + 1].toInt() and 0xFF) shl 8) or
+                ((data[offset + 2].toInt() and 0xFF) shl 16)
+
             if (data.size - offset < 4 + length) {
                 break // Need more data for a full packet
             }
-            
+
             val payload = ByteArray(length)
             System.arraycopy(data, offset + 4, payload, 0, length)
-            
+
             if (payload.isNotEmpty()) {
                 val cmd = payload[0].toInt() and 0xFF
                 try {
@@ -180,33 +194,37 @@ class MySqlClientPacketParser(
                         0x01 -> { // COM_QUIT
                             onQuit()
                         }
+
                         0x03 -> { // COM_QUERY
                             val query = String(payload, 1, payload.size - 1, Charsets.UTF_8)
                             if (query.trim().isNotEmpty()) {
                                 onQuery(query)
                             }
                         }
+
                         0x16 -> { // COM_STMT_PREPARE
                             val query = String(payload, 1, payload.size - 1, Charsets.UTF_8)
                             if (query.trim().isNotEmpty()) {
                                 onPrepare(query)
                             }
                         }
+
                         0x17 -> { // COM_STMT_EXECUTE
                             if (payload.size >= 5) {
                                 val stmtId = (payload[1].toInt() and 0xFF) or
-                                             ((payload[2].toInt() and 0xFF) shl 8) or
-                                             ((payload[3].toInt() and 0xFF) shl 16) or
-                                             ((payload[4].toInt() and 0xFF) shl 24)
+                                    ((payload[2].toInt() and 0xFF) shl 8) or
+                                    ((payload[3].toInt() and 0xFF) shl 16) or
+                                    ((payload[4].toInt() and 0xFF) shl 24)
                                 onExecute(stmtId)
                             }
                         }
+
                         0x19 -> { // COM_STMT_CLOSE
                             if (payload.size >= 5) {
                                 val stmtId = (payload[1].toInt() and 0xFF) or
-                                             ((payload[2].toInt() and 0xFF) shl 8) or
-                                             ((payload[3].toInt() and 0xFF) shl 16) or
-                                             ((payload[4].toInt() and 0xFF) shl 24)
+                                    ((payload[2].toInt() and 0xFF) shl 8) or
+                                    ((payload[3].toInt() and 0xFF) shl 16) or
+                                    ((payload[4].toInt() and 0xFF) shl 24)
                                 onClose(stmtId)
                             }
                         }
@@ -215,10 +233,10 @@ class MySqlClientPacketParser(
                     e.printStackTrace()
                 }
             }
-            
+
             offset += 4 + length
         }
-        
+
         buffer.reset()
         if (data.size > offset) {
             buffer.write(data, offset, data.size - offset)
@@ -226,10 +244,7 @@ class MySqlClientPacketParser(
     }
 }
 
-class MySqlServerPacketParser(
-    private val onPrepareOk: (Int) -> Unit,
-    private val onPrepareErr: () -> Unit = {},
-) {
+class MySqlServerPacketParser(private val onPrepareOk: (Int) -> Unit, private val onPrepareErr: () -> Unit = {}) {
     private val buffer = ByteArrayOutputStream()
 
     fun addBytes(bytes: ByteArray) {
@@ -244,16 +259,16 @@ class MySqlServerPacketParser(
         var offset = 0
         while (data.size - offset >= 4) {
             val length = (data[offset].toInt() and 0xFF) or
-                         ((data[offset + 1].toInt() and 0xFF) shl 8) or
-                         ((data[offset + 2].toInt() and 0xFF) shl 16)
-            
+                ((data[offset + 1].toInt() and 0xFF) shl 8) or
+                ((data[offset + 2].toInt() and 0xFF) shl 16)
+
             if (data.size - offset < 4 + length) {
                 break // Need more data for a full packet
             }
-            
+
             val payload = ByteArray(length)
             System.arraycopy(data, offset + 4, payload, 0, length)
-            
+
             if (payload.isNotEmpty()) {
                 val status = payload[0].toInt() and 0xFF
                 // COM_STMT_PREPARE_OK has a fixed 12-byte payload (0x00 status + 4 stmt_id
@@ -265,19 +280,19 @@ class MySqlServerPacketParser(
                 } else if (status == 0x00 && payload.size == 12) {
                     try {
                         val stmtId = (payload[1].toInt() and 0xFF) or
-                                     ((payload[2].toInt() and 0xFF) shl 8) or
-                                     ((payload[3].toInt() and 0xFF) shl 16) or
-                                     ((payload[4].toInt() and 0xFF) shl 24)
+                            ((payload[2].toInt() and 0xFF) shl 8) or
+                            ((payload[3].toInt() and 0xFF) shl 16) or
+                            ((payload[4].toInt() and 0xFF) shl 24)
                         onPrepareOk(stmtId)
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
                 }
             }
-            
+
             offset += 4 + length
         }
-        
+
         buffer.reset()
         if (data.size > offset) {
             buffer.write(data, offset, data.size - offset)

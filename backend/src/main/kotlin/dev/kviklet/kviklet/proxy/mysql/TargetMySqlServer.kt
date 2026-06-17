@@ -61,8 +61,11 @@ class TargetMySqlSocketFactory(
             if (reply.isEmpty()) throw IOException("Empty response from MySQL server during authentication")
 
             when (reply[0].toInt() and 0xFF) {
-                0x00 -> return // OK — authenticated
+                0x00 -> return
+
+                // OK — authenticated
                 0xFF -> throw IOException("MySQL server rejected credentials: ${parseErrMessage(reply)}")
+
                 0xFE -> {
                     // AuthSwitchRequest: 0xFE + plugin name (null-terminated) + auth data
                     val (newPlugin, newNonce) = parseAuthSwitch(reply)
@@ -71,6 +74,7 @@ class TargetMySqlSocketFactory(
                     seq += 1
                     writePacket(output, seq.toByte(), computeAuthToken(plugin, authenticationDetails.password, nonce))
                 }
+
                 0x01 -> {
                     // AuthMoreData — currently only used by caching_sha2_password
                     if (plugin != "caching_sha2_password") {
@@ -78,6 +82,7 @@ class TargetMySqlSocketFactory(
                     }
                     when (reply.getOrNull(1)?.toInt()?.and(0xFF)) {
                         0x03 -> { /* fast_auth_success — server will send OK next */ }
+
                         0x04 -> {
                             // perform_full_authentication: over a plaintext socket we must
                             // request the server's RSA public key and send the encrypted password.
@@ -86,19 +91,27 @@ class TargetMySqlSocketFactory(
                             val (keySeq, keyReply) = readPacket(input)
                             seq = keySeq.toInt()
                             if (keyReply.isEmpty() || (keyReply[0].toInt() and 0xFF) != 0x01) {
-                                throw IOException("Expected RSA public key from server, got 0x${(keyReply.getOrNull(0)?.toInt()?.and(0xFF) ?: -1).toString(16)}")
+                                throw IOException(
+                                    "Expected RSA public key from server, got 0x${(
+                                        keyReply.getOrNull(
+                                            0,
+                                        )?.toInt()?.and(0xFF) ?: -1
+                                        ).toString(16)}",
+                                )
                             }
                             val pem = String(keyReply, 1, keyReply.size - 1, Charsets.US_ASCII)
                             val encrypted = encryptPasswordRsa(authenticationDetails.password, nonce, pem)
                             seq += 1
                             writePacket(output, seq.toByte(), encrypted)
                         }
+
                         else -> throw IOException(
                             "Unexpected caching_sha2_password more-data byte: " +
                                 "0x${(reply.getOrNull(1)?.toInt()?.and(0xFF) ?: -1).toString(16)}",
                         )
                     }
                 }
+
                 else -> throw IOException(
                     "Unexpected server response byte: 0x${(reply[0].toInt() and 0xFF).toString(16)}",
                 )

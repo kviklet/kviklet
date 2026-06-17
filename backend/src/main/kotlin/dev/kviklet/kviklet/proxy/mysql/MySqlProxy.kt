@@ -37,6 +37,7 @@ class MySqlProxy(
     private val currentConnections = AtomicInteger(0)
     private var targetMySql: TargetMySqlSocketFactory =
         TargetMySqlSocketFactory(datasourceType, authenticationDetails, databaseName, targetHost, targetPort)
+
     @Volatile var isRunning: Boolean = false
         private set
 
@@ -119,7 +120,8 @@ class MySqlProxy(
                 this.proxyUsername,
                 this.proxyPassword,
             )
-            val clientConnection = MySqlConnection(configuredSocket, forwardSocket, eventService, executionRequest, userId)
+            val clientConnection =
+                MySqlConnection(configuredSocket, forwardSocket, eventService, executionRequest, userId)
             clientConnections.add(clientConnection)
             try {
                 clientConnection.startHandling()

@@ -2,8 +2,8 @@ package dev.kviklet.kviklet.proxy
 
 import dev.kviklet.kviklet.proxy.mysql.MySqlClientPacketParser
 import dev.kviklet.kviklet.proxy.mysql.MySqlServerPacketParser
-import dev.kviklet.kviklet.proxy.mysql.buildInitialHandshake
 import dev.kviklet.kviklet.proxy.mysql.buildErrPacket
+import dev.kviklet.kviklet.proxy.mysql.buildInitialHandshake
 import dev.kviklet.kviklet.proxy.mysql.buildOkPacket
 import dev.kviklet.kviklet.proxy.mysql.verifyPassword
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -18,20 +18,20 @@ class MySqlProxyUnitTest {
     fun `test verifyPassword with correct and incorrect credentials`() {
         val scramble = byteArrayOf(
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-            11, 12, 13, 14, 15, 16, 17, 18, 19, 20
+            11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
         )
         val password = "secretPassword123"
-        
+
         // Let's compute the expected client hash manually using the formula:
         // SHA1(password) XOR SHA1(scramble + SHA1(SHA1(password)))
         val sha1 = java.security.MessageDigest.getInstance("SHA-1")
         val sha1Password = sha1.digest(password.toByteArray(Charsets.UTF_8))
         val sha1Sha1Password = sha1.digest(sha1Password)
-        
+
         val concat = ByteArray(scramble.size + sha1Sha1Password.size)
         System.arraycopy(scramble, 0, concat, 0, scramble.size)
         System.arraycopy(sha1Sha1Password, 0, concat, scramble.size, sha1Sha1Password.size)
-        
+
         val sha1Concat = sha1.digest(concat)
         val clientHash = ByteArray(sha1Password.size)
         for (i in sha1Password.indices) {
@@ -56,12 +56,12 @@ class MySqlProxyUnitTest {
             onQuery = { parsedQuery = it },
             onPrepare = {},
             onExecute = {},
-            onQuit = {}
+            onQuit = {},
         )
 
         val sql = "SELECT * FROM users WHERE id = 1"
         val sqlBytes = sql.toByteArray(Charsets.UTF_8)
-        
+
         val bos = ByteArrayOutputStream()
         // MySQL Packet Header: 3 bytes length, 1 byte sequence id
         val length = sqlBytes.size + 1 // +1 for the command byte
@@ -69,7 +69,7 @@ class MySqlProxyUnitTest {
         bos.write((length ushr 8) and 0xFF)
         bos.write((length ushr 16) and 0xFF)
         bos.write(0) // Sequence ID
-        
+
         bos.write(0x03) // COM_QUERY command byte
         bos.write(sqlBytes)
 
@@ -85,19 +85,19 @@ class MySqlProxyUnitTest {
             onQuery = {},
             onPrepare = { parsedQuery = it },
             onExecute = {},
-            onQuit = {}
+            onQuit = {},
         )
 
         val sql = "INSERT INTO logs (message) VALUES (?)"
         val sqlBytes = sql.toByteArray(Charsets.UTF_8)
-        
+
         val bos = ByteArrayOutputStream()
         val length = sqlBytes.size + 1
         bos.write(length and 0xFF)
         bos.write((length ushr 8) and 0xFF)
         bos.write((length ushr 16) and 0xFF)
         bos.write(0) // Sequence ID
-        
+
         bos.write(0x16) // COM_STMT_PREPARE command byte
         bos.write(sqlBytes)
 
@@ -113,7 +113,7 @@ class MySqlProxyUnitTest {
             onQuery = {},
             onPrepare = {},
             onExecute = { executedStmtId = it },
-            onQuit = {}
+            onQuit = {},
         )
 
         val bos = ByteArrayOutputStream()
@@ -122,7 +122,7 @@ class MySqlProxyUnitTest {
         bos.write((length ushr 8) and 0xFF)
         bos.write((length ushr 16) and 0xFF)
         bos.write(0) // Sequence ID
-        
+
         bos.write(0x17) // COM_STMT_EXECUTE command byte
         bos.write(42 and 0xFF) // stmtId byte 1
         bos.write(0)
@@ -141,7 +141,7 @@ class MySqlProxyUnitTest {
             onQuery = {},
             onPrepare = {},
             onExecute = {},
-            onQuit = { quitCalled = true }
+            onQuit = { quitCalled = true },
         )
 
         val bos = ByteArrayOutputStream()
@@ -150,7 +150,7 @@ class MySqlProxyUnitTest {
         bos.write((length ushr 8) and 0xFF)
         bos.write((length ushr 16) and 0xFF)
         bos.write(0) // Sequence ID
-        
+
         bos.write(0x01) // COM_QUIT command byte
 
         parser.addBytes(bos.toByteArray())
@@ -175,7 +175,7 @@ class MySqlProxyUnitTest {
         bos.write(0)
         bos.write(0)
         bos.write(0)
-        
+
         // Filler columns, params, warning
         for (i in 0 until 7) bos.write(0)
 
@@ -188,10 +188,10 @@ class MySqlProxyUnitTest {
     fun `test buildInitialHandshake structure`() {
         val salt = ByteArray(20) { it.toByte() }
         val handshake = buildInitialHandshake(1234, salt, false)
-        
+
         // Protocol version must be 10
         assertEquals(10.toByte(), handshake[0])
-        
+
         // Server version should start after protocol byte
         val versionStr = String(handshake, 1, 14, Charsets.US_ASCII)
         assertEquals("8.0.35-kviklet", versionStr)
