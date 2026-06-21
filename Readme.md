@@ -483,7 +483,7 @@ To configure Slack notifications you need to create a Slack App and enable webho
 
 #### Teams
 
-Microsoft retired the legacy "Incoming Webhook" Office 365 connectors in May 2026, so Teams notifications now use a Power Automate **Workflow** webhook. Kviklet sends an Adaptive Card, which the standard webhook template posts as-is.
+Teams notifications use a Power Automate **Workflow** webhook. Kviklet sends an Adaptive Card, which the webhook template posts to your channel.
 
 **Recommended: use the workflow template**
 
@@ -501,8 +501,6 @@ If you prefer to build the flow yourself (or the template is unavailable):
 2. Add the action **Microsoft Teams -> "Post card in a chat or channel"**.
 3. Set the action's **Adaptive Card** field to the expression `string(triggerBody())` so it posts the card Kviklet sends.
 4. Select the target Team and Channel, **Save**, then copy the **HTTP POST URL** from the trigger step.
-
-Teams adds a small "... used a Workflow template to send this card" footer to cards posted this way; this is added by Teams and cannot be removed from Kviklet's side.
 
 Currently there are notifications for:
 
