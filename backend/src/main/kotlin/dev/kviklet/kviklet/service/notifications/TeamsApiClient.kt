@@ -1,44 +1,68 @@
 package dev.kviklet.kviklet.service.notifications
+import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
+import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestTemplate
-import org.springframework.web.client.exchange
 
 @Service
 class TeamsApiClient(private val restTemplate: RestTemplate, private val objectMapper: ObjectMapper) {
 
     fun sendMessage(webhookUrl: String, title: String, message: String) {
-        val formattedMessage = formatMessageWithLinksAndLineBreaks(message)
-        val headers = HttpHeaders().apply {
-            add("Content-Type", "application/json")
-        }
-        val notification = TeamsNotification(
-            summary = title,
-            sections = listOf(
-                Section(title, formattedMessage),
-            ),
-        )
+        val headers = HttpHeaders().apply { contentType = MediaType.APPLICATION_JSON }
+        val card = buildAdaptiveCard(title, message)
+        val request = HttpEntity(objectMapper.writeValueAsString(card), headers)
 
-        val body = objectMapper.writeValueAsString(notification)
-        val request = HttpEntity(body, headers)
-
-        restTemplate.exchange<String>(webhookUrl, HttpMethod.POST, request)
-        return
+        restTemplate.exchange(webhookUrl, HttpMethod.POST, request, String::class.java)
     }
 
-    private fun formatMessageWithLinksAndLineBreaks(message: String): String {
-        val urlRegex = Regex("(http[s]?://[^\\s]+)")
-        val formattedMessage = urlRegex.replace(message) { matchResult ->
-            val url = matchResult.value
-            "[$url]($url)"
-        }
-        return formattedMessage.replace("\n", "  \n")
+    private fun buildAdaptiveCard(title: String, message: String): AdaptiveCard {
+        val body = mutableListOf(
+            AdaptiveCardTextBlock(text = title, weight = "Bolder", size = "Medium"),
+        )
+        message.split("\n")
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .forEach { line ->
+                body.add(AdaptiveCardTextBlock(text = linkify(line), spacing = "Small"))
+            }
+
+        val actions = urlRegex.find(message)?.value?.let { url ->
+            listOf(AdaptiveCardAction(title = "Open in Kviklet", url = url))
+        } ?: emptyList()
+
+        return AdaptiveCard(body = body, actions = actions)
+    }
+
+    private fun linkify(text: String): String = urlRegex.replace(text) { "[${it.value}](${it.value})" }
+
+    companion object {
+        private val urlRegex = Regex("https?://\\S+")
     }
 }
 
-data class TeamsNotification(val summary: String, val sections: List<Section>)
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class AdaptiveCard(
+    val body: List<AdaptiveCardTextBlock>,
+    val actions: List<AdaptiveCardAction> = emptyList(),
+    val type: String = "AdaptiveCard",
+    @get:JsonProperty("\$schema")
+    val schema: String = "http://adaptivecards.io/schemas/adaptive-card.json",
+    val version: String = "1.4",
+)
 
-data class Section(val title: String, val text: String, val markdown: Boolean = true)
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class AdaptiveCardTextBlock(
+    val text: String,
+    val type: String = "TextBlock",
+    val weight: String? = null,
+    val size: String? = null,
+    val spacing: String? = null,
+    val wrap: Boolean = true,
+)
+
+data class AdaptiveCardAction(val title: String, val url: String, val type: String = "Action.OpenUrl")
