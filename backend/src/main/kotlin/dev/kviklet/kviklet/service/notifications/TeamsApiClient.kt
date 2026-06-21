@@ -8,6 +8,7 @@ import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestTemplate
+import java.net.URI
 
 @Service
 class TeamsApiClient(private val restTemplate: RestTemplate, private val objectMapper: ObjectMapper) {
@@ -17,7 +18,10 @@ class TeamsApiClient(private val restTemplate: RestTemplate, private val objectM
         val card = buildAdaptiveCard(title, message)
         val request = HttpEntity(objectMapper.writeValueAsString(card), headers)
 
-        restTemplate.exchange(webhookUrl, HttpMethod.POST, request, String::class.java)
+        // Pass a parsed URI (not a String) so RestTemplate does not treat the webhook URL as a URI
+        // template. Power Automate "Workflows" URLs carry percent-encoded query params (e.g. the SAS
+        // `sig`); template expansion would mangle or drop them and the request would fail to authenticate.
+        restTemplate.exchange(URI.create(webhookUrl), HttpMethod.POST, request, String::class.java)
     }
 
     private fun buildAdaptiveCard(title: String, message: String): AdaptiveCard {

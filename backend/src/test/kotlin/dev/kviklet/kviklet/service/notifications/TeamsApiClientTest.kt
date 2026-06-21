@@ -12,6 +12,7 @@ import org.springframework.http.HttpEntity
 import org.springframework.http.HttpMethod
 import org.springframework.http.ResponseEntity
 import org.springframework.web.client.RestTemplate
+import java.net.URI
 
 class TeamsApiClientTest {
 
@@ -21,16 +22,25 @@ class TeamsApiClientTest {
 
     @Test
     fun `sends a well-formed adaptive card to the webhook`() {
+        // A Power Automate "Workflows" style URL: percent-encoded path params plus a SAS `sig` query param.
+        val webhookUrl = "https://example.webhook/triggers/manual/paths/invoke" +
+            "?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sig=abc123signature"
+        val uriSlot = slot<URI>()
         val bodySlot = slot<HttpEntity<*>>()
         every {
-            restTemplate.exchange(any<String>(), HttpMethod.POST, capture(bodySlot), String::class.java)
+            restTemplate.exchange(capture(uriSlot), HttpMethod.POST, capture(bodySlot), String::class.java)
         } returns ResponseEntity.ok("")
 
         client.sendMessage(
-            webhookUrl = "https://example.webhook",
+            webhookUrl = webhookUrl,
             title = "New Request: \"Deploy\"",
             message = "Created by Alice.\nGo to https://kviklet.example.com/requests/42 to review it.",
         )
+
+        // The webhook URL must reach RestTemplate intact, query string (and SAS signature) included,
+        // otherwise the request fails to authenticate (HTTP 401).
+        assertEquals(webhookUrl, uriSlot.captured.toString())
+        assertTrue(uriSlot.captured.rawQuery.contains("sig=abc123signature"), "SAS signature must survive")
 
         val json = objectMapper.readTree(bodySlot.captured.body as String)
 
@@ -59,7 +69,7 @@ class TeamsApiClientTest {
 
         verify {
             restTemplate.exchange(
-                "https://example.webhook",
+                URI.create(webhookUrl),
                 HttpMethod.POST,
                 any<HttpEntity<*>>(),
                 String::class.java,

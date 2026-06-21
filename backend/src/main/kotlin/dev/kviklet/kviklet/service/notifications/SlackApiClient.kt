@@ -5,6 +5,7 @@ import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestTemplate
+import java.net.URI
 
 @Component
 class SlackApiClient(private val restTemplate: RestTemplate) {
@@ -15,7 +16,8 @@ class SlackApiClient(private val restTemplate: RestTemplate) {
         val payload = mapOf("text" to message)
         val request = HttpEntity(payload, headers)
 
-        restTemplate.exchange(webhookUrl, HttpMethod.POST, request, String::class.java)
+        // Pass a parsed URI (not a String) so RestTemplate does not treat the webhook URL as a URI template.
+        restTemplate.exchange(URI.create(webhookUrl), HttpMethod.POST, request, String::class.java)
         return
     }
 }
