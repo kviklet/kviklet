@@ -79,6 +79,7 @@
     "vitest": "^3.2.4"
   },
   "overrides": {
+    "esbuild": "^0.28.1",
     "prismjs": "^1.30.0",
     "@tootallnate/once": "^3.0.1",
     "brace-expansion@1": "^1.1.13",
