@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import {
   ConfigPayload,
@@ -17,7 +18,13 @@ import {
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 
 export default function GeneralSettings() {
-  const { config, loading, updateConfig } = useConfig();
+  const { config, loading, updateConfig, refreshConfig } = useConfig();
+
+  // Refresh in the background when the page opens so the webhook URLs reflect the
+  // latest server state even if the initial app-load fetch happened while logged out.
+  useEffect(() => {
+    void refreshConfig(true);
+  }, []);
 
   const onSubmit = async (data: ConfigPayload) => {
     await updateConfig(data);
@@ -74,7 +81,8 @@ const ConfigForm = ({
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    reset,
+    formState: { errors, isDirty },
   } = useForm<ConfigPayload>({
     resolver: zodResolver(ConfigPayloadSchema),
     defaultValues: {
@@ -82,6 +90,17 @@ const ConfigForm = ({
       slackUrl: config?.slackUrl,
     },
   });
+
+  // When a background refresh brings in newer config, sync it into the form — but
+  // never overwrite edits the user has already started (isDirty guard).
+  useEffect(() => {
+    if (!isDirty) {
+      reset({
+        teamsUrl: config?.teamsUrl ?? "",
+        slackUrl: config?.slackUrl ?? "",
+      });
+    }
+  }, [config?.teamsUrl, config?.slackUrl]);
 
   return (
     <form
