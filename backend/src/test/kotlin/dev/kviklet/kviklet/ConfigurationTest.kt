@@ -39,4 +39,21 @@ class ConfigurationTest {
         assert(savedConfiguration == loadedConfiguration)
         assert(configuration == savedConfiguration)
     }
+
+    @Test
+    fun `stores webhook urls longer than 255 characters`() {
+        // Teams Power Automate "Workflows" webhook URLs routinely exceed 255 chars,
+        // which the original VARCHAR(255) column rejected.
+        val longUrl = "https://default.environment.api.powerplatform.com/powerautomate/automations/direct/" +
+            "workflows/${"a".repeat(700)}/triggers/manual/paths/invoke?api-version=1&sig=${"b".repeat(43)}"
+        assert(longUrl.length > 255)
+
+        val savedConfiguration = configurationAdapter.setConfiguration(
+            Configuration(teamsUrl = longUrl, slackUrl = "https://slack.com"),
+        )
+        val loadedConfiguration = configurationAdapter.getConfiguration()
+
+        assert(savedConfiguration.teamsUrl == longUrl)
+        assert(loadedConfiguration.teamsUrl == longUrl)
+    }
 }

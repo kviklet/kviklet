@@ -89,8 +89,17 @@ const ConfigForm = ({
       onSubmit={(event) => void handleSubmit(onSubmit)(event)}
     >
       <span className="text-sm dark:text-slate-300">
-        See the Readme section on Notifications to see how to add webhooks, to
-        get notified in a channel when reviews are necessary.
+        See the{" "}
+        <a
+          href="https://github.com/kviklet/kviklet/blob/main/Readme.md#notifications"
+          target="_blank"
+          rel="noreferrer"
+          className="text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+        >
+          Readme section on Notifications
+        </a>{" "}
+        to see how to add webhooks, to get notified in a channel when reviews
+        are necessary.
       </span>
       <InputField
         label="Teams Webhook URL"

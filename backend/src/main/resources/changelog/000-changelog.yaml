@@ -128,3 +128,6 @@ databaseChangeLog:
   - include:
       file: 044-add-github-id-column.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 045-widen-configuration-value.yaml
+      relativeToChangelogFile: true
