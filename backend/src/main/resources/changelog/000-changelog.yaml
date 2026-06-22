@@ -131,3 +131,6 @@ databaseChangeLog:
   - include:
       file: 045-widen-configuration-value.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 046-role-sync-mapping-composite-unique.yaml
+      relativeToChangelogFile: true

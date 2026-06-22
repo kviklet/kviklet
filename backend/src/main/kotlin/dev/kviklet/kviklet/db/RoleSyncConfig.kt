@@ -14,6 +14,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
+import jakarta.persistence.UniqueConstraint
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Service
 
@@ -42,10 +43,18 @@ class RoleSyncConfigEntity(
 }
 
 @Entity
-@Table(name = "role_sync_mapping")
+@Table(
+    name = "role_sync_mapping",
+    uniqueConstraints = [
+        UniqueConstraint(
+            name = "uq_role_sync_mapping_group_role",
+            columnNames = ["idp_group_name", "role_id"],
+        ),
+    ],
+)
 class RoleSyncMappingEntity : BaseEntity {
 
-    @Column(name = "idp_group_name", nullable = false, unique = true)
+    @Column(name = "idp_group_name", nullable = false)
     lateinit var idpGroupName: String
 
     @ManyToOne(fetch = FetchType.LAZY)

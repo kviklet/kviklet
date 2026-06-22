@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 046-role-sync-mapping-composite-unique
+      author: jascha
+      changes:
+        # Drop the column-level unique constraint on idp_group_name, which limited
+        # each IdP group to a single Kviklet role. The auto-generated name follows
+        # PostgreSQL's "<table>_<column>_key" convention.
+        - dropUniqueConstraint:
+            tableName: role_sync_mapping
+            constraintName: role_sync_mapping_idp_group_name_key
+        # Allow an IdP group to map to multiple roles, while still preventing exact
+        # duplicate (group, role) rows.
+        - addUniqueConstraint:
+            tableName: role_sync_mapping
+            columnNames: idp_group_name, role_id
+            constraintName: uq_role_sync_mapping_group_role
