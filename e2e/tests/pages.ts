@@ -49,10 +49,13 @@ class SettingsPage {
     const userRow = this.page.getByTestId(`user-${email}`);
     const roleCombobox = userRow.getByTestId("role-combobox-button");
     await roleCombobox.click();
-    await this.page.getByTestId("role-combobox-option-Developer Role").click();
-    await roleCombobox.click();
+    await this.page.getByTestId("role-combobox-option-Developer").click();
 
-    await expect(roleCombobox).toContainText("Developer", { timeout: 5000 });
+    // Selecting a role triggers an async save; wait for it to land (the button
+    // text reflects the saved roles) before closing the dropdown, otherwise the
+    // close click can race with the update and the selection is dropped.
+    await expect(roleCombobox).toContainText("Developer", { timeout: 10000 });
+    await roleCombobox.click();
   }
 
   async createConnection(

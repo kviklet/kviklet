@@ -20,7 +20,7 @@ class InitialUserInitializer(private val roleRepository: RoleRepository) {
 
     fun createAdminRole(savedUser: UserEntity) {
         val role = RoleEntity(
-            name = "Admin role",
+            name = "Admin",
             description = "This role gives admin permissions on everything",
             policies = mutableSetOf(
                 PolicyEntity(
@@ -37,7 +37,7 @@ class InitialUserInitializer(private val roleRepository: RoleRepository) {
 
     fun createDevRole() {
         val role = RoleEntity(
-            name = "Developer Role",
+            name = "Developer",
             description = "This role gives permission to create, review and execute requests",
             policies = mutableSetOf(
                 PolicyEntity(

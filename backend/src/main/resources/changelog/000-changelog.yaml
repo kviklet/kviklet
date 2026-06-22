@@ -134,3 +134,6 @@ databaseChangeLog:
   - include:
       file: 046-role-sync-mapping-composite-unique.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 047-normalize-default-role-names.yaml
+      relativeToChangelogFile: true
