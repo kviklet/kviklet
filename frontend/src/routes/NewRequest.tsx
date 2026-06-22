@@ -230,7 +230,11 @@ export default function ConnectionChooser() {
       <div className=" border-b border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
         <h1 className=" m-5 mx-auto max-w-5xl pl-1.5 text-xl">
           {" "}
-          Request Access to a Database
+          {chosenConnection?._type === "KUBERNETES"
+            ? "Request Access to a Kubernetes Pod"
+            : chosenConnection?._type === "DATASOURCE"
+            ? "Request Access to a Database"
+            : "Request Access"}
         </h1>
       </div>
       <div className="mx-auto mt-5 flex max-w-5xl">
