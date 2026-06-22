@@ -49,7 +49,7 @@ class SettingsPage {
     const userRow = this.page.getByTestId(`user-${email}`);
     const roleCombobox = userRow.getByTestId("role-combobox-button");
     await roleCombobox.click();
-    await this.page.getByTestId("role-combobox-option-Developer Role").click();
+    await this.page.getByTestId("role-combobox-option-Developer").click();
     await roleCombobox.click();
 
     await expect(roleCombobox).toContainText("Developer", { timeout: 5000 });
