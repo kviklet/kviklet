@@ -285,11 +285,12 @@ class OIDCRoleSyncTest {
 
     @BeforeEach
     fun setUp() {
-        // WARNING: This is a test-only license limited to 10 users with test_license flag.
+        // WARNING: This is a test-only license limited to 2 users with test_license flag.
         // DO NOT use in production. Real licenses must be obtained from Kviklet.
+        // NOTE: max_users MUST stay 2 — the signature below is only valid for max_users:2.
         val licenseJson = """
             {
-                "license_data":{"max_users":10,"expiry_date":"2100-01-01","test_license":true},
+                "license_data":{"max_users":2,"expiry_date":"2100-01-01","test_license":true},
                 "signature":"E3cqrsVzWccsyWwIeCE2J4Mn/eHyP8j4T05Q4o2dtXH1lhum71rEyPqv9MLn//IcVGsLBY6MwWJGxxa+IBqZTvx0fkLix7e44BRJ5xnV83WzZbKyacNCsNqYEbNpeRcDmtC0pbk7/OSff8VDs5xdqWl7zsI+HA5KNdw878BZKVxusHkHhLtxOhHtbm7Gvcyia4XE86USTWUMYf6aCgNkQgRSOnTo5Zrs+vBUvgSI33l3XyBDx+cQcr9Mell2ytOYrTxQ4zUbRkzcsQtGRTHbh8uXQb5wS389F0zQWSLh7RrCRuaEZ0IDTt8tFkN+72fZ64504bsSR9mNgkgKTv/FvQiVCppKO8vpW0T0hg2xziXMnNSJ3MbihcNlpFsz9C2SEnGm18rQ4UagnLCWTqhz5DtWCxeaAExIT261o6J/wBwlsHHMJRiDaLo/cQOLVOUm43psOt4nlTdbijPoKhBejBuSgqSxTid1R7+8YaFlco/SaprzEspWHcOcVIPUN2jk"
             }
         """.trimIndent()
