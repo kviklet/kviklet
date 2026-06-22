@@ -76,10 +76,8 @@ describe("NewRequest - Basic functionality", () => {
       </MemoryRouter>,
     );
 
-    // Check that the page title is rendered
-    expect(
-      screen.getByText("Request Access to a Database"),
-    ).toBeInTheDocument();
+    // Check that the page title is rendered (generic, since no connection is chosen yet)
+    expect(screen.getByText("Request Access")).toBeInTheDocument();
 
     // Wait for loading to complete and connections section to appear
     await waitFor(() => {
