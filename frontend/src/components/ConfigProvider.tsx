@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import {
   ConfigPayload,
   ConfigResponse,
@@ -7,11 +7,12 @@ import {
 } from "../api/ConfigApi";
 import { isApiErrorResponse } from "../api/Errors";
 import useNotification from "../hooks/useNotification";
+import { UserStatusContext } from "./UserStatusProvider";
 
 type ConfigContextType = {
   config: ConfigResponse | null;
   loading: boolean;
-  refreshConfig: () => Promise<void>;
+  refreshConfig: (background?: boolean) => Promise<void>;
   updateConfig: (config: ConfigPayload) => Promise<void>;
 };
 
@@ -31,8 +32,10 @@ export const ConfigProvider: React.FC<Props> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const { addNotification } = useNotification();
 
-  const refreshConfig = async () => {
-    setLoading(true);
+  const refreshConfig = async (background = false) => {
+    // Background refreshes (e.g. after login, or when opening settings) keep the
+    // existing UI visible instead of flashing the global loading spinner.
+    if (!background) setLoading(true);
     const response = await getConfig();
     if (isApiErrorResponse(response)) {
       addNotification({
@@ -43,7 +46,7 @@ export const ConfigProvider: React.FC<Props> = ({ children }) => {
     } else {
       setConfig(response);
     }
-    setLoading(false);
+    if (!background) setLoading(false);
   };
 
   const updateConfig = async (newConfig: ConfigPayload) => {
@@ -61,9 +64,19 @@ export const ConfigProvider: React.FC<Props> = ({ children }) => {
     setLoading(false);
   };
 
+  // The config endpoint returns the webhook URLs only to authenticated users; a
+  // logged-out fetch comes back without them. Refetch whenever the logged-in user
+  // changes (login, logout, user switch) so the config never stays stale after an
+  // initial unauthenticated load. The first fetch shows the spinner; later ones
+  // (auth transitions) refresh silently in the background.
+  const { userStatus } = useContext(UserStatusContext);
+  const userId = userStatus ? userStatus.id : null;
+  const hasLoadedOnce = useRef(false);
+
   useEffect(() => {
-    void refreshConfig();
-  }, []);
+    void refreshConfig(hasLoadedOnce.current);
+    hasLoadedOnce.current = true;
+  }, [userId]);
 
   return (
     <ConfigContext.Provider
