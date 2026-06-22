@@ -799,9 +799,17 @@ const KubernetesExecutionRequestForm = ({
                 choosePod(e.target.value);
               }}
             >
-              {pods.map((pod) => (
-                <option value={pod.id}>{pod.name}</option>
-              ))}
+              {pods.length === 0 ? (
+                <option value="" disabled>
+                  No running pods found
+                </option>
+              ) : (
+                pods.map((pod) => (
+                  <option key={pod.id} value={pod.id}>
+                    {pod.name}
+                  </option>
+                ))
+              )}
             </select>
           </div>
           <input type="hidden" id="type" {...register("type")}></input>

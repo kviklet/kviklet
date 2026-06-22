@@ -1,18 +1,19 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.springframework.boot.gradle.tasks.run.BootRun
 
 plugins {
     id("org.springframework.boot") version "3.4.2"
     id("io.spring.dependency-management") version "1.1.7"
-    kotlin("jvm") version "1.9.24"
-    kotlin("plugin.spring") version "1.9.24"
-    kotlin("plugin.jpa") version "1.9.24"
-    kotlin("kapt") version "1.9.24" // needed for query-dsl
+    kotlin("jvm") version "2.2.0"
+    kotlin("plugin.spring") version "2.2.0"
+    kotlin("plugin.jpa") version "2.2.0"
+    kotlin("kapt") version "2.2.0" // needed for query-dsl
 }
 
 kapt {
     javacOptions {
-        option("querydsl.entityAccessors", true)
+        option("querydsl.entityAccessors", "true")
     }
     arguments {
         arg("plugin", "com.querydsl.apt.jpa.JPAAnnotationProcessor")
@@ -57,7 +58,7 @@ dependencies {
     implementation("org.springframework.security:spring-security-config")
     implementation("org.springframework:spring-context-support")
     implementation("com.github.jsqlparser:jsqlparser:4.9")
-    implementation("io.kubernetes:client-java:24.0.0")
+    implementation("io.kubernetes:client-java:26.0.0")
     implementation("software.amazon.awssdk:rds:2.30.37")
     implementation("software.amazon.awssdk:sts:2.30.37")
 
@@ -111,9 +112,9 @@ dependencies {
 }
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions {
-        freeCompilerArgs = listOf("-Xjsr305=strict")
-        jvmTarget = "21"
+    compilerOptions {
+        freeCompilerArgs.add("-Xjsr305=strict")
+        jvmTarget.set(JvmTarget.JVM_21)
     }
 }
 

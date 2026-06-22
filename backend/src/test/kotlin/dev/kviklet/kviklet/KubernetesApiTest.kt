@@ -15,6 +15,7 @@ import io.mockk.mockkStatic
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import java.io.ByteArrayInputStream
 import java.util.concurrent.TimeUnit
 
@@ -62,6 +63,38 @@ class KubernetesApiTest {
         assertEquals("pod2", activePods[1].metadata?.name)
         assertEquals("default", activePods[1].metadata?.namespace)
         assertEquals("Running", activePods[1].status?.phase)
+    }
+
+    @Test
+    fun testGetActivePodsThrowsWhenApiCallFails() {
+        val mockCoreV1Api = mockk<CoreV1Api>()
+
+        every {
+            mockCoreV1Api.listPodForAllNamespaces().execute()
+        } throws RuntimeException("connection refused")
+
+        val kubernetesApi = KubernetesApi(mockCoreV1Api)
+
+        // The failure must surface instead of being swallowed into an empty list.
+        assertThrows<IllegalArgumentException> {
+            kubernetesApi.getActivePods()
+        }
+    }
+
+    @Test
+    fun testGetActivePodsReturnsEmptyWhenItemsNull() {
+        val mockCoreV1Api = mockk<CoreV1Api>()
+        val podList = mockk<V1PodList>()
+        every { podList.items } returns null
+
+        every {
+            mockCoreV1Api.listPodForAllNamespaces().execute()
+        } returns podList
+
+        val kubernetesApi = KubernetesApi(mockCoreV1Api)
+
+        // A successful call with no items is a genuinely empty cluster, not an error.
+        assertEquals(0, kubernetesApi.getActivePods().size)
     }
 
     @Test
