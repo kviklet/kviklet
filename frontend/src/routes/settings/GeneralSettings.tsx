@@ -100,7 +100,6 @@ const ConfigForm = ({
         slackUrl: config?.slackUrl ?? "",
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config?.teamsUrl, config?.slackUrl]);
 
   return (
