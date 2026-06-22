@@ -5,6 +5,7 @@ import io.kubernetes.client.openapi.apis.CoreV1Api
 import io.kubernetes.client.openapi.models.V1Pod
 import io.kubernetes.client.openapi.models.V1PodList
 import io.kubernetes.client.util.Config
+import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.stereotype.Service
@@ -13,14 +14,25 @@ import java.util.concurrent.TimeUnit
 
 @Service
 class KubernetesApi(private val coreV1Api: CoreV1Api) {
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(KubernetesApi::class.java)
+    }
+
     fun getActivePods(): List<V1Pod> {
-        try {
-            val pods: V1PodList = coreV1Api.listPodForAllNamespaces().execute()
-            return pods.items.filter { it.status?.phase == "Running" }
+        val pods: V1PodList = try {
+            coreV1Api.listPodForAllNamespaces().execute()
         } catch (e: Exception) {
-            e.printStackTrace()
-            return emptyList()
+            // Log the underlying cause (cluster unreachable, auth failure, client/server
+            // version mismatch, ...) and surface a user-friendly error instead of silently
+            // returning an empty list, which previously made failures look like "no pods".
+            logger.error("Failed to list pods from the Kubernetes cluster", e)
+            throw IllegalArgumentException(
+                "Could not list pods from the Kubernetes cluster. " +
+                    "Please check the cluster connection and the server logs for details.",
+            )
         }
+        return pods.items.orEmpty().filter { it.status?.phase == "Running" }
     }
 
     fun executeCommandOnPod(
