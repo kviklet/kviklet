@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: 047-normalize-default-role-names
+      author: jascha
+      changes:
+        # Normalize the factory-default role names by dropping the redundant "role"
+        # suffix. Guarded by the exact old name so operator-renamed roles are left
+        # untouched (these roles are seeded with random ids, so we cannot guard by id).
+        - sql:
+            sql: "UPDATE role SET name = 'Admin' WHERE name = 'Admin role'"
+        - sql:
+            sql: "UPDATE role SET name = 'Developer' WHERE name = 'Developer Role'"
