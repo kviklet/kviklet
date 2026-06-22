@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: 045-widen-configuration-value
+      author: jascha
+      changes:
+        - modifyDataType:
+            tableName: configuration
+            columnName: value
+            newDataType: TEXT
