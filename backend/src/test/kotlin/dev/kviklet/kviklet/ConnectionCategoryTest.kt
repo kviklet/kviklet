@@ -2,6 +2,7 @@ package dev.kviklet.kviklet
 
 import dev.kviklet.kviklet.db.ConnectionRepository
 import dev.kviklet.kviklet.helper.UserHelper
+import org.hamcrest.CoreMatchers.nullValue
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -120,6 +121,64 @@ class ConnectionCategoryTest(
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.category").value("Production"))
+    }
+
+    @Test
+    fun `clear connection category via PATCH with clearCategory flag`() {
+        userHelper.createUser(listOf("*"))
+        val cookie = userHelper.login(mockMvc = mockMvc)
+
+        // Create connection with a category
+        val createJson = """
+            {
+                "connectionType": "DATASOURCE",
+                "id": "clear-category-conn",
+                "displayName": "Clear Category Test",
+                "username": "root",
+                "password": "root",
+                "type": "MYSQL",
+                "hostname": "localhost",
+                "port": 3306,
+                "category": "Production",
+                "reviewConfig": {
+                    "numTotalRequired": 1
+                }
+            }
+        """.trimIndent()
+
+        mockMvc.perform(
+            post("/connections/")
+                .cookie(cookie)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(createJson),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.category").value("Production"))
+
+        // Clear the category via the clearCategory flag
+        val clearJson = """
+            {
+                "connectionType": "DATASOURCE",
+                "clearCategory": true
+            }
+        """.trimIndent()
+
+        mockMvc.perform(
+            patch("/connections/clear-category-conn")
+                .cookie(cookie)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(clearJson),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.category", nullValue()))
+
+        // Verify the cleared category is persisted
+        mockMvc.perform(
+            get("/connections/clear-category-conn")
+                .cookie(cookie),
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.category", nullValue()))
     }
 
     @Test

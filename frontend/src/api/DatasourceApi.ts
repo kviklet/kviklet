@@ -159,6 +159,7 @@ type PatchDatabaseConnectionPayload = DatabaseConnection extends infer T
         "id"
       > & {
         clearMaxTempDuration?: boolean;
+        clearCategory?: boolean;
       }
     : never
   : never;
@@ -166,7 +167,9 @@ type PatchDatabaseConnectionPayload = DatabaseConnection extends infer T
 type PatchKubernetesConnectionPayload = Omit<
   AllNullableExcept<KubernetesConnection, "connectionType">,
   "id"
->;
+> & {
+  clearCategory?: boolean;
+};
 
 type PatchConnectionPayload =
   | PatchDatabaseConnectionPayload

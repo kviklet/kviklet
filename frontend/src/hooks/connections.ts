@@ -130,6 +130,9 @@ const useConnection = (id: string) => {
     }
     const normalizedConnection =
       normalizeMaxTemporaryAccessDuration(patchedConnection);
+    // The PATCH endpoint can't distinguish null from "not provided", so signal an
+    // explicit clear when the category has been removed.
+    normalizedConnection.clearCategory = !patchedConnection.category;
     const response = await patchConnection(normalizedConnection, connection.id);
     if (isApiErrorResponse(response)) {
       addNotification({
