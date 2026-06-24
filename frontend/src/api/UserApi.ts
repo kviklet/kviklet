@@ -13,9 +13,18 @@ const userResponseSchema = z.object({
 type UserResponse = z.infer<typeof userResponseSchema>;
 
 const createUserRequestSchema = z.object({
-  email: z.string().min(3).max(50),
-  password: z.string().min(6).max(50),
-  fullName: z.string().min(1).max(50),
+  email: z
+    .string()
+    .min(3, "Email must be between 3 and 50 characters.")
+    .max(50, "Email must be between 3 and 50 characters."),
+  password: z
+    .string()
+    .min(6, "Password must be between 6 and 50 characters.")
+    .max(50, "Password must be between 6 and 50 characters."),
+  fullName: z
+    .string()
+    .min(1, "Full name is required.")
+    .max(50, "Full name must be at most 50 characters."),
 });
 
 const usersResponseSchema = z.object({
@@ -80,5 +89,11 @@ async function updateUser(
   );
 }
 
-export { fetchUsers, userResponseSchema, createUser, updateUser };
-export type { UserResponse };
+export {
+  fetchUsers,
+  userResponseSchema,
+  createUser,
+  createUserRequestSchema,
+  updateUser,
+};
+export type { UserResponse, CreateUserRequest };

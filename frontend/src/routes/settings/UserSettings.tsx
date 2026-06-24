@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Button from "../../components/Button";
 import {
+  CreateUserRequest,
   UserResponse,
   createUser,
+  createUserRequestSchema,
   fetchUsers,
   updateUser,
 } from "../../api/UserApi";
@@ -22,71 +26,37 @@ function UserForm(props: {
     fullName: string,
   ) => Promise<void>;
 }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [errors, setErrors] = useState<{
-    email?: string;
-    password?: string;
-    fullName?: string;
-  }>({});
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<CreateUserRequest>({
+    resolver: zodResolver(createUserRequestSchema),
+    defaultValues: { email: "", password: "", fullName: "" },
+  });
 
-  // Mirrors the backend validation on CreateUserRequest so that missing or
-  // invalid fields surface as inline messages instead of an unhandled error.
-  const validate = () => {
-    const newErrors: {
-      email?: string;
-      password?: string;
-      fullName?: string;
-    } = {};
-    if (email.trim().length === 0) {
-      newErrors.email = "Email is required.";
-    } else if (email.length < 3 || email.length > 50) {
-      newErrors.email = "Email must be between 3 and 50 characters.";
-    }
-    if (password.length === 0) {
-      newErrors.password = "Password is required.";
-    } else if (password.length < 6 || password.length > 50) {
-      newErrors.password = "Password must be between 6 and 50 characters.";
-    }
-    if (fullName.trim().length === 0) {
-      newErrors.fullName = "Full name is required.";
-    } else if (fullName.length > 50) {
-      newErrors.fullName = "Full name must be at most 50 characters.";
-    }
-    return newErrors;
-  };
-
-  const saveUser = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const validationErrors = validate();
-    setErrors(validationErrors);
-    if (Object.keys(validationErrors).length > 0) {
-      return;
-    }
-    props
-      .createNewUser(email, password, fullName)
-      .then(() => {
-        props.disableModal();
-      })
-      .catch((err) => console.log(err));
+  // Validation mirrors the backend CreateUserRequest constraints via the shared
+  // createUserRequestSchema, so missing or invalid fields surface as inline
+  // messages instead of an unhandled error.
+  const onSubmit = async (data: CreateUserRequest) => {
+    await props.createNewUser(data.email, data.password, data.fullName);
+    props.disableModal();
   };
 
   return (
-    <form method="post" onSubmit={saveUser}>
+    <form
+      method="post"
+      onSubmit={(event) => void handleSubmit(onSubmit)(event)}
+    >
       <div className="w-2xl rounded bg-slate-50 p-3 shadow dark:bg-slate-900">
         <h2 className="mb-4 text-lg font-semibold">Create New User</h2>
         <div className="mb-3 flex flex-col">
           <InputField
             id="email"
             label="Email"
-            value={email}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-              setEmail(e.target.value);
-              setErrors((prev) => ({ ...prev, email: undefined }));
-            }}
-            error={errors.email}
+            error={errors.email?.message}
             data-testid="email-input"
+            {...register("email")}
           />
         </div>
         <div className="mb-3 flex flex-col">
@@ -94,26 +64,18 @@ function UserForm(props: {
             id="password"
             label="Password"
             type="passwordlike"
-            value={password}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-              setPassword(e.target.value);
-              setErrors((prev) => ({ ...prev, password: undefined }));
-            }}
-            error={errors.password}
+            error={errors.password?.message}
             data-testid="password-input"
+            {...register("password")}
           />
         </div>
         <div className="mb-3 flex flex-col">
           <InputField
             id="fullName"
             label="Full Name"
-            value={fullName}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-              setFullName(e.target.value);
-              setErrors((prev) => ({ ...prev, fullName: undefined }));
-            }}
-            error={errors.fullName}
+            error={errors.fullName?.message}
             data-testid="name-input"
+            {...register("fullName")}
           />
         </div>
         <div className="mb-3 flex flex-row justify-end space-x-2">
