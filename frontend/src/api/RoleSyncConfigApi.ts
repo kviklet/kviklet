@@ -1,6 +1,11 @@
 import { z } from "zod";
 import baseUrl from "./base";
-import { ApiResponse, fetchWithErrorHandling } from "./Errors";
+import {
+  ApiErrorResponse,
+  ApiResponse,
+  fetchEmptyWithErrorHandling,
+  fetchWithErrorHandling,
+} from "./Errors";
 
 // Zod schemas
 const RoleSyncMappingSchema = z.object({
@@ -91,13 +96,14 @@ export async function addRoleSyncMapping(
 
 export async function deleteRoleSyncMapping(
   id: string,
-): Promise<ApiResponse<void>> {
-  return fetchWithErrorHandling(
+): Promise<ApiErrorResponse | null> {
+  // DELETE returns 204 No Content, so use the empty-body aware helper to avoid
+  // a spurious JSON parse error on the empty response.
+  return fetchEmptyWithErrorHandling(
     `${baseUrl}/config/role-sync/mappings/${id}`,
     {
       method: "DELETE",
       credentials: "include",
     },
-    z.undefined(),
   );
 }
