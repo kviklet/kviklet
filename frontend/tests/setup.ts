@@ -9,6 +9,18 @@ global.ResizeObserver = class ResizeObserver {
   disconnect() {}
 };
 
+// Mock matchMedia for auto-animate, which reads prefers-reduced-motion.
+window.matchMedia = (query: string) => ({
+  matches: false,
+  media: query,
+  onchange: null,
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  addListener: () => {},
+  removeListener: () => {},
+  dispatchEvent: () => false,
+});
+
 afterEach(() => {
   cleanup();
 });
