@@ -1,5 +1,7 @@
 package dev.kviklet.kviklet.proxy.postgres
 
+import dev.kviklet.kviklet.security.LoggingKeys
+import dev.kviklet.kviklet.security.withLoggingContext
 import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
@@ -97,16 +99,21 @@ class PostgresProxy(
 
     private fun handleClientConnection(clientSocket: Socket) {
         threadPool.submit {
-            try {
-                currentConnections++
-                handleClient(clientSocket)
-            } catch (e: Exception) {
-                logger.warn("Error handling proxy client connection", e)
-            } finally {
-                if (!clientSocket.isClosed) {
-                    clientSocket.close()
+            withLoggingContext(
+                LoggingKeys.USER_ID to userId,
+                LoggingKeys.EXECUTION_REQUEST_ID to executionRequest.id?.toString(),
+            ) {
+                try {
+                    currentConnections++
+                    handleClient(clientSocket)
+                } catch (e: Exception) {
+                    logger.warn("Error handling proxy client connection", e)
+                } finally {
+                    if (!clientSocket.isClosed) {
+                        clientSocket.close()
+                    }
+                    currentConnections--
                 }
-                currentConnections--
             }
         }
     }

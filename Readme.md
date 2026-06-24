@@ -531,6 +531,19 @@ the format via an environment variable:
 LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs
 ```
 
+Structured log lines are enriched with per-request context so they are easy to
+filter and correlate:
+
+- `service.name` / `service.version` — the application and its version.
+- `requestId` — a unique id per HTTP request. An inbound `X-Request-Id` header is
+  honoured (so requests can be traced across a proxy / other services), otherwise
+  one is generated. It is echoed back in the `X-Request-Id` response header.
+- `userId` — the id of the authenticated user, when the request is authenticated.
+- `httpMethod` / `path` — the HTTP method and path of the request.
+
+Live-session websocket logs and the Postgres proxy carry `userId` and the related
+`executionRequestId` as well.
+
 ## Encryption
 
 If you don't want the credentials to be stored in cleartext in the DB, it is recommended that you enable database encryption on the Kviklet postgres DB itself. For most hosted providers this is a simple checkbox to click.
