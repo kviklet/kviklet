@@ -11,6 +11,13 @@ data:
       datasource:
         url: {{ .Values.config.datasource.url | quote }}
 
+    {{- if .Values.config.logging.structuredFormat }}
+    logging:
+      structured:
+        format:
+          console: {{ .Values.config.logging.structuredFormat | quote }}
+    {{- end }}
+
     {{- if .Values.config.oidc.enabled }}
     kviklet:
       identityProvider:
