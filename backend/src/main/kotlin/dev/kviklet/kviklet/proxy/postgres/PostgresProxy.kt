@@ -3,6 +3,7 @@ package dev.kviklet.kviklet.proxy.postgres
 import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
+import org.slf4j.LoggerFactory
 import java.net.ServerSocket
 import java.net.Socket
 import java.time.LocalDateTime
@@ -35,6 +36,10 @@ class PostgresProxy(
         TargetPostgresSocketFactory(authenticationDetails, databaseName, targetHost, targetPort)
     var isRunning: Boolean = false
         private set
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(PostgresProxy::class.java)
+    }
 
     fun startServer(
         port: Int,
@@ -96,7 +101,7 @@ class PostgresProxy(
                 currentConnections++
                 handleClient(clientSocket)
             } catch (e: Exception) {
-                e.printStackTrace()
+                logger.warn("Error handling proxy client connection", e)
             } finally {
                 if (!clientSocket.isClosed) {
                     clientSocket.close()

@@ -5,6 +5,13 @@ config:
     # For production, provide SPRING_DATASOURCE_URL in your secret
     url: "jdbc:postgresql://your-database-host:5432/kviklet"
 
+  logging:
+    # Console log format. Defaults to structured JSON (ecs) so logs are easy to
+    # index in aggregators like Elasticsearch, Loki, Datadog or CloudWatch.
+    # One of: ecs (Elastic Common Schema), logstash, gelf (Graylog).
+    # Set to "" (empty) for human-readable plain-text logs.
+    structuredFormat: "ecs"
+
   oidc:
     enabled: false
     provider: "" # google, keycloak, gitlab

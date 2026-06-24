@@ -309,8 +309,9 @@ class CustomAuthenticationEntryPoint : AuthenticationEntryPoint {
     ) {
         val requestURI = request.requestURI
 
-        // For other API requests, return 401
-        logger.info("Unauthorized error on {} : {}", requestURI, authException.message)
+        // For other API requests, return 401. Logged at debug because unauthenticated
+        // requests (e.g. the frontend polling before login) are routine and very frequent.
+        logger.debug("Unauthorized error on {} : {}", requestURI, authException.message)
         response.sendError(HttpServletResponse.SC_UNAUTHORIZED, authException.message)
     }
 }
