@@ -1,6 +1,7 @@
 // This file is not MIT licensed
 package dev.kviklet.kviklet.security.saml
 
+import dev.kviklet.kviklet.security.FrontendUrlResolver
 import dev.kviklet.kviklet.security.PolicyGrantedAuthority
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import jakarta.servlet.http.HttpServletRequest
@@ -16,8 +17,10 @@ import org.springframework.stereotype.Component
 
 @Component
 @ConditionalOnProperty(prefix = "saml", name = ["enabled"], havingValue = "true")
-class SamlLoginSuccessHandler(private val samlUserService: SamlUserService) :
-    SimpleUrlAuthenticationSuccessHandler() {
+class SamlLoginSuccessHandler(
+    private val samlUserService: SamlUserService,
+    private val frontendUrlResolver: FrontendUrlResolver,
+) : SimpleUrlAuthenticationSuccessHandler() {
 
     private val securityContextRepository = HttpSessionSecurityContextRepository()
 
@@ -52,23 +55,15 @@ class SamlLoginSuccessHandler(private val samlUserService: SamlUserService) :
                 request.session?.invalidate()
 
                 // Redirect to error page
-                val baseUrl = getBaseUrl(request)
+                val baseUrl = frontendUrlResolver.resolve(request)
                 val errorMessage = java.net.URLEncoder.encode(e.message ?: "SAML login failed", "UTF-8")
                 redirectStrategy.sendRedirect(request, response, "$baseUrl/login?error=$errorMessage")
                 return
             }
         }
 
-        val baseUrl = getBaseUrl(request)
+        val baseUrl = frontendUrlResolver.resolve(request)
         val redirectUrl = "$baseUrl/requests"
         redirectStrategy.sendRedirect(request, response, redirectUrl)
-    }
-
-    private fun getBaseUrl(request: HttpServletRequest): String {
-        val scheme = request.scheme
-        val serverName = request.serverName
-        val serverPort = request.serverPort
-
-        return "$scheme://$serverName${if (serverPort != 80 && serverPort != 443) ":5173" else ""}"
     }
 }

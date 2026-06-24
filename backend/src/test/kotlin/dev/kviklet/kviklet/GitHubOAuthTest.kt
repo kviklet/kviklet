@@ -1,7 +1,7 @@
 package dev.kviklet.kviklet
 
+import com.gargoylesoftware.htmlunit.Page
 import com.gargoylesoftware.htmlunit.WebClient
-import com.gargoylesoftware.htmlunit.html.HtmlPage
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
 import okhttp3.mockwebserver.Dispatcher
@@ -124,32 +124,54 @@ class GitHubOAuthTest {
         }
     }
 
-    private fun runOauthFlow() {
+    /**
+     * Runs the OAuth flow with manual redirect following so we can capture the
+     * final redirect URL Kviklet sends the browser to (the frontend). Both
+     * success and failure paths now redirect to the frontend, so we follow all
+     * hops on the backend and mock-GitHub origins and return the first
+     * redirect that leaves both — that is the URL the frontend would have
+     * received.
+     */
+    private fun runOauthFlow(): String {
         val webClient = WebClient().apply {
             options.apply {
-                isRedirectEnabled = true
+                isRedirectEnabled = false
                 isJavaScriptEnabled = false
                 isThrowExceptionOnScriptError = false
-                // Success path redirects to localhost:5173 (frontend) and fails with a connect
-                // exception; rejection path redirects to /login?error which 404s on the backend.
-                // Suppress the latter so both flows are observable via DB state.
                 isThrowExceptionOnFailingStatusCode = false
                 isUseInsecureSSL = true
                 isCssEnabled = false
             }
         }
+        val backendOrigin = "http://localhost:$port"
+        val mockOrigin = mockGithub.url("/").toString().trimEnd('/')
         try {
-            val loginUrl = "http://localhost:$port/oauth2/authorization/github"
-            try {
-                webClient.getPage<HtmlPage>(loginUrl)
-            } catch (e: Exception) {
-                // Frontend not running on 5173 — Kviklet's success handler redirects there.
-                // The OAuth dance up to that point still completed successfully.
-                assertThat(e.message).contains("Connect to localhost:5173")
+            var currentUrl = "$backendOrigin/oauth2/authorization/github"
+            repeat(25) {
+                val page = webClient.getPage<Page>(currentUrl)
+                val location = page.webResponse.getResponseHeaderValue("Location")
+                    ?: error("No redirect from $currentUrl (status=${page.webResponse.statusCode})")
+                val nextUrl = java.net.URI(currentUrl).resolve(location).toString()
+                if (!nextUrl.startsWith(backendOrigin) && !nextUrl.startsWith(mockOrigin)) {
+                    return nextUrl
+                }
+                currentUrl = nextUrl
             }
+            error("Too many redirects in OAuth flow")
         } finally {
             webClient.close()
         }
+    }
+
+    private fun assertSsoErrorRedirect(redirectUrl: String, expectedCode: String) {
+        assertThat(redirectUrl).startsWith("http://localhost:5173/login?")
+        val query = redirectUrl.substringAfter("?")
+        val params = query.split("&").associate {
+            val (k, v) = it.split("=", limit = 2).let { p -> p[0] to (p.getOrNull(1) ?: "") }
+            k to java.net.URLDecoder.decode(v, Charsets.UTF_8)
+        }
+        assertThat(params["sso_error"]).isEqualTo(expectedCode)
+        assertThat(params["sso_message"]).isNotEmpty()
     }
 
     @Test
@@ -215,7 +237,7 @@ class GitHubOAuthTest {
             userJson = """{"id":42,"login":"attacker","name":"Attacker","email":"victim@example.com"}""",
             emailsJson = """[{"email":"victim@example.com","primary":true,"verified":false}]""",
         )
-        runOauthFlow()
+        val redirectUrl = runOauthFlow()
 
         // No verified email → login fails, existing user is untouched.
         assertThat(userAdapter.listUsers().size).isEqualTo(before)
@@ -223,6 +245,7 @@ class GitHubOAuthTest {
         assertThat(victim).isNotNull
         assertThat(victim!!.githubId).isNull()
         assertThat(victim.password).isEqualTo("some-bcrypt-hash")
+        assertSsoErrorRedirect(redirectUrl, "user_email_unavailable")
     }
 
     @Test
@@ -233,10 +256,11 @@ class GitHubOAuthTest {
         )
         val before = userAdapter.listUsers().size
 
-        runOauthFlow()
+        val redirectUrl = runOauthFlow()
 
         assertThat(userAdapter.listUsers().size).isEqualTo(before)
         assertThat(userAdapter.findByEmail("out@example.com")).isNull()
+        assertSsoErrorRedirect(redirectUrl, "access_denied")
     }
 
     @Test

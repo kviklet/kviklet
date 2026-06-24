@@ -1,7 +1,7 @@
 import { ChangeEvent, FormEvent, useContext, useState } from "react";
 import Button from "../components/Button";
 import GoogleButton from "react-google-button";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { UserStatusContext } from "../components/UserStatusProvider";
 import image from "../logo.png";
 import baseUrl from "../api/base";
@@ -10,6 +10,37 @@ import Spinner from "../components/Spinner";
 import { isApiErrorResponse } from "../api/Errors";
 import useNotification from "../hooks/useNotification";
 import { attemptLogin } from "../api/LoginApi";
+
+const SSO_ERROR_COPY: Record<string, string> = {
+  access_denied:
+    "Your account isn't allowed to sign in. Contact your administrator if you think this is a mistake.",
+  user_email_unavailable:
+    "We couldn't read a verified email from your account. Verify your primary email with the SSO provider and try again.",
+  user_orgs_unavailable:
+    "We couldn't verify your organization membership. Try again or contact your administrator.",
+  server_error: "Single sign-on is misconfigured. Contact your administrator.",
+  invalid_user_info_response:
+    "We received an unexpected response from the SSO provider. Try again or contact your administrator.",
+};
+
+const SsoErrorBanner = ({
+  code,
+  message,
+}: {
+  code: string;
+  message: string | null;
+}) => {
+  const text = SSO_ERROR_COPY[code] ?? message ?? "SSO login failed.";
+  return (
+    <div
+      role="alert"
+      data-testid="sso-error-banner"
+      className="mb-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/20 dark:text-red-200"
+    >
+      {text}
+    </div>
+  );
+};
 
 const StyledInput = (props: {
   name: string;
@@ -44,6 +75,10 @@ const Login = () => {
   const { config, loading } = useConfig();
 
   const { addNotification } = useNotification();
+
+  const [searchParams] = useSearchParams();
+  const ssoError = searchParams.get("sso_error");
+  const ssoMessage = searchParams.get("sso_message");
 
   const hasSso = !!config?.oauthProvider || !!config?.samlEnabled;
   const showForm = !hasSso || showLocalLogin;
@@ -122,6 +157,9 @@ const Login = () => {
           </div>
           <div className="mb-6 text-center text-2xl">Sign in to Kviklet</div>
           <div className="rounded-md p-6 shadow-xl dark:bg-slate-900 dark:shadow-none">
+            {ssoError && (
+              <SsoErrorBanner code={ssoError} message={ssoMessage} />
+            )}
             {oAuthButton()}
             {samlButton()}
 
