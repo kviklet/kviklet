@@ -5,7 +5,9 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.databind.ObjectMapper
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserId
+import dev.kviklet.kviklet.security.LoggingKeys
 import dev.kviklet.kviklet.security.UserDetailsWithId
+import dev.kviklet.kviklet.security.withLoggingContext
 import dev.kviklet.kviklet.service.UserService
 import dev.kviklet.kviklet.service.dto.DBExecutionResult
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
@@ -84,40 +86,48 @@ class SessionWebsocketHandler(
         } else {
             throw IllegalStateException("Security context not found in WebSocket session")
         }
-        val liveSession = sessionService.createOrConnectToSession(
-            ExecutionRequestId(requestId),
-        )
-        sessionToLiveSessionMap[session.id] = liveSession.id!!
         val principal = SecurityContextHolder.getContext().authentication.principal
         val userDetailsWithId = when (principal) {
             is UserDetailsWithId -> principal
             else -> throw IllegalStateException("Expected UserDetailsWithId but got: ${principal.javaClass}")
         }
-        logger.info("User id: ${userDetailsWithId.id}")
-        val user = userService.getUser(UserId(userDetailsWithId.id))
+        withLoggingContext(
+            LoggingKeys.USER_ID to userDetailsWithId.id,
+            LoggingKeys.EXECUTION_REQUEST_ID to requestId,
+            LoggingKeys.WS_SESSION_ID to session.id,
+        ) {
+            val liveSession = sessionService.createOrConnectToSession(
+                ExecutionRequestId(requestId),
+            )
+            sessionToLiveSessionMap[session.id] = liveSession.id!!
+            val user = userService.getUser(UserId(userDetailsWithId.id))
 
-        sessionObservers.computeIfAbsent(liveSession.id) { ConcurrentHashMap.newKeySet() }.add(
-            SessionObserver(
-                webSocketSession = session,
-                user = user,
-            ),
-        )
-        broadcastUpdate(liveSession)
+            sessionObservers.computeIfAbsent(liveSession.id) { ConcurrentHashMap.newKeySet() }.add(
+                SessionObserver(
+                    webSocketSession = session,
+                    user = user,
+                ),
+            )
+            broadcastUpdate(liveSession)
 
-        logger.info(
-            "New WebSocket connection established: ${session.id}, userId: ${userDetailsWithId.id}, requestId: $requestId",
-        )
+            logger.info("New WebSocket connection established: ${session.id}")
+        }
     }
 
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {
-        val liveSessionId = sessionToLiveSessionMap[session.id] ?: return
-        sessionObservers[liveSessionId]?.removeIf { it.webSocketSession == session }
-        if (sessionObservers[liveSessionId]?.isEmpty() == true) {
-            sessionObservers.remove(liveSessionId)
+        withLoggingContext(LoggingKeys.WS_SESSION_ID to session.id) {
+            val liveSessionId = sessionToLiveSessionMap[session.id] ?: return
+            sessionObservers[liveSessionId]?.removeIf { it.webSocketSession == session }
+            if (sessionObservers[liveSessionId]?.isEmpty() == true) {
+                sessionObservers.remove(liveSessionId)
+            }
+            sessionToLiveSessionMap.remove(session.id)
+            logger.info("WebSocket connection closed: ${session.id}, status: $status")
         }
-        sessionToLiveSessionMap.remove(session.id)
-        logger.info("WebSocket connection closed: ${session.id}, status: $status")
     }
+
+    private fun currentUserId(): String? =
+        (SecurityContextHolder.getContext().authentication?.principal as? UserDetailsWithId)?.id
 
     private fun extractRequestId(session: WebSocketSession): String {
         val uri = session.uri ?: throw IllegalStateException("Session URI is null")
@@ -134,81 +144,94 @@ class SessionWebsocketHandler(
         }
         val liveSessionId = sessionToLiveSessionMap[session.id] ?: throw IllegalStateException("LiveSession not found")
 
-        if (message.payload == "CONNECT") {
-            val liveSession = sessionService.getSession(liveSessionId)
-            broadcastUpdate(liveSession)
-            return
-        }
-
-        try {
-            when (val webSocketMessage = objectMapper.readValue(message.payload, WebSocketMessage::class.java)) {
-                is UpdateContentMessage -> {
-                    val updatedSession = sessionService.updateContent(
-                        liveSessionId,
-                        webSocketMessage.content,
-                    )
-                    broadcastUpdate(updatedSession, webSocketMessage.ref)
-                }
-
-                is ExecuteMessage -> {
-                    // Run execution in background thread with SecurityContext propagation
-                    queryExecutor.submit {
-                        try {
-                            val executionResult = sessionService.executeStatement(
-                                liveSessionId,
-                                webSocketMessage.statement,
-                            )
-                            when (executionResult) {
-                                is DBExecutionResult -> {
-                                    val resultMessage = ResultMessage(
-                                        sessionId = liveSessionId,
-                                        results = executionResult.results.map { ExecutionResultResponse.fromDto(it) },
-                                        event = executionResult.event?.let { EventResponse.fromEvent(it) },
-                                    )
-                                    broadcastResultMessage(liveSessionId, resultMessage)
-                                }
-
-                                else -> throw IllegalStateException(
-                                    "Unsupported execution result type: $executionResult",
-                                )
-                            }
-                        } catch (e: AccessDeniedException) {
-                            logger.warn("Access denied for session: $liveSessionId", e)
-                            sessionObservers[liveSessionId]?.forEach { sessionObserver ->
-                                sendErrorResponseMessage(
-                                    sessionObserver.webSocketSession,
-                                    "You don't have permission to execute on this session",
-                                    liveSessionId,
-                                )
-                            }
-                        } catch (e: Exception) {
-                            logger.error("Error executing query", e)
-                            sessionObservers[liveSessionId]?.forEach { sessionObserver ->
-                                sendErrorResponseMessage(
-                                    sessionObserver.webSocketSession,
-                                    "Error executing query: ${e.message}",
-                                    liveSessionId,
-                                )
-                            }
-                        } finally {
-                            // Clear the executing flag
-                            sessionService.clearExecutingFlag(liveSessionId)
-                        }
-                    }
-                    // Handler returns immediately - can now process other messages!
-                }
-
-                is CancelMessage -> {
-                    sessionService.cancelQuery(liveSessionId)
-                    logger.info("Query cancelled for session: $liveSessionId")
-                }
+        withLoggingContext(
+            LoggingKeys.USER_ID to currentUserId(),
+            LoggingKeys.WS_SESSION_ID to session.id,
+        ) {
+            if (message.payload == "CONNECT") {
+                val liveSession = sessionService.getSession(liveSessionId)
+                broadcastUpdate(liveSession)
+                return
             }
-        } catch (e: AccessDeniedException) {
-            logger.warn("Access denied for session: $liveSessionId", e)
-            sendErrorResponseMessage(session, "You don't have permission to perform this action", liveSessionId)
-        } catch (e: Exception) {
-            logger.error("Error processing message", e)
-            sendErrorResponseMessage(session, "Error processing message", liveSessionId)
+
+            try {
+                when (val webSocketMessage = objectMapper.readValue(message.payload, WebSocketMessage::class.java)) {
+                    is UpdateContentMessage -> {
+                        val updatedSession = sessionService.updateContent(
+                            liveSessionId,
+                            webSocketMessage.content,
+                        )
+                        broadcastUpdate(updatedSession, webSocketMessage.ref)
+                    }
+
+                    is ExecuteMessage -> {
+                        // Run execution in background thread with SecurityContext propagation.
+                        // MDC does not propagate across threads, so re-establish it inside the task.
+                        queryExecutor.submit {
+                            withLoggingContext(
+                                LoggingKeys.USER_ID to currentUserId(),
+                                LoggingKeys.WS_SESSION_ID to session.id,
+                            ) {
+                                try {
+                                    val executionResult = sessionService.executeStatement(
+                                        liveSessionId,
+                                        webSocketMessage.statement,
+                                    )
+                                    when (executionResult) {
+                                        is DBExecutionResult -> {
+                                            val resultMessage = ResultMessage(
+                                                sessionId = liveSessionId,
+                                                results = executionResult.results.map {
+                                                    ExecutionResultResponse.fromDto(it)
+                                                },
+                                                event = executionResult.event?.let { EventResponse.fromEvent(it) },
+                                            )
+                                            broadcastResultMessage(liveSessionId, resultMessage)
+                                        }
+
+                                        else -> throw IllegalStateException(
+                                            "Unsupported execution result type: $executionResult",
+                                        )
+                                    }
+                                } catch (e: AccessDeniedException) {
+                                    logger.warn("Access denied for session: $liveSessionId", e)
+                                    sessionObservers[liveSessionId]?.forEach { sessionObserver ->
+                                        sendErrorResponseMessage(
+                                            sessionObserver.webSocketSession,
+                                            "You don't have permission to execute on this session",
+                                            liveSessionId,
+                                        )
+                                    }
+                                } catch (e: Exception) {
+                                    logger.error("Error executing query", e)
+                                    sessionObservers[liveSessionId]?.forEach { sessionObserver ->
+                                        sendErrorResponseMessage(
+                                            sessionObserver.webSocketSession,
+                                            "Error executing query: ${e.message}",
+                                            liveSessionId,
+                                        )
+                                    }
+                                } finally {
+                                    // Clear the executing flag
+                                    sessionService.clearExecutingFlag(liveSessionId)
+                                }
+                            }
+                        }
+                        // Handler returns immediately - can now process other messages!
+                    }
+
+                    is CancelMessage -> {
+                        sessionService.cancelQuery(liveSessionId)
+                        logger.info("Query cancelled for session: $liveSessionId")
+                    }
+                }
+            } catch (e: AccessDeniedException) {
+                logger.warn("Access denied for session: $liveSessionId", e)
+                sendErrorResponseMessage(session, "You don't have permission to perform this action", liveSessionId)
+            } catch (e: Exception) {
+                logger.error("Error processing message", e)
+                sendErrorResponseMessage(session, "Error processing message", liveSessionId)
+            }
         }
     }
 
