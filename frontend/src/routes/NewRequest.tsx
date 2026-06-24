@@ -695,8 +695,30 @@ const KubernetesExecutionRequestForm = ({
       setChosenPod(selectedPod);
       setValue("podName", selectedPod.name);
       setValue("namespace", selectedPod.namespace);
+      setValue("containerName", selectedPod.containerNames[0] ?? "");
     }
   };
+
+  // The pod dropdown's first option is shown as selected by the browser, but that
+  // never fires onChange, so the derived namespace/pod/container fields would stay
+  // blank until the user re-picks a pod. Once the pods load, commit a selection to
+  // form state. A pod pre-filled from a "re-run" link takes precedence.
+  useEffect(() => {
+    if (pods.length === 0 || chosenPod) {
+      return;
+    }
+    const state = location.state as PreConfiguredStateKubernetes | null;
+    if (state?.podName) {
+      const preselected = pods.find(
+        (p) => p.name === state.podName && p.namespace === state.namespace,
+      );
+      if (preselected) {
+        setChosenPod(preselected);
+      }
+      return;
+    }
+    choosePod(pods[0].id);
+  }, [pods, chosenPod, location.state]);
 
   const onSubmit: SubmitHandler<KubernetesExecutionRequest> = async (
     data: KubernetesExecutionRequest,
@@ -799,6 +821,7 @@ const KubernetesExecutionRequestForm = ({
             </label>
             <select
               className="mt-2 block w-full rounded-md border-0 pr-10 text-slate-900 focus:ring-0 focus-visible:outline-none dark:bg-slate-950 dark:text-slate-300 sm:text-sm sm:leading-6"
+              value={chosenPod?.id ?? ""}
               onChange={(e: ChangeEvent<HTMLSelectElement>) => {
                 choosePod(e.target.value);
               }}
