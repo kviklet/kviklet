@@ -6,7 +6,7 @@ import { NotificationContext } from "../components/NotifcationStatusProvider";
 import { useContext } from "react";
 
 function DefaultLayout() {
-  const { notifications } =
+  const { notifications, removeNotification } =
     useContext<NotificationContext>(NotificationContext);
 
   return (
@@ -25,15 +25,19 @@ function DefaultLayout() {
             if (notification.type === "info") {
               return (
                 <Notification
+                  key={notification.id}
                   title={notification.title}
                   text={notification.text}
+                  onClose={() => removeNotification(notification.id)}
                 />
               );
             } else {
               return (
                 <ErrorNotification
+                  key={notification.id}
                   title={notification.title}
                   text={notification.text}
+                  onClose={() => removeNotification(notification.id)}
                 />
               );
             }

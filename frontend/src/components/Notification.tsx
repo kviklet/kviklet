@@ -1,10 +1,32 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Transition } from "@headlessui/react";
 import { CheckCircleIcon } from "@heroicons/react/24/outline";
 import { XMarkIcon } from "@heroicons/react/20/solid";
 
-export default function Notification(props: { title: string; text: string }) {
+// Auto-dismiss timings. Errors linger a bit longer so they can be read.
+const INFO_DISMISS_MS = 5000;
+const ERROR_DISMISS_MS = 8000;
+// Matches the leave transition duration below, so the toast is removed from the
+// list only after it has animated out.
+const LEAVE_TRANSITION_MS = 150;
+
+export default function Notification(props: {
+  title: string;
+  text: string;
+  onClose: () => void;
+}) {
   const [show, setShow] = useState(true);
+
+  const handleClose = () => {
+    setShow(false);
+    setTimeout(props.onClose, LEAVE_TRANSITION_MS);
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(handleClose, INFO_DISMISS_MS);
+    return () => clearTimeout(timer);
+    // Set the auto-dismiss timer once on mount.
+  }, []);
 
   return (
     <Transition
@@ -40,9 +62,7 @@ export default function Notification(props: { title: string; text: string }) {
               <button
                 type="button"
                 className="inline-flex rounded-md text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 hover:text-slate-500"
-                onClick={() => {
-                  setShow(false);
-                }}
+                onClick={handleClose}
               >
                 <span className="sr-only">Close</span>
                 <XMarkIcon className="h-5 w-5" aria-hidden="true" />
@@ -55,8 +75,23 @@ export default function Notification(props: { title: string; text: string }) {
   );
 }
 
-function ErrorNotification(props: { title: string; text: string }) {
+function ErrorNotification(props: {
+  title: string;
+  text: string;
+  onClose: () => void;
+}) {
   const [show, setShow] = useState(true);
+
+  const handleClose = () => {
+    setShow(false);
+    setTimeout(props.onClose, LEAVE_TRANSITION_MS);
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(handleClose, ERROR_DISMISS_MS);
+    return () => clearTimeout(timer);
+    // Set the auto-dismiss timer once on mount.
+  }, []);
 
   return (
     <Transition
@@ -89,9 +124,7 @@ function ErrorNotification(props: { title: string; text: string }) {
               <button
                 type="button"
                 className="inline-flex rounded-md text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 hover:text-slate-500"
-                onClick={() => {
-                  setShow(false);
-                }}
+                onClick={handleClose}
               >
                 <span className="sr-only">Close</span>
                 <XMarkIcon className="h-5 w-5" aria-hidden="true" />
