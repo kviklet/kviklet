@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import Button from "../../components/Button";
 import {
+  CreateUserRequest,
   UserResponse,
   createUser,
+  createUserRequestSchema,
   fetchUsers,
   updateUser,
 } from "../../api/UserApi";
@@ -22,33 +26,37 @@ function UserForm(props: {
     fullName: string,
   ) => Promise<void>;
 }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<CreateUserRequest>({
+    resolver: zodResolver(createUserRequestSchema),
+    defaultValues: { email: "", password: "", fullName: "" },
+  });
 
-  const saveUser = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    props
-      .createNewUser(email, password, fullName)
-      .then(() => {
-        props.disableModal();
-      })
-      .catch((err) => console.log(err));
+  // Validation mirrors the backend CreateUserRequest constraints via the shared
+  // createUserRequestSchema, so missing or invalid fields surface as inline
+  // messages instead of an unhandled error.
+  const onSubmit = async (data: CreateUserRequest) => {
+    await props.createNewUser(data.email, data.password, data.fullName);
+    props.disableModal();
   };
 
   return (
-    <form method="post" onSubmit={saveUser}>
+    <form
+      method="post"
+      onSubmit={(event) => void handleSubmit(onSubmit)(event)}
+    >
       <div className="w-2xl rounded bg-slate-50 p-3 shadow dark:bg-slate-900">
         <h2 className="mb-4 text-lg font-semibold">Create New User</h2>
         <div className="mb-3 flex flex-col">
           <InputField
             id="email"
             label="Email"
-            value={email}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setEmail(e.target.value)
-            }
+            error={errors.email?.message}
             data-testid="email-input"
+            {...register("email")}
           />
         </div>
         <div className="mb-3 flex flex-col">
@@ -56,22 +64,18 @@ function UserForm(props: {
             id="password"
             label="Password"
             type="passwordlike"
-            value={password}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setPassword(e.target.value)
-            }
+            error={errors.password?.message}
             data-testid="password-input"
+            {...register("password")}
           />
         </div>
         <div className="mb-3 flex flex-col">
           <InputField
             id="fullName"
             label="Full Name"
-            value={fullName}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setFullName(e.target.value)
-            }
+            error={errors.fullName?.message}
             data-testid="name-input"
+            {...register("fullName")}
           />
         </div>
         <div className="mb-3 flex flex-row justify-end space-x-2">
