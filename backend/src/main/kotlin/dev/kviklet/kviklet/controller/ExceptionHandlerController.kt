@@ -32,13 +32,13 @@ class ExceptionHandlerController {
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
     fun handleNotValid(ex: MethodArgumentNotValidException, request: HttpServletRequest): ResponseEntity<Any> {
-        logger.error("Validation error at ${request.requestURI}: ${ex.message}")
+        logger.warn("Validation error at ${request.requestURI}: ${ex.message}")
         return ResponseEntity("Validation error", HttpStatus.BAD_REQUEST)
     }
 
     @ExceptionHandler(IllegalArgumentException::class)
     fun handleIllegalArgumentException(ex: IllegalArgumentException, request: HttpServletRequest): ResponseEntity<Any> {
-        logger.error("Illegal argument at ${request.requestURI}: ${ex.message}")
+        logger.warn("Illegal argument at ${request.requestURI}: ${ex.message}")
         return ResponseEntity(ErrorResponse(ex.message ?: "Illegal argument"), HttpStatus.BAD_REQUEST)
     }
 
@@ -47,7 +47,7 @@ class ExceptionHandlerController {
         ex: HttpMessageNotReadableException,
         request: HttpServletRequest,
     ): ResponseEntity<Any> {
-        logger.error("JSON parse error at ${request.requestURI}: ${ex.message}")
+        logger.warn("JSON parse error at ${request.requestURI}: ${ex.message}")
         return ResponseEntity(ErrorResponse("JSON parse error"), HttpStatus.BAD_REQUEST)
     }
 
@@ -56,7 +56,7 @@ class ExceptionHandlerController {
         ex: LicenseRestrictionException,
         request: HttpServletRequest,
     ): ResponseEntity<Any> {
-        logger.error("License restriction at ${request.requestURI}", ex)
+        logger.warn("License restriction at ${request.requestURI}: ${ex.message}")
         return ResponseEntity(ErrorResponse(ex.message ?: "License restriction"), HttpStatus.BAD_REQUEST)
     }
 
@@ -65,7 +65,7 @@ class ExceptionHandlerController {
         ex: EnterpriseFeatureException,
         request: HttpServletRequest,
     ): ResponseEntity<Any> {
-        logger.error("Enterprise feature access attempt at ${request.requestURI}: ${ex.message}")
+        logger.warn("Enterprise feature access attempt at ${request.requestURI}: ${ex.message}")
         return ResponseEntity(
             ErrorResponse(ex.message ?: "This feature requires a valid enterprise license"),
             HttpStatus.PAYMENT_REQUIRED,
@@ -74,7 +74,7 @@ class ExceptionHandlerController {
 
     @ExceptionHandler(InvalidLicenseException::class)
     fun handleInvalidLicenseException(ex: InvalidLicenseException, request: HttpServletRequest): ResponseEntity<Any> {
-        logger.error("Invalid license at ${request.requestURI}", ex)
+        logger.warn("Invalid license at ${request.requestURI}: ${ex.message}")
         return ResponseEntity(ErrorResponse(ex.message ?: "Invalid License file"), HttpStatus.BAD_REQUEST)
     }
 
@@ -83,31 +83,31 @@ class ExceptionHandlerController {
         ex: EmailAlreadyExistsException,
         request: HttpServletRequest,
     ): ResponseEntity<Any> {
-        logger.error("Email already exists at ${request.requestURI}", ex)
+        logger.warn("Email already exists at ${request.requestURI}: ${ex.message}")
         return ResponseEntity(ErrorResponse(ex.message ?: "Email already exists"), HttpStatus.BAD_REQUEST)
     }
 
     @ExceptionHandler(AccessDeniedException::class)
     fun handleAccessDeniedException(ex: AccessDeniedException, request: HttpServletRequest): ResponseEntity<Any> {
-        logger.error("Access denied at ${request.requestURI}", ex)
+        logger.warn("Access denied at ${request.requestURI}: ${ex.message}")
         return ResponseEntity(ErrorResponse("Access denied"), HttpStatus.FORBIDDEN)
     }
 
     @ExceptionHandler(AlreadyExecutedException::class)
     fun handleAlreadyExecutedException(ex: AlreadyExecutedException, request: HttpServletRequest): ResponseEntity<Any> {
-        logger.error("Already executed at ${request.requestURI}", ex)
+        logger.warn("Already executed at ${request.requestURI}: ${ex.message}")
         return ResponseEntity(ErrorResponse(ex.message ?: "Already Executed"), HttpStatus.BAD_REQUEST)
     }
 
     @ExceptionHandler(BadCredentialsException::class)
     fun handleBadCredentialsException(ex: BadCredentialsException, request: HttpServletRequest): ResponseEntity<Any> {
-        logger.error("Bad credentials at ${request.requestURI}", ex)
+        logger.warn("Bad credentials at ${request.requestURI}: ${ex.message}")
         return ResponseEntity(ErrorResponse(ex.message ?: "Bad Credentials"), HttpStatus.UNAUTHORIZED)
     }
 
     @ExceptionHandler(EntityNotFound::class)
     fun handleEntityNotFound(ex: EntityNotFound, request: HttpServletRequest): ResponseEntity<Any> {
-        logger.error("Entity not found at ${request.requestURI}", ex)
+        logger.warn("Entity not found at ${request.requestURI}: ${ex.message}")
         return ResponseEntity(ErrorResponse(ex.message), HttpStatus.NOT_FOUND)
     }
 

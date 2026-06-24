@@ -64,9 +64,9 @@ class ApiKeyAuthFilter(private val apiKeyService: ApiKeyService, private val pas
             // Set authentication in context
             SecurityContextHolder.getContext().authentication = authentication
         } catch (e: EntityNotFound) {
-            logger.error("Error finding API key", e)
+            logger.warn("Error finding user for API key: ${e.message}")
         } catch (e: IllegalArgumentException) {
-            logger.error("Invalid API key format", e)
+            logger.debug("Invalid API key format: ${e.message}")
         } catch (e: Exception) {
             logger.error("Error authenticating with API key", e)
         }
