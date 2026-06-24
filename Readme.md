@@ -531,18 +531,6 @@ the format via an environment variable:
 LOGGING_STRUCTURED_FORMAT_CONSOLE=ecs
 ```
 
-Leave the variable unset to keep the default pretty logs. No restart flags or config
-files are needed — this is built into Spring Boot.
-
-You can also adjust verbosity with the usual Spring Boot variables, for example:
-
-```
-# Global level: TRACE, DEBUG, INFO (default), WARN, ERROR
-LOGGING_LEVEL_ROOT=INFO
-# Only Kviklet's own packages
-LOGGING_LEVEL_DEV_KVIKLET=DEBUG
-```
-
 ## Encryption
 
 If you don't want the credentials to be stored in cleartext in the DB, it is recommended that you enable database encryption on the Kviklet postgres DB itself. For most hosted providers this is a simple checkbox to click.
