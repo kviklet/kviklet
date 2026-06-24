@@ -172,6 +172,10 @@ data class UpdateDatasourceConnectionRequest(
 
     val category: String? = null,
 
+    // Using an extra clear flag because the patch requests don't differentiate between
+    // null and not present.
+    val clearCategory: Boolean = false,
+
     val dryRunEnabled: Boolean? = null,
 
     val dryRunRequiresApproval: Boolean? = null,
@@ -191,6 +195,10 @@ data class UpdateKubernetesConnectionRequest(
     val storeResults: Boolean? = null,
 
     val category: String? = null,
+
+    // Using an extra clear flag because the patch requests don't differentiate between
+    // null and not present.
+    val clearCategory: Boolean = false,
 
     @field:Min(1)
     val kubernetesExecInitialWaitTimeoutSeconds: Long? = null,
