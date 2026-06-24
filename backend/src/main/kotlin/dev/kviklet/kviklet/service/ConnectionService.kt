@@ -91,7 +91,7 @@ class ConnectionService(
             } else {
                 (request.maxTemporaryAccessDuration ?: connection.maxTemporaryAccessDuration)
             },
-            category = request.category ?: connection.category,
+            category = if (request.clearCategory) null else (request.category ?: connection.category),
             dryRunEnabled = request.dryRunEnabled ?: connection.dryRunEnabled,
             dryRunRequiresApproval = request.dryRunRequiresApproval ?: connection.dryRunRequiresApproval,
         )
@@ -166,7 +166,7 @@ class ConnectionService(
             newReviewConfig,
             newMaxExecutions,
             request.storeResults ?: connection.storeResults,
-            category = request.category ?: connection.category,
+            category = if (request.clearCategory) null else (request.category ?: connection.category),
             kubernetesExecInitialWaitTimeoutSeconds = newInitialWaitTimeoutSeconds,
             kubernetesExecTimeoutMinutes = newTimeoutMinutes,
         )
