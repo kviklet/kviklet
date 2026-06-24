@@ -25,9 +25,45 @@ function UserForm(props: {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [errors, setErrors] = useState<{
+    email?: string;
+    password?: string;
+    fullName?: string;
+  }>({});
+
+  // Mirrors the backend validation on CreateUserRequest so that missing or
+  // invalid fields surface as inline messages instead of an unhandled error.
+  const validate = () => {
+    const newErrors: {
+      email?: string;
+      password?: string;
+      fullName?: string;
+    } = {};
+    if (email.trim().length === 0) {
+      newErrors.email = "Email is required.";
+    } else if (email.length < 3 || email.length > 50) {
+      newErrors.email = "Email must be between 3 and 50 characters.";
+    }
+    if (password.length === 0) {
+      newErrors.password = "Password is required.";
+    } else if (password.length < 6 || password.length > 50) {
+      newErrors.password = "Password must be between 6 and 50 characters.";
+    }
+    if (fullName.trim().length === 0) {
+      newErrors.fullName = "Full name is required.";
+    } else if (fullName.length > 50) {
+      newErrors.fullName = "Full name must be at most 50 characters.";
+    }
+    return newErrors;
+  };
 
   const saveUser = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const validationErrors = validate();
+    setErrors(validationErrors);
+    if (Object.keys(validationErrors).length > 0) {
+      return;
+    }
     props
       .createNewUser(email, password, fullName)
       .then(() => {
@@ -45,9 +81,11 @@ function UserForm(props: {
             id="email"
             label="Email"
             value={email}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setEmail(e.target.value)
-            }
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              setEmail(e.target.value);
+              setErrors((prev) => ({ ...prev, email: undefined }));
+            }}
+            error={errors.email}
             data-testid="email-input"
           />
         </div>
@@ -57,9 +95,11 @@ function UserForm(props: {
             label="Password"
             type="passwordlike"
             value={password}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setPassword(e.target.value)
-            }
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              setPassword(e.target.value);
+              setErrors((prev) => ({ ...prev, password: undefined }));
+            }}
+            error={errors.password}
             data-testid="password-input"
           />
         </div>
@@ -68,9 +108,11 @@ function UserForm(props: {
             id="fullName"
             label="Full Name"
             value={fullName}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setFullName(e.target.value)
-            }
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              setFullName(e.target.value);
+              setErrors((prev) => ({ ...prev, fullName: undefined }));
+            }}
+            error={errors.fullName}
             data-testid="name-input"
           />
         </div>
