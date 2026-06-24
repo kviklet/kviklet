@@ -1,6 +1,6 @@
 import { Route, Navigate, Routes } from "react-router-dom";
 import Settings from "./routes/settings/Settings";
-import DefaultLayout from "./layout/DefaultLayout";
+import RootLayout from "./layout/RootLayout";
 import { Requests } from "./routes/Requests";
 import Login from "./routes/Login";
 import { ReactElement, useContext } from "react";
@@ -41,7 +41,7 @@ function App() {
           <NotificationContextProvider>
             <ConfigProvider>
               <Routes>
-                <Route path="/" element={<DefaultLayout />}>
+                <Route path="/" element={<RootLayout />}>
                   <Route
                     index
                     element={

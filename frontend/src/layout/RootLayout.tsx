@@ -46,7 +46,7 @@ const notificationAnimation: AutoAnimationPlugin = (
   });
 };
 
-function DefaultLayout() {
+function RootLayout() {
   const { notifications, removeNotification } =
     useContext<NotificationContext>(NotificationContext);
   const [notificationListRef] = useAutoAnimate(notificationAnimation);
@@ -93,4 +93,4 @@ function DefaultLayout() {
   );
 }
 
-export default DefaultLayout;
+export default RootLayout;
