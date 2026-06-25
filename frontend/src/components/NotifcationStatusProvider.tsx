@@ -1,15 +1,17 @@
 import React, { useState } from "react";
 
-type Notification = {
+type NotificationInput = {
   title: string;
   text: string;
   type: "info" | "error";
 };
 
+type Notification = NotificationInput & { id: number };
+
 type NotificationContext = {
   notifications: Notification[];
-  addNotification: (notification: Notification) => void;
-  removeNotification: (notification: Notification) => void;
+  addNotification: (notification: NotificationInput) => void;
+  removeNotification: (id: number) => void;
 };
 
 const NotificationContext = React.createContext<NotificationContext>({
@@ -22,16 +24,22 @@ type Props = {
   children: React.ReactNode;
 };
 
+let nextNotificationId = 0;
+
 export const NotificationContextProvider: React.FC<Props> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  const addNotification = (notification: Notification) => {
-    setNotifications((notifications) => [...notifications, notification]);
+  const addNotification = (notification: NotificationInput) => {
+    const id = nextNotificationId++;
+    setNotifications((notifications) => [
+      ...notifications,
+      { ...notification, id },
+    ]);
   };
 
-  const removeNotification = (notification: Notification) => {
+  const removeNotification = (id: number) => {
     setNotifications((notifications) => {
-      return notifications.filter((n) => n !== notification);
+      return notifications.filter((n) => n.id !== id);
     });
   };
 
