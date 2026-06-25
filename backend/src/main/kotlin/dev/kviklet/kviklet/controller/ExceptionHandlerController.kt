@@ -3,6 +3,7 @@ package dev.kviklet.kviklet.controller
 import dev.kviklet.kviklet.security.EnterpriseFeatureException
 import dev.kviklet.kviklet.service.AlreadyExecutedException
 import dev.kviklet.kviklet.service.EmailAlreadyExistsException
+import dev.kviklet.kviklet.service.EntityAlreadyExists
 import dev.kviklet.kviklet.service.EntityNotFound
 import dev.kviklet.kviklet.service.InvalidLicenseException
 import dev.kviklet.kviklet.service.InvalidReviewException
@@ -109,6 +110,12 @@ class ExceptionHandlerController {
     fun handleEntityNotFound(ex: EntityNotFound, request: HttpServletRequest): ResponseEntity<Any> {
         logger.warn("Entity not found at ${request.requestURI}: ${ex.message}")
         return ResponseEntity(ErrorResponse(ex.message), HttpStatus.NOT_FOUND)
+    }
+
+    @ExceptionHandler(EntityAlreadyExists::class)
+    fun handleEntityAlreadyExists(ex: EntityAlreadyExists, request: HttpServletRequest): ResponseEntity<Any> {
+        logger.warn("Entity already exists at ${request.requestURI}: ${ex.message}")
+        return ResponseEntity(ErrorResponse(ex.message), HttpStatus.CONFLICT)
     }
 
     @ExceptionHandler(Exception::class)

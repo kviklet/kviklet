@@ -21,6 +21,8 @@ import org.springframework.stereotype.Service
 
 class EntityNotFound(override val message: String, val detail: String) : Exception(message)
 
+class EntityAlreadyExists(override val message: String, val detail: String) : Exception(message)
+
 data class TestConnectionResult(
     val success: Boolean,
     val message: String,
@@ -225,6 +227,7 @@ class ConnectionService(
         if (authenticationType == AuthenticationType.USER_PASSWORD && password == null) {
             throw IllegalArgumentException("Password is required for USER_PASSWORD authentication")
         }
+        ensureConnectionIdIsAvailable(connectionId)
         // Validate: MongoDB cannot have dry run enabled
         if (type == DatasourceType.MONGODB && dryRunEnabled) {
             throw IllegalArgumentException("Dry run is not supported for MongoDB connections")
@@ -352,6 +355,7 @@ class ConnectionService(
         kubernetesExecInitialWaitTimeoutSeconds: Long?,
         kubernetesExecTimeoutMinutes: Long?,
     ): Connection {
+        ensureConnectionIdIsAvailable(connectionId)
         validateReviewConfig(reviewConfig, existingReviewConfig = null)
         return connectionAdapter.createKubernetesConnection(
             connectionId,
@@ -377,6 +381,15 @@ class ConnectionService(
     fun getDatasourceConnection(connectionId: ConnectionId): Connection = connectionAdapter.getConnection(
         connectionId = connectionId,
     )
+
+    private fun ensureConnectionIdIsAvailable(connectionId: ConnectionId) {
+        if (connectionAdapter.connectionExists(connectionId)) {
+            throw EntityAlreadyExists(
+                "Connection already exists",
+                "A connection with id $connectionId already exists.",
+            )
+        }
+    }
 
     private fun validateReviewConfig(newReviewConfig: ReviewConfig, existingReviewConfig: ReviewConfig?) {
         if (newReviewConfig.numTotalRequired < 0) {
