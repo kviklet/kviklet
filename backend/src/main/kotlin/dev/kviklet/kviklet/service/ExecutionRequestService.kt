@@ -14,6 +14,7 @@ import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.ReviewPayload
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.proxy.postgres.PostgresProxy
+import dev.kviklet.kviklet.proxy.mysql.MySqlProxy
 import dev.kviklet.kviklet.proxy.postgres.tlsCertificateFactory
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
@@ -963,8 +964,10 @@ class ExecutionRequestService(
         if (reviewStatus != ReviewStatus.APPROVED) {
             throw InvalidReviewException("This request has not been approved yet!")
         }
-        if (connection.type != DatasourceType.POSTGRESQL) {
-            throw RuntimeException("Only Postgres is supported for proxying!")
+        if (connection.type != DatasourceType.POSTGRESQL &&
+            connection.type != DatasourceType.MYSQL &&
+            connection.type != DatasourceType.MARIADB) {
+            throw RuntimeException("Only Postgres, MySQL, and MariaDB are supported for proxying!")
         }
         if (connection.auth !is AuthenticationDetails.UserPassword) {
             throw RuntimeException("Only UserPassword authentication is supported for proxying!")
@@ -984,6 +987,7 @@ class ExecutionRequestService(
         val availablePort = (5438..6000).first { it !in usedPorts }
 
         startServerAsync(
+            connection.type,
             connection.hostname,
             connection.port,
             connection.databaseName ?: "",
@@ -1027,6 +1031,7 @@ class ExecutionRequestService(
 
     @Async
     fun startServerAsync(
+        datasourceType: DatasourceType,
         hostname: String,
         port: Int,
         databaseName: String,
@@ -1040,22 +1045,44 @@ class ExecutionRequestService(
         maxTimeMinutes: Long,
     ): CompletableFuture<Void>? = CompletableFuture.runAsync {
         try {
-            PostgresProxy(
-                hostname,
-                port,
-                databaseName,
-                authenticationDetails,
-                eventService,
-                executionRequest,
-                userId,
-                tlsCertificateFactory(proxyTLSCerts.proxyCertificates()),
-            ).startServer(
-                mappedPort,
-                email,
-                tempPassword,
-                startTime,
-                maxTimeMinutes,
-            )
+            if (datasourceType == DatasourceType.POSTGRESQL) {
+                PostgresProxy(
+                    hostname,
+                    port,
+                    databaseName,
+                    authenticationDetails,
+                    eventService,
+                    executionRequest,
+                    userId,
+                    tlsCertificateFactory(proxyTLSCerts.proxyCertificates()),
+                ).startServer(
+                    mappedPort,
+                    email,
+                    tempPassword,
+                    startTime,
+                    maxTimeMinutes,
+                )
+            } else if (datasourceType == DatasourceType.MYSQL || datasourceType == DatasourceType.MARIADB) {
+                MySqlProxy(
+                    datasourceType,
+                    hostname,
+                    port,
+                    databaseName,
+                    authenticationDetails,
+                    eventService,
+                    executionRequest,
+                    userId,
+                    tlsCertificateFactory(proxyTLSCerts.proxyCertificates()),
+                ).startServer(
+                    mappedPort,
+                    email,
+                    tempPassword,
+                    startTime,
+                    maxTimeMinutes,
+                )
+            } else {
+                throw IllegalArgumentException("Unsupported datasource type for proxying: $datasourceType")
+            }
         } catch (e: Exception) {
             // At least print the exception, otherwise it will fail silently in the background
             logger.error("Error starting proxy for user $userId on port $port", e)
