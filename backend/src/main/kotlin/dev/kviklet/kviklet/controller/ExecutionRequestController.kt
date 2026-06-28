@@ -222,10 +222,6 @@ sealed class ExecutionRequestDetailResponse(open val id: ExecutionRequestId, ope
                     createdAt = request.createdAt,
                     events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
                     connection = ConnectionResponse.fromDto(request.connection),
-                    csvDownload = CSVDownloadableResponse(
-                        allowed = dto.csvDownloadAllowed().first,
-                        reason = dto.csvDownloadAllowed().second,
-                    ),
                     temporaryAccessDuration = request.temporaryAccessDuration?.toMinutes(),
                     approvalProgress = ApprovalProgressResponse.fromDto(
                         dto.getApprovalProgress(),
@@ -270,7 +266,6 @@ data class DatasourceExecutionRequestDetailResponse(
     val reviewStatus: ReviewStatus,
     val executionStatus: ExecutionStatus,
     val createdAt: LocalDateTime = utcTimeNow(),
-    val csvDownload: CSVDownloadableResponse,
     override val events: List<EventResponse>,
     val temporaryAccessDuration: Long? = null,
     val approvalProgress: ApprovalProgressResponse,
@@ -278,8 +273,6 @@ data class DatasourceExecutionRequestDetailResponse(
     id = id,
     events = events,
 )
-
-data class CSVDownloadableResponse(val allowed: Boolean, val reason: String)
 
 data class RoleApprovalProgressResponse(
     val role: RoleResponse,

@@ -116,11 +116,6 @@ const ExecuteEvent = withType(
   "EXECUTE",
 );
 
-const CSVDownloadSchema = z.object({
-  allowed: z.boolean(),
-  reason: z.string(),
-});
-
 const RoleApprovalProgressSchema = z.object({
   role: roleResponseSchema,
   numRequired: z.number(),
@@ -147,7 +142,6 @@ const RawDatasourceRequestSchema = z.object({
   reviewStatus: z.string(),
   createdAt: z.coerce.date(),
   connectionName: z.string().optional(),
-  csvDownload: CSVDownloadSchema.optional(),
   temporaryAccessDuration: z.number().nullable(),
   approvalProgress: ApprovalProgressSchema.optional(),
 });

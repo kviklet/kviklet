@@ -64,19 +64,21 @@ function DatasourceRequestBox({
     });
   };
 
+  // Downloading executes the stored statement, so it's only available for relational
+  // (non-Mongo) single-execution requests. Temporary access downloads run from the live
+  // session, which sends the editor's query along.
+  const downloadEnabled =
+    isRelationalDatabase(request) && request?.type === "SingleExecution";
   const menuDropDownItems = [
     {
       onClick: () => {},
-      enabled: request?.csvDownload?.allowed || false,
-      tooltip:
-        (!request?.csvDownload?.allowed && request?.csvDownload?.reason) ||
-        undefined,
-      content: request?.csvDownload?.allowed ? (
+      enabled: downloadEnabled,
+      content: downloadEnabled ? (
         <a href={`${baseUrl}/execution-requests/${request?.id}/download`}>
-          Download as CSV
+          Execute and Download Results
         </a>
       ) : (
-        <span>Download as CSV</span>
+        <span>Execute and Download Results</span>
       ),
     },
     {
