@@ -175,7 +175,7 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
         <div className="mb-4 flex flex-row items-center justify-end gap-2">
           {request?._type === "DATASOURCE" && isRelationalDatabase(request) && (
             <a href="#" onClick={handleCsvDownload}>
-              <Button>Download as CSV</Button>
+              <Button>Execute and Download Results</Button>
             </a>
           )}
           <LoadingCancelButton

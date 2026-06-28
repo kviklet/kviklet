@@ -31,10 +31,12 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
+import java.util.zip.ZipInputStream
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -481,6 +483,51 @@ class ExecutionTest {
                     "$.events[1].results[0].message",
                 ).value(containsString("relation \"foo.inexistent_table\" does not exist")),
             )
+    }
+
+    @Test
+    fun `when downloading an update statement then return a text file`() {
+        val updateRequest = executionRequestHelper.createApprovedRequest(
+            author = testUser,
+            approver = testReviewer,
+            connection = testConnection,
+            sql = "UPDATE foo.simple_table SET col2 = 'baz' WHERE col1 = 1",
+        )
+        val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+        val response = downloadCSV(updateRequest.getId(), userCookie)
+            .andExpect(status().isOk)
+            .andExpect(header().string("Content-Disposition", "attachment; filename=\"Test_Execution.txt\""))
+            .andReturn()
+
+        assert(response.response.contentAsString.contains("1 rows updated"))
+    }
+
+    @Test
+    fun `when downloading multiple statements then return a zip with one entry per result`() {
+        val multiRequest = executionRequestHelper.createApprovedRequest(
+            author = testUser,
+            approver = testReviewer,
+            connection = testConnection,
+            sql = "SELECT * FROM foo.simple_table; UPDATE foo.simple_table SET col2 = 'baz' WHERE col1 = 1",
+        )
+        val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+        val response = downloadCSV(multiRequest.getId(), userCookie)
+            .andExpect(status().isOk)
+            .andExpect(header().string("Content-Disposition", "attachment; filename=\"Test_Execution.zip\""))
+            .andReturn()
+
+        val entryNames = mutableListOf<String>()
+        ZipInputStream(response.response.contentAsByteArray.inputStream()).use { zip ->
+            var entry = zip.nextEntry
+            while (entry != null) {
+                entryNames.add(entry.name)
+                entry = zip.nextEntry
+            }
+        }
+        assert(entryNames.contains("Test_Execution_1.csv"))
+        assert(entryNames.contains("Test_Execution_2.txt"))
     }
 
     @Test

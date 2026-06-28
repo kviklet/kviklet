@@ -33,12 +33,6 @@ data class ColumnInfo(
     val typeClass: String,
 )
 
-data class StreamingQueryResult(
-    val columns: List<ColumnInfo>,
-    val rowCount: Int,
-    val storedRows: List<Map<String, String>> = emptyList(),
-)
-
 @Service
 class JDBCExecutor {
 
@@ -205,67 +199,6 @@ class JDBCExecutor {
                 return emptyList()
             }
         }
-    }
-
-    fun executeAndStreamDbResponse(
-        connectionString: String,
-        authenticationDetails: AuthenticationDetails,
-        query: String,
-        maxRowsToStore: Int = 0,
-        callback: (List<String>) -> Unit,
-    ): StreamingQueryResult {
-        createConnection(connectionString, authenticationDetails).use { dataSource: HikariDataSource ->
-            try {
-                dataSource.connection.createStatement().use { statement ->
-                    val hasResults = statement.execute(query)
-                    if (hasResults) {
-                        statement.resultSet?.use { resultSet ->
-                            return streamResultSet(resultSet, maxRowsToStore, callback)
-                        } ?: throw IllegalStateException("Can't stream a non-Select statement")
-                    } else {
-                        throw IllegalStateException("Can't stream a non-Select statement")
-                    }
-                }
-            } catch (e: SQLException) {
-                throw IllegalStateException("Error executing query: ${e.message}", e)
-            }
-        }
-    }
-
-    private fun streamResultSet(
-        resultSet: ResultSet,
-        maxRowsToStore: Int,
-        callback: (List<String>) -> Unit,
-    ): StreamingQueryResult {
-        val metadata = resultSet.metaData
-        val columns = (1..metadata.columnCount).map { i ->
-            ColumnInfo(
-                label = metadata.getColumnLabel(i),
-                typeName = metadata.getColumnTypeName(i),
-                typeClass = metadata.getColumnClassName(i),
-            )
-        }
-
-        callback(columns.map { it.label })
-
-        val storedRows = mutableListOf<Map<String, String>>()
-        var rowCount = 0
-
-        iterateResultSet(resultSet, columns, forEachRow = { resultMap ->
-            callback(columns.map { resultMap[it.label] ?: "" })
-
-            // Only store first N rows for result storage
-            if (storedRows.size < maxRowsToStore) {
-                storedRows.add(resultMap)
-            }
-            rowCount++
-        })
-
-        return StreamingQueryResult(
-            columns = columns,
-            rowCount = rowCount,
-            storedRows = storedRows,
-        )
     }
 
     private fun createRecordsQueryResult(resultSet: ResultSet, maxRowsToStore: Int? = null): RecordsQueryResult {

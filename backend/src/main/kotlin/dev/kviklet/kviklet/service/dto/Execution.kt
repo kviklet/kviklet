@@ -54,6 +54,12 @@ data class MongoRecordsQueryResult(
     )
 }
 
+/**
+ * The fully built file a download produces. The service assembles the bytes (single file or a ZIP)
+ * so the controller only needs to set the matching headers and write them out.
+ */
+data class DownloadResult(val fileName: String, val contentType: String, val bytes: ByteArray)
+
 sealed class ExecutionResponse : SecuredDomainObject {
     data class Stream(val connectionId: ConnectionId, val stream: (OutputStream) -> Unit) : ExecutionResponse() {
         override fun getSecuredObjectId(): String = connectionId.toString()
