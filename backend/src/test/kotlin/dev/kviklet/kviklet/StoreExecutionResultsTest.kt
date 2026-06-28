@@ -444,14 +444,15 @@ class StoreExecutionResultsTest {
                     .contentType("application/json"),
             ).andExpect(status().isOk)
 
-            // Verify no stored results in execution request details
-            // When storeResults=false, the results array is empty
+            // Verify the query is still audited but no rows are stored when storeResults=false
             mockMvc.perform(
                 get("/execution-requests/${executionRequest.getId()}").cookie(userCookie),
             ).andExpect(status().isOk)
                 .andExpect(jsonPath("$.events[-1].type").value("EXECUTE"))
                 .andExpect(jsonPath("$.events[-1].isDownload").value(true))
-                .andExpect(jsonPath("$.events[-1].results", hasSize<Collection<*>>(0)))
+                .andExpect(jsonPath("$.events[-1].results[0].type").value("QUERY"))
+                .andExpect(jsonPath("$.events[-1].results[0].storedRows").doesNotExist())
+                .andExpect(jsonPath("$.events[-1].results[0].columns").doesNotExist())
         }
     }
 }
