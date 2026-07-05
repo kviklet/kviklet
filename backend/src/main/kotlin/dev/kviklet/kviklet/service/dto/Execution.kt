@@ -54,6 +54,22 @@ data class MongoRecordsQueryResult(
     )
 }
 
+/**
+ * The fully built file a download produces. The service assembles the bytes (single file or a ZIP)
+ * so the controller only needs to set the matching headers and write them out. Carries the
+ * execution request so the @Policy check runs object-scoped, like ExecutionResult.
+ */
+data class DownloadResult(
+    val fileName: String,
+    val contentType: String,
+    val bytes: ByteArray,
+    val executionRequest: ExecutionRequestDetails,
+) : SecuredDomainObject {
+    override fun getSecuredObjectId() = executionRequest.getSecuredObjectId()
+    override fun getDomainObjectType() = executionRequest.getDomainObjectType()
+    override fun getRelated(resource: Resource) = executionRequest.getRelated(resource)
+}
+
 sealed class ExecutionResponse : SecuredDomainObject {
     data class Stream(val connectionId: ConnectionId, val stream: (OutputStream) -> Unit) : ExecutionResponse() {
         override fun getSecuredObjectId(): String = connectionId.toString()

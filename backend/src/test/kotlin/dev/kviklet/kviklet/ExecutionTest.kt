@@ -30,11 +30,12 @@ import org.springframework.test.web.servlet.ResultActions
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
+import java.util.zip.ZipInputStream
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -449,7 +450,7 @@ class ExecutionTest {
         )
         val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
 
-        val contentResponse = downloadCSV(csvRequest.getId(), userCookie).andExpect(status().isOk).andReturn()
+        val contentResponse = downloadResults(csvRequest.getId(), userCookie).andExpect(status().isOk).andReturn()
         val content = contentResponse.response.contentAsString
         verifyCSVContent(content)
         verifyExecutionsList(csvRequest.getId(), userCookie)
@@ -465,8 +466,10 @@ class ExecutionTest {
         )
         val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
 
-        val response = downloadCSV(csvRequest.getId(), userCookie).andExpect(status().is4xxClientError)
-        response.andExpect(content().string(containsString("relation \"foo.inexistent_table\" does not exist")))
+        val response = downloadResults(csvRequest.getId(), userCookie).andExpect(status().is4xxClientError)
+        response.andExpect(
+            jsonPath("$.message").value(containsString("relation \"foo.inexistent_table\" does not exist")),
+        )
 
         // Verify the request has exactly one event of type EXECUTE and it's an error
         mockMvc.perform(
@@ -481,6 +484,71 @@ class ExecutionTest {
                     "$.events[1].results[0].message",
                 ).value(containsString("relation \"foo.inexistent_table\" does not exist")),
             )
+    }
+
+    @Test
+    fun `when downloading a query with duplicate column labels then each column keeps its own values`() {
+        val duplicateColumnsRequest = executionRequestHelper.createApprovedRequest(
+            author = testUser,
+            approver = testReviewer,
+            connection = testConnection,
+            sql = "SELECT col1 AS id, col2 AS id FROM foo.simple_table",
+        )
+        val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+        val response = downloadResults(duplicateColumnsRequest.getId(), userCookie)
+            .andExpect(status().isOk)
+            .andReturn()
+
+        val content = response.response.contentAsString
+        assert(content.contains("id,id (2)"))
+        assert(content.contains("1,foo"))
+        assert(content.contains("2,bar"))
+    }
+
+    @Test
+    fun `when downloading an update statement then return a text file`() {
+        val updateRequest = executionRequestHelper.createApprovedRequest(
+            author = testUser,
+            approver = testReviewer,
+            connection = testConnection,
+            sql = "UPDATE foo.simple_table SET col2 = 'baz' WHERE col1 = 1",
+        )
+        val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+        val response = downloadResults(updateRequest.getId(), userCookie)
+            .andExpect(status().isOk)
+            .andExpect(header().string("Content-Disposition", "attachment; filename=\"Test_Execution.txt\""))
+            .andReturn()
+
+        assert(response.response.contentAsString.contains("1 rows updated"))
+    }
+
+    @Test
+    fun `when downloading multiple statements then return a zip with one entry per result`() {
+        val multiRequest = executionRequestHelper.createApprovedRequest(
+            author = testUser,
+            approver = testReviewer,
+            connection = testConnection,
+            sql = "SELECT * FROM foo.simple_table; UPDATE foo.simple_table SET col2 = 'baz' WHERE col1 = 1",
+        )
+        val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+        val response = downloadResults(multiRequest.getId(), userCookie)
+            .andExpect(status().isOk)
+            .andExpect(header().string("Content-Disposition", "attachment; filename=\"Test_Execution.zip\""))
+            .andReturn()
+
+        val entryNames = mutableListOf<String>()
+        ZipInputStream(response.response.contentAsByteArray.inputStream()).use { zip ->
+            var entry = zip.nextEntry
+            while (entry != null) {
+                entryNames.add(entry.name)
+                entry = zip.nextEntry
+            }
+        }
+        assert(entryNames.contains("Test_Execution_1.csv"))
+        assert(entryNames.contains("Test_Execution_2.txt"))
     }
 
     @Test
@@ -648,7 +716,7 @@ class ExecutionTest {
             .andExpect(jsonPath("$.events[1].results[0].type").value("ERROR"))
     }
 
-    private fun downloadCSV(executionRequestId: String, cookie: Cookie): ResultActions = mockMvc.perform(
+    private fun downloadResults(executionRequestId: String, cookie: Cookie): ResultActions = mockMvc.perform(
         get("/execution-requests/$executionRequestId/download")
             .cookie(cookie)
             .contentType("application/json"),

@@ -10,8 +10,6 @@ import dev.kviklet.kviklet.security.SecuredCollectionWrapper
 import dev.kviklet.kviklet.security.SecuredDomainId
 import dev.kviklet.kviklet.security.SecuredDomainObject
 import dev.kviklet.kviklet.security.UserDetailsWithId
-import net.sf.jsqlparser.JSQLParserException
-import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import java.io.Serializable
 import java.time.Duration
 import java.time.LocalDateTime
@@ -336,53 +334,6 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         }
         return false
     }
-
-    fun csvDownloadAllowed(query: String? = null): Pair<Boolean, String> {
-        if (request.type === RequestType.Dump) {
-            return Pair(false, "CSV download is not available for SQLDump")
-        }
-
-        if (request.connection !is DatasourceConnection || request !is DatasourceExecutionRequest) {
-            return Pair(false, "Only Datasource Requests can be downloaded as CSV")
-        }
-
-        if (request.connection.type == DatasourceType.MONGODB) {
-            return Pair(false, "MongoDB requests can't be downloaded as CSV")
-        }
-
-        if (resolveReviewStatus() != ReviewStatus.APPROVED) {
-            return Pair(false, "This request has not been approved yet!")
-        }
-
-        if (resolveExecutionStatus() == ExecutionStatus.EXECUTED) {
-            return Pair(false, "This request has already been executed the maximum amount of times!")
-        }
-
-        val queryToExecute = when (request.type) {
-            RequestType.SingleExecution -> request.statement!!.trim().removeSuffix(";")
-
-            RequestType.TemporaryAccess -> query?.trim()?.removeSuffix(
-                ";",
-            ) ?: return Pair(false, "Query can't be empty")
-
-            else -> return Pair(false, "Can't download results for this request type")
-        }
-        try {
-            val statementCount = CCJSqlParserUtil.parseStatements(queryToExecute)?.size ?: 0
-            if (statementCount > 1) {
-                return Pair(false, "This request contains more than one statement!")
-            }
-            if (CCJSqlParserUtil.parseStatements(
-                    queryToExecute,
-                )?.first() !is net.sf.jsqlparser.statement.select.Select
-            ) {
-                return Pair(false, "Can only download results for select queries!")
-            }
-            return Pair(true, "")
-        } catch (e: JSQLParserException) {
-            return Pair(false, "Error parsing query: ${e.message}")
-        }
-    }
 }
 
 data class ExecutionRequestDetailsWithRoles(
@@ -393,7 +344,6 @@ data class ExecutionRequestDetailsWithRoles(
     val events get() = details.events
     fun resolveReviewStatus() = details.resolveReviewStatus()
     fun resolveExecutionStatus() = details.resolveExecutionStatus()
-    fun csvDownloadAllowed(query: String? = null) = details.csvDownloadAllowed(query)
     fun getApprovalProgress() = details.getApprovalProgress()
 }
 

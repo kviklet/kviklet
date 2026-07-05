@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.controller
 
 import dev.kviklet.kviklet.security.EnterpriseFeatureException
 import dev.kviklet.kviklet.service.AlreadyExecutedException
+import dev.kviklet.kviklet.service.DownloadException
 import dev.kviklet.kviklet.service.EmailAlreadyExistsException
 import dev.kviklet.kviklet.service.EntityAlreadyExists
 import dev.kviklet.kviklet.service.EntityNotFound
@@ -92,6 +93,12 @@ class ExceptionHandlerController {
     fun handleAccessDeniedException(ex: AccessDeniedException, request: HttpServletRequest): ResponseEntity<Any> {
         logger.warn("Access denied at ${request.requestURI}: ${ex.message}")
         return ResponseEntity(ErrorResponse("Access denied"), HttpStatus.FORBIDDEN)
+    }
+
+    @ExceptionHandler(DownloadException::class)
+    fun handleDownloadException(ex: DownloadException, request: HttpServletRequest): ResponseEntity<Any> {
+        logger.warn("Download failed at ${request.requestURI}: ${ex.message}")
+        return ResponseEntity(ErrorResponse(ex.message ?: "Download failed"), HttpStatus.BAD_REQUEST)
     }
 
     @ExceptionHandler(AlreadyExecutedException::class)

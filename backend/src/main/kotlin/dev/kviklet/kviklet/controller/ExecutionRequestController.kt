@@ -222,10 +222,6 @@ sealed class ExecutionRequestDetailResponse(open val id: ExecutionRequestId, ope
                     createdAt = request.createdAt,
                     events = dto.events.sortedBy { it.createdAt }.map { EventResponse.fromEvent(it) },
                     connection = ConnectionResponse.fromDto(request.connection),
-                    csvDownload = CSVDownloadableResponse(
-                        allowed = dto.csvDownloadAllowed().first,
-                        reason = dto.csvDownloadAllowed().second,
-                    ),
                     temporaryAccessDuration = request.temporaryAccessDuration?.toMinutes(),
                     approvalProgress = ApprovalProgressResponse.fromDto(
                         dto.getApprovalProgress(),
@@ -270,7 +266,6 @@ data class DatasourceExecutionRequestDetailResponse(
     val reviewStatus: ReviewStatus,
     val executionStatus: ExecutionStatus,
     val createdAt: LocalDateTime = utcTimeNow(),
-    val csvDownload: CSVDownloadableResponse,
     override val events: List<EventResponse>,
     val temporaryAccessDuration: Long? = null,
     val approvalProgress: ApprovalProgressResponse,
@@ -278,8 +273,6 @@ data class DatasourceExecutionRequestDetailResponse(
     id = id,
     events = events,
 )
-
-data class CSVDownloadableResponse(val allowed: Boolean, val reason: String)
 
 data class RoleApprovalProgressResponse(
     val role: RoleResponse,
@@ -772,38 +765,26 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
     )
 
     @Operation(
-        summary = "Execute Execution Request and Download as CSV",
-        description = "Run the query and download results as CSV after the Execution Request has been approved.",
+        summary = "Execute Execution Request and Download Results",
+        description = "Run the query and download the results as a file (or ZIP for multiple results).",
     )
     @GetMapping("/{executionRequestId}/download")
-    fun downloadCsv(
+    fun download(
         @PathVariable executionRequestId: ExecutionRequestId,
         @CurrentUser userDetails: UserDetailsWithId,
         response: HttpServletResponse,
         @RequestParam query: String?,
     ) {
-        try {
-            // Set CSV headers ONLY if we know the query will succeed
-            response.contentType = "text/csv; charset=UTF-8"
-            val csvName = executionRequestService.getCSVFileName(executionRequestId)
-            response.setHeader("Content-Disposition", "attachment; filename=\"$csvName\"")
-
-            // Use output stream to write CSV data
-            val outputStream = response.outputStream
-            executionRequestService.streamResultsAsCsv(executionRequestId, userDetails.id, outputStream, query)
-        } catch (e: IllegalStateException) {
-            // For exceptions, reset content type to plain text and use the same output method consistently
-            response.reset() // Clear previous response settings
-            response.contentType = "text/plain"
-            response.status = HttpServletResponse.SC_BAD_REQUEST
-            response.outputStream.use { it.write(e.message?.toByteArray() ?: "Unknown error".toByteArray()) }
-        } catch (e: Exception) {
-            // Handle any other exceptions
-            response.reset()
-            response.contentType = "text/plain"
-            response.status = HttpServletResponse.SC_INTERNAL_SERVER_ERROR
-            response.outputStream.use { it.write("An error occurred: ${e.message}".toByteArray()) }
-        }
+        // Errors (failed query, missing approval, access denied) propagate to the
+        // ExceptionHandlerController before anything is written to the response.
+        val download = executionRequestService.downloadResults(executionRequestId, userDetails.id, query)
+        response.contentType = download.contentType
+        response.setHeader(
+            HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=\"${download.fileName}\"",
+        )
+        response.setContentLength(download.bytes.size)
+        response.outputStream.use { it.write(download.bytes) }
     }
 
     @Operation(

@@ -24,7 +24,9 @@ import dev.kviklet.kviklet.service.dto.DBExecutionResult
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
 import dev.kviklet.kviklet.service.dto.DatasourceType
+import dev.kviklet.kviklet.service.dto.DownloadResult
 import dev.kviklet.kviklet.service.dto.DumpResultLog
+import dev.kviklet.kviklet.service.dto.ErrorQueryResult
 import dev.kviklet.kviklet.service.dto.ErrorResultLog
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventType
@@ -41,13 +43,15 @@ import dev.kviklet.kviklet.service.dto.KubernetesConnection
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
 import dev.kviklet.kviklet.service.dto.KubernetesOutputResultLog
-import dev.kviklet.kviklet.service.dto.QueryResultLog
+import dev.kviklet.kviklet.service.dto.MongoRecordsQueryResult
+import dev.kviklet.kviklet.service.dto.QueryResult
+import dev.kviklet.kviklet.service.dto.RecordsQueryResult
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewStatus
+import dev.kviklet.kviklet.service.dto.UpdateQueryResult
 import dev.kviklet.kviklet.service.dto.utcTimeNow
 import dev.kviklet.kviklet.shell.KubernetesApi
-import jakarta.servlet.ServletOutputStream
 import jakarta.transaction.Transactional
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import org.slf4j.LoggerFactory
@@ -55,12 +59,15 @@ import org.springframework.context.ApplicationEventPublisher
 import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
 import java.io.BufferedInputStream
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.OutputStream
 import java.security.SecureRandom
 import java.time.Duration
 import java.time.LocalDateTime
 import java.util.concurrent.CompletableFuture
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 @Service
 class ExecutionRequestService(
@@ -211,12 +218,7 @@ class ExecutionRequestService(
 
         val connection = connectionService.getDatasourceConnection(executionRequest.request.connection.id)
 
-        val reviewStatus = executionRequest.resolveReviewStatus()
-        if (reviewStatus != ReviewStatus.APPROVED) {
-            throw InvalidReviewException("This request has not been approved yet!")
-        }
-
-        executionRequest.raiseIfAlreadyExecuted()
+        executionRequest.raiseIfNotExecutable()
 
         if (connection !is DatasourceConnection) {
             throw IllegalArgumentException("Only Datasource connections can be dumped")
@@ -488,6 +490,7 @@ class ExecutionRequestService(
         connection: DatasourceConnection,
         query: String?,
         userId: String,
+        isDownload: Boolean = false,
     ): DBExecutionResult {
         if (executionRequest.request !is DatasourceExecutionRequest) {
             throw RuntimeException("This should never happen! Probably there is a way to refactor this code")
@@ -507,6 +510,7 @@ class ExecutionRequestService(
             userId,
             ExecutePayload(
                 query = queryToExecute,
+                isDownload = isDownload,
             ),
         )
 
@@ -717,12 +721,7 @@ class ExecutionRequestService(
             )
         } else {
             // Normal execution - always requires approval
-            val reviewStatus = executionRequest.resolveReviewStatus()
-            if (reviewStatus != ReviewStatus.APPROVED) {
-                throw InvalidReviewException("This request has not been approved yet!")
-            }
-
-            executionRequest.raiseIfAlreadyExecuted()
+            executionRequest.raiseIfNotExecutable()
             return when (connection) {
                 is DatasourceConnection -> {
                     executeDatasourceRequest(id, executionRequest, connection, query, userId)
@@ -735,97 +734,98 @@ class ExecutionRequestService(
         }
     }
 
-    @Policy(Permission.EXECUTION_REQUEST_GET, checkIsPresentOnly = true)
-    fun getCSVFileName(id: ExecutionRequestId): String {
-        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
-        val csvName = executionRequest.request.title.replace(" ", "_")
-        return "$csvName.csv"
-    }
-
+    /**
+     * Executes the request through the normal datasource execution path (so the run is audited and
+     * results are stored just like a regular execution) and formats the results into a downloadable
+     * file. A single result yields one file; multiple results are bundled into a ZIP. A database
+     * error fails the whole download via [DownloadException].
+     */
+    // Intentionally not @Transactional: mirrors execute(), so the audited execute event is committed
+    // independently and survives even when a database error fails the download.
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
-    fun streamResultsAsCsv(
-        id: ExecutionRequestId,
-        userId: String,
-        outputStream: ServletOutputStream,
-        query: String? = null,
-    ) {
+    fun downloadResults(id: ExecutionRequestId, userId: String, query: String? = null): DownloadResult {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
         val connection = executionRequest.request.connection
-        if (connection !is DatasourceConnection ||
-            executionRequest.request !is DatasourceExecutionRequest
-        ) {
-            throw RuntimeException("Only Datasource requests can be downloaded as CSV")
+        if (connection !is DatasourceConnection || executionRequest.request !is DatasourceExecutionRequest) {
+            throw IllegalArgumentException("Only Datasource requests can be downloaded")
         }
         if (connection.type == DatasourceType.MONGODB) {
-            throw RuntimeException("MongoDB requests can't be downloaded as CSV")
+            throw IllegalArgumentException("MongoDB requests can't be downloaded")
         }
-        val downloadAllowedAndReason = executionRequest.csvDownloadAllowed(query)
-        val queryToExecute = when (executionRequest.request.type) {
-            RequestType.SingleExecution ->
-                executionRequest.request.statement!!
-                    .trim()
-                    .removeSuffix(";")
-
-            RequestType.TemporaryAccess ->
-                query?.trim()?.removeSuffix(";")
-                    ?: throw MissingQueryException("For temporary access requests a query to execute is required")
-
-            RequestType.Dump -> throw RuntimeException("Dump requests can't be downloaded as CSV")
-        }
-        if (!downloadAllowedAndReason.first) {
-            throw RuntimeException(downloadAllowedAndReason.second)
-        }
-
-        val eventId = eventService.saveEvent(
-            id,
-            userId,
-            ExecutePayload(
-                query = queryToExecute,
-                isDownload = true,
-            ),
-        ).eventId!!
-
-        val maxRowsToStore = if (connection.storeResults) MAX_STORED_ROWS else 0
-
-        try {
-            val writer = outputStream.writer(Charsets.UTF_8)
-            val streamResult = JDBCExecutor.executeAndStreamDbResponse(
-                connectionString = connection.getConnectionString(),
-                authenticationDetails = connection.auth,
-                query = queryToExecute,
-                maxRowsToStore = maxRowsToStore,
-            ) { row ->
-                writer.write(
-                    row.joinToString(",") { field ->
-                        escapeCsvField(field)
-                    } + "\n",
-                )
-                writer.flush()
-            }
-
-            // Store results on success if storeResults is enabled
-            if (connection.storeResults) {
-                val resultLog = QueryResultLog(
-                    columnCount = streamResult.columns.size,
-                    rowCount = streamResult.rowCount,
-                    columns = streamResult.columns,
-                    storedRows = streamResult.storedRows,
-                    storedRowCount = streamResult.storedRows.size,
-                )
-                eventService.addResultLogs(eventId, listOf(resultLog))
-            }
-        } catch (e: Exception) {
-            eventService.addResultLogs(
-                eventId,
-                listOf(
-                    ErrorResultLog(
-                        errorCode = 0,
-                        message = e.message ?: "An error occurred while streaming the database response",
-                    ),
-                ),
+        if (executionRequest.request.type == RequestType.Dump) {
+            throw IllegalArgumentException(
+                "Result download is not available for dump requests, use the SQL dump endpoint instead",
             )
-            throw e
         }
+        executionRequest.raiseIfNotExecutable()
+
+        val result = executeDatasourceRequest(id, executionRequest, connection, query, userId, isDownload = true)
+
+        return buildDownloadResult(executionRequest, result.results)
+    }
+
+    private fun buildDownloadResult(
+        executionRequest: ExecutionRequestDetails,
+        results: List<QueryResult>,
+    ): DownloadResult {
+        // The name ends up in a quoted Content-Disposition header and on the user's filesystem,
+        // so anything outside a conservative ASCII set is replaced.
+        val baseName = executionRequest.request.title
+            .replace(Regex("[^A-Za-z0-9._-]"), "_")
+            .ifBlank { "results" }
+        val files = results.map { resultToFile(it) }
+
+        if (files.size == 1) {
+            val file = files.first()
+            return DownloadResult(
+                fileName = "$baseName.${file.extension}",
+                contentType = file.contentType,
+                bytes = file.bytes,
+                executionRequest = executionRequest,
+            )
+        }
+
+        val zipBytes = ByteArrayOutputStream().use { byteStream ->
+            ZipOutputStream(byteStream).use { zip ->
+                files.forEachIndexed { index, file ->
+                    zip.putNextEntry(ZipEntry("${baseName}_${index + 1}.${file.extension}"))
+                    zip.write(file.bytes)
+                    zip.closeEntry()
+                }
+            }
+            byteStream.toByteArray()
+        }
+        return DownloadResult(
+            fileName = "$baseName.zip",
+            contentType = "application/zip",
+            bytes = zipBytes,
+            executionRequest = executionRequest,
+        )
+    }
+
+    private data class DownloadFile(val extension: String, val contentType: String, val bytes: ByteArray)
+
+    private fun resultToFile(result: QueryResult): DownloadFile = when (result) {
+        is RecordsQueryResult -> {
+            val csv = buildString {
+                append(result.columns.joinToString(",") { escapeCsvField(it.label) }).append("\n")
+                result.data.forEach { row ->
+                    append(result.columns.joinToString(",") { escapeCsvField(row[it.label] ?: "") }).append("\n")
+                }
+            }
+            DownloadFile("csv", "text/csv; charset=UTF-8", csv.toByteArray(Charsets.UTF_8))
+        }
+
+        is UpdateQueryResult -> DownloadFile(
+            "txt",
+            "text/plain; charset=UTF-8",
+            "${result.rowsUpdated} rows updated\n".toByteArray(Charsets.UTF_8),
+        )
+
+        // A database error fails the whole download; the error is already audited via the execute event.
+        is ErrorQueryResult -> throw DownloadException(result.message)
+
+        is MongoRecordsQueryResult -> throw RuntimeException("MongoDB requests can't be downloaded")
     }
 
     private fun escapeCsvField(field: String): String {
@@ -1064,6 +1064,17 @@ class ExecutionRequestService(
     }
 }
 
+/**
+ * The shared gate for every path that runs a request against the database (execute, download,
+ * SQL dump): the request must be approved and must not have used up its executions.
+ */
+fun ExecutionRequestDetails.raiseIfNotExecutable() {
+    if (resolveReviewStatus() != ReviewStatus.APPROVED) {
+        throw InvalidReviewException("This request has not been approved yet!")
+    }
+    raiseIfAlreadyExecuted()
+}
+
 fun ExecutionRequestDetails.raiseIfAlreadyExecuted() {
     if (resolveExecutionStatus() == ExecutionStatus.EXECUTED) {
         when (request.type) {
@@ -1081,6 +1092,8 @@ fun ExecutionRequestDetails.raiseIfAlreadyExecuted() {
 }
 
 class InvalidReviewException(message: String) : RuntimeException(message)
+
+class DownloadException(message: String) : RuntimeException(message)
 
 class MissingQueryException(message: String) : RuntimeException(message)
 

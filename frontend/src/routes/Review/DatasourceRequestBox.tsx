@@ -64,19 +64,35 @@ function DatasourceRequestBox({
     });
   };
 
+  const getDisabledReason = () => {
+    if (request?.reviewStatus !== "APPROVED") {
+      return "Request needs to be approved before execution";
+    } else if (request?.executionStatus === "EXECUTED") {
+      return "Request has already been executed";
+    }
+    return undefined;
+  };
+
+  // Downloading executes the stored statement, so it's only available for relational
+  // (non-Mongo) single-execution requests. Temporary access downloads run from the live
+  // session, which sends the editor's query along.
+  const downloadPossible =
+    isRelationalDatabase(request) && request?.type === "SingleExecution";
+  const downloadEnabled =
+    downloadPossible &&
+    request?.reviewStatus === "APPROVED" &&
+    request?.executionStatus !== "EXECUTED";
   const menuDropDownItems = [
     {
       onClick: () => {},
-      enabled: request?.csvDownload?.allowed || false,
-      tooltip:
-        (!request?.csvDownload?.allowed && request?.csvDownload?.reason) ||
-        undefined,
-      content: request?.csvDownload?.allowed ? (
+      enabled: downloadEnabled,
+      tooltip: downloadPossible ? getDisabledReason() : undefined,
+      content: downloadEnabled ? (
         <a href={`${baseUrl}/execution-requests/${request?.id}/download`}>
-          Download as CSV
+          Execute and Download Results
         </a>
       ) : (
-        <span>Download as CSV</span>
+        <span>Execute and Download Results</span>
       ),
     },
     {
@@ -220,15 +236,6 @@ function DatasourceRequestBox({
     } else {
       await runQuery();
     }
-  };
-
-  const getDisabledReason = () => {
-    if (request?.reviewStatus !== "APPROVED") {
-      return "Request needs to be approved before execution";
-    } else if (request?.executionStatus === "EXECUTED") {
-      return "Request has already been executed";
-    }
-    return undefined;
   };
 
   return (
