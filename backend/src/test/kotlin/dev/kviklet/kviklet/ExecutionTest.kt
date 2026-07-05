@@ -450,7 +450,7 @@ class ExecutionTest {
         )
         val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
 
-        val contentResponse = downloadCSV(csvRequest.getId(), userCookie).andExpect(status().isOk).andReturn()
+        val contentResponse = downloadResults(csvRequest.getId(), userCookie).andExpect(status().isOk).andReturn()
         val content = contentResponse.response.contentAsString
         verifyCSVContent(content)
         verifyExecutionsList(csvRequest.getId(), userCookie)
@@ -466,7 +466,7 @@ class ExecutionTest {
         )
         val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
 
-        val response = downloadCSV(csvRequest.getId(), userCookie).andExpect(status().is4xxClientError)
+        val response = downloadResults(csvRequest.getId(), userCookie).andExpect(status().is4xxClientError)
         response.andExpect(
             jsonPath("$.message").value(containsString("relation \"foo.inexistent_table\" does not exist")),
         )
@@ -496,7 +496,7 @@ class ExecutionTest {
         )
         val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
 
-        val response = downloadCSV(duplicateColumnsRequest.getId(), userCookie)
+        val response = downloadResults(duplicateColumnsRequest.getId(), userCookie)
             .andExpect(status().isOk)
             .andReturn()
 
@@ -516,7 +516,7 @@ class ExecutionTest {
         )
         val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
 
-        val response = downloadCSV(updateRequest.getId(), userCookie)
+        val response = downloadResults(updateRequest.getId(), userCookie)
             .andExpect(status().isOk)
             .andExpect(header().string("Content-Disposition", "attachment; filename=\"Test_Execution.txt\""))
             .andReturn()
@@ -534,7 +534,7 @@ class ExecutionTest {
         )
         val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
 
-        val response = downloadCSV(multiRequest.getId(), userCookie)
+        val response = downloadResults(multiRequest.getId(), userCookie)
             .andExpect(status().isOk)
             .andExpect(header().string("Content-Disposition", "attachment; filename=\"Test_Execution.zip\""))
             .andReturn()
@@ -716,7 +716,7 @@ class ExecutionTest {
             .andExpect(jsonPath("$.events[1].results[0].type").value("ERROR"))
     }
 
-    private fun downloadCSV(executionRequestId: String, cookie: Cookie): ResultActions = mockMvc.perform(
+    private fun downloadResults(executionRequestId: String, cookie: Cookie): ResultActions = mockMvc.perform(
         get("/execution-requests/$executionRequestId/download")
             .cookie(cookie)
             .contentType("application/json"),

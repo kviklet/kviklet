@@ -137,7 +137,7 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
     await executeQuery(text);
   };
 
-  const handleCsvDownload = (event: MouseEvent<HTMLAnchorElement>) => {
+  const handleResultDownload = (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
     const selection = editor?.getSelection();
     const query =
@@ -174,7 +174,7 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
         </div>
         <div className="mb-4 flex flex-row items-center justify-end gap-2">
           {request?._type === "DATASOURCE" && isRelationalDatabase(request) && (
-            <a href="#" onClick={handleCsvDownload}>
+            <a href="#" onClick={handleResultDownload}>
               <Button>Execute and Download Results</Button>
             </a>
           )}

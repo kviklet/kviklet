@@ -392,10 +392,10 @@ class StoreExecutionResultsTest {
     }
 
     @Nested
-    inner class CSVDownloadResultStorageTests {
+    inner class DownloadResultStorageTests {
 
         @Test
-        fun `CSV download on connection with storeResults=true stores results`() {
+        fun `Result download on connection with storeResults=true stores results`() {
             val connectionWithStorage = connectionHelper.createPostgresConnection(db, storeResults = true)
             val executionRequest = executionRequestHelper.createApprovedRequest(
                 author = testUser,
@@ -426,7 +426,7 @@ class StoreExecutionResultsTest {
         }
 
         @Test
-        fun `CSV download on connection with storeResults=false does not store results`() {
+        fun `Result download on connection with storeResults=false does not store results`() {
             val connectionWithoutStorage = connectionHelper.createPostgresConnection(db, storeResults = false)
             val executionRequest = executionRequestHelper.createApprovedRequest(
                 author = testUser,

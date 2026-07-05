@@ -218,12 +218,7 @@ class ExecutionRequestService(
 
         val connection = connectionService.getDatasourceConnection(executionRequest.request.connection.id)
 
-        val reviewStatus = executionRequest.resolveReviewStatus()
-        if (reviewStatus != ReviewStatus.APPROVED) {
-            throw InvalidReviewException("This request has not been approved yet!")
-        }
-
-        executionRequest.raiseIfAlreadyExecuted()
+        executionRequest.raiseIfNotExecutable()
 
         if (connection !is DatasourceConnection) {
             throw IllegalArgumentException("Only Datasource connections can be dumped")
@@ -726,12 +721,7 @@ class ExecutionRequestService(
             )
         } else {
             // Normal execution - always requires approval
-            val reviewStatus = executionRequest.resolveReviewStatus()
-            if (reviewStatus != ReviewStatus.APPROVED) {
-                throw InvalidReviewException("This request has not been approved yet!")
-            }
-
-            executionRequest.raiseIfAlreadyExecuted()
+            executionRequest.raiseIfNotExecutable()
             return when (connection) {
                 is DatasourceConnection -> {
                     executeDatasourceRequest(id, executionRequest, connection, query, userId)
@@ -767,10 +757,7 @@ class ExecutionRequestService(
                 "Result download is not available for dump requests, use the SQL dump endpoint instead",
             )
         }
-        if (executionRequest.resolveReviewStatus() != ReviewStatus.APPROVED) {
-            throw InvalidReviewException("This request has not been approved yet!")
-        }
-        executionRequest.raiseIfAlreadyExecuted()
+        executionRequest.raiseIfNotExecutable()
 
         val result = executeDatasourceRequest(id, executionRequest, connection, query, userId, isDownload = true)
 
@@ -781,11 +768,6 @@ class ExecutionRequestService(
         executionRequest: ExecutionRequestDetails,
         results: List<QueryResult>,
     ): DownloadResult {
-        // A database error fails the whole download; the error is already audited via the execute event.
-        results.filterIsInstance<ErrorQueryResult>().firstOrNull()?.let {
-            throw DownloadException(it.message)
-        }
-
         // The name ends up in a quoted Content-Disposition header and on the user's filesystem,
         // so anything outside a conservative ASCII set is replaced.
         val baseName = executionRequest.request.title
@@ -840,6 +822,7 @@ class ExecutionRequestService(
             "${result.rowsUpdated} rows updated\n".toByteArray(Charsets.UTF_8),
         )
 
+        // A database error fails the whole download; the error is already audited via the execute event.
         is ErrorQueryResult -> throw DownloadException(result.message)
 
         is MongoRecordsQueryResult -> throw RuntimeException("MongoDB requests can't be downloaded")
@@ -1079,6 +1062,17 @@ class ExecutionRequestService(
             throw e
         }
     }
+}
+
+/**
+ * The shared gate for every path that runs a request against the database (execute, download,
+ * SQL dump): the request must be approved and must not have used up its executions.
+ */
+fun ExecutionRequestDetails.raiseIfNotExecutable() {
+    if (resolveReviewStatus() != ReviewStatus.APPROVED) {
+        throw InvalidReviewException("This request has not been approved yet!")
+    }
+    raiseIfAlreadyExecuted()
 }
 
 fun ExecutionRequestDetails.raiseIfAlreadyExecuted() {
