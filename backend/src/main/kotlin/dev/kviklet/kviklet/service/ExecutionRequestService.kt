@@ -762,6 +762,11 @@ class ExecutionRequestService(
         if (connection.type == DatasourceType.MONGODB) {
             throw IllegalArgumentException("MongoDB requests can't be downloaded")
         }
+        if (executionRequest.request.type == RequestType.Dump) {
+            throw IllegalArgumentException(
+                "Result download is not available for dump requests, use the SQL dump endpoint instead",
+            )
+        }
         if (executionRequest.resolveReviewStatus() != ReviewStatus.APPROVED) {
             throw InvalidReviewException("This request has not been approved yet!")
         }
@@ -781,7 +786,11 @@ class ExecutionRequestService(
             throw DownloadException(it.message)
         }
 
-        val baseName = executionRequest.request.title.replace(" ", "_")
+        // The name ends up in a quoted Content-Disposition header and on the user's filesystem,
+        // so anything outside a conservative ASCII set is replaced.
+        val baseName = executionRequest.request.title
+            .replace(Regex("[^A-Za-z0-9._-]"), "_")
+            .ifBlank { "results" }
         val files = results.map { resultToFile(it) }
 
         if (files.size == 1) {

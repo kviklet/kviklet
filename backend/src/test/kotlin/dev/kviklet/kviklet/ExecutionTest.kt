@@ -487,6 +487,26 @@ class ExecutionTest {
     }
 
     @Test
+    fun `when downloading a query with duplicate column labels then each column keeps its own values`() {
+        val duplicateColumnsRequest = executionRequestHelper.createApprovedRequest(
+            author = testUser,
+            approver = testReviewer,
+            connection = testConnection,
+            sql = "SELECT col1 AS id, col2 AS id FROM foo.simple_table",
+        )
+        val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+        val response = downloadCSV(duplicateColumnsRequest.getId(), userCookie)
+            .andExpect(status().isOk)
+            .andReturn()
+
+        val content = response.response.contentAsString
+        assert(content.contains("id,id (2)"))
+        assert(content.contains("1,foo"))
+        assert(content.contains("2,bar"))
+    }
+
+    @Test
     fun `when downloading an update statement then return a text file`() {
         val updateRequest = executionRequestHelper.createApprovedRequest(
             author = testUser,

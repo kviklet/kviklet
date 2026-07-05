@@ -205,9 +205,18 @@ class JDBCExecutor {
         val results: MutableList<Map<String, String>> = mutableListOf()
 
         val metadata = resultSet.metaData
+        // Labels are de-duplicated ("id", "id (2)") because rows are keyed by label — duplicate
+        // labels (e.g. SELECT a.id, b.id) would otherwise collapse into one column.
+        val usedLabels = mutableSetOf<String>()
         val columns = (1..metadata.columnCount).map { i ->
+            var label = metadata.getColumnLabel(i)
+            var suffix = 2
+            while (!usedLabels.add(label)) {
+                label = "${metadata.getColumnLabel(i)} ($suffix)"
+                suffix++
+            }
             ColumnInfo(
-                label = metadata.getColumnLabel(i),
+                label = label,
                 typeName = metadata.getColumnTypeName(i),
                 typeClass = metadata.getColumnClassName(i),
             )
@@ -246,12 +255,15 @@ class JDBCExecutor {
     ) {
         while (resultSet.next()) {
             forEachRow.invoke(
-                columns.associate {
-                    if (it.typeClass == "[B") {
-                        Pair(it.label, resultSet.getBytes(it.label)?.let { "0x" + HexFormat.of().formatHex(it) } ?: "")
+                columns.withIndex().associate { (index, column) ->
+                    // Read by position: with duplicate labels in the query, label-based access
+                    // returns the first matching column's value for all of them.
+                    val value = if (column.typeClass == "[B") {
+                        resultSet.getBytes(index + 1)?.let { "0x" + HexFormat.of().formatHex(it) } ?: ""
                     } else {
-                        Pair(it.label, resultSet.getString(it.label))
+                        resultSet.getString(index + 1)
                     }
+                    Pair(column.label, value)
                 },
             )
         }
