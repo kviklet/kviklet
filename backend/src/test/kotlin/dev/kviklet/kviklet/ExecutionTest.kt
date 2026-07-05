@@ -30,7 +30,6 @@ import org.springframework.test.web.servlet.ResultActions
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -468,7 +467,9 @@ class ExecutionTest {
         val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
 
         val response = downloadCSV(csvRequest.getId(), userCookie).andExpect(status().is4xxClientError)
-        response.andExpect(content().string(containsString("relation \"foo.inexistent_table\" does not exist")))
+        response.andExpect(
+            jsonPath("$.message").value(containsString("relation \"foo.inexistent_table\" does not exist")),
+        )
 
         // Verify the request has exactly one event of type EXECUTE and it's an error
         mockMvc.perform(

@@ -775,27 +775,16 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
         response: HttpServletResponse,
         @RequestParam query: String?,
     ) {
-        try {
-            val download = executionRequestService.downloadResults(executionRequestId, userDetails.id, query)
-            response.contentType = download.contentType
-            response.setHeader(
-                HttpHeaders.CONTENT_DISPOSITION,
-                "attachment; filename=\"${download.fileName}\"",
-            )
-            response.setContentLength(download.bytes.size)
-            response.outputStream.use { it.write(download.bytes) }
-        } catch (e: RuntimeException) {
-            // Business/database errors (e.g. a failing query) are surfaced to the user as plain text.
-            response.reset()
-            response.contentType = "text/plain"
-            response.status = HttpServletResponse.SC_BAD_REQUEST
-            response.outputStream.use { it.write((e.message ?: "Unknown error").toByteArray()) }
-        } catch (e: Exception) {
-            response.reset()
-            response.contentType = "text/plain"
-            response.status = HttpServletResponse.SC_INTERNAL_SERVER_ERROR
-            response.outputStream.use { it.write("An error occurred: ${e.message}".toByteArray()) }
-        }
+        // Errors (failed query, missing approval, access denied) propagate to the
+        // ExceptionHandlerController before anything is written to the response.
+        val download = executionRequestService.downloadResults(executionRequestId, userDetails.id, query)
+        response.contentType = download.contentType
+        response.setHeader(
+            HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=\"${download.fileName}\"",
+        )
+        response.setContentLength(download.bytes.size)
+        response.outputStream.use { it.write(download.bytes) }
     }
 
     @Operation(

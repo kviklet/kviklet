@@ -752,16 +752,15 @@ class ExecutionRequestService(
      */
     // Intentionally not @Transactional: mirrors execute(), so the audited execute event is committed
     // independently and survives even when a database error fails the download.
-    // checkIsPresentOnly: the return value is a plain file DTO, not a SecuredDomainObject to filter.
-    @Policy(Permission.EXECUTION_REQUEST_EXECUTE, checkIsPresentOnly = true)
+    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
     fun downloadResults(id: ExecutionRequestId, userId: String, query: String? = null): DownloadResult {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
         val connection = executionRequest.request.connection
         if (connection !is DatasourceConnection || executionRequest.request !is DatasourceExecutionRequest) {
-            throw RuntimeException("Only Datasource requests can be downloaded")
+            throw IllegalArgumentException("Only Datasource requests can be downloaded")
         }
         if (connection.type == DatasourceType.MONGODB) {
-            throw RuntimeException("MongoDB requests can't be downloaded")
+            throw IllegalArgumentException("MongoDB requests can't be downloaded")
         }
         if (executionRequest.resolveReviewStatus() != ReviewStatus.APPROVED) {
             throw InvalidReviewException("This request has not been approved yet!")
@@ -770,16 +769,19 @@ class ExecutionRequestService(
 
         val result = executeDatasourceRequest(id, executionRequest, connection, query, userId, isDownload = true)
 
-        return buildDownloadResult(executionRequest.request.title, result.results)
+        return buildDownloadResult(executionRequest, result.results)
     }
 
-    private fun buildDownloadResult(title: String, results: List<QueryResult>): DownloadResult {
+    private fun buildDownloadResult(
+        executionRequest: ExecutionRequestDetails,
+        results: List<QueryResult>,
+    ): DownloadResult {
         // A database error fails the whole download; the error is already audited via the execute event.
         results.filterIsInstance<ErrorQueryResult>().firstOrNull()?.let {
             throw DownloadException(it.message)
         }
 
-        val baseName = title.replace(" ", "_")
+        val baseName = executionRequest.request.title.replace(" ", "_")
         val files = results.map { resultToFile(it) }
 
         if (files.size == 1) {
@@ -788,6 +790,7 @@ class ExecutionRequestService(
                 fileName = "$baseName.${file.extension}",
                 contentType = file.contentType,
                 bytes = file.bytes,
+                executionRequest = executionRequest,
             )
         }
 
@@ -801,7 +804,12 @@ class ExecutionRequestService(
             }
             byteStream.toByteArray()
         }
-        return DownloadResult(fileName = "$baseName.zip", contentType = "application/zip", bytes = zipBytes)
+        return DownloadResult(
+            fileName = "$baseName.zip",
+            contentType = "application/zip",
+            bytes = zipBytes,
+            executionRequest = executionRequest,
+        )
     }
 
     private data class DownloadFile(val extension: String, val contentType: String, val bytes: ByteArray)
