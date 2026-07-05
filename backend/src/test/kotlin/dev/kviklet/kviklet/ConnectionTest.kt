@@ -684,6 +684,64 @@ class ConnectionTest(
     }
 
     @Test
+    fun `creating a connection with an already used id is rejected and does not overwrite the existing one`() {
+        userHelper.createUser(permissions = listOf("*"))
+        val cookie = userHelper.login(mockMvc = mockMvc)
+
+        val datasourceJson = """
+            {
+                "connectionType": "DATASOURCE",
+                "id": "duplicate-id",
+                "displayName": "Original Datasource",
+                "username": "root",
+                "password": "root",
+                "type": "MYSQL",
+                "hostname": "localhost",
+                "port": 3306,
+                "reviewConfig": {
+                    "numTotalRequired": 1
+                }
+            }
+        """.trimIndent()
+
+        // First create succeeds
+        mockMvc.perform(
+            post("/connections/")
+                .cookie(cookie)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(datasourceJson),
+        )
+            .andExpect(status().isOk)
+
+        // Second create reuses the same id but a different connection type -> must be rejected
+        val kubernetesJson = """
+            {
+                "connectionType": "KUBERNETES",
+                "id": "duplicate-id",
+                "displayName": "Sneaky Kubernetes",
+                "description": "",
+                "reviewConfig": {
+                    "numTotalRequired": 1
+                }
+            }
+        """.trimIndent()
+
+        mockMvc.perform(
+            post("/connections/")
+                .cookie(cookie)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(kubernetesJson),
+        )
+            .andExpect(status().isConflict)
+
+        // The original datasource connection must still be intact and the only one
+        connectionRepository.count() shouldBe 1L
+        val remaining = datasourceConnectionController.getConnection("duplicate-id") as DatasourceConnectionResponse
+        remaining.displayName shouldBe "Original Datasource"
+        remaining.type shouldBe DatasourceType.MYSQL
+    }
+
+    @Test
     fun `kubernetes connection supports setting and updating exec timeout settings`() {
         val created = datasourceConnectionController.createConnection(
             CreateKubernetesConnectionRequest(

@@ -124,6 +124,8 @@ class ConnectionAdapter(
         return connectionEntity
     }
 
+    fun connectionExists(connectionId: ConnectionId): Boolean = connectionRepository.existsById(connectionId.toString())
+
     @Transactional
     fun getConnection(connectionId: ConnectionId): Connection {
         val entity = connectionRepository.findByIdOrNull(connectionId.toString())
