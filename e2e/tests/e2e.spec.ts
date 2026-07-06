@@ -110,7 +110,9 @@ test.describe("E2E Tests for Multiple Databases", () => {
         );
         // Creating a request lands on its detail page
         await page.waitForURL("**/requests/*");
-        await expect(page.locator("h1")).toContainText(requestName);
+        await expect(
+          page.getByRole("heading", { name: requestName })
+        ).toBeVisible();
       });
 
       test(`Execute ${db.name} Request`, async ({ page }) => {
