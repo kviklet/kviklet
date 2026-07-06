@@ -35,14 +35,14 @@ class SessionService(
     }
 
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
-    fun executeStatement(sessionId: LiveSessionId, statement: String): ExecutionResult {
+    fun executeStatement(sessionId: LiveSessionId, statement: String, userId: String): ExecutionResult {
         // Atomically check and set executing flag - this will throw if already executing
         val session = sessionAdapter.checkAndSetExecuting(sessionId)
 
         return executionRequestService.execute(
             session.executionRequest.request.id!!,
             statement,
-            session.executionRequest.request.author.getId()!!,
+            userId,
         )
     }
 

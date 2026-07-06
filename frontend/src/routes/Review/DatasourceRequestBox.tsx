@@ -1,4 +1,4 @@
-import { useEffect, useState, MouseEvent } from "react";
+import { useContext, useEffect, useState, MouseEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   DatasourceExecutionRequestResponseWithComments,
@@ -16,6 +16,7 @@ import SQLDumpConfirm from "../../components/SQLDumpConfirm";
 import useNotification from "../../hooks/useNotification";
 import { Highlighter } from "./components/Highlighter";
 import ApprovalProgress from "./ApprovalProgress";
+import { UserStatusContext } from "../../components/UserStatusProvider";
 
 function DatasourceRequestBox({
   request,
@@ -32,6 +33,10 @@ function DatasourceRequestBox({
 }) {
   const [editMode, setEditMode] = useState(false);
   const { addNotification } = useNotification();
+  const userContext = useContext(UserStatusContext);
+  const isAuthor =
+    !!userContext.userStatus &&
+    userContext.userStatus.id === request?.author?.id;
   const [showSQLDumpModal, setShowSQLDumpModal] = useState(false);
   const navigate = useNavigate();
   const [statement, setStatement] = useState(request?.statement || "");
@@ -69,6 +74,8 @@ function DatasourceRequestBox({
       return "Request needs to be approved before execution";
     } else if (request?.executionStatus === "EXECUTED") {
       return "Request has already been executed";
+    } else if (request?.type === "Dump" && !isAuthor) {
+      return "Only the requester can download the dump";
     }
     return undefined;
   };
@@ -141,7 +148,10 @@ function DatasourceRequestBox({
             onClick: () => {
               void startServer();
             },
-            enabled: request?.reviewStatus === "APPROVED",
+            enabled: isAuthor && request?.reviewStatus === "APPROVED",
+            tooltip: isAuthor
+              ? undefined
+              : "Proxy access is granted only to the requester",
             content: "Start Proxy",
           },
         ]
@@ -326,7 +336,8 @@ function DatasourceRequestBox({
                 variant="primary"
                 disabled={
                   request?.reviewStatus !== "APPROVED" ||
-                  request?.executionStatus === "EXECUTED"
+                  request?.executionStatus === "EXECUTED" ||
+                  (request?.type === "Dump" && !isAuthor)
                 }
                 onClick={handleButtonClick}
                 onCancel={() => void cancelQuery()}
@@ -336,7 +347,9 @@ function DatasourceRequestBox({
                 {request?.type === "SingleExecution"
                   ? "Run Query"
                   : request?.type === "TemporaryAccess"
-                  ? "Start Session"
+                  ? isAuthor
+                    ? "Start Session"
+                    : "Watch Session"
                   : "Get SQL Dump"}
               </LoadingCancelButton>
             ) : (
@@ -355,7 +368,9 @@ function DatasourceRequestBox({
               >
                 {request?.type == "SingleExecution"
                   ? "Run Query"
-                  : "Start Session"}
+                  : isAuthor
+                  ? "Start Session"
+                  : "Watch Session"}
               </Button>
             )}
           </div>
