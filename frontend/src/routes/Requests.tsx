@@ -1,16 +1,25 @@
-import { ChangeEvent, useEffect, useRef, useState, useCallback } from "react";
+import {
+  ChangeEvent,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import {
   ExecutionRequestResponse,
   getRequestsPaginated,
 } from "../api/ExecutionRequestApi";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Spinner from "../components/Spinner";
 import InitialBubble from "../components/InitialBubble";
 import {
   CircleStackIcon,
   ClockIcon,
   CloudIcon,
+  PlayIcon,
 } from "@heroicons/react/20/solid";
+import { UserStatusContext } from "../components/UserStatusProvider";
 import { isApiErrorResponse } from "../api/Errors";
 import useNotification from "../hooks/useNotification";
 import Toggle from "../components/Toggle";
@@ -206,6 +215,8 @@ function Requests() {
     searchTerm,
   );
   const observerTarget = useRef<HTMLDivElement>(null);
+  const { userStatus } = useContext(UserStatusContext);
+  const navigate = useNavigate();
 
   // Infinite scroll observer
   useEffect(() => {
@@ -267,6 +278,15 @@ function Requests() {
               </div>
             )}
             {requests.map((request) => {
+              const status = mapStatus(
+                request.reviewStatus,
+                request.executionStatus,
+              );
+              const canOpenSession =
+                request.type === "TemporaryAccess" &&
+                (status === "Ready" || status === "Active") &&
+                userStatus !== false &&
+                userStatus?.id === request.author.id;
               return (
                 <Link
                   key={request.id}
@@ -275,10 +295,7 @@ function Requests() {
                 >
                   <div
                     className={`my-2 rounded-lg border border-l-4 border-slate-200 bg-white px-4 py-3 shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none dark:hover:bg-slate-800 ${mapStatusToBorderColor(
-                      mapStatus(
-                        request?.reviewStatus,
-                        request?.executionStatus,
-                      ),
+                      status,
                     )}`}
                     key={request.id}
                   >
@@ -318,23 +335,30 @@ function Requests() {
                             {request.description}
                           </p>
                         )}
-                        <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
-                          <span>{shortTypeLabel(request.type)}</span>
-                          <span className="mx-1.5">·</span>
-                          <span
-                            className={mapStatusToTextColor(
-                              mapStatus(
-                                request?.reviewStatus,
-                                request?.executionStatus,
-                              ),
-                            )}
-                          >
-                            {mapStatus(
-                              request?.reviewStatus,
-                              request?.executionStatus,
-                            )}
-                          </span>
-                        </p>
+                        <div className="mt-1.5 flex items-center justify-between gap-2">
+                          <p className="text-xs text-slate-400 dark:text-slate-500">
+                            <span>{shortTypeLabel(request.type)}</span>
+                            <span className="mx-1.5">·</span>
+                            <span className={mapStatusToTextColor(status)}>
+                              {status}
+                            </span>
+                          </p>
+                          {canOpenSession && (
+                            <button
+                              type="button"
+                              data-testid={`open-session-${request.title}`}
+                              className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-indigo-600 ring-1 ring-inset ring-indigo-600/30 transition-colors hover:bg-indigo-50 dark:text-indigo-400 dark:ring-indigo-400/30 dark:hover:bg-indigo-400/10"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                navigate(`/requests/${request.id}/session`);
+                              }}
+                            >
+                              <PlayIcon className="h-3.5 w-3.5" />
+                              Open session
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

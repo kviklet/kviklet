@@ -10,7 +10,8 @@ import Button from "../components/Button";
 import MultiResult from "../components/MultiResult";
 import Spinner from "../components/Spinner";
 import useRequest, { isRelationalDatabase } from "../hooks/request";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
+import { ChevronRightIcon } from "@heroicons/react/20/solid";
 import useLiveSession from "../hooks/useLiveSession";
 import useNotification from "../hooks/useNotification";
 import LiveSessionActivityLog from "./LiveSessionActivityLog";
@@ -151,7 +152,29 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
   return (
     <div className="flex h-full flex-col overflow-x-hidden">
       <div className="mx-auto flex h-full w-full max-w-5xl flex-col px-4">
-        <div className="relative my-5">
+        <nav
+          aria-label="Breadcrumb"
+          className="mt-5 flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400"
+        >
+          <Link
+            to="/requests"
+            className="shrink-0 hover:text-slate-900 dark:hover:text-slate-50"
+          >
+            Requests
+          </Link>
+          <ChevronRightIcon className="h-4 w-4 shrink-0" />
+          <Link
+            to={`/requests/${requestId}`}
+            className="min-w-0 truncate hover:text-slate-900 dark:hover:text-slate-50"
+          >
+            {request?.title}
+          </Link>
+          <ChevronRightIcon className="h-4 w-4 shrink-0" />
+          <span className="shrink-0 text-slate-900 dark:text-slate-50">
+            Live Session
+          </span>
+        </nav>
+        <div className="relative mb-5 mt-3">
           {(isSyncing || showSynced) && (
             <div
               className={`absolute -top-5 right-0 text-xs transition-opacity duration-500 ${
