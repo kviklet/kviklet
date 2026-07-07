@@ -25,7 +25,14 @@ function CommentBox({
 
   const userContext = useContext(UserStatusContext);
 
+  // a bare comment with no text would just add an empty event to the timeline
+  const submitDisabled =
+    chosenReviewType === ReviewTypes.Comment && comment.trim() === "";
+
   const handleReview = async () => {
+    if (submitDisabled) {
+      return;
+    }
     let result: boolean;
     if (chosenReviewType === ReviewTypes.Close && closeRequest) {
       result = await closeRequest(comment);
@@ -80,12 +87,7 @@ function CommentBox({
   ];
   return (
     <div>
-      <div className="relative ml-4 py-4">
-        <div className="absolute bottom-0 left-0 top-0 block w-0.5 whitespace-pre bg-slate-700">
-          {" "}
-        </div>
-      </div>
-      <div className=" relative mb-5 rounded-md shadow-md dark:border dark:border-slate-700 dark:shadow-none">
+      <div className="relative mb-5 mt-4 rounded-md shadow-md dark:border dark:border-slate-700 dark:shadow-none">
         <InitialBubble
           name={
             (userContext.userStatus && userContext.userStatus?.fullName) || ""
@@ -144,7 +146,7 @@ function CommentBox({
               <div className="mb-2 flex justify-end">
                 <Button
                   id="submit"
-                  variant="primary"
+                  variant={submitDisabled ? "disabled" : "primary"}
                   onClick={() => void handleReview()}
                   dataTestId="submit-review-button"
                 >

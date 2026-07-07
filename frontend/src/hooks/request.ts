@@ -50,8 +50,12 @@ const useRequest = (id: string) => {
 
   const { addNotification } = useNotification();
 
-  async function loadRequest() {
-    setLoading(true);
+  // background reloads refresh the request in place without unmounting the
+  // page into the loading spinner
+  async function loadRequest(options?: { background?: boolean }) {
+    if (!options?.background) {
+      setLoading(true);
+    }
     const request = await getSingleRequest(id);
     if (isApiErrorResponse(request)) {
       addNotification({
@@ -59,11 +63,12 @@ const useRequest = (id: string) => {
         text: request.message,
         type: "error",
       });
-      setLoading(false);
-      return;
+    } else {
+      setRequest(request);
     }
-    setRequest(request);
-    setLoading(false);
+    if (!options?.background) {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -78,30 +83,6 @@ const useRequest = (id: string) => {
   const [executionError, setExecutionError] = useState<string | undefined>(
     undefined,
   );
-
-  const addComment = async (comment: string) => {
-    const response = await addCommentToRequest(id, comment);
-
-    if (isApiErrorResponse(response)) {
-      addNotification({
-        title: "Failed to add comment",
-        text: response.message,
-        type: "error",
-      });
-      return;
-    }
-
-    // update the request with the new comment by updating the events propertiy with a new Comment
-    setRequest((request) => {
-      if (request === undefined) {
-        return undefined;
-      }
-      return {
-        ...request,
-        events: [...request.events, response],
-      };
-    });
-  };
 
   const start = async (): Promise<void> => {
     const response = await postStartServer(id);
@@ -140,7 +121,7 @@ const useRequest = (id: string) => {
         response = await addReviewToRequest(id, comment, "APPROVE");
         break;
       case ReviewTypes.Comment:
-        response = await addComment(comment);
+        response = await addCommentToRequest(id, comment);
         break;
       case ReviewTypes.RequestChange:
         response = await addReviewToRequest(id, comment, "REQUEST_CHANGE");
@@ -151,13 +132,16 @@ const useRequest = (id: string) => {
     }
     if (isApiErrorResponse(response)) {
       addNotification({
-        title: "Failed to add review",
+        title:
+          type === ReviewTypes.Comment
+            ? "Failed to add comment"
+            : "Failed to add review",
         text: response.message,
         type: "error",
       });
       return false;
     }
-    await loadRequest();
+    await loadRequest({ background: true });
     return true;
   };
 
@@ -180,6 +164,8 @@ const useRequest = (id: string) => {
     }
 
     setDataLoading(false);
+    // refresh so the new execute event shows up on the timeline
+    await loadRequest({ background: true });
   };
 
   const cancelQuery = async () => {
@@ -210,7 +196,7 @@ const useRequest = (id: string) => {
       });
       return false;
     }
-    await loadRequest();
+    await loadRequest({ background: true });
     return true;
   };
 

@@ -4,7 +4,7 @@ import Spinner from "../../components/Spinner";
 import useRequest from "../../hooks/request";
 import KubernetesRequestDisplay from "./KubernetesRequestDisplay";
 import DatasourceRequestDisplay from "./DatasourceRequestDisplay";
-import EventHistory from "./EventHistory";
+import ActivityTimeline from "./ActivityTimeline";
 
 interface RequestReviewParams {
   requestId: string;
@@ -81,7 +81,7 @@ function RequestReview() {
                     ></KubernetesRequestDisplay>
                   ))}
                 <div className="mt-3 w-full border-b border-slate-300 dark:border-slate-700"></div>
-                <EventHistory
+                <ActivityTimeline
                   request={request}
                   sendReview={sendReview}
                   closeRequest={closeRequest}
