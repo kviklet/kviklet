@@ -316,9 +316,15 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         policies: List<PolicyGrantedAuthority>,
     ): Boolean = when (permission) {
         Permission.EXECUTION_REQUEST_EDIT -> request.author.getId() == userDetails.id
-        Permission.EXECUTION_REQUEST_EXECUTE -> request.author.getId() == userDetails.id && isExecutable()
+        Permission.EXECUTION_REQUEST_EXECUTE -> mayExecute(userDetails) && isExecutable()
         else -> true
     }
+
+    // Approvals on single executions attach to the reviewed statement, so anyone with execute
+    // permission may run them. Temporary access and dumps are grants to a person and stay
+    // author-only.
+    private fun mayExecute(userDetails: UserDetailsWithId): Boolean =
+        request.type == RequestType.SingleExecution || request.author.getId() == userDetails.id
 
     private fun isExecutable(): Boolean {
         // If approved, always executable

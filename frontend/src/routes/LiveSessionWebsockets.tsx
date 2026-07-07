@@ -21,6 +21,7 @@ import {
   ThemeContext,
   ThemeStatusContext,
 } from "../components/ThemeStatusProvider";
+import { UserStatusContext } from "../components/UserStatusProvider";
 
 interface LiveSessionWebsocketsProps {
   requestId: string;
@@ -91,6 +92,15 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
   }, [isSyncing]);
 
   const { request } = useRequest(requestId);
+  const userContext = useContext(UserStatusContext);
+  const isAuthor =
+    !!request &&
+    !!userContext.userStatus &&
+    userContext.userStatus.id === request.author?.id;
+
+  useEffect(() => {
+    editor?.updateOptions({ readOnly: !isAuthor });
+  }, [editor, isAuthor]);
 
   useEffect(() => {
     if (monacoEl.current) {
@@ -196,20 +206,30 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
           </div>
         </div>
         <div className="mb-4 flex flex-row items-center justify-end gap-2">
-          {request?._type === "DATASOURCE" && isRelationalDatabase(request) && (
-            <a href="#" onClick={handleResultDownload}>
-              <Button>Execute and Download Results</Button>
-            </a>
+          {isAuthor ? (
+            <>
+              {request?._type === "DATASOURCE" &&
+                isRelationalDatabase(request) && (
+                  <a href="#" onClick={handleResultDownload}>
+                    <Button>Execute and Download Results</Button>
+                  </a>
+                )}
+              <LoadingCancelButton
+                onClick={onExecuteQueryClick}
+                onCancel={() => cancelQuery()}
+                variant="primary"
+                dataTestId="run-query-button"
+              >
+                <div className="play-triangle mr-2 inline-block h-3 w-2 bg-slate-50"></div>
+                Run Query
+              </LoadingCancelButton>
+            </>
+          ) : (
+            <div className="text-sm text-slate-500 dark:text-slate-400">
+              You are watching this session — only{" "}
+              {request?.author?.fullName || "the requester"} can run statements.
+            </div>
           )}
-          <LoadingCancelButton
-            onClick={onExecuteQueryClick}
-            onCancel={() => cancelQuery()}
-            variant="primary"
-            dataTestId="run-query-button"
-          >
-            <div className="play-triangle mr-2 inline-block h-3 w-2 bg-slate-50"></div>
-            Run Query
-          </LoadingCancelButton>
         </div>
         {updatedRows !== undefined && (
           <div className="mb-4 text-green-500">{updatedRows} rows updated</div>

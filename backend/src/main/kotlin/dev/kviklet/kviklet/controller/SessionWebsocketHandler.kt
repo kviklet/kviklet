@@ -151,12 +151,21 @@ class SessionWebsocketHandler(
                 }
 
                 is ExecuteMessage -> {
+                    val principal = securityContext.authentication.principal
+                    val userId = when (principal) {
+                        is UserDetailsWithId -> principal.id
+
+                        else -> throw IllegalStateException(
+                            "Expected UserDetailsWithId but got: ${principal.javaClass}",
+                        )
+                    }
                     // Run execution in background thread with SecurityContext propagation
                     queryExecutor.submit {
                         try {
                             val executionResult = sessionService.executeStatement(
                                 liveSessionId,
                                 webSocketMessage.statement,
+                                userId,
                             )
                             when (executionResult) {
                                 is DBExecutionResult -> {
