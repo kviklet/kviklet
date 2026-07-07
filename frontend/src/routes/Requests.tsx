@@ -17,6 +17,7 @@ import {
   CircleStackIcon,
   ClockIcon,
   CloudIcon,
+  EyeIcon,
   PlayIcon,
 } from "@heroicons/react/20/solid";
 import { UserStatusContext } from "../components/UserStatusProvider";
@@ -282,11 +283,18 @@ function Requests() {
                 request.reviewStatus,
                 request.executionStatus,
               );
+              const isAuthor =
+                userStatus !== false && userStatus?.id === request.author.id;
               const canOpenSession =
                 request.type === "TemporaryAccess" &&
                 (status === "Ready" || status === "Active") &&
-                userStatus !== false &&
-                userStatus?.id === request.author.id;
+                isAuthor;
+              // Non-authors can only spectate, so link them in once the
+              // session is actually running
+              const canWatchSession =
+                request.type === "TemporaryAccess" &&
+                status === "Active" &&
+                !isAuthor;
               return (
                 <Link
                   key={request.id}
@@ -343,10 +351,12 @@ function Requests() {
                               {status}
                             </span>
                           </p>
-                          {canOpenSession && (
+                          {(canOpenSession || canWatchSession) && (
                             <button
                               type="button"
-                              data-testid={`open-session-${request.title}`}
+                              data-testid={`${
+                                canOpenSession ? "open" : "watch"
+                              }-session-${request.title}`}
                               className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-indigo-600 ring-1 ring-inset ring-indigo-600/30 transition-colors hover:bg-indigo-50 dark:text-indigo-400 dark:ring-indigo-400/30 dark:hover:bg-indigo-400/10"
                               onClick={(e) => {
                                 e.preventDefault();
@@ -354,8 +364,14 @@ function Requests() {
                                 navigate(`/requests/${request.id}/session`);
                               }}
                             >
-                              <PlayIcon className="h-3.5 w-3.5" />
-                              Open session
+                              {canOpenSession ? (
+                                <PlayIcon className="h-3.5 w-3.5" />
+                              ) : (
+                                <EyeIcon className="h-3.5 w-3.5" />
+                              )}
+                              {canOpenSession
+                                ? "Open session"
+                                : "Watch session"}
                             </button>
                           )}
                         </div>
