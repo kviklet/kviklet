@@ -9,6 +9,7 @@ import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.PolicyEffect
+import dev.kviklet.kviklet.service.dto.RequestType
 import jakarta.servlet.http.Cookie
 import org.hamcrest.Matchers.containsString
 import org.hamcrest.Matchers.hasSize
@@ -257,7 +258,7 @@ class ExecutionTest {
         }
 
         @Test
-        fun `only request creator can execute the request`() {
+        fun `non-author with execute permission can execute a single execution request`() {
             // Create and approve an execution request
             val executionRequest = executionRequestHelper.createExecutionRequest(
                 db,
@@ -267,11 +268,64 @@ class ExecutionTest {
             val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
             approveRequest(executionRequest.getId(), "Approved", reviewerCookie)
 
+            executeRequestAndAssert(executionRequest.getId(), reviewerCookie)
+
+            // The execute event is attributed to the actual executor, not the request author
+            mockMvc.perform(
+                get("/executions/").cookie(reviewerCookie),
+            ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.executions[0].requestId").value(executionRequest.getId()))
+                .andExpect(jsonPath("$.executions[0].name").value(testReviewer.fullName))
+        }
+
+        @Test
+        fun `non-author without execute permission cannot execute a single execution request`() {
+            val executionRequest = executionRequestHelper.createExecutionRequest(
+                db,
+                testUser,
+                connection = testConnection,
+            )
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+            approveRequest(executionRequest.getId(), "Approved", reviewerCookie)
+
+            val userWithoutExecutePermission = userHelper.createUser(
+                permissions = listOf("execution_request:get", "datasource_connection:get"),
+                resources = listOf("*", "*"),
+            )
+            val cookie = userHelper.login(email = userWithoutExecutePermission.email, mockMvc = mockMvc)
+
             mockMvc.perform(
                 post("/execution-requests/${executionRequest.getId()}/execute")
-                    .cookie(reviewerCookie)
+                    .cookie(cookie)
                     .contentType("application/json"),
             ).andExpect(status().isForbidden)
+        }
+
+        @Test
+        fun `only the author can execute a temporary access request`() {
+            val temporaryAccessRequest = executionRequestHelper.createApprovedRequest(
+                db,
+                testUser,
+                testReviewer,
+                connection = testConnection,
+                requestType = RequestType.TemporaryAccess,
+            )
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+
+            mockMvc.perform(
+                post("/execution-requests/${temporaryAccessRequest.getId()}/execute")
+                    .cookie(reviewerCookie)
+                    .content("""{"query": "SELECT 1;"}""")
+                    .contentType("application/json"),
+            ).andExpect(status().isForbidden)
+
+            val authorCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            mockMvc.perform(
+                post("/execution-requests/${temporaryAccessRequest.getId()}/execute")
+                    .cookie(authorCookie)
+                    .content("""{"query": "SELECT 1;"}""")
+                    .contentType("application/json"),
+            ).andExpect(status().isOk)
         }
 
         @Test

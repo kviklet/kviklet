@@ -5,8 +5,9 @@ import Button from "../../components/Button";
 import { timeSince } from "../Requests";
 import MenuDropDown from "../../components/MenuDropdown";
 import { Highlighter } from "./components/Highlighter";
-import { FC, useEffect, useState, MouseEvent } from "react";
+import { FC, useContext, useEffect, useState, MouseEvent } from "react";
 import ApprovalProgress from "./ApprovalProgress";
+import { UserStatusContext } from "../../components/UserStatusProvider";
 
 interface KubernetesRequestBoxProps {
   request: KubernetesExecutionRequestResponseWithComments;
@@ -22,6 +23,10 @@ const KubernetesRequestBox: FC<KubernetesRequestBoxProps> = ({
 }) => {
   const [editMode, setEditMode] = useState(false);
   const [command, setCommand] = useState(request?.command || "");
+  const userContext = useContext(UserStatusContext);
+  const isAuthor =
+    !!userContext.userStatus &&
+    userContext.userStatus.id === request?.author?.id;
 
   const navigate = useNavigate();
 
@@ -135,7 +140,9 @@ const KubernetesRequestBox: FC<KubernetesRequestBoxProps> = ({
             >
               {request?.type == "SingleExecution"
                 ? "Run Command"
-                : "Start Session"}
+                : isAuthor
+                ? "Start Session"
+                : "Watch Session"}
             </Button>
           </div>
         </div>
