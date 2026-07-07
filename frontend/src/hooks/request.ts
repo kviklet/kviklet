@@ -50,12 +50,9 @@ const useRequest = (id: string) => {
 
   const { addNotification } = useNotification();
 
-  // background reloads refresh the request in place without unmounting the
-  // page into the loading spinner
-  async function loadRequest(options?: { background?: boolean }) {
-    if (!options?.background) {
-      setLoading(true);
-    }
+  // refreshes the request in place without unmounting the page into the
+  // loading spinner
+  async function refreshRequest() {
     const request = await getSingleRequest(id);
     if (isApiErrorResponse(request)) {
       addNotification({
@@ -66,13 +63,14 @@ const useRequest = (id: string) => {
     } else {
       setRequest(request);
     }
-    if (!options?.background) {
-      setLoading(false);
-    }
   }
 
   useEffect(() => {
-    void loadRequest();
+    void (async () => {
+      setLoading(true);
+      await refreshRequest();
+      setLoading(false);
+    })();
   }, []);
 
   const [results, setResults] = useState<ExecuteResponseResult[] | undefined>();
@@ -141,7 +139,7 @@ const useRequest = (id: string) => {
       });
       return false;
     }
-    await loadRequest({ background: true });
+    await refreshRequest();
     return true;
   };
 
@@ -165,7 +163,7 @@ const useRequest = (id: string) => {
 
     setDataLoading(false);
     // refresh so the new execute event shows up on the timeline
-    await loadRequest({ background: true });
+    await refreshRequest();
   };
 
   const cancelQuery = async () => {
@@ -196,7 +194,7 @@ const useRequest = (id: string) => {
       });
       return false;
     }
-    await loadRequest({ background: true });
+    await refreshRequest();
     return true;
   };
 
