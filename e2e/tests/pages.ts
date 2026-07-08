@@ -183,11 +183,16 @@ class RequestsReviewPage {
 
   async navigate() {
     await this.page.getByTestId("requests-link").click();
-    await this.page.getByTestId(`request-link-${this.requestName}`).click();
+    // Retried create tests can leave duplicate requests with the same title
+    await this.page
+      .getByTestId(`request-link-${this.requestName}`)
+      .first()
+      .click();
   }
 
   async approveRequest() {
     await this.navigate();
+    await this.page.getByTestId("expand-comment-box").click();
     await this.page.getByTestId("review-type-Approve").click();
     await this.page.getByTestId("submit-review-button").click();
   }

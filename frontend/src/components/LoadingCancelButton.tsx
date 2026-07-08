@@ -20,7 +20,7 @@ function LoadingCancelButton(props: {
   const submitStyle =
     "bg-indigo-700 font-medium text-white hover:bg-indigo-800 dark:hover:bg-indigo-600 dark:bg-indigo-700 dark:text-slate-50 transition-colors";
   const dangerStyle =
-    "bg-red-600 text-white hover:bg-red-800 transition-colors dark:hover:bg-red-400";
+    "bg-red-600 text-white hover:bg-red-800 transition-colors dark:bg-red-700 dark:hover:bg-red-600";
   const defaultStyle =
     "border border-gray-300 hover:border-gray-400 dark:border-slate-700 dark:hover:border-slate-500 dark:bg-slate-800 dark:text-slate-50 transition-colors";
   const disabledStyle =

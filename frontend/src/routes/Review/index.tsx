@@ -1,10 +1,11 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { mapStatus, mapStatusToLabelColor } from "../Requests";
+import Breadcrumbs from "../../components/Breadcrumbs";
 import Spinner from "../../components/Spinner";
 import useRequest from "../../hooks/request";
 import KubernetesRequestDisplay from "./KubernetesRequestDisplay";
 import DatasourceRequestDisplay from "./DatasourceRequestDisplay";
-import EventHistory from "./EventHistory";
+import ActivityTimeline from "./ActivityTimeline";
 
 interface RequestReviewParams {
   requestId: string;
@@ -43,6 +44,12 @@ function RequestReview() {
       {(loading && <Spinner size="lg" />) ||
         (request && (
           <div className="m-auto mt-10 max-w-3xl">
+            <Breadcrumbs
+              items={[
+                { label: "Requests", to: "/requests" },
+                { label: request.title },
+              ]}
+            />
             <h1 className="my-2 flex w-full items-start text-3xl">
               <div className="mr-auto">{request?.title}</div>
               <div
@@ -81,7 +88,7 @@ function RequestReview() {
                     ></KubernetesRequestDisplay>
                   ))}
                 <div className="mt-3 w-full border-b border-slate-300 dark:border-slate-700"></div>
-                <EventHistory
+                <ActivityTimeline
                   request={request}
                   sendReview={sendReview}
                   closeRequest={closeRequest}
