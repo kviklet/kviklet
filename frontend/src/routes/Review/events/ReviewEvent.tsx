@@ -6,8 +6,15 @@ import { AbsoluteInitialBubble as InitialBubble } from "../../../components/Init
 import { Review } from "../../../api/ExecutionRequestApi";
 import { componentMap } from "../components/Highlighter";
 import { ReactElement } from "react";
+import TimelineItem from "./TimelineItem";
 
-function ReviewEvent({ event, index }: { event: Review; index: number }) {
+function ReviewEvent({
+  event,
+  connectTop,
+}: {
+  event: Review;
+  connectTop?: boolean;
+}) {
   const notificationText = (): ReactElement => {
     switch (event.action) {
       case "APPROVE":
@@ -60,22 +67,15 @@ function ReviewEvent({ event, index }: { event: Review; index: number }) {
     }
   };
   return (
-    <div>
-      <div className="relative ml-4 flex py-4">
-        {(!(index === 0) && (
-          <div className="absolute bottom-0 left-0 top-0 block w-0.5 whitespace-pre bg-slate-700">
-            {" "}
-          </div>
-        )) || (
-          <div className="absolute bottom-0 left-0 top-5 block w-0.5 whitespace-pre bg-slate-700">
-            {" "}
-          </div>
-        )}
+    <TimelineItem
+      connectTop={connectTop}
+      header={
         <div className="flex justify-center align-middle">
           {notificationIcon()}
           {notificationText()}
         </div>
-      </div>
+      }
+    >
       <div className="relative rounded-md border shadow-md dark:border-slate-700 dark:shadow-none">
         <InitialBubble name={event?.author?.fullName} />
         <p className="flex justify-between rounded-t-md px-4 pt-2 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-500">
@@ -91,7 +91,7 @@ function ReviewEvent({ event, index }: { event: Review; index: number }) {
           </ReactMarkdown>
         </div>
       </div>
-    </div>
+    </TimelineItem>
   );
 }
 
