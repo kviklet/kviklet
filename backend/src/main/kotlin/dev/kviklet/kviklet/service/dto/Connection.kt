@@ -153,6 +153,13 @@ data class DatasourceConnection(
                     baseUrl + additionalOptions + delimiter + "sslMode=REQUIRED"
                 }
 
+                DatasourceType.MARIADB -> {
+                    val baseUrl = "jdbc:mariadb://$hostname:$port/$databaseName"
+                    val delimiter = if (additionalOptions.isEmpty()) "?" else "&"
+                    // MariaDB Connector/J has no REQUIRED mode; trust enforces TLS without cert verification
+                    baseUrl + additionalOptions + delimiter + "sslMode=trust"
+                }
+
                 else -> throw IllegalArgumentException("AWS IAM is not supported for $type")
             }
         }
