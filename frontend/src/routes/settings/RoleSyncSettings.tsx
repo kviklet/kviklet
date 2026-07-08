@@ -69,7 +69,7 @@ export default function RoleSyncSettings() {
     : false;
 
   if (loading || rolesLoading) {
-    return <Spinner size="lg" />;
+    return <Spinner size="lg" page />;
   }
 
   if (!config) {

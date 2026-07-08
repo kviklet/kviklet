@@ -239,7 +239,7 @@ export default function ConnectionChooser() {
       </div>
       <div className="mx-auto mt-5 flex max-w-5xl">
         {loading ? (
-          <Spinner size="lg" />
+          <Spinner size="lg" page />
         ) : (
           <div className="w-full">
             <Disclosure defaultOpen={true}>
@@ -741,7 +741,7 @@ const KubernetesExecutionRequestForm = ({
 
   return (
     <div className="mx-auto w-full">
-      {(loading && <Spinner size="lg" />) || (
+      {(loading && <Spinner size="lg" page />) || (
         <form
           className="mx-auto w-full"
           onSubmit={(event) => void handleSubmit(onSubmit)(event)}

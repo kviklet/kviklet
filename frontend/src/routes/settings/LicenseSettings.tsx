@@ -16,7 +16,7 @@ export default function LicenseSettings() {
     <div>
       <div className="mx-auto max-w-7xl">
         {!config ? (
-          <Spinner size="lg" />
+          <Spinner size="lg" page />
         ) : (
           <div className="flex flex-col gap-y-2">
             <LicenseInfo license={config} userCount={users.length.toString()} />
