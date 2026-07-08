@@ -192,6 +192,7 @@ class RequestsReviewPage {
 
   async approveRequest() {
     await this.navigate();
+    await this.page.getByTestId("expand-comment-box").click();
     await this.page.getByTestId("review-type-Approve").click();
     await this.page.getByTestId("submit-review-button").click();
   }

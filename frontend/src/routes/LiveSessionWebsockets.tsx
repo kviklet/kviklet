@@ -14,7 +14,7 @@ import { useParams } from "react-router-dom";
 import Breadcrumbs from "../components/Breadcrumbs";
 import useLiveSession from "../hooks/useLiveSession";
 import useNotification from "../hooks/useNotification";
-import LiveSessionActivityLog from "./LiveSessionActivityLog";
+import ActivityTimeline from "./Review/ActivityTimeline";
 import baseUrl from "../api/base";
 import LoadingCancelButton from "../components/LoadingCancelButton";
 import {
@@ -226,7 +226,7 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
         </div>
 
         {request && (
-          <LiveSessionActivityLog
+          <ActivityTimeline
             request={request}
             websocketEvents={websocketEvents}
           />
