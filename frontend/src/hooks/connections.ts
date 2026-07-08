@@ -192,7 +192,11 @@ const useCategories = () => {
 };
 
 function supportsIamAuth(type: DatabaseType): boolean {
-  return [DatabaseType.POSTGRES, DatabaseType.MYSQL].includes(type);
+  return [
+    DatabaseType.POSTGRES,
+    DatabaseType.MYSQL,
+    DatabaseType.MARIADB,
+  ].includes(type);
 }
 
 export default useConnections;
