@@ -34,7 +34,7 @@ export default function GeneralSettings() {
     <div>
       <h1 className="mb-2 text-lg">General Settings</h1>
       {loading ? (
-        <Spinner size="lg" />
+        <Spinner size="lg" page />
       ) : (
         config && (
           <div>

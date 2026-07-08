@@ -267,7 +267,7 @@ function Requests() {
           </div>
         </div>
       </div>
-      {(loading && <Spinner size="lg" />) || (
+      {(loading && <Spinner size="lg" page />) || (
         <div
           className="h-full bg-slate-50 dark:bg-slate-950"
           data-testid="requests-list"
