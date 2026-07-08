@@ -8,14 +8,15 @@ import { Disclosure } from "@headlessui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import { Highlighter } from "../components/Highlighter";
 import JsonViewer from "../../../components/JsonViewer";
+import TimelineItem from "./TimelineItem";
 
 function ExecuteEvent({
   event,
-  index,
+  connectTop,
   connectionType,
 }: {
   event: Execute;
-  index: number;
+  connectTop?: boolean;
   connectionType?: DatabaseType;
 }) {
   const isDownload = event.isDownload || false;
@@ -23,45 +24,40 @@ function ExecuteEvent({
     ? "downloaded the results for the following statement:"
     : "executed the following statement:";
   return (
-    <div className="">
-      <div className="relative ml-4 flex py-4">
-        {(!(index === 0) && (
-          <div className="absolute bottom-0 left-0 top-0 block w-0.5 whitespace-pre bg-slate-700">
-            {" "}
+    <TimelineItem
+      connectTop={connectTop}
+      header={
+        <>
+          <div className="z-0 -ml-0.5 mr-2 inline-block h-4 w-4 items-center bg-slate-50 fill-slate-950 pb-6 align-text-bottom dark:bg-slate-950 dark:fill-slate-50">
+            <div className="inline pr-2 text-xs text-green-600">
+              <FontAwesomeIcon icon={solid("play")} />
+            </div>
           </div>
-        )) || (
-          <div className="absolute bottom-0 left-0 top-5 block w-0.5 whitespace-pre bg-slate-700">
-            {" "}
-          </div>
-        )}
-        <div className="z-0 -ml-0.5 mr-2 inline-block h-4 w-4 items-center bg-slate-50 fill-slate-950 pb-6 align-text-bottom dark:bg-slate-950 dark:fill-slate-50">
-          <div className="inline pr-2 text-xs text-green-600">
-            <FontAwesomeIcon icon={solid("play")} />
-          </div>
-        </div>
-        {event?.isDump && (
-          <div className="text-sm text-slate-500">
-            {event?.author?.fullName} requested a SQL dump from the database.
-          </div>
-        )}
-        {event?.query && (
-          <div className="flex items-center text-sm text-slate-500">
-            <span>
-              {event?.author?.fullName} {sqlStatementText}
-            </span>
-            {event?.isDryRun && (
-              <span className="ml-2 rounded bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                Dry Run
+          {event?.isDump && (
+            <div className="text-sm text-slate-500">
+              {event?.author?.fullName} requested a SQL dump from the database.
+            </div>
+          )}
+          {event?.query && (
+            <div className="flex items-center text-sm text-slate-500">
+              <span>
+                {event?.author?.fullName} {sqlStatementText}
               </span>
-            )}
-          </div>
-        )}
-        {event?.command && (
-          <div className="text-sm text-slate-500">
-            {event?.author?.fullName} ran the following command:
-          </div>
-        )}
-      </div>
+              {event?.isDryRun && (
+                <span className="ml-2 rounded bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                  Dry Run
+                </span>
+              )}
+            </div>
+          )}
+          {event?.command && (
+            <div className="text-sm text-slate-500">
+              {event?.author?.fullName} ran the following command:
+            </div>
+          )}
+        </>
+      }
+    >
       <div className="relative rounded-md border shadow-md dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
         <InitialBubble name={event?.author?.fullName} />
         <div className="flex justify-between rounded-t-md px-4 pt-2 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-500">
@@ -237,7 +233,7 @@ function ExecuteEvent({
           </div>
         )}
       </div>
-    </div>
+    </TimelineItem>
   );
 }
 

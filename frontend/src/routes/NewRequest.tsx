@@ -10,10 +10,13 @@ import {
   Squares2X2Icon,
   ListBulletIcon,
 } from "@heroicons/react/20/solid";
-import { useLocation, useNavigate } from "react-router-dom";
+import { NavigateFunction, useLocation, useNavigate } from "react-router-dom";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { addRequest } from "../api/ExecutionRequestApi";
+import {
+  addRequest,
+  ExecutionRequestResponse,
+} from "../api/ExecutionRequestApi";
 import { z } from "zod";
 import Button from "../components/Button";
 import {
@@ -26,6 +29,33 @@ import useConnections from "../hooks/connections";
 import useNotification from "../hooks/useNotification";
 import { isApiErrorResponse } from "../api/Errors";
 import SearchInput from "../components/SearchInput";
+
+// Temporary access requests against connections that don't require any
+// approval are usable immediately, so skip the review page and drop the
+// user straight into their session.
+const navigateToCreatedRequest = (
+  response: ExecutionRequestResponse,
+  navigate: NavigateFunction,
+  addNotification: (notification: {
+    title: string;
+    text: string;
+    type: "info" | "error";
+  }) => void,
+) => {
+  if (
+    response.type === "TemporaryAccess" &&
+    response.reviewStatus === "APPROVED"
+  ) {
+    addNotification({
+      title: "Access granted",
+      text: "No approval is required for this connection — your session is ready.",
+      type: "info",
+    });
+    navigate(`/requests/${response.id}/session`);
+  } else {
+    navigate(`/requests/${response.id}`);
+  }
+};
 
 const languageString = (connection: ConnectionResponse): string => {
   if (connection._type === "DATASOURCE") {
@@ -442,7 +472,7 @@ const DatasourceExecutionRequestForm = ({
         type: "error",
       });
     } else {
-      navigate("/requests");
+      navigateToCreatedRequest(response, navigate, addNotification);
     }
   };
 
@@ -735,7 +765,7 @@ const KubernetesExecutionRequestForm = ({
         type: "error",
       });
     } else {
-      navigate("/requests");
+      navigateToCreatedRequest(response, navigate, addNotification);
     }
   };
 

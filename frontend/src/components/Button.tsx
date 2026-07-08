@@ -19,7 +19,7 @@ function Button(props: {
   const defaultStyle =
     "border border-gray-300 hover:border-gray-400 dark:border-slate-700 dark:hover:border-slate-500 dark:bg-slate-800 dark:text-slate-50 transition-colors";
   const dangerStyle =
-    "bg-red-600 text-white hover:bg-red-800 transition-colors dark:hover:bg-red-400"; // this is your new "danger" style
+    "bg-red-600 text-white hover:bg-red-800 transition-colors dark:bg-red-700 dark:hover:bg-red-600";
 
   const disabled = props.variant == "disabled" ? true : undefined;
   const htmlType = props.htmlType || "button";

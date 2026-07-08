@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { useConnection } from "../../../../hooks/connections";
+import Breadcrumbs from "../../../../components/Breadcrumbs";
 import Spinner from "../../../../components/Spinner";
 import UpdateDatasourceConnectionForm from "./UpdateDatasourceConnectionForm";
 import UpdateKubernetesConnectionForm from "./UpdateKubernetesConnectionForm";
@@ -40,6 +41,13 @@ export default function ConnectionDetails() {
   return (
     <div>
       <div className="flex w-full flex-col">
+        <Breadcrumbs
+          className="mb-2"
+          items={[
+            { label: "Connections", to: "/settings/connections" },
+            { label: connection.displayName },
+          ]}
+        />
         <div className="flex w-full items-center justify-between">
           <div className="text-lg font-semibold dark:text-white">
             Connection Settings

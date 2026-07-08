@@ -11,9 +11,10 @@ import MultiResult from "../components/MultiResult";
 import Spinner from "../components/Spinner";
 import useRequest, { isRelationalDatabase } from "../hooks/request";
 import { useParams } from "react-router-dom";
+import Breadcrumbs from "../components/Breadcrumbs";
 import useLiveSession from "../hooks/useLiveSession";
 import useNotification from "../hooks/useNotification";
-import LiveSessionActivityLog from "./LiveSessionActivityLog";
+import ActivityTimeline from "./Review/ActivityTimeline";
 import baseUrl from "../api/base";
 import LoadingCancelButton from "../components/LoadingCancelButton";
 import {
@@ -161,7 +162,15 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
   return (
     <div className="flex h-full flex-col overflow-x-hidden">
       <div className="mx-auto flex h-full w-full max-w-5xl flex-col px-4">
-        <div className="relative my-5">
+        <Breadcrumbs
+          className="mt-5"
+          items={[
+            { label: "Requests", to: "/requests" },
+            { label: request?.title ?? "", to: `/requests/${requestId}` },
+            { label: "Live Session" },
+          ]}
+        />
+        <div className="relative mb-5 mt-3">
           {(isSyncing || showSynced) && (
             <div
               className={`absolute -top-5 right-0 text-xs transition-opacity duration-500 ${
@@ -217,7 +226,7 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
         </div>
 
         {request && (
-          <LiveSessionActivityLog
+          <ActivityTimeline
             request={request}
             websocketEvents={websocketEvents}
           />
