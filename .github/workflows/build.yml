@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - main
+      # TEMPORARY: build a testable image for this branch, remove before merge
+      - mariadb-iam-auth
     tags:
       - "**"
 env:
