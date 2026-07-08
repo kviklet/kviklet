@@ -108,9 +108,10 @@ test.describe("E2E Tests for Multiple Databases", () => {
           `Testing ${db.name} connection`,
           db.testQuery
         );
-        await page.waitForURL("**/requests");
+        // Creating a request lands on its detail page
+        await page.waitForURL("**/requests/*");
         await expect(
-          page.getByTestId(`request-link-${requestName}`)
+          page.getByRole("heading", { name: requestName })
         ).toBeVisible();
       });
 
@@ -127,9 +128,11 @@ test.describe("E2E Tests for Multiple Databases", () => {
           liveSessionName,
           `Testing ${db.name} live session`
         );
-        await page.waitForURL("**/requests");
+        // The connection requires no reviews, so the user is dropped
+        // directly into the live session
+        await page.waitForURL("**/session");
         await expect(
-          page.getByTestId(`request-link-${liveSessionName}`)
+          page.getByTestId("monaco-editor-wrapper")
         ).toBeVisible();
       });
 

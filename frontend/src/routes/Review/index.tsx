@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { mapStatus, mapStatusToLabelColor } from "../Requests";
+import Breadcrumbs from "../../components/Breadcrumbs";
 import Spinner from "../../components/Spinner";
 import useRequest from "../../hooks/request";
 import KubernetesRequestDisplay from "./KubernetesRequestDisplay";
@@ -43,6 +44,12 @@ function RequestReview() {
       {(loading && <Spinner size="lg" />) ||
         (request && (
           <div className="m-auto mt-10 max-w-3xl">
+            <Breadcrumbs
+              items={[
+                { label: "Requests", to: "/requests" },
+                { label: request.title },
+              ]}
+            />
             <h1 className="my-2 flex w-full items-start text-3xl">
               <div className="mr-auto">{request?.title}</div>
               <div
