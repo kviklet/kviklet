@@ -1,11 +1,10 @@
-import { useContext, useState } from "react";
+import { ChangeEvent, KeyboardEvent, useContext, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import Button from "../../../components/Button";
 import { UserStatusContext } from "../../../components/UserStatusProvider";
 import { AbsoluteInitialBubble as InitialBubble } from "../../../components/InitialBubble";
 import { ReviewTypes } from "../../../hooks/request";
 import { componentMap } from "../components/Highlighter";
-import ReviewRadioBox from "./ReviewRadioBox";
 
 function CommentBox({
   sendReview,
@@ -16,7 +15,8 @@ function CommentBox({
   closeRequest?: (comment: string) => Promise<boolean>;
   userId?: string;
 }) {
-  const [commentFormVisible, setCommentFormVisible] = useState<boolean>(true);
+  const [expanded, setExpanded] = useState<boolean>(false);
+  const [previewVisible, setPreviewVisible] = useState<boolean>(false);
   const [comment, setComment] = useState<string>("");
 
   const [chosenReviewType, setChosenReviewType] = useState<ReviewTypes>(
@@ -24,25 +24,6 @@ function CommentBox({
   );
 
   const userContext = useContext(UserStatusContext);
-
-  // a bare comment with no text would just add an empty event to the timeline
-  const submitDisabled =
-    chosenReviewType === ReviewTypes.Comment && comment.trim() === "";
-
-  const handleReview = async () => {
-    if (submitDisabled) {
-      return;
-    }
-    let result: boolean;
-    if (chosenReviewType === ReviewTypes.Close && closeRequest) {
-      result = await closeRequest(comment);
-    } else {
-      result = await sendReview(comment, chosenReviewType);
-    }
-    if (result) {
-      setComment("");
-    }
-  };
 
   const isOwnRequest =
     userContext.userStatus && userContext.userStatus?.id === userId;
@@ -85,78 +66,148 @@ function CommentBox({
       danger: false,
     },
   ];
+
+  const availableReviewTypes = reviewTypes.filter(
+    (reviewType) => reviewType.enabled,
+  );
+  const selectedReviewType =
+    availableReviewTypes.find(
+      (reviewType) => reviewType.id === chosenReviewType,
+    ) ?? availableReviewTypes[0];
+
+  // a bare comment with no text would just add an empty event to the timeline
+  const submitDisabled =
+    selectedReviewType.id === ReviewTypes.Comment && comment.trim() === "";
+
+  const handleReview = async () => {
+    if (submitDisabled) {
+      return;
+    }
+    let result: boolean;
+    if (selectedReviewType.id === ReviewTypes.Close && closeRequest) {
+      result = await closeRequest(comment);
+    } else {
+      result = await sendReview(comment, selectedReviewType.id);
+    }
+    if (result) {
+      setComment("");
+      setChosenReviewType(ReviewTypes.Comment);
+      setPreviewVisible(false);
+      setExpanded(false);
+    }
+  };
+
+  const handleCommentChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    setComment(event.target.value);
+    event.target.style.height = "auto";
+    event.target.style.height = `${Math.min(event.target.scrollHeight, 256)}px`;
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Escape") {
+      setExpanded(false);
+    } else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+      void handleReview();
+    }
+  };
+
+  const pillClassName = (reviewType: (typeof reviewTypes)[number]) => {
+    const selected = reviewType.id === selectedReviewType.id;
+    if (selected) {
+      return reviewType.danger
+        ? "border-red-600 bg-red-50 text-red-700 dark:border-red-500/60 dark:bg-red-500/20 dark:text-red-300"
+        : "border-indigo-600 bg-indigo-50 text-indigo-700 dark:border-indigo-500/60 dark:bg-indigo-500/20 dark:text-indigo-300";
+    }
+    return reviewType.danger
+      ? "border-slate-200 text-red-600/80 hover:border-red-300 dark:border-slate-700 dark:text-red-400/80 dark:hover:border-red-500/50"
+      : "border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-400 dark:hover:border-slate-500";
+  };
+
   return (
-    <div>
-      <div className="relative mb-5 mt-4 rounded-md shadow-md dark:border dark:border-slate-700 dark:shadow-none">
-        <InitialBubble
-          name={
-            (userContext.userStatus && userContext.userStatus?.fullName) || ""
-          }
-        />
-        <div className="mb-2 rounded-t-md border border-b-slate-300 dark:border-b dark:border-l-0 dark:border-r-0 dark:border-t-0 dark:border-slate-700 dark:bg-slate-900">
-          <div className="z-10 -mb-px overflow-auto">
-            <button
-              className={`ml-2 mt-2 ${
-                commentFormVisible
-                  ? "border border-b-slate-50 bg-slate-50 dark:border-slate-700 dark:border-b-slate-950 dark:bg-slate-950 dark:text-slate-50"
-                  : "dark:hover:bg-slate-800"
-              }  rounded-t-md border-slate-300 px-4 py-2 text-sm leading-6 text-slate-600`}
-              onClick={() => setCommentFormVisible(true)}
-            >
-              write
-            </button>
-            <button
-              className={`mt-2 ${
-                commentFormVisible
-                  ? "dark:hover:bg-slate-800"
-                  : "border border-b-white bg-white dark:border-slate-700 dark:border-b-slate-950 dark:bg-slate-950 dark:text-slate-50"
-              } rounded-t-md  border-slate-300 px-4 py-2 text-sm leading-6 text-slate-600`}
-              onClick={() => setCommentFormVisible(false)}
-            >
-              preview
-            </button>
-          </div>
-        </div>
-        <div className="px-3">
-          {commentFormVisible ? (
+    <div className="relative mt-4">
+      <InitialBubble
+        name={
+          (userContext.userStatus && userContext.userStatus?.fullName) || ""
+        }
+      />
+      {expanded ? (
+        <div className="rounded-md border bg-white shadow-md dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
+          {previewVisible ? (
+            <div className="max-h-64 min-h-[5rem] overflow-y-auto px-3 py-2 text-sm">
+              {comment.trim() === "" ? (
+                <p className="text-slate-400 dark:text-slate-500">
+                  Nothing to preview
+                </p>
+              ) : (
+                <ReactMarkdown components={componentMap}>
+                  {comment}
+                </ReactMarkdown>
+              )}
+            </div>
+          ) : (
             <textarea
-              className="mb-2 block w-full appearance-none rounded-md border border-slate-100 bg-slate-50 p-1 leading-normal text-gray-700 shadow-sm transition-colors focus:shadow-md focus:outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-50 dark:focus:border-slate-500 dark:hover:border-slate-600 dark:focus:hover:border-slate-500"
+              autoFocus
               id="comment"
               name="comment"
-              rows={4}
-              onChange={(event) => setComment(event.target.value)}
+              rows={3}
+              className="block max-h-64 w-full resize-none rounded-t-md border-0 bg-transparent px-3 py-2 text-sm leading-normal text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-50 dark:placeholder:text-slate-500"
+              onChange={handleCommentChange}
+              onKeyDown={handleKeyDown}
               value={comment}
               placeholder="Leave a comment"
             ></textarea>
-          ) : (
-            <ReactMarkdown
-              className="my-2 h-28 max-h-48 overflow-y-scroll border-r-slate-300  scrollbar-thin scrollbar-track-slate-100 scrollbar-thumb-slate-300 scrollbar-track-rounded-md scrollbar-thumb-rounded-md"
-              components={componentMap}
-            >
-              {comment}
-            </ReactMarkdown>
           )}
-          <div className="p-1">
-            <div className="center mb-2 flex flex-col">
-              <ReviewRadioBox
-                reviewTypes={reviewTypes}
-                setChosenReviewType={setChosenReviewType}
-                chosenType={chosenReviewType}
-              ></ReviewRadioBox>
-              <div className="mb-2 flex justify-end">
-                <Button
-                  id="submit"
-                  variant={submitDisabled ? "disabled" : "primary"}
-                  onClick={() => void handleReview()}
-                  dataTestId="submit-review-button"
-                >
-                  Review
-                </Button>
-              </div>
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-200 px-2 py-2 dark:border-slate-700">
+            {availableReviewTypes.map((reviewType) => (
+              <button
+                key={reviewType.id}
+                type="button"
+                title={reviewType.description}
+                data-testid={`review-type-${reviewType.title}`}
+                onClick={() => setChosenReviewType(reviewType.id)}
+                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${pillClassName(
+                  reviewType,
+                )}`}
+              >
+                {reviewType.title}
+              </button>
+            ))}
+            <div className="ml-auto flex items-center gap-2 pl-2">
+              <button
+                type="button"
+                title="Markdown supported"
+                className="text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                onClick={() => setPreviewVisible(!previewVisible)}
+              >
+                {previewVisible ? "Write" : "Preview"}
+              </button>
+              <Button
+                id="submit"
+                variant={
+                  submitDisabled
+                    ? "disabled"
+                    : selectedReviewType.danger
+                    ? "danger"
+                    : "primary"
+                }
+                onClick={() => void handleReview()}
+                dataTestId="submit-review-button"
+              >
+                {selectedReviewType.title}
+              </Button>
             </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <button
+          type="button"
+          data-testid="expand-comment-box"
+          className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm text-slate-500 shadow-sm transition-colors hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-600"
+          onClick={() => setExpanded(true)}
+        >
+          {isOwnRequest ? "Leave a comment…" : "Leave a comment or review…"}
+        </button>
+      )}
     </div>
   );
 }

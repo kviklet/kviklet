@@ -55,7 +55,8 @@ export default function ActivityTimeline({
           ></CommentBox>
         )}
         {events.map((event, index) => {
-          const connectTop = index > 0;
+          // the first event connects up to the comment composer when present
+          const connectTop = index > 0 || sendReview !== undefined;
           if (event?._type === "EDIT")
             return (
               <EditEvent key={event.id} event={event} connectTop={connectTop} />
