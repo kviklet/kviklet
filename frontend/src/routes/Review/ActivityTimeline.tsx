@@ -52,6 +52,7 @@ export default function ActivityTimeline({
             sendReview={sendReview}
             closeRequest={closeRequest}
             userId={request?.author?.id}
+            isRejected={request.reviewStatus === "REJECTED"}
           ></CommentBox>
         )}
         {events.map((event, index) => {

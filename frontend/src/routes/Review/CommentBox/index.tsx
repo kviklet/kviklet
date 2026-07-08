@@ -10,10 +10,12 @@ function CommentBox({
   sendReview,
   closeRequest,
   userId,
+  isRejected,
 }: {
   sendReview: (comment: string, type: ReviewTypes) => Promise<boolean>;
   closeRequest?: (comment: string) => Promise<boolean>;
   userId?: string;
+  isRejected?: boolean;
 }) {
   const [expanded, setExpanded] = useState<boolean>(false);
   const [previewVisible, setPreviewVisible] = useState<boolean>(false);
@@ -40,7 +42,7 @@ function CommentBox({
       id: ReviewTypes.Approve,
       title: "Approve",
       description: "Give your approval to execute this request",
-      enabled: !isOwnRequest,
+      enabled: !isOwnRequest && !isRejected,
       danger: false,
     },
     {
@@ -48,21 +50,21 @@ function CommentBox({
       title: "Request Changes",
       description:
         "Request a change on this Request, you can later approve it again",
-      enabled: !isOwnRequest,
+      enabled: !isOwnRequest && !isRejected,
       danger: true,
     },
     {
       id: ReviewTypes.Reject,
       title: "Reject",
       description: "Reject this request from ever executing",
-      enabled: !isOwnRequest,
+      enabled: !isOwnRequest && !isRejected,
       danger: true,
     },
     {
       id: ReviewTypes.Close,
       title: "Close",
       description: "Close this request without executing it",
-      enabled: !!(isOwnRequest && closeRequest),
+      enabled: !!(isOwnRequest && closeRequest) && !isRejected,
       danger: false,
     },
   ];
@@ -205,7 +207,9 @@ function CommentBox({
           className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm text-slate-500 shadow-sm transition-colors hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-600"
           onClick={() => setExpanded(true)}
         >
-          {isOwnRequest ? "Leave a comment…" : "Leave a comment or review…"}
+          {isOwnRequest || isRejected
+            ? "Leave a comment…"
+            : "Leave a comment or review…"}
         </button>
       )}
     </div>
