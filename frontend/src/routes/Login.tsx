@@ -38,6 +38,7 @@ const Login = () => {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showLocalLogin, setShowLocalLogin] = useState(false);
+  const [loggingIn, setLoggingIn] = useState(false);
   const navigate = useNavigate();
   const userContext = useContext(UserStatusContext);
 
@@ -50,17 +51,22 @@ const Login = () => {
 
   const login = async (event: FormEvent) => {
     event.preventDefault();
-    const response = await attemptLogin(email, password);
-    if (isApiErrorResponse(response)) {
-      addNotification({
-        title: "Failed to login",
-        text: response.message,
-        type: "error",
-      });
-    } else {
-      await userContext.refreshState();
+    setLoggingIn(true);
+    try {
+      const response = await attemptLogin(email, password);
+      if (isApiErrorResponse(response)) {
+        addNotification({
+          title: "Failed to login",
+          text: response.message,
+          type: "error",
+        });
+      } else {
+        await userContext.refreshState();
 
-      navigate("/requests");
+        navigate("/requests");
+      }
+    } finally {
+      setLoggingIn(false);
     }
   };
 
@@ -112,7 +118,7 @@ const Login = () => {
 
   return (
     <div>
-      {(loading && <Spinner size="lg" />) || (
+      {(loading && <Spinner size="lg" page />) || (
         <div className="mx-auto my-2 mt-6 max-w-sm dark:bg-slate-950">
           <div className="text-center">
             <img
@@ -171,10 +177,10 @@ const Login = () => {
                     className="mt-2 w-full"
                     id="sign-in"
                     htmlType="submit"
-                    variant="primary"
+                    variant={loggingIn ? "disabled" : "primary"}
                     dataTestId="login-button"
                   >
-                    Sign in
+                    {loggingIn ? <Spinner size="sm" /> : "Sign in"}
                   </Button>
                 </div>
               </form>
