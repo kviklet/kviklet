@@ -25,7 +25,7 @@ kapt {
 group = "com.example"
 version = "0.0.1-SNAPSHOT"
 val queryDslVersion = "5.0.0"
-val testcontainersVersion = "1.21.3"
+val testcontainersVersion = "1.21.4"
 java.sourceCompatibility = JavaVersion.VERSION_21
 
 configurations {
@@ -38,6 +38,12 @@ repositories {
     maven { url = uri("https://repo.spring.io/milestone") }
     mavenCentral()
     maven { url = uri("https://build.shibboleth.net/maven/releases/") }
+}
+
+dependencyManagement {
+    imports {
+        mavenBom("org.testcontainers:testcontainers-bom:$testcontainersVersion")
+    }
 }
 
 dependencies {
