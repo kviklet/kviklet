@@ -472,17 +472,12 @@ class ExecutionRequestService(
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
-    fun createComment(id: ExecutionRequestId, request: CreateCommentRequest, authorId: String): Event {
-        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
-        if (executionRequest.resolveReviewStatus() == ReviewStatus.REJECTED) {
-            throw InvalidReviewException("Can't comment on a rejected request!")
-        }
-        return eventService.saveEvent(
+    fun createComment(id: ExecutionRequestId, request: CreateCommentRequest, authorId: String): Event =
+        eventService.saveEvent(
             id,
             authorId,
             CommentPayload(comment = request.comment),
         )
-    }
 
     private fun executeDatasourceRequest(
         id: ExecutionRequestId,

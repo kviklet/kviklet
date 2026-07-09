@@ -142,15 +142,13 @@ class ExecutionTest {
         }
 
         @Test
-        fun `Request is locked from further events after rejection`() {
+        fun `Request is locked from reviews and execution after rejection`() {
             val cookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
             rejectRequest(testExecutionRequest.getId(), "This request is too sensitive.", cookie)
                 .andExpect(status().isOk)
             verifyRequestStatus(testExecutionRequest.getId(), "REJECTED", cookie)
 
-            performCommentAction(testExecutionRequest.getId(), "This comment should not be added", cookie)
-                .andExpect(status().is4xxClientError)
-            approveRequest(testExecutionRequest.getId(), "This should also not work.", cookie)
+            approveRequest(testExecutionRequest.getId(), "This should not work.", cookie)
                 .andExpect(status().is4xxClientError)
             executeRequest(testExecutionRequest.getId(), cookie)
                 .andExpect(status().is4xxClientError)
@@ -158,6 +156,22 @@ class ExecutionTest {
             // Verify that no new events were added after rejection
             verifyRequestEvents(testExecutionRequest.getId(), 1, cookie)
             verifyLatestEvent(testExecutionRequest.getId(), "REVIEW", "REJECT", cookie)
+        }
+
+        @Test
+        fun `Comments can still be added after rejection`() {
+            val cookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+            rejectRequest(testExecutionRequest.getId(), "This request is too sensitive.", cookie)
+                .andExpect(status().isOk)
+            verifyRequestStatus(testExecutionRequest.getId(), "REJECTED", cookie)
+
+            performCommentAction(testExecutionRequest.getId(), "Some additional context for the rejection", cookie)
+                .andExpect(status().isOk)
+
+            verifyRequestEvents(testExecutionRequest.getId(), 2, cookie)
+            verifyLatestEvent(testExecutionRequest.getId(), "COMMENT", null, cookie)
+            // The request stays rejected, a comment doesn't change the status
+            verifyRequestStatus(testExecutionRequest.getId(), "REJECTED", cookie)
         }
 
         @Test
