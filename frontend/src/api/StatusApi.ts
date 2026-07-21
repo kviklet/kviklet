@@ -1,5 +1,5 @@
 import { z } from "zod";
-import baseUrl from "./base";
+import baseUrl, { apiFetch } from "./base";
 
 const StatusResponse = z.object({
   email: z.string(),
@@ -11,7 +11,7 @@ const StatusResponse = z.object({
 type StatusResponse = z.infer<typeof StatusResponse>;
 
 const checklogin = async (): Promise<StatusResponse | false> => {
-  const response = await fetch(baseUrl + "/status", {
+  const response = await apiFetch(baseUrl + "/status", {
     method: "GET",
     credentials: "include",
   });

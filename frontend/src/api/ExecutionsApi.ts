@@ -1,5 +1,5 @@
 import { z } from "zod";
-import baseUrl from "./base";
+import baseUrl, { apiFetch } from "./base";
 import { ApiResponse, fetchWithErrorHandling } from "./Errors";
 
 // Define the Zod schema for ExecutionLogResponse
@@ -46,7 +46,7 @@ const getExecutions = async (params?: {
 };
 
 const exportExecutions = async (): Promise<void> => {
-  const response = await fetch(`${baseUrl}/executions/export`, {
+  const response = await apiFetch(`${baseUrl}/executions/export`, {
     method: "GET",
     credentials: "include",
   });
