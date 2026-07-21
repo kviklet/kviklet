@@ -42,8 +42,11 @@ class WebSocketConfig : WebSocketConfigurer {
     lateinit var corsSettings: CorsSettings
 
     override fun registerWebSocketHandlers(registry: WebSocketHandlerRegistry) {
+        // "*" disables Spring's built-in strict origin check (which compares scheme and
+        // port and breaks behind reverse proxies); WebSocketOriginInterceptor enforces
+        // origin validation instead.
         registry.addHandler(sessionWebsocketHandler, "/sql/{requestId}")
-            .addInterceptors(AuthHandshakeInterceptor())
+            .addInterceptors(WebSocketOriginInterceptor(corsSettings.allowedOrigins), AuthHandshakeInterceptor())
             .setAllowedOriginPatterns("*")
     }
 }

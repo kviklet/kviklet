@@ -186,6 +186,7 @@ class SecurityConfig(
         http.invoke {
             // Don't add ApiKeyAuthFilter here - it's handled by the API key chain
             addFilterBefore<WebAsyncManagerIntegrationFilter>(ForwardedHeaderFilter())
+            addFilterBefore<UsernamePasswordAuthenticationFilter>(CsrfHeaderFilter())
             if (corsSettings.allowedOrigins.isNotEmpty()) {
                 cors { }
             }
@@ -246,6 +247,8 @@ class SecurityConfig(
                 deleteCookies("JSESSIONID")
                 logoutSuccessHandler = HttpStatusReturningLogoutSuccessHandler()
             }
+            // Token-based CSRF protection is disabled in favor of CsrfHeaderFilter,
+            // which requires a custom header on state-changing requests (see its docs)
             csrf {
                 disable()
             }

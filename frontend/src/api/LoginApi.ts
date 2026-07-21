@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ApiResponse, fetchWithErrorHandling } from "./Errors";
-import baseUrl from "./base";
+import baseUrl, { apiFetch } from "./base";
 
 const loginResponseSchema = z.object({
   sessionId: z.string(),
@@ -30,7 +30,7 @@ const attemptLogin = async (
 };
 
 const logout = async (): Promise<void> => {
-  await fetch(`${baseUrl}/logout`, {
+  await apiFetch(`${baseUrl}/logout`, {
     method: "POST",
     credentials: "include",
   });

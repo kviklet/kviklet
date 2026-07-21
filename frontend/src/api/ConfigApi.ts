@@ -1,5 +1,5 @@
 import { z } from "zod";
-import baseUrl from "./base";
+import baseUrl, { apiFetch } from "./base";
 import { ApiResponse, fetchWithErrorHandling } from "./Errors";
 
 const ConfigResponseSchema = z.object({
@@ -69,7 +69,7 @@ export async function uploadLicense(file: File): Promise<boolean> {
   formData.append("file", file);
 
   try {
-    const response = await fetch(`${baseUrl}/config/license/`, {
+    const response = await apiFetch(`${baseUrl}/config/license/`, {
       method: "POST",
       body: formData,
       credentials: "include",

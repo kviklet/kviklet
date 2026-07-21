@@ -1,4 +1,5 @@
 import { ZodSchema, ZodTypeDef, z } from "zod";
+import { apiFetch } from "./base";
 
 export const ApiErrorResponseSchema = z.object({
   message: z.string(),
@@ -35,7 +36,7 @@ export async function fetchWithErrorHandling<Output, Input = Output>(
   schema: ZodSchema<Output, ZodTypeDef, Input>,
 ): Promise<ApiResponse<Output>> {
   try {
-    const response = await fetch(url, options);
+    const response = await apiFetch(url, options);
     const json: unknown = await response.json();
 
     return parseSchemaOrError(schema, json);
@@ -52,7 +53,7 @@ async function fetchEmptyWithErrorHandling(
   options: RequestInit,
 ): Promise<ApiErrorResponse | null> {
   try {
-    const response = await fetch(url, options);
+    const response = await apiFetch(url, options);
     if (
       response.status === 204 ||
       response.headers.get("Content-Length") === "0"

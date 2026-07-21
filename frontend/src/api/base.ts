@@ -21,6 +21,16 @@ if (!apiBasePath) {
   }://${window.location.host}${apiBasePath}`;
 }
 
+// All API requests carry this header as CSRF protection: browsers cannot attach
+// custom headers to cross-site requests without a CORS preflight, so the backend
+// rejects state-changing requests without it (see CsrfHeaderFilter in the backend).
+function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  return fetch(url, {
+    ...options,
+    headers: { "X-Kviklet-Request": "true", ...options.headers },
+  });
+}
+
 export default baseUrl;
 
 function withType<T, U extends string>(schema: z.ZodSchema<T>, typeValue: U) {
@@ -30,4 +40,4 @@ function withType<T, U extends string>(schema: z.ZodSchema<T>, typeValue: U) {
   })) as z.ZodSchema<T & { _type: U }>;
 }
 
-export { withType, websocketBaseUrl };
+export { withType, websocketBaseUrl, apiFetch };

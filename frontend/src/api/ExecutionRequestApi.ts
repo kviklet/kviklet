@@ -5,7 +5,7 @@ import {
   databaseConnectionResponseSchema,
 } from "./DatasourceApi";
 import { roleResponseSchema } from "./RoleApi";
-import baseUrl from "./base";
+import baseUrl, { apiFetch } from "./base";
 import {
   ApiErrorResponse,
   ApiResponse,
@@ -423,7 +423,7 @@ const streamDump = async (
   executionRequestId: string,
 ): Promise<ReadableStream<Uint8Array>> => {
   // Request SQL dump data from the backend which returns an array of encoded strings in chunks
-  const response = await fetch(`${requestUrl}${executionRequestId}/dump`, {
+  const response = await apiFetch(`${requestUrl}${executionRequestId}/dump`, {
     method: "GET",
     credentials: "include",
   });
