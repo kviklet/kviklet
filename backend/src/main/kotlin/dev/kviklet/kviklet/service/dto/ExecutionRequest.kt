@@ -345,6 +345,11 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
 data class ExecutionRequestDetailsWithRoles(
     val details: ExecutionRequestDetails,
     val resolvedRoles: Map<String, Role>,
+    /**
+     * What the current user may do to this request, i.e. the policy vote plus [auth]. Service-body
+     * rules (not reviewing your own request, dry-run-only execution) are not folded in.
+     */
+    val permissions: Set<Permission> = emptySet(),
 ) : SecuredDomainObject by details {
     val request get() = details.request
     val events get() = details.events

@@ -6,11 +6,13 @@ import dev.kviklet.kviklet.controller.UpdateKubernetesConnectionRequest
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.security.Permission
+import dev.kviklet.kviklet.security.PermissionResolver
 import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
+import dev.kviklet.kviklet.service.dto.ConnectionWithPermissions
 import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceType
@@ -37,11 +39,21 @@ class ConnectionService(
     private val executionRequestStatusService: ExecutionRequestStatusService,
     private val licenseService: LicenseService,
     private val roleAdapter: RoleAdapter,
+    private val permissionResolver: PermissionResolver,
 ) {
 
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_GET)
-    fun listConnections(): List<Connection> = connectionAdapter.listConnections()
+    fun listConnections(): List<ConnectionWithPermissions> =
+        connectionAdapter.listConnections().map { it.withPermissions() }
+
+    @Transactional
+    @Policy(Permission.DATASOURCE_CONNECTION_GET)
+    fun getConnectionWithPermissions(connectionId: ConnectionId): ConnectionWithPermissions =
+        connectionAdapter.getConnection(connectionId = connectionId).withPermissions()
+
+    private fun Connection.withPermissions() =
+        ConnectionWithPermissions(this, permissionResolver.resolveForCurrentUser(this))
 
     @Policy(Permission.DATASOURCE_CONNECTION_GET, checkIsPresentOnly = true)
     fun listCategories(): List<String> = connectionAdapter.listCategories()
@@ -183,15 +195,15 @@ class ConnectionService(
 
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_EDIT)
-    fun updateConnection(connectionId: ConnectionId, request: UpdateConnectionRequest): Connection {
+    fun updateConnection(connectionId: ConnectionId, request: UpdateConnectionRequest): ConnectionWithPermissions {
         val connection = connectionAdapter.getConnection(
             connectionId,
         )
 
         if (request is UpdateDatasourceConnectionRequest && connection is DatasourceConnection) {
-            return updateDatasourceConnection(connectionId, request)
+            return updateDatasourceConnection(connectionId, request).withPermissions()
         } else if (request is UpdateKubernetesConnectionRequest && connection is KubernetesConnection) {
-            return updateKubernetesConnection(connectionId, request)
+            return updateKubernetesConnection(connectionId, request).withPermissions()
         } else {
             throw EntityNotFound("Connection not found", "Connection with id $connectionId not found")
         }
@@ -223,7 +235,7 @@ class ConnectionService(
         category: String?,
         dryRunEnabled: Boolean,
         dryRunRequiresApproval: Boolean,
-    ): Connection {
+    ): ConnectionWithPermissions {
         if (authenticationType == AuthenticationType.USER_PASSWORD && password == null) {
             throw IllegalArgumentException("Password is required for USER_PASSWORD authentication")
         }
@@ -257,7 +269,7 @@ class ConnectionService(
             category,
             dryRunEnabled,
             dryRunRequiresApproval,
-        )
+        ).withPermissions()
     }
 
     @Policy(Permission.DATASOURCE_CONNECTION_CREATE, checkIsPresentOnly = true)
@@ -354,7 +366,7 @@ class ConnectionService(
         category: String?,
         kubernetesExecInitialWaitTimeoutSeconds: Long?,
         kubernetesExecTimeoutMinutes: Long?,
-    ): Connection {
+    ): ConnectionWithPermissions {
         ensureConnectionIdIsAvailable(connectionId)
         validateReviewConfig(reviewConfig, existingReviewConfig = null)
         return connectionAdapter.createKubernetesConnection(
@@ -367,7 +379,7 @@ class ConnectionService(
             category,
             kubernetesExecInitialWaitTimeoutSeconds = kubernetesExecInitialWaitTimeoutSeconds ?: 5L,
             kubernetesExecTimeoutMinutes = kubernetesExecTimeoutMinutes ?: 60L,
-        )
+        ).withPermissions()
     }
 
     @Transactional

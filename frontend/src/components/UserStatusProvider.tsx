@@ -1,15 +1,22 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { StatusResponse, checklogin } from "../api/StatusApi";
 import { useLocation } from "react-router-dom";
+import { Permission } from "../api/Permissions";
 
 type UserContext = {
   userStatus: StatusResponse | false | undefined;
   refreshState: () => Promise<void>;
+  /**
+   * Whether the user holds this permission on at least one resource. False while the status is
+   * still loading, so permission-gated controls never flash before we know.
+   */
+  hasPermission: (permission: Permission) => boolean;
 };
 
 const UserStatusContext = React.createContext<UserContext>({
   userStatus: undefined,
   refreshState: async () => {},
+  hasPermission: () => false,
 });
 
 type Props = {
@@ -17,7 +24,10 @@ type Props = {
 };
 
 export const UserStatusProvider: React.FC<Props> = ({ children }) => {
-  const [userStatus, setUserStatus] = useState<UserContext>({
+  const [userStatus, setUserStatus] = useState<{
+    userStatus: StatusResponse | false | undefined;
+    refreshState: () => Promise<void>;
+  }>({
     userStatus: undefined,
     refreshState: async () => {},
   });
@@ -53,8 +63,18 @@ export const UserStatusProvider: React.FC<Props> = ({ children }) => {
     void fetchStatus();
   }, [location.pathname]);
 
+  const contextValue = useMemo(() => {
+    const permissions = new Set(
+      userStatus.userStatus ? userStatus.userStatus.permissions : [],
+    );
+    return {
+      ...userStatus,
+      hasPermission: (permission: Permission) => permissions.has(permission),
+    };
+  }, [userStatus]);
+
   return (
-    <UserStatusContext.Provider value={userStatus}>
+    <UserStatusContext.Provider value={contextValue}>
       {children}
     </UserStatusContext.Provider>
   );

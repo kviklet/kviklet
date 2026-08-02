@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
 import dev.kviklet.kviklet.security.CurrentUser
 import dev.kviklet.kviklet.security.UserDetailsWithId
+import dev.kviklet.kviklet.security.toPermissionStrings
 import dev.kviklet.kviklet.service.ColumnInfo
 import dev.kviklet.kviklet.service.ExecutionRequestService
 import dev.kviklet.kviklet.service.dto.ApprovalProgress
@@ -227,6 +228,7 @@ sealed class ExecutionRequestDetailResponse(open val id: ExecutionRequestId, ope
                         dto.getApprovalProgress(),
                         dto.resolvedRoles,
                     ),
+                    permissions = dto.permissions.toPermissionStrings(),
                 )
 
                 is KubernetesExecutionRequest -> KubernetesExecutionRequestDetailResponse(
@@ -249,6 +251,7 @@ sealed class ExecutionRequestDetailResponse(open val id: ExecutionRequestId, ope
                         dto.getApprovalProgress(),
                         dto.resolvedRoles,
                     ),
+                    permissions = dto.permissions.toPermissionStrings(),
                 )
             }
         }
@@ -269,6 +272,12 @@ data class DatasourceExecutionRequestDetailResponse(
     override val events: List<EventResponse>,
     val temporaryAccessDuration: Long? = null,
     val approvalProgress: ApprovalProgressResponse,
+    /**
+     * What the current user may do to this request — the policy vote scoped to it plus its `auth()`
+     * hook (author-only edit, executability). Service-body rules such as "you can't review your own
+     * request" are not included; the frontend has `author` and `reviewStatus` for those.
+     */
+    val permissions: List<String>,
 ) : ExecutionRequestDetailResponse(
     id = id,
     events = events,
@@ -330,6 +339,8 @@ data class KubernetesExecutionRequestDetailResponse(
     override val events: List<EventResponse>,
     val temporaryAccessDuration: Long? = null,
     val approvalProgress: ApprovalProgressResponse,
+    /** See [DatasourceExecutionRequestDetailResponse.permissions]. */
+    val permissions: List<String>,
 ) : ExecutionRequestDetailResponse(
     id = id,
     events = events,

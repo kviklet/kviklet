@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.controller
 
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
+import dev.kviklet.kviklet.security.toPermissionStrings
 import dev.kviklet.kviklet.service.ConnectionService
 import dev.kviklet.kviklet.service.TestConnectionResult
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
@@ -9,6 +10,7 @@ import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.ConnectionType
+import dev.kviklet.kviklet.service.dto.ConnectionWithPermissions
 import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceType
@@ -235,10 +237,21 @@ data class ReviewConfigResponse(
 )
 sealed class ConnectionResponse(val connectionType: ConnectionType) {
     companion object {
-        fun fromDto(connection: Connection): ConnectionResponse = when (connection) {
-            is DatasourceConnection -> DatasourceConnectionResponse.fromDto(connection)
-            is KubernetesConnection -> KubernetesConnectionResponse.fromDto(connection)
-        }
+        /**
+         * Without the current user's permissions on this connection — `permissions` stays null,
+         * meaning "not resolved here" rather than "you may do nothing". Used where a connection is
+         * embedded in another response that does not gate on connection permissions.
+         */
+        fun fromDto(connection: Connection): ConnectionResponse = fromDto(connection, null)
+
+        fun fromDto(connection: ConnectionWithPermissions): ConnectionResponse =
+            fromDto(connection.connection, connection.permissions.toPermissionStrings())
+
+        private fun fromDto(connection: Connection, permissions: List<String>?): ConnectionResponse =
+            when (connection) {
+                is DatasourceConnection -> DatasourceConnectionResponse.fromDto(connection, permissions)
+                is KubernetesConnection -> KubernetesConnectionResponse.fromDto(connection, permissions)
+            }
     }
 }
 
@@ -265,40 +278,44 @@ data class DatasourceConnectionResponse(
     val category: String?,
     val dryRunEnabled: Boolean,
     val dryRunRequiresApproval: Boolean,
+    /** See [ConnectionResponse.fromDto]: null means the permissions were not resolved here. */
+    val permissions: List<String>?,
 ) : ConnectionResponse(ConnectionType.DATASOURCE) {
     companion object {
-        fun fromDto(datasourceConnection: DatasourceConnection) = DatasourceConnectionResponse(
-            id = datasourceConnection.id,
-            authenticationType = datasourceConnection.authenticationType,
-            displayName = datasourceConnection.displayName,
-            type = datasourceConnection.type,
-            protocol = datasourceConnection.protocol,
-            databaseName = datasourceConnection.databaseName,
-            maxExecutions = datasourceConnection.maxExecutions,
-            username = datasourceConnection.auth.username,
-            hostname = datasourceConnection.hostname,
-            port = datasourceConnection.port,
-            description = datasourceConnection.description,
-            reviewConfig = ReviewConfigResponse(
-                numTotalRequired = datasourceConnection.reviewConfig.numTotalRequired,
-                roleRequirements = datasourceConnection.reviewConfig.roleRequirements?.map {
-                    RoleRequirementResponse(roleId = it.roleId, numRequired = it.numRequired)
+        fun fromDto(datasourceConnection: DatasourceConnection, permissions: List<String>?) =
+            DatasourceConnectionResponse(
+                permissions = permissions,
+                id = datasourceConnection.id,
+                authenticationType = datasourceConnection.authenticationType,
+                displayName = datasourceConnection.displayName,
+                type = datasourceConnection.type,
+                protocol = datasourceConnection.protocol,
+                databaseName = datasourceConnection.databaseName,
+                maxExecutions = datasourceConnection.maxExecutions,
+                username = datasourceConnection.auth.username,
+                hostname = datasourceConnection.hostname,
+                port = datasourceConnection.port,
+                description = datasourceConnection.description,
+                reviewConfig = ReviewConfigResponse(
+                    numTotalRequired = datasourceConnection.reviewConfig.numTotalRequired,
+                    roleRequirements = datasourceConnection.reviewConfig.roleRequirements?.map {
+                        RoleRequirementResponse(roleId = it.roleId, numRequired = it.numRequired)
+                    },
+                ),
+                additionalJDBCOptions = datasourceConnection.additionalOptions,
+                dumpsEnabled = datasourceConnection.dumpsEnabled,
+                temporaryAccessEnabled = datasourceConnection.temporaryAccessEnabled,
+                explainEnabled = datasourceConnection.explainEnabled,
+                storeResults = datasourceConnection.storeResults,
+                roleArn = when (datasourceConnection.auth) {
+                    is AuthenticationDetails.AwsIam -> datasourceConnection.auth.roleArn
+                    else -> null
                 },
-            ),
-            additionalJDBCOptions = datasourceConnection.additionalOptions,
-            dumpsEnabled = datasourceConnection.dumpsEnabled,
-            temporaryAccessEnabled = datasourceConnection.temporaryAccessEnabled,
-            explainEnabled = datasourceConnection.explainEnabled,
-            storeResults = datasourceConnection.storeResults,
-            roleArn = when (datasourceConnection.auth) {
-                is AuthenticationDetails.AwsIam -> datasourceConnection.auth.roleArn
-                else -> null
-            },
-            maxTemporaryAccessDuration = datasourceConnection.maxTemporaryAccessDuration,
-            category = datasourceConnection.category,
-            dryRunEnabled = datasourceConnection.dryRunEnabled,
-            dryRunRequiresApproval = datasourceConnection.dryRunRequiresApproval,
-        )
+                maxTemporaryAccessDuration = datasourceConnection.maxTemporaryAccessDuration,
+                category = datasourceConnection.category,
+                dryRunEnabled = datasourceConnection.dryRunEnabled,
+                dryRunRequiresApproval = datasourceConnection.dryRunRequiresApproval,
+            )
     }
 }
 
@@ -313,25 +330,29 @@ data class KubernetesConnectionResponse(
     val category: String?,
     val kubernetesExecInitialWaitTimeoutSeconds: Long,
     val kubernetesExecTimeoutMinutes: Long,
+    /** See [ConnectionResponse.fromDto]: null means the permissions were not resolved here. */
+    val permissions: List<String>?,
 ) : ConnectionResponse(connectionType = ConnectionType.KUBERNETES) {
     companion object {
-        fun fromDto(kubernetesConnection: KubernetesConnection) = KubernetesConnectionResponse(
-            id = kubernetesConnection.id,
-            displayName = kubernetesConnection.displayName,
-            description = kubernetesConnection.description,
-            reviewConfig = ReviewConfigResponse(
-                numTotalRequired = kubernetesConnection.reviewConfig.numTotalRequired,
-                roleRequirements = kubernetesConnection.reviewConfig.roleRequirements?.map {
-                    RoleRequirementResponse(roleId = it.roleId, numRequired = it.numRequired)
-                },
-            ),
-            maxExecutions = kubernetesConnection.maxExecutions,
-            temporaryAccessEnabled = kubernetesConnection.temporaryAccessEnabled,
-            storeResults = kubernetesConnection.storeResults,
-            category = kubernetesConnection.category,
-            kubernetesExecInitialWaitTimeoutSeconds = kubernetesConnection.kubernetesExecInitialWaitTimeoutSeconds,
-            kubernetesExecTimeoutMinutes = kubernetesConnection.kubernetesExecTimeoutMinutes,
-        )
+        fun fromDto(kubernetesConnection: KubernetesConnection, permissions: List<String>?) =
+            KubernetesConnectionResponse(
+                permissions = permissions,
+                id = kubernetesConnection.id,
+                displayName = kubernetesConnection.displayName,
+                description = kubernetesConnection.description,
+                reviewConfig = ReviewConfigResponse(
+                    numTotalRequired = kubernetesConnection.reviewConfig.numTotalRequired,
+                    roleRequirements = kubernetesConnection.reviewConfig.roleRequirements?.map {
+                        RoleRequirementResponse(roleId = it.roleId, numRequired = it.numRequired)
+                    },
+                ),
+                maxExecutions = kubernetesConnection.maxExecutions,
+                temporaryAccessEnabled = kubernetesConnection.temporaryAccessEnabled,
+                storeResults = kubernetesConnection.storeResults,
+                category = kubernetesConnection.category,
+                kubernetesExecInitialWaitTimeoutSeconds = kubernetesConnection.kubernetesExecInitialWaitTimeoutSeconds,
+                kubernetesExecTimeoutMinutes = kubernetesConnection.kubernetesExecTimeoutMinutes,
+            )
     }
 }
 
@@ -347,7 +368,7 @@ class ConnectionController(val connectionService: ConnectionService) {
 
     @GetMapping("/{connectionId}")
     fun getConnection(@PathVariable connectionId: String): ConnectionResponse {
-        val connection = connectionService.getDatasourceConnection(
+        val connection = connectionService.getConnectionWithPermissions(
             connectionId = ConnectionId(connectionId),
         )
         return ConnectionResponse.fromDto(connection)
@@ -362,7 +383,7 @@ class ConnectionController(val connectionService: ConnectionService) {
     @GetMapping("/categories")
     fun getCategories(): List<String> = connectionService.listCategories()
 
-    private fun createDatasourceConnection(request: CreateDatasourceConnectionRequest): Connection =
+    private fun createDatasourceConnection(request: CreateDatasourceConnectionRequest): ConnectionWithPermissions =
         connectionService.createDatasourceConnection(
             connectionId = ConnectionId(request.id),
             displayName = request.displayName,
@@ -415,7 +436,7 @@ class ConnectionController(val connectionService: ConnectionService) {
             dryRunRequiresApproval = request.dryRunRequiresApproval,
         )
 
-    private fun createKubernetesConnection(request: CreateKubernetesConnectionRequest): Connection =
+    private fun createKubernetesConnection(request: CreateKubernetesConnectionRequest): ConnectionWithPermissions =
         connectionService.createKubernetesConnection(
             connectionId = ConnectionId(request.id),
             displayName = request.displayName,

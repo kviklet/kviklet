@@ -197,11 +197,20 @@ const ExecutionRequestResponseSchema = z.union([
   DatasourceExecutionRequestResponse,
 ]);
 
+/**
+ * What the current user may do to this request, resolved by the backend against the request itself
+ * — so it already accounts for the connection the policy is scoped to, authorship, and whether the
+ * request is executable yet. It does not cover the service-level rules the UI already knows about,
+ * such as not being able to review your own request.
+ */
+const requestPermissionsSchema = z.array(z.string());
+
 const DatasourceExecutionRequestResponseWithCommentsSchema = withType(
   RawDatasourceRequestSchema.extend({
     events: z.array(
       z.union([ReviewEvent, CommentEvent, EditEvent, ExecuteEvent]),
     ),
+    permissions: requestPermissionsSchema,
   }),
   "DATASOURCE",
 );
@@ -211,6 +220,7 @@ const KubernetesExecutionRequestResponseWithCommentsSchema = withType(
     events: z.array(
       z.union([ReviewEvent, CommentEvent, EditEvent, ExecuteEvent]),
     ),
+    permissions: requestPermissionsSchema,
   }),
   "KUBERNETES",
 );
