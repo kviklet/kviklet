@@ -23,17 +23,14 @@ data class Role(
         val DEFAULT_ROLE_POLICIES = setOf(
             Policy(
                 action = Permission.DATASOURCE_CONNECTION_GET.getPermissionString(),
-                effect = PolicyEffect.ALLOW,
                 resource = "*",
             ),
             Policy(
                 action = Permission.EXECUTION_REQUEST_GET.getPermissionString(),
-                effect = PolicyEffect.ALLOW,
                 resource = "*",
             ),
             Policy(
                 action = Permission.USER_GET.getPermissionString(),
-                effect = PolicyEffect.ALLOW,
                 resource = "*",
             ),
         )

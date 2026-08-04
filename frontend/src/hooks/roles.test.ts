@@ -9,37 +9,31 @@ const mockRoleResponse = {
     {
       id: "9ssS83qFmzQTYWraAhV9Hh",
       action: "datasource_connection:get",
-      effect: "ALLOW",
       resource: "asdf",
     },
     {
       id: "7wobWhQS1xwSX2JvoEAqHi",
       action: "role:get",
-      effect: "ALLOW",
       resource: "*",
     },
     {
       id: "p61GMnqHX59yAcU6DpdBzA",
       action: "execution_request:edit",
-      effect: "ALLOW",
       resource: "asdf",
     },
     {
       id: "p61GMnqHX59yAcU6DpdBzB",
       action: "execution_request:execute",
-      effect: "ALLOW",
       resource: "asdf",
     },
     {
       id: "mK57KDGh1azk4RNcAiQFMu",
       action: "execution_request:get",
-      effect: "ALLOW",
       resource: "asdf",
     },
     {
       id: "mK57KDGh1azk4RNcAiQFMv",
       action: "execution_request:review",
-      effect: "ALLOW",
       resource: "asdf",
     },
   ],
@@ -99,32 +93,26 @@ const expectedPayload = {
   policies: [
     {
       action: "role:get",
-      effect: "ALLOW",
       resource: "*",
     },
     {
       action: "datasource_connection:get",
-      effect: "ALLOW",
       resource: "asdf",
     },
     {
       action: "execution_request:get",
-      effect: "ALLOW",
       resource: "asdf",
     },
     {
       action: "execution_request:review",
-      effect: "ALLOW",
       resource: "asdf",
     },
     {
       action: "execution_request:edit",
-      effect: "ALLOW",
       resource: "asdf",
     },
     {
       action: "execution_request:execute",
-      effect: "ALLOW",
       resource: "asdf",
     },
   ],
@@ -144,7 +132,6 @@ describe("transformRole", () => {
         {
           id: "adminPolicy",
           action: "*:*",
-          effect: "ALLOW",
           resource: "*",
         },
       ],
@@ -171,7 +158,6 @@ describe("transformToPayload", () => {
     expect(adminPayload.policies).toEqual([
       {
         action: "*:*",
-        effect: "ALLOW",
         resource: "*",
       },
     ]);

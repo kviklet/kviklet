@@ -8,7 +8,6 @@ import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.Policy
-import dev.kviklet.kviklet.service.dto.PolicyEffect
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -222,7 +221,6 @@ class DatasourceConnectionSecurityTest(
             .content(objectMapper.writeValueAsString(obj))
 }
 
-fun allow(action: String, resource: String) = Policy(generateRandomId(), action, PolicyEffect.ALLOW, resource)
-fun deny(action: String, resource: String) = Policy(generateRandomId(), action, PolicyEffect.DENY, resource)
+fun allow(action: String, resource: String) = Policy(generateRandomId(), action, resource)
 
 fun generateRandomId(): String = UUID.randomUUID().toString()

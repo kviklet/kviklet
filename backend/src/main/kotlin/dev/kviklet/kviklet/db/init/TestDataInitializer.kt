@@ -15,7 +15,6 @@ import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.ConnectionType
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ExecutionStatus
-import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.service.dto.ReviewStatus
@@ -75,7 +74,6 @@ class TestDataInitializer(
             policies = mutableSetOf(
                 PolicyEntity(
                     action = "*",
-                    effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
             ),
@@ -92,42 +90,34 @@ class TestDataInitializer(
             policies = mutableSetOf(
                 PolicyEntity(
                     action = Permission.DATASOURCE_CONNECTION_GET.getPermissionString(),
-                    effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
                 PolicyEntity(
                     action = Permission.EXECUTION_REQUEST_GET.getPermissionString(),
-                    effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
                 PolicyEntity(
                     action = Permission.EXECUTION_REQUEST_EDIT.getPermissionString(),
-                    effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
                 PolicyEntity(
                     action = Permission.EXECUTION_REQUEST_REVIEW.getPermissionString(),
-                    effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
                 PolicyEntity(
                     action = Permission.EXECUTION_REQUEST_EXECUTE.getPermissionString(),
-                    effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
                 PolicyEntity(
                     action = Permission.USER_GET.getPermissionString(),
-                    effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
                 PolicyEntity(
                     action = Permission.USER_EDIT.getPermissionString(),
-                    effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
                 PolicyEntity(
                     action = Permission.ROLE_GET.getPermissionString(),
-                    effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
             ),

@@ -8,7 +8,6 @@ import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.Policy
-import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.RequestType
 import jakarta.servlet.http.Cookie
 import org.hamcrest.Matchers.containsString
@@ -641,17 +640,14 @@ class ExecutionTest {
             Policy(
                 resource = testConnection.id.toString(),
                 action = "datasource_connection:get",
-                effect = PolicyEffect.ALLOW,
             ),
             Policy(
                 resource = testConnection.id.toString(),
                 action = "execution_request:get",
-                effect = PolicyEffect.ALLOW,
             ),
             Policy(
                 resource = testConnection.id.toString(),
                 action = "execution_request:edit",
-                effect = PolicyEffect.ALLOW,
             ),
         )
         return userHelper.createUser(policies = userPolicies.toSet())

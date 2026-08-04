@@ -137,3 +137,6 @@ databaseChangeLog:
   - include:
       file: 047-normalize-default-role-names.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 048-delete-deny-policies.yaml
+      relativeToChangelogFile: true

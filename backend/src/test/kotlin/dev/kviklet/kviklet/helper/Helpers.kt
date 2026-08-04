@@ -20,7 +20,6 @@ import dev.kviklet.kviklet.service.dto.ExecutionStatus
 import dev.kviklet.kviklet.service.dto.LiveSession
 import dev.kviklet.kviklet.service.dto.LiveSessionId
 import dev.kviklet.kviklet.service.dto.Policy
-import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewConfig
@@ -128,7 +127,6 @@ class RoleHelper(private val roleService: RoleService) {
         val mappedPolicies = permissions.mapIndexed { index, it ->
             Policy(
                 action = it,
-                effect = PolicyEffect.ALLOW,
                 resource = resources?.get(index) ?: "*",
             )
         }.toSet()

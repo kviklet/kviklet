@@ -71,7 +71,6 @@ class RoleAdapter(private val roleRepository: RoleRepository) {
             policies = role.policies.map {
                 PolicyEntity(
                     action = it.action,
-                    effect = it.effect,
                     resource = it.resource,
                 )
             }.toMutableSet(),
@@ -93,25 +92,24 @@ class RoleAdapter(private val roleRepository: RoleRepository) {
         existingRoleEntity.name = role.name
         existingRoleEntity.description = role.description
         // Create a map of existing policies based on their unique fields
-        val existingPoliciesMap = existingRoleEntity.policies.associateBy { Triple(it.action, it.effect, it.resource) }
-        val newPoliciesMap = role.policies.associateBy { Triple(it.action, it.effect, it.resource) }
+        val existingPoliciesMap = existingRoleEntity.policies.associateBy { Pair(it.action, it.resource) }
+        val newPoliciesMap = role.policies.associateBy { Pair(it.action, it.resource) }
 
         // Identify policies to remove
         val policiesToRemove = existingRoleEntity.policies.filter {
-            !newPoliciesMap.containsKey(Triple(it.action, it.effect, it.resource))
+            !newPoliciesMap.containsKey(Pair(it.action, it.resource))
         }
 
         // Identify policies to add
         val policiesToAdd = role.policies.filter {
             !existingPoliciesMap.containsKey(
-                Triple(it.action, it.effect, it.resource),
+                Pair(it.action, it.resource),
             )
         }
             .map {
                 PolicyEntity(
                     id = it.id,
                     action = it.action,
-                    effect = it.effect,
                     resource = it.resource,
                 )
             }

@@ -5,7 +5,6 @@ import { ApiResponse, fetchWithErrorHandling } from "./Errors";
 const policyResponseSchema = z.object({
   id: z.string(),
   action: z.string(),
-  effect: z.string(),
   resource: z.string(),
 });
 
