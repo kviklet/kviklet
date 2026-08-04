@@ -6,6 +6,7 @@ import dev.kviklet.kviklet.helper.ExecutionRequestHelper
 import dev.kviklet.kviklet.helper.LiveSessionHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.dto.DBExecutionResult
+import dev.kviklet.kviklet.service.dto.ExecutionResult
 import dev.kviklet.kviklet.service.dto.LiveSessionId
 import dev.kviklet.kviklet.service.dto.RecordsQueryResult
 import dev.kviklet.kviklet.service.dto.RequestType
@@ -76,16 +77,24 @@ class SessionServiceTest {
 
     @AfterEach
     fun cleanup() {
-        sessionService.executeStatement(testLiveSession, "DROP TABLE IF EXISTS test_table", testUser.getId()!!)
+        executeStatement(testLiveSession, "DROP TABLE IF EXISTS test_table", testUser.getId()!!)
         liveSessionHelper.deleteAll()
         executionRequestHelper.deleteAll()
         connectionHelper.deleteAll()
         userHelper.deleteAll()
     }
 
+    // Executes via the service and then clears the executing flag, like
+    // SessionWebsocketHandler does after each query completes
+    private fun executeStatement(sessionId: LiveSessionId, statement: String, userId: String): ExecutionResult = try {
+        sessionService.executeStatement(sessionId, statement, userId)
+    } finally {
+        sessionService.clearExecutingFlag(sessionId)
+    }
+
     @Test
     fun testExecuteStatementSimpleSelect() {
-        val result = sessionService.executeStatement(testLiveSession, "SELECT 1 as test", testUser.getId()!!)
+        val result = executeStatement(testLiveSession, "SELECT 1 as test", testUser.getId()!!)
 
         assertTrue(result is DBExecutionResult)
         result as DBExecutionResult
@@ -106,7 +115,7 @@ class SessionServiceTest {
             SELECT * FROM test_table ORDER BY id;
         """.trimIndent()
 
-        val result = sessionService.executeStatement(testLiveSession, multipleStatements, testUser.getId()!!)
+        val result = executeStatement(testLiveSession, multipleStatements, testUser.getId()!!)
 
         assertTrue(result is DBExecutionResult)
         result as DBExecutionResult
@@ -135,14 +144,14 @@ class SessionServiceTest {
     @Test
     fun testExecuteStatementDataModification() {
         // Setup: Create a table
-        sessionService.executeStatement(
+        executeStatement(
             testLiveSession,
             "CREATE TABLE test_table (id INT, name VARCHAR(50))",
             testUser.getId()!!,
         )
 
         // Test INSERT
-        val insertResult = sessionService.executeStatement(
+        val insertResult = executeStatement(
             testLiveSession,
             "INSERT INTO test_table VALUES (1, 'Alice'), (2, 'Bob')",
             testUser.getId()!!,
@@ -153,7 +162,7 @@ class SessionServiceTest {
         assertEquals(2, (insertResult.results[0] as UpdateQueryResult).rowsUpdated)
 
         // Test UPDATE
-        val updateResult = sessionService.executeStatement(
+        val updateResult = executeStatement(
             testLiveSession,
             "UPDATE test_table SET name = 'Charlie' WHERE id = 1",
             testUser.getId()!!,
@@ -164,7 +173,7 @@ class SessionServiceTest {
         assertEquals(1, (updateResult.results[0] as UpdateQueryResult).rowsUpdated)
 
         // Test DELETE
-        val deleteResult = sessionService.executeStatement(
+        val deleteResult = executeStatement(
             testLiveSession,
             "DELETE FROM test_table WHERE id = 2",
             testUser.getId()!!,
@@ -175,7 +184,7 @@ class SessionServiceTest {
         assertEquals(1, (deleteResult.results[0] as UpdateQueryResult).rowsUpdated)
 
         // Verify final state
-        val selectResult = sessionService.executeStatement(
+        val selectResult = executeStatement(
             testLiveSession,
             "SELECT * FROM test_table",
             testUser.getId()!!,

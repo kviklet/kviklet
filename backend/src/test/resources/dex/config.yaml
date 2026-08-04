@@ -9,7 +9,8 @@ web:
 staticClients:
   - id: example-app
     redirectURIs:
-      - 'http://localhost:8081/login/oauth2/code/dex'
+      - 'http://localhost:8081/login/oauth2/code/dex' # OIDCTest
+      - 'http://localhost:8085/login/oauth2/code/dex' # OidcWebSocketTest
     name: 'Example App'
     secret: example-app-secret
 

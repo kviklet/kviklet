@@ -52,7 +52,9 @@ import java.util.concurrent.TimeUnit
  */
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
-    properties = ["server.port=8081"],
+    // Each DEFINED_PORT test class needs a unique port: cached Spring contexts from other
+    // test classes keep their server running, so sharing a port fails with PortInUseException
+    properties = ["server.port=8085"],
 )
 @AutoConfigureMockMvc
 @ActiveProfiles("test")

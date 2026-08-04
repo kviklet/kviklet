@@ -140,7 +140,8 @@ class WebSocketHandlerTest {
         val updateMessage = """
             {
                 "type": "update_content",
-                "content": "SELECT * FROM users"
+                "content": "SELECT * FROM users",
+                "ref": "test-ref-1"
             }
         """.trimIndent()
         session.sendMessage(TextMessage(updateMessage))
@@ -161,7 +162,8 @@ class WebSocketHandlerTest {
         val updateMessage = """
             {
                 "type": "update_content",
-                "content": "SELECT * FROM users"
+                "content": "SELECT * FROM users",
+                "ref": "test-ref-2"
             }
         """.trimIndent()
         session.sendMessage(TextMessage(updateMessage))
@@ -218,7 +220,8 @@ class WebSocketHandlerTest {
                 """
                 {
                     "type": "update_content",
-                    "content": "SELECT * FROM users"
+                    "content": "SELECT * FROM users",
+                    "ref": "test-ref-3"
                 }
                 """.trimIndent(),
             ),
@@ -239,7 +242,8 @@ class WebSocketHandlerTest {
                 """
                 {
                     "type": "update_content",
-                    "content": "SELECT * FROM users"
+                    "content": "SELECT * FROM users",
+                    "ref": "test-ref-4"
                 }
                 """.trimIndent(),
             ),
@@ -287,7 +291,9 @@ class WebSocketHandlerTest {
         )
         val receivedMessages = waitForResponses(messages, 2)
         val errorMessage = receivedMessages.last()
-        assert(errorMessage.get("error").asText().contains("Error processing message"))
+        // Execution runs in a background thread since #366; access denial is reported
+        // with a dedicated error message rather than the generic processing error
+        assert(errorMessage.get("error").asText().contains("You don't have permission to execute on this session"))
         session.close()
     }
 

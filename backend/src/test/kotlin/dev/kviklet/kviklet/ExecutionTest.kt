@@ -196,8 +196,9 @@ class ExecutionTest {
             updateExecutionRequest(testExecutionRequest.getId(), updatedStatement, userCookie)
                 .andExpect(status().isOk)
 
-            // Verify events and status is still CHANGE_REQUESTED
-            verifyRequestStatus(testExecutionRequest.getId(), "CHANGE_REQUESTED", reviewerCookie)
+            // An edit resets all prior reviews, including change requests,
+            // so the request goes back to AWAITING_APPROVAL
+            verifyRequestStatus(testExecutionRequest.getId(), "AWAITING_APPROVAL", reviewerCookie)
             verifyRequestEvents(testExecutionRequest.getId(), 2, reviewerCookie)
             verifyLatestEvent(testExecutionRequest.getId(), "EDIT", null, reviewerCookie)
 
