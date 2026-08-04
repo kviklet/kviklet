@@ -103,7 +103,6 @@ class AuthenticationProviderValidatorTest {
             .run { context ->
                 assertThat(context).hasFailed()
                 assertThat(context.startupFailure)
-                    .rootCause()
                     .isInstanceOf(IllegalStateException::class.java)
                     .hasMessageContaining("Only one external authentication provider can be enabled at a time")
                     .hasMessageContaining("LDAP")
@@ -126,7 +125,6 @@ class AuthenticationProviderValidatorTest {
             .run { context ->
                 assertThat(context).hasFailed()
                 assertThat(context.startupFailure)
-                    .rootCause()
                     .isInstanceOf(IllegalStateException::class.java)
                     .hasMessageContaining("Only one external authentication provider can be enabled at a time")
                     .hasMessageContaining("LDAP")
@@ -150,7 +148,6 @@ class AuthenticationProviderValidatorTest {
             .run { context ->
                 assertThat(context).hasFailed()
                 assertThat(context.startupFailure)
-                    .rootCause()
                     .isInstanceOf(IllegalStateException::class.java)
                     .hasMessageContaining("Only one external authentication provider can be enabled at a time")
                     .hasMessageContaining("OAuth2/OIDC")
@@ -229,7 +226,6 @@ class AuthenticationProviderValidatorTest {
             .run { context ->
                 assertThat(context).hasFailed()
                 assertThat(context.startupFailure)
-                    .rootCause()
                     .isInstanceOf(IllegalStateException::class.java)
                     .hasMessageContaining("Only one external authentication provider can be enabled at a time")
                     .hasMessageContaining("LDAP")

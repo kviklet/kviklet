@@ -90,7 +90,9 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.4")
     testImplementation("com.ninja-squad:springmockk:4.0.2")
     testImplementation("net.sourceforge.htmlunit:htmlunit:2.70.0")
-    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    // Must match the okhttp version pulled in transitively (kubernetes client-java -> okhttp 5.x);
+    // mockwebserver 4.x crashes with NoClassDefFoundError against okhttp 5 at runtime.
+    testImplementation("com.squareup.okhttp3:mockwebserver:5.3.2")
 
     // querydsl
     implementation("com.querydsl:querydsl-core:$queryDslVersion")

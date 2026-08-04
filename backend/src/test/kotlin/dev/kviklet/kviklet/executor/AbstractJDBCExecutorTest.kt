@@ -8,6 +8,7 @@ import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.RecordsQueryResult
 import dev.kviklet.kviklet.service.dto.UpdateQueryResult
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -60,11 +61,12 @@ abstract class AbstractJDBCExecutorTest(@Autowired val JDBCExecutorService: JDBC
 
     @Test
     fun testConnectionError() {
-        executeQuery("SELECT 1;", username = "root", password = "foo") shouldBe
-            ErrorQueryResult(
-                1045,
-                "Access denied for user 'root'@'172.17.0.1' (using password: YES)",
-            )
+        // The client IP in the error message depends on the Docker host (e.g. 172.17.0.1
+        // on Linux, 192.168.65.1 on macOS), so don't assert on it
+        val result = executeQuery("SELECT 1;", username = "root", password = "foo") as ErrorQueryResult
+        result.errorCode shouldBe 1045
+        result.message shouldContain "Access denied for user 'root'@"
+        result.message shouldContain "(using password: YES)"
     }
 
     @Test

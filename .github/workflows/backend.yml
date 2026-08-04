@@ -13,13 +13,13 @@ jobs:
           - group-3
         include:
           - test-group: group-1
-            test-pattern: "**/[A-I]*"
+            letter-range: "A-I"
             description: "Tests A-I"
           - test-group: group-2
-            test-pattern: "**/[J-O]*"
+            letter-range: "J-O"
             description: "Tests J-O"
           - test-group: group-3
-            test-pattern: "**/[P-Z]*"
+            letter-range: "P-Z"
             description: "Tests P-Z"
     defaults:
       run:
@@ -34,7 +34,34 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
       - name: Run tests for ${{ matrix.description }}
-        run: ./gradlew test --tests ${{ matrix.test-pattern }} --stacktrace --info
+        # Gradle's --tests filter only supports '*' wildcards (no [A-I] character
+        # classes), and prefix patterns like '*.A*' also match test *method* names,
+        # pulling classes into the wrong shard. So enumerate the test classes and
+        # pass each one as an exact '--tests *.ClassName' filter instead.
+        # Note: ArchitectureTest (ArchUnit engine) ignores Gradle's class filter and
+        # runs in every shard — that's expected and cheap.
+        run: |
+          args=()
+          for class in $(find src/test -name '*Test.kt' -exec basename {} .kt \; | sort); do
+            case "$class" in
+              [${{ matrix.letter-range }}]*) args+=(--tests "*.$class") ;;
+            esac
+          done
+          if [ "${#args[@]}" -eq 0 ]; then
+            echo "::error::No test classes matched letter range ${{ matrix.letter-range }}"
+            exit 1
+          fi
+          echo "Running $((${#args[@]} / 2)) test classes: ${args[*]}"
+          ./gradlew test "${args[@]}" --stacktrace --info
+      - name: Verify shard actually ran tests
+        run: |
+          class_count=$(ls build/test-results/test/TEST-*.xml 2>/dev/null | wc -l)
+          test_count=$(grep -ho 'tests="[0-9]*"' build/test-results/test/TEST-*.xml 2>/dev/null | grep -o '[0-9]*' | awk '{s+=$1} END {print s+0}')
+          echo "Shard executed $class_count test classes, $test_count tests"
+          if [ "$class_count" -lt 10 ]; then
+            echo "::error::Test sharding regression: only $class_count test classes ran in this shard (expected at least 10). The --tests filters are likely no longer matching."
+            exit 1
+          fi
   ktlint:
     name: Ktlint
     runs-on: ubuntu-latest
