@@ -24,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
+import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
@@ -52,12 +53,15 @@ import java.util.concurrent.TimeUnit
  */
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
-    // Each DEFINED_PORT test class needs a unique port: cached Spring contexts from other
-    // test classes keep their server running, so sharing a port fails with PortInUseException
+    // Each DEFINED_PORT test class carries @DirtiesContext (so its server is shut down
+    // after the class instead of idling in the context cache) and its own unique port,
+    // as a safety net: a class missing the annotation would otherwise keep its port
+    // bound for the rest of the JVM and fail later classes with PortInUseException
     properties = ["server.port=8085"],
 )
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@DirtiesContext
 @Testcontainers
 class OidcWebSocketTest {
 
