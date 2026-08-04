@@ -4,7 +4,6 @@ import dev.kviklet.kviklet.db.PolicyEntity
 import dev.kviklet.kviklet.db.RoleEntity
 import dev.kviklet.kviklet.db.RoleRepository
 import dev.kviklet.kviklet.db.UserAdapter
-import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.Role
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Bean
@@ -22,7 +21,6 @@ class DefaultRoleInitializer(private val roleRepository: RoleRepository, private
             policies = Role.DEFAULT_ROLE_POLICIES.map {
                 PolicyEntity(
                     action = it.action,
-                    effect = PolicyEffect.ALLOW,
                     resource = it.resource,
                 )
             }.toMutableSet(),

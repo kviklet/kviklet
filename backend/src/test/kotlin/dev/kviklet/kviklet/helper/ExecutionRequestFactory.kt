@@ -18,7 +18,6 @@ import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.ExecutionStatus
 import dev.kviklet.kviklet.service.dto.Policy
-import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ResultLog
 import dev.kviklet.kviklet.service.dto.ReviewAction
@@ -266,10 +265,6 @@ class RoleFactory : Factory() {
 }
 
 class PolicyFactory : Factory() {
-    fun createPolicy(
-        id: String = "test-policy " + nextId(),
-        action: String = "*:*",
-        effect: PolicyEffect = PolicyEffect.ALLOW,
-        resource: String = "*",
-    ): Policy = Policy(id, action, effect, resource)
+    fun createPolicy(id: String = "test-policy " + nextId(), action: String = "*:*", resource: String = "*"): Policy =
+        Policy(id, action, resource)
 }

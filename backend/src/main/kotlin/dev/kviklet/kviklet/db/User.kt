@@ -9,7 +9,6 @@ import dev.kviklet.kviklet.security.Resource
 import dev.kviklet.kviklet.security.SecuredDomainId
 import dev.kviklet.kviklet.security.SecuredDomainObject
 import dev.kviklet.kviklet.security.UserDetailsWithId
-import dev.kviklet.kviklet.security.isAllowed
 import dev.kviklet.kviklet.security.vote
 import dev.kviklet.kviklet.service.EntityNotFound
 import dev.kviklet.kviklet.service.dto.Role
@@ -114,7 +113,7 @@ data class User(
         // or if they have the USER_EDIT_ROLES permission which is a special case for admins
         if (permission.action == "edit") {
             return userDetails.id == this.getId() ||
-                policies.vote(Permission.USER_EDIT_ROLES, this).isAllowed()
+                policies.vote(Permission.USER_EDIT_ROLES, this)
         }
         return super.auth(permission, userDetails, policies)
     }

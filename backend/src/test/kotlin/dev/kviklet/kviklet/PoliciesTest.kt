@@ -9,7 +9,6 @@ import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.service.RoleService
 import dev.kviklet.kviklet.service.UserService
 import dev.kviklet.kviklet.service.dto.Policy
-import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.Role
 import dev.kviklet.kviklet.service.dto.RoleId
 import io.kotest.matchers.shouldBe
@@ -64,7 +63,6 @@ class PoliciesTest {
         val policies = permissions.mapIndexed { index, it ->
             Policy(
                 action = it,
-                effect = PolicyEffect.ALLOW,
                 resource = resources?.get(index) ?: "*",
             )
         }.toSet()
@@ -97,7 +95,6 @@ class PoliciesTest {
                                 "policies": [
                                     {
                                         "action": "*",
-                                        "effect": "ALLOW",
                                         "resource": "*"
                                     }
                                 ]
@@ -158,7 +155,6 @@ class PoliciesTest {
                                 "policies": [
                                     {
                                         "action": "role:get",
-                                        "effect": "ALLOW",
                                         "resource": "*"
                                     }
                                 ]
@@ -208,7 +204,6 @@ class PoliciesTest {
                             "policies": [
                                 {
                                     "action": "role:get",
-                                    "effect": "ALLOW",
                                     "resource": "*"
                                 }
                             ]
@@ -231,12 +226,14 @@ class PoliciesTest {
                           "policies": [
                             {
                               "action": "datasource_connection:get",
-                              "effect": "ALLOW",
                               "resource": "*"
                             },
                             {
                               "action": "execution_request:get",
-                              "effect": "ALLOW",
+                              "resource": "*"
+                            },
+                            {
+                              "action": "user:get",
                               "resource": "*"
                             }
                           ],
@@ -253,7 +250,6 @@ class PoliciesTest {
                           "policies": [
                             {
                               "action": "role:get",
-                              "effect": "ALLOW",
                               "resource": "*"
                             }
                           ],
@@ -287,7 +283,6 @@ class PoliciesTest {
                             "policies": [
                                 {
                                     "action": "role:get",
-                                    "effect": "ALLOW",
                                     "resource": "*"
                                 }
                             ]

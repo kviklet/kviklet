@@ -145,7 +145,7 @@ class MyAuthorizationManager(val userAdapter: UserAdapter) {
         val policies = user.roles.map { role -> role.policies.map { PolicyGrantedAuthority(it) } }.flatten()
 
         if (policyAnnotation.checkIsPresentOnly) {
-            if (policies.vote(permissionToCheck).isAllowed()) {
+            if (policies.vote(permissionToCheck)) {
                 return AuthorizationDecision(true)
             }
         }
@@ -157,7 +157,7 @@ class MyAuthorizationManager(val userAdapter: UserAdapter) {
         var securedObject: SecuredDomainObject? = returnObject as SecuredDomainObject?
 
         do {
-            if (!policies.vote(permissionToCheck, securedObject).isAllowed()) {
+            if (!policies.vote(permissionToCheck, securedObject)) {
                 return AuthorizationDecision(false)
             }
             if (returnObject?.auth(permissionToCheck, userDetailsWithId, policies) == false) {

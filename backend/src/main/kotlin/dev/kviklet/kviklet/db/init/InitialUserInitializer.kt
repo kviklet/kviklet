@@ -6,7 +6,6 @@ import dev.kviklet.kviklet.db.RoleRepository
 import dev.kviklet.kviklet.db.UserEntity
 import dev.kviklet.kviklet.db.UserRepository
 import dev.kviklet.kviklet.security.Permission
-import dev.kviklet.kviklet.service.dto.PolicyEffect
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.ApplicationRunner
 import org.springframework.context.annotation.Bean
@@ -25,7 +24,6 @@ class InitialUserInitializer(private val roleRepository: RoleRepository) {
             policies = mutableSetOf(
                 PolicyEntity(
                     action = "*",
-                    effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
             ),
@@ -42,42 +40,34 @@ class InitialUserInitializer(private val roleRepository: RoleRepository) {
             policies = mutableSetOf(
                 PolicyEntity(
                     action = Permission.DATASOURCE_CONNECTION_GET.getPermissionString(),
-                    effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
                 PolicyEntity(
                     action = Permission.EXECUTION_REQUEST_GET.getPermissionString(),
-                    effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
                 PolicyEntity(
                     action = Permission.EXECUTION_REQUEST_EDIT.getPermissionString(),
-                    effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
                 PolicyEntity(
                     action = Permission.EXECUTION_REQUEST_REVIEW.getPermissionString(),
-                    effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
                 PolicyEntity(
                     action = Permission.EXECUTION_REQUEST_EXECUTE.getPermissionString(),
-                    effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
                 PolicyEntity(
                     action = Permission.USER_GET.getPermissionString(),
-                    effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
                 PolicyEntity(
                     action = Permission.USER_EDIT.getPermissionString(),
-                    effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
                 PolicyEntity(
                     action = Permission.ROLE_GET.getPermissionString(),
-                    effect = PolicyEffect.ALLOW,
                     resource = "*",
                 ),
             ),

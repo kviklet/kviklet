@@ -1,0 +1,17 @@
+databaseChangeLog:
+  - changeSet:
+      id: 048-delete-deny-policies
+      author: jascha
+      changes:
+        # DENY policies are removed from the RBAC model — it is ALLOW-only now.
+        # Existing DENY rows are deleted; affected roles must be re-modeled with
+        # narrower ALLOW policies.
+        - sql:
+            sql: "DELETE FROM policy WHERE effect = 'DENY'"
+  - changeSet:
+      id: 048-drop-policy-effect-column
+      author: jascha
+      changes:
+        - dropColumn:
+            tableName: policy
+            columnName: effect

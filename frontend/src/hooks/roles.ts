@@ -92,11 +92,7 @@ const transformRole = (role: RoleResponse): Role => {
 
     switch (resourceType) {
       case "*":
-        if (
-          resourceAction === "*" &&
-          policy.effect === "ALLOW" &&
-          policy.resource === "*"
-        ) {
+        if (resourceAction === "*" && policy.resource === "*") {
           isAdmin = true;
         }
         break;
@@ -166,7 +162,6 @@ const transformToPayload = (
   if (role.isAdmin) {
     policies.push({
       action: "*:*",
-      effect: "ALLOW",
       resource: "*",
     });
 
@@ -181,21 +176,18 @@ const transformToPayload = (
   if (role.userPolicy.read) {
     policies.push({
       action: "user:get",
-      effect: "ALLOW",
       resource: "*",
     });
   }
   if (role.userPolicy.create) {
     policies.push({
       action: "user:create",
-      effect: "ALLOW",
       resource: "*",
     });
   }
   if (role.userPolicy.editSelf) {
     policies.push({
       action: "user:edit",
-      effect: "ALLOW",
       resource: "*",
     });
   }
@@ -203,7 +195,6 @@ const transformToPayload = (
   if (role.rolePolicy.read) {
     policies.push({
       action: "role:get",
-      effect: "ALLOW",
       resource: "*",
     });
   }
@@ -211,7 +202,6 @@ const transformToPayload = (
   role.connectionPolicies.forEach((policy) => {
     policies.push({
       action: "datasource_connection:get",
-      effect: "ALLOW",
       resource: policy.selector,
     });
     if (
@@ -221,7 +211,6 @@ const transformToPayload = (
     ) {
       policies.push({
         action: "execution_request:get",
-        effect: "ALLOW",
         resource: policy.selector,
       });
     }
@@ -229,7 +218,6 @@ const transformToPayload = (
     if (policy.execution_request_review) {
       policies.push({
         action: "execution_request:review",
-        effect: "ALLOW",
         resource: policy.selector,
       });
     }
@@ -237,12 +225,10 @@ const transformToPayload = (
     if (policy.execution_request_write) {
       policies.push({
         action: "execution_request:edit",
-        effect: "ALLOW",
         resource: policy.selector,
       });
       policies.push({
         action: "execution_request:execute",
-        effect: "ALLOW",
         resource: policy.selector,
       });
     }

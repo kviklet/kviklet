@@ -2,7 +2,6 @@ package dev.kviklet.kviklet.controller
 
 import dev.kviklet.kviklet.service.RoleService
 import dev.kviklet.kviklet.service.dto.Policy
-import dev.kviklet.kviklet.service.dto.PolicyEffect
 import dev.kviklet.kviklet.service.dto.Role
 import dev.kviklet.kviklet.service.dto.RoleId
 import jakarta.validation.Valid
@@ -25,14 +24,13 @@ data class UpdateRoleRequest(
     val policies: Set<PolicyPayload>?,
 )
 
-data class PolicyPayload(val id: String?, val action: String, val effect: PolicyEffect, val resource: String)
+data class PolicyPayload(val id: String?, val action: String, val resource: String)
 
-data class PolicyResponse(val id: String, val action: String, val effect: PolicyEffect, val resource: String) {
+data class PolicyResponse(val id: String, val action: String, val resource: String) {
     companion object {
         fun fromDto(policy: Policy) = PolicyResponse(
             id = policy.id!!,
             action = policy.action,
-            effect = policy.effect,
             resource = policy.resource,
         )
     }
@@ -93,7 +91,6 @@ class RoleController(private val roleService: RoleService) {
                 Policy(
                     id = it.id,
                     action = it.action,
-                    effect = it.effect,
                     resource = it.resource,
                 )
             }?.toSet(),
@@ -115,7 +112,6 @@ class RoleController(private val roleService: RoleService) {
                 Policy(
                     id = it.id,
                     action = it.action,
-                    effect = it.effect,
                     resource = it.resource,
                 )
             }?.toSet(),
