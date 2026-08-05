@@ -8,6 +8,7 @@ import { Highlighter } from "./components/Highlighter";
 import { FC, useContext, useEffect, useState, MouseEvent } from "react";
 import ApprovalProgress from "./ApprovalProgress";
 import { UserStatusContext } from "../../components/UserStatusProvider";
+import { hasPermission } from "../../api/Permissions";
 
 interface KubernetesRequestBoxProps {
   request: KubernetesExecutionRequestResponseWithComments;
@@ -27,6 +28,20 @@ const KubernetesRequestBox: FC<KubernetesRequestBoxProps> = ({
   const isAuthor =
     !!userContext.userStatus &&
     userContext.userStatus.id === request?.author?.id;
+  const canExecute = hasPermission(
+    request?.permissions,
+    "execution_request:execute",
+  );
+  const executesDirectly = request?.type === "SingleExecution";
+
+  const getDisabledReason = () => {
+    if (request?.reviewStatus !== "APPROVED") {
+      return "Request needs to be approved before execution";
+    } else if (executesDirectly && !canExecute) {
+      return "You lack permission to execute on this connection";
+    }
+    return undefined;
+  };
 
   const navigate = useNavigate();
 
@@ -118,7 +133,16 @@ const KubernetesRequestBox: FC<KubernetesRequestBoxProps> = ({
                 <Button onClick={(e) => void changeCommand(e)}>Save</Button>
               </div>
             ) : (
-              <Button className="mt-2" onClick={() => setEditMode(true)}>
+              <Button
+                className="mt-2"
+                onClick={() => setEditMode(true)}
+                variant={isAuthor ? undefined : "disabled"}
+                title={
+                  isAuthor
+                    ? undefined
+                    : "Only the requester can edit the command"
+                }
+              >
                 Edit Command
               </Button>
             )}
@@ -134,8 +158,12 @@ const KubernetesRequestBox: FC<KubernetesRequestBoxProps> = ({
               className=""
               id="runQuery"
               variant={
-                (request?.reviewStatus == "APPROVED" && "primary") || "disabled"
+                (request?.reviewStatus == "APPROVED" &&
+                  !(executesDirectly && !canExecute) &&
+                  "primary") ||
+                "disabled"
               }
+              title={getDisabledReason()}
               onClick={() => void runQuery(false)}
             >
               {request?.type == "SingleExecution"

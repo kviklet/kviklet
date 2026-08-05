@@ -10,6 +10,7 @@ import {
   ApiErrorResponse,
   ApiResponse,
   fetchWithErrorHandling,
+  isApiErrorResponse,
 } from "./Errors";
 import { ExecutionRequest } from "../routes/NewRequest";
 
@@ -447,6 +448,40 @@ const streamDump = async (
   return response.body;
 };
 
+// Executes the request and downloads the results as a file, keeping errors (e.g. a
+// missing execute permission) in-app instead of navigating the tab to raw JSON.
+const downloadResults = async (executionRequestId: string): Promise<void> => {
+  const response = await apiFetch(
+    `${requestUrl}${executionRequestId}/download`,
+    {
+      method: "GET",
+      credentials: "include",
+    },
+  );
+
+  if (!response.ok) {
+    const json: unknown = await response.json().catch(() => null);
+    if (isApiErrorResponse(json)) {
+      throw new Error(json.message);
+    }
+    throw new Error(`Download failed: ${response.statusText}`);
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const contentDisposition = response.headers.get("Content-Disposition");
+  const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+  const filename = filenameMatch ? filenameMatch[1] : "results.csv";
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+};
+
 function withType<T, U extends string>(schema: z.ZodSchema<T>, typeValue: U) {
   return schema.transform((data) => ({
     ...data,
@@ -594,6 +629,7 @@ export {
   postStartServer,
   executeCommand,
   streamDump,
+  downloadResults,
   DBExecuteResponseResultSchema,
 };
 
