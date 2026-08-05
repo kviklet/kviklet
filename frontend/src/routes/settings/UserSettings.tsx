@@ -17,6 +17,8 @@ import { RoleResponse } from "../../api/RoleApi";
 import { isApiErrorResponse } from "../../api/Errors";
 import { Error, Success } from "../../components/Alert";
 import RoleComboBox from "./RoleComboBox";
+import RequirePermission from "../../components/RequirePermission";
+import { useHasPermission } from "../../hooks/permissions";
 
 function UserForm(props: {
   disableModal: () => void;
@@ -176,6 +178,7 @@ const UserRow = (props: {
   roles: RoleResponse[];
   setRoles: (roles: RoleResponse[]) => Promise<boolean>;
 }) => {
+  const canEditRoles = useHasPermission("user:edit_roles");
   return (
     <div
       className="flex flex-row border-b border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
@@ -193,11 +196,20 @@ const UserRow = (props: {
           </div>
         </div>
         <div className="flex items-center justify-end">
-          <RoleComboBox
-            roles={props.user.roles}
-            setRoles={props.setRoles}
-            availableRoles={props.roles}
-          />
+          {canEditRoles ? (
+            <RoleComboBox
+              roles={props.user.roles}
+              setRoles={props.setRoles}
+              availableRoles={props.roles}
+            />
+          ) : (
+            <div
+              className="text-slate-600 dark:text-slate-400"
+              title="You lack permission to change user roles."
+            >
+              {props.user.roles.map((role) => role.name).join(", ")}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -208,7 +220,10 @@ const UserSettings = () => {
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const { users, createNewUser, error, success, setRoles, loading } =
     useUsers();
-  const { roles } = useRoles();
+  // The role list feeds the role combobox; without role:get the fetch would only
+  // produce a 403 toast, so skip it entirely.
+  const canListRoles = useHasPermission("role:get");
+  const { roles } = useRoles(canListRoles);
 
   if (loading) {
     return (
@@ -239,13 +254,15 @@ const UserSettings = () => {
           <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
             Users
           </h2>
-          <Button
-            onClick={() => setShowCreateUserModal(true)}
-            variant="primary"
-            dataTestId="add-user-button"
-          >
-            Add User
-          </Button>
+          <RequirePermission permission="user:create">
+            <Button
+              onClick={() => setShowCreateUserModal(true)}
+              variant="primary"
+              dataTestId="add-user-button"
+            >
+              Add User
+            </Button>
+          </RequirePermission>
         </div>
       </div>
 
