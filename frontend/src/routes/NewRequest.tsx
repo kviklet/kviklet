@@ -28,6 +28,7 @@ import { Pod, getPods } from "../api/KubernetesApi";
 import useConnections from "../hooks/connections";
 import useNotification from "../hooks/useNotification";
 import { isApiErrorResponse } from "../api/Errors";
+import { hasPermission } from "../api/Permissions";
 import SearchInput from "../components/SearchInput";
 
 // Temporary access requests against connections that don't require any
@@ -378,6 +379,10 @@ export default function ConnectionChooser() {
                                 temporaryAccessEnabled:
                                   connection._type === "DATASOURCE" &&
                                   connection.temporaryAccessEnabled,
+                                canCreateRequest: hasPermission(
+                                  connection.permissions,
+                                  "execution_request:edit",
+                                ),
                               };
 
                               return viewMode === "grid" ? (
@@ -1033,9 +1038,18 @@ interface CardProps {
   connectionType: "DATASOURCE" | "KUBERNETES";
   sqlDumpEnabled: boolean;
   temporaryAccessEnabled: boolean;
+  // Whether the backend grants execution_request:edit on this connection — the
+  // list itself only requires get, so view-only connections still show up here.
+  canCreateRequest: boolean;
 }
 
+const noRequestPermissionTitle =
+  "You lack permission to create requests on this connection";
+
 const Card = (props: CardProps) => {
+  const actionTitle = props.canCreateRequest
+    ? undefined
+    : noRequestPermissionTitle;
   return (
     <li className="col-span-1 flex flex-col justify-between divide-y divide-slate-200 rounded-lg border bg-white shadow dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-900">
       <div className="flex w-full items-center justify-between space-x-6 p-6">
@@ -1061,7 +1075,13 @@ const Card = (props: CardProps) => {
           <div className="flex w-0 flex-1">
             <button
               onClick={props.clickQuery}
-              className="relative -mr-px inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-bl-lg border border-transparent py-4 text-sm font-semibold text-slate-900 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-800"
+              disabled={!props.canCreateRequest}
+              title={actionTitle}
+              className={`relative -mr-px inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-bl-lg border border-transparent py-4 text-sm font-semibold ${
+                props.canCreateRequest
+                  ? "text-slate-900 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-800"
+                  : "cursor-not-allowed text-slate-400 dark:text-slate-600"
+              }`}
               data-testid={`query-button-${props.header}`}
             >
               {props.connectionType === "DATASOURCE" ? (
@@ -1082,7 +1102,13 @@ const Card = (props: CardProps) => {
             <div className="-ml-px flex w-0 flex-1">
               <button
                 onClick={props.clickAccess}
-                className="relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-br-lg border border-transparent py-4 text-sm font-semibold text-slate-900 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-800"
+                disabled={!props.canCreateRequest}
+                title={actionTitle}
+                className={`relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-br-lg border border-transparent py-4 text-sm font-semibold ${
+                  props.canCreateRequest
+                    ? "text-slate-900 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-800"
+                    : "cursor-not-allowed text-slate-400 dark:text-slate-600"
+                }`}
                 data-testid={`access-button-${props.header}`}
               >
                 <CommandLineIcon
@@ -1097,7 +1123,13 @@ const Card = (props: CardProps) => {
             <div className="-ml-px flex w-0 flex-1">
               <button
                 onClick={props.clickSQLDump}
-                className="relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-br-lg border border-transparent py-4 text-sm font-semibold text-slate-900 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-800"
+                disabled={!props.canCreateRequest}
+                title={actionTitle}
+                className={`relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-br-lg border border-transparent py-4 text-sm font-semibold ${
+                  props.canCreateRequest
+                    ? "text-slate-900 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-800"
+                    : "cursor-not-allowed text-slate-400 dark:text-slate-600"
+                }`}
               >
                 <CircleStackIcon
                   className="h-5 w-5 text-slate-400 dark:text-slate-500"
@@ -1114,6 +1146,15 @@ const Card = (props: CardProps) => {
 };
 
 const ListItem = (props: CardProps) => {
+  const actionTitle = props.canCreateRequest
+    ? undefined
+    : noRequestPermissionTitle;
+  const actionClassName = (base: string) =>
+    `${base} ${
+      props.canCreateRequest
+        ? "text-slate-900 hover:bg-slate-50 dark:text-slate-50 dark:hover:bg-slate-700"
+        : "cursor-not-allowed text-slate-400 dark:text-slate-600"
+    }`;
   return (
     <li className="flex items-center justify-between gap-4 rounded-lg border bg-white p-4 shadow dark:border-slate-700 dark:bg-slate-900">
       <div className="flex min-w-0 flex-1 items-center gap-4">
@@ -1137,7 +1178,11 @@ const ListItem = (props: CardProps) => {
       <div className="flex flex-shrink-0 gap-2">
         <button
           onClick={props.clickQuery}
-          className="inline-flex items-center gap-x-2 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-50 dark:ring-slate-700 dark:hover:bg-slate-700"
+          disabled={!props.canCreateRequest}
+          title={actionTitle}
+          className={actionClassName(
+            "inline-flex items-center gap-x-2 rounded-md bg-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset ring-slate-300 dark:bg-slate-800 dark:ring-slate-700",
+          )}
           data-testid={`query-button-${props.header}`}
         >
           {props.connectionType === "DATASOURCE" ? (
@@ -1156,7 +1201,11 @@ const ListItem = (props: CardProps) => {
         {props.temporaryAccessEnabled && (
           <button
             onClick={props.clickAccess}
-            className="inline-flex items-center gap-x-2 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-50 dark:ring-slate-700 dark:hover:bg-slate-700"
+            disabled={!props.canCreateRequest}
+            title={actionTitle}
+            className={actionClassName(
+              "inline-flex items-center gap-x-2 rounded-md bg-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset ring-slate-300 dark:bg-slate-800 dark:ring-slate-700",
+            )}
             data-testid={`access-button-${props.header}`}
           >
             <CommandLineIcon
@@ -1169,7 +1218,11 @@ const ListItem = (props: CardProps) => {
         {props.connectionType === "DATASOURCE" && props.sqlDumpEnabled && (
           <button
             onClick={props.clickSQLDump}
-            className="inline-flex items-center gap-x-2 rounded-md bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-50 dark:ring-slate-700 dark:hover:bg-slate-700"
+            disabled={!props.canCreateRequest}
+            title={actionTitle}
+            className={actionClassName(
+              "inline-flex items-center gap-x-2 rounded-md bg-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset ring-slate-300 dark:bg-slate-800 dark:ring-slate-700",
+            )}
           >
             <CircleStackIcon
               className="h-4 w-4 text-slate-400 dark:text-slate-500"
