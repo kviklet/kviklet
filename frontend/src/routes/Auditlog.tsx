@@ -33,6 +33,8 @@ import Button from "../components/Button";
 import useConfig from "../components/ConfigProvider";
 import useNotification from "../hooks/useNotification";
 import Tooltip from "../components/Tooltip";
+import RequirePermission from "../components/RequirePermission";
+import NotAuthorized from "../components/NotAuthorized";
 
 function ExportButton() {
   const { config } = useConfig();
@@ -276,6 +278,8 @@ function DateRangeFilter({
 function useExecutions(from: Date | null, to: Date | null) {
   const [executions, setExecutions] = useState<ExecutionLogResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { addNotification } = useNotification();
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -284,15 +288,23 @@ function useExecutions(from: Date | null, to: Date | null) {
         to: to ?? undefined,
       });
       if (isApiErrorResponse(response)) {
-        console.error(response);
+        // An empty log with no explanation would look like "nothing ever ran" —
+        // surface the failure instead.
+        setError(response.message);
+        addNotification({
+          title: "Failed to load audit log",
+          text: response.message,
+          type: "error",
+        });
       } else {
         setExecutions(response.executions);
+        setError(null);
       }
       setLoading(false);
     };
     void fetchData();
   }, [from, to]);
-  return { executions, loading };
+  return { executions, loading, error };
 }
 
 function List() {
@@ -303,7 +315,7 @@ function List() {
     config.validUntil > new Date();
   const [from, setFrom] = useState<Date | null>(null);
   const [to, setTo] = useState<Date | null>(null);
-  const { executions, loading } = useExecutions(from, to);
+  const { executions, loading, error } = useExecutions(from, to);
   const [searchTerm, setSearchTerm] = useState("");
   const filteredExecutions = executions.filter(
     (execution) =>
@@ -332,20 +344,26 @@ function List() {
             setTo(nextTo);
           }}
         />
-        <ExportButton />
+        <RequirePermission permission="execution_request:get">
+          <ExportButton />
+        </RequirePermission>
       </div>
-      <div className="overflow-hidden bg-white shadow dark:bg-slate-900 sm:rounded-md">
-        <ul
-          role="list"
-          className="divide-y divide-slate-100 dark:divide-slate-800"
-        >
-          {loading
-            ? Array.from({ length: 5 }).map(() => <ItemSkeleton />)
-            : filteredExecutions.map((execution) => (
-                <Item execution={execution}></Item>
-              ))}
-        </ul>
-      </div>
+      {error ? (
+        <NotAuthorized resource="the audit log" message={error} />
+      ) : (
+        <div className="overflow-hidden bg-white shadow dark:bg-slate-900 sm:rounded-md">
+          <ul
+            role="list"
+            className="divide-y divide-slate-100 dark:divide-slate-800"
+          >
+            {loading
+              ? Array.from({ length: 5 }).map(() => <ItemSkeleton />)
+              : filteredExecutions.map((execution) => (
+                  <Item execution={execution}></Item>
+                ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

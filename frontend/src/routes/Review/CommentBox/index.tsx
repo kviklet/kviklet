@@ -11,11 +11,14 @@ function CommentBox({
   closeRequest,
   userId,
   isRejected,
+  canReview = true,
 }: {
   sendReview: (comment: string, type: ReviewTypes) => Promise<boolean>;
   closeRequest?: (comment: string) => Promise<boolean>;
   userId?: string;
   isRejected?: boolean;
+  /** Whether the backend would allow this user to review this request (execution_request:review). */
+  canReview?: boolean;
 }) {
   const [expanded, setExpanded] = useState<boolean>(false);
   const [previewVisible, setPreviewVisible] = useState<boolean>(false);
@@ -42,7 +45,7 @@ function CommentBox({
       id: ReviewTypes.Approve,
       title: "Approve",
       description: "Give your approval to execute this request",
-      enabled: !isOwnRequest && !isRejected,
+      enabled: canReview && !isOwnRequest && !isRejected,
       danger: false,
     },
     {
@@ -50,14 +53,14 @@ function CommentBox({
       title: "Request Changes",
       description:
         "Request a change on this Request, you can later approve it again",
-      enabled: !isOwnRequest && !isRejected,
+      enabled: canReview && !isOwnRequest && !isRejected,
       danger: true,
     },
     {
       id: ReviewTypes.Reject,
       title: "Reject",
       description: "Reject this request from ever executing",
-      enabled: !isOwnRequest && !isRejected,
+      enabled: canReview && !isOwnRequest && !isRejected,
       danger: true,
     },
     {
@@ -207,7 +210,7 @@ function CommentBox({
           className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm text-slate-500 shadow-sm transition-colors hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-600"
           onClick={() => setExpanded(true)}
         >
-          {isOwnRequest || isRejected
+          {isOwnRequest || isRejected || !canReview
             ? "Leave a comment…"
             : "Leave a comment or review…"}
         </button>

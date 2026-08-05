@@ -6,6 +6,7 @@ import useRequest from "../../hooks/request";
 import KubernetesRequestDisplay from "./KubernetesRequestDisplay";
 import DatasourceRequestDisplay from "./DatasourceRequestDisplay";
 import ActivityTimeline from "./ActivityTimeline";
+import NotAuthorized from "../../components/NotAuthorized";
 
 interface RequestReviewParams {
   requestId: string;
@@ -96,7 +97,14 @@ function RequestReview() {
               </div>
             </div>
           </div>
-        ))}
+        )) || (
+          <div className="m-auto mt-10 max-w-3xl">
+            <NotAuthorized
+              resource="this request"
+              message="It may not exist, or your role has no access to its connection."
+            />
+          </div>
+        )}
     </div>
   );
 }

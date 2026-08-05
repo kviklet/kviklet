@@ -4,6 +4,7 @@ import {
 } from "../../api/ExecutionRequestApi";
 import { DatabaseType } from "../../api/DatasourceApi";
 import { ReviewTypes } from "../../hooks/request";
+import { hasPermission } from "../../api/Permissions";
 import CommentBox from "./CommentBox";
 import EditEvent from "./events/EditEvent";
 import ExecuteEvent from "./events/ExecuteEvent";
@@ -53,6 +54,10 @@ export default function ActivityTimeline({
             closeRequest={closeRequest}
             userId={request?.author?.id}
             isRejected={request.reviewStatus === "REJECTED"}
+            canReview={hasPermission(
+              request.permissions,
+              "execution_request:review",
+            )}
           ></CommentBox>
         )}
         {events.map((event, index) => {

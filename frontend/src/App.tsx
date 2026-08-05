@@ -16,6 +16,8 @@ import { ConfigProvider } from "./components/ConfigProvider";
 import RequestReview from "./routes/Review";
 import LiveSessionWebsockets from "./routes/LiveSessionWebsockets";
 import { useHasPermission, useUserStatusLoading } from "./hooks/permissions";
+import RequirePermission from "./components/RequirePermission";
+import NotAuthorized from "./components/NotAuthorized";
 
 export interface ProtectedRouteProps {
   children: ReactElement;
@@ -78,7 +80,14 @@ function App() {
                     path="new"
                     element={
                       <ProtectedRoute>
-                        <ConnectionChooser></ConnectionChooser>
+                        <RequirePermission
+                          permission="datasource_connection:get"
+                          fallback={
+                            <NotAuthorized resource="the connections" />
+                          }
+                        >
+                          <ConnectionChooser></ConnectionChooser>
+                        </RequirePermission>
                       </ProtectedRoute>
                     }
                   ></Route>
@@ -86,7 +95,12 @@ function App() {
                     path="requests"
                     element={
                       <ProtectedRoute>
-                        <Requests />
+                        <RequirePermission
+                          permission="execution_request:get"
+                          fallback={<NotAuthorized resource="the requests" />}
+                        >
+                          <Requests />
+                        </RequirePermission>
                       </ProtectedRoute>
                     }
                   />
