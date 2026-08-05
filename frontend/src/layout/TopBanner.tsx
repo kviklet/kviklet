@@ -15,6 +15,7 @@ import {
 } from "@headlessui/react";
 import { logout } from "../api/LoginApi";
 import { UserStatusContext } from "../components/UserStatusProvider";
+import RequirePermission from "../components/RequirePermission";
 
 function TopBanner() {
   const themeContext = useContext<ThemeContext>(ThemeStatusContext);
@@ -57,24 +58,28 @@ function TopBanner() {
           <div className="relative ml-auto flex items-center">
             <nav className="text-sm font-semibold leading-6 text-slate-700 dark:text-slate-200">
               <ul className="flex space-x-8">
-                <li>
-                  <Link
-                    to={"/new"}
-                    className="hover:text-sky-500 dark:hover:text-sky-400"
-                    data-testid="new-link"
-                  >
-                    New
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to={"/requests"}
-                    className="hover:text-sky-500 dark:hover:text-sky-400"
-                    data-testid="requests-link"
-                  >
-                    Requests
-                  </Link>
-                </li>
+                <RequirePermission permission="datasource_connection:get">
+                  <li>
+                    <Link
+                      to={"/new"}
+                      className="hover:text-sky-500 dark:hover:text-sky-400"
+                      data-testid="new-link"
+                    >
+                      New
+                    </Link>
+                  </li>
+                </RequirePermission>
+                <RequirePermission permission="execution_request:get">
+                  <li>
+                    <Link
+                      to={"/requests"}
+                      className="hover:text-sky-500 dark:hover:text-sky-400"
+                      data-testid="requests-link"
+                    >
+                      Requests
+                    </Link>
+                  </li>
+                </RequirePermission>
               </ul>
             </nav>
             <div className="ml-6 flex items-center border-l border-slate-200 pl-6 dark:border-slate-800">

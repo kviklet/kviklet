@@ -15,10 +15,26 @@ import { NotificationContextProvider } from "./components/NotifcationStatusProvi
 import { ConfigProvider } from "./components/ConfigProvider";
 import RequestReview from "./routes/Review";
 import LiveSessionWebsockets from "./routes/LiveSessionWebsockets";
+import { useHasPermission, useUserStatusLoading } from "./hooks/permissions";
 
 export interface ProtectedRouteProps {
   children: ReactElement;
 }
+
+// The index page is the requests list, which a role without execution_request:get can
+// never load — send those users to their profile instead of a 403 toast.
+const IndexLanding = (): ReactElement => {
+  const loading = useUserStatusLoading();
+  const canSeeRequests = useHasPermission("execution_request:get");
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+  return canSeeRequests ? (
+    <Requests />
+  ) : (
+    <Navigate to="/settings/profile" replace />
+  );
+};
 
 export const ProtectedRoute = ({
   children,
@@ -46,7 +62,7 @@ function App() {
                     index
                     element={
                       <ProtectedRoute>
-                        <Requests />
+                        <IndexLanding />
                       </ProtectedRoute>
                     }
                   />
