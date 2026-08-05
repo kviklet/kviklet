@@ -17,8 +17,11 @@ import useNotification from "../../hooks/useNotification";
 import Button from "../../components/Button";
 import Modal from "../../components/Modal";
 import SettingsTable, { Column } from "../../components/SettingsTable";
+import { useHasPermission } from "../../hooks/permissions";
 
 export default function ApiKeyPage() {
+  const canCreate = useHasPermission("api_key:create");
+  const canDelete = useHasPermission("api_key:edit");
   const [apiKeys, setApiKeys] = useState<ApiKeyResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -299,10 +302,14 @@ export default function ApiKeyPage() {
           data={apiKeys}
           columns={columns}
           keyExtractor={(key) => key.id}
-          onDelete={handleDeleteKey}
-          onCreate={() => setShowCreateForm(true)}
+          onDelete={canDelete ? handleDeleteKey : undefined}
+          onCreate={canCreate ? () => setShowCreateForm(true) : undefined}
           createButtonLabel="Create API Key"
-          emptyMessage="No API keys found. Create one to get started."
+          emptyMessage={
+            canCreate
+              ? "No API keys found. Create one to get started."
+              : "No API keys found."
+          }
           loading={loading}
           testId="api-keys-table"
         />
