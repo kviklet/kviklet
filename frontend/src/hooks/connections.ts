@@ -58,6 +58,8 @@ const useConnections = () => {
     void request();
   }, []);
 
+  // Returns whether the connection was created, so callers keep their modal (and the
+  // user's input) open on failure.
   const createConnection = async (connection: ConnectionPayload) => {
     const normalizedConnection =
       normalizeMaxTemporaryAccessDuration(connection);
@@ -69,10 +71,11 @@ const useConnections = () => {
         text: response.message,
         type: "error",
       });
-      return;
+      return false;
     } else {
       const newConnections = [...connections, response];
       setConnections(newConnections);
+      return true;
     }
   };
 

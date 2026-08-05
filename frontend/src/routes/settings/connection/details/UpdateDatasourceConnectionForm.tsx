@@ -31,6 +31,7 @@ import {
 } from "react-hook-form";
 import { supportsIamAuth, useCategories } from "../../../../hooks/connections";
 import CategoryAutocomplete from "../../../../components/CategoryAutocomplete";
+import { hasPermission } from "../../../../api/Permissions";
 
 const baseConnectionFormSchema = z.object({
   displayName: z.string().min(3),
@@ -114,6 +115,10 @@ export default function UpdateDatasourceConnectionForm({
   connection,
   editConnection,
 }: UpdateDatasourceFormProps) {
+  const canEdit = hasPermission(
+    connection.permissions,
+    "datasource_connection:edit",
+  );
   const [protocolOptions, setProtocolOptions] = useState<DatabaseProtocol[]>(
     getProtocolOptions(connection.type),
   );
@@ -462,7 +467,15 @@ export default function UpdateDatasourceConnectionForm({
               )}
             </Disclosure>
           </div>
-          <Button htmlType="submit" variant={isDirty ? "primary" : "disabled"}>
+          <Button
+            htmlType="submit"
+            variant={canEdit && isDirty ? "primary" : "disabled"}
+            title={
+              canEdit
+                ? undefined
+                : "You lack permission to edit this connection."
+            }
+          >
             Save
           </Button>
         </div>

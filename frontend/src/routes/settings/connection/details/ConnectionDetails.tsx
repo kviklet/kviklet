@@ -8,6 +8,7 @@ import Button from "../../../../components/Button";
 import { useState } from "react";
 import DeleteConfirm from "../../../../components/DeleteConfirm";
 import Modal from "../../../../components/Modal";
+import { hasPermission } from "../../../../api/Permissions";
 interface ConnectionDetailsParams {
   connectionId: string;
 }
@@ -24,8 +25,10 @@ export default function ConnectionDetails() {
 
   const handleRemoveConfirm = async () => {
     const result = await removeConnection();
+    // Close the confirm either way — on failure the error toast already explains
+    // what happened, keeping the modal open just strands the user.
+    setShowDeleteModal(false);
     if (result === null) {
-      setShowDeleteModal(false);
       navigate("/settings/connections");
     }
   };
@@ -37,6 +40,11 @@ export default function ConnectionDetails() {
   if (!connection) {
     return <div>Connection not found</div>;
   }
+
+  const canEdit = hasPermission(
+    connection.permissions,
+    "datasource_connection:edit",
+  );
 
   return (
     <div>
@@ -67,7 +75,15 @@ export default function ConnectionDetails() {
         )}
 
         <div className="flex justify-end">
-          <Button onClick={() => setShowDeleteModal(true)} variant="danger">
+          <Button
+            onClick={() => setShowDeleteModal(true)}
+            variant={canEdit ? "danger" : "disabled"}
+            title={
+              canEdit
+                ? undefined
+                : "You lack permission to edit this connection."
+            }
+          >
             Delete
           </Button>
         </div>

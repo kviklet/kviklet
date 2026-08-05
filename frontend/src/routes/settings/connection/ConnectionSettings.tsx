@@ -9,6 +9,7 @@ import Modal from "../../../components/Modal";
 import CreateKubernetesConnectionForm from "./KubernetesConnectionForm";
 import DatabaseConnectionForm from "./DatabaseConnectionForm";
 import useConnections from "../../../hooks/connections";
+import RequirePermission from "../../../components/RequirePermission";
 
 const useIdNamePair = () => {
   const [displayName, setDisplayName] = useState<string>("");
@@ -50,10 +51,13 @@ const ConnectionSettings = () => {
   );
 
   const handleCreateConnection = async (connection: ConnectionPayload) => {
-    await createConnection(connection);
-    setShowAddConnectionModal(false);
-    setConnectionTypeChoice(null);
-    setPreselectedCategory(null);
+    const created = await createConnection(connection);
+    // Keep the modal (and the user's input) open when creation failed.
+    if (created) {
+      setShowAddConnectionModal(false);
+      setConnectionTypeChoice(null);
+      setPreselectedCategory(null);
+    }
   };
 
   const handleRowClick = (connection: ConnectionResponse) => {
@@ -115,14 +119,16 @@ const ConnectionSettings = () => {
       ) : connections.length === 0 ? (
         <div className="flex h-64 flex-col items-center justify-center gap-4 rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
           <p className="text-slate-500 dark:text-slate-400">
-            No connections found. Add one to get started.
+            No connections found.
           </p>
-          <Button
-            onClick={() => handleCreateClick(null)}
-            dataTestId="connections-table-create-button"
-          >
-            Add Connection
-          </Button>
+          <RequirePermission permission="datasource_connection:create">
+            <Button
+              onClick={() => handleCreateClick(null)}
+              dataTestId="connections-table-create-button"
+            >
+              Add Connection
+            </Button>
+          </RequirePermission>
         </div>
       ) : (
         <div className="space-y-6" data-testid="connections-table">
@@ -132,16 +138,18 @@ const ConnectionSettings = () => {
                 <h3 className="text-sm font-semibold text-slate-600 dark:text-slate-400">
                   {group.category ?? "Uncategorized"}
                 </h3>
-                <button
-                  onClick={() => handleCreateClick(group.category)}
-                  className="flex h-6 w-6 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300"
-                  title={`Add connection to ${
-                    group.category ?? "Uncategorized"
-                  }`}
-                  data-testid="connections-table-create-button"
-                >
-                  <span className="text-lg leading-none">+</span>
-                </button>
+                <RequirePermission permission="datasource_connection:create">
+                  <button
+                    onClick={() => handleCreateClick(group.category)}
+                    className="flex h-6 w-6 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+                    title={`Add connection to ${
+                      group.category ?? "Uncategorized"
+                    }`}
+                    data-testid="connections-table-create-button"
+                  >
+                    <span className="text-lg leading-none">+</span>
+                  </button>
+                </RequirePermission>
               </div>
               <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow dark:border-slate-700 dark:bg-slate-900">
                 <table className="min-w-full">

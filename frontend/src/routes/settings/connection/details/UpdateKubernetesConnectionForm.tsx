@@ -17,6 +17,7 @@ import { useCategories } from "../../../../hooks/connections";
 import CategoryAutocomplete from "../../../../components/CategoryAutocomplete";
 import RoleRequirementsSection from "../../../../components/RoleRequirementsSection";
 import { useRoleRequirements } from "../../../../hooks/useRoleRequirements";
+import { hasPermission } from "../../../../api/Permissions";
 
 const kubernetesConnectionFormSchema = z.object({
   displayName: z.string().min(3),
@@ -42,6 +43,10 @@ export default function UpdateKubernetesConnectionForm({
   connection,
   editConnection,
 }: UpdateFormProps) {
+  const canEdit = hasPermission(
+    connection.permissions,
+    "datasource_connection:edit",
+  );
   const { categories } = useCategories();
 
   const {
@@ -222,7 +227,12 @@ export default function UpdateKubernetesConnectionForm({
           </div>
           <Button
             htmlType="submit"
-            variant={isDirty ? "primary" : "disabled"}
+            variant={canEdit && isDirty ? "primary" : "disabled"}
+            title={
+              canEdit
+                ? undefined
+                : "You lack permission to edit this connection."
+            }
             className="btn btn-primary mt-4"
             dataTestId="save-kubernetes-connection-button"
           >

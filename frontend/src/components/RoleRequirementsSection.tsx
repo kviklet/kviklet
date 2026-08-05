@@ -3,6 +3,7 @@ import { LockClosedIcon, PlusIcon, XMarkIcon } from "@heroicons/react/20/solid";
 import { RoleResponse, getRoles } from "../api/RoleApi";
 import { isApiErrorResponse } from "../api/Errors";
 import useConfig from "./ConfigProvider";
+import { useHasPermission } from "../hooks/permissions";
 
 interface RoleRequirementField {
   roleId: string;
@@ -17,12 +18,17 @@ interface RoleRequirementsSectionProps {
   numTotalRequired: number;
 }
 
-function useRolesList() {
+function useRolesList(enabled = true) {
   const [roles, setRoles] = useState<RoleResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     const load = async () => {
+      setLoading(true);
       const response = await getRoles();
       if (!isApiErrorResponse(response)) {
         setRoles(response.roles);
@@ -30,7 +36,7 @@ function useRolesList() {
       setLoading(false);
     };
     void load();
-  }, []);
+  }, [enabled]);
 
   return { roles, loading };
 }
@@ -48,7 +54,10 @@ export default function RoleRequirementsSection({
   numTotalRequired,
 }: RoleRequirementsSectionProps) {
   const { config } = useConfig();
-  const { roles } = useRolesList();
+  // The role picker needs role:get; without it the fetch could only 403, leaving a
+  // silently empty dropdown — explain instead.
+  const canListRoles = useHasPermission("role:get");
+  const { roles } = useRolesList(canListRoles);
   const licenseValid = config?.licenseValid ?? false;
 
   return (
@@ -73,7 +82,15 @@ export default function RoleRequirementsSection({
       </p>
 
       {/* State A: License Active - Full Edit */}
-      {licenseValid && (
+      {licenseValid && !canListRoles && (
+        <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-900/20">
+          <p className="text-xs text-yellow-800 dark:text-yellow-200">
+            You lack permission to list roles, so role-specific requirements
+            cannot be configured here.
+          </p>
+        </div>
+      )}
+      {licenseValid && canListRoles && (
         <LicensedEditUI
           fields={fields}
           roles={roles}
