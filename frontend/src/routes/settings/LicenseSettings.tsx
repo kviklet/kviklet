@@ -7,6 +7,7 @@ import Button from "../../components/Button";
 import { useUsers } from "./UserSettings";
 import useConfig from "../../components/ConfigProvider";
 import useNotification from "../../hooks/useNotification";
+import RequirePermission from "../../components/RequirePermission";
 
 export default function LicenseSettings() {
   const { config, refreshConfig } = useConfig();
@@ -21,7 +22,9 @@ export default function LicenseSettings() {
           <div className="flex flex-col gap-y-2">
             <LicenseInfo license={config} userCount={users.length.toString()} />
             <LicenseStatus license={config} />
-            <LicenseDropZone refreshLicense={refreshConfig}></LicenseDropZone>
+            <RequirePermission permission="configuration:edit">
+              <LicenseDropZone refreshLicense={refreshConfig}></LicenseDropZone>
+            </RequirePermission>
           </div>
         )}
       </div>
@@ -149,25 +152,22 @@ const LicenseDropZone = ({
 
   const handleUpload = async () => {
     if (selectedFile) {
-      try {
-        await uploadLicense(selectedFile);
-        await refreshLicense();
-        setSelectedFile(null);
-        addNotification({
-          title: "License uploaded successfully",
-          text: "Your license has been activated.",
-          type: "info",
-        });
-      } catch (error) {
+      const error = await uploadLicense(selectedFile);
+      if (error) {
         addNotification({
           title: "Failed to upload license",
-          text:
-            error instanceof Error
-              ? error.message
-              : "An unknown error occurred",
+          text: error.message,
           type: "error",
         });
+        return;
       }
+      await refreshLicense();
+      setSelectedFile(null);
+      addNotification({
+        title: "License uploaded successfully",
+        text: "Your license has been activated.",
+        type: "info",
+      });
     } else {
       addNotification({
         title: "No file selected",

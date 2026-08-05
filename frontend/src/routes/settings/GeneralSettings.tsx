@@ -16,9 +16,11 @@ import {
   DisclosurePanel,
 } from "@headlessui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import { useHasPermission } from "../../hooks/permissions";
 
 export default function GeneralSettings() {
   const { config, loading, updateConfig, refreshConfig } = useConfig();
+  const canEditConfig = useHasPermission("configuration:edit");
 
   // Refresh in the background when the page opens so the webhook URLs reflect the
   // latest server state even if the initial app-load fetch happened while logged out.
@@ -56,10 +58,25 @@ export default function GeneralSettings() {
                     </div>
                   </DisclosureButton>
                   <DisclosurePanel unmount={false}>
-                    <ConfigForm
-                      config={config}
-                      onSubmit={onSubmit}
-                    ></ConfigForm>
+                    {!canEditConfig && (
+                      <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
+                        You can view these settings but lack the permission to
+                        change them.
+                      </p>
+                    )}
+                    <fieldset
+                      disabled={!canEditConfig}
+                      title={
+                        canEditConfig
+                          ? undefined
+                          : "You lack permission to edit the configuration."
+                      }
+                    >
+                      <ConfigForm
+                        config={config}
+                        onSubmit={onSubmit}
+                      ></ConfigForm>
+                    </fieldset>
                   </DisclosurePanel>
                 </>
               )}

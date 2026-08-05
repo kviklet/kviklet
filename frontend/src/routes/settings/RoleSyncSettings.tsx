@@ -9,15 +9,23 @@ import Button from "../../components/Button";
 import { TrashIcon } from "@heroicons/react/20/solid";
 import useConfig from "../../components/ConfigProvider";
 import { RoleSyncConfigResponse } from "../../api/RoleSyncConfigApi";
+import { useHasPermission } from "../../hooks/permissions";
+
+const editTooltip = "You lack permission to edit the configuration.";
 
 export default function RoleSyncSettings() {
   const { config, loading, updateConfig, addMapping, deleteMapping } =
     useRoleSyncConfig();
 
+  const canEdit = useHasPermission("configuration:edit");
+  // The role list only feeds the mapping dropdown; without role:get the fetch would
+  // just 403-toast, so skip it.
+  const canListRoles = useHasPermission("role:get");
+
   // Use ref to avoid recreating debounced function when updateConfig changes
   const updateConfigRef = useRef(updateConfig);
   updateConfigRef.current = updateConfig;
-  const { roles, isLoading: rolesLoading } = useRoles();
+  const { roles, isLoading: rolesLoading } = useRoles(canListRoles);
   const { config: appConfig } = useConfig();
 
   const [idpGroupName, setIdpGroupName] = useState("");
@@ -153,6 +161,8 @@ export default function RoleSyncSettings() {
             <Toggle
               active={config.enabled}
               onClick={() => void handleToggleEnabled()}
+              disabled={!canEdit}
+              tooltip={canEdit ? undefined : editTooltip}
             />
           </div>
         </div>
@@ -170,7 +180,8 @@ export default function RoleSyncSettings() {
             name="sync-mode"
             value={config.syncMode}
             onChange={(e) => void handleSyncModeChange(e)}
-            disabled={!config.enabled}
+            disabled={!config.enabled || !canEdit}
+            title={canEdit ? undefined : editTooltip}
             className="mt-2 block w-full rounded-md border-0 py-2 pl-3 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-indigo-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:bg-slate-900 dark:text-slate-50 dark:ring-slate-700 dark:disabled:bg-slate-800 dark:disabled:text-slate-600 sm:text-sm sm:leading-6"
           >
             <option value="FULL_SYNC">Full Sync</option>
@@ -192,10 +203,14 @@ export default function RoleSyncSettings() {
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               handleGroupsAttributeChange(e.target.value)
             }
-            disabled={!config.enabled}
+            disabled={!config.enabled || !canEdit}
             placeholder="groups"
             stacked
-            tooltip="The name of the attribute in your IdP that contains the user's group memberships"
+            tooltip={
+              canEdit
+                ? "The name of the attribute in your IdP that contains the user's group memberships"
+                : editTooltip
+            }
           />
           {isGroupsAttributeDirty && (
             <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">
@@ -254,8 +269,13 @@ export default function RoleSyncSettings() {
                       <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
                         <button
                           onClick={() => void handleDeleteMapping(mapping.id)}
-                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                          title="Delete mapping"
+                          disabled={!canEdit}
+                          className={
+                            canEdit
+                              ? "text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                              : "cursor-not-allowed text-slate-400 dark:text-slate-600"
+                          }
+                          title={canEdit ? "Delete mapping" : editTooltip}
                         >
                           <TrashIcon className="h-5 w-5" />
                         </button>
@@ -272,7 +292,11 @@ export default function RoleSyncSettings() {
           )}
 
           {/* Add Mapping Form */}
-          <div className="mt-6 space-y-4">
+          <fieldset
+            disabled={!canEdit}
+            title={canEdit ? undefined : editTooltip}
+            className="mt-6 space-y-4"
+          >
             <h4 className="text-sm font-medium text-slate-900 dark:text-slate-50">
               Add New Mapping
             </h4>
@@ -314,14 +338,17 @@ export default function RoleSyncSettings() {
             <div className="flex justify-end">
               <Button
                 variant={
-                  idpGroupName.trim() && selectedRoleId ? "primary" : "disabled"
+                  canEdit && idpGroupName.trim() && selectedRoleId
+                    ? "primary"
+                    : "disabled"
                 }
+                title={canEdit ? undefined : editTooltip}
                 onClick={() => void handleAddMapping()}
               >
                 Add Mapping
               </Button>
             </div>
-          </div>
+          </fieldset>
         </div>
       </div>
     </div>

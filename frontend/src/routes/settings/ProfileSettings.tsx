@@ -5,6 +5,7 @@ import { updateUser } from "../../api/UserApi";
 import { UserStatusContext } from "../../components/UserStatusProvider";
 import { isApiErrorResponse } from "../../api/Errors";
 import useNotification from "../../hooks/useNotification";
+import { useHasPermission } from "../../hooks/permissions";
 
 function ProfileSettings() {
   const [newPassword, setNewPassword] = useState<string>("");
@@ -12,6 +13,8 @@ function ProfileSettings() {
 
   const [showSuccessBanner, setShowSuccessBanner] = useState<boolean>(false);
   const userContext = useContext(UserStatusContext);
+  // Changing the own password goes through PATCH /users/{id}, which requires user:edit.
+  const canEditSelf = useHasPermission("user:edit");
 
   const { addNotification } = useNotification();
 
@@ -74,7 +77,17 @@ function ProfileSettings() {
         />
       </div>
       <div className="mb-2 flex justify-end">
-        <Button onClick={() => void changePassword()}>Save</Button>
+        <Button
+          onClick={() => void changePassword()}
+          variant={canEditSelf ? undefined : "disabled"}
+          title={
+            canEditSelf
+              ? undefined
+              : "Your role does not allow editing your profile. Ask an administrator."
+          }
+        >
+          Save
+        </Button>
       </div>
       {newPassword !== confirmNewPassowrd && (
         <Error>
