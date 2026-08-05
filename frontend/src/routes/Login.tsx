@@ -63,7 +63,9 @@ const Login = () => {
       } else {
         await userContext.refreshState();
 
-        navigate("/requests");
+        // The index landing routes users without execution_request:get to their
+        // profile instead of the requests list they could never load.
+        navigate("/");
       }
     } finally {
       setLoggingIn(false);

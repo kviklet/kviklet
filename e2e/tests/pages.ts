@@ -7,7 +7,7 @@ class LoginPage {
     await this.page.getByTestId("email-input").fill(email);
     await this.page.getByTestId("password-input").fill(password);
     await this.page.getByTestId("login-button").click();
-    await this.page.waitForURL("**/requests");
+    // Login lands on "/", which renders the requests list for users that may see it.
     await this.page.waitForSelector('[data-testid="requests-list"]');
   }
 }
