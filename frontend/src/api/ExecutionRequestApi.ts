@@ -450,14 +450,17 @@ const streamDump = async (
 
 // Executes the request and downloads the results as a file, keeping errors (e.g. a
 // missing execute permission) in-app instead of navigating the tab to raw JSON.
-const downloadResults = async (executionRequestId: string): Promise<void> => {
-  const response = await apiFetch(
-    `${requestUrl}${executionRequestId}/download`,
-    {
-      method: "GET",
-      credentials: "include",
-    },
-  );
+const downloadResults = async (
+  executionRequestId: string,
+  query?: string,
+): Promise<void> => {
+  const downloadUrl =
+    `${requestUrl}${executionRequestId}/download` +
+    (query ? `?query=${encodeURIComponent(query)}` : "");
+  const response = await apiFetch(downloadUrl, {
+    method: "GET",
+    credentials: "include",
+  });
 
   if (!response.ok) {
     const json: unknown = await response.json().catch(() => null);
