@@ -132,6 +132,14 @@ test.describe("live session permission gating (T2-16/T2-17/T2-18/T3-D)", () => {
 
     await loginAndOpenSession(page, author.email, author.password, requestId);
 
+    // The session explains its read-only state with a banner above the editor.
+    await expect(page.getByTestId("read-only-banner")).toBeVisible({
+      timeout: 20000,
+    });
+    await expect(page.getByTestId("read-only-banner")).toContainText(
+      "read-only",
+    );
+
     // T2-16 negative: Run Query disabled with a permission tooltip.
     const runButton = page.getByTestId("run-query-button");
     await expect(runButton).toBeVisible({ timeout: 20000 });
@@ -173,7 +181,11 @@ test.describe("live session permission gating (T2-16/T2-17/T2-18/T3-D)", () => {
     await createConnection(admin, connectionId, `${SLUG} hidden connection`, {
       temporaryAccessEnabled: true,
     });
-    await createConnection(admin, otherConnectionId, `${SLUG} other connection`);
+    await createConnection(
+      admin,
+      otherConnectionId,
+      `${SLUG} other connection`,
+    );
     const requestId = await createRequest(
       admin,
       connectionId,
@@ -190,7 +202,12 @@ test.describe("live session permission gating (T2-16/T2-17/T2-18/T3-D)", () => {
     // nonexistent request id.
     const email = `${SLUG}-noget@e2e.test`;
     const password = "e2e-password-1";
-    const userId = await createUser(admin, email, password, `E2E ${SLUG} noget`);
+    const userId = await createUser(
+      admin,
+      email,
+      password,
+      `E2E ${SLUG} noget`,
+    );
     const roleId = await createRole(admin, `e2e-${SLUG}-noget`, [
       { action: "execution_request:get", resource: otherConnectionId },
     ]);

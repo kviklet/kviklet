@@ -194,6 +194,17 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
             { label: "Live Session" },
           ]}
         />
+        {isAuthor && !canExecute && (
+          <div
+            className="mt-3 rounded-md border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-900/20"
+            data-testid="read-only-banner"
+          >
+            <p className="text-xs text-yellow-800 dark:text-yellow-200">
+              This session is read-only: you lack permission to execute on this
+              connection. Ask an administrator if you think this is a mistake.
+            </p>
+          </div>
+        )}
         <div className="relative mb-5 mt-3">
           {(isSyncing || showSynced) && (
             <div
