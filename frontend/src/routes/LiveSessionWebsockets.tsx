@@ -1,10 +1,4 @@
-import React, {
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  MouseEvent,
-} from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import Button from "../components/Button";
 import MultiResult from "../components/MultiResult";
