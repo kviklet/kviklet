@@ -39,6 +39,7 @@ import {
 } from "../../hooks/permissions";
 import RequirePermission from "../../components/RequirePermission";
 import NotAuthorized from "../../components/NotAuthorized";
+import Spinner from "../../components/Spinner";
 
 const Tab = (props: {
   children: React.ReactNode;
@@ -84,7 +85,7 @@ const DefaultSettingsPage = () => {
   const loading = useUserStatusLoading();
   const canViewConfig = useHasPermission("configuration:get");
   if (loading) {
-    return null;
+    return <Spinner size="lg" page />;
   }
   return canViewConfig ? (
     <GeneralSettings />

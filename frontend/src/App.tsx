@@ -18,6 +18,7 @@ import LiveSessionWebsockets from "./routes/LiveSessionWebsockets";
 import { useHasPermission, useUserStatusLoading } from "./hooks/permissions";
 import RequirePermission from "./components/RequirePermission";
 import NotAuthorized from "./components/NotAuthorized";
+import Spinner from "./components/Spinner";
 
 export interface ProtectedRouteProps {
   children: ReactElement;
@@ -29,7 +30,7 @@ const IndexLanding = (): ReactElement => {
   const loading = useUserStatusLoading();
   const canSeeRequests = useHasPermission("execution_request:get");
   if (loading) {
-    return <div>Loading...</div>;
+    return <Spinner size="lg" page />;
   }
   return canSeeRequests ? (
     <Requests />
