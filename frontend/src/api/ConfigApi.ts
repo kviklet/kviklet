@@ -12,6 +12,7 @@ const ConfigResponseSchema = z.object({
   allowedUsers: z.number().nullable().optional(),
   teamsUrl: z.string().nullable().optional(),
   slackUrl: z.string().nullable().optional(),
+  newUserRoleIds: z.array(z.string()).nullable().optional(),
   version: z.string(),
   buildDate: z.string(),
   gitCommit: z.string(),

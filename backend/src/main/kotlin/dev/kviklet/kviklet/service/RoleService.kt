@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.service
 
+import dev.kviklet.kviklet.db.ConfigurationAdapter
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.service.dto.Policy
@@ -9,7 +10,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
-class RoleService(private val roleAdapter: RoleAdapter) {
+class RoleService(private val roleAdapter: RoleAdapter, private val configurationAdapter: ConfigurationAdapter) {
 
     @dev.kviklet.kviklet.security.Policy(Permission.ROLE_EDIT)
     @Transactional
@@ -61,6 +62,12 @@ class RoleService(private val roleAdapter: RoleAdapter) {
         val role = roleAdapter.findById(id)
         if (role.isDefault) {
             throw IllegalArgumentException("Cannot delete default role")
+        }
+        val config = configurationAdapter.getConfiguration()
+        if (config.newUserRoleIds.contains(id.toString())) {
+            configurationAdapter.setConfiguration(
+                config.copy(newUserRoleIds = config.newUserRoleIds.filter { it != id.toString() }),
+            )
         }
         roleAdapter.delete(id)
     }

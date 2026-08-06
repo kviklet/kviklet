@@ -36,6 +36,7 @@ class ConfigurationAdapter(private val configurationRepository: ConfigurationRep
             listOfNotNull(
                 configuration.teamsUrl?.let { ConfigurationEntity("teamsUrl", it) },
                 configuration.slackUrl?.let { ConfigurationEntity("slackUrl", it) },
+                ConfigurationEntity("newUserRoleIds", configuration.newUserRoleIds.joinToString(",")),
             ),
         )
         return configurationEntities.toDto()
@@ -45,4 +46,6 @@ class ConfigurationAdapter(private val configurationRepository: ConfigurationRep
 fun List<ConfigurationEntity>.toDto(): Configuration = Configuration(
     teamsUrl = this.find { it.key == "teamsUrl" }?.value,
     slackUrl = this.find { it.key == "slackUrl" }?.value,
+    newUserRoleIds = this.find { it.key == "newUserRoleIds" }?.value
+        ?.split(",")?.filter { it.isNotBlank() } ?: emptyList(),
 )

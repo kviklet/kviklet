@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.service
 
+import dev.kviklet.kviklet.db.ConfigurationAdapter
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
@@ -17,6 +18,7 @@ class UserService(
     private val passwordEncoder: PasswordEncoder,
     private val roleAdapter: RoleAdapter,
     private val licenseService: LicenseService,
+    private val configurationAdapter: ConfigurationAdapter,
 ) {
 
     @Transactional
@@ -37,12 +39,15 @@ class UserService(
         }
 
         val defaultRole = roleAdapter.findById(Role.DEFAULT_ROLE_ID)
+        val newUserRoleIds = (configurationAdapter.getConfiguration("newUserRoleIds") as String?)
+            ?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+        val newUserRoles = roleAdapter.findByIds(newUserRoleIds).toSet()
 
         val user = User(
             email = email,
             fullName = fullName,
             password = passwordEncoder.encode(password),
-            roles = setOf(defaultRole),
+            roles = setOf(defaultRole) + newUserRoles,
         )
         return userAdapter.createUser(user)
     }
