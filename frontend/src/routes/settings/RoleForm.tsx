@@ -76,9 +76,12 @@ const connectionPolicyMetadata: Record<
 const RoleForm = ({
   role,
   onSubmit,
+  readOnly = false,
 }: {
   role: Role;
   onSubmit: (data: Role) => Promise<void>;
+  /** Renders the form as a pure viewer: no Submit button. Wrap it in a disabled fieldset too. */
+  readOnly?: boolean;
 }) => {
   const {
     control,
@@ -289,9 +292,11 @@ const RoleForm = ({
         </>
       )}
 
-      <Button htmlType="submit" variant="primary">
-        Submit
-      </Button>
+      {!readOnly && (
+        <Button htmlType="submit" variant="primary">
+          Submit
+        </Button>
+      )}
     </form>
   );
 };

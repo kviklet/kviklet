@@ -61,6 +61,11 @@ export default function ConnectionDetails() {
             Connection Settings
           </div>
         </div>
+        {!canEdit && (
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            You can view this connection but lack the permission to change it.
+          </p>
+        )}
         {connection._type === "DATASOURCE" && (
           <UpdateDatasourceConnectionForm
             connection={connection}
@@ -74,19 +79,13 @@ export default function ConnectionDetails() {
           />
         )}
 
-        <div className="flex justify-end">
-          <Button
-            onClick={() => setShowDeleteModal(true)}
-            variant={canEdit ? "danger" : "disabled"}
-            title={
-              canEdit
-                ? undefined
-                : "You lack permission to edit this connection."
-            }
-          >
-            Delete
-          </Button>
-        </div>
+        {canEdit && (
+          <div className="flex justify-end">
+            <Button onClick={() => setShowDeleteModal(true)} variant="danger">
+              Delete
+            </Button>
+          </div>
+        )}
       </div>
       {showDeleteModal && (
         <Modal setVisible={setShowDeleteModal}>

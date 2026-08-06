@@ -29,7 +29,6 @@ import {
 
 const NO_REQUEST_TOOLTIP =
   "You lack permission to create requests on this connection";
-const NO_EDIT_TOOLTIP = "You lack permission to edit this connection.";
 
 const ts = Date.now();
 const connAId = `setb-a-${ts}`;
@@ -103,7 +102,12 @@ test.beforeAll(async () => {
   ]);
   const email = `setb-scoped-${ts}@e2e.test`;
   const password = "e2e-password-1";
-  const userId = await createUser(api, email, password, `E2E setb-scoped-${ts}`);
+  const userId = await createUser(
+    api,
+    email,
+    password,
+    `E2E setb-scoped-${ts}`,
+  );
   const roles = await getRoles(api);
   const defaultRole = roles.find((r) => r.isDefault);
   await setUserRoles(
@@ -194,47 +198,45 @@ test("T1-17 negative + NR-2: without datasource_connection:create no create entr
 // object-scoped execution_request:edit
 // ---------------------------------------------------------------------------
 
-test("T2-19: /new buttons enabled on conn A (scoped edit) and disabled with tooltip on conn B", async ({
+test("T2-19: /new buttons shown on conn A (scoped edit), conn B shows a View-only badge", async ({
   page,
 }) => {
   await loginAndGo(page, scoped, "/new");
 
   const queryA = page.getByTestId(`query-button-${connAName}`);
   const accessA = page.getByTestId(`access-button-${connAName}`);
-  const queryB = page.getByTestId(`query-button-${connBName}`);
 
   await expect(queryA).toBeEnabled();
   expect(await queryA.getAttribute("title")).toBeNull();
   await expect(accessA).toBeEnabled();
 
-  await expect(queryB).toBeDisabled();
-  await expect(queryB).toHaveAttribute("title", NO_REQUEST_TOOLTIP);
+  // Conn B renders a View-only badge instead of action buttons.
+  await expect(page.getByTestId(`query-button-${connBName}`)).toHaveCount(0);
+  const badgeB = page.getByTestId(`view-only-${connBName}`);
+  await expect(badgeB).toBeVisible();
+  await expect(badgeB).toHaveAttribute("title", NO_REQUEST_TOOLTIP);
 
   // Positive path really works: clicking Query on conn A opens the request form.
   await queryA.click();
   await expect(page.getByTestId("request-title")).toBeVisible();
 });
 
-test("T2-19 negative: user without execution_request:edit anywhere gets all /new buttons disabled with tooltip", async ({
+test("T2-19 negative: user without execution_request:edit anywhere sees only View-only badges on /new", async ({
   page,
 }) => {
   await loginAndGo(page, viewer, "/new");
 
-  const queryA = page.getByTestId(`query-button-${connAName}`);
-  const accessA = page.getByTestId(`access-button-${connAName}`);
-  await expect(queryA).toBeDisabled();
-  await expect(queryA).toHaveAttribute("title", NO_REQUEST_TOOLTIP);
-  await expect(accessA).toBeDisabled();
-  await expect(accessA).toHaveAttribute("title", NO_REQUEST_TOOLTIP);
+  const badgeA = page.getByTestId(`view-only-${connAName}`);
+  await expect(badgeA).toBeVisible();
+  await expect(badgeA).toHaveAttribute("title", NO_REQUEST_TOOLTIP);
 
-  // DB Dump button (no testid) inside conn A's card is disabled too.
-  const cardA = queryA.locator("xpath=ancestor::li[1]");
-  const dumpA = cardA.getByRole("button", { name: "DB Dump" });
-  await expect(dumpA).toBeDisabled();
-  await expect(dumpA).toHaveAttribute("title", NO_REQUEST_TOOLTIP);
+  // No action buttons render at all on view-only connections.
+  await expect(page.getByTestId(`query-button-${connAName}`)).toHaveCount(0);
+  await expect(page.getByTestId(`access-button-${connAName}`)).toHaveCount(0);
+  const cardA = badgeA.locator("xpath=ancestor::li[1]");
+  await expect(cardA.getByRole("button", { name: "DB Dump" })).toHaveCount(0);
 
-  const queryB = page.getByTestId(`query-button-${connBName}`);
-  await expect(queryB).toBeDisabled();
+  await expect(page.getByTestId(`view-only-${connBName}`)).toBeVisible();
 });
 
 // ---------------------------------------------------------------------------
@@ -253,17 +255,19 @@ test("T2-05 positive: scoped editor can save conn A details (Save enables when d
   expect(await save.getAttribute("title")).toBeNull();
 });
 
-test("T2-05 negative: Save on conn B stays disabled with permission tooltip for the scoped editor", async ({
+test("T2-05 negative: conn B is read-only for the scoped editor (note shown, no Save, inputs disabled)", async ({
   page,
 }) => {
   await loginAndGo(page, scoped, `/settings/connections/${connBId}`);
-  const save = page.getByRole("button", { name: "Save", exact: true });
-  await expect(save).toBeVisible();
-  await expect(save).toHaveAttribute("title", NO_EDIT_TOOLTIP);
-  // Even a dirty form must not enable Save without edit permission.
-  await page.locator("#displayName").fill(`${connBName} edited`);
-  await expect(save).toBeDisabled();
-  await expect(save).toHaveAttribute("title", NO_EDIT_TOOLTIP);
+  await expect(
+    page.getByText(
+      "You can view this connection but lack the permission to change it.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Save", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.locator("#displayName")).toBeDisabled();
 });
 
 // ---------------------------------------------------------------------------
@@ -283,17 +287,19 @@ test("T2-06 positive: admin can save k8s connection details (Save enables when d
   expect(await save.getAttribute("title")).toBeNull();
 });
 
-test("T2-06 negative: k8s Save disabled with tooltip for user without datasource_connection:edit", async ({
+test("T2-06 negative: k8s connection is read-only without datasource_connection:edit (note, no Save, inputs disabled)", async ({
   page,
 }) => {
   await loginAndGo(page, viewer, `/settings/connections/${connKId}`);
-  const save = page.getByRole("button", { name: "Save", exact: true });
-  await expect(save).toBeVisible();
-  await expect(save).toHaveAttribute("title", NO_EDIT_TOOLTIP);
-  await page
-    .getByTestId("kubernetes-connection-name")
-    .fill(`${connKName} edited`);
-  await expect(save).toBeDisabled();
+  await expect(
+    page.getByText(
+      "You can view this connection but lack the permission to change it.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Save", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByTestId("kubernetes-connection-name")).toBeDisabled();
 });
 
 // ---------------------------------------------------------------------------
@@ -311,27 +317,28 @@ test("T2-07 positive: scoped editor gets an enabled Delete on conn A", async ({
   // Do not click — the connection is shared setup for other tests.
 });
 
-test("T2-07 negative: Delete disabled with tooltip without edit permission on the connection", async ({
+test("T2-07 negative: Delete hidden without edit permission on the connection", async ({
   page,
 }) => {
   await loginAndGo(page, viewer, `/settings/connections/${connAId}`);
-  const del = page.getByRole("button", { name: "Delete", exact: true });
-  await expect(del).toBeVisible();
-  await expect(del).toBeDisabled();
-  await expect(del).toHaveAttribute("title", NO_EDIT_TOOLTIP);
-  // Disabled button must not open the confirm modal.
-  await del.click({ force: true });
-  await expect(page.getByText("Delete connection")).toHaveCount(0);
+  // Page loaded (read-only note shown) but the danger action is gone entirely.
+  await expect(
+    page.getByText(
+      "You can view this connection but lack the permission to change it.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Delete", exact: true }),
+  ).toHaveCount(0);
 });
 
-test("T2-07 negative: scoped editor's Delete on conn B is disabled with tooltip", async ({
+test("T2-07 negative: scoped editor's Delete on conn B is hidden", async ({
   page,
 }) => {
   await loginAndGo(page, scoped, `/settings/connections/${connBId}`);
-  const delB = page.getByRole("button", { name: "Delete", exact: true });
-  await expect(delB).toBeVisible();
-  await expect(delB).toBeDisabled();
-  await expect(delB).toHaveAttribute("title", NO_EDIT_TOOLTIP);
+  await expect(
+    page.getByRole("button", { name: "Delete", exact: true }),
+  ).toHaveCount(0);
 });
 
 // ---------------------------------------------------------------------------
@@ -369,9 +376,9 @@ test("T2-08 positive: with role:get (admin) the role-requirements editor is avai
   await expect(
     page.getByRole("button", { name: "Add Role Requirement" }),
   ).toBeVisible();
-  await expect(
-    page.getByText("You lack permission to list roles"),
-  ).toHaveCount(0);
+  await expect(page.getByText("You lack permission to list roles")).toHaveCount(
+    0,
+  );
 });
 
 test("T2-08 negative: without role:get the section explains itself, hides the editor and skips the roles fetch", async ({

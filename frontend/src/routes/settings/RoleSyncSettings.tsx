@@ -11,8 +11,6 @@ import useConfig from "../../components/ConfigProvider";
 import { RoleSyncConfigResponse } from "../../api/RoleSyncConfigApi";
 import { useHasPermission } from "../../hooks/permissions";
 
-const editTooltip = "You lack permission to edit the configuration.";
-
 export default function RoleSyncSettings() {
   const { config, loading, updateConfig, addMapping, deleteMapping } =
     useRoleSyncConfig();
@@ -142,9 +140,14 @@ export default function RoleSyncSettings() {
 
   return (
     <div className="mx-auto max-w-7xl">
-      <h1 className="mb-6 text-lg font-semibold text-slate-900 dark:text-slate-50">
+      <h1 className="mb-2 text-lg font-semibold text-slate-900 dark:text-slate-50">
         Role Sync Configuration
       </h1>
+      {!canEdit && (
+        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+          You can view this configuration but lack the permission to change it.
+        </p>
+      )}
 
       <div className="space-y-6">
         {/* Enable/Disable Toggle */}
@@ -162,7 +165,6 @@ export default function RoleSyncSettings() {
               active={config.enabled}
               onClick={() => void handleToggleEnabled()}
               disabled={!canEdit}
-              tooltip={canEdit ? undefined : editTooltip}
             />
           </div>
         </div>
@@ -181,7 +183,6 @@ export default function RoleSyncSettings() {
             value={config.syncMode}
             onChange={(e) => void handleSyncModeChange(e)}
             disabled={!config.enabled || !canEdit}
-            title={canEdit ? undefined : editTooltip}
             className="mt-2 block w-full rounded-md border-0 py-2 pl-3 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-indigo-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:bg-slate-900 dark:text-slate-50 dark:ring-slate-700 dark:disabled:bg-slate-800 dark:disabled:text-slate-600 sm:text-sm sm:leading-6"
           >
             <option value="FULL_SYNC">Full Sync</option>
@@ -206,11 +207,7 @@ export default function RoleSyncSettings() {
             disabled={!config.enabled || !canEdit}
             placeholder="groups"
             stacked
-            tooltip={
-              canEdit
-                ? "The name of the attribute in your IdP that contains the user's group memberships"
-                : editTooltip
-            }
+            tooltip="The name of the attribute in your IdP that contains the user's group memberships"
           />
           {isGroupsAttributeDirty && (
             <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">
@@ -267,18 +264,15 @@ export default function RoleSyncSettings() {
                         {mapping.roleName}
                       </td>
                       <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                        <button
-                          onClick={() => void handleDeleteMapping(mapping.id)}
-                          disabled={!canEdit}
-                          className={
-                            canEdit
-                              ? "text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                              : "cursor-not-allowed text-slate-400 dark:text-slate-600"
-                          }
-                          title={canEdit ? "Delete mapping" : editTooltip}
-                        >
-                          <TrashIcon className="h-5 w-5" />
-                        </button>
+                        {canEdit && (
+                          <button
+                            onClick={() => void handleDeleteMapping(mapping.id)}
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                            title="Delete mapping"
+                          >
+                            <TrashIcon className="h-5 w-5" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -287,68 +281,67 @@ export default function RoleSyncSettings() {
             </div>
           ) : (
             <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-              No role mappings configured. Add a mapping below to get started.
+              {canEdit
+                ? "No role mappings configured. Add a mapping below to get started."
+                : "No role mappings configured."}
             </p>
           )}
 
           {/* Add Mapping Form */}
-          <fieldset
-            disabled={!canEdit}
-            title={canEdit ? undefined : editTooltip}
-            className="mt-6 space-y-4"
-          >
-            <h4 className="text-sm font-medium text-slate-900 dark:text-slate-50">
-              Add New Mapping
-            </h4>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <InputField
-                label="IdP Group Name"
-                type="text"
-                id="idp-group-name"
-                value={idpGroupName}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setIdpGroupName((e.target as HTMLInputElement).value)
-                }
-                placeholder="e.g., engineering, admins"
-                stacked
-              />
-              <div className="flex flex-col">
-                <label
-                  htmlFor="role-select"
-                  className="block text-sm font-medium text-slate-700 dark:text-slate-200"
+          {canEdit && (
+            <div className="mt-6 space-y-4">
+              <h4 className="text-sm font-medium text-slate-900 dark:text-slate-50">
+                Add New Mapping
+              </h4>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <InputField
+                  label="IdP Group Name"
+                  type="text"
+                  id="idp-group-name"
+                  value={idpGroupName}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setIdpGroupName((e.target as HTMLInputElement).value)
+                  }
+                  placeholder="e.g., engineering, admins"
+                  stacked
+                />
+                <div className="flex flex-col">
+                  <label
+                    htmlFor="role-select"
+                    className="block text-sm font-medium text-slate-700 dark:text-slate-200"
+                  >
+                    Kviklet Role
+                  </label>
+                  <select
+                    id="role-select"
+                    name="role-select"
+                    value={selectedRoleId}
+                    onChange={(e) => setSelectedRoleId(e.target.value)}
+                    className="mt-2 block w-full rounded-md border-0 py-2 pl-3 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-indigo-600 dark:bg-slate-900 dark:text-slate-50 dark:ring-slate-700 sm:text-sm sm:leading-6"
+                  >
+                    <option value="">Select a role...</option>
+                    {roles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  variant={
+                    idpGroupName.trim() && selectedRoleId
+                      ? "primary"
+                      : "disabled"
+                  }
+                  onClick={() => void handleAddMapping()}
                 >
-                  Kviklet Role
-                </label>
-                <select
-                  id="role-select"
-                  name="role-select"
-                  value={selectedRoleId}
-                  onChange={(e) => setSelectedRoleId(e.target.value)}
-                  className="mt-2 block w-full rounded-md border-0 py-2 pl-3 pr-10 text-slate-900 ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-indigo-600 dark:bg-slate-900 dark:text-slate-50 dark:ring-slate-700 sm:text-sm sm:leading-6"
-                >
-                  <option value="">Select a role...</option>
-                  {roles.map((role) => (
-                    <option key={role.id} value={role.id}>
-                      {role.name}
-                    </option>
-                  ))}
-                </select>
+                  Add Mapping
+                </Button>
               </div>
             </div>
-            <div className="flex justify-end">
-              <Button
-                variant={
-                  canEdit && idpGroupName.trim() && selectedRoleId
-                    ? "primary"
-                    : "disabled"
-                }
-                title={canEdit ? undefined : editTooltip}
-                onClick={() => void handleAddMapping()}
-              >
-                Add Mapping
-              </Button>
-            </div>
-          </fieldset>
+          )}
         </div>
       </div>
     </div>

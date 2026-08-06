@@ -96,7 +96,7 @@ export default function UpdateKubernetesConnectionForm({
         void handleFormSubmit();
       }}
     >
-      <div className="flex w-full flex-col ">
+      <fieldset disabled={!canEdit} className="flex w-full flex-col">
         <div className="flex-col space-y-2">
           <InputField
             label="Connection name"
@@ -225,21 +225,18 @@ export default function UpdateKubernetesConnectionForm({
               )}
             </Disclosure>
           </div>
-          <Button
-            htmlType="submit"
-            variant={canEdit && isDirty ? "primary" : "disabled"}
-            title={
-              canEdit
-                ? undefined
-                : "You lack permission to edit this connection."
-            }
-            className="btn btn-primary mt-4"
-            dataTestId="save-kubernetes-connection-button"
-          >
-            Save
-          </Button>
+          {canEdit && (
+            <Button
+              htmlType="submit"
+              variant={isDirty ? "primary" : "disabled"}
+              className="btn btn-primary mt-4"
+              dataTestId="save-kubernetes-connection-button"
+            >
+              Save
+            </Button>
+          )}
         </div>
-      </div>
+      </fieldset>
     </form>
   );
 }

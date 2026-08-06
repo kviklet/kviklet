@@ -87,13 +87,14 @@ test("T1-04/T1-05/T1-06/T1-08 + T2-04: default-only user sees restricted setting
   // T1-08: API Keys tab hidden without api_key:get.
   await expect(page.getByTestId("settings-api-keys")).toHaveCount(0);
 
-  // T2-04: Change-password Save disabled with tooltip without user:edit.
-  const save = page.getByRole("button", { name: "Save" });
-  await expect(save).toBeDisabled();
-  await expect(save).toHaveAttribute(
-    "title",
-    "Your role does not allow editing your profile. Ask an administrator.",
-  );
+  // T2-04: without user:edit the change-password form is hidden entirely; the
+  // profile page shows account info plus an explanatory note instead.
+  await expect(page.getByText(baseUser.email)).toBeVisible();
+  await expect(
+    page.getByText("Profile editing is not enabled for your role."),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save" })).toHaveCount(0);
+  await expect(page.locator('input[type="password"]')).toHaveCount(0);
 });
 
 test("T1-16: license upload hidden without configuration:edit, page itself still readable", async ({
@@ -262,7 +263,8 @@ test("T1-12/T1-13/T1-14/T2-01: role:get-only user gets read-only roles surfaces"
   await page.goto("/settings/roles/new");
   await expect(page.getByTestId("not-authorized")).toBeVisible();
 
-  // T2-01: role details form read-only with explanation for role:get-only user.
+  // T2-01: role details form read-only with explanation for role:get-only user;
+  // the Submit button is hidden entirely.
   await page.goto(`/settings/roles/${defaultRoleId}`);
   await expect(
     page.getByText(
@@ -272,12 +274,7 @@ test("T1-12/T1-13/T1-14/T2-01: role:get-only user gets read-only roles surfaces"
   const nameInput = page.locator('input[name="name"]');
   await expect(nameInput).toBeVisible();
   await expect(nameInput).toBeDisabled();
-  await expect(
-    page.locator(
-      'fieldset[title="You lack permission to edit roles. Ask an administrator."]',
-    ),
-  ).toHaveCount(1);
-  await expect(page.getByRole("button", { name: "Submit" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Submit" })).toHaveCount(0);
 });
 
 test("T1-12/T1-13/T1-14/T2-01 positive + T1-14 failure surfacing: admin roles surfaces", async ({
@@ -339,19 +336,15 @@ test("T1-15/T1-06/T2-02/T2-03: configuration:get-only user gets read-only genera
     page.getByRole("heading", { name: "General Settings" }),
   ).toBeVisible();
 
-  // T1-15: read-only note + disabled webhook form without configuration:edit.
+  // T1-15: read-only note + disabled webhook form without configuration:edit;
+  // the Save button is hidden entirely.
   await expect(
     page.getByText(
       "You can view these settings but lack the permission to change them.",
     ),
   ).toBeVisible();
-  await expect(
-    page.locator(
-      'fieldset[title="You lack permission to edit the configuration."]',
-    ),
-  ).toHaveCount(1);
   await expect(page.getByPlaceholder("Slack URL")).toBeDisabled();
-  await expect(page.getByRole("button", { name: "Save" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Save" })).toHaveCount(0);
 
   // T1-06 positive half: Role Sync tab visible with configuration:get, license
   // lock (icon + tooltip) kept.

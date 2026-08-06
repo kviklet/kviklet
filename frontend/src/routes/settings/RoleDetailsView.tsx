@@ -54,15 +54,12 @@ export default function RoleDetailsView() {
         </p>
       )}
       {role && (
-        <fieldset
-          disabled={!canEditRoles}
-          title={
-            canEditRoles
-              ? undefined
-              : "You lack permission to edit roles. Ask an administrator."
-          }
-        >
-          <RoleForm role={transformRole(role)} onSubmit={submit}></RoleForm>
+        <fieldset disabled={!canEditRoles}>
+          <RoleForm
+            role={transformRole(role)}
+            onSubmit={submit}
+            readOnly={!canEditRoles}
+          ></RoleForm>
         </fieldset>
       )}
       <div className="mx-auto max-w-7xl"></div>

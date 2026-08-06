@@ -64,17 +64,11 @@ export default function GeneralSettings() {
                         change them.
                       </p>
                     )}
-                    <fieldset
-                      disabled={!canEditConfig}
-                      title={
-                        canEditConfig
-                          ? undefined
-                          : "You lack permission to edit the configuration."
-                      }
-                    >
+                    <fieldset disabled={!canEditConfig}>
                       <ConfigForm
                         config={config}
                         onSubmit={onSubmit}
+                        readOnly={!canEditConfig}
                       ></ConfigForm>
                     </fieldset>
                   </DisclosurePanel>
@@ -91,9 +85,12 @@ export default function GeneralSettings() {
 const ConfigForm = ({
   config,
   onSubmit,
+  readOnly = false,
 }: {
   config: ConfigResponse;
   onSubmit: (data: ConfigPayload) => Promise<void>;
+  /** Renders the form as a pure viewer: no Save button. Wrap it in a disabled fieldset too. */
+  readOnly?: boolean;
 }) => {
   const {
     register,
@@ -151,11 +148,13 @@ const ConfigForm = ({
         placeholder="Slack URL"
         error={errors.slackUrl}
       ></InputField>
-      <div className="flex flex-row-reverse">
-        <Button htmlType="submit" variant="primary">
-          Save
-        </Button>
-      </div>
+      {!readOnly && (
+        <div className="flex flex-row-reverse">
+          <Button htmlType="submit" variant="primary">
+            Save
+          </Button>
+        </div>
+      )}
     </form>
   );
 };

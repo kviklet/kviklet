@@ -193,7 +193,7 @@ export default function UpdateDatasourceConnectionForm({
         void handleFormSubmit();
       }}
     >
-      <div className="flex w-full flex-col">
+      <fieldset disabled={!canEdit} className="flex w-full flex-col">
         <div className="flex-col space-y-2">
           <div className="flex w-full justify-between">
             <label
@@ -467,19 +467,16 @@ export default function UpdateDatasourceConnectionForm({
               )}
             </Disclosure>
           </div>
-          <Button
-            htmlType="submit"
-            variant={canEdit && isDirty ? "primary" : "disabled"}
-            title={
-              canEdit
-                ? undefined
-                : "You lack permission to edit this connection."
-            }
-          >
-            Save
-          </Button>
+          {canEdit && (
+            <Button
+              htmlType="submit"
+              variant={isDirty ? "primary" : "disabled"}
+            >
+              Save
+            </Button>
+          )}
         </div>
-      </div>
+      </fieldset>
     </form>
   );
 }

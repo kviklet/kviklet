@@ -53,7 +53,9 @@ export async function createRole(
     },
   });
   if (!res.ok()) {
-    throw new Error(`createRole ${name} failed: ${res.status()} ${await res.text()}`);
+    throw new Error(
+      `createRole ${name} failed: ${res.status()} ${await res.text()}`,
+    );
   }
   const json = await res.json();
   return json.id;
@@ -70,7 +72,9 @@ export async function createUser(
     data: { email, password, fullName },
   });
   if (!res.ok()) {
-    throw new Error(`createUser ${email} failed: ${res.status()} ${await res.text()}`);
+    throw new Error(
+      `createUser ${email} failed: ${res.status()} ${await res.text()}`,
+    );
   }
   const json = await res.json();
   return json.id;
@@ -91,9 +95,9 @@ export async function setUserRoles(
 }
 
 /** Fetch all roles (to find the default role id, which must stay assigned). */
-export async function getRoles(api: APIRequestContext): Promise<
-  { id: string; name: string; isDefault: boolean }[]
-> {
+export async function getRoles(
+  api: APIRequestContext,
+): Promise<{ id: string; name: string; isDefault: boolean }[]> {
   const res = await api.get(`${API}/roles/`);
   const json = await res.json();
   return json.roles;
@@ -125,7 +129,9 @@ export async function createConnection(
     },
   });
   if (!res.ok()) {
-    throw new Error(`createConnection ${id} failed: ${res.status()} ${await res.text()}`);
+    throw new Error(
+      `createConnection ${id} failed: ${res.status()} ${await res.text()}`,
+    );
   }
   const json = await res.json();
   return json.id;
@@ -151,7 +157,9 @@ export async function createRequest(
     },
   });
   if (!res.ok()) {
-    throw new Error(`createRequest failed: ${res.status()} ${await res.text()}`);
+    throw new Error(
+      `createRequest failed: ${res.status()} ${await res.text()}`,
+    );
   }
   const json = await res.json();
   return json.id;
@@ -166,7 +174,9 @@ export async function approveRequest(
     data: { comment: "lgtm", action: "APPROVE" },
   });
   if (!res.ok()) {
-    throw new Error(`approveRequest failed: ${res.status()} ${await res.text()}`);
+    throw new Error(
+      `approveRequest failed: ${res.status()} ${await res.text()}`,
+    );
   }
 }
 

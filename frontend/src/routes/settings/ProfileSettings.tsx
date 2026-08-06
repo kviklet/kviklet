@@ -8,13 +8,54 @@ import useNotification from "../../hooks/useNotification";
 import { useHasPermission } from "../../hooks/permissions";
 
 function ProfileSettings() {
+  const userContext = useContext(UserStatusContext);
+  // Changing the own password goes through PATCH /users/{id}, which requires user:edit.
+  const canEditSelf = useHasPermission("user:edit");
+  const userStatus = userContext.userStatus || undefined;
+
+  return (
+    <div>
+      <h2 className="mb-4 text-lg text-slate-900 dark:text-slate-50">
+        Profile
+      </h2>
+      <div className="mb-6 rounded-md border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+        <dl className="space-y-3">
+          <div>
+            <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">
+              Name
+            </dt>
+            <dd className="text-sm text-slate-900 dark:text-slate-50">
+              {userStatus?.fullName || "—"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-sm font-medium text-slate-500 dark:text-slate-400">
+              Email
+            </dt>
+            <dd className="text-sm text-slate-900 dark:text-slate-50">
+              {userStatus?.email || "—"}
+            </dd>
+          </div>
+        </dl>
+      </div>
+      {canEditSelf ? (
+        <ChangePasswordForm />
+      ) : (
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Profile editing is not enabled for your role. Ask an administrator if
+          you need to change your password.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ChangePasswordForm() {
   const [newPassword, setNewPassword] = useState<string>("");
   const [confirmNewPassowrd, setConfirmNewPassowrd] = useState<string>("");
 
   const [showSuccessBanner, setShowSuccessBanner] = useState<boolean>(false);
   const userContext = useContext(UserStatusContext);
-  // Changing the own password goes through PATCH /users/{id}, which requires user:edit.
-  const canEditSelf = useHasPermission("user:edit");
 
   const { addNotification } = useNotification();
 
@@ -77,17 +118,7 @@ function ProfileSettings() {
         />
       </div>
       <div className="mb-2 flex justify-end">
-        <Button
-          onClick={() => void changePassword()}
-          variant={canEditSelf ? undefined : "disabled"}
-          title={
-            canEditSelf
-              ? undefined
-              : "Your role does not allow editing your profile. Ask an administrator."
-          }
-        >
-          Save
-        </Button>
+        <Button onClick={() => void changePassword()}>Save</Button>
       </div>
       {newPassword !== confirmNewPassowrd && (
         <Error>

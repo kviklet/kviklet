@@ -1046,10 +1046,44 @@ interface CardProps {
 const noRequestPermissionTitle =
   "You lack permission to create requests on this connection";
 
+const ViewOnlyBadge = (props: { header: string }) => (
+  <span
+    className="inline-flex items-center rounded-full bg-slate-50 px-2 py-0.5 text-xs font-medium text-slate-500 ring-1 ring-inset ring-slate-500/20 dark:bg-slate-400/10 dark:text-slate-400"
+    title={noRequestPermissionTitle}
+    data-testid={`view-only-${props.header}`}
+  >
+    View only
+  </span>
+);
+
 const Card = (props: CardProps) => {
-  const actionTitle = props.canCreateRequest
-    ? undefined
-    : noRequestPermissionTitle;
+  if (!props.canCreateRequest) {
+    return (
+      <li className="col-span-1 flex flex-col justify-between divide-y divide-slate-200 rounded-lg border bg-white shadow dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex w-full items-center justify-between space-x-6 p-6">
+          <div className="w-full flex-1">
+            <div className="flex w-full items-center justify-between space-x-2">
+              <span className="line-clamp-1 max-w-[50%] whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-50">
+                {props.header}
+              </span>
+              <span
+                className=" line-clamp-1 max-w-[50%] whitespace-nowrap rounded-full bg-green-50 px-1.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-400/10 dark:text-green-400"
+                title={props.label}
+              >
+                {props.label}
+              </span>
+            </div>
+            <p className="mt-1 line-clamp-3 break-normal text-sm text-slate-500 dark:text-slate-400">
+              {props.subheader}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-4">
+          <ViewOnlyBadge header={props.header} />
+        </div>
+      </li>
+    );
+  }
   return (
     <li className="col-span-1 flex flex-col justify-between divide-y divide-slate-200 rounded-lg border bg-white shadow dark:divide-slate-700 dark:border-slate-700 dark:bg-slate-900">
       <div className="flex w-full items-center justify-between space-x-6 p-6">
@@ -1075,13 +1109,7 @@ const Card = (props: CardProps) => {
           <div className="flex w-0 flex-1">
             <button
               onClick={props.clickQuery}
-              disabled={!props.canCreateRequest}
-              title={actionTitle}
-              className={`relative -mr-px inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-bl-lg border border-transparent py-4 text-sm font-semibold ${
-                props.canCreateRequest
-                  ? "text-slate-900 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-800"
-                  : "cursor-not-allowed text-slate-400 dark:text-slate-600"
-              }`}
+              className="relative -mr-px inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-bl-lg border border-transparent py-4 text-sm font-semibold text-slate-900 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-800"
               data-testid={`query-button-${props.header}`}
             >
               {props.connectionType === "DATASOURCE" ? (
@@ -1102,13 +1130,7 @@ const Card = (props: CardProps) => {
             <div className="-ml-px flex w-0 flex-1">
               <button
                 onClick={props.clickAccess}
-                disabled={!props.canCreateRequest}
-                title={actionTitle}
-                className={`relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-br-lg border border-transparent py-4 text-sm font-semibold ${
-                  props.canCreateRequest
-                    ? "text-slate-900 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-800"
-                    : "cursor-not-allowed text-slate-400 dark:text-slate-600"
-                }`}
+                className="relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-br-lg border border-transparent py-4 text-sm font-semibold text-slate-900 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-800"
                 data-testid={`access-button-${props.header}`}
               >
                 <CommandLineIcon
@@ -1123,13 +1145,7 @@ const Card = (props: CardProps) => {
             <div className="-ml-px flex w-0 flex-1">
               <button
                 onClick={props.clickSQLDump}
-                disabled={!props.canCreateRequest}
-                title={actionTitle}
-                className={`relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-br-lg border border-transparent py-4 text-sm font-semibold ${
-                  props.canCreateRequest
-                    ? "text-slate-900 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-800"
-                    : "cursor-not-allowed text-slate-400 dark:text-slate-600"
-                }`}
+                className="relative inline-flex w-0 flex-1 items-center justify-center gap-x-3 rounded-br-lg border border-transparent py-4 text-sm font-semibold text-slate-900 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-800"
               >
                 <CircleStackIcon
                   className="h-5 w-5 text-slate-400 dark:text-slate-500"
@@ -1146,15 +1162,8 @@ const Card = (props: CardProps) => {
 };
 
 const ListItem = (props: CardProps) => {
-  const actionTitle = props.canCreateRequest
-    ? undefined
-    : noRequestPermissionTitle;
   const actionClassName = (base: string) =>
-    `${base} ${
-      props.canCreateRequest
-        ? "text-slate-900 hover:bg-slate-50 dark:text-slate-50 dark:hover:bg-slate-700"
-        : "cursor-not-allowed text-slate-400 dark:text-slate-600"
-    }`;
+    `${base} text-slate-900 hover:bg-slate-50 dark:text-slate-50 dark:hover:bg-slate-700`;
   return (
     <li className="flex items-center justify-between gap-4 rounded-lg border bg-white p-4 shadow dark:border-slate-700 dark:bg-slate-900">
       <div className="flex min-w-0 flex-1 items-center gap-4">
@@ -1175,63 +1184,63 @@ const ListItem = (props: CardProps) => {
           </p>
         </div>
       </div>
-      <div className="flex flex-shrink-0 gap-2">
-        <button
-          onClick={props.clickQuery}
-          disabled={!props.canCreateRequest}
-          title={actionTitle}
-          className={actionClassName(
-            "inline-flex items-center gap-x-2 rounded-md bg-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset ring-slate-300 dark:bg-slate-800 dark:ring-slate-700",
-          )}
-          data-testid={`query-button-${props.header}`}
-        >
-          {props.connectionType === "DATASOURCE" ? (
-            <CircleStackIcon
-              className="h-4 w-4 text-slate-400 dark:text-slate-500"
-              aria-hidden="true"
-            />
-          ) : (
-            <CloudIcon
-              className="h-4 w-4 text-slate-400 dark:text-slate-500"
-              aria-hidden="true"
-            />
-          )}
-          {props.connectionType === "DATASOURCE" ? "Query" : "Command"}
-        </button>
-        {props.temporaryAccessEnabled && (
+      {!props.canCreateRequest ? (
+        <div className="flex flex-shrink-0 items-center">
+          <ViewOnlyBadge header={props.header} />
+        </div>
+      ) : (
+        <div className="flex flex-shrink-0 gap-2">
           <button
-            onClick={props.clickAccess}
-            disabled={!props.canCreateRequest}
-            title={actionTitle}
+            onClick={props.clickQuery}
             className={actionClassName(
               "inline-flex items-center gap-x-2 rounded-md bg-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset ring-slate-300 dark:bg-slate-800 dark:ring-slate-700",
             )}
-            data-testid={`access-button-${props.header}`}
+            data-testid={`query-button-${props.header}`}
           >
-            <CommandLineIcon
-              className="h-4 w-4 text-slate-400 dark:text-slate-500"
-              aria-hidden="true"
-            />
-            Access
-          </button>
-        )}
-        {props.connectionType === "DATASOURCE" && props.sqlDumpEnabled && (
-          <button
-            onClick={props.clickSQLDump}
-            disabled={!props.canCreateRequest}
-            title={actionTitle}
-            className={actionClassName(
-              "inline-flex items-center gap-x-2 rounded-md bg-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset ring-slate-300 dark:bg-slate-800 dark:ring-slate-700",
+            {props.connectionType === "DATASOURCE" ? (
+              <CircleStackIcon
+                className="h-4 w-4 text-slate-400 dark:text-slate-500"
+                aria-hidden="true"
+              />
+            ) : (
+              <CloudIcon
+                className="h-4 w-4 text-slate-400 dark:text-slate-500"
+                aria-hidden="true"
+              />
             )}
-          >
-            <CircleStackIcon
-              className="h-4 w-4 text-slate-400 dark:text-slate-500"
-              aria-hidden="true"
-            />
-            DB Dump
+            {props.connectionType === "DATASOURCE" ? "Query" : "Command"}
           </button>
-        )}
-      </div>
+          {props.temporaryAccessEnabled && (
+            <button
+              onClick={props.clickAccess}
+              className={actionClassName(
+                "inline-flex items-center gap-x-2 rounded-md bg-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset ring-slate-300 dark:bg-slate-800 dark:ring-slate-700",
+              )}
+              data-testid={`access-button-${props.header}`}
+            >
+              <CommandLineIcon
+                className="h-4 w-4 text-slate-400 dark:text-slate-500"
+                aria-hidden="true"
+              />
+              Access
+            </button>
+          )}
+          {props.connectionType === "DATASOURCE" && props.sqlDumpEnabled && (
+            <button
+              onClick={props.clickSQLDump}
+              className={actionClassName(
+                "inline-flex items-center gap-x-2 rounded-md bg-white px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset ring-slate-300 dark:bg-slate-800 dark:ring-slate-700",
+              )}
+            >
+              <CircleStackIcon
+                className="h-4 w-4 text-slate-400 dark:text-slate-500"
+                aria-hidden="true"
+              />
+              DB Dump
+            </button>
+          )}
+        </div>
+      )}
     </li>
   );
 };
