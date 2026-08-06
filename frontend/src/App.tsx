@@ -108,7 +108,12 @@ function App() {
                     path="auditlog"
                     element={
                       <ProtectedRoute>
-                        <Auditlog />
+                        <RequirePermission
+                          permission="execution_request:get"
+                          fallback={<NotAuthorized resource="the audit log" />}
+                        >
+                          <Auditlog />
+                        </RequirePermission>
                       </ProtectedRoute>
                     }
                   ></Route>

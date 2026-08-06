@@ -33,8 +33,6 @@ import Button from "../components/Button";
 import useConfig from "../components/ConfigProvider";
 import useNotification from "../hooks/useNotification";
 import Tooltip from "../components/Tooltip";
-import RequirePermission from "../components/RequirePermission";
-import NotAuthorized from "../components/NotAuthorized";
 
 function ExportButton() {
   const { config } = useConfig();
@@ -344,12 +342,15 @@ function List() {
             setTo(nextTo);
           }}
         />
-        <RequirePermission permission="execution_request:get">
-          <ExportButton />
-        </RequirePermission>
+        <ExportButton />
       </div>
       {error ? (
-        <NotAuthorized resource="the audit log" message={error} />
+        <div className="flex h-64 flex-col items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-4 text-center dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-slate-900 dark:text-slate-100">
+            Failed to load the audit log
+          </p>
+          <p className="text-slate-500 dark:text-slate-400">{error}</p>
+        </div>
       ) : (
         <div className="overflow-hidden bg-white shadow dark:bg-slate-900 sm:rounded-md">
           <ul
