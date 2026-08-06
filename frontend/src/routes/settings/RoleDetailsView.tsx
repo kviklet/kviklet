@@ -11,6 +11,7 @@ import { patchRole } from "../../api/RoleApi";
 import { isApiErrorResponse } from "../../api/Errors";
 import useNotification from "../../hooks/useNotification";
 import { useHasPermission } from "../../hooks/permissions";
+import ReadOnlyNotice from "../../components/ReadOnlyNotice";
 
 interface RoleDetailsParams {
   roleId: string;
@@ -49,9 +50,7 @@ export default function RoleDetailsView() {
       </div>
       {loading && <Spinner size="lg" page />}
       {!canEditRoles && (
-        <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
-          You can view this role but lack the permission to change it.
-        </p>
+        <ReadOnlyNotice resource="this role" className="mb-3" />
       )}
       {role && (
         <fieldset disabled={!canEditRoles}>

@@ -17,6 +17,7 @@ import {
 } from "@headlessui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import { useHasPermission } from "../../hooks/permissions";
+import ReadOnlyNotice from "../../components/ReadOnlyNotice";
 
 export default function GeneralSettings() {
   const { config, loading, updateConfig, refreshConfig } = useConfig();
@@ -59,10 +60,10 @@ export default function GeneralSettings() {
                   </DisclosureButton>
                   <DisclosurePanel unmount={false}>
                     {!canEditConfig && (
-                      <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
-                        You can view these settings but lack the permission to
-                        change them.
-                      </p>
+                      <ReadOnlyNotice
+                        resource="these settings"
+                        className="mb-2"
+                      />
                     )}
                     <fieldset disabled={!canEditConfig}>
                       <ConfigForm

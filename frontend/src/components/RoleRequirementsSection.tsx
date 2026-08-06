@@ -4,6 +4,7 @@ import { RoleResponse, getRoles } from "../api/RoleApi";
 import { isApiErrorResponse } from "../api/Errors";
 import useConfig from "./ConfigProvider";
 import { useHasPermission } from "../hooks/permissions";
+import { WarningBanner } from "./Alert";
 
 interface RoleRequirementField {
   roleId: string;
@@ -83,12 +84,10 @@ export default function RoleRequirementsSection({
 
       {/* State A: License Active - Full Edit */}
       {licenseValid && !canListRoles && (
-        <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-900/20">
-          <p className="text-xs text-yellow-800 dark:text-yellow-200">
-            You lack permission to list roles, so role-specific requirements
-            cannot be configured here.
-          </p>
-        </div>
+        <WarningBanner>
+          You lack permission to list roles, so role-specific requirements
+          cannot be configured here.
+        </WarningBanner>
       )}
       {licenseValid && canListRoles && (
         <LicensedEditUI
@@ -229,12 +228,10 @@ function ExpiredWithRequirementsUI({
 }) {
   return (
     <>
-      <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-900/20">
-        <p className="text-xs text-yellow-800 dark:text-yellow-200">
-          <strong>License expired.</strong> You can remove role requirements but
-          cannot add or modify them.
-        </p>
-      </div>
+      <WarningBanner>
+        <strong>License expired.</strong> You can remove role requirements but
+        cannot add or modify them.
+      </WarningBanner>
       <div className="space-y-2">
         {fields.map((field, index) => (
           <div

@@ -6,6 +6,7 @@ import { UserStatusContext } from "../../components/UserStatusProvider";
 import { isApiErrorResponse } from "../../api/Errors";
 import useNotification from "../../hooks/useNotification";
 import { useHasPermission } from "../../hooks/permissions";
+import ReadOnlyNotice from "../../components/ReadOnlyNotice";
 
 function ProfileSettings() {
   const userContext = useContext(UserStatusContext);
@@ -41,10 +42,10 @@ function ProfileSettings() {
       {canEditSelf ? (
         <ChangePasswordForm />
       ) : (
-        <p className="text-sm text-slate-500 dark:text-slate-400">
+        <ReadOnlyNotice>
           Profile editing is not enabled for your role. Ask an administrator if
           you need to change your password.
-        </p>
+        </ReadOnlyNotice>
       )}
     </div>
   );

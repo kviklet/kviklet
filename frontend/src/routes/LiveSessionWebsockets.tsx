@@ -13,6 +13,7 @@ import { downloadResults } from "../api/ExecutionRequestApi";
 import LoadingCancelButton from "../components/LoadingCancelButton";
 import NotAuthorized from "../components/NotAuthorized";
 import { hasPermission } from "../api/Permissions";
+import { WarningBanner } from "../components/Alert";
 import {
   ThemeContext,
   ThemeStatusContext,
@@ -189,15 +190,10 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
           ]}
         />
         {isAuthor && !canExecute && (
-          <div
-            className="mt-3 rounded-md border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-900/20"
-            data-testid="read-only-banner"
-          >
-            <p className="text-xs text-yellow-800 dark:text-yellow-200">
-              This session is read-only: you lack permission to execute on this
-              connection. Ask an administrator if you think this is a mistake.
-            </p>
-          </div>
+          <WarningBanner className="mt-3" data-testid="read-only-banner">
+            This session is read-only: you lack permission to execute on this
+            connection. Ask an administrator if you think this is a mistake.
+          </WarningBanner>
         )}
         <div className="relative mb-5 mt-3">
           {(isSyncing || showSynced) && (

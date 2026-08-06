@@ -9,6 +9,7 @@ import { useState } from "react";
 import DeleteConfirm from "../../../../components/DeleteConfirm";
 import Modal from "../../../../components/Modal";
 import { hasPermission } from "../../../../api/Permissions";
+import ReadOnlyNotice from "../../../../components/ReadOnlyNotice";
 interface ConnectionDetailsParams {
   connectionId: string;
 }
@@ -62,9 +63,7 @@ export default function ConnectionDetails() {
           </div>
         </div>
         {!canEdit && (
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            You can view this connection but lack the permission to change it.
-          </p>
+          <ReadOnlyNotice resource="this connection" className="mt-1" />
         )}
         {connection._type === "DATASOURCE" && (
           <UpdateDatasourceConnectionForm

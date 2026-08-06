@@ -10,6 +10,7 @@ import { TrashIcon } from "@heroicons/react/20/solid";
 import useConfig from "../../components/ConfigProvider";
 import { RoleSyncConfigResponse } from "../../api/RoleSyncConfigApi";
 import { useHasPermission } from "../../hooks/permissions";
+import ReadOnlyNotice from "../../components/ReadOnlyNotice";
 
 export default function RoleSyncSettings() {
   const { config, loading, updateConfig, addMapping, deleteMapping } =
@@ -144,9 +145,7 @@ export default function RoleSyncSettings() {
         Role Sync Configuration
       </h1>
       {!canEdit && (
-        <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
-          You can view this configuration but lack the permission to change it.
-        </p>
+        <ReadOnlyNotice resource="this configuration" className="mb-4" />
       )}
 
       <div className="space-y-6">
