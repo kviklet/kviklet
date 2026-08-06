@@ -42,7 +42,8 @@ function Button(props: {
         (props.variant == "danger" && dangerStyle) ||
         defaultStyle
       }
-      rounded align-middle  leading-5`}
+      rounded align-middle leading-5
+      disabled:cursor-not-allowed disabled:border-transparent disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-slate-700 dark:disabled:text-slate-500`}
     >
       {props.children}
     </button>
