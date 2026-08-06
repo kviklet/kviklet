@@ -20,6 +20,11 @@ export default function NotAuthorized({
   showBackButton = true,
 }: Props) {
   const navigate = useNavigate();
+  // React Router tracks its position in history.state.idx; at 0 there is no in-app
+  // page to go back to (direct URL, stale link), so "back" would be a no-op or leave
+  // the app — send those users to the index instead.
+  const canGoBack =
+    ((window.history.state as { idx?: number } | null)?.idx ?? 0) > 0;
 
   return (
     <div
@@ -34,7 +39,15 @@ export default function NotAuthorized({
           {message ?? "Ask an administrator to grant your role access."}
         </p>
       </div>
-      {showBackButton && <Button onClick={() => navigate(-1)}>Go back</Button>}
+      {showBackButton && (
+        <Button
+          onClick={() =>
+            canGoBack ? navigate(-1) : navigate("/", { replace: true })
+          }
+        >
+          {canGoBack ? "Go back" : "Go to home"}
+        </Button>
+      )}
     </div>
   );
 }
