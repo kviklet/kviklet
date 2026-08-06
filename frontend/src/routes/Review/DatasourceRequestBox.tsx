@@ -148,9 +148,19 @@ function DatasourceRequestBox({
               canExecute &&
               (request?.reviewStatus === "APPROVED" ||
                 request?.reviewStatus === "AWAITING_APPROVAL"),
-            tooltip: !canExecute
-              ? "You lack permission to execute on this connection"
-              : undefined,
+            tooltip:
+              // Pre-approval explain is only executable on dry-run-enabled
+              // connections (backend isExecutable()), so anywhere else the
+              // blocker is approval, not the user's permission.
+              request?.reviewStatus !== "APPROVED" &&
+              !(
+                request?.reviewStatus === "AWAITING_APPROVAL" &&
+                request?.connection?.dryRunEnabled
+              )
+                ? "Request needs approval before explain"
+                : !canExecute
+                ? "You lack permission to execute on this connection"
+                : undefined,
             content: "Explain",
           },
         ]
@@ -186,7 +196,9 @@ function DatasourceRequestBox({
               isAuthor && canExecute && request?.reviewStatus === "APPROVED",
             tooltip: !isAuthor
               ? "Proxy access is granted only to the requester"
-              : request?.reviewStatus === "APPROVED" && !canExecute
+              : request?.reviewStatus !== "APPROVED"
+              ? "Request needs to be approved before starting the proxy"
+              : !canExecute
               ? "You lack permission to execute on this connection"
               : undefined,
             content: "Start Proxy",
