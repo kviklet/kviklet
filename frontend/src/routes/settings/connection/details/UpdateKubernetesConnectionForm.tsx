@@ -5,7 +5,7 @@ import {
   roleRequirementSchema,
 } from "../../../../api/DatasourceApi";
 import InputField, { TextField } from "../../../../components/InputField";
-import { Disclosure } from "@headlessui/react";
+import { useState } from "react";
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -89,6 +89,8 @@ export default function UpdateKubernetesConnectionForm({
     connection.reviewConfig.roleRequirements ?? [],
   );
 
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
   return (
     <form
       onSubmit={(event) => {
@@ -149,81 +151,87 @@ export default function UpdateKubernetesConnectionForm({
             numTotalRequired={watch("reviewConfig.numTotalRequired") || 0}
           />
           <div className="w-full">
-            <Disclosure defaultOpen={false}>
-              {({ open }) => (
-                <>
-                  <Disclosure.Button
-                    className="py-2"
-                    data-testid="kubernetes-advanced-options-button"
+            {/* Plain state instead of a headlessui Disclosure: its button ignores clicks
+                while inside a disabled fieldset (React issue 7711 guard), which would lock
+                this section on the read-only view — expanding is navigation, not an edit. */}
+            <div
+              role="button"
+              tabIndex={0}
+              aria-expanded={advancedOpen}
+              onClick={() => setAdvancedOpen((o) => !o)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setAdvancedOpen((o) => !o);
+                }
+              }}
+              className="cursor-pointer py-2"
+              data-testid="kubernetes-advanced-options-button"
+            >
+              <div className="flex flex-row justify-between">
+                <div className="flex flex-row">
+                  <div>Advanced Options</div>
+                </div>
+                <div className="flex flex-row">
+                  {advancedOpen ? (
+                    <ChevronDownIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronDownIcon>
+                  ) : (
+                    <ChevronRightIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronRightIcon>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className={advancedOpen ? "" : "hidden"}>
+              <div className="flex-col space-y-2">
+                <InputField
+                  label="Max executions"
+                  id="maxExecutions"
+                  placeholder="Max executions"
+                  tooltip="The maximum number of times each request can be executed after it has been approved, usually 1."
+                  type="number"
+                  data-testid="kubernetes-connection-max-executions"
+                  {...register("maxExecutions")}
+                  error={errors.maxExecutions?.message}
+                />
+                <div className="flex w-full justify-between">
+                  <label
+                    htmlFor="storeResults"
+                    className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+                    title="When enabled, stores command output (up to 50KB) in the event history."
                   >
-                    <div className="flex flex-row justify-between">
-                      <div className="flex flex-row">
-                        <div>Advanced Options</div>
-                      </div>
-                      <div className="flex flex-row">
-                        {open ? (
-                          <ChevronDownIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronDownIcon>
-                        ) : (
-                          <ChevronRightIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronRightIcon>
-                        )}
-                      </div>
-                    </div>
-                  </Disclosure.Button>
-                  <Disclosure.Panel unmount={false}>
-                    <div className="flex-col space-y-2">
-                      <InputField
-                        label="Max executions"
-                        id="maxExecutions"
-                        placeholder="Max executions"
-                        tooltip="The maximum number of times each request can be executed after it has been approved, usually 1."
-                        type="number"
-                        data-testid="kubernetes-connection-max-executions"
-                        {...register("maxExecutions")}
-                        error={errors.maxExecutions?.message}
-                      />
-                      <div className="flex w-full justify-between">
-                        <label
-                          htmlFor="storeResults"
-                          className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
-                          title="When enabled, stores command output (up to 50KB) in the event history."
-                        >
-                          Store Command Output
-                          <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
-                        </label>
-                        <input
-                          type="checkbox"
-                          className="my-auto h-4 w-4"
-                          {...register("storeResults")}
-                        />
-                      </div>
-                      <InputField
-                        label="Kubernetes exec initial wait timeout (seconds)"
-                        id="kubernetesExecInitialWaitTimeoutSeconds"
-                        placeholder="5"
-                        tooltip="Maps to kubernetes.exec.initial-wait-timeout-seconds"
-                        type="number"
-                        data-testid="kubernetes-exec-initial-wait-timeout-seconds"
-                        {...register("kubernetesExecInitialWaitTimeoutSeconds")}
-                        error={
-                          errors.kubernetesExecInitialWaitTimeoutSeconds
-                            ?.message
-                        }
-                      />
-                      <InputField
-                        label="Kubernetes exec timeout (minutes)"
-                        id="kubernetesExecTimeoutMinutes"
-                        placeholder="60"
-                        tooltip="Maps to kubernetes.exec.timeout-minutes"
-                        type="number"
-                        data-testid="kubernetes-exec-timeout-minutes"
-                        {...register("kubernetesExecTimeoutMinutes")}
-                        error={errors.kubernetesExecTimeoutMinutes?.message}
-                      />
-                    </div>
-                  </Disclosure.Panel>
-                </>
-              )}
-            </Disclosure>
+                    Store Command Output
+                    <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
+                  </label>
+                  <input
+                    type="checkbox"
+                    className="my-auto h-4 w-4"
+                    {...register("storeResults")}
+                  />
+                </div>
+                <InputField
+                  label="Kubernetes exec initial wait timeout (seconds)"
+                  id="kubernetesExecInitialWaitTimeoutSeconds"
+                  placeholder="5"
+                  tooltip="Maps to kubernetes.exec.initial-wait-timeout-seconds"
+                  type="number"
+                  data-testid="kubernetes-exec-initial-wait-timeout-seconds"
+                  {...register("kubernetesExecInitialWaitTimeoutSeconds")}
+                  error={
+                    errors.kubernetesExecInitialWaitTimeoutSeconds?.message
+                  }
+                />
+                <InputField
+                  label="Kubernetes exec timeout (minutes)"
+                  id="kubernetesExecTimeoutMinutes"
+                  placeholder="60"
+                  tooltip="Maps to kubernetes.exec.timeout-minutes"
+                  type="number"
+                  data-testid="kubernetes-exec-timeout-minutes"
+                  {...register("kubernetesExecTimeoutMinutes")}
+                  error={errors.kubernetesExecTimeoutMinutes?.message}
+                />
+              </div>
+            </div>
           </div>
           {canEdit && (
             <Button
