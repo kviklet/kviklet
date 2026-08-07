@@ -44,7 +44,7 @@ function RequestReview() {
     <div>
       {(loading && <Spinner size="lg" page />) ||
         (request && (
-          <div className="m-auto mt-10 max-w-3xl">
+          <div className="m-auto mt-10 max-w-5xl">
             <Breadcrumbs
               items={[
                 { label: "Requests", to: "/requests" },
