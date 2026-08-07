@@ -10,6 +10,7 @@ import dev.kviklet.kviklet.controller.ReviewConfigRequest
 import dev.kviklet.kviklet.db.ConnectionRepository
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
 import dev.kviklet.kviklet.db.User
+import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.UserDetailsWithId
@@ -45,6 +46,9 @@ class PermissionResolutionTest {
     private lateinit var userHelper: UserHelper
 
     @Autowired
+    private lateinit var roleHelper: RoleHelper
+
+    @Autowired
     private lateinit var connectionController: ConnectionController
 
     @Autowired
@@ -67,6 +71,7 @@ class PermissionResolutionTest {
         executionRequestRepository.deleteAllInBatch()
         connectionRepository.deleteAllInBatch()
         userHelper.deleteAll()
+        roleHelper.deleteAll()
     }
 
     @Test

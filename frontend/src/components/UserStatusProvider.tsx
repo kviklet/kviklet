@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { StatusResponse, checklogin } from "../api/StatusApi";
 import { useLocation } from "react-router-dom";
 import { Permission } from "../api/Permissions";
@@ -33,9 +33,17 @@ export const UserStatusProvider: React.FC<Props> = ({ children }) => {
   });
 
   const location = useLocation();
+  // Status fetches fire on every navigation and on login, and responses can come back out of
+  // order. Only the latest fetch may write, otherwise a stale pre-login response (a `false`)
+  // overwrites the fresh logged-in status and bounces the user back to the login page.
+  const fetchSeq = useRef(0);
   const fetchStatus = async () => {
+    const seq = ++fetchSeq.current;
     try {
       const status = await checklogin();
+      if (seq !== fetchSeq.current) {
+        return;
+      }
       const statusObject = {
         userStatus: status,
         refreshState: fetchStatus,
