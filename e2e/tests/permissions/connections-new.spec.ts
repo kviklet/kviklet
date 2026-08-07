@@ -259,11 +259,7 @@ test("T2-05 negative: conn B is read-only for the scoped editor (note shown, no 
   page,
 }) => {
   await loginAndGo(page, scoped, `/settings/connections/${connBId}`);
-  await expect(
-    page.getByText(
-      "You can view this connection but lack the permission to change it.",
-    ),
-  ).toBeVisible();
+  await expect(page.getByTestId("read-only-badge")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Save", exact: true }),
   ).toHaveCount(0);
@@ -291,11 +287,7 @@ test("T2-06 negative: k8s connection is read-only without datasource_connection:
   page,
 }) => {
   await loginAndGo(page, viewer, `/settings/connections/${connKId}`);
-  await expect(
-    page.getByText(
-      "You can view this connection but lack the permission to change it.",
-    ),
-  ).toBeVisible();
+  await expect(page.getByTestId("read-only-badge")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Save", exact: true }),
   ).toHaveCount(0);
@@ -322,11 +314,7 @@ test("T2-07 negative: Delete hidden without edit permission on the connection", 
 }) => {
   await loginAndGo(page, viewer, `/settings/connections/${connAId}`);
   // Page loaded (read-only note shown) but the danger action is gone entirely.
-  await expect(
-    page.getByText(
-      "You can view this connection but lack the permission to change it.",
-    ),
-  ).toBeVisible();
+  await expect(page.getByTestId("read-only-badge")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Delete", exact: true }),
   ).toHaveCount(0);

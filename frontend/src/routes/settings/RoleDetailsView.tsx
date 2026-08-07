@@ -11,7 +11,7 @@ import { patchRole } from "../../api/RoleApi";
 import { isApiErrorResponse } from "../../api/Errors";
 import useNotification from "../../hooks/useNotification";
 import { useHasPermission } from "../../hooks/permissions";
-import ReadOnlyNotice from "../../components/ReadOnlyNotice";
+import ReadOnlyBadge from "../../components/ReadOnlyBadge";
 
 interface RoleDetailsParams {
   roleId: string;
@@ -45,13 +45,13 @@ export default function RoleDetailsView() {
 
   return (
     <div>
-      <div className="mb-3 border-b border-slate-300 dark:border-slate-700">
+      <div className="mb-3 flex items-center gap-2 border-b border-slate-300 pb-1 dark:border-slate-700">
         <h1 className="text-xl">{role && role.name}</h1>
+        {!canEditRoles && (
+          <ReadOnlyBadge tooltip="You lack the permission to change this role." />
+        )}
       </div>
       {loading && <Spinner size="lg" page />}
-      {!canEditRoles && (
-        <ReadOnlyNotice resource="this role" className="mb-3" />
-      )}
       {role && (
         <fieldset disabled={!canEditRoles}>
           <RoleForm

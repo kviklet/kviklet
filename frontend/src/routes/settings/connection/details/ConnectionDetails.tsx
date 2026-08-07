@@ -9,7 +9,7 @@ import { useState } from "react";
 import DeleteConfirm from "../../../../components/DeleteConfirm";
 import Modal from "../../../../components/Modal";
 import { hasPermission } from "../../../../api/Permissions";
-import ReadOnlyNotice from "../../../../components/ReadOnlyNotice";
+import ReadOnlyBadge from "../../../../components/ReadOnlyBadge";
 interface ConnectionDetailsParams {
   connectionId: string;
 }
@@ -58,13 +58,15 @@ export default function ConnectionDetails() {
           ]}
         />
         <div className="flex w-full items-center justify-between">
-          <div className="text-lg font-semibold dark:text-white">
-            Connection Settings
+          <div className="flex items-center gap-2">
+            <div className="text-lg font-semibold dark:text-white">
+              Connection Settings
+            </div>
+            {!canEdit && (
+              <ReadOnlyBadge tooltip="You lack the permission to change this connection." />
+            )}
           </div>
         </div>
-        {!canEdit && (
-          <ReadOnlyNotice resource="this connection" className="mt-1" />
-        )}
         {connection._type === "DATASOURCE" && (
           <UpdateDatasourceConnectionForm
             connection={connection}

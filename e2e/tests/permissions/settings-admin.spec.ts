@@ -266,11 +266,7 @@ test("T1-12/T1-13/T1-14/T2-01: role:get-only user gets read-only roles surfaces"
   // T2-01: role details form read-only with explanation for role:get-only user;
   // the Submit button is hidden entirely.
   await page.goto(`/settings/roles/${defaultRoleId}`);
-  await expect(
-    page.getByText(
-      "You can view this role but lack the permission to change it.",
-    ),
-  ).toBeVisible();
+  await expect(page.getByTestId("read-only-badge")).toBeVisible();
   const nameInput = page.locator('input[name="name"]');
   await expect(nameInput).toBeVisible();
   await expect(nameInput).toBeDisabled();
