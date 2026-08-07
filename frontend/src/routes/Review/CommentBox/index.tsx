@@ -12,13 +12,15 @@ import { AbsoluteInitialBubble as InitialBubble } from "../../../components/Init
 import { ReviewTypes } from "../../../hooks/request";
 import { componentMap } from "../components/Highlighter";
 
+type ReviewTone = "neutral" | "affirm" | "danger";
+
 type ReviewOption = {
   id: ReviewTypes;
   title: string;
   description: string;
   visible: boolean;
   disabledReason?: string;
-  danger: boolean;
+  tone: ReviewTone;
 };
 
 const isMac =
@@ -64,7 +66,7 @@ function CommentBox({
       title: "Comment",
       description: "Submit a general comment without explicit approval",
       visible: true,
-      danger: false,
+      tone: "neutral",
     },
     {
       id: ReviewTypes.Approve,
@@ -72,7 +74,7 @@ function CommentBox({
       description: "Give your approval to execute this request",
       visible: true,
       disabledReason: reviewBlockedReason,
-      danger: false,
+      tone: "affirm",
     },
     {
       id: ReviewTypes.RequestChange,
@@ -81,7 +83,7 @@ function CommentBox({
         "Request a change on this Request, you can later approve it again",
       visible: true,
       disabledReason: reviewBlockedReason,
-      danger: true,
+      tone: "danger",
     },
     {
       id: ReviewTypes.Reject,
@@ -89,7 +91,7 @@ function CommentBox({
       description: "Reject this request from ever executing",
       visible: true,
       disabledReason: reviewBlockedReason,
-      danger: true,
+      tone: "danger",
     },
     {
       id: ReviewTypes.Close,
@@ -97,7 +99,7 @@ function CommentBox({
       description: "Close this request without executing it",
       visible: !!(isOwnRequest && closeRequest),
       disabledReason: isRejected ? "This request has been rejected" : undefined,
-      danger: false,
+      tone: "neutral",
     },
   ];
 
@@ -207,13 +209,23 @@ function CommentBox({
     }
     const selected = reviewType.id === selectedReviewType.id;
     if (selected) {
-      return reviewType.danger
-        ? "border-red-600 bg-red-50 text-red-700 dark:border-red-500/60 dark:bg-red-500/20 dark:text-red-300"
-        : "border-indigo-600 bg-indigo-50 text-indigo-700 dark:border-indigo-500/60 dark:bg-indigo-500/20 dark:text-indigo-300";
+      return {
+        danger:
+          "border-red-600 bg-red-50 text-red-700 dark:border-red-500/60 dark:bg-red-500/20 dark:text-red-300",
+        affirm:
+          "border-green-600 bg-green-50 text-green-700 dark:border-green-500/60 dark:bg-green-500/20 dark:text-green-300",
+        neutral:
+          "border-indigo-600 bg-indigo-50 text-indigo-700 dark:border-indigo-500/60 dark:bg-indigo-500/20 dark:text-indigo-300",
+      }[reviewType.tone];
     }
-    return reviewType.danger
-      ? "border-slate-200 text-red-600/80 hover:border-red-300 dark:border-slate-700 dark:text-red-400/80 dark:hover:border-red-500/50"
-      : "border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-400 dark:hover:border-slate-500";
+    return {
+      danger:
+        "border-slate-200 text-red-600/80 hover:border-red-300 dark:border-slate-700 dark:text-red-400/80 dark:hover:border-red-500/50",
+      affirm:
+        "border-slate-200 text-green-700/90 hover:border-green-300 dark:border-slate-700 dark:text-green-400/90 dark:hover:border-green-500/50",
+      neutral:
+        "border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-400 dark:hover:border-slate-500",
+    }[reviewType.tone];
   };
 
   const placeholder =
@@ -315,7 +327,7 @@ function CommentBox({
               variant={
                 submitDisabled
                   ? "disabled"
-                  : selectedReviewType.danger
+                  : selectedReviewType.tone === "danger"
                   ? "danger"
                   : "primary"
               }
