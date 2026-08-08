@@ -28,7 +28,7 @@ export default function MenuDropDown(props: MenuDropDownProps) {
     "bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-400 block w-full px-4 py-2 text-left text-sm cursor-not-allowed";
 
   return (
-    <Menu as="div" className="mx-2">
+    <Menu as="div" className="relative mr-2">
       <MenuButton
         className="
         flex items-center justify-center rounded bg-slate-100 px-1 py-1 align-middle text-sm font-medium leading-5 text-slate-900 transition-colors hover:bg-slate-200 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-50 dark:hover:bg-slate-700 dark:hover:text-slate-50"

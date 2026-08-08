@@ -9,9 +9,6 @@ import DatasourceRequestBox from "./DatasourceRequestBox";
 
 function DatasourceRequestDisplay({
   request,
-  run,
-  start,
-  cancelQuery,
   updateRequest,
   results,
   dataLoading,
@@ -19,9 +16,6 @@ function DatasourceRequestDisplay({
   proxyResponse,
 }: {
   request: DatasourceExecutionRequestResponseWithComments | undefined;
-  run: (explain?: boolean, dryRun?: boolean) => Promise<void>;
-  cancelQuery: () => Promise<void>;
-  start: () => Promise<void>;
   updateRequest: (request: { statement?: string }) => Promise<void>;
   results: ExecuteResponseResult[] | undefined;
   dataLoading: boolean;
@@ -32,9 +26,6 @@ function DatasourceRequestDisplay({
     <>
       <DatasourceRequestBox
         request={request}
-        runQuery={run}
-        cancelQuery={cancelQuery}
-        startServer={start}
         updateRequest={updateRequest}
       ></DatasourceRequestBox>
       <div className="mt-4 flex justify-center">
