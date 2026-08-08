@@ -96,6 +96,7 @@ export default function ActivityTimeline({
                 key={event.id}
                 event={event}
                 connectTop={connectTop}
+                connectBottom={index < events.length - 1}
               />
             );
           return null;

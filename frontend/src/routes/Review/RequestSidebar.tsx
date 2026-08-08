@@ -147,7 +147,7 @@ function RequestSidebar({
               {showApproveButton && (
                 <Button
                   className="w-full"
-                  variant={reviewSubmitting ? "disabled" : "success"}
+                  variant="success"
                   onClick={() => void handleApprove()}
                   dataTestId="sidebar-approve-button"
                 >

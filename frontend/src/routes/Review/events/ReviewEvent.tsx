@@ -11,28 +11,43 @@ import TimelineItem from "./TimelineItem";
 function ReviewEvent({
   event,
   connectTop,
+  connectBottom,
 }: {
   event: Review;
   connectTop?: boolean;
+  connectBottom?: boolean;
 }) {
+  const timestamp = event?.createdAt && (
+    <span
+      className="text-slate-400 dark:text-slate-600"
+      title={event.createdAt.toLocaleString()}
+    >
+      {" "}
+      · {timeSince(event.createdAt)}
+    </span>
+  );
+
   const notificationText = (): ReactElement => {
     switch (event.action) {
       case "APPROVE":
         return (
           <div className="text-sm text-slate-500">
             {event.author?.fullName} approved
+            {timestamp}
           </div>
         );
       case "REJECT":
         return (
           <div className="text-sm text-red-500">
             {event.author?.fullName} rejected
+            {timestamp}
           </div>
         );
       case "REQUEST_CHANGE":
         return (
           <div className="text-sm text-red-500">
             {event.author?.fullName} requested changes
+            {timestamp}
           </div>
         );
     }
@@ -67,10 +82,12 @@ function ReviewEvent({
     }
   };
   // A review without a comment (e.g. a plain approval from the sidebar) is
-  // just the timeline notice — no empty comment card below it.
+  // just the timeline notice — no empty comment card below it. The timestamp
+  // lives in the notice, so the card holds only the comment itself.
   return (
     <TimelineItem
       connectTop={connectTop}
+      connectBottom={connectBottom}
       header={
         <div className="flex justify-center align-middle">
           {notificationIcon()}
@@ -81,14 +98,7 @@ function ReviewEvent({
       {event.comment.trim() !== "" && (
         <div className="relative rounded-md border shadow-md dark:border-slate-700 dark:shadow-none">
           <InitialBubble name={event?.author?.fullName} />
-          <p className="flex justify-between rounded-t-md px-4 pt-2 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-500">
-            <div title={event?.createdAt?.toLocaleString()}>
-              {((event?.createdAt && timeSince(event.createdAt)) as
-                | string
-                | undefined) || ""}
-            </div>
-          </p>
-          <div className="rounded-b-md px-4 py-3 dark:bg-slate-900">
+          <div className="rounded-md px-4 py-3 dark:bg-slate-900">
             <ReactMarkdown components={componentMap}>
               {event.comment}
             </ReactMarkdown>
