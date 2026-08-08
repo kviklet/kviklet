@@ -24,8 +24,10 @@ const Highlighter = ({
     <SyntaxHighlighter
       style={style}
       language={language}
+      className="scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-300 scrollbar-thumb-rounded-full dark:scrollbar-thumb-slate-700"
       customStyle={{
         background: "transparent",
+        fontSize: "0.8125rem",
       }}
       PreTag={"div"}
     >

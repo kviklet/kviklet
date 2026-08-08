@@ -9,8 +9,6 @@ import KubernetesRequestBox from "./KubernetesRequestBox";
 
 function KubernetesRequestDisplay({
   request,
-  run,
-  start,
   updateRequest,
   results,
   dataLoading,
@@ -18,8 +16,6 @@ function KubernetesRequestDisplay({
   proxyResponse,
 }: {
   request: KubernetesExecutionRequestResponseWithComments;
-  run: (explain?: boolean) => Promise<void>;
-  start: () => Promise<void>;
   updateRequest: (request: { command?: string }) => Promise<void>;
   results: KubernetesExecuteResponse | undefined;
   dataLoading: boolean;
@@ -30,8 +26,6 @@ function KubernetesRequestDisplay({
     <>
       <KubernetesRequestBox
         request={request}
-        runQuery={run}
-        startServer={start}
         updateRequest={updateRequest}
       ></KubernetesRequestBox>
       <div className="mt-4 flex justify-center">
