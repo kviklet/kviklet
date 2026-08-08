@@ -1,10 +1,4 @@
-import React, {
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  MouseEvent,
-} from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
 import Button from "../components/Button";
 import MultiResult from "../components/MultiResult";
@@ -15,8 +9,14 @@ import Breadcrumbs from "../components/Breadcrumbs";
 import useLiveSession from "../hooks/useLiveSession";
 import useNotification from "../hooks/useNotification";
 import ActivityTimeline from "./Review/ActivityTimeline";
-import baseUrl from "../api/base";
+import { downloadResults } from "../api/ExecutionRequestApi";
 import LoadingCancelButton from "../components/LoadingCancelButton";
+import NotAuthorized from "../components/NotAuthorized";
+import {
+  hasPermission,
+  NO_EXECUTE_PERMISSION_MESSAGE,
+} from "../api/Permissions";
+import { WarningBanner } from "../components/Alert";
 import {
   ThemeContext,
   ThemeStatusContext,
@@ -34,19 +34,28 @@ interface SessionParams {
 
 const LiveSessionWebsocketsLoader: React.FC = () => {
   const params = useParams() as unknown as SessionParams;
-  const { request } = useRequest(params.requestId);
+  const { request, loading } = useRequest(params.requestId);
 
-  return (
-    <>
-      {request ? (
-        <LiveSessionWebsockets
-          requestId={params.requestId}
-          initialLanguage={"sql"}
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+  if (!request) {
+    // A failed load previously left the page on "Loading..." forever with a
+    // misleading "refresh the page" toast.
+    return (
+      <div className="m-auto mt-10 max-w-3xl">
+        <NotAuthorized
+          resource="this session"
+          message="The request may not exist, or your role has no access to its connection."
         />
-      ) : (
-        <div>Loading...</div>
-      )}
-    </>
+      </div>
+    );
+  }
+  return (
+    <LiveSessionWebsockets
+      requestId={params.requestId}
+      initialLanguage={"sql"}
+    />
   );
 };
 
@@ -97,10 +106,25 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
     !!request &&
     !!userContext.userStatus &&
     userContext.userStatus.id === request.author?.id;
+  // The author may still lack execution_request:execute on this connection; every
+  // keystroke would otherwise fire an update_content message that gets rejected.
+  const canExecute = hasPermission(
+    request?.permissions,
+    "execution_request:execute",
+  );
+  // The backend folds executability (approved, or dry-run enabled) into the execute
+  // permission, so pre-approval canExecute is false even for a fully permitted author —
+  // the blocker to name then is approval, not their permission.
+  const needsApproval = request?.reviewStatus !== "APPROVED";
+  const readOnlyReason = canExecute
+    ? undefined
+    : needsApproval
+    ? "Request needs to be approved before execution"
+    : NO_EXECUTE_PERMISSION_MESSAGE;
 
   useEffect(() => {
-    editor?.updateOptions({ readOnly: !isAuthor });
-  }, [editor, isAuthor]);
+    editor?.updateOptions({ readOnly: !isAuthor || !canExecute });
+  }, [editor, isAuthor, canExecute]);
 
   useEffect(() => {
     if (monacoEl.current) {
@@ -148,15 +172,22 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
     await executeQuery(text);
   };
 
-  const handleResultDownload = (event: MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
+  const handleResultDownload = async () => {
     const selection = editor?.getSelection();
     const query =
       (selection && editor?.getModel()?.getValueInRange(selection)) ||
       editor?.getValue();
-    window.location.href = `${baseUrl}/execution-requests/${requestId}/download?query=${encodeURIComponent(
-      query || "",
-    )}`;
+    try {
+      // Fetch keeps a 403 in-app; a plain link would navigate the tab to raw JSON.
+      await downloadResults(requestId, query || "");
+    } catch (error) {
+      addNotification({
+        title: "Failed to download results",
+        text:
+          error instanceof Error ? error.message : "An unknown error occurred",
+        type: "error",
+      });
+    }
   };
 
   return (
@@ -170,6 +201,13 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
             { label: "Live Session" },
           ]}
         />
+        {isAuthor && !canExecute && (
+          <WarningBanner className="mt-3" data-testid="read-only-banner">
+            {needsApproval
+              ? "This session is read-only until the request has been approved."
+              : "This session is read-only: you lack permission to execute on this connection. Ask an administrator if you think this is a mistake."}
+          </WarningBanner>
+        )}
         <div className="relative mb-5 mt-3">
           {(isSyncing || showSynced) && (
             <div
@@ -196,14 +234,20 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
             <>
               {request?._type === "DATASOURCE" &&
                 isRelationalDatabase(request) && (
-                  <a href="#" onClick={handleResultDownload}>
-                    <Button>Execute and Download Results</Button>
-                  </a>
+                  <Button
+                    onClick={() => void handleResultDownload()}
+                    variant={canExecute ? undefined : "disabled"}
+                    title={readOnlyReason}
+                  >
+                    Execute and Download Results
+                  </Button>
                 )}
               <LoadingCancelButton
                 onClick={onExecuteQueryClick}
                 onCancel={() => cancelQuery()}
                 variant="primary"
+                disabled={!canExecute}
+                title={readOnlyReason}
                 dataTestId="run-query-button"
               >
                 <div className="play-triangle mr-2 inline-block h-3 w-2 bg-slate-50"></div>

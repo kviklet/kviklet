@@ -247,7 +247,7 @@ test.describe("User Management Tests", () => {
     await page.waitForURL("**/login");
 
     await loginPage.login("developer@example.com", "developerpass");
-    await expect(page.url()).toContain("/requests");
+    // Login lands on "/", which renders the requests list for users that may see it.
     await expect(page.getByTestId("requests-list")).toBeVisible();
   });
 });

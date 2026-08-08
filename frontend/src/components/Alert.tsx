@@ -21,6 +21,31 @@ export function Warning({ children }: { children: string | ReactNode }) {
   );
 }
 
+/**
+ * Compact warning for inline use inside forms and section bodies — a subtler
+ * counterpart to <Warning>, which is a page-level alert with an icon.
+ */
+export function WarningBanner({
+  children,
+  className,
+  "data-testid": testId,
+}: {
+  children: ReactNode;
+  className?: string;
+  "data-testid"?: string;
+}) {
+  return (
+    <div
+      className={`rounded-md border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-900/20${
+        className ? ` ${className}` : ""
+      }`}
+      data-testid={testId}
+    >
+      <p className="text-xs text-yellow-800 dark:text-yellow-200">{children}</p>
+    </div>
+  );
+}
+
 export function Error({ children }: { children: string | ReactNode }) {
   return (
     <div className="border-l-4 border-red-400 bg-red-50 p-4 dark:border-red-500 dark:bg-red-400/10">

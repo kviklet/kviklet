@@ -29,6 +29,11 @@ const mockConnections = [
     roleArn: null,
     storeResults: false,
     category: null,
+    permissions: [
+      "datasource_connection:get",
+      "execution_request:get",
+      "execution_request:edit",
+    ],
   },
   {
     id: "test-connection-2",
@@ -53,6 +58,11 @@ const mockConnections = [
     roleArn: null,
     storeResults: false,
     category: null,
+    permissions: [
+      "datasource_connection:get",
+      "execution_request:get",
+      "execution_request:edit",
+    ],
   },
 ];
 
@@ -245,6 +255,11 @@ describe("NewRequest - Form submission", () => {
               maxTemporaryAccessDuration: null,
               storeResults: false,
               category: null,
+              permissions: [
+                "datasource_connection:get",
+                "execution_request:get",
+                "execution_request:edit",
+              ],
             },
           ],
           { status: 200 },

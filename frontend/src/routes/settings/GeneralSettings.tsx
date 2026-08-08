@@ -16,9 +16,12 @@ import {
   DisclosurePanel,
 } from "@headlessui/react";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import { useHasPermission } from "../../hooks/permissions";
+import ReadOnlyNotice from "../../components/ReadOnlyNotice";
 
 export default function GeneralSettings() {
   const { config, loading, updateConfig, refreshConfig } = useConfig();
+  const canEditConfig = useHasPermission("configuration:edit");
 
   // Refresh in the background when the page opens so the webhook URLs reflect the
   // latest server state even if the initial app-load fetch happened while logged out.
@@ -56,10 +59,19 @@ export default function GeneralSettings() {
                     </div>
                   </DisclosureButton>
                   <DisclosurePanel unmount={false}>
-                    <ConfigForm
-                      config={config}
-                      onSubmit={onSubmit}
-                    ></ConfigForm>
+                    {!canEditConfig && (
+                      <ReadOnlyNotice
+                        resource="these settings"
+                        className="mb-2"
+                      />
+                    )}
+                    <fieldset disabled={!canEditConfig}>
+                      <ConfigForm
+                        config={config}
+                        onSubmit={onSubmit}
+                        readOnly={!canEditConfig}
+                      ></ConfigForm>
+                    </fieldset>
                   </DisclosurePanel>
                 </>
               )}
@@ -74,9 +86,12 @@ export default function GeneralSettings() {
 const ConfigForm = ({
   config,
   onSubmit,
+  readOnly = false,
 }: {
   config: ConfigResponse;
   onSubmit: (data: ConfigPayload) => Promise<void>;
+  /** Renders the form as a pure viewer: no Save button. Wrap it in a disabled fieldset too. */
+  readOnly?: boolean;
 }) => {
   const {
     register,
@@ -134,11 +149,13 @@ const ConfigForm = ({
         placeholder="Slack URL"
         error={errors.slackUrl}
       ></InputField>
-      <div className="flex flex-row-reverse">
-        <Button htmlType="submit" variant="primary">
-          Save
-        </Button>
-      </div>
+      {!readOnly && (
+        <div className="flex flex-row-reverse">
+          <Button htmlType="submit" variant="primary">
+            Save
+          </Button>
+        </div>
+      )}
     </form>
   );
 };

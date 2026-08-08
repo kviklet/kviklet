@@ -8,6 +8,8 @@ import Button from "../../../../components/Button";
 import { useState } from "react";
 import DeleteConfirm from "../../../../components/DeleteConfirm";
 import Modal from "../../../../components/Modal";
+import { hasPermission } from "../../../../api/Permissions";
+import ReadOnlyBadge from "../../../../components/ReadOnlyBadge";
 interface ConnectionDetailsParams {
   connectionId: string;
 }
@@ -24,8 +26,10 @@ export default function ConnectionDetails() {
 
   const handleRemoveConfirm = async () => {
     const result = await removeConnection();
+    // Close the confirm either way — on failure the error toast already explains
+    // what happened, keeping the modal open just strands the user.
+    setShowDeleteModal(false);
     if (result === null) {
-      setShowDeleteModal(false);
       navigate("/settings/connections");
     }
   };
@@ -38,6 +42,11 @@ export default function ConnectionDetails() {
     return <div>Connection not found</div>;
   }
 
+  const canEdit = hasPermission(
+    connection.permissions,
+    "datasource_connection:edit",
+  );
+
   return (
     <div>
       <div className="flex w-full flex-col">
@@ -49,8 +58,13 @@ export default function ConnectionDetails() {
           ]}
         />
         <div className="flex w-full items-center justify-between">
-          <div className="text-lg font-semibold dark:text-white">
-            Connection Settings
+          <div className="flex items-center gap-2">
+            <div className="text-lg font-semibold dark:text-white">
+              Connection Settings
+            </div>
+            {!canEdit && (
+              <ReadOnlyBadge tooltip="You lack the permission to change this connection." />
+            )}
           </div>
         </div>
         {connection._type === "DATASOURCE" && (
@@ -66,11 +80,13 @@ export default function ConnectionDetails() {
           />
         )}
 
-        <div className="flex justify-end">
-          <Button onClick={() => setShowDeleteModal(true)} variant="danger">
-            Delete
-          </Button>
-        </div>
+        {canEdit && (
+          <div className="flex justify-end">
+            <Button onClick={() => setShowDeleteModal(true)} variant="danger">
+              Delete
+            </Button>
+          </div>
+        )}
       </div>
       {showDeleteModal && (
         <Modal setVisible={setShowDeleteModal}>

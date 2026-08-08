@@ -1,6 +1,5 @@
 package dev.kviklet.kviklet.security
 
-import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.service.IdResolver
 import dev.kviklet.kviklet.service.LicenseService
 import org.aopalliance.aop.Advice
@@ -118,7 +117,7 @@ class MethodSecurityConfig(private val idResolver: IdResolver) {
 }
 
 @Component
-class MyAuthorizationManager(val userAdapter: UserAdapter) {
+class MyAuthorizationManager(val permissionResolver: PermissionResolver) {
     fun check(
         authentication: Supplier<Authentication?>,
         invocation: MethodInvocation,
@@ -129,7 +128,7 @@ class MyAuthorizationManager(val userAdapter: UserAdapter) {
         // or from tests without a request, therefore we allow it
         val auth = authentication.get() ?: return AuthorizationDecision(true)
 
-        var permissionToCheck: Permission = policyAnnotation.permission
+        val permissionToCheck: Permission = policyAnnotation.permission
 
         val userDetailsWithId = when (auth.principal) {
             is UserDetailsWithId -> auth.principal as UserDetailsWithId
@@ -140,9 +139,7 @@ class MyAuthorizationManager(val userAdapter: UserAdapter) {
             else -> throw RuntimeException("Expected UserDetailsWithId but got: ${auth.principal.javaClass}")
         }
 
-        val user = userAdapter.findById(userDetailsWithId.id)
-
-        val policies = user.roles.map { role -> role.policies.map { PolicyGrantedAuthority(it) } }.flatten()
+        val policies = permissionResolver.policiesFor(userDetailsWithId.id)
 
         if (policyAnnotation.checkIsPresentOnly) {
             if (policies.vote(permissionToCheck)) {
@@ -154,23 +151,11 @@ class MyAuthorizationManager(val userAdapter: UserAdapter) {
             throw Exception("Expected SecuredDomainObject, got $returnObject.")
         }
 
-        var securedObject: SecuredDomainObject? = returnObject as SecuredDomainObject?
+        val securedObject: SecuredDomainObject? = returnObject as SecuredDomainObject?
 
-        do {
-            if (!policies.vote(permissionToCheck, securedObject)) {
-                return AuthorizationDecision(false)
-            }
-            if (returnObject?.auth(permissionToCheck, userDetailsWithId, policies) == false) {
-                return AuthorizationDecision(false)
-            }
-        } while ((permissionToCheck.requiredPermission != null).also {
-                if (it) {
-                    permissionToCheck = permissionToCheck.requiredPermission!!
-                    securedObject = securedObject?.getRelated(permissionToCheck.resource)
-                }
-            }
+        return AuthorizationDecision(
+            permissionResolver.isAllowed(permissionToCheck, userDetailsWithId, policies, securedObject),
         )
-        return AuthorizationDecision(true)
     }
 }
 

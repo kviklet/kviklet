@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.service.dto
 
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonValue
+import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Resource
 import dev.kviklet.kviklet.security.SecuredDomainId
 import dev.kviklet.kviklet.security.SecuredDomainObject
@@ -71,6 +72,14 @@ sealed class Connection(
         else -> throw IllegalStateException("Unexpected resource: $resource")
     }
 }
+
+/**
+ * A connection plus what the current user may do to it, i.e. the policy vote scoped to this
+ * connection id plus [SecuredDomainObject.auth]. Delegates [SecuredDomainObject] to the connection
+ * so `@Policy` collection filtering keeps working on lists of these.
+ */
+data class ConnectionWithPermissions(val connection: Connection, val permissions: Set<Permission>) :
+    SecuredDomainObject by connection
 
 sealed class AuthenticationDetails(open val username: String) {
     data class UserPassword(override val username: String, val password: String) : AuthenticationDetails(username)

@@ -1,6 +1,11 @@
 import { z } from "zod";
 import baseUrl, { apiFetch } from "./base";
-import { ApiResponse, fetchWithErrorHandling } from "./Errors";
+import {
+  ApiErrorResponse,
+  ApiResponse,
+  fetchWithErrorHandling,
+  isApiErrorResponse,
+} from "./Errors";
 
 const ConfigResponseSchema = z.object({
   oauthProvider: z.string().nullable().optional(),
@@ -64,7 +69,11 @@ export async function putConfig(
   );
 }
 
-export async function uploadLicense(file: File): Promise<boolean> {
+// Returns null on success, the error otherwise — a failed upload (e.g. missing
+// configuration:edit) must never look like a success to the caller.
+export async function uploadLicense(
+  file: File,
+): Promise<ApiErrorResponse | null> {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -75,12 +84,18 @@ export async function uploadLicense(file: File): Promise<boolean> {
       credentials: "include",
     });
 
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
+    if (response.ok) {
+      return null;
     }
-    return true;
+    const json: unknown = await response.json().catch(() => null);
+    if (isApiErrorResponse(json)) {
+      return json;
+    }
+    return { message: `Error: ${response.status}` };
   } catch (error) {
-    console.error("Upload failed:", error);
-    return false;
+    return {
+      message:
+        error instanceof Error ? error.message : "An unknown error occurred",
+    };
   }
 }

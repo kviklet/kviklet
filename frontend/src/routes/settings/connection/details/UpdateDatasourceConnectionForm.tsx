@@ -10,11 +10,6 @@ import InputField, { TextField } from "../../../../components/InputField";
 import RoleRequirementsSection from "../../../../components/RoleRequirementsSection";
 import { useRoleRequirements } from "../../../../hooks/useRoleRequirements";
 import {
-  Disclosure,
-  DisclosureButton,
-  DisclosurePanel,
-} from "@headlessui/react";
-import {
   ChevronDownIcon,
   ChevronRightIcon,
   QuestionMarkCircleIcon,
@@ -31,6 +26,7 @@ import {
 } from "react-hook-form";
 import { supportsIamAuth, useCategories } from "../../../../hooks/connections";
 import CategoryAutocomplete from "../../../../components/CategoryAutocomplete";
+import { hasPermission } from "../../../../api/Permissions";
 
 const baseConnectionFormSchema = z.object({
   displayName: z.string().min(3),
@@ -114,6 +110,10 @@ export default function UpdateDatasourceConnectionForm({
   connection,
   editConnection,
 }: UpdateDatasourceFormProps) {
+  const canEdit = hasPermission(
+    connection.permissions,
+    "datasource_connection:edit",
+  );
   const [protocolOptions, setProtocolOptions] = useState<DatabaseProtocol[]>(
     getProtocolOptions(connection.type),
   );
@@ -181,6 +181,11 @@ export default function UpdateDatasourceConnectionForm({
     setProtocolOptions(protocolOptions);
   }, [watchType, connection.protocol, setValue]);
 
+  // Plain state instead of a headlessui Disclosure: its button ignores clicks while
+  // inside a disabled fieldset (React issue 7711 guard), which would lock this
+  // section on the read-only view — expanding is navigation, not an edit.
+  const [advancedOpen, setAdvancedOpen] = useState(true);
+
   return (
     <form
       onSubmit={(event) => {
@@ -188,7 +193,7 @@ export default function UpdateDatasourceConnectionForm({
         void handleFormSubmit();
       }}
     >
-      <div className="flex w-full flex-col">
+      <fieldset disabled={!canEdit} className="flex w-full flex-col">
         <div className="flex-col space-y-2">
           <div className="flex w-full justify-between">
             <label
@@ -300,173 +305,184 @@ export default function UpdateDatasourceConnectionForm({
           />
 
           <div className="w-full">
-            <Disclosure defaultOpen={true}>
-              {({ open }) => (
-                <>
-                  <DisclosureButton className="py-2">
-                    <div className="flex flex-row justify-between">
-                      <div className="flex flex-row">
-                        <div>Advanced Options</div>
-                      </div>
-                      <div className="flex flex-row">
-                        {open ? (
-                          <ChevronDownIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronDownIcon>
-                        ) : (
-                          <ChevronRightIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronRightIcon>
-                        )}
-                      </div>
-                    </div>
-                  </DisclosureButton>
-                  <DisclosurePanel unmount={false}>
-                    <div className="flex-col space-y-2">
-                      <InputField
-                        id="databaseName"
-                        label="Database name"
-                        placeholder="Database name"
-                        {...register("databaseName")}
-                        error={errors.databaseName?.message}
-                      />
-                      <InputField
-                        id="port"
-                        label="Port"
-                        placeholder="Port"
-                        type="number"
-                        {...register("port")}
-                        error={errors.port?.message}
-                      />
-                      <InputField
-                        id="additionalJDBCOptions"
-                        label="Additional JDBC options"
-                        placeholder={getJDBCOptionsPlaceholder(watchType)}
-                        {...register("additionalJDBCOptions")}
-                        error={errors.additionalJDBCOptions?.message}
-                      />
-                      <InputField
-                        id="maxExecutions"
-                        label="Max executions"
-                        placeholder="Max executions"
-                        tooltip="The maximum number of times each request can be executed after it has been approved, usually 1."
-                        type="number"
-                        {...register("maxExecutions")}
-                        error={errors.maxExecutions?.message}
-                      />
-                      <div className="flex w-full justify-between">
-                        <label
-                          htmlFor="dumpsEnabled"
-                          className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
-                        >
-                          Dumps Enabled
-                        </label>
-                        <input
-                          type="checkbox"
-                          className="my-auto h-4 w-4"
-                          {...register("dumpsEnabled")}
-                        />
-                      </div>
-                      <div className="flex w-full justify-between">
-                        <label
-                          htmlFor="temporaryAccessEnabled"
-                          className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
-                        >
-                          Temporary Access Enabled
-                        </label>
-                        <input
-                          type="checkbox"
-                          className="my-auto h-4 w-4"
-                          {...register("temporaryAccessEnabled")}
-                        />
-                      </div>
-                      {watch("temporaryAccessEnabled") && (
-                        <InputField
-                          id="maxTemporaryAccessDuration"
-                          label="Max Temporary Access Duration"
-                          placeholder="Leave empty for unlimited"
-                          tooltip="Maximum duration (in minutes) for temporary access requests. Leave empty for unlimited."
-                          type="number"
-                          min="1"
-                          {...register("maxTemporaryAccessDuration")}
-                          error={errors.maxTemporaryAccessDuration?.message}
-                        />
-                      )}
-                      <div className="flex w-full justify-between">
-                        <label
-                          htmlFor="explainEnabled"
-                          className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
-                          title="This feature relies on SQL parsing, it's recommended to only enable it on read-only connections."
-                        >
-                          Explain Enabled
-                          <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
-                        </label>
-                        <input
-                          type="checkbox"
-                          className="my-auto h-4 w-4"
-                          {...register("explainEnabled")}
-                        />
-                      </div>
-                      <div className="flex w-full justify-between">
-                        <label
-                          htmlFor="dryRunEnabled"
-                          className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
-                          title="Enable dry run mode to test queries without committing changes. Warning: SQL parsing is not 100% reliable - use with caution."
-                        >
-                          Enable Dry Run
-                          <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
-                        </label>
-                        <input
-                          type="checkbox"
-                          className="my-auto h-4 w-4"
-                          disabled={watchType === DatabaseType.MONGODB}
-                          title={
-                            watchType === DatabaseType.MONGODB
-                              ? "Dry run is not supported for MongoDB"
-                              : undefined
-                          }
-                          {...register("dryRunEnabled")}
-                        />
-                      </div>
-                      {watch("dryRunEnabled") && (
-                        <div className="flex w-full justify-between">
-                          <label
-                            htmlFor="dryRunRequiresApproval"
-                            className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
-                            title="When enabled, dry runs require approval before execution. Disable to allow dry runs without approval."
-                          >
-                            Require Approval for Dry Runs
-                            <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
-                          </label>
-                          <input
-                            type="checkbox"
-                            className="my-auto h-4 w-4"
-                            {...register("dryRunRequiresApproval")}
-                          />
-                        </div>
-                      )}
-                      <div className="flex w-full justify-between">
-                        <label
-                          htmlFor="storeResults"
-                          className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
-                          title="When enabled, the first 500 rows of query results will be stored in the event history."
-                        >
-                          Store Query Results
-                          <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
-                        </label>
-                        <input
-                          type="checkbox"
-                          className="my-auto h-4 w-4"
-                          {...register("storeResults")}
-                        />
-                      </div>
-                    </div>
-                  </DisclosurePanel>
-                </>
-              )}
-            </Disclosure>
+            <div
+              role="button"
+              tabIndex={0}
+              aria-expanded={advancedOpen}
+              onClick={() => setAdvancedOpen((o) => !o)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setAdvancedOpen((o) => !o);
+                }
+              }}
+              className="cursor-pointer py-2"
+            >
+              <div className="flex flex-row justify-between">
+                <div className="flex flex-row">
+                  <div>Advanced Options</div>
+                </div>
+                <div className="flex flex-row">
+                  {advancedOpen ? (
+                    <ChevronDownIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronDownIcon>
+                  ) : (
+                    <ChevronRightIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronRightIcon>
+                  )}
+                </div>
+              </div>
+            </div>
+            <div className={advancedOpen ? "" : "hidden"}>
+              <div className="flex-col space-y-2">
+                <InputField
+                  id="databaseName"
+                  label="Database name"
+                  placeholder="Database name"
+                  {...register("databaseName")}
+                  error={errors.databaseName?.message}
+                />
+                <InputField
+                  id="port"
+                  label="Port"
+                  placeholder="Port"
+                  type="number"
+                  {...register("port")}
+                  error={errors.port?.message}
+                />
+                <InputField
+                  id="additionalJDBCOptions"
+                  label="Additional JDBC options"
+                  placeholder={getJDBCOptionsPlaceholder(watchType)}
+                  {...register("additionalJDBCOptions")}
+                  error={errors.additionalJDBCOptions?.message}
+                />
+                <InputField
+                  id="maxExecutions"
+                  label="Max executions"
+                  placeholder="Max executions"
+                  tooltip="The maximum number of times each request can be executed after it has been approved, usually 1."
+                  type="number"
+                  {...register("maxExecutions")}
+                  error={errors.maxExecutions?.message}
+                />
+                <div className="flex w-full justify-between">
+                  <label
+                    htmlFor="dumpsEnabled"
+                    className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
+                  >
+                    Dumps Enabled
+                  </label>
+                  <input
+                    type="checkbox"
+                    className="my-auto h-4 w-4"
+                    {...register("dumpsEnabled")}
+                  />
+                </div>
+                <div className="flex w-full justify-between">
+                  <label
+                    htmlFor="temporaryAccessEnabled"
+                    className="my-auto mr-auto text-sm font-medium text-slate-700 dark:text-slate-200"
+                  >
+                    Temporary Access Enabled
+                  </label>
+                  <input
+                    type="checkbox"
+                    className="my-auto h-4 w-4"
+                    {...register("temporaryAccessEnabled")}
+                  />
+                </div>
+                {watch("temporaryAccessEnabled") && (
+                  <InputField
+                    id="maxTemporaryAccessDuration"
+                    label="Max Temporary Access Duration"
+                    placeholder="Leave empty for unlimited"
+                    tooltip="Maximum duration (in minutes) for temporary access requests. Leave empty for unlimited."
+                    type="number"
+                    min="1"
+                    {...register("maxTemporaryAccessDuration")}
+                    error={errors.maxTemporaryAccessDuration?.message}
+                  />
+                )}
+                <div className="flex w-full justify-between">
+                  <label
+                    htmlFor="explainEnabled"
+                    className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+                    title="This feature relies on SQL parsing, it's recommended to only enable it on read-only connections."
+                  >
+                    Explain Enabled
+                    <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
+                  </label>
+                  <input
+                    type="checkbox"
+                    className="my-auto h-4 w-4"
+                    {...register("explainEnabled")}
+                  />
+                </div>
+                <div className="flex w-full justify-between">
+                  <label
+                    htmlFor="dryRunEnabled"
+                    className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+                    title="Enable dry run mode to test queries without committing changes. Warning: SQL parsing is not 100% reliable - use with caution."
+                  >
+                    Enable Dry Run
+                    <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
+                  </label>
+                  <input
+                    type="checkbox"
+                    className="my-auto h-4 w-4"
+                    disabled={watchType === DatabaseType.MONGODB}
+                    title={
+                      watchType === DatabaseType.MONGODB
+                        ? "Dry run is not supported for MongoDB"
+                        : undefined
+                    }
+                    {...register("dryRunEnabled")}
+                  />
+                </div>
+                {watch("dryRunEnabled") && (
+                  <div className="flex w-full justify-between">
+                    <label
+                      htmlFor="dryRunRequiresApproval"
+                      className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+                      title="When enabled, dry runs require approval before execution. Disable to allow dry runs without approval."
+                    >
+                      Require Approval for Dry Runs
+                      <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
+                    </label>
+                    <input
+                      type="checkbox"
+                      className="my-auto h-4 w-4"
+                      {...register("dryRunRequiresApproval")}
+                    />
+                  </div>
+                )}
+                <div className="flex w-full justify-between">
+                  <label
+                    htmlFor="storeResults"
+                    className="my-auto mr-auto flex items-center text-sm font-medium text-slate-700 dark:text-slate-200"
+                    title="When enabled, the first 500 rows of query results will be stored in the event history."
+                  >
+                    Store Query Results
+                    <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400"></QuestionMarkCircleIcon>
+                  </label>
+                  <input
+                    type="checkbox"
+                    className="my-auto h-4 w-4"
+                    {...register("storeResults")}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-          <Button htmlType="submit" variant={isDirty ? "primary" : "disabled"}>
-            Save
-          </Button>
+          {canEdit && (
+            <Button
+              htmlType="submit"
+              variant={isDirty ? "primary" : "disabled"}
+            >
+              Save
+            </Button>
+          )}
         </div>
-      </div>
+      </fieldset>
     </form>
   );
 }

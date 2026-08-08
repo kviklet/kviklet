@@ -15,10 +15,29 @@ import { NotificationContextProvider } from "./components/NotifcationStatusProvi
 import { ConfigProvider } from "./components/ConfigProvider";
 import RequestReview from "./routes/Review";
 import LiveSessionWebsockets from "./routes/LiveSessionWebsockets";
+import { useHasPermission, useUserStatusLoading } from "./hooks/permissions";
+import RequirePermission from "./components/RequirePermission";
+import NotAuthorized from "./components/NotAuthorized";
+import Spinner from "./components/Spinner";
 
 export interface ProtectedRouteProps {
   children: ReactElement;
 }
+
+// The index page is the requests list, which a role without execution_request:get can
+// never load — send those users to their profile instead of a 403 toast.
+const IndexLanding = (): ReactElement => {
+  const loading = useUserStatusLoading();
+  const canSeeRequests = useHasPermission("execution_request:get");
+  if (loading) {
+    return <Spinner size="lg" page />;
+  }
+  return canSeeRequests ? (
+    <Requests />
+  ) : (
+    <Navigate to="/settings/profile" replace />
+  );
+};
 
 export const ProtectedRoute = ({
   children,
@@ -46,7 +65,7 @@ function App() {
                     index
                     element={
                       <ProtectedRoute>
-                        <Requests />
+                        <IndexLanding />
                       </ProtectedRoute>
                     }
                   />
@@ -62,7 +81,24 @@ function App() {
                     path="new"
                     element={
                       <ProtectedRoute>
-                        <ConnectionChooser></ConnectionChooser>
+                        <RequirePermission
+                          permission="datasource_connection:get"
+                          fallback={
+                            <NotAuthorized resource="the connections" />
+                          }
+                        >
+                          <RequirePermission
+                            permission="execution_request:edit"
+                            fallback={
+                              <NotAuthorized
+                                resource="the new request page"
+                                message="Your roles don't allow creating requests on any connection."
+                              />
+                            }
+                          >
+                            <ConnectionChooser></ConnectionChooser>
+                          </RequirePermission>
+                        </RequirePermission>
                       </ProtectedRoute>
                     }
                   ></Route>
@@ -70,7 +106,12 @@ function App() {
                     path="requests"
                     element={
                       <ProtectedRoute>
-                        <Requests />
+                        <RequirePermission
+                          permission="execution_request:get"
+                          fallback={<NotAuthorized resource="the requests" />}
+                        >
+                          <Requests />
+                        </RequirePermission>
                       </ProtectedRoute>
                     }
                   />
@@ -78,7 +119,12 @@ function App() {
                     path="auditlog"
                     element={
                       <ProtectedRoute>
-                        <Auditlog />
+                        <RequirePermission
+                          permission="execution_request:get"
+                          fallback={<NotAuthorized resource="the audit log" />}
+                        >
+                          <Auditlog />
+                        </RequirePermission>
                       </ProtectedRoute>
                     }
                   ></Route>

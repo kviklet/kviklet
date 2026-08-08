@@ -40,6 +40,13 @@ const reviewConfigSchema = z.object({
   roleRequirements: z.array(roleRequirementSchema).nullable().optional(),
 });
 
+/**
+ * What the current user may do to this connection, resolved by the backend against this connection
+ * id. Null where the connection is embedded in a response that does not resolve them (e.g. inside
+ * an execution request) — that means "unknown", not "nothing allowed".
+ */
+const connectionPermissionsSchema = z.array(z.string()).nullish();
+
 const databaseConnectionResponseSchema = withType(
   z.object({
     id: z.coerce.string(),
@@ -64,6 +71,7 @@ const databaseConnectionResponseSchema = withType(
     maxTemporaryAccessDuration: z.number().nullable().optional(),
     storeResults: z.boolean(),
     category: z.string().nullable(),
+    permissions: connectionPermissionsSchema,
   }),
   "DATASOURCE",
 );
@@ -82,6 +90,7 @@ const kubernetesConnectionResponseSchema = withType(
     category: z.string().nullable(),
     kubernetesExecInitialWaitTimeoutSeconds: z.coerce.number(),
     kubernetesExecTimeoutMinutes: z.coerce.number(),
+    permissions: connectionPermissionsSchema,
   }),
   "KUBERNETES",
 );
@@ -107,6 +116,7 @@ interface ConnectionBase {
   };
   maxExecutions: number | null;
   category?: string | null;
+  permissions?: string[] | null;
 }
 
 interface DatabaseConnectionBase extends ConnectionBase {

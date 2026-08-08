@@ -29,14 +29,12 @@ const Tooltip: React.FC<TooltipProps> = ({
         {children}
       </div>
       <div
-        className={`absolute z-10 max-w-48 rounded-md bg-slate-800 px-3 py-2 text-xs font-medium text-white shadow-lg transition-opacity duration-300 ease-in-out dark:bg-slate-700 ${
+        className={`absolute z-10 w-max max-w-64 rounded-md bg-slate-800 px-3 py-2 text-xs font-medium text-white shadow-lg transition-opacity duration-300 ease-in-out dark:bg-slate-700 ${
           isVisible ? "visible opacity-100" : "invisible opacity-0"
         } ${positionClasses[position]}`}
         role="tooltip"
       >
-        <div className="inline-block whitespace-nowrap text-center">
-          {content}
-        </div>
+        <div className="text-center">{content}</div>
         <div
           className={`absolute h-2 w-2 rotate-45 transform bg-slate-800 dark:bg-slate-700 ${
             position === "top"

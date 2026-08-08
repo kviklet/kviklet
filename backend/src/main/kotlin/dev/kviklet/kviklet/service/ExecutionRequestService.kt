@@ -16,6 +16,7 @@ import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.proxy.postgres.PostgresProxy
 import dev.kviklet.kviklet.proxy.postgres.tlsCertificateFactory
 import dev.kviklet.kviklet.security.Permission
+import dev.kviklet.kviklet.security.PermissionResolver
 import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
@@ -82,6 +83,7 @@ class ExecutionRequestService(
     private val proxyTLSCerts: TLSCerts,
     private val dryRunValidator: DryRunValidator,
     private val roleAdapter: dev.kviklet.kviklet.db.RoleAdapter,
+    private val permissionResolver: PermissionResolver,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val proxies = mutableListOf<ExecutionProxy>()
@@ -425,7 +427,11 @@ class ExecutionRequestService(
         } else {
             emptyMap()
         }
-        return ExecutionRequestDetailsWithRoles(details = details, resolvedRoles = resolvedRoles)
+        return ExecutionRequestDetailsWithRoles(
+            details = details,
+            resolvedRoles = resolvedRoles,
+            permissions = permissionResolver.resolveForCurrentUser(details),
+        )
     }
 
     @Transactional

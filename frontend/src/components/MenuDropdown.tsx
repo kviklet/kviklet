@@ -53,6 +53,7 @@ export default function MenuDropDown(props: MenuDropDownProps) {
                 {() => (
                   <button
                     onClick={item.onClick}
+                    disabled={!item.enabled}
                     title={item.tooltip}
                     className={
                       item.enabled ? defaultButtonClasses : disabledButtonStyles

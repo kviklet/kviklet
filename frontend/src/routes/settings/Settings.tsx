@@ -10,11 +10,18 @@ import {
   ArrowPathIcon,
 } from "@heroicons/react/20/solid";
 
-import { Link, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import {
+  Link,
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+} from "react-router-dom";
 import ConnectionSettings from "./connection/ConnectionSettings";
 import UserSettings from "./UserSettings";
 import RoleSettings from "./RolesSettings";
-import React from "react";
+import React, { useContext } from "react";
 import ProfileSettings from "./ProfileSettings";
 import RoleDetailsView from "./RoleDetailsView";
 import NewRoleView from "./NewRoleView";
@@ -24,6 +31,15 @@ import LicenseSettings from "./LicenseSettings";
 import ApiKeyPage from "./ApiKeySettings";
 import RoleSyncSettings from "./RoleSyncSettings";
 import useConfig from "../../components/ConfigProvider";
+import { UserStatusContext } from "../../components/UserStatusProvider";
+import { Permission } from "../../api/Permissions";
+import {
+  useHasPermission,
+  useUserStatusLoading,
+} from "../../hooks/permissions";
+import RequirePermission from "../../components/RequirePermission";
+import NotAuthorized from "../../components/NotAuthorized";
+import Spinner from "../../components/Spinner";
 
 const Tab = (props: {
   children: React.ReactNode;
@@ -62,9 +78,26 @@ function SettingsSidebar(props: { children: React.ReactNode }) {
   );
 }
 
+// The general (notification config) page is the default settings landing; a user without
+// configuration:get can only see a deceptively editable-looking form there, so send them
+// to their profile instead.
+const DefaultSettingsPage = () => {
+  const loading = useUserStatusLoading();
+  const canViewConfig = useHasPermission("configuration:get");
+  if (loading) {
+    return <Spinner size="lg" page />;
+  }
+  return canViewConfig ? (
+    <GeneralSettings />
+  ) : (
+    <Navigate to="/settings/profile" replace />
+  );
+};
+
 const Settings = () => {
   const location = useLocation();
   const { config } = useConfig();
+  const { hasPermission } = useContext(UserStatusContext);
   const getActiveTab = (path: string) => {
     if (path === "/settings") return "general";
     const pathParts = path.split("/");
@@ -79,9 +112,12 @@ const Settings = () => {
     link: string;
     disabled?: boolean;
     tooltip?: string;
+    // Tab renders only if the user holds this permission on at least one resource.
+    permission?: Permission;
   }> = [
     {
       name: "general",
+      permission: "configuration:get",
       tabContent: (
         <div className="flex flex-col">
           <div className={tabStyles}>
@@ -94,6 +130,7 @@ const Settings = () => {
     },
     {
       name: "connections",
+      permission: "datasource_connection:get",
       tabContent: (
         <div className="flex flex-col">
           <div className={tabStyles}>
@@ -106,6 +143,7 @@ const Settings = () => {
     },
     {
       name: "users",
+      permission: "user:get",
       tabContent: (
         <div className="flex flex-col">
           <div className={tabStyles}>
@@ -118,6 +156,7 @@ const Settings = () => {
     },
     {
       name: "roles",
+      permission: "role:get",
       tabContent: (
         <div className="flex flex-col">
           <div className={tabStyles}>
@@ -168,6 +207,7 @@ const Settings = () => {
         </div>
       ),
       link: "/settings/role-sync",
+      permission: "configuration:get",
       disabled: !config?.licenseValid,
       tooltip: !config?.licenseValid
         ? "Role Sync is an enterprise feature. Visit kviklet.dev to get a license."
@@ -189,6 +229,7 @@ const Settings = () => {
         </div>
       ),
       link: "/settings/api-keys",
+      permission: "api_key:get",
       disabled: !config?.licenseValid,
       tooltip: !config?.licenseValid
         ? "API Keys is an enterprise feature. Visit kviklet.dev to get a license."
@@ -204,39 +245,86 @@ const Settings = () => {
       <div className="mx-auto h-full w-3/4">
         <div className="flex h-full w-full pt-4">
           <SettingsSidebar>
-            {tabs.map((tab) => (
-              <Tab
-                dataTestId={`settings-${tab.name}`}
-                active={activeTab === tab.name}
-                link={tab.link}
-                key={tab.name}
-                disabled={tab.disabled}
-                tooltip={tab.tooltip}
-              >
-                {tab.tabContent}
-              </Tab>
-            ))}
+            {tabs
+              .filter((tab) => !tab.permission || hasPermission(tab.permission))
+              .map((tab) => (
+                <Tab
+                  dataTestId={`settings-${tab.name}`}
+                  active={activeTab === tab.name}
+                  link={tab.link}
+                  key={tab.name}
+                  disabled={tab.disabled}
+                  tooltip={tab.tooltip}
+                >
+                  {tab.tabContent}
+                </Tab>
+              ))}
           </SettingsSidebar>
           <div className="ml-2 h-full w-full">
             <Routes>
-              <Route path="/*" element={<GeneralSettings />} />
-              <Route path="/" element={<GeneralSettings />} />
-              <Route path="connections" element={<ConnectionSettings />} />
+              <Route path="/*" element={<DefaultSettingsPage />} />
+              <Route path="/" element={<DefaultSettingsPage />} />
+              <Route
+                path="connections"
+                element={
+                  <RequirePermission
+                    permission="datasource_connection:get"
+                    fallback={<NotAuthorized resource="the connections" />}
+                  >
+                    <ConnectionSettings />
+                  </RequirePermission>
+                }
+              />
               <Route
                 path="connections/:connectionId"
                 element={<ConnectionDetails />}
               />
               <Route path="users" element={<UserSettings />} />
-              <Route path="roles" element={<RoleSettings />} />
-              <Route path="/roles/new" element={<NewRoleView />} />
-              <Route path="/roles/:roleId" element={<RoleDetailsView />} />
+              <Route
+                path="roles"
+                element={
+                  <RequirePermission
+                    permission="role:get"
+                    fallback={<NotAuthorized resource="the role settings" />}
+                  >
+                    <RoleSettings />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/roles/new"
+                element={
+                  <RequirePermission
+                    permission="role:edit"
+                    fallback={<NotAuthorized resource="the role settings" />}
+                  >
+                    <NewRoleView />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="/roles/:roleId"
+                element={
+                  <RequirePermission
+                    permission="role:get"
+                    fallback={<NotAuthorized resource="the role settings" />}
+                  >
+                    <RoleDetailsView />
+                  </RequirePermission>
+                }
+              />
               <Route path="profile" element={<ProfileSettings />} />
               <Route path="license" element={<LicenseSettings />} />
               <Route
                 path="api-keys"
                 element={
                   config?.licenseValid === true ? (
-                    <ApiKeyPage />
+                    <RequirePermission
+                      permission="api_key:get"
+                      fallback={<NotAuthorized resource="the API keys" />}
+                    >
+                      <ApiKeyPage />
+                    </RequirePermission>
                   ) : (
                     <div className="flex h-64 flex-col items-center justify-center text-center">
                       <LockClosedIcon className="mb-4 h-12 w-12 text-slate-400" />
@@ -262,7 +350,14 @@ const Settings = () => {
                 path="role-sync"
                 element={
                   config?.licenseValid === true ? (
-                    <RoleSyncSettings />
+                    <RequirePermission
+                      permission="configuration:get"
+                      fallback={
+                        <NotAuthorized resource="the role sync settings" />
+                      }
+                    >
+                      <RoleSyncSettings />
+                    </RequirePermission>
                   ) : (
                     <div className="flex h-64 flex-col items-center justify-center text-center">
                       <LockClosedIcon className="mb-4 h-12 w-12 text-slate-400" />

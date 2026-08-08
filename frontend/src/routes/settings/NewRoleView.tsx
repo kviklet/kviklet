@@ -3,8 +3,10 @@ import { Role, transformToPayload } from "../../hooks/roles";
 import RoleForm from "./RoleForm";
 import { createRole } from "../../api/RoleApi";
 import { useState } from "react";
+import { isApiErrorResponse } from "../../api/Errors";
+import useNotification from "../../hooks/useNotification";
 
-export default function RoleDetailsView() {
+export default function NewRoleView() {
   const defaultRole: Role = {
     id: "",
     name: "",
@@ -24,14 +26,23 @@ export default function RoleDetailsView() {
   const [role] = useState<Role>(defaultRole);
 
   const navigate = useNavigate();
+  const { addNotification } = useNotification();
 
   const submit = async (data: Role) => {
     const transformedRole = transformToPayload(data);
-    await createRole({
+    const response = await createRole({
       name: transformedRole.name,
       description: transformedRole.description,
       policies: transformedRole.policies,
     });
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to create role",
+        text: response.message,
+        type: "error",
+      });
+      return;
+    }
     navigate("/settings/roles");
   };
 

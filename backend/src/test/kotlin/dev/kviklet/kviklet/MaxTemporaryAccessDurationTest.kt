@@ -101,7 +101,8 @@ class MaxTemporaryAccessDurationTest {
 
         assertEquals(
             120L,
-            (connection as dev.kviklet.kviklet.service.dto.DatasourceConnection).maxTemporaryAccessDuration,
+            (connection.connection as dev.kviklet.kviklet.service.dto.DatasourceConnection)
+                .maxTemporaryAccessDuration,
         )
     }
 
@@ -264,7 +265,8 @@ class MaxTemporaryAccessDurationTest {
 
         assertEquals(
             120L,
-            (updatedConnection as dev.kviklet.kviklet.service.dto.DatasourceConnection).maxTemporaryAccessDuration,
+            (updatedConnection.connection as dev.kviklet.kviklet.service.dto.DatasourceConnection)
+                .maxTemporaryAccessDuration,
         )
     }
 
@@ -336,7 +338,7 @@ class MaxTemporaryAccessDurationTest {
             category = null,
             dryRunEnabled = false,
             dryRunRequiresApproval = true,
-        )
+        ).connection
     }
 
     private fun createTemporaryAccessRequest(connection: Connection, duration: Long?): ExecutionRequestDetails {

@@ -6,7 +6,11 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-class StatusController(private val userAdapter: UserAdapter, private val licenseService: LicenseService) {
+class StatusController(
+    private val userAdapter: UserAdapter,
+    private val licenseService: LicenseService,
+    private val permissionResolver: PermissionResolver,
+) {
     @GetMapping("/status")
     fun status(@CurrentUser userDetails: UserDetailsWithId): UserStatus {
         val validLicense = licenseService.getLicenses().any { it.isValid() }
@@ -17,6 +21,7 @@ class StatusController(private val userAdapter: UserAdapter, private val license
             user.getId()!!,
             "User is authenticated",
             validLicense,
+            permissionResolver.resolve(userDetails).toPermissionStrings(),
         )
     }
 }
@@ -27,4 +32,11 @@ data class UserStatus(
     val id: String,
     val status: String,
     val licenseValid: Boolean,
+    /**
+     * Permissions the user holds on at least one resource. Suitable for hiding UI a role can never
+     * use; never for gating an action on a concrete connection or request, since a policy scoped
+     * to one resource already counts here — use the `permissions` field on the connection /
+     * execution request response for that.
+     */
+    val permissions: List<String>,
 )

@@ -276,6 +276,8 @@ function DateRangeFilter({
 function useExecutions(from: Date | null, to: Date | null) {
   const [executions, setExecutions] = useState<ExecutionLogResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { addNotification } = useNotification();
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -284,15 +286,23 @@ function useExecutions(from: Date | null, to: Date | null) {
         to: to ?? undefined,
       });
       if (isApiErrorResponse(response)) {
-        console.error(response);
+        // An empty log with no explanation would look like "nothing ever ran" —
+        // surface the failure instead.
+        setError(response.message);
+        addNotification({
+          title: "Failed to load audit log",
+          text: response.message,
+          type: "error",
+        });
       } else {
         setExecutions(response.executions);
+        setError(null);
       }
       setLoading(false);
     };
     void fetchData();
   }, [from, to]);
-  return { executions, loading };
+  return { executions, loading, error };
 }
 
 function List() {
@@ -303,7 +313,7 @@ function List() {
     config.validUntil > new Date();
   const [from, setFrom] = useState<Date | null>(null);
   const [to, setTo] = useState<Date | null>(null);
-  const { executions, loading } = useExecutions(from, to);
+  const { executions, loading, error } = useExecutions(from, to);
   const [searchTerm, setSearchTerm] = useState("");
   const filteredExecutions = executions.filter(
     (execution) =>
@@ -334,18 +344,27 @@ function List() {
         />
         <ExportButton />
       </div>
-      <div className="overflow-hidden bg-white shadow dark:bg-slate-900 sm:rounded-md">
-        <ul
-          role="list"
-          className="divide-y divide-slate-100 dark:divide-slate-800"
-        >
-          {loading
-            ? Array.from({ length: 5 }).map(() => <ItemSkeleton />)
-            : filteredExecutions.map((execution) => (
-                <Item execution={execution}></Item>
-              ))}
-        </ul>
-      </div>
+      {error ? (
+        <div className="flex h-64 flex-col items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-4 text-center dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-slate-900 dark:text-slate-100">
+            Failed to load the audit log
+          </p>
+          <p className="text-slate-500 dark:text-slate-400">{error}</p>
+        </div>
+      ) : (
+        <div className="overflow-hidden bg-white shadow dark:bg-slate-900 sm:rounded-md">
+          <ul
+            role="list"
+            className="divide-y divide-slate-100 dark:divide-slate-800"
+          >
+            {loading
+              ? Array.from({ length: 5 }).map(() => <ItemSkeleton />)
+              : filteredExecutions.map((execution) => (
+                  <Item execution={execution}></Item>
+                ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

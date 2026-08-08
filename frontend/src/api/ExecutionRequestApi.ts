@@ -10,6 +10,7 @@ import {
   ApiErrorResponse,
   ApiResponse,
   fetchWithErrorHandling,
+  isApiErrorResponse,
 } from "./Errors";
 import { ExecutionRequest } from "../routes/NewRequest";
 
@@ -197,11 +198,20 @@ const ExecutionRequestResponseSchema = z.union([
   DatasourceExecutionRequestResponse,
 ]);
 
+/**
+ * What the current user may do to this request, resolved by the backend against the request itself
+ * — so it already accounts for the connection the policy is scoped to, authorship, and whether the
+ * request is executable yet. It does not cover the service-level rules the UI already knows about,
+ * such as not being able to review your own request.
+ */
+const requestPermissionsSchema = z.array(z.string());
+
 const DatasourceExecutionRequestResponseWithCommentsSchema = withType(
   RawDatasourceRequestSchema.extend({
     events: z.array(
       z.union([ReviewEvent, CommentEvent, EditEvent, ExecuteEvent]),
     ),
+    permissions: requestPermissionsSchema,
   }),
   "DATASOURCE",
 );
@@ -211,6 +221,7 @@ const KubernetesExecutionRequestResponseWithCommentsSchema = withType(
     events: z.array(
       z.union([ReviewEvent, CommentEvent, EditEvent, ExecuteEvent]),
     ),
+    permissions: requestPermissionsSchema,
   }),
   "KUBERNETES",
 );
@@ -437,6 +448,43 @@ const streamDump = async (
   return response.body;
 };
 
+// Executes the request and downloads the results as a file, keeping errors (e.g. a
+// missing execute permission) in-app instead of navigating the tab to raw JSON.
+const downloadResults = async (
+  executionRequestId: string,
+  query?: string,
+): Promise<void> => {
+  const downloadUrl =
+    `${requestUrl}${executionRequestId}/download` +
+    (query ? `?query=${encodeURIComponent(query)}` : "");
+  const response = await apiFetch(downloadUrl, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    const json: unknown = await response.json().catch(() => null);
+    if (isApiErrorResponse(json)) {
+      throw new Error(json.message);
+    }
+    throw new Error(`Download failed: ${response.statusText}`);
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const contentDisposition = response.headers.get("Content-Disposition");
+  const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+  const filename = filenameMatch ? filenameMatch[1] : "results.csv";
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+};
+
 function withType<T, U extends string>(schema: z.ZodSchema<T>, typeValue: U) {
   return schema.transform((data) => ({
     ...data,
@@ -584,6 +632,7 @@ export {
   postStartServer,
   executeCommand,
   streamDump,
+  downloadResults,
   DBExecuteResponseResultSchema,
 };
 

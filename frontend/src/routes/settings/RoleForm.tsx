@@ -76,9 +76,12 @@ const connectionPolicyMetadata: Record<
 const RoleForm = ({
   role,
   onSubmit,
+  readOnly = false,
 }: {
   role: Role;
   onSubmit: (data: Role) => Promise<void>;
+  /** Renders the form as a pure viewer: no Submit button. Wrap it in a disabled fieldset too. */
+  readOnly?: boolean;
 }) => {
   const {
     control,
@@ -160,6 +163,7 @@ const RoleForm = ({
                   </label>
                   <input
                     className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
+                    data-testid={`role-user-policy-${field}`}
                     {...register(
                       `userPolicy.${field}` as
                         | "userPolicy.read"
@@ -189,6 +193,7 @@ const RoleForm = ({
                   </label>
                   <input
                     className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
+                    data-testid={`role-role-policy-${field}`}
                     {...register(`rolePolicy.${field}` as "rolePolicy.read")}
                     type="checkbox"
                   />
@@ -260,6 +265,7 @@ const RoleForm = ({
                         <input
                           className="h-4 w-4 rounded border-slate-300 bg-transparent text-indigo-600 focus:ring-indigo-600"
                           type="checkbox"
+                          data-testid={`role-connection-policy-${index}-${key}`}
                           {...register(
                             `connectionPolicies.${index}.${
                               key as ConnectionPolicyKey
@@ -273,6 +279,7 @@ const RoleForm = ({
             ))}
             <button
               type="button"
+              data-testid="role-add-connection-policy-button"
               onClick={() =>
                 append({
                   selector: "",
@@ -289,9 +296,15 @@ const RoleForm = ({
         </>
       )}
 
-      <Button htmlType="submit" variant="primary">
-        Submit
-      </Button>
+      {!readOnly && (
+        <Button
+          htmlType="submit"
+          variant="primary"
+          dataTestId="role-submit-button"
+        >
+          Submit
+        </Button>
+      )}
     </form>
   );
 };
