@@ -12,7 +12,10 @@ import ActivityTimeline from "./Review/ActivityTimeline";
 import { downloadResults } from "../api/ExecutionRequestApi";
 import LoadingCancelButton from "../components/LoadingCancelButton";
 import NotAuthorized from "../components/NotAuthorized";
-import { hasPermission } from "../api/Permissions";
+import {
+  hasPermission,
+  NO_EXECUTE_PERMISSION_MESSAGE,
+} from "../api/Permissions";
 import { WarningBanner } from "../components/Alert";
 import {
   ThemeContext,
@@ -109,6 +112,15 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
     request?.permissions,
     "execution_request:execute",
   );
+  // The backend folds executability (approved, or dry-run enabled) into the execute
+  // permission, so pre-approval canExecute is false even for a fully permitted author —
+  // the blocker to name then is approval, not their permission.
+  const needsApproval = request?.reviewStatus !== "APPROVED";
+  const readOnlyReason = canExecute
+    ? undefined
+    : needsApproval
+    ? "Request needs to be approved before execution"
+    : NO_EXECUTE_PERMISSION_MESSAGE;
 
   useEffect(() => {
     editor?.updateOptions({ readOnly: !isAuthor || !canExecute });
@@ -191,8 +203,9 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
         />
         {isAuthor && !canExecute && (
           <WarningBanner className="mt-3" data-testid="read-only-banner">
-            This session is read-only: you lack permission to execute on this
-            connection. Ask an administrator if you think this is a mistake.
+            {needsApproval
+              ? "This session is read-only until the request has been approved."
+              : "This session is read-only: you lack permission to execute on this connection. Ask an administrator if you think this is a mistake."}
           </WarningBanner>
         )}
         <div className="relative mb-5 mt-3">
@@ -224,11 +237,7 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
                   <Button
                     onClick={() => void handleResultDownload()}
                     variant={canExecute ? undefined : "disabled"}
-                    title={
-                      canExecute
-                        ? undefined
-                        : "You lack permission to execute on this connection"
-                    }
+                    title={readOnlyReason}
                   >
                     Execute and Download Results
                   </Button>
@@ -238,11 +247,7 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
                 onCancel={() => cancelQuery()}
                 variant="primary"
                 disabled={!canExecute}
-                title={
-                  canExecute
-                    ? undefined
-                    : "You lack permission to execute on this connection"
-                }
+                title={readOnlyReason}
                 dataTestId="run-query-button"
               >
                 <div className="play-triangle mr-2 inline-block h-3 w-2 bg-slate-50"></div>
