@@ -17,7 +17,10 @@ import useNotification from "../../hooks/useNotification";
 import { Highlighter } from "./components/Highlighter";
 import ApprovalProgress from "./ApprovalProgress";
 import { UserStatusContext } from "../../components/UserStatusProvider";
-import { hasPermission } from "../../api/Permissions";
+import {
+  hasPermission,
+  NO_EXECUTE_PERMISSION_MESSAGE,
+} from "../../api/Permissions";
 
 function DatasourceRequestBox({
   request,
@@ -85,7 +88,7 @@ function DatasourceRequestBox({
     } else if (request?.type === "Dump" && !isAuthor) {
       return "Only the requester can download the dump";
     } else if (executesDirectly && !canExecute) {
-      return "You lack permission to execute on this connection";
+      return NO_EXECUTE_PERMISSION_MESSAGE;
     }
     return undefined;
   };
@@ -159,7 +162,7 @@ function DatasourceRequestBox({
               )
                 ? "Request needs approval before explain"
                 : !canExecute
-                ? "You lack permission to execute on this connection"
+                ? NO_EXECUTE_PERMISSION_MESSAGE
                 : undefined,
             content: "Explain",
           },
@@ -180,7 +183,7 @@ function DatasourceRequestBox({
               request?.reviewStatus !== "APPROVED"
                 ? "Request needs approval before dry run"
                 : !canExecute
-                ? "You lack permission to execute on this connection"
+                ? NO_EXECUTE_PERMISSION_MESSAGE
                 : undefined,
             content: "Dry Run",
           },
@@ -199,7 +202,7 @@ function DatasourceRequestBox({
               : request?.reviewStatus !== "APPROVED"
               ? "Request needs to be approved before starting the proxy"
               : !canExecute
-              ? "You lack permission to execute on this connection"
+              ? NO_EXECUTE_PERMISSION_MESSAGE
               : undefined,
             content: "Start Proxy",
           },

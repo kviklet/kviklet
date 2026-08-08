@@ -38,6 +38,14 @@ type Permission = (typeof PERMISSIONS)[number];
  * particular connection or request. A nullish list means the backend did not resolve permissions
  * for that object, which is treated as "not allowed".
  */
+/**
+ * User-facing copy for actions blocked by a missing `execution_request:execute` permission.
+ * The e2e suite asserts on this exact string (`EXECUTE_TOOLTIP` in
+ * e2e/tests/permissions/requests.spec.ts) — keep them in sync when rewording.
+ */
+const NO_EXECUTE_PERMISSION_MESSAGE =
+  "You lack permission to execute on this connection";
+
 function hasPermission(
   permissions: string[] | null | undefined,
   permission: Permission,
@@ -45,5 +53,5 @@ function hasPermission(
   return permissions?.includes(permission) ?? false;
 }
 
-export { PERMISSIONS, hasPermission };
+export { PERMISSIONS, hasPermission, NO_EXECUTE_PERMISSION_MESSAGE };
 export type { Permission };
