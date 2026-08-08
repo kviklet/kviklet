@@ -4,6 +4,7 @@ import Button from "../../components/Button";
 import { timeSince } from "../Requests";
 import { AbsoluteInitialBubble as InitialBubble } from "../../components/InitialBubble";
 import { Highlighter } from "./components/Highlighter";
+import ConnectionLink from "./components/ConnectionLink";
 import { UserStatusContext } from "../../components/UserStatusProvider";
 
 function DatasourceRequestBox({
@@ -42,7 +43,12 @@ function DatasourceRequestBox({
         <div className="flex text-sm text-slate-800 dark:text-slate-50">
           <div>
             {request?.author?.fullName + questionText}
-            <span className="italic">{request?.connection.displayName}</span>
+            {request && (
+              <ConnectionLink
+                connectionId={request.connection.id}
+                displayName={request.connection.displayName}
+              />
+            )}
           </div>
           <div
             className="ml-auto dark:text-slate-500"

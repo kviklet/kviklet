@@ -2,6 +2,7 @@ import { KubernetesExecutionRequestResponseWithComments } from "../../api/Execut
 import Button from "../../components/Button";
 import { timeSince } from "../Requests";
 import { Highlighter } from "./components/Highlighter";
+import ConnectionLink from "./components/ConnectionLink";
 import { FC, useContext, useEffect, useState, MouseEvent } from "react";
 import { UserStatusContext } from "../../components/UserStatusProvider";
 
@@ -36,8 +37,11 @@ const KubernetesRequestBox: FC<KubernetesRequestBoxProps> = ({
       <div className="py-2">
         <div className="flex text-sm text-slate-800 dark:text-slate-50">
           <div>
-            {request?.author.fullName} wants to execute a Kubernetes command in:
-            <span className="italic"> {request?.connection.displayName}</span>
+            {request?.author.fullName} wants to execute a Kubernetes command in:{" "}
+            <ConnectionLink
+              connectionId={request.connection.id}
+              displayName={request.connection.displayName}
+            />
           </div>
           <div
             className="ml-auto dark:text-slate-500"
