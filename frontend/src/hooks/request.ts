@@ -28,6 +28,56 @@ enum ReviewTypes {
   Close = "close",
 }
 
+// Approvals reset when the request is edited, or (except for temporary access)
+// when an execution fails — mirrors latestResetTimestamp() in the backend's
+// ExecutionRequest.kt, which ignores reviews from before that point.
+const latestResetTimestamp = (
+  request: ExecutionRequestResponseWithComments,
+): number => {
+  const latestEdit = Math.max(
+    0,
+    ...request.events
+      .filter((event) => event._type === "EDIT")
+      .map((event) => event.createdAt.getTime()),
+  );
+  if (request.type === "TemporaryAccess") {
+    return latestEdit;
+  }
+  const latestExecutionError = Math.max(
+    0,
+    ...request.events
+      .filter(
+        (event) =>
+          event._type === "EXECUTE" &&
+          (event.results ?? []).some((result) => result.type === "ERROR"),
+      )
+      .map((event) => event.createdAt.getTime()),
+  );
+  return Math.max(latestEdit, latestExecutionError);
+};
+
+// The verdict this user's review currently stands at: only their latest review
+// since the last reset counts, matching the backend's approval tally.
+const latestReviewAction = (
+  request: ExecutionRequestResponseWithComments,
+  userId: string | undefined,
+): "APPROVE" | "REQUEST_CHANGE" | "REJECT" | undefined => {
+  if (!userId) {
+    return undefined;
+  }
+  const resetTimestamp = latestResetTimestamp(request);
+  const myReviews = request.events
+    .filter(
+      (event) =>
+        event._type === "REVIEW" &&
+        event.author?.id === userId &&
+        event.createdAt.getTime() > resetTimestamp,
+    )
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  const latest = myReviews[myReviews.length - 1];
+  return latest?._type === "REVIEW" ? latest.action : undefined;
+};
+
 const isRelationalDatabase = (
   request: DatasourceExecutionRequestResponseWithComments | undefined,
 ): boolean => {
@@ -218,4 +268,4 @@ const useRequest = (id: string) => {
 
 export default useRequest;
 
-export { ReviewTypes, isRelationalDatabase };
+export { ReviewTypes, isRelationalDatabase, latestReviewAction };

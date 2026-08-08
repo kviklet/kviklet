@@ -1,10 +1,12 @@
+import { useContext } from "react";
 import {
   ExecutionRequestResponseWithComments,
   Execute,
 } from "../../api/ExecutionRequestApi";
 import { DatabaseType } from "../../api/DatasourceApi";
-import { ReviewTypes } from "../../hooks/request";
+import { ReviewTypes, latestReviewAction } from "../../hooks/request";
 import { hasPermission } from "../../api/Permissions";
+import { UserStatusContext } from "../../components/UserStatusProvider";
 import CommentBox from "./CommentBox";
 import EditEvent from "./events/EditEvent";
 import ExecuteEvent from "./events/ExecuteEvent";
@@ -22,6 +24,13 @@ export default function ActivityTimeline({
   sendReview?: (comment: string, type: ReviewTypes) => Promise<boolean>;
   closeRequest?: (comment: string) => Promise<boolean>;
 }) {
+  const userContext = useContext(UserStatusContext);
+  const hasApproved =
+    latestReviewAction(
+      request,
+      userContext.userStatus ? userContext.userStatus.id : undefined,
+    ) === "APPROVE";
+
   const historicalEvents = request?.events ? [...request.events] : [];
 
   // Websocket events carry live results, so they supersede their
@@ -54,6 +63,7 @@ export default function ActivityTimeline({
             closeRequest={closeRequest}
             userId={request?.author?.id}
             isRejected={request.reviewStatus === "REJECTED"}
+            hasApproved={hasApproved}
             canReview={hasPermission(
               request.permissions,
               "execution_request:review",

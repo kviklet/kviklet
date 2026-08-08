@@ -55,7 +55,7 @@ function RequestReview() {
             />
             <h1 className="my-2 text-3xl">{request?.title}</h1>
             <div className="flex flex-col gap-6 md:flex-row md:items-start">
-              <RequestSidebar request={request}>
+              <RequestSidebar request={request} sendReview={sendReview}>
                 {request._type === "DATASOURCE" ? (
                   <DatasourceRequestActions
                     request={request}
