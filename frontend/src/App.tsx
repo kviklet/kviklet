@@ -87,7 +87,17 @@ function App() {
                             <NotAuthorized resource="the connections" />
                           }
                         >
-                          <ConnectionChooser></ConnectionChooser>
+                          <RequirePermission
+                            permission="execution_request:edit"
+                            fallback={
+                              <NotAuthorized
+                                resource="the new request page"
+                                message="Your roles don't allow creating requests on any connection."
+                              />
+                            }
+                          >
+                            <ConnectionChooser></ConnectionChooser>
+                          </RequirePermission>
                         </RequirePermission>
                       </ProtectedRoute>
                     }

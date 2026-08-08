@@ -46,6 +46,13 @@ type Permission = (typeof PERMISSIONS)[number];
 const NO_EXECUTE_PERMISSION_MESSAGE =
   "You lack permission to execute on this connection";
 
+/**
+ * User-facing copy for actions blocked because the user cannot create requests on any
+ * connection. The e2e suite asserts on this exact string (`CREATE_TOOLTIP` in
+ * e2e/tests/permissions/requests.spec.ts) — keep them in sync when rewording.
+ */
+const NO_CREATE_PERMISSION_MESSAGE = "You lack permission to create requests";
+
 function hasPermission(
   permissions: string[] | null | undefined,
   permission: Permission,
@@ -53,5 +60,10 @@ function hasPermission(
   return permissions?.includes(permission) ?? false;
 }
 
-export { PERMISSIONS, hasPermission, NO_EXECUTE_PERMISSION_MESSAGE };
+export {
+  PERMISSIONS,
+  hasPermission,
+  NO_EXECUTE_PERMISSION_MESSAGE,
+  NO_CREATE_PERMISSION_MESSAGE,
+};
 export type { Permission };

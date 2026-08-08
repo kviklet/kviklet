@@ -43,6 +43,8 @@ const NO_REQUEST_TOOLTIP =
   "You lack permission to create requests on this connection";
 // Mirrors NO_EXECUTE_PERMISSION_MESSAGE in frontend/src/api/Permissions.ts.
 const EXECUTE_TOOLTIP = "You lack permission to execute on this connection";
+// Mirrors NO_CREATE_PERMISSION_MESSAGE in frontend/src/api/Permissions.ts.
+const CREATE_TOOLTIP = "You lack permission to create requests";
 
 let connAId: string;
 let connBId: string;
@@ -141,24 +143,20 @@ test.beforeAll(async ({ browser }) => {
   await context.close();
 });
 
-test("a user without write permission sees only view-only connection cards", async ({
+test("a user who cannot create requests anywhere loses the new request page", async ({
   page,
 }) => {
   test.setTimeout(30_000);
   const loginPage = new LoginPage(page);
   await loginPage.loginFresh(viewer.email, PASSWORD);
 
-  await page.goto("/new");
+  // The "New" nav entry is hidden while the rest of the nav stays intact ...
+  await expect(page.getByTestId("requests-link")).toBeVisible();
+  await expect(page.getByTestId("new-link")).toHaveCount(0);
 
-  for (const connection of [connA, connB]) {
-    const badge = page.getByTestId(`view-only-${connection}`);
-    await expect(badge).toBeVisible();
-    await expect(badge).toHaveAttribute("title", NO_REQUEST_TOOLTIP);
-    await expect(page.getByTestId(`query-button-${connection}`)).toHaveCount(0);
-    await expect(page.getByTestId(`access-button-${connection}`)).toHaveCount(
-      0,
-    );
-  }
+  // ... and a deep link lands on the forbidden state, not the connection chooser.
+  await page.goto("/new");
+  await expect(page.getByTestId("not-authorized")).toBeVisible();
 });
 
 test("a writer sees action buttons only on the connection they can write to", async ({
@@ -167,6 +165,9 @@ test("a writer sees action buttons only on the connection they can write to", as
   test.setTimeout(30_000);
   const loginPage = new LoginPage(page);
   await loginPage.loginFresh(writer.email, PASSWORD);
+
+  // Write permission on a single connection is enough to keep the "New" nav entry.
+  await expect(page.getByTestId("new-link")).toBeVisible();
 
   await page.goto("/new");
 
@@ -324,6 +325,12 @@ test("execution actions are disabled without execute permission", async ({
   await expect(menuItem).toBeDisabled();
   await expect(menuItem).toHaveClass(/cursor-not-allowed/);
   await expect(menuItem).toHaveAttribute("title", EXECUTE_TOOLTIP);
+
+  // Copying would open the (for this user unreachable) new-request form, so it
+  // is disabled for users who cannot create requests on any connection.
+  const copyItem = page.getByRole("menuitem", { name: "Copy Request" });
+  await expect(copyItem).toBeDisabled();
+  await expect(copyItem).toHaveAttribute("title", CREATE_TOOLTIP);
 });
 
 test("execution actions are enabled for the writer", async ({ page }) => {
@@ -344,6 +351,9 @@ test("execution actions are enabled for the writer", async ({ page }) => {
   });
   await expect(downloadItem).toBeEnabled();
   await expect(downloadItem).not.toHaveClass(/cursor-not-allowed/);
+  await expect(
+    page.getByRole("menuitem", { name: "Copy Request" }),
+  ).toBeEnabled();
 });
 
 test("the statement is only editable by the requester", async ({ page }) => {

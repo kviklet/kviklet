@@ -19,8 +19,10 @@ import ApprovalProgress from "./ApprovalProgress";
 import { UserStatusContext } from "../../components/UserStatusProvider";
 import {
   hasPermission,
+  NO_CREATE_PERMISSION_MESSAGE,
   NO_EXECUTE_PERMISSION_MESSAGE,
 } from "../../api/Permissions";
+import { useHasPermission } from "../../hooks/permissions";
 
 function DatasourceRequestBox({
   request,
@@ -48,6 +50,9 @@ function DatasourceRequestBox({
     request?.permissions,
     "execution_request:execute",
   );
+  // Copying opens the new-request form, where the connection can still be changed —
+  // so this is the global "can create anywhere" check, not one on this connection.
+  const canCreateRequests = useHasPermission("execution_request:edit");
   const [showSQLDumpModal, setShowSQLDumpModal] = useState(false);
   const navigate = useNavigate();
   const [statement, setStatement] = useState(request?.statement || "");
@@ -136,7 +141,8 @@ function DatasourceRequestBox({
       onClick: () => {
         void navigateCopy();
       },
-      enabled: true,
+      enabled: canCreateRequests,
+      tooltip: canCreateRequests ? undefined : NO_CREATE_PERMISSION_MESSAGE,
       content: "Copy Request",
     },
     ...(request?.type == "SingleExecution"

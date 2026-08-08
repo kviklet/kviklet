@@ -10,8 +10,10 @@ import ApprovalProgress from "./ApprovalProgress";
 import { UserStatusContext } from "../../components/UserStatusProvider";
 import {
   hasPermission,
+  NO_CREATE_PERMISSION_MESSAGE,
   NO_EXECUTE_PERMISSION_MESSAGE,
 } from "../../api/Permissions";
+import { useHasPermission } from "../../hooks/permissions";
 
 interface KubernetesRequestBoxProps {
   request: KubernetesExecutionRequestResponseWithComments;
@@ -35,6 +37,9 @@ const KubernetesRequestBox: FC<KubernetesRequestBoxProps> = ({
     request?.permissions,
     "execution_request:execute",
   );
+  // Copying opens the new-request form, where the connection can still be changed —
+  // so this is the global "can create anywhere" check, not one on this connection.
+  const canCreateRequests = useHasPermission("execution_request:edit");
   const executesDirectly = request?.type === "SingleExecution";
 
   const getDisabledReason = () => {
@@ -79,7 +84,8 @@ const KubernetesRequestBox: FC<KubernetesRequestBoxProps> = ({
       onClick: () => {
         void navigateCopy();
       },
-      enabled: true,
+      enabled: canCreateRequests,
+      tooltip: canCreateRequests ? undefined : NO_CREATE_PERMISSION_MESSAGE,
       content: "Copy Request",
     },
   ];

@@ -58,16 +58,20 @@ function TopBanner() {
           <div className="relative ml-auto flex items-center">
             <nav className="text-sm font-semibold leading-6 text-slate-700 dark:text-slate-200">
               <ul className="flex space-x-8">
+                {/* Creating a request needs the connection list plus the right to create
+                    a request on at least one connection, hence the double gate. */}
                 <RequirePermission permission="datasource_connection:get">
-                  <li>
-                    <Link
-                      to={"/new"}
-                      className="hover:text-sky-500 dark:hover:text-sky-400"
-                      data-testid="new-link"
-                    >
-                      New
-                    </Link>
-                  </li>
+                  <RequirePermission permission="execution_request:edit">
+                    <li>
+                      <Link
+                        to={"/new"}
+                        className="hover:text-sky-500 dark:hover:text-sky-400"
+                        data-testid="new-link"
+                      >
+                        New
+                      </Link>
+                    </li>
+                  </RequirePermission>
                 </RequirePermission>
                 <RequirePermission permission="execution_request:get">
                   <li>
