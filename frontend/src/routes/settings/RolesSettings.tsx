@@ -72,7 +72,11 @@ const useRoles = (
 };
 
 const RoleSettings = () => {
-  const { roles, isLoading, error, deleteRole } = useRoles();
+  // Without role:get the fetch could only 403, so skip it and show the forbidden state
+  // directly. Any other load failure surfaces as the hook's error notification instead —
+  // a 500 or network drop is not a permissions problem.
+  const canListRoles = useHasPermission("role:get");
+  const { roles, isLoading, deleteRole } = useRoles(canListRoles);
   const canEditRoles = useHasPermission("role:edit");
   const navigate = useNavigate();
 
@@ -107,10 +111,10 @@ const RoleSettings = () => {
     },
   ];
 
-  if (error) {
+  if (!canListRoles) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <NotAuthorized resource="the role settings" message={error.message} />
+        <NotAuthorized resource="the role settings" />
       </div>
     );
   }
