@@ -26,12 +26,12 @@ import org.springframework.web.socket.WebSocketHttpHeaders
 import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.client.standard.StandardWebSocketClient
 import org.springframework.web.socket.handler.TextWebSocketHandler
+import org.springframework.web.util.UriUtils
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
 import java.net.URI
-import java.net.URLEncoder
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
@@ -302,7 +302,10 @@ class WebSocketHandlerTest {
         sessionId: String,
         messages: CompletableFuture<List<String>>,
     ): WebSocketSession {
-        val encodedRequestId = URLEncoder.encode(executionRequestId, "UTF-8")
+        // Path-segment encoding, not URLEncoder: generated ids can end in a space
+        // (IdGenerator pads 21-char base58 ids), which URLEncoder would turn into a
+        // literal "+" in the path and break the server-side lookup.
+        val encodedRequestId = UriUtils.encodePathSegment(executionRequestId, Charsets.UTF_8)
         val url = "ws://localhost:$port/sql/$encodedRequestId"
         val headers = WebSocketHttpHeaders()
         headers.add("Cookie", "SESSION=$sessionId")

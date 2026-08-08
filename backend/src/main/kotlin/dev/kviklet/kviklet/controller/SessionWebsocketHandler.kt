@@ -23,6 +23,7 @@ import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.handler.TextWebSocketHandler
 import org.springframework.web.util.UriComponentsBuilder
+import org.springframework.web.util.UriUtils
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
@@ -122,7 +123,10 @@ class SessionWebsocketHandler(
     private fun extractRequestId(session: WebSocketSession): String {
         val uri = session.uri ?: throw IllegalStateException("Session URI is null")
         val path = UriComponentsBuilder.fromUri(uri).build().pathSegments
-        return path.lastOrNull() ?: throw IllegalArgumentException("RequestId not found in URI")
+        val segment = path.lastOrNull() ?: throw IllegalArgumentException("RequestId not found in URI")
+        // pathSegments keeps percent-encoding, and ids can end in a space
+        // (IdGenerator pads 21-char base58 ids), which clients send as %20.
+        return UriUtils.decode(segment, Charsets.UTF_8)
     }
 
     override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
