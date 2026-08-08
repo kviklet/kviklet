@@ -41,6 +41,7 @@ const ADMIN = { email: "admin@admin.com", password: "admin" };
 
 const NO_REQUEST_TOOLTIP =
   "You lack permission to create requests on this connection";
+// Mirrors NO_EXECUTE_PERMISSION_MESSAGE in frontend/src/api/Permissions.ts.
 const EXECUTE_TOOLTIP = "You lack permission to execute on this connection";
 
 let connAId: string;
@@ -320,6 +321,7 @@ test("execution actions are disabled without execute permission", async ({
     name: "Execute and Download Results",
   });
   await expect(menuItem).toBeVisible();
+  await expect(menuItem).toBeDisabled();
   await expect(menuItem).toHaveClass(/cursor-not-allowed/);
   await expect(menuItem).toHaveAttribute("title", EXECUTE_TOOLTIP);
 });
@@ -337,9 +339,11 @@ test("execution actions are enabled for the writer", async ({ page }) => {
   await expect(runButton).toBeEnabled();
 
   await page.getByRole("button", { name: "Open options" }).click();
-  await expect(
-    page.getByRole("menuitem", { name: "Execute and Download Results" }),
-  ).not.toHaveClass(/cursor-not-allowed/);
+  const downloadItem = page.getByRole("menuitem", {
+    name: "Execute and Download Results",
+  });
+  await expect(downloadItem).toBeEnabled();
+  await expect(downloadItem).not.toHaveClass(/cursor-not-allowed/);
 });
 
 test("the statement is only editable by the requester", async ({ page }) => {
