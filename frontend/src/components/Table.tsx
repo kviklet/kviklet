@@ -36,7 +36,7 @@ const Table: FC<{ data: SelectExecuteResponse }> = ({ data }) => {
 
   return (
     <div
-      className={`block max-h-[calc(100vh-theme(spacing.32))] overflow-y-scroll px-2 font-thin ${
+      className={`block max-h-[calc(100vh-theme(spacing.32))] overflow-y-auto px-2 font-thin scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-300 scrollbar-thumb-rounded-full dark:scrollbar-thumb-slate-700 ${
         selected ? "relative left-1/2 w-screen -translate-x-1/2" : "w-full"
       } my-4 shrink-0 rounded border border-slate-300 shadow-md transition-width dark:border-slate-700 dark:shadow-none`}
     >
