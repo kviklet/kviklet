@@ -7,13 +7,15 @@ function Button(props: {
   className?: string;
   size?: "sm" | "md" | "lg";
   textSize?: "sm" | "md" | "lg";
-  variant?: "primary" | "danger" | "disabled" | undefined;
+  variant?: "primary" | "danger" | "success" | "disabled" | undefined;
   htmlType?: "button" | "submit" | "reset" | undefined;
   dataTestId?: string;
   title?: string;
 }) {
   const submitStyle =
     "bg-indigo-700 font-medium text-white hover:bg-indigo-800 dark:hover:bg-indigo-600 dark:bg-indigo-700 dark:text-slate-50 transition-colors";
+  const successStyle =
+    "bg-green-700 font-medium text-white hover:bg-green-800 dark:hover:bg-green-600 dark:bg-green-700 dark:text-slate-50 transition-colors";
   const disabledStyle =
     "bg-slate-300 text-slate-500 hover:bg-slate-300 hover:border-slate-300 dark:bg-slate-700 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:border-slate-700 dark:hover:text-slate-500";
   const defaultStyle =
@@ -40,6 +42,7 @@ function Button(props: {
         (props.variant == "primary" && submitStyle) ||
         (props.variant == "disabled" && disabledStyle) ||
         (props.variant == "danger" && dangerStyle) ||
+        (props.variant == "success" && successStyle) ||
         defaultStyle
       }
       rounded align-middle leading-5

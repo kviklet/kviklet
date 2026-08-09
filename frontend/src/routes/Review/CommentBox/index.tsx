@@ -12,6 +12,7 @@ function CommentBox({
   userId,
   isRejected,
   canReview = true,
+  hasApproved = false,
 }: {
   sendReview: (comment: string, type: ReviewTypes) => Promise<boolean>;
   closeRequest?: (comment: string) => Promise<boolean>;
@@ -19,6 +20,8 @@ function CommentBox({
   isRejected?: boolean;
   /** Whether the backend would allow this user to review this request (execution_request:review). */
   canReview?: boolean;
+  /** The user's approval already stands — hide the Approve pill so it doesn't read as "didn't take". */
+  hasApproved?: boolean;
 }) {
   const [expanded, setExpanded] = useState<boolean>(false);
   const [previewVisible, setPreviewVisible] = useState<boolean>(false);
@@ -45,7 +48,7 @@ function CommentBox({
       id: ReviewTypes.Approve,
       title: "Approve",
       description: "Give your approval to execute this request",
-      enabled: canReview && !isOwnRequest && !isRejected,
+      enabled: canReview && !isOwnRequest && !isRejected && !hasApproved,
       danger: false,
     },
     {
@@ -210,7 +213,7 @@ function CommentBox({
           className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm text-slate-500 shadow-sm transition-colors hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-600"
           onClick={() => setExpanded(true)}
         >
-          {isOwnRequest || isRejected || !canReview
+          {isOwnRequest || isRejected || !canReview || hasApproved
             ? "Leave a comment…"
             : "Leave a comment or review…"}
         </button>

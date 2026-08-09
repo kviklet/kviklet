@@ -1,12 +1,12 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { mapStatus, mapStatusToLabelColor } from "../Requests";
 import Breadcrumbs from "../../components/Breadcrumbs";
 import Spinner from "../../components/Spinner";
 import useRequest from "../../hooks/request";
 import KubernetesRequestDisplay from "./KubernetesRequestDisplay";
 import DatasourceRequestDisplay from "./DatasourceRequestDisplay";
-import DatasourceRequestSidebar from "./DatasourceRequestSidebar";
-import KubernetesRequestSidebar from "./KubernetesRequestSidebar";
+import DatasourceRequestActions from "./DatasourceRequestActions";
+import KubernetesRequestActions from "./KubernetesRequestActions";
+import RequestSidebar from "./RequestSidebar";
 import ActivityTimeline from "./ActivityTimeline";
 import NotAuthorized from "../../components/NotAuthorized";
 
@@ -55,25 +55,18 @@ function RequestReview() {
             />
             <h1 className="my-2 text-3xl">{request?.title}</h1>
             <div className="flex flex-col gap-6 md:flex-row md:items-start">
-              <aside className="flex w-full flex-col gap-4 border-slate-200 dark:border-slate-700 md:order-last md:w-60 md:shrink-0 md:border-l md:pl-4">
-                <div
-                  className={`${mapStatusToLabelColor(
-                    mapStatus(request.reviewStatus, request.executionStatus),
-                  )} w-fit rounded-md px-2 py-1 text-sm font-medium ring-1 ring-inset`}
-                >
-                  {mapStatus(request.reviewStatus, request.executionStatus)}
-                </div>
+              <RequestSidebar request={request} sendReview={sendReview}>
                 {request._type === "DATASOURCE" ? (
-                  <DatasourceRequestSidebar
+                  <DatasourceRequestActions
                     request={request}
                     runQuery={run}
                     cancelQuery={cancelQuery}
                     startServer={start}
                   />
                 ) : (
-                  <KubernetesRequestSidebar request={request} runQuery={run} />
+                  <KubernetesRequestActions request={request} runQuery={run} />
                 )}
-              </aside>
+              </RequestSidebar>
               <div className="min-w-0 flex-1">
                 {request._type === "DATASOURCE" ? (
                   <DatasourceRequestDisplay

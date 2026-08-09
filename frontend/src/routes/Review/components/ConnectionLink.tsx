@@ -14,12 +14,12 @@ const ConnectionLink = ({
   const canViewConnections = useHasPermission("datasource_connection:get");
 
   if (!canViewConnections) {
-    return <span className="italic">{displayName}</span>;
+    return <span>{displayName}</span>;
   }
   return (
     <Link
       to={`/settings/connections/${encodeURIComponent(connectionId)}`}
-      className="italic hover:underline"
+      className="hover:underline"
       title="View connection settings"
     >
       {displayName}

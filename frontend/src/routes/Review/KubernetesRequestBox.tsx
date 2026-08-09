@@ -1,8 +1,8 @@
 import { KubernetesExecutionRequestResponseWithComments } from "../../api/ExecutionRequestApi";
 import Button from "../../components/Button";
 import { timeSince } from "../Requests";
+import { AbsoluteInitialBubble as InitialBubble } from "../../components/InitialBubble";
 import { Highlighter } from "./components/Highlighter";
-import ConnectionLink from "./components/ConnectionLink";
 import { FC, useContext, useEffect, useState, MouseEvent } from "react";
 import { UserStatusContext } from "../../components/UserStatusProvider";
 
@@ -34,25 +34,20 @@ const KubernetesRequestBox: FC<KubernetesRequestBoxProps> = ({
 
   return (
     <div className="relative border-slate-500 dark:border dark:border-slate-950 dark:bg-slate-950">
+      <InitialBubble name={request?.author.fullName} />
       <div className="py-2">
-        <div className="flex text-sm text-slate-800 dark:text-slate-50">
-          <div>
-            {request?.author.fullName} wants to execute a Kubernetes command in:{" "}
-            <ConnectionLink
-              connectionId={request.connection.id}
-              displayName={request.connection.displayName}
-            />
-          </div>
-          <div
-            className="ml-auto dark:text-slate-500"
+        <div className="text-sm text-slate-800 dark:text-slate-50">
+          {request?.author?.fullName}{" "}
+          <span
+            className="text-slate-500 dark:text-slate-400"
             title={
               request?.createdAt
                 ? new Date(request.createdAt).toLocaleString()
                 : undefined
             }
           >
-            {timeSince(new Date(request?.createdAt ?? ""))}
-          </div>
+            requested {timeSince(new Date(request?.createdAt ?? ""))}
+          </span>
         </div>
         <div className="px-4 py-3">
           <p className="max-w-prose pb-6 text-slate-500">

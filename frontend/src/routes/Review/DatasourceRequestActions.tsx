@@ -12,7 +12,6 @@ import { isRelationalDatabase } from "../../hooks/request";
 import Modal from "../../components/Modal";
 import SQLDumpConfirm from "../../components/SQLDumpConfirm";
 import useNotification from "../../hooks/useNotification";
-import ApprovalProgress from "./ApprovalProgress";
 import { UserStatusContext } from "../../components/UserStatusProvider";
 import {
   hasPermission,
@@ -21,7 +20,7 @@ import {
 } from "../../api/Permissions";
 import { useHasPermission } from "../../hooks/permissions";
 
-function DatasourceRequestSidebar({
+function DatasourceRequestActions({
   request,
   runQuery,
   cancelQuery,
@@ -285,9 +284,8 @@ function DatasourceRequestSidebar({
   };
 
   return (
-    <div className="flex items-start justify-between gap-4 md:flex-col md:items-stretch">
-      {request && <ApprovalProgress request={request} />}
-      <div className="flex md:w-full">
+    <>
+      <div className="flex w-full">
         <MenuDropDown items={menuDropDownItems}></MenuDropDown>
         {isRelationalDatabase(request) ? (
           <LoadingCancelButton
@@ -337,8 +335,8 @@ function DatasourceRequestSidebar({
         )}
       </div>
       <SQLDumpModal />
-    </div>
+    </>
   );
 }
 
-export default DatasourceRequestSidebar;
+export default DatasourceRequestActions;

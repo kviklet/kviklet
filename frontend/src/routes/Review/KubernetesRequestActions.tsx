@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { KubernetesExecutionRequestResponseWithComments } from "../../api/ExecutionRequestApi";
 import Button from "../../components/Button";
 import MenuDropDown from "../../components/MenuDropdown";
-import ApprovalProgress from "./ApprovalProgress";
 import { UserStatusContext } from "../../components/UserStatusProvider";
 import {
   hasPermission,
@@ -12,12 +11,12 @@ import {
 } from "../../api/Permissions";
 import { useHasPermission } from "../../hooks/permissions";
 
-interface KubernetesRequestSidebarProps {
+interface KubernetesRequestActionsProps {
   request: KubernetesExecutionRequestResponseWithComments;
   runQuery: (explain?: boolean) => Promise<void>;
 }
 
-const KubernetesRequestSidebar: FC<KubernetesRequestSidebarProps> = ({
+const KubernetesRequestActions: FC<KubernetesRequestActionsProps> = ({
   request,
   runQuery,
 }) => {
@@ -73,31 +72,28 @@ const KubernetesRequestSidebar: FC<KubernetesRequestSidebarProps> = ({
   ];
 
   return (
-    <div className="flex items-start justify-between gap-4 md:flex-col md:items-stretch">
-      <ApprovalProgress request={request} />
-      <div className="flex md:w-full">
-        <MenuDropDown items={menuDropDownItems}></MenuDropDown>
-        <Button
-          className="flex-1"
-          id="runQuery"
-          variant={
-            (request?.reviewStatus == "APPROVED" &&
-              !(executesDirectly && !canExecute) &&
-              "primary") ||
-            "disabled"
-          }
-          title={getDisabledReason()}
-          onClick={() => void runQuery(false)}
-        >
-          {request?.type == "SingleExecution"
-            ? "Run Command"
-            : isAuthor
-            ? "Start Session"
-            : "Watch Session"}
-        </Button>
-      </div>
+    <div className="flex w-full">
+      <MenuDropDown items={menuDropDownItems}></MenuDropDown>
+      <Button
+        className="flex-1"
+        id="runQuery"
+        variant={
+          (request?.reviewStatus == "APPROVED" &&
+            !(executesDirectly && !canExecute) &&
+            "primary") ||
+          "disabled"
+        }
+        title={getDisabledReason()}
+        onClick={() => void runQuery(false)}
+      >
+        {request?.type == "SingleExecution"
+          ? "Run Command"
+          : isAuthor
+          ? "Start Session"
+          : "Watch Session"}
+      </Button>
     </div>
   );
 };
 
-export default KubernetesRequestSidebar;
+export default KubernetesRequestActions;
