@@ -38,7 +38,7 @@ function TopBanner() {
 
   const logoutHandler = async () => {
     await logout();
-    navigate("/login");
+    void navigate("/login");
   };
 
   const loggedIn = userContext.userStatus !== undefined;

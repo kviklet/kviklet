@@ -85,11 +85,11 @@ const RoleSettings = () => {
   };
 
   const handleRowClick = (role: RoleResponse) => {
-    navigate(`/settings/roles/${role.id}`);
+    void navigate(`/settings/roles/${role.id}`);
   };
 
   const handleCreateRole = () => {
-    navigate("/settings/roles/new");
+    void navigate("/settings/roles/new");
   };
 
   const columns: Column<RoleResponse>[] = [

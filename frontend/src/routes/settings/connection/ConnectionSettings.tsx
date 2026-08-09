@@ -61,7 +61,7 @@ const ConnectionSettings = () => {
   };
 
   const handleRowClick = (connection: ConnectionResponse) => {
-    navigate(`/settings/connections/${connection.id}`);
+    void navigate(`/settings/connections/${connection.id}`);
   };
 
   // Group connections by category: uncategorized first, then alphabetically by category

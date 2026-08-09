@@ -52,9 +52,9 @@ const navigateToCreatedRequest = (
       text: "No approval is required for this connection — your session is ready.",
       type: "info",
     });
-    navigate(`/requests/${response.id}/session`);
+    void navigate(`/requests/${response.id}/session`);
   } else {
-    navigate(`/requests/${response.id}`);
+    void navigate(`/requests/${response.id}`);
   }
 };
 

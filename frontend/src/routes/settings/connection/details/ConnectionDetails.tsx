@@ -30,7 +30,7 @@ export default function ConnectionDetails() {
     // what happened, keeping the modal open just strands the user.
     setShowDeleteModal(false);
     if (result === null) {
-      navigate("/settings/connections");
+      void navigate("/settings/connections");
     }
   };
 

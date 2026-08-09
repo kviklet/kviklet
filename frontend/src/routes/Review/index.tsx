@@ -38,7 +38,7 @@ function RequestReview() {
     if (request?.type === "SingleExecution") {
       await execute(explain || false, dryRun || false);
     } else {
-      navigate(`/requests/${request?.id}/session`);
+      void navigate(`/requests/${request?.id}/session`);
     }
   };
 
