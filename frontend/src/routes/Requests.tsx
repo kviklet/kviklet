@@ -361,7 +361,9 @@ function Requests() {
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                navigate(`/requests/${request.id}/session`);
+                                void navigate(
+                                  `/requests/${request.id}/session`,
+                                );
                               }}
                             >
                               {canOpenSession ? (

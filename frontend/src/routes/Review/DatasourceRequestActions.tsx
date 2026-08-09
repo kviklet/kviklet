@@ -50,7 +50,7 @@ function DatasourceRequestActions({
   const navigate = useNavigate();
 
   const navigateCopy = () => {
-    navigate(`/new`, {
+    void navigate(`/new`, {
       state: {
         connectionId: request?.connection.id,
         connectionType: "Datasource",

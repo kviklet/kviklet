@@ -23,6 +23,8 @@ const handleStatusLoggedIn = http.get("http://localhost:8081/status", () => {
       fullName: "Admin User",
       id: "qJ2HUad7BVFCtqQpWjzQpM",
       status: "User is authenticated",
+      licenseValid: false,
+      permissions: ["execution_request:get"],
     },
     { status: 200 },
   );

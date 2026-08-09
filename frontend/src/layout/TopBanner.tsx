@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   ThemeContext,
   ThemeStatusContext,
@@ -34,11 +34,13 @@ function TopBanner() {
     }
   };
 
-  const navigate = useNavigate();
-
   const logoutHandler = async () => {
     await logout();
-    navigate("/login");
+    // Don't navigate to /login imperatively: the user status in context is still the
+    // stale logged-in value, so the login page would immediately bounce back to "/"
+    // (and fire unauthenticated fetches there). Refreshing the status commits the
+    // logged-out state, and ProtectedRoute then redirects to /login on its own.
+    await userContext.refreshState();
   };
 
   const loggedIn = userContext.userStatus !== undefined;

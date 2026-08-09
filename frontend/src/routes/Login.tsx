@@ -1,7 +1,7 @@
 import { ChangeEvent, FormEvent, useContext, useState } from "react";
 import Button from "../components/Button";
 import GoogleButton from "react-google-button";
-import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { UserStatusContext } from "../components/UserStatusProvider";
 import image from "../logo.png";
 import baseUrl from "../api/base";
@@ -39,7 +39,6 @@ const Login = () => {
   const [password, setPassword] = useState<string>("");
   const [showLocalLogin, setShowLocalLogin] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false);
-  const navigate = useNavigate();
   const userContext = useContext(UserStatusContext);
 
   const { config, loading } = useConfig();
@@ -61,11 +60,11 @@ const Login = () => {
           type: "error",
         });
       } else {
+        // The declarative <Navigate> below picks the redirect up once the refreshed
+        // status commits. Navigating imperatively here races the context update:
+        // react-router 7 wraps navigation in startTransition, so ProtectedRoute can
+        // render "/" with the stale logged-out status and bounce back to /login.
         await userContext.refreshState();
-
-        // The index landing routes users without execution_request:get to their
-        // profile instead of the requests list they could never load.
-        navigate("/");
       }
     } finally {
       setLoggingIn(false);
@@ -117,6 +116,12 @@ const Login = () => {
       );
     }
   };
+
+  if (userContext.userStatus) {
+    // Already (or freshly) logged in — the index landing routes users without
+    // execution_request:get to their profile instead of the requests list.
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div>

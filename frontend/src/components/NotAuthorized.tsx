@@ -42,7 +42,7 @@ export default function NotAuthorized({
       {showBackButton && (
         <Button
           onClick={() =>
-            canGoBack ? navigate(-1) : navigate("/", { replace: true })
+            void (canGoBack ? navigate(-1) : navigate("/", { replace: true }))
           }
         >
           {canGoBack ? "Go back" : "Go to home"}

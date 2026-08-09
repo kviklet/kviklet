@@ -43,7 +43,7 @@ export default function NewRoleView() {
       });
       return;
     }
-    navigate("/settings/roles");
+    void navigate("/settings/roles");
   };
 
   return (
