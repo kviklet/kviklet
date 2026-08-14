@@ -16,6 +16,10 @@ RUN npm run build
 
 # Needed to copy a working Java runtime to the final image
 FROM amazoncorretto:21 AS javaruntime
+# Replace the symlink to /etc/pki/java/cacerts with the actual file so it
+# survives COPY into the final image (fixes #524)
+RUN cp --remove-destination "$(readlink -f /usr/lib/jvm/java-21-amazon-corretto/lib/security/cacerts)" \
+    /usr/lib/jvm/java-21-amazon-corretto/lib/security/cacerts
 
 FROM nginxinc/nginx-unprivileged:1.27
 
