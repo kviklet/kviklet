@@ -7,19 +7,29 @@ RUN gradle --version --no-daemon
 
 RUN gradle build  -x kaptTestKotlin -x compileTestKotlin -x test --no-daemon
 
+# Build a trimmed Java runtime with jlink. Module list: `jdeps --print-module-deps`
+# on the boot jar, plus modules loaded reflectively/via service-loader that jdeps
+# cannot see:
+#   jdk.crypto.ec                     - EC TLS ciphers (outbound HTTPS, SSO)
+#   jdk.security.auth/jdk.security.jgss - JAAS/Kerberos (MSSQL integrated auth, SPNEGO)
+#   jdk.naming.dns                    - JNDI DNS provider (LDAP server discovery)
+#   jdk.charsets, jdk.localedata      - extended charsets/locales for DB connections
+#   jdk.zipfs, jdk.management         - nested-jar access, JVM management extensions
+RUN jlink \
+    --add-modules java.base,java.compiler,java.desktop,java.instrument,java.management,java.naming,java.net.http,java.prefs,java.rmi,java.scripting,java.security.jgss,java.security.sasl,java.sql,java.sql.rowset,java.transaction.xa,java.xml,java.xml.crypto,jdk.charsets,jdk.crypto.ec,jdk.httpserver,jdk.jfr,jdk.localedata,jdk.management,jdk.naming.dns,jdk.net,jdk.security.auth,jdk.security.jgss,jdk.unsupported,jdk.zipfs \
+    --strip-debug --no-man-pages --no-header-files --compress=zip-6 \
+    --output /opt/java-runtime \
+    # cacerts must be a real, populated keystore — a symlink would dangle in the
+    # final image and leave the JVM without trust anchors
+    && test ! -L /opt/java-runtime/lib/security/cacerts \
+    && /opt/java-runtime/bin/keytool -list -keystore /opt/java-runtime/lib/security/cacerts -storepass changeit | grep -q "trustedCertEntry"
+
 FROM node:22 AS build-frontend
 WORKDIR /app
 COPY ./frontend/package-lock.json ./frontend/package.json ./
 RUN npm ci --production
 COPY ./frontend .
 RUN npm run build
-
-# Needed to copy a working Java runtime to the final image
-FROM amazoncorretto:21 AS javaruntime
-# Replace the symlink to /etc/pki/java/cacerts with the actual file so it
-# survives COPY into the final image (fixes #524)
-RUN cp --remove-destination "$(readlink -f /usr/lib/jvm/java-21-amazon-corretto/lib/security/cacerts)" \
-    /usr/lib/jvm/java-21-amazon-corretto/lib/security/cacerts
 
 FROM nginxinc/nginx-unprivileged:1.27
 
@@ -41,10 +51,10 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 
-COPY --from=javaruntime /usr/lib/jvm/java-21-amazon-corretto /usr/lib/jvm/java-21-amazon-corretto
+COPY --from=build /opt/java-runtime /opt/java-runtime
 
 # Set Java environment variables
-ENV JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto
+ENV JAVA_HOME=/opt/java-runtime
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 # Set version info environment variables (Spring Boot relaxed binding maps these)
