@@ -3,18 +3,21 @@ import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import {
   CheckIcon,
   ChevronDownIcon,
+  ClockIcon,
   XMarkIcon,
 } from "@heroicons/react/20/solid";
 import { getConnections, ConnectionResponse } from "../api/DatasourceApi";
 import { fetchUsers, UserResponse } from "../api/UserApi";
 import { isApiErrorResponse } from "../api/Errors";
 import { UserStatusContext } from "../components/UserStatusProvider";
+import Tooltip from "../components/Tooltip";
 
 interface RequestListFilters {
   connectionIds: string[];
   authorId: string | null;
   createdFrom: string | null;
   createdTo: string | null;
+  onlyPending: boolean;
 }
 
 const emptyFilters: RequestListFilters = {
@@ -22,13 +25,15 @@ const emptyFilters: RequestListFilters = {
   authorId: null,
   createdFrom: null,
   createdTo: null,
+  onlyPending: false,
 };
 
 const hasActiveFilters = (filters: RequestListFilters): boolean =>
   filters.connectionIds.length > 0 ||
   filters.authorId !== null ||
   filters.createdFrom !== null ||
-  filters.createdTo !== null;
+  filters.createdTo !== null ||
+  filters.onlyPending;
 
 function formatDay(isoDate: string): string {
   const date = new Date(`${isoDate}T00:00:00`);
@@ -47,6 +52,13 @@ function dateRangeLabel(from: string | null, to: string | null): string {
   return "Created";
 }
 
+const pillBaseClasses =
+  "inline-flex h-7 items-center gap-1 rounded-md pl-2.5 text-xs font-medium ring-1 ring-inset transition-colors";
+const pillInactiveClasses =
+  "text-slate-600 ring-slate-300 hover:bg-white dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-900";
+const pillActiveClasses =
+  "bg-indigo-50 text-indigo-600 ring-indigo-600/30 dark:bg-indigo-400/10 dark:text-indigo-400 dark:ring-indigo-400/30";
+
 function FilterPill({
   label,
   active,
@@ -58,16 +70,12 @@ function FilterPill({
   onClear: () => void;
   testId: string;
 }) {
-  const baseClasses =
-    "inline-flex h-7 items-center gap-1 rounded-md pl-2.5 text-xs font-medium ring-1 ring-inset transition-colors";
-  const inactiveClasses =
-    "pr-2 text-slate-600 ring-slate-300 hover:bg-white dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-900";
-  const activeClasses =
-    "pr-1.5 bg-indigo-50 text-indigo-600 ring-indigo-600/30 dark:bg-indigo-400/10 dark:text-indigo-400 dark:ring-indigo-400/30";
   return (
     <PopoverButton
       data-testid={testId}
-      className={`${baseClasses} ${active ? activeClasses : inactiveClasses}`}
+      className={`${pillBaseClasses} ${
+        active ? `pr-1.5 ${pillActiveClasses}` : `pr-2 ${pillInactiveClasses}`
+      }`}
     >
       {label}
       {active ? (
@@ -299,6 +307,22 @@ function RequestFilterBar({
           </div>
         </PopoverPanel>
       </Popover>
+
+      <Tooltip position="bottom" content="Show only pending requests">
+        <button
+          type="button"
+          data-testid="filter-pending"
+          onClick={() =>
+            onChange({ ...filters, onlyPending: !filters.onlyPending })
+          }
+          className={`${pillBaseClasses} pr-2.5 ${
+            filters.onlyPending ? pillActiveClasses : pillInactiveClasses
+          }`}
+        >
+          <ClockIcon className="h-3.5 w-3.5" />
+          Pending
+        </button>
+      </Tooltip>
 
       {hasActiveFilters(filters) && (
         <button

@@ -15,7 +15,6 @@ import Spinner from "../components/Spinner";
 import InitialBubble from "../components/InitialBubble";
 import {
   CircleStackIcon,
-  ClockIcon,
   CloudIcon,
   EyeIcon,
   PlayIcon,
@@ -23,9 +22,7 @@ import {
 import { UserStatusContext } from "../components/UserStatusProvider";
 import { isApiErrorResponse } from "../api/Errors";
 import useNotification from "../hooks/useNotification";
-import Toggle from "../components/Toggle";
 import SearchInput from "../components/SearchInput";
-import Tooltip from "../components/Tooltip";
 import {
   RequestFilterBar,
   RequestListFilters,
@@ -129,11 +126,7 @@ function shortTypeLabel(type: string) {
   }
 }
 
-const useRequests = (
-  onlyPending: boolean,
-  filters: RequestListFilters,
-  searchTerm: string,
-) => {
+const useRequests = (filters: RequestListFilters, searchTerm: string) => {
   const [requests, setRequests] = useState<ExecutionRequestResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
@@ -153,8 +146,10 @@ const useRequests = (
       }
 
       const response = await getRequestsPaginated({
-        reviewStatuses: onlyPending ? ["AWAITING_APPROVAL"] : undefined,
-        executionStatuses: onlyPending ? ["EXECUTABLE", "ACTIVE"] : undefined,
+        reviewStatuses: filters.onlyPending ? ["AWAITING_APPROVAL"] : undefined,
+        executionStatuses: filters.onlyPending
+          ? ["EXECUTABLE", "ACTIVE"]
+          : undefined,
         connectionIds:
           filters.connectionIds.length > 0 ? filters.connectionIds : undefined,
         authorId: filters.authorId ?? undefined,
@@ -188,12 +183,12 @@ const useRequests = (
       setLoading(false);
       setLoadingMore(false);
     },
-    [onlyPending, filters, cursor, addNotification],
+    [filters, cursor, addNotification],
   );
 
   useEffect(() => {
     void loadRequests(true);
-  }, [onlyPending, filters]);
+  }, [filters]);
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {
@@ -229,11 +224,9 @@ const useRequests = (
 };
 
 function Requests() {
-  const [onlyPending, setOnlyPending] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<RequestListFilters>(emptyFilters);
   const { requests, loading, loadingMore, hasMore, loadMore } = useRequests(
-    onlyPending,
     filters,
     searchTerm,
   );
@@ -266,30 +259,20 @@ function Requests() {
   return (
     <div className="h-full">
       <div className="border-b border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
-        <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto max-w-3xl px-4 pb-3 pt-4">
           <h1 className="text-xl font-medium">Requests</h1>
-          <div className="flex items-center gap-3">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <RequestFilterBar filters={filters} onChange={setFilters} />
             <SearchInput
+              compact
               value={searchTerm}
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
                 setSearchTerm(e.target.value)
               }
               placeholder="Search requests..."
-              className="w-full sm:w-64"
+              className="sm:ml-auto sm:w-56"
             />
-            <Tooltip position="bottom" content="Show only pending requests">
-              <div className="flex shrink-0 items-center">
-                <ClockIcon className="mr-2 h-5 w-5 text-slate-400" />
-                <Toggle
-                  active={onlyPending}
-                  onClick={() => setOnlyPending(!onlyPending)}
-                />
-              </div>
-            </Tooltip>
           </div>
-        </div>
-        <div className="mx-auto max-w-3xl px-4 pb-3 pt-3 sm:pt-2">
-          <RequestFilterBar filters={filters} onChange={setFilters} />
         </div>
       </div>
       {(loading && <Spinner size="lg" page />) || (
