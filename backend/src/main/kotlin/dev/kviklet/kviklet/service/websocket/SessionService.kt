@@ -39,11 +39,17 @@ class SessionService(
         // Atomically check and set executing flag - this will throw if already executing
         val session = sessionAdapter.checkAndSetExecuting(sessionId)
 
-        return executionRequestService.execute(
-            session.executionRequest.request.id!!,
-            statement,
-            userId,
-        )
+        try {
+            return executionRequestService.execute(
+                session.executionRequest.request.id!!,
+                statement,
+                userId,
+            )
+        } finally {
+            // Only reached if this execution acquired the flag above - a rejected
+            // execution must not release the lock held by the running query
+            sessionAdapter.setExecuting(sessionId, false)
+        }
     }
 
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
@@ -57,10 +63,5 @@ class SessionService(
     fun cancelQuery(sessionId: LiveSessionId) {
         val session = sessionAdapter.findById(sessionId)
         executionRequestService.cancel(session.executionRequest.request.id!!)
-    }
-
-    @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
-    fun clearExecutingFlag(sessionId: LiveSessionId) {
-        sessionAdapter.setExecuting(sessionId, false)
     }
 }

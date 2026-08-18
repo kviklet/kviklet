@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.service.websocket
 
+import dev.kviklet.kviklet.db.LiveSessionAdapter
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.helper.ConnectionHelper
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper
@@ -13,9 +14,11 @@ import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.UpdateQueryResult
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
@@ -42,6 +45,9 @@ class SessionServiceTest {
 
     @Autowired
     private lateinit var liveSessionHelper: LiveSessionHelper
+
+    @Autowired
+    private lateinit var liveSessionAdapter: LiveSessionAdapter
 
     private lateinit var testUser: User
     private lateinit var testLiveSession: LiveSessionId
@@ -84,13 +90,8 @@ class SessionServiceTest {
         userHelper.deleteAll()
     }
 
-    // Executes via the service and then clears the executing flag, like
-    // SessionWebsocketHandler does after each query completes
-    private fun executeStatement(sessionId: LiveSessionId, statement: String, userId: String): ExecutionResult = try {
+    private fun executeStatement(sessionId: LiveSessionId, statement: String, userId: String): ExecutionResult =
         sessionService.executeStatement(sessionId, statement, userId)
-    } finally {
-        sessionService.clearExecutingFlag(sessionId)
-    }
 
     @Test
     fun testExecuteStatementSimpleSelect() {
@@ -196,5 +197,38 @@ class SessionServiceTest {
         assertEquals(1, finalState.data.size)
         assertEquals("1", finalState.data[0]["id"])
         assertEquals("Charlie", finalState.data[0]["name"])
+    }
+
+    @Test
+    fun testRejectedExecutionDoesNotClearSessionLock() {
+        // Simulate a query already running for this session, e.g. started via another replica
+        liveSessionAdapter.checkAndSetExecuting(testLiveSession)
+
+        // A competing execution is rejected
+        assertThrows<IllegalStateException> {
+            executeStatement(testLiveSession, "SELECT 1", testUser.getId()!!)
+        }
+
+        // The rejected attempt must not have released the running query's lock,
+        // so a retry is rejected as well
+        assertTrue(liveSessionAdapter.isExecuting(testLiveSession))
+        assertThrows<IllegalStateException> {
+            executeStatement(testLiveSession, "SELECT 1", testUser.getId()!!)
+        }
+
+        // Once the running query releases the lock, execution works again
+        liveSessionAdapter.setExecuting(testLiveSession, false)
+        val result = executeStatement(testLiveSession, "SELECT 1 as test", testUser.getId()!!)
+        assertTrue(result is DBExecutionResult)
+    }
+
+    @Test
+    fun testExecutionReleasesItsOwnSessionLock() {
+        executeStatement(testLiveSession, "SELECT 1", testUser.getId()!!)
+        assertFalse(liveSessionAdapter.isExecuting(testLiveSession))
+
+        // A failing statement releases the lock as well
+        executeStatement(testLiveSession, "SELECT * FROM does_not_exist", testUser.getId()!!)
+        assertFalse(liveSessionAdapter.isExecuting(testLiveSession))
     }
 }

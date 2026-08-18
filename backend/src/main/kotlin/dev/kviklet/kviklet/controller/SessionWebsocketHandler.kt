@@ -203,9 +203,6 @@ class SessionWebsocketHandler(
                                     liveSessionId,
                                 )
                             }
-                        } finally {
-                            // Clear the executing flag
-                            sessionService.clearExecutingFlag(liveSessionId)
                         }
                     }
                     // Handler returns immediately - can now process other messages!
