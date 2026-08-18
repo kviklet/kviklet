@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react";
+import { ReactNode, useContext, useEffect, useState } from "react";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import {
   CheckIcon,
@@ -11,6 +11,7 @@ import { fetchUsers, UserResponse } from "../api/UserApi";
 import { isApiErrorResponse } from "../api/Errors";
 import { UserStatusContext } from "../components/UserStatusProvider";
 import Tooltip from "../components/Tooltip";
+import InitialBubble from "../components/InitialBubble";
 
 interface RequestListFilters {
   connectionIds: string[];
@@ -77,7 +78,7 @@ function FilterPill({
         active ? `pr-1.5 ${pillActiveClasses}` : `pr-2 ${pillInactiveClasses}`
       }`}
     >
-      {label}
+      <span className="max-w-[7rem] truncate">{label}</span>
       {active ? (
         <span
           role="button"
@@ -106,20 +107,23 @@ function OptionRow({
   selected,
   onClick,
   testId,
+  leading,
 }: {
   label: string;
   selected: boolean;
   onClick: () => void;
   testId?: string;
+  leading?: ReactNode;
 }) {
   return (
     <button
       type="button"
       data-testid={testId}
       onClick={onClick}
-      className="flex w-full items-center justify-between gap-2 rounded px-2.5 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+      className="flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
     >
-      <span className="truncate">{label}</span>
+      {leading}
+      <span className="min-w-0 flex-1 truncate">{label}</span>
       {selected && (
         <CheckIcon className="h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
       )}
@@ -141,6 +145,10 @@ function RequestFilterBar({
   const [users, setUsers] = useState<UserResponse[]>([]);
   const { userStatus } = useContext(UserStatusContext);
   const currentUserId = userStatus === false ? undefined : userStatus?.id;
+  const currentUserName =
+    userStatus === false
+      ? undefined
+      : userStatus?.fullName ?? userStatus?.email;
 
   useEffect(() => {
     // Both lists are permission-gated; a user who can't load them still gets
@@ -225,6 +233,12 @@ function RequestFilterBar({
               <div className="max-h-64 overflow-y-auto">
                 <OptionRow
                   label="Your requests"
+                  leading={
+                    <InitialBubble
+                      name={currentUserName}
+                      className="!h-5 !w-5 shrink-0 !text-[9px]"
+                    />
+                  }
                   selected={filters.authorId === currentUserId}
                   onClick={() => {
                     onChange({
@@ -245,6 +259,12 @@ function RequestFilterBar({
                   <OptionRow
                     key={user.id}
                     label={user.fullName ?? user.email}
+                    leading={
+                      <InitialBubble
+                        name={user.fullName ?? user.email}
+                        className="!h-5 !w-5 shrink-0 !text-[9px]"
+                      />
+                    }
                     selected={filters.authorId === user.id}
                     onClick={() => {
                       onChange({

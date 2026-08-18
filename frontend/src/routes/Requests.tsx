@@ -135,8 +135,14 @@ const useRequests = (filters: RequestListFilters, searchTerm: string) => {
 
   const { addNotification } = useNotification();
 
+  // Filter changes fire a fetch per change and responses can come back out of
+  // order; only the latest fetch may write, or a stale response overwrites the
+  // correctly filtered list.
+  const fetchSeq = useRef(0);
+
   const loadRequests = useCallback(
     async (reset: boolean = false) => {
+      const seq = ++fetchSeq.current;
       if (reset) {
         setLoading(true);
         setRequests([]);
@@ -163,6 +169,10 @@ const useRequests = (filters: RequestListFilters, searchTerm: string) => {
         after: reset ? undefined : cursor ?? undefined,
         limit: 20,
       });
+
+      if (seq !== fetchSeq.current) {
+        return;
+      }
 
       if (isApiErrorResponse(response)) {
         addNotification({
@@ -259,167 +269,168 @@ function Requests() {
   return (
     <div className="h-full">
       <div className="border-b border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
-        <div className="mx-auto max-w-3xl px-4 pb-3 pt-4">
+        <div className="mx-auto max-w-3xl px-4 py-4">
           <h1 className="text-xl font-medium">Requests</h1>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <RequestFilterBar filters={filters} onChange={setFilters} />
-            <SearchInput
-              compact
-              value={searchTerm}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                setSearchTerm(e.target.value)
-              }
-              placeholder="Search requests..."
-              className="sm:ml-auto sm:w-56"
-            />
-          </div>
         </div>
       </div>
-      {(loading && <Spinner size="lg" page />) || (
-        <div
-          className="h-full bg-slate-50 dark:bg-slate-950"
-          data-testid="requests-list"
-        >
-          <div className="mx-auto max-w-3xl px-4 pt-2">
-            {requests.length === 0 && (
-              <div className="mx-2 my-4 flex flex-col items-center gap-2 px-4 py-2">
-                <h2 className="text-center text-lg">
-                  {hasActiveFilters(filters) || searchTerm
-                    ? "No requests match your filters"
-                    : "No requests"}
-                </h2>
-                {(hasActiveFilters(filters) || searchTerm) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFilters(emptyFilters);
-                      setSearchTerm("");
-                    }}
-                    className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
-                  >
-                    Clear filters
-                  </button>
-                )}
-              </div>
-            )}
-            {requests.map((request) => {
-              const status = mapStatus(
-                request.reviewStatus,
-                request.executionStatus,
-              );
-              const isAuthor =
-                userStatus !== false && userStatus?.id === request.author.id;
-              const canOpenSession =
-                request.type === "TemporaryAccess" &&
-                (status === "Ready" || status === "Active") &&
-                isAuthor;
-              // Non-authors can only spectate, so link them in once the
-              // session is actually running
-              const canWatchSession =
-                request.type === "TemporaryAccess" &&
-                status === "Active" &&
-                !isAuthor;
-              return (
-                <Link
-                  key={request.id}
-                  to={`/requests/${request.id}`}
-                  data-testid={`request-link-${request.title}`}
-                >
-                  <div
-                    className={`my-2 rounded-lg border border-l-4 border-slate-200 bg-white px-4 py-3 shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none dark:hover:bg-slate-800 ${mapStatusToBorderColor(
-                      status,
-                    )}`}
+      <div className="h-full bg-slate-50 dark:bg-slate-950">
+        <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-2 px-4 pt-4">
+          <RequestFilterBar filters={filters} onChange={setFilters} />
+          <SearchInput
+            compact
+            value={searchTerm}
+            onChange={(e: ChangeEvent<HTMLInputElement>) =>
+              setSearchTerm(e.target.value)
+            }
+            placeholder="Search requests..."
+            className="sm:ml-auto sm:w-56"
+          />
+        </div>
+        {(loading && <Spinner size="lg" page />) || (
+          <div data-testid="requests-list">
+            <div className="mx-auto max-w-3xl px-4 pt-2">
+              {requests.length === 0 && (
+                <div className="mx-2 my-4 flex flex-col items-center gap-2 px-4 py-2">
+                  <h2 className="text-center text-lg">
+                    {hasActiveFilters(filters) || searchTerm
+                      ? "No requests match your filters"
+                      : "No requests"}
+                  </h2>
+                  {(hasActiveFilters(filters) || searchTerm) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilters(emptyFilters);
+                        setSearchTerm("");
+                      }}
+                      className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                    >
+                      Clear filters
+                    </button>
+                  )}
+                </div>
+              )}
+              {requests.map((request) => {
+                const status = mapStatus(
+                  request.reviewStatus,
+                  request.executionStatus,
+                );
+                const isAuthor =
+                  userStatus !== false && userStatus?.id === request.author.id;
+                const canOpenSession =
+                  request.type === "TemporaryAccess" &&
+                  (status === "Ready" || status === "Active") &&
+                  isAuthor;
+                // Non-authors can only spectate, so link them in once the
+                // session is actually running
+                const canWatchSession =
+                  request.type === "TemporaryAccess" &&
+                  status === "Active" &&
+                  !isAuthor;
+                return (
+                  <Link
                     key={request.id}
+                    to={`/requests/${request.id}`}
+                    data-testid={`request-link-${request.title}`}
                   >
-                    <div className="flex items-start gap-3">
-                      <InitialBubble
-                        name={request.author.fullName || request.author.email}
-                        className="h-9 w-9 shrink-0"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <h2 className="truncate text-sm font-medium">
-                            {request.title}
-                          </h2>
-                          <span
-                            className="shrink-0 text-xs text-slate-400 dark:text-slate-500"
-                            title={new Date(request.createdAt).toLocaleString()}
-                          >
-                            {timeSince(new Date(request.createdAt))}
-                          </span>
-                        </div>
-                        <p className="mt-0.5 flex flex-wrap items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
-                          <span className="truncate font-medium text-slate-600 dark:text-slate-300">
-                            {request.author.fullName || request.author.email}
-                          </span>
-                          <span className="shrink-0">→</span>
-                          <span className="inline-flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
-                            {request._type === "DATASOURCE" ? (
-                              <CircleStackIcon className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
-                            ) : (
-                              <CloudIcon className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
-                            )}
-                            {request.connection.displayName}
-                          </span>
-                        </p>
-                        {request.description && (
-                          <p className="mt-0.5 line-clamp-1 text-sm text-slate-500 dark:text-slate-400">
-                            {request.description}
-                          </p>
-                        )}
-                        <div className="mt-1.5 flex items-center justify-between gap-2">
-                          <p className="text-xs text-slate-400 dark:text-slate-500">
-                            <span>{shortTypeLabel(request.type)}</span>
-                            <span className="mx-1.5">·</span>
-                            <span className={mapStatusToTextColor(status)}>
-                              {status}
+                    <div
+                      className={`my-2 rounded-lg border border-l-4 border-slate-200 bg-white px-4 py-3 shadow-sm transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none dark:hover:bg-slate-800 ${mapStatusToBorderColor(
+                        status,
+                      )}`}
+                      key={request.id}
+                    >
+                      <div className="flex items-start gap-3">
+                        <InitialBubble
+                          name={request.author.fullName || request.author.email}
+                          className="h-9 w-9 shrink-0"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <h2 className="truncate text-sm font-medium">
+                              {request.title}
+                            </h2>
+                            <span
+                              className="shrink-0 text-xs text-slate-400 dark:text-slate-500"
+                              title={new Date(
+                                request.createdAt,
+                              ).toLocaleString()}
+                            >
+                              {timeSince(new Date(request.createdAt))}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 flex flex-wrap items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
+                            <span className="truncate font-medium text-slate-600 dark:text-slate-300">
+                              {request.author.fullName || request.author.email}
+                            </span>
+                            <span className="shrink-0">→</span>
+                            <span className="inline-flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
+                              {request._type === "DATASOURCE" ? (
+                                <CircleStackIcon className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                              ) : (
+                                <CloudIcon className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+                              )}
+                              {request.connection.displayName}
                             </span>
                           </p>
-                          {(canOpenSession || canWatchSession) && (
-                            <button
-                              type="button"
-                              data-testid={`${
-                                canOpenSession ? "open" : "watch"
-                              }-session-${request.title}`}
-                              className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-indigo-600 ring-1 ring-inset ring-indigo-600/30 transition-colors hover:bg-indigo-50 dark:text-indigo-400 dark:ring-indigo-400/30 dark:hover:bg-indigo-400/10"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                void navigate(
-                                  `/requests/${request.id}/session`,
-                                );
-                              }}
-                            >
-                              {canOpenSession ? (
-                                <PlayIcon className="h-3.5 w-3.5" />
-                              ) : (
-                                <EyeIcon className="h-3.5 w-3.5" />
-                              )}
-                              {canOpenSession
-                                ? "Open session"
-                                : "Watch session"}
-                            </button>
+                          {request.description && (
+                            <p className="mt-0.5 line-clamp-1 text-sm text-slate-500 dark:text-slate-400">
+                              {request.description}
+                            </p>
                           )}
+                          <div className="mt-1.5 flex items-center justify-between gap-2">
+                            <p className="text-xs text-slate-400 dark:text-slate-500">
+                              <span>{shortTypeLabel(request.type)}</span>
+                              <span className="mx-1.5">·</span>
+                              <span className={mapStatusToTextColor(status)}>
+                                {status}
+                              </span>
+                            </p>
+                            {(canOpenSession || canWatchSession) && (
+                              <button
+                                type="button"
+                                data-testid={`${
+                                  canOpenSession ? "open" : "watch"
+                                }-session-${request.title}`}
+                                className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-indigo-600 ring-1 ring-inset ring-indigo-600/30 transition-colors hover:bg-indigo-50 dark:text-indigo-400 dark:ring-indigo-400/30 dark:hover:bg-indigo-400/10"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  void navigate(
+                                    `/requests/${request.id}/session`,
+                                  );
+                                }}
+                              >
+                                {canOpenSession ? (
+                                  <PlayIcon className="h-3.5 w-3.5" />
+                                ) : (
+                                  <EyeIcon className="h-3.5 w-3.5" />
+                                )}
+                                {canOpenSession
+                                  ? "Open session"
+                                  : "Watch session"}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
-              );
-            })}
+                  </Link>
+                );
+              })}
 
-            {/* Infinite scroll trigger */}
-            {hasMore && <div ref={observerTarget} className="h-10" />}
+              {/* Infinite scroll trigger */}
+              {hasMore && <div ref={observerTarget} className="h-10" />}
 
-            {/* Loading more indicator */}
-            {loadingMore && (
-              <div className="my-4 flex justify-center">
-                <Spinner size="sm" />
-              </div>
-            )}
+              {/* Loading more indicator */}
+              {loadingMore && (
+                <div className="my-4 flex justify-center">
+                  <Spinner size="sm" />
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
