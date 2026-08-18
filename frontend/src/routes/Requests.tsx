@@ -26,6 +26,12 @@ import useNotification from "../hooks/useNotification";
 import Toggle from "../components/Toggle";
 import SearchInput from "../components/SearchInput";
 import Tooltip from "../components/Tooltip";
+import {
+  RequestFilterBar,
+  RequestListFilters,
+  emptyFilters,
+  hasActiveFilters,
+} from "./RequestFilters";
 
 function timeSince(date: Date) {
   const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -123,7 +129,11 @@ function shortTypeLabel(type: string) {
   }
 }
 
-const useRequests = (onlyPending: boolean, searchTerm: string) => {
+const useRequests = (
+  onlyPending: boolean,
+  filters: RequestListFilters,
+  searchTerm: string,
+) => {
   const [requests, setRequests] = useState<ExecutionRequestResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
@@ -145,6 +155,16 @@ const useRequests = (onlyPending: boolean, searchTerm: string) => {
       const response = await getRequestsPaginated({
         reviewStatuses: onlyPending ? ["AWAITING_APPROVAL"] : undefined,
         executionStatuses: onlyPending ? ["EXECUTABLE", "ACTIVE"] : undefined,
+        connectionIds:
+          filters.connectionIds.length > 0 ? filters.connectionIds : undefined,
+        authorId: filters.authorId ?? undefined,
+        // The picker yields local calendar days; send the full day in local time.
+        createdAfter: filters.createdFrom
+          ? new Date(`${filters.createdFrom}T00:00:00`)
+          : undefined,
+        createdBefore: filters.createdTo
+          ? new Date(`${filters.createdTo}T23:59:59.999`)
+          : undefined,
         after: reset ? undefined : cursor ?? undefined,
         limit: 20,
       });
@@ -168,12 +188,12 @@ const useRequests = (onlyPending: boolean, searchTerm: string) => {
       setLoading(false);
       setLoadingMore(false);
     },
-    [onlyPending, cursor, addNotification],
+    [onlyPending, filters, cursor, addNotification],
   );
 
   useEffect(() => {
     void loadRequests(true);
-  }, [onlyPending]);
+  }, [onlyPending, filters]);
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {
@@ -211,8 +231,10 @@ const useRequests = (onlyPending: boolean, searchTerm: string) => {
 function Requests() {
   const [onlyPending, setOnlyPending] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filters, setFilters] = useState<RequestListFilters>(emptyFilters);
   const { requests, loading, loadingMore, hasMore, loadMore } = useRequests(
     onlyPending,
+    filters,
     searchTerm,
   );
   const observerTarget = useRef<HTMLDivElement>(null);
@@ -244,8 +266,8 @@ function Requests() {
   return (
     <div className="h-full">
       <div className="border-b border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
-        <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-xl font-medium">Open Requests</h1>
+        <div className="mx-auto flex max-w-3xl flex-col gap-3 px-4 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-xl font-medium">Requests</h1>
           <div className="flex items-center gap-3">
             <SearchInput
               value={searchTerm}
@@ -266,6 +288,9 @@ function Requests() {
             </Tooltip>
           </div>
         </div>
+        <div className="mx-auto max-w-3xl px-4 pb-3 pt-3 sm:pt-2">
+          <RequestFilterBar filters={filters} onChange={setFilters} />
+        </div>
       </div>
       {(loading && <Spinner size="lg" page />) || (
         <div
@@ -274,8 +299,24 @@ function Requests() {
         >
           <div className="mx-auto max-w-3xl px-4 pt-2">
             {requests.length === 0 && (
-              <div className="mx-2 my-4 px-4 py-2">
-                <h2 className="text-center text-lg">No open requests</h2>
+              <div className="mx-2 my-4 flex flex-col items-center gap-2 px-4 py-2">
+                <h2 className="text-center text-lg">
+                  {hasActiveFilters(filters) || searchTerm
+                    ? "No requests match your filters"
+                    : "No requests"}
+                </h2>
+                {(hasActiveFilters(filters) || searchTerm) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilters(emptyFilters);
+                      setSearchTerm("");
+                    }}
+                    className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                  >
+                    Clear filters
+                  </button>
+                )}
               </div>
             )}
             {requests.map((request) => {

@@ -362,7 +362,10 @@ class ExecutionRequestService(
     fun list(
         reviewStatuses: Set<ReviewStatus>?,
         executionStatuses: Set<ExecutionStatus>?,
-        connectionId: ConnectionId?,
+        connectionIds: Set<ConnectionId>?,
+        authorId: String?,
+        createdAfter: LocalDateTime?,
+        createdBefore: LocalDateTime?,
         after: LocalDateTime?,
         limit: Int = 20,
     ): ExecutionRequestList {
@@ -376,7 +379,10 @@ class ExecutionRequestService(
         val requests = executionRequestAdapter.listExecutionRequestsFiltered(
             reviewStatuses = reviewStatuses,
             executionStatuses = executionStatuses,
-            connectionId = connectionId,
+            connectionIds = connectionIds,
+            authorId = authorId,
+            createdAfter = createdAfter,
+            createdBefore = createdBefore,
             after = after,
             limit = fetchLimit,
         ).map { ensureMaterializedStatuses(it) }
