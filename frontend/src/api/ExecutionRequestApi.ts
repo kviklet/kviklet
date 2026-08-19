@@ -314,7 +314,10 @@ const postStartServer = async (
 interface GetRequestsParams {
   reviewStatuses?: string[];
   executionStatuses?: string[];
-  connectionId?: string;
+  connectionIds?: string[];
+  authorId?: string;
+  createdAfter?: Date;
+  createdBefore?: Date;
   after?: Date;
   limit?: number;
 }
@@ -336,8 +339,22 @@ const getRequestsPaginated = async (
     );
   }
 
-  if (params?.connectionId) {
-    searchParams.append("connectionId", params.connectionId);
+  if (params?.connectionIds && params.connectionIds.length > 0) {
+    params.connectionIds.forEach((id) =>
+      searchParams.append("connectionIds", id),
+    );
+  }
+
+  if (params?.authorId) {
+    searchParams.append("authorId", params.authorId);
+  }
+
+  if (params?.createdAfter) {
+    searchParams.append("createdAfter", params.createdAfter.toISOString());
+  }
+
+  if (params?.createdBefore) {
+    searchParams.append("createdBefore", params.createdBefore.toISOString());
   }
 
   if (params?.after) {

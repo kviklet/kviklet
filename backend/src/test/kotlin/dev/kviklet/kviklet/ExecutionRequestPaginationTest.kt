@@ -160,7 +160,7 @@ class ExecutionRequestPaginationTest {
             // Filter by connection1
             mockMvc.perform(
                 get("/execution-requests/")
-                    .param("connectionId", testConnection.id.toString())
+                    .param("connectionIds", testConnection.id.toString())
                     .cookie(cookie),
             ).andExpect(status().isOk)
                 .andExpect(jsonPath("$.requests", hasSize<Collection<*>>(1)))
@@ -170,12 +170,125 @@ class ExecutionRequestPaginationTest {
             // Filter by connection2
             mockMvc.perform(
                 get("/execution-requests/")
-                    .param("connectionId", testConnection2.id.toString())
+                    .param("connectionIds", testConnection2.id.toString())
                     .cookie(cookie),
             ).andExpect(status().isOk)
                 .andExpect(jsonPath("$.requests", hasSize<Collection<*>>(1)))
                 .andExpect(jsonPath("$.requests[0].id").value(req2.getId()))
                 .andExpect(jsonPath("$.requests[0].connection.id").value(testConnection2.id.toString()))
+        }
+
+        @Test
+        fun `filter by multiple connections returns requests for all of them`() {
+            val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            val testConnection3 = connectionHelper.createPostgresConnection(db)
+
+            val req1 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+            val req2 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection2)
+            executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection3)
+
+            mockMvc.perform(
+                get("/execution-requests/")
+                    .param("connectionIds", testConnection.id.toString())
+                    .param("connectionIds", testConnection2.id.toString())
+                    .cookie(cookie),
+            ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.requests", hasSize<Collection<*>>(2)))
+                .andExpect(
+                    jsonPath(
+                        "$.requests[*].id",
+                        org.hamcrest.Matchers.containsInAnyOrder(req1.getId(), req2.getId()),
+                    ),
+                )
+        }
+
+        @Test
+        fun `filter by author returns only that user's requests`() {
+            val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            val otherUser = userHelper.createUser(permissions = listOf("*"))
+
+            val req1 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+            executionRequestHelper.createExecutionRequest(db, otherUser, connection = testConnection)
+
+            mockMvc.perform(
+                get("/execution-requests/")
+                    .param("authorId", testUser.getId()!!)
+                    .cookie(cookie),
+            ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.requests", hasSize<Collection<*>>(1)))
+                .andExpect(jsonPath("$.requests[0].id").value(req1.getId()))
+                .andExpect(jsonPath("$.requests[0].author.id").value(testUser.getId()))
+        }
+
+        @Test
+        fun `filter by created date range returns only requests within the range`() {
+            val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+            val req1 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+            Thread.sleep(10)
+            val req2 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+            Thread.sleep(10)
+            val req3 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+
+            val req2Timestamp = req2.request.createdAt.atZone(java.time.ZoneOffset.UTC)
+                .format(DateTimeFormatter.ISO_INSTANT)
+
+            // createdAfter is inclusive: req2 and req3
+            mockMvc.perform(
+                get("/execution-requests/")
+                    .param("createdAfter", req2Timestamp)
+                    .cookie(cookie),
+            ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.requests", hasSize<Collection<*>>(2)))
+                .andExpect(
+                    jsonPath(
+                        "$.requests[*].id",
+                        org.hamcrest.Matchers.containsInAnyOrder(req2.getId(), req3.getId()),
+                    ),
+                )
+
+            // createdBefore is inclusive: req1 and req2
+            mockMvc.perform(
+                get("/execution-requests/")
+                    .param("createdBefore", req2Timestamp)
+                    .cookie(cookie),
+            ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.requests", hasSize<Collection<*>>(2)))
+                .andExpect(
+                    jsonPath(
+                        "$.requests[*].id",
+                        org.hamcrest.Matchers.containsInAnyOrder(req1.getId(), req2.getId()),
+                    ),
+                )
+
+            // Both bounds combined: only req2
+            mockMvc.perform(
+                get("/execution-requests/")
+                    .param("createdAfter", req2Timestamp)
+                    .param("createdBefore", req2Timestamp)
+                    .cookie(cookie),
+            ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.requests", hasSize<Collection<*>>(1)))
+                .andExpect(jsonPath("$.requests[0].id").value(req2.getId()))
+        }
+
+        @Test
+        fun `combined filters apply together`() {
+            val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            val otherUser = userHelper.createUser(permissions = listOf("*"))
+
+            val req1 = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+            executionRequestHelper.createExecutionRequest(db, otherUser, connection = testConnection)
+            executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection2)
+
+            mockMvc.perform(
+                get("/execution-requests/")
+                    .param("connectionIds", testConnection.id.toString())
+                    .param("authorId", testUser.getId()!!)
+                    .cookie(cookie),
+            ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.requests", hasSize<Collection<*>>(1)))
+                .andExpect(jsonPath("$.requests[0].id").value(req1.getId()))
         }
     }
 

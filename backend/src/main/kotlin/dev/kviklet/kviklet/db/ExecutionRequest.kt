@@ -143,7 +143,10 @@ interface CustomExecutionRequestRepository {
     fun findAllWithDetailsFiltered(
         reviewStatuses: Set<ReviewStatus>?,
         executionStatuses: Set<ExecutionStatus>?,
-        connectionId: ConnectionId?,
+        connectionIds: Set<ConnectionId>?,
+        authorId: String?,
+        createdAfter: LocalDateTime?,
+        createdBefore: LocalDateTime?,
         after: LocalDateTime?,
         limit: Int,
     ): List<ExecutionRequestEntity>
@@ -174,7 +177,10 @@ class CustomExecutionRequestRepositoryImpl(private val entityManager: EntityMana
     override fun findAllWithDetailsFiltered(
         reviewStatuses: Set<ReviewStatus>?,
         executionStatuses: Set<ExecutionStatus>?,
-        connectionId: ConnectionId?,
+        connectionIds: Set<ConnectionId>?,
+        authorId: String?,
+        createdAfter: LocalDateTime?,
+        createdBefore: LocalDateTime?,
         after: LocalDateTime?,
         limit: Int,
     ): List<ExecutionRequestEntity> {
@@ -197,8 +203,22 @@ class CustomExecutionRequestRepositoryImpl(private val entityManager: EntityMana
             }
         }
 
-        connectionId?.let {
-            query.where(qExecutionRequestEntity.connection.id.eq(it.toString()))
+        connectionIds?.let {
+            if (it.isNotEmpty()) {
+                query.where(qExecutionRequestEntity.connection.id.`in`(it.map { id -> id.toString() }))
+            }
+        }
+
+        authorId?.let {
+            query.where(qExecutionRequestEntity.author.id.eq(it))
+        }
+
+        createdAfter?.let {
+            query.where(qExecutionRequestEntity.createdAt.goe(it))
+        }
+
+        createdBefore?.let {
+            query.where(qExecutionRequestEntity.createdAt.loe(it))
         }
 
         // Apply cursor-based pagination
@@ -377,13 +397,19 @@ class ExecutionRequestAdapter(
     fun listExecutionRequestsFiltered(
         reviewStatuses: Set<ReviewStatus>? = null,
         executionStatuses: Set<ExecutionStatus>? = null,
-        connectionId: ConnectionId? = null,
+        connectionIds: Set<ConnectionId>? = null,
+        authorId: String? = null,
+        createdAfter: LocalDateTime? = null,
+        createdBefore: LocalDateTime? = null,
         after: LocalDateTime? = null,
         limit: Int = Int.MAX_VALUE,
     ): List<ExecutionRequestDetails> = executionRequestRepository.findAllWithDetailsFiltered(
         reviewStatuses = reviewStatuses,
         executionStatuses = executionStatuses,
-        connectionId = connectionId,
+        connectionIds = connectionIds,
+        authorId = authorId,
+        createdAfter = createdAfter,
+        createdBefore = createdBefore,
         after = after,
         limit = limit,
     ).map {

@@ -133,7 +133,7 @@ class ExecutionRequestStatusRefreshTest {
         assertEquals("ACTIVE", storedBefore)
 
         entityManager.clear()
-        val listResult = executionRequestService.list(null, null, null, null, 20)
+        val listResult = executionRequestService.list(null, null, null, null, null, null, null, 20)
         val listDetails = listResult.requests.first { it.request.id == requestId }
         val refreshedStatus = listDetails.request.executionStatus
         assertEquals("EXECUTED", refreshedStatus, "expected EXECUTED in list but was $refreshedStatus")
@@ -235,7 +235,7 @@ class ExecutionRequestStatusRefreshTest {
 
         entityManager.clear()
 
-        val listResult = executionRequestService.list(null, null, null, null, 20)
+        val listResult = executionRequestService.list(null, null, null, null, null, null, null, 20)
         val refreshed = listResult.requests.first { it.request.id == requestId }
 
         assertEquals(ReviewStatus.APPROVED, refreshed.resolveReviewStatus())

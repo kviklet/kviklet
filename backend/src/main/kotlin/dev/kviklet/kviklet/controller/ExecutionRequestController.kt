@@ -690,22 +690,24 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
     fun list(
         @RequestParam(required = false) reviewStatuses: Set<ReviewStatus>?,
         @RequestParam(required = false) executionStatuses: Set<ExecutionStatus>?,
-        @RequestParam(required = false) connectionId: ConnectionId?,
+        @RequestParam(required = false) connectionIds: Set<ConnectionId>?,
+        @RequestParam(required = false) authorId: String?,
+        @RequestParam(required = false) createdAfter: Instant?,
+        @RequestParam(required = false) createdBefore: Instant?,
         @RequestParam(required = false) after: Instant?,
         @RequestParam(required = false, defaultValue = "${Int.MAX_VALUE}") limit: Int,
-    ): ExecutionRequestListResponse {
-        val afterLocalDateTime = after?.atZone(ZoneOffset.UTC)?.toLocalDateTime()
-
-        return ExecutionRequestListResponse.fromDto(
-            executionRequestService.list(
-                reviewStatuses = reviewStatuses,
-                executionStatuses = executionStatuses,
-                connectionId = connectionId,
-                after = afterLocalDateTime,
-                limit = limit,
-            ),
-        )
-    }
+    ): ExecutionRequestListResponse = ExecutionRequestListResponse.fromDto(
+        executionRequestService.list(
+            reviewStatuses = reviewStatuses,
+            executionStatuses = executionStatuses,
+            connectionIds = connectionIds,
+            authorId = authorId,
+            createdAfter = createdAfter?.atZone(ZoneOffset.UTC)?.toLocalDateTime(),
+            createdBefore = createdBefore?.atZone(ZoneOffset.UTC)?.toLocalDateTime(),
+            after = after?.atZone(ZoneOffset.UTC)?.toLocalDateTime(),
+            limit = limit,
+        ),
+    )
 
     @Operation(summary = "Review Execution Request", description = "Approve or disapprove an execution request.")
     @PostMapping("/{executionRequestId}/reviews")

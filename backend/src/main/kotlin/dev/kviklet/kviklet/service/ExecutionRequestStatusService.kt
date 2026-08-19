@@ -12,7 +12,7 @@ class ExecutionRequestStatusService(private val executionRequestAdapter: Executi
     @Transactional
     @Policy(Permission.DATASOURCE_CONNECTION_EDIT, checkIsPresentOnly = true)
     fun recalculateStatusForRequests(connectionId: ConnectionId) {
-        val requests = executionRequestAdapter.listExecutionRequestsFiltered(connectionId = connectionId)
+        val requests = executionRequestAdapter.listExecutionRequestsFiltered(connectionIds = setOf(connectionId))
 
         requests.forEach { executionRequestDetails ->
             executionRequestAdapter.updateExecutionRequest(
