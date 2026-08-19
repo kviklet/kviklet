@@ -99,8 +99,10 @@ function FilterPill({
   );
 }
 
+// Plain CSS positioning instead of the anchor prop: floating-ui's measuring
+// loop never converges in jsdom, which hangs component tests.
 const panelClasses =
-  "z-10 mt-1 w-64 rounded-md border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900";
+  "absolute left-0 top-full z-10 mt-1 w-64 rounded-md border border-slate-200 bg-white p-1 shadow-lg dark:border-slate-700 dark:bg-slate-900";
 
 function OptionRow({
   label,
@@ -204,7 +206,7 @@ function RequestFilterBar({
             onClear={() => onChange({ ...filters, connectionIds: [] })}
             testId="filter-connection"
           />
-          <PopoverPanel anchor="bottom start" className={panelClasses}>
+          <PopoverPanel className={panelClasses}>
             <div className="max-h-64 overflow-y-auto">
               {connections.map((connection) => (
                 <OptionRow
@@ -228,7 +230,7 @@ function RequestFilterBar({
             onClear={() => onChange({ ...filters, authorId: null })}
             testId="filter-author"
           />
-          <PopoverPanel anchor="bottom start" className={panelClasses}>
+          <PopoverPanel className={panelClasses}>
             {({ close }) => (
               <div className="max-h-64 overflow-y-auto">
                 <OptionRow
@@ -290,7 +292,7 @@ function RequestFilterBar({
           }
           testId="filter-created"
         />
-        <PopoverPanel anchor="bottom start" className={`${panelClasses} p-3`}>
+        <PopoverPanel className={`${panelClasses} p-3`}>
           <div className="flex flex-col gap-2">
             <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
               From

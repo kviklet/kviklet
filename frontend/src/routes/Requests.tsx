@@ -435,4 +435,4 @@ function Requests() {
   );
 }
 
-export { Requests, mapStatusToLabelColor, mapStatus, timeSince };
+export { Requests, mapStatusToLabelColor, mapStatus, timeSince, useRequests };
