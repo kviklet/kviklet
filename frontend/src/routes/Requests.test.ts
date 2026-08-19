@@ -78,10 +78,12 @@ describe("useRequests hook", () => {
       // The newer (filtered) response arrives first
       await act(async () => {
         resolveSecond(listResponse([makeRequest("2", "Filtered result")]));
+        await Promise.resolve();
       });
       // The stale (unfiltered) response arrives last and must be dropped
       await act(async () => {
         resolveFirst(listResponse([makeRequest("1", "Stale result")]));
+        await Promise.resolve();
       });
 
       expect(result.current.requests).toHaveLength(1);
