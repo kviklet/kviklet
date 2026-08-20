@@ -220,4 +220,43 @@ class NotificationTest {
             System.clearProperty("kviklet.baseUrl")
         }
     }
+
+    @Test
+    fun `notifies slack when a user requests oncall access`() {
+        val config = Configuration(
+            teamsUrl = "https://teams.com",
+            slackUrl = "https://slack.com",
+        )
+        configService.setConfiguration(config)
+        val operator = userHelper.createUser(permissions = emptyList())
+        val cookie = userHelper.login(email = operator.email, mockMvc = mockMvc)
+
+        mockMvc.perform(
+            MockMvcRequestBuilders.post("/users/${operator.getId()}/oncall-grant/request")
+                .cookie(cookie)
+                .contentType("application/json")
+                .content("""{"kind": "ONCALL", "durationMinutes": 1440, "reason": "prod incident"}"""),
+        ).andExpect(MockMvcResultMatchers.status().isOk)
+
+        verify {
+            slackApiClient.sendMessage(
+                webhookUrl = "https://slack.com",
+                match {
+                    it.contains("On-call access requested") &&
+                        it.contains("1d") &&
+                        it.contains("prod incident") &&
+                        it.contains("/settings/users")
+                },
+            )
+        }
+        verify {
+            teamsApiClient.sendMessage(
+                webhookUrl = "https://teams.com",
+                "On-call access requested",
+                match {
+                    it.contains("/settings/users")
+                },
+            )
+        }
+    }
 }

@@ -154,7 +154,7 @@ describe("transformRole", () => {
   });
 
   it("maps wildcard connection policies to allConnectionPolicy", () => {
-    const oncallRoleResponse = {
+    const wildcardRoleResponse = {
       ...mockRoleResponse,
       bypassApproval: true,
       policies: [
@@ -181,7 +181,7 @@ describe("transformRole", () => {
       ],
     };
 
-    const transformedRole = transformRole(oncallRoleResponse);
+    const transformedRole = transformRole(wildcardRoleResponse);
     expect(transformedRole.bypassApproval).toBe(true);
     expect(transformedRole.allConnectionPolicy).toEqual({
       execution_request_read: true,
@@ -215,8 +215,8 @@ describe("transformToPayload", () => {
     expect(adminPayload.bypassApproval).toBe(true);
   });
 
-  it("emits wildcard policies for all-connections oncall access", () => {
-    const oncallRole = {
+  it("emits wildcard policies for all-connections access", () => {
+    const wildcardRole = {
       ...mockRole,
       allConnectionPolicy: {
         execution_request_read: true,
@@ -226,7 +226,7 @@ describe("transformToPayload", () => {
       connectionPolicies: [],
     };
 
-    const payload = transformToPayload(oncallRole);
+    const payload = transformToPayload(wildcardRole);
     expect(payload.policies).toEqual(
       expect.arrayContaining([
         { action: "datasource_connection:get", resource: "*" },

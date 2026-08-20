@@ -1,16 +1,41 @@
 import { z } from "zod";
 import { roleResponseSchema } from "./RoleApi";
 import baseUrl from "./base";
-import { ApiResponse, fetchWithErrorHandling } from "./Errors";
+import {
+  ApiResponse,
+  fetchEmptyWithErrorHandling,
+  fetchWithErrorHandling,
+} from "./Errors";
+
+const oncallGrantKindSchema = z.enum(["ONCALL", "OUTAGE"]);
+
+const oncallGrantResponseSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  kind: oncallGrantKindSchema,
+  reason: z.string().nullable().optional(),
+  startsAt: z.string(),
+  endsAt: z.string(),
+  bypassApproval: z.boolean(),
+  grantedByUserId: z.string(),
+  createdAt: z.string(),
+  status: z.enum(["PENDING", "ACTIVE", "ENDED"]).optional(),
+  durationMinutes: z.number().optional(),
+  approvedAt: z.string().nullable().optional(),
+});
 
 const userResponseSchema = z.object({
   id: z.string(),
   email: z.string(),
   fullName: z.string().nullable(),
   roles: roleResponseSchema.array(),
+  activeOncallGrant: oncallGrantResponseSchema.nullable().optional(),
+  pendingOncallGrant: oncallGrantResponseSchema.nullable().optional(),
 });
 
 type UserResponse = z.infer<typeof userResponseSchema>;
+type OncallGrantResponse = z.infer<typeof oncallGrantResponseSchema>;
+type OncallGrantKind = z.infer<typeof oncallGrantKindSchema>;
 
 const createUserRequestSchema = z.object({
   email: z
@@ -42,6 +67,13 @@ type UpdateUserRequest = z.infer<typeof UpdateUserRequestSchema>;
 type UsersResponse = z.infer<typeof usersResponseSchema>;
 
 type CreateUserRequest = z.infer<typeof createUserRequestSchema>;
+
+type StartOncallGrantRequest = {
+  kind: OncallGrantKind;
+  durationMinutes: number;
+  reason?: string;
+  bypassApproval?: boolean;
+};
 
 async function fetchUsers(): Promise<ApiResponse<UsersResponse>> {
   return fetchWithErrorHandling(
@@ -89,11 +121,81 @@ async function updateUser(
   );
 }
 
+async function startOncallGrant(
+  userId: string,
+  request: StartOncallGrantRequest,
+): Promise<ApiResponse<OncallGrantResponse>> {
+  return fetchWithErrorHandling(
+    `${baseUrl}/users/${userId}/oncall-grant`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(request),
+    },
+    oncallGrantResponseSchema,
+  );
+}
+
+async function requestOncallGrant(
+  userId: string,
+  request: StartOncallGrantRequest,
+): Promise<ApiResponse<OncallGrantResponse>> {
+  return fetchWithErrorHandling(
+    `${baseUrl}/users/${userId}/oncall-grant/request`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify(request),
+    },
+    oncallGrantResponseSchema,
+  );
+}
+
+async function approveOncallGrant(
+  userId: string,
+): Promise<ApiResponse<OncallGrantResponse>> {
+  return fetchWithErrorHandling(
+    `${baseUrl}/users/${userId}/oncall-grant/approve`,
+    {
+      method: "POST",
+      credentials: "include",
+    },
+    oncallGrantResponseSchema,
+  );
+}
+
+async function revokeOncallGrant(userId: string) {
+  return fetchEmptyWithErrorHandling(
+    `${baseUrl}/users/${userId}/oncall-grant`,
+    {
+      method: "DELETE",
+      credentials: "include",
+    },
+  );
+}
+
 export {
   fetchUsers,
   userResponseSchema,
+  oncallGrantResponseSchema,
   createUser,
   createUserRequestSchema,
   updateUser,
+  startOncallGrant,
+  requestOncallGrant,
+  approveOncallGrant,
+  revokeOncallGrant,
 };
-export type { UserResponse, CreateUserRequest };
+export type {
+  UserResponse,
+  CreateUserRequest,
+  OncallGrantResponse,
+  OncallGrantKind,
+  StartOncallGrantRequest,
+};

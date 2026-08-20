@@ -1,6 +1,7 @@
 package dev.kviklet.kviklet.security
 
 import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.service.dto.OncallGrant
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 
@@ -16,9 +17,17 @@ import org.springframework.stereotype.Component
 @Component
 class PermissionResolver(private val userAdapter: UserAdapter) {
 
-    fun policiesFor(userId: String): List<PolicyGrantedAuthority> = userAdapter.findById(userId).roles
-        .map { role -> role.policies.map { PolicyGrantedAuthority(it) } }
-        .flatten()
+    fun policiesFor(userId: String): List<PolicyGrantedAuthority> {
+        val user = userAdapter.findById(userId)
+        val rolePolicies = user.roles.flatMap { role -> role.policies.map { PolicyGrantedAuthority(it) } }
+        val grant = user.activeOncallGrant
+        val grantPolicies = if (grant != null && grant.isActive()) {
+            OncallGrant.ALL_CONNECTION_POLICIES.map { PolicyGrantedAuthority(it) }
+        } else {
+            emptyList()
+        }
+        return rolePolicies + grantPolicies
+    }
 
     /**
      * Walks the [Permission.requiredPermission] chain, voting the user's policies at every step and

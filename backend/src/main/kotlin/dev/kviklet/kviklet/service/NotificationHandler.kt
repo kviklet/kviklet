@@ -56,6 +56,32 @@ class NotificationHandler(
     }
 
     @EventListener
+    fun handleOncallGrantRequested(event: OncallGrantRequestedEvent) {
+        try {
+            val host = serverBaseUrl.takeIf { !it.isNullOrBlank() } ?: ServerUrlInterceptor.getServerUrl()
+            val duration = formatDurationMinutes(event.durationMinutes)
+            val reasonLine = event.reason?.takeIf { it.isNotBlank() }?.let { "Reason: $it\n" } ?: ""
+            sendNotification(
+                Message(
+                    title = "${event.kind} access requested",
+                    text = "${event.requesterName} requested ${event.kind.lowercase()} access for $duration.\n" +
+                        reasonLine +
+                        "A manager must approve this before access starts.\n" +
+                        "Go to $host/settings/users to approve it.",
+                ),
+            )
+        } catch (e: Exception) {
+            logger.error("Failed to send on-call request notification", e)
+        }
+    }
+
+    private fun formatDurationMinutes(minutes: Long): String = when {
+        minutes % 1440L == 0L -> "${minutes / 1440L}d"
+        minutes % 60L == 0L -> "${minutes / 60L}h"
+        else -> "${minutes}m"
+    }
+
+    @EventListener
     fun handleReviewStatusUpdated(event: ReviewStatusUpdatedEvent) {
         try {
             val host = serverBaseUrl.takeIf { !it.isNullOrBlank() } ?: ServerUrlInterceptor.getServerUrl()
@@ -100,6 +126,14 @@ data class RequestCreatedEvent(
         )
     }
 }
+
+data class OncallGrantRequestedEvent(
+    val grantId: String,
+    val requesterName: String,
+    val kind: String,
+    val durationMinutes: Long,
+    val reason: String?,
+) : ApplicationEvent(grantId)
 
 data class ReviewStatusUpdatedEvent(
     val requestId: String,

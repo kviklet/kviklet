@@ -29,6 +29,7 @@ import {
   emptyFilters,
   hasActiveFilters,
 } from "./RequestFilters";
+import OncallPendingRequests from "./OncallPendingRequests";
 
 function timeSince(date: Date) {
   const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -289,6 +290,7 @@ function Requests() {
         {(loading && <Spinner size="lg" page />) || (
           <div data-testid="requests-list">
             <div className="mx-auto max-w-3xl px-4 pt-2">
+              <OncallPendingRequests />
               {requests.length === 0 && (
                 <div className="mx-2 my-4 flex flex-col items-center gap-2 px-4 py-2">
                   <h2 className="text-center text-lg">

@@ -139,6 +139,15 @@ data class KubernetesExecutionRequest(
 
 data class ExecutionRequestDetails(val request: ExecutionRequest, val events: MutableSet<Event>) :
     SecuredDomainObject {
+    fun withAuthorOncallGrant(grant: OncallGrant?): ExecutionRequestDetails {
+        if (grant == null || !grant.isActive()) return this
+        val enrichedAuthor = request.author.copy(activeOncallGrant = grant)
+        val enrichedRequest = when (val current = request) {
+            is DatasourceExecutionRequest -> current.copy(author = enrichedAuthor)
+            is KubernetesExecutionRequest -> current.copy(author = enrichedAuthor)
+        }
+        return copy(request = enrichedRequest)
+    }
     fun addEvent(event: Event): ExecutionRequestDetails {
         events.add(event)
         return this
@@ -227,15 +236,15 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
             )
         } ?: emptyList()
 
-        val bypassRoles = request.author.roles.filter { it.bypassApproval }
+        val bypassSources = request.author.bypassApprovalSources()
 
         return ApprovalProgress(
             totalRequired = totalRequired,
             totalCurrent = totalCurrent,
             roleProgress = roleProgress,
             changeRequestedBy = changeRequesters.map { it.fullName ?: it.email },
-            bypassed = bypassRoles.isNotEmpty(),
-            bypassedByRoleNames = bypassRoles.map { it.name },
+            bypassed = bypassSources.isNotEmpty(),
+            bypassedByRoleNames = bypassSources,
         )
     }
 

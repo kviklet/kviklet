@@ -1,0 +1,73 @@
+databaseChangeLog:
+  - changeSet:
+      id: 050-add-oncall-grant-table
+      author: harshit
+      changes:
+        - createTable:
+            tableName: oncall_grant
+            columns:
+              - column:
+                  name: id
+                  type: CHAR(22)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_oncall_grant_user_id
+                    references: user(id)
+                    deleteCascade: true
+              - column:
+                  name: kind
+                  type: VARCHAR(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: reason
+                  type: TEXT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: starts_at
+                  type: datetime
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ends_at
+                  type: datetime
+                  constraints:
+                    nullable: false
+              - column:
+                  name: bypass_approval
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: granted_by_user_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: datetime
+                  constraints:
+                    nullable: false
+              - column:
+                  name: revoked_at
+                  type: datetime
+                  constraints:
+                    nullable: true
+        - createIndex:
+            tableName: oncall_grant
+            indexName: idx_oncall_grant_user_active
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: revoked_at
+              - column:
+                  name: ends_at

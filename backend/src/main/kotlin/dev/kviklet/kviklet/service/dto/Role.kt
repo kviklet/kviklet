@@ -15,7 +15,8 @@ data class Role(
     val policies: Set<Policy> = HashSet(),
     /**
      * When true, users with this role can execute their own requests without
-     * waiting for reviews. Intended for Manager / oncall roles and is off by default.
+     * waiting for reviews. Typical for Manager roles. Managers can also approve
+     * on-call / outage requests for any user. Off by default.
      */
     val bypassApproval: Boolean = false,
 ) : SecuredDomainObject {

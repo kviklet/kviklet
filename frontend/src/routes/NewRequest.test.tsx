@@ -5,6 +5,8 @@ import { MemoryRouter } from "react-router-dom";
 import { http, HttpResponse, delay } from "msw";
 import { setupServer } from "msw/node";
 import ConnectionChooser from "./NewRequest";
+import { UserStatusContext } from "../components/UserStatusProvider";
+import { StatusResponse } from "../api/StatusApi";
 
 const mockConnections = [
   {
@@ -349,6 +351,87 @@ describe("NewRequest - Form submission", () => {
       },
       { timeout: 1000 },
     );
+
+    server.close();
+  });
+});
+
+describe("NewRequest - On-call request", () => {
+  const developerStatus = {
+    email: "dev@example.com",
+    fullName: "Dev User",
+    id: "user-1",
+    status: "User is authenticated",
+    licenseValid: false,
+    permissions: ["datasource_connection:get", "execution_request:edit"],
+    canManageOncall: false,
+  } as StatusResponse;
+
+  test("lets a normal user request on-call for themselves", async () => {
+    const server = setupServer(
+      http.get("http://localhost:8081/connections/", () => {
+        return HttpResponse.json(mockConnections, { status: 200 });
+      }),
+      http.get("http://localhost:8081/kubernetes/pods", () => {
+        return HttpResponse.json({ pods: [] }, { status: 200 });
+      }),
+    );
+    server.listen();
+
+    render(
+      <MemoryRouter>
+        <UserStatusContext.Provider
+          value={{
+            userStatus: developerStatus,
+            refreshState: async () => {},
+            hasPermission: () => true,
+          }}
+        >
+          <ConnectionChooser />
+        </UserStatusContext.Provider>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("request-oncall-self")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("request-oncall-self"));
+    expect(
+      screen.getByText(/This request is only for you/),
+    ).toBeInTheDocument();
+
+    server.close();
+  });
+
+  test("also shows the self-request panel for managers", async () => {
+    const server = setupServer(
+      http.get("http://localhost:8081/connections/", () => {
+        return HttpResponse.json(mockConnections, { status: 200 });
+      }),
+      http.get("http://localhost:8081/kubernetes/pods", () => {
+        return HttpResponse.json({ pods: [] }, { status: 200 });
+      }),
+    );
+    server.listen();
+
+    render(
+      <MemoryRouter>
+        <UserStatusContext.Provider
+          value={{
+            userStatus: { ...developerStatus, canManageOncall: true },
+            refreshState: async () => {},
+            hasPermission: () => true,
+          }}
+        >
+          <ConnectionChooser />
+        </UserStatusContext.Provider>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("request-oncall-self")).toBeInTheDocument();
+    });
 
     server.close();
   });

@@ -1,0 +1,47 @@
+databaseChangeLog:
+  - changeSet:
+      id: 051-oncall-grant-approval
+      author: harshit
+      changes:
+        - addColumn:
+            tableName: oncall_grant
+            columns:
+              - column:
+                  name: approved_at
+                  type: datetime
+                  constraints:
+                    nullable: true
+              - column:
+                  name: approved_by_user_id
+                  type: VARCHAR(255)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: duration_minutes
+                  type: bigint
+                  constraints:
+                    nullable: true
+        - sql:
+            sql: >
+              UPDATE oncall_grant
+              SET approved_at = created_at,
+                  approved_by_user_id = granted_by_user_id,
+                  duration_minutes = GREATEST(
+                    1,
+                    ROUND(EXTRACT(EPOCH FROM (ends_at - starts_at)) / 60)
+                  )
+              WHERE approved_at IS NULL
+        - addNotNullConstraint:
+            tableName: oncall_grant
+            columnName: duration_minutes
+            columnDataType: bigint
+        - createIndex:
+            tableName: oncall_grant
+            indexName: idx_oncall_grant_user_pending
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: approved_at
+              - column:
+                  name: revoked_at

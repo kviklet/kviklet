@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.security
 
+import dev.kviklet.kviklet.controller.OncallGrantResponse
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.service.LicenseService
 import org.springframework.web.bind.annotation.GetMapping
@@ -22,6 +23,9 @@ class StatusController(
             "User is authenticated",
             validLicense,
             permissionResolver.resolve(userDetails).toPermissionStrings(),
+            user.activeOncallGrant?.takeIf { it.isActive() }?.let { OncallGrantResponse(it) },
+            user.pendingOncallGrant?.takeIf { it.isPending() }?.let { OncallGrantResponse(it) },
+            user.canManageOncallGrants(),
         )
     }
 }
@@ -39,4 +43,7 @@ data class UserStatus(
      * execution request response for that.
      */
     val permissions: List<String>,
+    val activeOncallGrant: OncallGrantResponse? = null,
+    val pendingOncallGrant: OncallGrantResponse? = null,
+    val canManageOncall: Boolean = false,
 )

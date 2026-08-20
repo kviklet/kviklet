@@ -154,8 +154,9 @@ const RoleForm = ({
           <QuestionMarkCircleIcon className="ml-1 h-4 text-slate-400" />
         </label>
         <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">
-          When enabled, this role does not need any specific approval. Typical
-          for Manager roles that should be able to act immediately.
+          When enabled, this role does not need review on its own requests.
+          Managers with this checked can also approve on-call / outage requests
+          for any user.
         </p>
         <input
           className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
@@ -227,10 +228,10 @@ const RoleForm = ({
               All Connections
             </h2>
             <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
-              Cumulative access to every current and future connection. Use this
-              for oncall / outage roles so you do not have to grant each
-              database separately. These permissions stack with any
-              connection-specific policies below.
+              Standing wildcard access to every current and future connection.
+              This is always-on RBAC, not a shift: for time-boxed on-call or
+              outage access, start a period from the Users page instead. These
+              permissions stack with any connection-specific policies below.
             </p>
             <div className="mb-4 space-y-2 rounded-md border bg-white p-4 dark:border-slate-600 dark:bg-slate-950">
               <div className="grid grid-cols-3">

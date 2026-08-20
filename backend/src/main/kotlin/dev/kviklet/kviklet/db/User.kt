@@ -11,6 +11,7 @@ import dev.kviklet.kviklet.security.SecuredDomainObject
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.security.vote
 import dev.kviklet.kviklet.service.EntityNotFound
+import dev.kviklet.kviklet.service.dto.OncallGrant
 import dev.kviklet.kviklet.service.dto.Role
 import jakarta.persistence.CascadeType
 import jakarta.persistence.Column
@@ -88,11 +89,37 @@ data class User(
     val githubId: String? = null,
     val email: String = "",
     val roles: Set<Role> = HashSet(),
+    val activeOncallGrant: OncallGrant? = null,
+    val pendingOncallGrant: OncallGrant? = null,
 ) : SecuredDomainObject {
 
     fun getId(): String? = id?.toString()
 
-    fun canBypassApproval(): Boolean = roles.any { it.bypassApproval }
+    fun canManageOncallGrants(): Boolean {
+        if (roles.any { it.bypassApproval }) return true
+        return roles.flatMap { it.policies }.any { policy ->
+            policy.action == "*" ||
+                policy.action == "*:*" ||
+                policy.action == Permission.USER_EDIT_ROLES.getPermissionString()
+        }
+    }
+
+    fun canBypassApproval(): Boolean {
+        if (roles.any { it.bypassApproval }) return true
+        val grant = activeOncallGrant ?: return false
+        return grant.isActive() && grant.bypassApproval
+    }
+
+    fun bypassApprovalSources(): List<String> {
+        val roleNames = roles.filter { it.bypassApproval }.map { it.name }
+        val grant = activeOncallGrant
+        val grantName = if (grant != null && grant.isActive() && grant.bypassApproval) {
+            listOf(grant.kind.displayName())
+        } else {
+            emptyList()
+        }
+        return roleNames + grantName
+    }
 
     override fun getSecuredObjectId(): String? = id?.toString()
 
@@ -133,35 +160,39 @@ interface UserRepository : JpaRepository<UserEntity, String> {
 }
 
 @Service
-class UserAdapter(private val userRepository: UserRepository, private val roleRepository: RoleRepository) {
+class UserAdapter(
+    private val userRepository: UserRepository,
+    private val roleRepository: RoleRepository,
+    private val oncallGrantAdapter: OncallGrantAdapter,
+) {
     @Transactional(readOnly = true)
     fun findByEmail(email: String): User? {
         val userEntity = userRepository.findByEmail(email) ?: return null
-        return userEntity.toDto()
+        return userEntity.toDto().withActiveGrant()
     }
 
     @Transactional(readOnly = true)
     fun findByLdapIdentifier(ldapIdentifier: String): User? {
         val userEntity = userRepository.findByLdapIdentifier(ldapIdentifier) ?: return null
-        return userEntity.toDto()
+        return userEntity.toDto().withActiveGrant()
     }
 
     @Transactional(readOnly = true)
     fun findBySubject(subject: String): User? {
         val userEntity = userRepository.findBySubject(subject) ?: return null
-        return userEntity.toDto()
+        return userEntity.toDto().withActiveGrant()
     }
 
     @Transactional(readOnly = true)
     fun findBySamlNameId(samlNameId: String): User? {
         val userEntity = userRepository.findBySamlNameId(samlNameId) ?: return null
-        return userEntity.toDto()
+        return userEntity.toDto().withActiveGrant()
     }
 
     @Transactional(readOnly = true)
     fun findByGithubId(githubId: String): User? {
         val userEntity = userRepository.findByGithubId(githubId) ?: return null
-        return userEntity.toDto()
+        return userEntity.toDto().withActiveGrant()
     }
 
     @Transactional(readOnly = true)
@@ -170,7 +201,7 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
             "User not found",
             "User with id $id does not exist",
         )
-        return userEntity.toDto()
+        return userEntity.toDto().withActiveGrant()
     }
 
     @Transactional
@@ -186,7 +217,7 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
             roles = roleRepository.findAllById(user.roles.map { it.getId() }.toSet()).toMutableSet(),
         )
         val savedUserEntity = userRepository.save(userEntity)
-        return savedUserEntity.toDto()
+        return savedUserEntity.toDto().withActiveGrant()
     }
 
     @Transactional
@@ -207,7 +238,7 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
             userEntity.email = user.email
             userEntity.roles = roleRepository.findAllById(user.roles.map { it.getId() }.toSet()).toMutableSet()
             val savedUserEntity = userRepository.save(userEntity)
-            return savedUserEntity.toDto()
+            return savedUserEntity.toDto().withActiveGrant()
         }
     }
 
@@ -230,7 +261,7 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
         }
         val savedUserEntity = userRepository.save(userEntity)
 
-        return savedUserEntity.toDto()
+        return savedUserEntity.toDto().withActiveGrant()
     }
 
     @Transactional
@@ -245,7 +276,27 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
 
     @Transactional(readOnly = true)
     fun listUsers(): List<User> {
-        val userEntities = userRepository.findAll()
-        return userEntities.map { it.toDto() }
+        val users = userRepository.findAll().map { it.toDto() }
+        return users.withGrants()
+    }
+
+    private fun User.withActiveGrant(): User {
+        val id = getId() ?: return this
+        return copy(
+            activeOncallGrant = oncallGrantAdapter.findActiveForUser(id),
+            pendingOncallGrant = oncallGrantAdapter.findPendingForUser(id),
+        )
+    }
+
+    private fun List<User>.withGrants(): List<User> {
+        val ids = mapNotNull { it.getId() }
+        val active = oncallGrantAdapter.findActiveForUsers(ids)
+        val pending = oncallGrantAdapter.findPendingForUsers(ids)
+        return map {
+            it.copy(
+                activeOncallGrant = active[it.getId()],
+                pendingOncallGrant = pending[it.getId()],
+            )
+        }
     }
 }

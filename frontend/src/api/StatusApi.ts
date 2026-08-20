@@ -1,5 +1,6 @@
 import { z } from "zod";
 import baseUrl, { apiFetch } from "./base";
+import { oncallGrantResponseSchema } from "./UserApi";
 
 const StatusResponse = z.object({
   email: z.string(),
@@ -13,6 +14,9 @@ const StatusResponse = z.object({
    * connection or request — use that object's own `permissions` for that.
    */
   permissions: z.array(z.string()),
+  activeOncallGrant: oncallGrantResponseSchema.nullable().optional(),
+  pendingOncallGrant: oncallGrantResponseSchema.nullable().optional(),
+  canManageOncall: z.boolean().optional().default(false),
 });
 
 type StatusResponse = z.infer<typeof StatusResponse>;

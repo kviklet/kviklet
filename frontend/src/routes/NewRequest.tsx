@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, useContext, useEffect, useMemo, useState } from "react";
 import { ConnectionResponse, DatabaseType } from "../api/DatasourceApi";
 import Spinner from "../components/Spinner";
 import {
@@ -30,6 +30,10 @@ import useNotification from "../hooks/useNotification";
 import { isApiErrorResponse } from "../api/Errors";
 import { hasPermission } from "../api/Permissions";
 import SearchInput from "../components/SearchInput";
+import Modal from "../components/Modal";
+import OncallGrantModal from "../components/OncallGrantModal";
+import { UserStatusContext } from "../components/UserStatusProvider";
+import { OncallGrantKind, requestOncallGrant } from "../api/UserApi";
 
 // Temporary access requests against connections that don't require any
 // approval are usable immediately, so skip the review page and drop the
@@ -182,6 +186,92 @@ type PreConfiguredState =
   | PreConfiguredStateKubernetes
   | PreConfiguredStateDatasource;
 
+function OncallRequestPanel() {
+  const { userStatus, refreshState } = useContext(UserStatusContext);
+  const { addNotification } = useNotification();
+  const [showModal, setShowModal] = useState(false);
+
+  if (!userStatus) {
+    return null;
+  }
+
+  const pendingGrant = userStatus.pendingOncallGrant ?? null;
+  const activeGrant = userStatus.activeOncallGrant ?? null;
+
+  const requestGrant = async (
+    userId: string,
+    kind: OncallGrantKind,
+    durationMinutes: number,
+    reason: string,
+    bypassApproval: boolean,
+  ) => {
+    const response = await requestOncallGrant(userId, {
+      kind,
+      durationMinutes,
+      reason: reason.trim() || undefined,
+      bypassApproval,
+    });
+    if (isApiErrorResponse(response)) {
+      addNotification({
+        title: "Failed to request on-call access",
+        text: response.message,
+        type: "error",
+      });
+      return false;
+    }
+    await refreshState();
+    addNotification({
+      title: "On-call / outage requested",
+      text: "A manager has been notified in Slack. Access starts after they approve it.",
+      type: "info",
+    });
+    return true;
+  };
+
+  if (activeGrant) {
+    return null;
+  }
+
+  if (pendingGrant) {
+    return (
+      <div
+        className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-100"
+        data-testid="oncall-request-pending"
+      >
+        Your {pendingGrant.kind === "OUTAGE" ? "outage" : "on-call"} request is
+        waiting for a manager to approve it. They are notified in Slack.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950">
+      <div className="text-sm text-amber-950 dark:text-amber-100">
+        Need a connection you don&apos;t have? Request time-boxed on-call or
+        outage access for yourself. A manager must approve it.
+      </div>
+      <Button
+        size="sm"
+        onClick={() => setShowModal(true)}
+        dataTestId="request-oncall-self"
+      >
+        Request on-call / outage
+      </Button>
+      {showModal && (
+        <Modal setVisible={setShowModal}>
+          <OncallGrantModal
+            userId={userStatus.id}
+            userLabel={userStatus.fullName || userStatus.email}
+            mode="request"
+            disableModal={() => setShowModal(false)}
+            onSubmit={requestGrant}
+          />
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 export default function ConnectionChooser() {
   const { connections, loading } = useConnections();
   const [chosenConnection, setChosenConnection] = useState<
@@ -267,6 +357,9 @@ export default function ConnectionChooser() {
             ? "Request Access to a Database"
             : "Request Access"}
         </h1>
+      </div>
+      <div className="mx-auto mt-5 max-w-5xl">
+        <OncallRequestPanel />
       </div>
       <div className="mx-auto mt-5 flex max-w-5xl">
         {loading ? (
