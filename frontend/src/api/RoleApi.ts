@@ -18,6 +18,7 @@ const roleResponseSchema = z.object({
   description: z.string().nullable(),
   policies: z.array(policyResponseSchema),
   isDefault: z.boolean(),
+  bypassApproval: z.boolean().optional().default(false),
 });
 
 type PolicyUpdatePayload = z.infer<typeof policyUpdatePayloadSchema>;
@@ -31,6 +32,7 @@ const roleUpdatePayloadSchema = z.object({
   name: z.string(),
   description: z.string().nullable(),
   policies: z.array(policyUpdatePayloadSchema),
+  bypassApproval: z.boolean().optional().default(false),
 });
 
 const createRoleRequestSchema = roleUpdatePayloadSchema.omit({

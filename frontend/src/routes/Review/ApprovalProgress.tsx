@@ -10,9 +10,25 @@ export default function ApprovalProgress({
 
   if (
     !progress ||
-    (progress.totalRequired === 0 && progress.roleProgress.length === 0)
+    (!progress.bypassed &&
+      progress.totalRequired === 0 &&
+      progress.roleProgress.length === 0)
   ) {
     return null;
+  }
+
+  if (progress.bypassed) {
+        const roles = progress.bypassedByRoleNames?.join(", ") ?? "";
+    return (
+      <span
+        className="flex items-center gap-1 text-green-600 dark:text-green-400"
+        data-testid="approval-bypassed"
+      >
+        <CheckIcon className="h-3.5 w-3.5 shrink-0" />
+        Approval bypassed
+        {roles ? ` via ${roles}` : ""}
+      </span>
+    );
   }
 
   const totalSatisfied = progress.totalCurrent >= progress.totalRequired;

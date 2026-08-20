@@ -145,6 +145,26 @@ const RoleForm = ({
         />
       </div>
 
+      <div className="mb-4">
+        <label
+          className="flex items-center text-sm font-medium text-slate-700 dark:text-slate-100"
+          title="Users with this role can execute their own requests without waiting for reviews. Leave unchecked to keep the normal approval flow."
+        >
+          Bypass approval
+          <QuestionMarkCircleIcon className="ml-1 h-4 text-slate-400" />
+        </label>
+        <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">
+          When enabled, this role does not need any specific approval. Typical
+          for Manager roles that should be able to act immediately.
+        </p>
+        <input
+          className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
+          data-testid="role-bypass-approval"
+          {...register("bypassApproval")}
+          type="checkbox"
+        />
+      </div>
+
       {!watch("isAdmin") && (
         <>
           <fieldset className="mb-4">
@@ -201,6 +221,49 @@ const RoleForm = ({
               ))}
             </div>
           </fieldset>
+
+          <div>
+            <h2 className="text-base font-semibold leading-7 text-slate-900 dark:text-slate-100">
+              All Connections
+            </h2>
+            <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+              Cumulative access to every current and future connection. Use this
+              for oncall / outage roles so you do not have to grant each
+              database separately. These permissions stack with any
+              connection-specific policies below.
+            </p>
+            <div className="mb-4 space-y-2 rounded-md border bg-white p-4 dark:border-slate-600 dark:bg-slate-950">
+              <div className="grid grid-cols-3">
+                {Object.keys(ConnectionPolicy.shape)
+                  .filter((key) => key !== "selector")
+                  .map((key) => (
+                    <div key={key}>
+                      <label
+                        className="flex items-center text-sm font-medium text-slate-700 dark:text-slate-300"
+                        title={
+                          connectionPolicyMetadata[key as ConnectionPolicyKey]
+                            .tooltip
+                        }
+                      >
+                        {
+                          connectionPolicyMetadata[key as ConnectionPolicyKey]
+                            .label
+                        }
+                        <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400" />
+                      </label>
+                      <input
+                        className="h-4 w-4 rounded border-slate-300 bg-transparent text-indigo-600 focus:ring-indigo-600"
+                        type="checkbox"
+                        data-testid={`role-all-connections-${key}`}
+                        {...register(
+                          `allConnectionPolicy.${key as ConnectionPolicyKey}`,
+                        )}
+                      />
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
 
           <div>
             <h2 className="text-base font-semibold leading-7 text-slate-900 dark:text-slate-100">

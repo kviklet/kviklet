@@ -62,7 +62,9 @@ function RequestSidebar({
   const progress = request.approvalProgress;
   const showApprovals =
     !!progress &&
-    (progress.totalRequired > 0 || progress.roleProgress.length > 0);
+    (progress.bypassed ||
+      progress.totalRequired > 0 ||
+      progress.roleProgress.length > 0);
 
   const currentUserId = userContext.userStatus
     ? userContext.userStatus.id

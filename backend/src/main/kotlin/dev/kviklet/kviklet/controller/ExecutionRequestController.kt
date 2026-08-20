@@ -295,6 +295,8 @@ data class ApprovalProgressResponse(
     val totalCurrent: Int,
     val roleProgress: List<RoleApprovalProgressResponse>,
     val changeRequestedBy: List<String>,
+    val bypassed: Boolean = false,
+    val bypassedByRoleNames: List<String> = emptyList(),
 ) {
     companion object {
         fun fromDto(dto: ApprovalProgress, resolvedRoles: Map<String, Role>): ApprovalProgressResponse =
@@ -318,6 +320,8 @@ data class ApprovalProgressResponse(
                     )
                 },
                 changeRequestedBy = dto.changeRequestedBy,
+                bypassed = dto.bypassed,
+                bypassedByRoleNames = dto.bypassedByRoleNames,
             )
     }
 }

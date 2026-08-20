@@ -52,6 +52,7 @@ class UserHelper(
         password: String = "123456",
         fullName: String? = null,
         policies: Set<Policy> = emptySet(),
+        bypassApproval: Boolean = false,
     ): User {
         val userEmail = email ?: "user-$userCount@example.com"
         val userFullName = fullName ?: "User $userCount"
@@ -66,6 +67,7 @@ class UserHelper(
             "$userFullName Role",
             "$userFullName users role",
             policies,
+            bypassApproval,
         )
         val updatedUser = userService.updateUserWithRoles(
             UserId(user.getId()!!),
@@ -115,8 +117,9 @@ class RoleHelper(private val roleService: RoleService) {
         name: String = "Test Role",
         description: String = "This is a test role",
         policies: Set<Policy> = emptySet(),
+        bypassApproval: Boolean = false,
     ): Role {
-        val role = roleService.createRole(name, description)
+        val role = roleService.createRole(name, description, bypassApproval = bypassApproval)
         if (policies.isNotEmpty()) {
             roleService.updateRole(
                 id = RoleId(role.getId()!!),

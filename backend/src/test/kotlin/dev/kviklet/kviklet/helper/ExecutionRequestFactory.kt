@@ -256,11 +256,13 @@ class RoleFactory : Factory() {
         name: String = "Test Role " + nextId(),
         description: String = "A test role",
         policies: Set<Policy>? = null,
+        bypassApproval: Boolean = false,
     ): Role = Role(
         id = id,
         name = name,
         description = description,
         policies = policies ?: setOf(policyFactory.createPolicy()),
+        bypassApproval = bypassApproval,
     )
 }
 

@@ -25,6 +25,7 @@ class RoleService(private val roleAdapter: RoleAdapter) {
         name: String? = null,
         description: String? = null,
         policies: Set<Policy>? = emptySet(),
+        bypassApproval: Boolean? = null,
     ): Role {
         val oldRole = roleAdapter.findById(id)
         val newRole = Role.create(
@@ -32,17 +33,24 @@ class RoleService(private val roleAdapter: RoleAdapter) {
             name = name ?: oldRole.name,
             description = description ?: oldRole.description,
             policies = policies ?: oldRole.policies,
+            bypassApproval = bypassApproval ?: oldRole.bypassApproval,
         )
         return updateRole(newRole)
     }
 
     @dev.kviklet.kviklet.security.Policy(Permission.ROLE_EDIT)
     @Transactional
-    fun createRole(name: String, description: String, policies: Set<Policy>? = emptySet()): Role {
+    fun createRole(
+        name: String,
+        description: String,
+        policies: Set<Policy>? = emptySet(),
+        bypassApproval: Boolean = false,
+    ): Role {
         val role = Role(
             name = name,
             description = description,
             policies = policies ?: emptySet(),
+            bypassApproval = bypassApproval,
         )
         return roleAdapter.create(role)
     }

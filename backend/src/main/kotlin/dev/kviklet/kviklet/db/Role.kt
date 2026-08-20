@@ -29,16 +29,21 @@ class RoleEntity : BaseEntity {
     @JoinColumn(name = "role_id")
     var policies: MutableSet<PolicyEntity> = HashSet()
 
+    @Column(name = "bypass_approval", nullable = false)
+    var bypassApproval: Boolean = false
+
     constructor(
         id: String? = null,
         name: String,
         description: String,
         policies: MutableSet<PolicyEntity> = emptySet<PolicyEntity>().toMutableSet(),
+        bypassApproval: Boolean = false,
     ) : this() {
         this.id = id
         this.name = name
         this.description = description
         this.policies = policies
+        this.bypassApproval = bypassApproval
     }
 
     constructor()
@@ -48,6 +53,7 @@ class RoleEntity : BaseEntity {
         name = name,
         description = description,
         policies = policies.map { it.toDto() }.toSet(),
+        bypassApproval = bypassApproval,
     )
 }
 
@@ -74,6 +80,7 @@ class RoleAdapter(private val roleRepository: RoleRepository) {
                     resource = it.resource,
                 )
             }.toMutableSet(),
+            bypassApproval = role.bypassApproval,
         ),
     ).toDto()
 
@@ -91,6 +98,7 @@ class RoleAdapter(private val roleRepository: RoleRepository) {
 
         existingRoleEntity.name = role.name
         existingRoleEntity.description = role.description
+        existingRoleEntity.bypassApproval = role.bypassApproval
         // Create a map of existing policies based on their unique fields
         val existingPoliciesMap = existingRoleEntity.policies.associateBy { Pair(it.action, it.resource) }
         val newPoliciesMap = role.policies.associateBy { Pair(it.action, it.resource) }

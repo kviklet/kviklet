@@ -314,7 +314,7 @@ class ExecutionRequestAdapter(
             )
         }
 
-        return executionRequestRepository.save(
+        val saved = executionRequestRepository.save(
             ExecutionRequestEntity(
                 connection = connection,
                 title = title,
@@ -335,9 +335,14 @@ class ExecutionRequestAdapter(
                 command = command,
                 temporaryAccessDuration = temporaryAccessDuration?.toMinutes(),
             ),
-        ).toDetailDto(
-            connectionAdapter.toDto(connection),
         )
+        val details = saved.toDetailDto(connectionAdapter.toDto(connection))
+        val resolvedReviewStatus = details.resolveReviewStatus()
+        if (resolvedReviewStatus != saved.reviewStatus) {
+            saved.reviewStatus = resolvedReviewStatus
+            return executionRequestRepository.save(saved).toDetailDto(connectionAdapter.toDto(connection))
+        }
+        return details
     }
 
     @Transactional

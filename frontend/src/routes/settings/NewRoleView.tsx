@@ -12,6 +12,7 @@ export default function NewRoleView() {
     name: "",
     description: "",
     isAdmin: false,
+    bypassApproval: false,
     userPolicy: {
       read: false,
       create: false,
@@ -19,6 +20,11 @@ export default function NewRoleView() {
     },
     rolePolicy: {
       read: false,
+    },
+    allConnectionPolicy: {
+      execution_request_read: false,
+      execution_request_write: false,
+      execution_request_review: false,
     },
     connectionPolicies: [],
   };
@@ -34,6 +40,7 @@ export default function NewRoleView() {
       name: transformedRole.name,
       description: transformedRole.description,
       policies: transformedRole.policies,
+      bypassApproval: transformedRole.bypassApproval,
     });
     if (isApiErrorResponse(response)) {
       addNotification({

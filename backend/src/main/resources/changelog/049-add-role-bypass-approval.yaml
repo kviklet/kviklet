@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 049-add-role-bypass-approval
+      author: harshit
+      changes:
+        - addColumn:
+            tableName: role
+            columns:
+              - column:
+                  name: bypass_approval
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

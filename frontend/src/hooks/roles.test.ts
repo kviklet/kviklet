@@ -38,6 +38,13 @@ const mockRoleResponse = {
     },
   ],
   isDefault: false,
+  bypassApproval: false,
+};
+
+const emptyAllConnectionPolicy = {
+  execution_request_read: false,
+  execution_request_write: false,
+  execution_request_review: false,
 };
 
 const expectedTransformedRole = {
@@ -45,6 +52,7 @@ const expectedTransformedRole = {
   name: "blabla",
   description: "blabla",
   isAdmin: false,
+  bypassApproval: false,
   userPolicy: {
     read: false,
     create: false,
@@ -53,6 +61,7 @@ const expectedTransformedRole = {
   rolePolicy: {
     read: true,
   },
+  allConnectionPolicy: emptyAllConnectionPolicy,
   connectionPolicies: [
     {
       selector: "asdf",
@@ -68,6 +77,7 @@ const mockRole = {
   name: "blabla",
   description: "blabla",
   isAdmin: false,
+  bypassApproval: false,
   userPolicy: {
     read: false,
     create: false,
@@ -76,6 +86,7 @@ const mockRole = {
   rolePolicy: {
     read: true,
   },
+  allConnectionPolicy: emptyAllConnectionPolicy,
   connectionPolicies: [
     {
       selector: "asdf",
@@ -90,6 +101,7 @@ const expectedPayload = {
   id: "w66tvnQn2vHkyZ6xQBNLXj",
   name: "blabla",
   description: "blabla",
+  bypassApproval: false,
   policies: [
     {
       action: "role:get",
@@ -140,6 +152,44 @@ describe("transformRole", () => {
     const transformedRole = transformRole(adminRoleResponse);
     expect(transformedRole.isAdmin).toBe(true);
   });
+
+  it("maps wildcard connection policies to allConnectionPolicy", () => {
+    const oncallRoleResponse = {
+      ...mockRoleResponse,
+      bypassApproval: true,
+      policies: [
+        {
+          id: "all-get",
+          action: "datasource_connection:get",
+          resource: "*",
+        },
+        {
+          id: "all-exec-get",
+          action: "execution_request:get",
+          resource: "*",
+        },
+        {
+          id: "all-exec",
+          action: "execution_request:edit",
+          resource: "*",
+        },
+        {
+          id: "all-execute",
+          action: "execution_request:execute",
+          resource: "*",
+        },
+      ],
+    };
+
+    const transformedRole = transformRole(oncallRoleResponse);
+    expect(transformedRole.bypassApproval).toBe(true);
+    expect(transformedRole.allConnectionPolicy).toEqual({
+      execution_request_read: true,
+      execution_request_write: true,
+      execution_request_review: false,
+    });
+    expect(transformedRole.connectionPolicies).toEqual([]);
+  });
 });
 
 describe("transformToPayload", () => {
@@ -152,6 +202,7 @@ describe("transformToPayload", () => {
     const adminRole = {
       ...mockRole,
       isAdmin: true,
+      bypassApproval: true,
     };
 
     const adminPayload = transformToPayload(adminRole);
@@ -161,5 +212,29 @@ describe("transformToPayload", () => {
         resource: "*",
       },
     ]);
+    expect(adminPayload.bypassApproval).toBe(true);
+  });
+
+  it("emits wildcard policies for all-connections oncall access", () => {
+    const oncallRole = {
+      ...mockRole,
+      allConnectionPolicy: {
+        execution_request_read: true,
+        execution_request_write: true,
+        execution_request_review: true,
+      },
+      connectionPolicies: [],
+    };
+
+    const payload = transformToPayload(oncallRole);
+    expect(payload.policies).toEqual(
+      expect.arrayContaining([
+        { action: "datasource_connection:get", resource: "*" },
+        { action: "execution_request:get", resource: "*" },
+        { action: "execution_request:edit", resource: "*" },
+        { action: "execution_request:execute", resource: "*" },
+        { action: "execution_request:review", resource: "*" },
+      ]),
+    );
   });
 });

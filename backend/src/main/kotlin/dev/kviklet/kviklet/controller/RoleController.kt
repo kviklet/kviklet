@@ -15,13 +15,19 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
-data class CreateRoleRequest(val name: String, val description: String, val policies: Set<PolicyPayload>?)
+data class CreateRoleRequest(
+    val name: String,
+    val description: String,
+    val policies: Set<PolicyPayload>?,
+    val bypassApproval: Boolean = false,
+)
 
 data class UpdateRoleRequest(
     val id: String,
     val name: String?,
     val description: String?,
     val policies: Set<PolicyPayload>?,
+    val bypassApproval: Boolean? = null,
 )
 
 data class PolicyPayload(val id: String?, val action: String, val resource: String)
@@ -42,6 +48,7 @@ data class RoleResponse(
     val description: String,
     val policies: List<PolicyResponse>,
     val isDefault: Boolean = false,
+    val bypassApproval: Boolean = false,
 ) {
     companion object {
         fun fromDto(dto: Role): RoleResponse = RoleResponse(
@@ -50,6 +57,7 @@ data class RoleResponse(
             description = dto.description,
             policies = dto.policies.map { PolicyResponse.fromDto(it) },
             isDefault = dto.isDefault,
+            bypassApproval = dto.bypassApproval,
         )
     }
 }
@@ -94,6 +102,7 @@ class RoleController(private val roleService: RoleService) {
                     resource = it.resource,
                 )
             }?.toSet(),
+            bypassApproval = createRoleRequest.bypassApproval,
         )
         return RoleResponse.fromDto(savedRole)
     }
@@ -115,6 +124,7 @@ class RoleController(private val roleService: RoleService) {
                     resource = it.resource,
                 )
             }?.toSet(),
+            updateRoleRequest.bypassApproval,
         )
         return RoleResponse.fromDto(updatedRole)
     }

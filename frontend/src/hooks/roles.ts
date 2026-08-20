@@ -26,13 +26,23 @@ const ConnectionPolicy = z.object({
   execution_request_review: z.boolean(),
 });
 
+const AllConnectionPolicy = ConnectionPolicy.omit({ selector: true });
+
+const emptyConnectionFlags = (): z.infer<typeof AllConnectionPolicy> => ({
+  execution_request_read: false,
+  execution_request_write: false,
+  execution_request_review: false,
+});
+
 const RoleSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string().nullable(),
   isAdmin: z.boolean(),
+  bypassApproval: z.boolean(),
   userPolicy: UserPolicySchema,
   rolePolicy: RolePolicy,
+  allConnectionPolicy: AllConnectionPolicy,
   connectionPolicies: z.array(ConnectionPolicy),
 });
 
@@ -68,6 +78,60 @@ const useRole = (id: string) => {
     role,
     reloadRole,
   };
+};
+
+const emptyConnectionPolicy = (
+  selector: string,
+): z.infer<typeof ConnectionPolicy> => ({
+  selector,
+  ...emptyConnectionFlags(),
+});
+
+const appendConnectionPolicies = (
+  policies: PolicyUpdatePayload[],
+  selector: string,
+  flags: z.infer<typeof AllConnectionPolicy>,
+) => {
+  const hasAny =
+    flags.execution_request_read ||
+    flags.execution_request_write ||
+    flags.execution_request_review;
+
+  if (!hasAny && selector !== "*") {
+    policies.push({
+      action: "datasource_connection:get",
+      resource: selector,
+    });
+    return;
+  }
+  if (!hasAny) {
+    return;
+  }
+
+  policies.push({
+    action: "datasource_connection:get",
+    resource: selector,
+  });
+  policies.push({
+    action: "execution_request:get",
+    resource: selector,
+  });
+  if (flags.execution_request_review) {
+    policies.push({
+      action: "execution_request:review",
+      resource: selector,
+    });
+  }
+  if (flags.execution_request_write) {
+    policies.push({
+      action: "execution_request:edit",
+      resource: selector,
+    });
+    policies.push({
+      action: "execution_request:execute",
+      resource: selector,
+    });
+  }
 };
 
 const transformRole = (role: RoleResponse): Role => {
@@ -108,23 +172,17 @@ const transformRole = (role: RoleResponse): Role => {
 
       case "datasource_connection": {
         if (!connectionPoliciesMap[policy.resource]) {
-          connectionPoliciesMap[policy.resource] = {
-            selector: policy.resource,
-            execution_request_read: false,
-            execution_request_write: false,
-            execution_request_review: false,
-          };
+          connectionPoliciesMap[policy.resource] = emptyConnectionPolicy(
+            policy.resource,
+          );
         }
         break;
       }
       case "execution_request": {
         if (!connectionPoliciesMap[policy.resource]) {
-          connectionPoliciesMap[policy.resource] = {
-            selector: policy.resource,
-            execution_request_read: false,
-            execution_request_write: false,
-            execution_request_review: false,
-          };
+          connectionPoliciesMap[policy.resource] = emptyConnectionPolicy(
+            policy.resource,
+          );
         }
 
         const connectionPolicy = connectionPoliciesMap[policy.resource];
@@ -143,13 +201,23 @@ const transformRole = (role: RoleResponse): Role => {
     }
   });
 
+  const allConnectionPolicy =
+    connectionPoliciesMap["*"] ?? emptyConnectionPolicy("*");
+  delete connectionPoliciesMap["*"];
+
   return {
     id: role.id,
     name: role.name,
     description: role.description,
     isAdmin,
+    bypassApproval: role.bypassApproval ?? false,
     userPolicy,
     rolePolicy,
+    allConnectionPolicy: {
+      execution_request_read: allConnectionPolicy.execution_request_read,
+      execution_request_write: allConnectionPolicy.execution_request_write,
+      execution_request_review: allConnectionPolicy.execution_request_review,
+    },
     connectionPolicies: Object.values(connectionPoliciesMap),
   };
 };
@@ -170,6 +238,7 @@ const transformToPayload = (
       name: role.name,
       description: role.description,
       policies,
+      bypassApproval: role.bypassApproval,
     };
   }
 
@@ -199,39 +268,13 @@ const transformToPayload = (
     });
   }
 
+  appendConnectionPolicies(policies, "*", role.allConnectionPolicy);
+
   role.connectionPolicies.forEach((policy) => {
-    policies.push({
-      action: "datasource_connection:get",
-      resource: policy.selector,
-    });
-    if (
-      policy.execution_request_read ||
-      policy.execution_request_write ||
-      policy.execution_request_review
-    ) {
-      policies.push({
-        action: "execution_request:get",
-        resource: policy.selector,
-      });
+    if (policy.selector === "*") {
+      return;
     }
-
-    if (policy.execution_request_review) {
-      policies.push({
-        action: "execution_request:review",
-        resource: policy.selector,
-      });
-    }
-
-    if (policy.execution_request_write) {
-      policies.push({
-        action: "execution_request:edit",
-        resource: policy.selector,
-      });
-      policies.push({
-        action: "execution_request:execute",
-        resource: policy.selector,
-      });
-    }
+    appendConnectionPolicies(policies, policy.selector, policy);
   });
 
   return {
@@ -239,6 +282,7 @@ const transformToPayload = (
     name: role.name,
     description: role.description,
     policies,
+    bypassApproval: role.bypassApproval,
   };
 };
 
@@ -250,6 +294,7 @@ export {
   UserPolicySchema,
   RolePolicy,
   ConnectionPolicy,
+  AllConnectionPolicy,
 };
 
 export type { Role };

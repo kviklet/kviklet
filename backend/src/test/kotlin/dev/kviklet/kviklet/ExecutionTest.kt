@@ -250,6 +250,37 @@ class ExecutionTest {
     }
 
     @Nested
+    inner class ApprovalBypassTests {
+
+        @Test
+        fun `manager with bypassApproval can execute without a review`() {
+            val manager = userHelper.createUser(permissions = listOf("*"), bypassApproval = true)
+            val request = executionRequestHelper.createExecutionRequest(
+                db,
+                manager,
+                connection = testConnection,
+            )
+            val cookie = userHelper.login(email = manager.email, mockMvc = mockMvc)
+
+            verifyRequestStatus(request.getId(), "APPROVED", cookie)
+            executeRequestAndAssert(request.getId(), cookie)
+        }
+
+        @Test
+        fun `user without bypassApproval cannot execute without a review`() {
+            val request = executionRequestHelper.createExecutionRequest(
+                db,
+                testUser,
+                connection = testConnection,
+            )
+            val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+            verifyRequestStatus(request.getId(), "AWAITING_APPROVAL", cookie)
+            executeRequest(request.getId(), cookie).andExpect(status().is4xxClientError)
+        }
+    }
+
+    @Nested
     inner class ExecutionTests {
 
         private lateinit var testExecutionRequest: ExecutionRequestDetails

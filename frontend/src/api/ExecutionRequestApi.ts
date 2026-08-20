@@ -129,6 +129,8 @@ const ApprovalProgressSchema = z.object({
   totalCurrent: z.number(),
   roleProgress: z.array(RoleApprovalProgressSchema),
   changeRequestedBy: z.array(z.string()),
+  bypassed: z.boolean().optional().default(false),
+  bypassedByRoleNames: z.array(z.string()).optional().default([]),
 });
 
 const RawDatasourceRequestSchema = z.object({

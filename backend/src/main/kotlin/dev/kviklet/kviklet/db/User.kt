@@ -92,6 +92,8 @@ data class User(
 
     fun getId(): String? = id?.toString()
 
+    fun canBypassApproval(): Boolean = roles.any { it.bypassApproval }
+
     override fun getSecuredObjectId(): String? = id?.toString()
 
     override fun getDomainObjectType(): Resource = Resource.USER

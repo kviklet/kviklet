@@ -149,6 +149,10 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
             return ReviewStatus.REJECTED
         }
 
+        if (request.author.canBypassApproval()) {
+            return ReviewStatus.APPROVED
+        }
+
         val progress = getApprovalProgress()
 
         if (progress.changeRequestedBy.isNotEmpty()) {
@@ -223,11 +227,15 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
             )
         } ?: emptyList()
 
+        val bypassRoles = request.author.roles.filter { it.bypassApproval }
+
         return ApprovalProgress(
             totalRequired = totalRequired,
             totalCurrent = totalCurrent,
             roleProgress = roleProgress,
             changeRequestedBy = changeRequesters.map { it.fullName ?: it.email },
+            bypassed = bypassRoles.isNotEmpty(),
+            bypassedByRoleNames = bypassRoles.map { it.name },
         )
     }
 
@@ -384,6 +392,8 @@ data class ApprovalProgress(
     val totalCurrent: Int,
     val roleProgress: List<RoleApprovalProgress>,
     val changeRequestedBy: List<String> = emptyList(),
+    val bypassed: Boolean = false,
+    val bypassedByRoleNames: List<String> = emptyList(),
 )
 
 data class ExecutionRequestList(

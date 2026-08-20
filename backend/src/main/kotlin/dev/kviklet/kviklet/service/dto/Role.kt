@@ -13,6 +13,11 @@ data class Role(
     val name: String,
     val description: String,
     val policies: Set<Policy> = HashSet(),
+    /**
+     * When true, users with this role can execute their own requests without
+     * waiting for reviews. Intended for Manager / oncall roles and is off by default.
+     */
+    val bypassApproval: Boolean = false,
 ) : SecuredDomainObject {
     val isDefault: Boolean
         get() = id == DEFAULT_ROLE_ID
@@ -34,11 +39,18 @@ data class Role(
                 resource = "*",
             ),
         )
-        fun create(id: RoleId, name: String, description: String, policies: Set<Policy>): Role = Role(
+        fun create(
+            id: RoleId,
+            name: String,
+            description: String,
+            policies: Set<Policy>,
+            bypassApproval: Boolean = false,
+        ): Role = Role(
             id = id,
             name = name,
             description = description,
             policies = policies,
+            bypassApproval = bypassApproval,
         )
     }
 

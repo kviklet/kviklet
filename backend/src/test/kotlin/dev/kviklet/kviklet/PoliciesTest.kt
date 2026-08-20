@@ -23,6 +23,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delet
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 
 @SpringBootTest
@@ -260,6 +261,39 @@ class PoliciesTest {
                     """.trimIndent(),
                 ),
             )
+    }
+
+    @Test
+    fun createRoleWithBypassApproval() {
+        val user = userHelper.createUser(
+            permissions = listOf(
+                Permission.ROLE_GET.getPermissionString(),
+                Permission.ROLE_EDIT.getPermissionString(),
+            ),
+        )
+        val cookie = userHelper.login(mockMvc = mockMvc)
+        mockMvc.perform(
+            post("/roles/")
+                .cookie(cookie)
+                .contentType("application/json")
+                .content(
+                    """
+                        {
+                            "name": "Oncall",
+                            "description": "Emergency access",
+                            "bypassApproval": true,
+                            "policies": [
+                                {
+                                    "action": "execution_request:execute",
+                                    "resource": "*"
+                                }
+                            ]
+                        }
+                    """.trimIndent(),
+                ),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.name").value("Oncall"))
+            .andExpect(jsonPath("$.bypassApproval").value(true))
     }
 
     @Test

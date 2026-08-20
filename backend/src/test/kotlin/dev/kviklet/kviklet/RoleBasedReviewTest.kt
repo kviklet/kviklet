@@ -478,4 +478,92 @@ class RoleBasedReviewTest {
 
         details.resolveReviewStatus() shouldBe ReviewStatus.CHANGE_REQUESTED
     }
+
+    @Test
+    fun `author with bypassApproval is approved without any reviews`() {
+        val managerRole = roleFactory.createRole(name = "Manager", bypassApproval = true)
+        val author = userFactory.createUser(roles = setOf(managerRole))
+        val connection = connectionFactory.createDatasourceConnection(
+            reviewConfig = ReviewConfig(numTotalRequired = 1),
+        )
+        val request = executionRequestFactory.createDatasourceExecutionRequest(
+            connection = connection,
+            author = author,
+        )
+        val details = executionRequestDetailsFactory.createExecutionRequestDetails(
+            request = request,
+            events = mutableSetOf(),
+        )
+
+        details.resolveReviewStatus() shouldBe ReviewStatus.APPROVED
+        val progress = details.getApprovalProgress()
+        progress.bypassed shouldBe true
+        progress.bypassedByRoleNames shouldBe listOf("Manager")
+    }
+
+    @Test
+    fun `author without bypassApproval still needs reviews`() {
+        val managerRole = roleFactory.createRole(name = "Manager", bypassApproval = false)
+        val author = userFactory.createUser(roles = setOf(managerRole))
+        val connection = connectionFactory.createDatasourceConnection(
+            reviewConfig = ReviewConfig(numTotalRequired = 1),
+        )
+        val request = executionRequestFactory.createDatasourceExecutionRequest(
+            connection = connection,
+            author = author,
+        )
+        val details = executionRequestDetailsFactory.createExecutionRequestDetails(
+            request = request,
+            events = mutableSetOf(),
+        )
+
+        details.resolveReviewStatus() shouldBe ReviewStatus.AWAITING_APPROVAL
+        details.getApprovalProgress().bypassed shouldBe false
+    }
+
+    @Test
+    fun `bypassApproval skips role-specific approval requirements`() {
+        val managerRole = roleFactory.createRole(name = "Manager", bypassApproval = true)
+        val dbaRole = roleFactory.createRole(name = "DBA")
+        val author = userFactory.createUser(roles = setOf(managerRole))
+        val connection = connectionFactory.createDatasourceConnection(
+            reviewConfig = ReviewConfig(
+                numTotalRequired = 1,
+                roleRequirements = listOf(RoleRequirement(roleId = dbaRole.getId()!!, numRequired = 1)),
+            ),
+        )
+        val request = executionRequestFactory.createDatasourceExecutionRequest(
+            connection = connection,
+            author = author,
+        )
+        val details = executionRequestDetailsFactory.createExecutionRequestDetails(
+            request = request,
+            events = mutableSetOf(),
+        )
+
+        details.resolveReviewStatus() shouldBe ReviewStatus.APPROVED
+    }
+
+    @Test
+    fun `rejected request stays rejected even when author has bypassApproval`() {
+        val managerRole = roleFactory.createRole(name = "Manager", bypassApproval = true)
+        val author = userFactory.createUser(roles = setOf(managerRole))
+        val reviewer = userFactory.createUser()
+        val connection = connectionFactory.createDatasourceConnection(
+            reviewConfig = ReviewConfig(numTotalRequired = 1),
+        )
+        val request = executionRequestFactory.createDatasourceExecutionRequest(
+            connection = connection,
+            author = author,
+        )
+        val events = mutableSetOf<Event>(
+            eventFactory.createReviewRejectedEvent(request = request, author = reviewer),
+        )
+        val details = executionRequestDetailsFactory.createExecutionRequestDetails(
+            request = request,
+            events = events,
+        )
+
+        details.resolveReviewStatus() shouldBe ReviewStatus.REJECTED
+    }
 }
