@@ -1,3 +1,4 @@
+// This file is not MIT licensed
 package dev.kviklet.kviklet.proxy.mocks
 
 import dev.kviklet.kviklet.proxy.postgres.getShutdownDate

@@ -1,3 +1,4 @@
+// This file is not MIT licensed
 package dev.kviklet.kviklet.proxy.mocks
 
 import dev.kviklet.kviklet.db.EventAdapter
@@ -12,7 +13,7 @@ import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import org.junit.jupiter.api.Assertions.assertTrue
 import java.util.ArrayList
 
-class EventServiceMock(
+open class EventServiceMock(
     executionRequestAdapter: ExecutionRequestAdapter,
     eventAdapter: EventAdapter,
     var executionRequest: ExecutionRequest,
