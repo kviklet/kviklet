@@ -74,8 +74,8 @@ class PostgresProxyParseFailureTest {
             }
             assertEquals(-1, forwarded)
 
-            // The blocked message must be noted in the events, including its raw content
-            assertTrue(eventService.queries.any { it.contains("droptablesecret") })
+            // The blocked message must not produce an audit event, only executed queries are audited
+            assertTrue(eventService.queries.isEmpty())
         } finally {
             clientSide.close()
             proxyClientSocket.close()

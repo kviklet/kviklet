@@ -55,28 +55,35 @@ class Connection(
     }
 
     private fun handleClientData(clientBuffer: ByteArray) {
-        // Fail closed: nothing is forwarded to the server unless the whole chunk was parsed
-        // and every message in it was audited successfully.
+        // Fail closed: nothing is forwarded to the server unless the whole chunk was parsed,
+        // and each message is audited immediately before it is forwarded, so the audit log
+        // only ever contains queries that were at least attempted.
         val messages = try {
             parseDataToMessages(clientBuffer)
         } catch (e: Exception) {
             logger.warn("Failed to parse client message, blocking it and closing the session", e)
-            auditUnparseableMessage(clientBuffer)
             abortSession(
                 "Kviklet proxy could not parse the client message. The message was blocked and the session closed.",
             )
             return
         }
-        try {
-            messages.forEach { auditMessage(it) }
-        } catch (e: Exception) {
-            logger.error("Failed to audit query, blocking it and closing the session", e)
-            abortSession(
-                "Kviklet could not record the query in the audit log. The query was blocked and the session closed.",
-            )
-            return
-        }
         for (messageOrBytes in messages) {
+            try {
+                auditMessage(messageOrBytes)
+            } catch (e: UnknownStatementException) {
+                logger.warn("Client referenced a statement unknown to the proxy, closing the session", e)
+                abortSession(
+                    "Kviklet proxy does not know the prepared statement '${e.statementName}' and cannot audit " +
+                        "this execution. The query was blocked and the session closed.",
+                )
+                return
+            } catch (e: Exception) {
+                logger.error("Failed to audit query, blocking it and closing the session", e)
+                abortSession(
+                    "Kviklet could not record the query in the audit log. The query was blocked and the session closed.",
+                )
+                return
+            }
             terminationMessageReceived = terminationMessageReceived || messageOrBytes.isTermination()
             serverOutput.writeAndFlush(messageOrBytes.writableBytes())
         }
@@ -101,20 +108,6 @@ class Connection(
         }
     }
 
-    private fun auditUnparseableMessage(clientBuffer: ByteArray) {
-        try {
-            val decodedContent = String(clientBuffer, Charsets.UTF_8)
-                .map { if (it.isISOControl()) ' ' else it }
-                .joinToString("")
-            val executePayload = ExecutePayload(
-                query = "Blocked an unparseable message with the following raw content: $decodedContent",
-            )
-            eventService.saveEvent(executionRequest.id!!, userId, executePayload)
-        } catch (e: Exception) {
-            logger.error("Failed to record the blocked unparseable message in the audit log", e)
-        }
-    }
-
     private fun abortSession(reason: String) {
         try {
             clientOutput.writeAndFlush(errorResponse(reason))
@@ -131,7 +124,8 @@ class Connection(
     }
 
     private fun handleExecute(parsedMessage: ExecuteMessage) {
-        val statement = boundStatements[parsedMessage.statementName]!!
+        val statement = boundStatements[parsedMessage.statementName]
+            ?: throw UnknownStatementException(parsedMessage.statementName)
         val executePayload = ExecutePayload(query = statement.interpolateQuery())
         eventService.saveEvent(executionRequest.id!!, userId, executePayload)
     }
@@ -144,7 +138,8 @@ class Connection(
     }
 
     private fun handleBindMessage(parsedMessage: BindMessage) {
-        val statement = boundStatements[parsedMessage.statementName]!!
+        val statement = boundStatements[parsedMessage.statementName]
+            ?: throw UnknownStatementException(parsedMessage.statementName)
         boundStatements[parsedMessage.statementName] =
             Statement(
                 statement.query,
@@ -154,6 +149,9 @@ class Connection(
             )
     }
 }
+
+private class UnknownStatementException(val statementName: String) :
+    Exception("Client referenced the statement '$statementName' which the proxy has not seen a Parse message for")
 
 // Because SSLSocket available method always return zero, the code counts on short read timeout hack
 // Originally this was the case only for the server connections, now it is the case for both the client and the server
