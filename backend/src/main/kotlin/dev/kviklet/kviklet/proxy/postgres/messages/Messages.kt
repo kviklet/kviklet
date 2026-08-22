@@ -3,6 +3,17 @@ package dev.kviklet.kviklet.proxy.postgres.messages
 
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
+import java.util.UUID
+
+// Binary timestamps, dates and times are transferred relative to the Postgres epoch, 2000-01-01
+private val postgresEpochDateTime = LocalDateTime.of(2000, 1, 1, 0, 0)
+private val postgresEpochDate = LocalDate.of(2000, 1, 1)
+private val postgresEpochInstant = postgresEpochDateTime.toInstant(ZoneOffset.UTC)
 
 class PGTypeStringifier(
     private val pgTypeMap: Map<Int, String> = mapOf(
@@ -70,6 +81,13 @@ class PGTypeStringifier(
         1016 to "_int8",
         1042 to "bpchar",
         1043 to "varchar",
+        1082 to "date",
+        1083 to "time",
+        1114 to "timestamp",
+        1184 to "timestamptz",
+        1700 to "numeric",
+        2950 to "uuid",
+        3802 to "jsonb",
     ),
 ) {
     fun convertToHumanReadableString(typeObjectId: Int, bytes: ByteArray): String {
@@ -105,6 +123,32 @@ class PGTypeStringifier(
 
             "float8" -> {
                 ByteBuffer.wrap(bytes).double.toString()
+            }
+
+            "timestamp" -> {
+                postgresEpochDateTime.plus(ByteBuffer.wrap(bytes).long, ChronoUnit.MICROS).toString()
+            }
+
+            "timestamptz" -> {
+                postgresEpochInstant.plus(ByteBuffer.wrap(bytes).long, ChronoUnit.MICROS).toString()
+            }
+
+            "date" -> {
+                postgresEpochDate.plusDays(ByteBuffer.wrap(bytes).int.toLong()).toString()
+            }
+
+            "time" -> {
+                LocalTime.MIDNIGHT.plus(ByteBuffer.wrap(bytes).long, ChronoUnit.MICROS).toString()
+            }
+
+            "uuid" -> {
+                val buffer = ByteBuffer.wrap(bytes)
+                UUID(buffer.long, buffer.long).toString()
+            }
+
+            "jsonb" -> {
+                // The first byte is the jsonb wire format version, the rest is the JSON text
+                String(bytes.copyOfRange(1, bytes.size), Charset.forName("UTF-8"))
             }
 
             "text", "varchar", "bpchar" -> {
@@ -235,12 +279,13 @@ class BindMessage(
             // The Bind message carries the destination portal name first and the source statement name second
             val portalName = readCString(buffer)
             val statementName = readCString(buffer)
-            val parameterFormatCount = buffer.short.toInt()
+            // The counts are unsigned int16 on the wire
+            val parameterFormatCount = buffer.short.toInt() and 0xFFFF
             val parameterFormatCodes = mutableListOf<Int>()
             for (i in 0 until parameterFormatCount) {
                 parameterFormatCodes.add(buffer.short.toInt())
             }
-            val parameterCount = buffer.short.toInt()
+            val parameterCount = buffer.short.toInt() and 0xFFFF
             val parameterValues = mutableListOf<ByteArray?>()
             for (i in 0 until parameterCount) {
                 val parameterLength = buffer.int
@@ -248,12 +293,17 @@ class BindMessage(
                     // -1 is the wire encoding of NULL, there are no value bytes to read
                     parameterValues.add(null)
                 } else {
+                    if (parameterLength > buffer.remaining()) {
+                        throw Exception(
+                            "Bind message parameter length $parameterLength exceeds the message size",
+                        )
+                    }
                     val parameterBytes = ByteArray(parameterLength)
                     buffer.get(parameterBytes)
                     parameterValues.add(parameterBytes)
                 }
             }
-            val resultFormatCount = buffer.short.toInt()
+            val resultFormatCount = buffer.short.toInt() and 0xFFFF
             val resultFormatCodes = mutableListOf<Int>()
             for (i in 0 until resultFormatCount) {
                 resultFormatCodes.add(buffer.short.toInt())
@@ -308,8 +358,10 @@ class Statement(
     // in a single pass so parameter values are never re-scanned for placeholders, and rendering a
     // parameter must never throw: a value that cannot be decoded is rendered as hex instead.
     fun interpolateQuery(): String = Regex("\\$(\\d+)").replace(query) { match ->
-        val index = match.groupValues[1].toInt() - 1
-        if (index in boundParams.indices) renderParameter(index) else match.value
+        // toIntOrNull: the regex also matches dollar-digit sequences inside string literals,
+        // which can be too long to be an int and are no placeholder in the first place
+        val index = match.groupValues[1].toIntOrNull()?.minus(1)
+        if (index != null && index in boundParams.indices) renderParameter(index) else match.value
     }
 
     private fun renderParameter(index: Int): String {

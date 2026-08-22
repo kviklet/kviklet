@@ -2,13 +2,18 @@
 package dev.kviklet.kviklet.proxy
 
 import dev.kviklet.kviklet.proxy.postgres.messages.BindMessage
+import dev.kviklet.kviklet.proxy.postgres.messages.PGTypeStringifier
 import dev.kviklet.kviklet.proxy.postgres.messages.Statement
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import java.nio.ByteBuffer
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
+import java.util.UUID
 
 class PostgresProxyMessagesTest {
 
@@ -131,6 +136,60 @@ class PostgresProxyMessagesTest {
             boundParams = listOf(ByteBuffer.allocate(4).putInt(1234).array()),
         )
         assertTrue(statement.interpolateQuery().contains("1234"))
+    }
+
+    @Test
+    fun `interpolation leaves dollar digit literals that are no valid placeholder untouched`() {
+        val query = "INSERT INTO t(note) VALUES ('\$99999999999')"
+        val statement = Statement(query)
+        assertEquals(query, statement.interpolateQuery())
+    }
+
+    @Test
+    fun `bind message reads parameter counts as unsigned int16`() {
+        val content = bindMessageContent(portal = "", statement = "", parameters = List(33000) { null })
+        val message = bindMessageFromContent(content)
+        assertEquals(33000, message.parameters.size)
+    }
+
+    @Test
+    fun `bind message rejects parameter lengths larger than the message`() {
+        val buffer = ByteBuffer.allocate(2 + 2 + 2 + 4)
+        buffer.put(0) // portal name
+        buffer.put(0) // statement name
+        buffer.putShort(0) // parameter format codes
+        buffer.putShort(1) // parameter count
+        buffer.putInt(999_999_999) // claimed parameter length, no value bytes follow
+        assertThrows<Exception> { bindMessageFromContent(buffer.array()) }
+    }
+
+    @Test
+    fun `binary timestamps dates uuids and jsonb decode to readable values`() {
+        val stringifier = PGTypeStringifier()
+        val micros = ChronoUnit.MICROS.between(
+            LocalDateTime.of(2000, 1, 1, 0, 0),
+            LocalDateTime.of(2024, 5, 1, 10, 30, 45),
+        )
+        assertEquals(
+            "2024-05-01T10:30:45",
+            stringifier.convertToHumanReadableString(1114, ByteBuffer.allocate(8).putLong(micros).array()),
+        )
+        assertEquals(
+            "2024-05-01T10:30:45Z",
+            stringifier.convertToHumanReadableString(1184, ByteBuffer.allocate(8).putLong(micros).array()),
+        )
+        assertEquals(
+            "2000-01-10",
+            stringifier.convertToHumanReadableString(1082, ByteBuffer.allocate(4).putInt(9).array()),
+        )
+        val uuid = UUID.fromString("123e4567-e89b-12d3-a456-426614174000")
+        val uuidBytes = ByteBuffer.allocate(16)
+            .putLong(uuid.mostSignificantBits)
+            .putLong(uuid.leastSignificantBits)
+            .array()
+        assertEquals(uuid.toString(), stringifier.convertToHumanReadableString(2950, uuidBytes))
+        val jsonbBytes = byteArrayOf(1) + """{"a": 1}""".toByteArray()
+        assertEquals("""{"a": 1}""", stringifier.convertToHumanReadableString(3802, jsonbBytes))
     }
 
     @Test

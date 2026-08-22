@@ -16,7 +16,8 @@ class ParseMessage(
             val buffer = ByteBuffer.wrap(bytes)
             val statementName = readCString(buffer)
             val queryString = readCString(buffer)
-            val parameterCount = buffer.short.toInt()
+            // The count is an unsigned int16 on the wire
+            val parameterCount = buffer.short.toInt() and 0xFFFF
             val parameterTypes = mutableListOf<Int>()
             for (i in 0 until parameterCount) {
                 parameterTypes.add(buffer.int)

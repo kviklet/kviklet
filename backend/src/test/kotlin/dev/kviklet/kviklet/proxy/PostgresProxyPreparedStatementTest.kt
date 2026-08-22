@@ -18,6 +18,7 @@ import org.testcontainers.containers.PostgreSQLContainer
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.Types
+import java.time.LocalDateTime
 import java.util.Properties
 
 @SpringBootTest
@@ -46,7 +47,8 @@ class PostgresProxyPreparedStatementTest {
         this.directConnection = directConnectionFactory(postgresContainer)
         this.proxy = proxyServerFactory(postgresContainer, executionRequestAdapter, eventAdapter)
         directConnection.createStatement().executeUpdate(
-            "CREATE TABLE IF NOT EXISTS proxy_test_params (id INTEGER, name VARCHAR(64), active BOOLEAN);",
+            "CREATE TABLE IF NOT EXISTS proxy_test_params " +
+                "(id INTEGER, name VARCHAR(64), active BOOLEAN, created TIMESTAMP);",
         )
     }
 
@@ -57,12 +59,12 @@ class PostgresProxyPreparedStatementTest {
         this.postgresContainer.stop()
     }
 
-    private fun proxyConnection(prepareThreshold: Int? = null): Connection {
+    private fun proxyConnection(prepareThreshold: Int? = null, binaryTransfer: Boolean = false): Connection {
         val props = Properties()
         props.setProperty("user", "proxyUser")
         props.setProperty("password", "proxyPassword")
-        // Pin parameters to the text wire format so the assertions below are deterministic
-        props.setProperty("binaryTransfer", "false")
+        // Most tests pin parameters to the text wire format so the assertions are deterministic
+        props.setProperty("binaryTransfer", binaryTransfer.toString())
         prepareThreshold?.let { props.setProperty("prepareThreshold", it.toString()) }
         return DriverManager.getConnection(this.proxy.connectionString, props)
     }
@@ -151,6 +153,30 @@ class PostgresProxyPreparedStatementTest {
         connection.close()
 
         this.proxy.eventService.assertAuditedQueryContains("'value10'")
+    }
+
+    @Test
+    fun `binary format parameters are audited human readable`() {
+        // Named server-side statements with binary transfer, like Npgsql or pgx use by default
+        val connection = proxyConnection(prepareThreshold = 1, binaryTransfer = true)
+        val statement = connection.prepareStatement(
+            "INSERT INTO proxy_test_params(id, name, created) VALUES (?, ?, ?)",
+        )
+        val timestamp = LocalDateTime.of(2024, 5, 1, 10, 30, 45)
+        for (id in listOf(20, 21)) {
+            statement.setInt(1, id)
+            statement.setString(2, "binary")
+            statement.setObject(3, timestamp)
+            assertEquals(1, statement.executeUpdate())
+        }
+        connection.close()
+
+        val result = directConnection.createStatement()
+            .executeQuery("SELECT created FROM proxy_test_params WHERE id = 21;")
+        assertTrue(result.next())
+        assertEquals(timestamp, result.getTimestamp("created").toLocalDateTime())
+
+        this.proxy.eventService.assertAuditedQueryContains("VALUES ('21', 'binary', '2024-05-01T10:30:45')")
     }
 
     @Test
