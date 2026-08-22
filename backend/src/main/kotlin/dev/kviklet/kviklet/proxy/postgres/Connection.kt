@@ -3,6 +3,7 @@ package dev.kviklet.kviklet.proxy.postgres
 
 import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.proxy.postgres.messages.BindMessage
+import dev.kviklet.kviklet.proxy.postgres.messages.CloseMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.ExecuteMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.MessageOrBytes
 import dev.kviklet.kviklet.proxy.postgres.messages.ParseMessage
@@ -33,7 +34,8 @@ class Connection(
     private var clientOutput: OutputStream = clientSocket.getOutputStream()
     private var serverInput: InputStream = targetSocket.getInputStream()
     private var serverOutput: OutputStream = targetSocket.getOutputStream()
-    private val boundStatements: MutableMap<String, Statement> = mutableMapOf()
+    private val preparedStatements: MutableMap<String, Statement> = mutableMapOf()
+    private val portals: MutableMap<String, Portal> = mutableMapOf()
     private var terminationMessageReceived: Boolean = false
     private var serverTerminating: Boolean = false
     private var sessionAborted: Boolean = false
@@ -71,9 +73,9 @@ class Connection(
             try {
                 auditMessage(messageOrBytes)
             } catch (e: UnknownStatementException) {
-                logger.warn("Client referenced a statement unknown to the proxy, closing the session", e)
+                logger.warn("Client referenced a statement or portal unknown to the proxy, closing the session", e)
                 abortSession(
-                    "Kviklet proxy does not know the prepared statement '${e.statementName}' and cannot audit " +
+                    "Kviklet proxy does not know the statement or portal '${e.name}' and cannot audit " +
                         "this execution. The query was blocked and the session closed.",
                 )
                 return
@@ -104,6 +106,7 @@ class Connection(
             is ParseMessage -> handleParseMessage(message)
             is BindMessage -> handleBindMessage(message)
             is ExecuteMessage -> handleExecute(message)
+            is CloseMessage -> handleClose(message)
             else -> {}
         }
     }
@@ -124,34 +127,52 @@ class Connection(
     }
 
     private fun handleExecute(parsedMessage: ExecuteMessage) {
-        val statement = boundStatements[parsedMessage.statementName]
-            ?: throw UnknownStatementException(parsedMessage.statementName)
-        val executePayload = ExecutePayload(query = statement.interpolateQuery())
+        val portal = portals[parsedMessage.portalName]
+            ?: throw UnknownStatementException(parsedMessage.portalName)
+        // A portal is executed repeatedly when the client pages through results (fetchSize),
+        // audit the query once per Bind rather than once per fetched batch
+        if (portal.audited) {
+            return
+        }
+        val executePayload = ExecutePayload(query = portal.statement.interpolateQuery())
         eventService.saveEvent(executionRequest.id!!, userId, executePayload)
+        portal.audited = true
     }
 
     private fun handleParseMessage(parsedMessage: ParseMessage) {
-        boundStatements[parsedMessage.statementName] = Statement(
+        preparedStatements[parsedMessage.statementName] = Statement(
             parsedMessage.query,
             parameterTypes = parsedMessage.parameterTypes,
         )
     }
 
     private fun handleBindMessage(parsedMessage: BindMessage) {
-        val statement = boundStatements[parsedMessage.statementName]
+        val statement = preparedStatements[parsedMessage.statementName]
             ?: throw UnknownStatementException(parsedMessage.statementName)
-        boundStatements[parsedMessage.statementName] =
+        portals[parsedMessage.portalName] = Portal(
             Statement(
                 statement.query,
                 parsedMessage.parameterFormatCodes,
                 statement.parameterTypes,
                 parsedMessage.parameters,
-            )
+            ),
+        )
+    }
+
+    private fun handleClose(parsedMessage: CloseMessage) {
+        when (parsedMessage.closeType) {
+            'S' -> preparedStatements.remove(parsedMessage.name)
+            'P' -> portals.remove(parsedMessage.name)
+        }
     }
 }
 
-private class UnknownStatementException(val statementName: String) :
-    Exception("Client referenced the statement '$statementName' which the proxy has not seen a Parse message for")
+private class Portal(val statement: Statement) {
+    var audited: Boolean = false
+}
+
+private class UnknownStatementException(val name: String) :
+    Exception("Client referenced the statement or portal '$name' which the proxy has not seen before")
 
 // Because SSLSocket available method always return zero, the code counts on short read timeout hack
 // Originally this was the case only for the server connections, now it is the case for both the client and the server

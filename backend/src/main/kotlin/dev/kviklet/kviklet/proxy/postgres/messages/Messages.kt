@@ -52,29 +52,31 @@ class PGTypeStringifier(
         791 to "_money",
         829 to "macaddr",
         869 to "inet",
-        650 to "_bool",
-        869 to "_bytea",
-        1000 to "_char",
-        1001 to "_name",
-        1002 to "_int2",
-        1003 to "_int2vector",
-        1005 to "_int4",
-        1006 to "_regproc",
-        1007 to "_text",
-        1008 to "_tid",
-        1009 to "_xid",
-        1010 to "_cid",
-        1011 to "_oidvector",
-        1012 to "_bpchar",
-        1013 to "_varchar",
-        1014 to "_int8",
+        1000 to "_bool",
+        1001 to "_bytea",
+        1002 to "_char",
+        1003 to "_name",
+        1005 to "_int2",
+        1006 to "_int2vector",
+        1007 to "_int4",
+        1008 to "_regproc",
+        1009 to "_text",
+        1010 to "_tid",
+        1011 to "_xid",
+        1012 to "_cid",
+        1013 to "_oidvector",
+        1014 to "_bpchar",
+        1015 to "_varchar",
+        1016 to "_int8",
+        1042 to "bpchar",
+        1043 to "varchar",
     ),
 ) {
     fun convertToHumanReadableString(typeObjectId: Int, bytes: ByteArray): String {
         val type = pgTypeMap[typeObjectId]
         return when (type) {
             "bool" -> {
-                (bytes[0] == 0x01.toByte()).toString()
+                (bytes[0].toInt() != 0).toString()
             }
 
             "char" -> {
@@ -97,7 +99,15 @@ class PGTypeStringifier(
                 ByteBuffer.wrap(bytes).int.toString()
             }
 
-            "text" -> {
+            "float4" -> {
+                ByteBuffer.wrap(bytes).float.toString()
+            }
+
+            "float8" -> {
+                ByteBuffer.wrap(bytes).double.toString()
+            }
+
+            "text", "varchar", "bpchar" -> {
                 String(bytes, Charset.forName("UTF-8"))
             }
 
@@ -146,6 +156,7 @@ open class ParsedMessage(open val header: Char, open val length: Int, open val o
                 'P' -> ParseMessage.fromBytes(length, bytes)
                 'E' -> ExecuteMessage.fromBytes(length, bytes)
                 'B' -> BindMessage.fromBytes(length, bytes)
+                'C' -> CloseMessage.fromBytes(length, bytes)
                 'S' -> SyncMessage.fromBytes(length)
                 else -> ParsedMessage(header, length, bytes)
             }
@@ -181,25 +192,30 @@ class QueryMessage(
     }
 }
 
+// Reads a zero-terminated string from the buffer, as used throughout the Postgres wire protocol
+fun readCString(buffer: ByteBuffer): String {
+    val stringBytes = mutableListOf<Byte>()
+    while (true) {
+        val byte = buffer.get()
+        if (byte == 0.toByte()) {
+            break
+        }
+        stringBytes.add(byte)
+    }
+    return String(stringBytes.toByteArray(), Charset.forName("UTF-8"))
+}
+
 class ExecuteMessage(
     override val header: Char = 'E',
     override val length: Int,
     originalContent: ByteArray,
-    val statementName: String,
+    val portalName: String,
 ) : ParsedMessage(header, length, originalContent) {
     companion object {
         fun fromBytes(length: Int, bytes: ByteArray): ExecuteMessage {
             val buffer = ByteBuffer.wrap(bytes)
-            val statementNameBytes = mutableListOf<Byte>()
-            while (true) {
-                val byte = buffer.get()
-                if (byte == 0.toByte()) {
-                    break
-                }
-                statementNameBytes.add(byte)
-            }
-            val statementName = String(statementNameBytes.toByteArray(), Charset.forName("UTF-8"))
-            return ExecuteMessage('E', length, bytes, statementName)
+            val portalName = readCString(buffer)
+            return ExecuteMessage('E', length, bytes, portalName)
         }
     }
 }
@@ -208,42 +224,34 @@ class BindMessage(
     override val header: Char = 'B',
     override val length: Int,
     override val originalContent: ByteArray,
+    val portalName: String,
     val statementName: String,
     val parameterFormatCodes: List<Int>,
-    val parameters: List<ByteArray>,
+    val parameters: List<ByteArray?>,
 ) : ParsedMessage(header, length, originalContent) {
     companion object {
         fun fromBytes(length: Int, bytes: ByteArray): BindMessage {
             val buffer = ByteBuffer.wrap(bytes)
-            val statementNameBytes = mutableListOf<Byte>()
-            while (true) {
-                val byte = buffer.get()
-                if (byte == 0.toByte()) {
-                    break
-                }
-                statementNameBytes.add(byte)
-            }
-            val statementName = String(statementNameBytes.toByteArray(), Charset.forName("UTF-8"))
-            val portalNameBytes = mutableListOf<Byte>()
-            while (true) {
-                val byte = buffer.get()
-                if (byte == 0.toByte()) {
-                    break
-                }
-                portalNameBytes.add(byte)
-            }
+            // The Bind message carries the destination portal name first and the source statement name second
+            val portalName = readCString(buffer)
+            val statementName = readCString(buffer)
             val parameterFormatCount = buffer.short.toInt()
             val parameterFormatCodes = mutableListOf<Int>()
             for (i in 0 until parameterFormatCount) {
                 parameterFormatCodes.add(buffer.short.toInt())
             }
             val parameterCount = buffer.short.toInt()
-            val parameterValues = mutableListOf<ByteArray>()
+            val parameterValues = mutableListOf<ByteArray?>()
             for (i in 0 until parameterCount) {
                 val parameterLength = buffer.int
-                val parameterBytes = ByteArray(parameterLength)
-                buffer.get(parameterBytes)
-                parameterValues.add(parameterBytes)
+                if (parameterLength == -1) {
+                    // -1 is the wire encoding of NULL, there are no value bytes to read
+                    parameterValues.add(null)
+                } else {
+                    val parameterBytes = ByteArray(parameterLength)
+                    buffer.get(parameterBytes)
+                    parameterValues.add(parameterBytes)
+                }
             }
             val resultFormatCount = buffer.short.toInt()
             val resultFormatCodes = mutableListOf<Int>()
@@ -254,10 +262,28 @@ class BindMessage(
                 'B',
                 length,
                 bytes,
+                portalName,
                 statementName,
                 parameterFormatCodes,
                 parameterValues,
             )
+        }
+    }
+}
+
+class CloseMessage(
+    override val header: Char = 'C',
+    override val length: Int,
+    originalContent: ByteArray,
+    val closeType: Char,
+    val name: String,
+) : ParsedMessage(header, length, originalContent) {
+    companion object {
+        fun fromBytes(length: Int, bytes: ByteArray): CloseMessage {
+            val buffer = ByteBuffer.wrap(bytes)
+            val closeType = buffer.get().toInt().toChar()
+            val name = readCString(buffer)
+            return CloseMessage('C', length, bytes, closeType, name)
         }
     }
 }
@@ -271,26 +297,41 @@ class SyncMessage(override val header: Char = 'S', override val length: Int) :
 
 class Statement(
     val query: String,
-    private val parameterFormatCodes: List<Int> = mutableListOf(),
-    val parameterTypes: List<Int> = mutableListOf(),
-    private val boundParams: List<ByteArray> = mutableListOf(),
+    private val parameterFormatCodes: List<Int> = listOf(),
+    val parameterTypes: List<Int> = listOf(),
+    private val boundParams: List<ByteArray?> = listOf(),
 ) {
-    override fun toString(): String =
-        "Statement(query='$query', parameterFormatCodes=$parameterFormatCodes, boundParams=$boundParams)," +
-            "interpolated query: ${interpolateQuery()}"
+    override fun toString(): String = "Statement(query='$query', parameterFormatCodes=$parameterFormatCodes)," +
+        "interpolated query: ${interpolateQuery()}"
 
-    fun interpolateQuery(): String {
-        var interpolatedQuery = query
-        for (i in boundParams.indices) {
-            val param = boundParams[i]
-            val paramType = parameterTypes[i]
-            val paramIndex = i + 1
-            interpolatedQuery = interpolatedQuery.replace(
-                "$$paramIndex",
-                "'${PGTypeStringifier().convertToHumanReadableString(paramType, param)}'",
-            )
+    // Replaces $1, $2, ... with the bound parameter values for the audit log. The replacement is done
+    // in a single pass so parameter values are never re-scanned for placeholders, and rendering a
+    // parameter must never throw: a value that cannot be decoded is rendered as hex instead.
+    fun interpolateQuery(): String = Regex("\\$(\\d+)").replace(query) { match ->
+        val index = match.groupValues[1].toInt() - 1
+        if (index in boundParams.indices) renderParameter(index) else match.value
+    }
+
+    private fun renderParameter(index: Int): String {
+        val param = boundParams[index] ?: return "NULL"
+        val text = try {
+            if (isTextFormat(index)) {
+                String(param, Charset.forName("UTF-8"))
+            } else {
+                PGTypeStringifier().convertToHumanReadableString(parameterTypes.getOrElse(index) { 0 }, param)
+            }
+        } catch (e: Exception) {
+            param.toHexString()
         }
-        return interpolatedQuery
+        return "'${text.replace("'", "''")}'"
+    }
+
+    // Per the protocol, no format codes means all-text, a single code applies to all parameters,
+    // otherwise there is one code per parameter. 0 is text, 1 is binary.
+    private fun isTextFormat(index: Int): Boolean = when (parameterFormatCodes.size) {
+        0 -> true
+        1 -> parameterFormatCodes[0] == 0
+        else -> parameterFormatCodes.getOrElse(index) { 0 } == 0
     }
 }
 
