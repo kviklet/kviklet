@@ -157,7 +157,9 @@ class PostgresProxyPreparedStatementTest {
 
     @Test
     fun `binary format parameters are audited human readable`() {
-        // Named server-side statements with binary transfer, like Npgsql or pgx use by default
+        // Named server-side statements with binary transfer, like Npgsql or pgx use by default.
+        // pgjdbc still sends timestamps as text even in this mode, so the timestamp assertion is
+        // separator-agnostic; the binary decoders themselves are covered by PostgresProxyMessagesTest.
         val connection = proxyConnection(prepareThreshold = 1, binaryTransfer = true)
         val statement = connection.prepareStatement(
             "INSERT INTO proxy_test_params(id, name, created) VALUES (?, ?, ?)",
@@ -176,7 +178,8 @@ class PostgresProxyPreparedStatementTest {
         assertTrue(result.next())
         assertEquals(timestamp, result.getTimestamp("created").toLocalDateTime())
 
-        this.proxy.eventService.assertAuditedQueryContains("VALUES ('21', 'binary', '2024-05-01T10:30:45')")
+        this.proxy.eventService.assertAuditedQueryContains("VALUES ('21', 'binary', '2024-05-01")
+        this.proxy.eventService.assertAuditedQueryContains("10:30:45')")
     }
 
     @Test
