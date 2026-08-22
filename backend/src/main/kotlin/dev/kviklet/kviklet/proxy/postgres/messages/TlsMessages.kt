@@ -1,3 +1,4 @@
+// This file is not MIT licensed
 package dev.kviklet.kviklet.proxy.postgres.messages
 
 fun tlsNotSupportedMessage(): ByteArray = "N".toByteArray()

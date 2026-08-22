@@ -1,3 +1,4 @@
+// This file is not MIT licensed
 package dev.kviklet.kviklet.proxy.postgres
 
 import org.slf4j.LoggerFactory
