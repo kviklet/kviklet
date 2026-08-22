@@ -36,11 +36,12 @@ fun proxyServerFactory(
     executionRequestAdapter: ExecutionRequestAdapter,
     eventAdapter: EventAdapter,
     tlsCertificate: TLSCertificate? = null,
+    eventServiceOverride: EventServiceMock? = null,
 ): ProxyInstance {
     val connAuth = AuthenticationDetails.UserPassword("test", "test")
     val executionRequestFactory = ExecutionRequestFactory()
     val request = executionRequestFactory.createDatasourceExecutionRequest()
-    val eventService = EventServiceMock(executionRequestAdapter, eventAdapter, request)
+    val eventService = eventServiceOverride ?: EventServiceMock(executionRequestAdapter, eventAdapter, request)
     var proxy = PostgresProxy(
         postgresContainer.host,
         postgresContainer.getMappedPort(5432),
