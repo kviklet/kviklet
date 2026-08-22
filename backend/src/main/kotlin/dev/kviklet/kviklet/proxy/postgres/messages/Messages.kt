@@ -1,3 +1,4 @@
+// This file is not MIT licensed
 package dev.kviklet.kviklet.proxy.postgres.messages
 
 import java.nio.ByteBuffer
@@ -312,6 +313,23 @@ fun paramMessage(key: String, value: String): ByteArray {
     responseBuffer.put(0.toByte())
     responseBuffer.put(value.toByteArray())
     responseBuffer.put(0.toByte())
+    return responseBuffer.array()
+}
+
+fun errorResponse(message: String): ByteArray {
+    val fields = listOf(
+        'S' to "ERROR",
+        'V' to "ERROR",
+        'C' to "08P01", // protocol_violation
+        'M' to message,
+    )
+    val fieldBytes = fields.flatMap { (type, value) ->
+        listOf(type.code.toByte()) + value.toByteArray().toList() + listOf(0.toByte())
+    } + listOf(0.toByte())
+    val responseBuffer = ByteBuffer.allocate(5 + fieldBytes.size)
+    responseBuffer.put('E'.code.toByte())
+    responseBuffer.putInt(4 + fieldBytes.size)
+    responseBuffer.put(fieldBytes.toByteArray())
     return responseBuffer.array()
 }
 
