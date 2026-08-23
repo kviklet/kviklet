@@ -191,7 +191,7 @@ open class ParsedMessage(open val header: Char, open val length: Int, open val o
                 'E' -> ExecuteMessage.fromBytes(length, bytes)
                 'B' -> BindMessage.fromBytes(length, bytes)
                 'C' -> CloseMessage.fromBytes(length, bytes)
-                'S' -> SyncMessage.fromBytes(length)
+                'S' -> SyncMessage.fromBytes(length, bytes)
                 else -> ParsedMessage(header, length, bytes)
             }
         }
@@ -328,10 +328,15 @@ class CloseMessage(
     }
 }
 
-class SyncMessage(override val header: Char = 'S', override val length: Int) :
-    ParsedMessage(header, length, ByteArray(0)) {
+class SyncMessage(
+    override val header: Char = 'S',
+    override val length: Int,
+    originalContent: ByteArray = ByteArray(0),
+) : ParsedMessage(header, length, originalContent) {
     companion object {
-        fun fromBytes(length: Int): SyncMessage = SyncMessage('S', length)
+        // A well-behaved client always sends Sync with an empty body, but the body is preserved
+        // regardless so a nonstandard message is relayed faithfully instead of desyncing the stream
+        fun fromBytes(length: Int, bytes: ByteArray): SyncMessage = SyncMessage('S', length, bytes)
     }
 }
 

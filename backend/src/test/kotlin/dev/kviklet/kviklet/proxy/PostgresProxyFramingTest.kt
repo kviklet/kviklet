@@ -89,6 +89,27 @@ class PostgresProxyFramingTest {
     }
 
     @Test
+    fun `every parsed message reserializes to exactly the bytes that were fed`() {
+        // The relay forwards ParsedMessage.toByteArray() to the server, so a faithful relay
+        // requires that reserializing a parsed message reproduces the original wire bytes.
+        // Sync ('S') in particular used to drop its body: a non-empty body would desync the
+        // server-bound stream because the declared length was still forwarded.
+        val framer = MessageFramer()
+        val sync = ByteBuffer.allocate(5 + 4)
+        sync.put('S'.code.toByte())
+        sync.putInt(8) // length includes the int and a 4 byte body
+        sync.put(byteArrayOf(1, 2, 3, 4))
+        val bytes = sync.array()
+
+        val messages = framer.feed(bytes)
+        assertEquals(1, messages.size)
+        assertTrue(
+            bytes.contentEquals(messages[0].toByteArray()),
+            "Reserialized message did not match the original bytes",
+        )
+    }
+
+    @Test
     fun `a message length below the protocol minimum fails the parse`() {
         val framer = MessageFramer()
         val buffer = ByteBuffer.allocate(5)
