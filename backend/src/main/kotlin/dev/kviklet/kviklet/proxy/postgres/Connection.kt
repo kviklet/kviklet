@@ -5,9 +5,9 @@ import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.proxy.postgres.messages.BindMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.CloseMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.ExecuteMessage
+import dev.kviklet.kviklet.proxy.postgres.messages.MessageFramer
 import dev.kviklet.kviklet.proxy.postgres.messages.MessageOrBytes
 import dev.kviklet.kviklet.proxy.postgres.messages.ParseMessage
-import dev.kviklet.kviklet.proxy.postgres.messages.ParsedMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.QueryMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.Statement
 import dev.kviklet.kviklet.proxy.postgres.messages.errorResponse
@@ -21,7 +21,6 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.net.Socket
 import java.net.SocketTimeoutException
-import java.nio.ByteBuffer
 
 class Connection(
     clientSocket: Socket,
@@ -34,6 +33,7 @@ class Connection(
     private var clientOutput: OutputStream = clientSocket.getOutputStream()
     private var serverInput: InputStream = targetSocket.getInputStream()
     private var serverOutput: OutputStream = targetSocket.getOutputStream()
+    private val clientFramer = MessageFramer()
     private val preparedStatements: MutableMap<String, Statement> = mutableMapOf()
     private val portals: MutableMap<String, Portal> = mutableMapOf()
     private var terminationMessageReceived: Boolean = false
@@ -51,8 +51,12 @@ class Connection(
         // This basically transfers messages between the client and the server sockets.
         // NOTE: At this point the client connection is set up. SSL, Auth etc... are handled in ClientConnectionSetup.kt
         while (!terminationMessageReceived && !serverTerminating && !sessionAborted) {
-            readFromAnyStream(clientInput) { handleClientData(it) }
-            readFromAnyStream(serverInput) { clientOutput.writeAndFlush(it) }
+            val clientOpen = readFromAnyStream(clientInput) { handleClientData(it) }
+            val serverOpen = readFromAnyStream(serverInput) { clientOutput.writeAndFlush(it) }
+            if (!clientOpen || !serverOpen) {
+                logger.info("The {} closed the connection, ending the session", if (clientOpen) "server" else "client")
+                break
+            }
         }
     }
 
@@ -61,7 +65,7 @@ class Connection(
         // and each message is audited immediately before it is forwarded, so the audit log
         // only ever contains queries that were at least attempted.
         val messages = try {
-            parseDataToMessages(clientBuffer)
+            clientFramer.feed(clientBuffer).map { MessageOrBytes(it, null) }
         } catch (e: Exception) {
             logger.warn("Failed to parse client message, blocking it and closing the session", e)
             abortSession(
@@ -70,6 +74,14 @@ class Connection(
             return
         }
         for (messageOrBytes in messages) {
+            if (messageOrBytes.message?.header == 'F') {
+                logger.warn("Client sent a fast-path FunctionCall message, blocking it and closing the session")
+                abortSession(
+                    "Kviklet proxy does not support fast-path function calls because they bypass the audit log. " +
+                        "The call was blocked and the session closed.",
+                )
+                return
+            }
             try {
                 auditMessage(messageOrBytes)
             } catch (e: UnknownStatementException) {
@@ -89,15 +101,6 @@ class Connection(
             terminationMessageReceived = terminationMessageReceived || messageOrBytes.isTermination()
             serverOutput.writeAndFlush(messageOrBytes.writableBytes())
         }
-    }
-
-    private fun parseDataToMessages(byteArray: ByteArray): List<MessageOrBytes> {
-        val buffer = ByteBuffer.wrap(byteArray)
-        val messages = mutableListOf<MessageOrBytes>()
-        while (buffer.remaining() > 0) {
-            messages.add(MessageOrBytes(ParsedMessage.fromBytes(buffer), null))
-        }
-        return messages
     }
 
     private fun auditMessage(messageOrBytes: MessageOrBytes) {
@@ -177,17 +180,29 @@ private class UnknownStatementException(val name: String) :
 // Because SSLSocket available method always return zero, the code counts on short read timeout hack
 // Originally this was the case only for the server connections, now it is the case for both the client and the server
 // More info about the hack: https://stackoverflow.com/a/29386157
-fun readFromAnyStream(input: InputStream, onInputAvailable: (input: ByteArray) -> Unit) {
+// Returns false once the stream has reached EOF and no more data will ever arrive
+fun readFromAnyStream(input: InputStream, onInputAvailable: (input: ByteArray) -> Unit): Boolean {
     val singleByte = ByteArray(1)
     val bytesRead: Int = try {
         input.read(singleByte, 0, 1)
     } catch (e: SocketTimeoutException) {
-        0
+        return true
+    }
+    if (bytesRead == -1) {
+        return false
     }
 
-    if (bytesRead > 0) {
-        val buff = ByteArray(8192)
-        val read = input.read(buff)
-        onInputAvailable(singleByte + buff.copyOfRange(0, read))
+    val buff = ByteArray(8192)
+    val read = try {
+        input.read(buff)
+    } catch (e: SocketTimeoutException) {
+        // Only the single polled byte was available before the socket timeout kicked in
+        0
     }
+    if (read == -1) {
+        onInputAvailable(singleByte)
+        return false
+    }
+    onInputAvailable(singleByte + buff.copyOfRange(0, read))
+    return true
 }
