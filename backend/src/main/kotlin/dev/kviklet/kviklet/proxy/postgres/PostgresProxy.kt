@@ -32,7 +32,11 @@ class PostgresProxy(
     private var proxyUsername = "postgres"
     private var proxyPassword = "postgres"
     private val maxConnections = 15
-    private var currentConnections = 0
+
+    // Volatile so tests and monitoring see slot releases done by the connection handler threads
+    @Volatile
+    var currentConnections = 0
+        private set
     private var targetPostgres: TargetPostgresSocketFactory =
         TargetPostgresSocketFactory(authenticationDetails, databaseName, targetHost, targetPort)
     var isRunning: Boolean = false
