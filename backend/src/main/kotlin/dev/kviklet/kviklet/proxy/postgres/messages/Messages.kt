@@ -179,16 +179,6 @@ open class ParsedMessage(open val header: Char, open val length: Int, open val o
     }
 
     companion object {
-        fun fromBytes(buffer: ByteBuffer): ParsedMessage {
-            // todo if check if length is < 4, funny things happen otherwise. The error is handled in the other fromBytes method
-            // but if the length is e.g. 1, the code will try to allocate array with negative size.
-            val header = buffer.get().toInt().toChar()
-            val length = buffer.int
-            val messageBytes = ByteArray(length - 4)
-            buffer.get(messageBytes)
-            return fromBytes(header, length, messageBytes)
-        }
-
         fun fromBytes(header: Char, length: Int, bytes: ByteArray): ParsedMessage {
             if (bytes.size < length - 4) {
                 throw Exception("Not enough bytes to parse message")
@@ -201,7 +191,7 @@ open class ParsedMessage(open val header: Char, open val length: Int, open val o
                 'E' -> ExecuteMessage.fromBytes(length, bytes)
                 'B' -> BindMessage.fromBytes(length, bytes)
                 'C' -> CloseMessage.fromBytes(length, bytes)
-                'S' -> SyncMessage.fromBytes(length)
+                'S' -> SyncMessage.fromBytes(length, bytes)
                 else -> ParsedMessage(header, length, bytes)
             }
         }
@@ -338,10 +328,15 @@ class CloseMessage(
     }
 }
 
-class SyncMessage(override val header: Char = 'S', override val length: Int) :
-    ParsedMessage(header, length, ByteArray(0)) {
+class SyncMessage(
+    override val header: Char = 'S',
+    override val length: Int,
+    originalContent: ByteArray = ByteArray(0),
+) : ParsedMessage(header, length, originalContent) {
     companion object {
-        fun fromBytes(length: Int): SyncMessage = SyncMessage('S', length)
+        // A well-behaved client always sends Sync with an empty body, but the body is preserved
+        // regardless so a nonstandard message is relayed faithfully instead of desyncing the stream
+        fun fromBytes(length: Int, bytes: ByteArray): SyncMessage = SyncMessage('S', length, bytes)
     }
 }
 
