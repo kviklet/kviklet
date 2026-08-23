@@ -19,6 +19,13 @@ open class EventServiceMock(
     var executionRequest: ExecutionRequest,
 ) : EventService(executionRequestAdapter, eventAdapter) {
     var queries: ArrayList<String> = ArrayList<String>()
+    var rawQueries: ArrayList<String> = ArrayList<String>()
+    fun assertAuditedQueryContains(fragment: String) {
+        assertTrue(
+            this.rawQueries.any { it.contains(fragment) },
+            "No audited query contains \"$fragment\". Audited queries: $rawQueries",
+        )
+    }
     fun assertQueryIsAudited(query: String) {
         var processedQuery = query.lowercase().replace(" ", "").replace("\n".toRegex(), "")
         if (processedQuery.last() == ';') {
@@ -30,6 +37,7 @@ open class EventServiceMock(
     override fun saveEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Event {
         if (payload.type.compareTo(EventType.EXECUTE) == 0) {
             val executePayload = payload as ExecutePayload
+            executePayload.query?.let { rawQueries.add(it) }
             if (executePayload.query?.last() == ';') {
                 executePayload.query?.let {
                     queries.add(it.lowercase().replace(" ", "").replace("\n".toRegex(), "").dropLast(1))
