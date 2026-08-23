@@ -32,12 +32,12 @@ import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
 import java.net.URI
-import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
 
 data class SessionAndMessages(
     val session: WebSocketSession,
-    val messages: CompletableFuture<List<String>>,
+    val messages: List<String>,
     val executionRequest: ExecutionRequestDetails,
 )
 
@@ -95,7 +95,7 @@ class WebSocketHandlerTest {
     }
 
     fun openSession(approved: Boolean = true): SessionAndMessages {
-        val messages = CompletableFuture<List<String>>()
+        val messages = CopyOnWriteArrayList<String>()
         val testApprover = userHelper.createUser()
         val executionRequest = if (approved) {
             executionRequestHelper.createApprovedRequest(
@@ -118,19 +118,24 @@ class WebSocketHandlerTest {
     }
 
     fun openObserverSession(executionRequest: ExecutionRequestDetails): SessionAndMessages {
-        val messages = CompletableFuture<List<String>>()
+        val messages = CopyOnWriteArrayList<String>()
         val testObserver = userHelper.createUser()
         val sessionCookie = userHelper.login(testObserver.email, "123456", mockMvc)
         val session = connectToWebSocket(executionRequest.getId(), sessionCookie.value, messages)
         return SessionAndMessages(session, messages, executionRequest)
     }
 
-    fun waitForResponses(messages: CompletableFuture<List<String>>, expectedMessages: Int): List<JsonNode> {
-        Thread.sleep(1000)
-        val receivedMessages = messages.get(5, TimeUnit.SECONDS)
-        assert(receivedMessages.isNotEmpty())
-        assertEquals(expectedMessages, receivedMessages.size)
-        return receivedMessages.map { objectMapper.readTree(it) }
+    // Waits until the expected number of messages arrived instead of sleeping a fixed amount,
+    // which flakes on loaded runners. The short grace period afterwards makes sure an
+    // unexpected extra message still fails the exact count assertion.
+    fun waitForResponses(messages: List<String>, expectedMessages: Int): List<JsonNode> {
+        val deadline = System.currentTimeMillis() + 10_000
+        while (messages.size < expectedMessages && System.currentTimeMillis() < deadline) {
+            Thread.sleep(50)
+        }
+        Thread.sleep(250)
+        assertEquals(expectedMessages, messages.size, "Expected $expectedMessages messages but received: $messages")
+        return messages.map { objectMapper.readTree(it) }
     }
 
     @Test
@@ -174,8 +179,6 @@ class WebSocketHandlerTest {
             }
         """.trimIndent()
         session.sendMessage(TextMessage(executeMessage))
-        // Wait 2 seconds for the message to be processed otherwise the get is too eager
-        // and only one updated message is received
         val receivedMessages = waitForResponses(messages, 3)
         val resultMessage = receivedMessages.last()
         assertTrue(resultMessage.has("sessionId"))
@@ -215,6 +218,10 @@ class WebSocketHandlerTest {
     fun testObserveSession() {
         val (session, messages, executionRequest) = openSession()
         val (observerSession, observerMessages, _) = openObserverSession(executionRequest)
+        // The initial status message proves the server has registered the observer session.
+        // Only broadcasts sent after that point reach the observer, so the author must not
+        // send anything before it arrives.
+        waitForResponses(observerMessages, 1)
         session.sendMessage(
             TextMessage(
                 """
@@ -300,7 +307,7 @@ class WebSocketHandlerTest {
     private fun connectToWebSocket(
         executionRequestId: String,
         sessionId: String,
-        messages: CompletableFuture<List<String>>,
+        messages: MutableList<String>,
     ): WebSocketSession {
         // Path-segment encoding, not URLEncoder: generated ids can end in a space
         // (IdGenerator pads 21-char base58 ids), which URLEncoder would turn into a
@@ -311,11 +318,8 @@ class WebSocketHandlerTest {
         headers.add("Cookie", "SESSION=$sessionId")
 
         val handler = object : TextWebSocketHandler() {
-            private val receivedMessages = mutableListOf<String>()
-
             override fun handleTextMessage(session: WebSocketSession, message: TextMessage) {
-                receivedMessages.add(message.payload)
-                messages.complete(receivedMessages)
+                messages.add(message.payload)
             }
         }
 
