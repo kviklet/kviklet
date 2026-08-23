@@ -179,16 +179,6 @@ open class ParsedMessage(open val header: Char, open val length: Int, open val o
     }
 
     companion object {
-        fun fromBytes(buffer: ByteBuffer): ParsedMessage {
-            // todo if check if length is < 4, funny things happen otherwise. The error is handled in the other fromBytes method
-            // but if the length is e.g. 1, the code will try to allocate array with negative size.
-            val header = buffer.get().toInt().toChar()
-            val length = buffer.int
-            val messageBytes = ByteArray(length - 4)
-            buffer.get(messageBytes)
-            return fromBytes(header, length, messageBytes)
-        }
-
         fun fromBytes(header: Char, length: Int, bytes: ByteArray): ParsedMessage {
             if (bytes.size < length - 4) {
                 throw Exception("Not enough bytes to parse message")
