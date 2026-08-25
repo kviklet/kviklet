@@ -37,6 +37,11 @@ class Connection(
     private val preparedStatements: MutableMap<String, Statement> = mutableMapOf()
     private val portals: MutableMap<String, Portal> = mutableMapOf()
     private var terminationMessageReceived: Boolean = false
+
+    // Written by close() on the shutdown thread and read by the relay loop on a pool thread, so it needs
+    // a happens-before edge. terminationMessageReceived and sessionAborted are only ever touched on the
+    // relay thread, so they do not.
+    @Volatile
     private var serverTerminating: Boolean = false
     private var sessionAborted: Boolean = false
 
@@ -44,10 +49,14 @@ class Connection(
         private val logger = LoggerFactory.getLogger(Connection::class.java)
     }
 
-    // Signals the relay loop to stop. The loop's short read timeout means it notices this within a few
-    // milliseconds and then closes both sockets through its single teardown path.
+    // Signals the relay loop to stop and closes both sockets. The flag gives a clean exit when the loop
+    // is between reads, and closing the sockets forces an exit when it is blocked in I/O the read
+    // timeout does not bound: a write to a client that has stopped reading would otherwise never reach
+    // the flag check and would survive shutdown. closeSockets() is idempotent, so the loop's own
+    // teardown running afterwards is harmless.
     fun close() {
         this.serverTerminating = true
+        closeSockets()
     }
 
     // Closes both sockets. Closing the upstream socket is what actually frees the target database
