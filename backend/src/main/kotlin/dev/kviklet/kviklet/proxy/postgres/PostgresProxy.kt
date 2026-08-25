@@ -10,6 +10,7 @@ import java.net.Socket
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.*
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import kotlin.concurrent.schedule
 
@@ -30,7 +31,12 @@ class PostgresProxy(
     private val handshakeTimeoutMs: Int = 10_000,
 ) {
     private val threadPool = Executors.newCachedThreadPool()
-    private val clientConnections: ArrayList<Connection> = arrayListOf()
+
+    // Concurrent by nature: pool threads add on setup and remove on teardown while the scheduled
+    // shutdown iterates it. A plain list would corrupt or lose elements under that race, which for a
+    // time-boxed access proxy means a live session could survive past its window or shutdown could
+    // fault before closing the port. Broader lifecycle/I-O-model alignment stays with KVI-221.
+    private val clientConnections = CopyOnWriteArrayList<Connection>()
     private lateinit var serverSocket: ServerSocket
     private var proxyUsername = "postgres"
     private var proxyPassword = "postgres"
@@ -79,9 +85,8 @@ class PostgresProxy(
 
     fun shutdownServer() {
         this.isRunning = false
-        // Snapshot the list: each session prunes itself from clientConnections as it ends, so iterating
-        // the live list while sessions are shutting down would risk a concurrent modification.
-        ArrayList(this.clientConnections).forEach { it.close() }
+        // CopyOnWriteArrayList gives a stable snapshot to iterate even as sessions prune themselves.
+        this.clientConnections.forEach { it.close() }
         this.threadPool.shutdownNow()
         this.serverSocket.close()
     }
