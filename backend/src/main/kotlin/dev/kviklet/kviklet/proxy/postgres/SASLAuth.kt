@@ -42,6 +42,11 @@ class SASLAuthHandler(
         while (state != AuthenticationState.DONE) {
             val buff = ByteArray(8192)
             val read = input.read(buff)
+            if (read == -1) {
+                // The client aborted mid-SASL. Treat EOF as terminal so the handshake thread does not
+                // hot-spin on a closed stream.
+                throw Exception("Client closed the connection during SASL authentication")
+            }
             if (read > 0) {
                 handleMessage(buff, read)
             }
