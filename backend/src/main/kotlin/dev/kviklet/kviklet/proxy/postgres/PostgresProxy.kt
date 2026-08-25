@@ -10,6 +10,7 @@ import java.net.Socket
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.*
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import kotlin.concurrent.schedule
 
@@ -25,9 +26,17 @@ class PostgresProxy(
     private val executionRequest: ExecutionRequest,
     private val userId: String,
     private val tlsCertificate: TLSCertificate? = tlsCertificateFactory(),
+    // Bounds every read during the handshake, so an idle or aborting client cannot pin a slot (or a
+    // core) forever. It caps each individual read, not the whole handshake, so it can be tight.
+    private val handshakeTimeoutMs: Int = 10_000,
 ) {
     private val threadPool = Executors.newCachedThreadPool()
-    private val clientConnections: ArrayList<Connection> = arrayListOf()
+
+    // Concurrent by nature: pool threads add on setup and remove on teardown while the scheduled
+    // shutdown iterates it. A plain list would corrupt or lose elements under that race, which for a
+    // time-boxed access proxy means a live session could survive past its window or shutdown could
+    // fault before closing the port. Broader lifecycle/I-O-model alignment stays with KVI-221.
+    private val clientConnections = CopyOnWriteArrayList<Connection>()
     private lateinit var serverSocket: ServerSocket
     private var proxyUsername = "postgres"
     private var proxyPassword = "postgres"
@@ -37,8 +46,13 @@ class PostgresProxy(
     @Volatile
     var currentConnections = 0
         private set
+
     private var targetPostgres: TargetPostgresSocketFactory =
         TargetPostgresSocketFactory(authenticationDetails, databaseName, targetHost, targetPort)
+
+    // Read by the listener loop and by handleClient on pool threads, written by shutdownServer, so it
+    // needs a happens-before edge for those threads to see the shutdown promptly.
+    @Volatile
     var isRunning: Boolean = false
         private set
 
@@ -69,11 +83,29 @@ class PostgresProxy(
         }
     }
 
+    // Synchronized against registerConnection so the two cannot interleave: a session is either added
+    // to the list before this iterates it (and so gets closed here) or refused by registerConnection
+    // (and torn down by its caller). shutdownNow does not wait on the worker threads, so holding the
+    // monitor here cannot deadlock against a worker blocked in registerConnection.
+    @Synchronized
     fun shutdownServer() {
         this.isRunning = false
+        // CopyOnWriteArrayList gives a stable snapshot to iterate even as sessions prune themselves.
         this.clientConnections.forEach { it.close() }
         this.threadPool.shutdownNow()
         this.serverSocket.close()
+    }
+
+    // Adds a fully set-up session to the tracking list, but only if the proxy is still running. Returns
+    // false when the proxy shut down mid-handshake, so the caller tears the new session down instead of
+    // leaving it relaying past the access window (nothing else would ever close it).
+    @Synchronized
+    private fun registerConnection(connection: Connection): Boolean {
+        if (!isRunning) {
+            return false
+        }
+        clientConnections.add(connection)
+        return true
     }
 
     private fun acceptClientConnection(): Socket? = try {
@@ -117,20 +149,50 @@ class PostgresProxy(
     }
 
     private fun handleClient(clientSocket: Socket) {
-        val remotePgConn = targetPostgres.createTargetPgConnection()
-        val configuredSocket = setupClient(
+        // Deadline applies to every read below, before any credentialed upstream work happens.
+        clientSocket.soTimeout = handshakeTimeoutMs
+
+        // Authenticate the client first. No upstream connection exists yet, so an unauthenticated,
+        // aborting or idle client cannot leak a target DB connection (KVI-228).
+        val authenticatedClient = authenticateClient(
             clientSocket,
             this.tlsCertificate,
-            remotePgConn.getConnProps(),
             this.proxyUsername,
             this.proxyPassword,
-        )
+        ) ?: return // client went away or asked to cancel; nothing to relay
+
+        // If the proxy shut down while the client was still handshaking, the access window has closed;
+        // do not open a credentialed upstream connection. registerConnection re-checks this atomically
+        // below to also cover a shutdown that fires during the upstream connect itself.
+        if (!isRunning) return
+
+        // Only now that the client is authenticated do we open the upstream connection.
+        val remotePgConn = targetPostgres.createTargetPgConnection()
         val forwardSocket = remotePgConn.getPGStream().socket
-        configuredSocket.soTimeout = 10
-        forwardSocket.soTimeout = 10
-        val clientConnection = Connection(configuredSocket, forwardSocket, eventService, executionRequest, userId)
-        this.clientConnections.add(clientConnection)
-        clientConnection.startHandling()
+
+        val clientConnection = try {
+            finishClientStartup(authenticatedClient.socket, remotePgConn.getConnProps())
+            authenticatedClient.socket.soTimeout = 10
+            forwardSocket.soTimeout = 10
+            Connection(authenticatedClient.socket, forwardSocket, eventService, executionRequest, userId)
+        } catch (e: Exception) {
+            // The upstream is open but the session never started, close it so it is not leaked.
+            runCatching { forwardSocket.close() }
+            throw e
+        }
+
+        // Register atomically against shutdown: if the proxy shut down after the isRunning check above
+        // (e.g. during the upstream connect), this returns false and we close the just-opened session
+        // rather than leaving it running past the access window.
+        if (!registerConnection(clientConnection)) {
+            clientConnection.close()
+            return
+        }
+        try {
+            clientConnection.startHandling()
+        } finally {
+            this.clientConnections.remove(clientConnection)
+        }
     }
 }
 

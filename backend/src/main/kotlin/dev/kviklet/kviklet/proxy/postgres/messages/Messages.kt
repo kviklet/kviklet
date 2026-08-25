@@ -434,5 +434,5 @@ fun isStartupMessage(byteArray: ByteArray): Boolean = byteArray[4] == 0x00.toByt
     byteArray[6] == 0x00.toByte() &&
     byteArray[7] == 0x00.toByte()
 fun startupMessageContainsValidUser(message: ByteArray, msgLen: Int, username: String): Boolean =
-    !String(message).subSequence(8, msgLen).contains(username)
+    String(message).subSequence(8, msgLen).contains(username)
 fun ByteArray.toHexString() = joinToString("") { "%02x".format(it) }

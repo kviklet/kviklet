@@ -23,8 +23,8 @@ import java.net.Socket
 import java.net.SocketTimeoutException
 
 class Connection(
-    clientSocket: Socket,
-    targetSocket: Socket,
+    private val clientSocket: Socket,
+    private val targetSocket: Socket,
     private val eventService: EventService,
     private val executionRequest: ExecutionRequest,
     private val userId: String,
@@ -37,6 +37,11 @@ class Connection(
     private val preparedStatements: MutableMap<String, Statement> = mutableMapOf()
     private val portals: MutableMap<String, Portal> = mutableMapOf()
     private var terminationMessageReceived: Boolean = false
+
+    // Written by close() on the shutdown thread and read by the relay loop on a pool thread, so it needs
+    // a happens-before edge. terminationMessageReceived and sessionAborted are only ever touched on the
+    // relay thread, so they do not.
+    @Volatile
     private var serverTerminating: Boolean = false
     private var sessionAborted: Boolean = false
 
@@ -44,19 +49,44 @@ class Connection(
         private val logger = LoggerFactory.getLogger(Connection::class.java)
     }
 
+    // Signals the relay loop to stop and closes both sockets. The flag gives a clean exit when the loop
+    // is between reads, and closing the sockets forces an exit when it is blocked in I/O the read
+    // timeout does not bound: a write to a client that has stopped reading would otherwise never reach
+    // the flag check and would survive shutdown. closeSockets() is idempotent, so the loop's own
+    // teardown running afterwards is harmless.
     fun close() {
         this.serverTerminating = true
+        closeSockets()
     }
+
+    // Closes both sockets. Closing the upstream socket is what actually frees the target database
+    // connection, and closing the client socket unblocks a peer still waiting on it. Idempotent, so it
+    // is safe to call from the relay loop's teardown and again from a concurrent shutdown.
+    private fun closeSockets() {
+        runCatching { if (!clientSocket.isClosed) clientSocket.close() }
+        runCatching { if (!targetSocket.isClosed) targetSocket.close() }
+    }
+
     fun startHandling() {
         // This basically transfers messages between the client and the server sockets.
         // NOTE: At this point the client connection is set up. SSL, Auth etc... are handled in ClientConnectionSetup.kt
-        while (!terminationMessageReceived && !serverTerminating && !sessionAborted) {
-            val clientOpen = readFromAnyStream(clientInput) { handleClientData(it) }
-            val serverOpen = readFromAnyStream(serverInput) { clientOutput.writeAndFlush(it) }
-            if (!clientOpen || !serverOpen) {
-                logger.info("The {} closed the connection, ending the session", if (clientOpen) "server" else "client")
-                break
+        // The finally is the single teardown path for every exit: clean Terminate, client/server EOF,
+        // an aborted session, a parse failure, or an exception. Without it the upstream connection and
+        // both sockets leak for the lifetime of the proxy (KVI-230).
+        try {
+            while (!terminationMessageReceived && !serverTerminating && !sessionAborted) {
+                val clientOpen = readFromAnyStream(clientInput) { handleClientData(it) }
+                val serverOpen = readFromAnyStream(serverInput) { clientOutput.writeAndFlush(it) }
+                if (!clientOpen || !serverOpen) {
+                    logger.info(
+                        "The {} closed the connection, ending the session",
+                        if (clientOpen) "server" else "client",
+                    )
+                    break
+                }
             }
+        } finally {
+            closeSockets()
         }
     }
 
