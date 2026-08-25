@@ -17,7 +17,12 @@ import dev.kviklet.kviklet.proxy.postgres.messages.tlsSupportedMessage
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.Socket
+import java.nio.ByteBuffer
 import javax.net.ssl.SSLSocket
+
+// Postgres' own cap on a startup packet (PQ_MAX_STARTUP_PACKET_LENGTH). A declared length beyond what
+// the real server would accept can only be garbage or an attack, so we reject it instead of buffering.
+private const val MAX_STARTUP_PACKET_LENGTH = 10_000
 
 // The (possibly TLS-upgraded) client socket once the client has successfully authenticated.
 class AuthenticatedClient(val socket: Socket)
@@ -40,38 +45,35 @@ fun authenticateClient(
     var output = socket.getOutputStream()
 
     while (true) {
-        // A fresh, full-size buffer per read: the detectors below inspect the first 8 bytes, so the
-        // buffer must never carry stale bytes from a previous read past a short one.
-        val buffer = ByteArray(8192)
-        val bytesRead = input.read(buffer)
-        if (bytesRead == -1) {
-            // The client closed the connection during the handshake, there is nothing to authenticate.
-            return null
-        }
+        // Read the whole frame before dispatching. A single read is not guaranteed to be a single
+        // frame: TCP can split one, and the fixed-offset detectors below would misread a half-frame
+        // (throwing on a split header, or auth-failing a valid user and feeding the tail to SASL on a
+        // split StartupMessage). The relay loop was framed for the same reason in KVI-231.
+        val frame = readStartupFrame(input) ?: return null // client closed before a complete frame
 
         when {
-            isSSLRequest(buffer) -> {
+            isSSLRequest(frame) -> {
                 socket = handleSSLRequest(socket, tlsCert)
                 socket.soTimeout = handshakeTimeout
                 input = socket.getInputStream()
                 output = socket.getOutputStream()
             }
 
-            isGSSENCRequest(buffer) -> {
+            isGSSENCRequest(frame) -> {
                 // We do not offer GSSAPI encryption, decline it and let the client fall back to a
                 // plain StartupMessage instead of discarding the request and deadlocking.
                 output.writeAndFlush(gssEncNotSupportedMessage())
             }
 
-            isCancelRequest(buffer) -> {
+            isCancelRequest(frame) -> {
                 // A CancelRequest opens a throwaway connection carrying no startup message and never
                 // authenticates. The proxy hands out zeroed backend key data, so there is nothing to
                 // cancel: drop it rather than block forever waiting for a startup message.
                 return null
             }
 
-            isStartupMessage(buffer) -> {
-                val isUserValid = !startupMessageContainsValidUser(buffer, bytesRead, username)
+            isStartupMessage(frame) -> {
+                val isUserValid = !startupMessageContainsValidUser(frame, frame.size, username)
                 sendAuthRequest(output)
                 waitUntilAuthenticated(input, output, password, isUserValid)
                 return AuthenticatedClient(socket)
@@ -80,6 +82,42 @@ fun authenticateClient(
             else -> throw Exception("Unexpected message during the client handshake, aborting the connection")
         }
     }
+}
+
+// Reads exactly one startup-phase frame (SSLRequest, GSSENCRequest, CancelRequest or StartupMessage),
+// accumulating across TCP-split reads until the length declared in the first four bytes is satisfied.
+// Each of these frames is followed by a server response the client waits for, so only one frame is ever
+// in flight. Returns null on EOF before a complete frame; the socket timeout still bounds each read.
+fun readStartupFrame(input: InputStream): ByteArray? {
+    val header = ByteArray(4)
+    if (!readFully(input, header, 0, 4)) {
+        return null
+    }
+    // The length is a big-endian int32 that includes the four length bytes themselves; the smallest
+    // valid frame is 8 bytes (SSLRequest / GSSENCRequest).
+    val declaredLength = ByteBuffer.wrap(header).int
+    if (declaredLength < 8 || declaredLength > MAX_STARTUP_PACKET_LENGTH) {
+        throw Exception("Invalid startup frame length $declaredLength, aborting the connection")
+    }
+    val frame = ByteArray(declaredLength)
+    header.copyInto(frame)
+    if (!readFully(input, frame, 4, declaredLength)) {
+        return null
+    }
+    return frame
+}
+
+// Fills buffer[from until to], looping over partial reads. Returns false on EOF before `to` is reached.
+private fun readFully(input: InputStream, buffer: ByteArray, from: Int, to: Int): Boolean {
+    var offset = from
+    while (offset < to) {
+        val read = input.read(buffer, offset, to - offset)
+        if (read == -1) {
+            return false
+        }
+        offset += read
+    }
+    return true
 }
 
 // Sent after the client has authenticated and the upstream connection has been opened: tells the
