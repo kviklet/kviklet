@@ -4,6 +4,9 @@ package dev.kviklet.kviklet.proxy.postgres
 import dev.kviklet.kviklet.proxy.postgres.messages.authenticationOk
 import dev.kviklet.kviklet.proxy.postgres.messages.backendKeyData
 import dev.kviklet.kviklet.proxy.postgres.messages.createAuthenticationSASLStartMessage
+import dev.kviklet.kviklet.proxy.postgres.messages.gssEncNotSupportedMessage
+import dev.kviklet.kviklet.proxy.postgres.messages.isCancelRequest
+import dev.kviklet.kviklet.proxy.postgres.messages.isGSSENCRequest
 import dev.kviklet.kviklet.proxy.postgres.messages.isSSLRequest
 import dev.kviklet.kviklet.proxy.postgres.messages.isStartupMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.paramMessage
@@ -14,40 +17,118 @@ import dev.kviklet.kviklet.proxy.postgres.messages.tlsSupportedMessage
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.Socket
+import java.nio.ByteBuffer
 import javax.net.ssl.SSLSocket
 
-fun setupClient(
+// Postgres' own cap on a startup packet (PQ_MAX_STARTUP_PACKET_LENGTH). A declared length beyond what
+// the real server would accept can only be garbage or an attack, so we reject it instead of buffering.
+private const val MAX_STARTUP_PACKET_LENGTH = 10_000
+
+// The (possibly TLS-upgraded) client socket once the client has successfully authenticated.
+class AuthenticatedClient(val socket: Socket)
+
+// Runs SSL negotiation and client authentication. No upstream database connection is opened here, so
+// an unauthenticated, aborting or idle client can never leak a target connection or pin a slot: the
+// caller's handshake deadline (soTimeout) bounds every read below, and EOF ends the handshake.
+//
+// Returns null when the client goes away before authenticating (immediate close, or a CancelRequest
+// that never authenticates and has nothing to relay).
+fun authenticateClient(
     client: Socket,
     tlsCert: TLSCertificate?,
-    params: Map<String, String>,
     username: String,
     password: String,
-): Socket {
-    val buffer = ByteArray(1024)
-    var input = client.getInputStream()
-    var output = client.getOutputStream()
-    var finalSocket: Socket = client
+): AuthenticatedClient? {
+    val handshakeTimeout = client.soTimeout
+    var socket = client
+    var input = socket.getInputStream()
+    var output = socket.getOutputStream()
 
     while (true) {
-        val bytesRead = input.read(buffer)
-        val data = buffer.copyOf(bytesRead)
+        // Read the whole frame before dispatching. A single read is not guaranteed to be a single
+        // frame: TCP can split one, and the fixed-offset detectors below would misread a half-frame
+        // (throwing on a split header, or auth-failing a valid user and feeding the tail to SASL on a
+        // split StartupMessage). The relay loop was framed for the same reason in KVI-231.
+        val frame = readStartupFrame(input) ?: return null // client closed before a complete frame
 
-        if (isSSLRequest(data)) {
-            finalSocket = handleSSLRequest(client, tlsCert)
-            input = finalSocket.getInputStream()
-            output = finalSocket.getOutputStream()
+        when {
+            isSSLRequest(frame) -> {
+                socket = handleSSLRequest(socket, tlsCert)
+                socket.soTimeout = handshakeTimeout
+                input = socket.getInputStream()
+                output = socket.getOutputStream()
+            }
+
+            isGSSENCRequest(frame) -> {
+                // We do not offer GSSAPI encryption, decline it and let the client fall back to a
+                // plain StartupMessage instead of discarding the request and deadlocking.
+                output.writeAndFlush(gssEncNotSupportedMessage())
+            }
+
+            isCancelRequest(frame) -> {
+                // A CancelRequest opens a throwaway connection carrying no startup message and never
+                // authenticates. The proxy hands out zeroed backend key data, so there is nothing to
+                // cancel: drop it rather than block forever waiting for a startup message.
+                return null
+            }
+
+            isStartupMessage(frame) -> {
+                val isUserValid = startupMessageContainsValidUser(frame, frame.size, username)
+                sendAuthRequest(output)
+                waitUntilAuthenticated(input, output, password, isUserValid)
+                return AuthenticatedClient(socket)
+            }
+
+            else -> throw Exception("Unexpected message during the client handshake, aborting the connection")
         }
-
-        val isUserValid = waitForStartupMessageWithValidUser(input, username)
-        sendAuthRequest(output)
-        waitUntilAuthenticated(input, output, password, isUserValid)
-        output.writeAndFlush(authenticationOk())
-        sendParameters(output, params)
-        output.writeAndFlush(backendKeyData())
-        output.writeAndFlush(readyForQuery())
-
-        return finalSocket
     }
+}
+
+// Reads exactly one startup-phase frame (SSLRequest, GSSENCRequest, CancelRequest or StartupMessage),
+// accumulating across TCP-split reads until the length declared in the first four bytes is satisfied.
+// Each of these frames is followed by a server response the client waits for, so only one frame is ever
+// in flight. Returns null on EOF before a complete frame; the socket timeout still bounds each read.
+fun readStartupFrame(input: InputStream): ByteArray? {
+    val header = ByteArray(4)
+    if (!readFully(input, header, 0, 4)) {
+        return null
+    }
+    // The length is a big-endian int32 that includes the four length bytes themselves; the smallest
+    // valid frame is 8 bytes (SSLRequest / GSSENCRequest).
+    val declaredLength = ByteBuffer.wrap(header).int
+    if (declaredLength < 8 || declaredLength > MAX_STARTUP_PACKET_LENGTH) {
+        throw Exception("Invalid startup frame length $declaredLength, aborting the connection")
+    }
+    val frame = ByteArray(declaredLength)
+    header.copyInto(frame)
+    if (!readFully(input, frame, 4, declaredLength)) {
+        return null
+    }
+    return frame
+}
+
+// Fills buffer[from until to], looping over partial reads. Returns false on EOF before `to` is reached.
+private fun readFully(input: InputStream, buffer: ByteArray, from: Int, to: Int): Boolean {
+    var offset = from
+    while (offset < to) {
+        val read = input.read(buffer, offset, to - offset)
+        if (read == -1) {
+            return false
+        }
+        offset += read
+    }
+    return true
+}
+
+// Sent after the client has authenticated and the upstream connection has been opened: tells the
+// client authentication succeeded and forwards the upstream server's runtime parameters so the client
+// sees the real backend configuration.
+fun finishClientStartup(socket: Socket, params: Map<String, String>) {
+    val output = socket.getOutputStream()
+    output.writeAndFlush(authenticationOk())
+    sendParameters(output, params)
+    output.writeAndFlush(backendKeyData())
+    output.writeAndFlush(readyForQuery())
 }
 
 fun handleSSLRequest(client: Socket, cert: TLSCertificate?): Socket {
@@ -67,22 +148,15 @@ fun enableSSL(clientSocket: Socket, cert: TLSCertificate): Socket {
     return sslSocket
 }
 
-/* This method checks if a message is startup message and then if the user is valid. However, if a user is invalid, the error is not being delivered straight away.
-*   Rather than that, the error is passed to the SASL flow, which cancel the authentication once a password is sent. This is to prevent enumerating available users.
-* */
-fun waitForStartupMessageWithValidUser(input: InputStream, username: String): Boolean {
-    while (true) { // wait for startup message
-        val buff = ByteArray(8192)
-        val read = input.read(buff)
-        if (read > 0 && isStartupMessage(buff)) {
-            return !startupMessageContainsValidUser(buff, read, username)
-        }
-    }
-}
 fun sendAuthRequest(output: OutputStream) {
     val authRequest = createAuthenticationSASLStartMessage()
     output.writeAndFlush(authRequest)
 }
+
+/* If the user is invalid the error is not delivered straight away. Instead it is passed to the SASL
+ * flow, which cancels authentication once a password is sent, so an attacker cannot tell a wrong
+ * username from a wrong password and enumerate valid users.
+ */
 fun waitUntilAuthenticated(input: InputStream, output: OutputStream, password: String, isUserValid: Boolean) {
     val handler = SASLAuthHandler(output, input, password, isUserValid)
     handler.handle()

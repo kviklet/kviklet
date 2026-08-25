@@ -38,6 +38,7 @@ fun proxyServerFactory(
     eventAdapter: EventAdapter,
     tlsCertificate: TLSCertificate? = null,
     eventServiceOverride: EventServiceMock? = null,
+    handshakeTimeoutMs: Int = 10_000,
 ): ProxyInstance {
     val connAuth = AuthenticationDetails.UserPassword("test", "test")
     val executionRequestFactory = ExecutionRequestFactory()
@@ -52,6 +53,7 @@ fun proxyServerFactory(
         request,
         "mock",
         tlsCertificate,
+        handshakeTimeoutMs,
     )
     val port = (12000..20000).random()
     CompletableFuture.runAsync {
