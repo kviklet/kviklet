@@ -47,10 +47,6 @@ class PostgresProxy(
     var currentConnections = 0
         private set
 
-    // Number of sessions currently tracked in clientConnections. Once a session ends it is pruned, so
-    // this returns to baseline rather than growing for the lifetime of the proxy.
-    val trackedConnectionCount: Int
-        get() = clientConnections.size
     private var targetPostgres: TargetPostgresSocketFactory =
         TargetPostgresSocketFactory(authenticationDetails, databaseName, targetHost, targetPort)
 

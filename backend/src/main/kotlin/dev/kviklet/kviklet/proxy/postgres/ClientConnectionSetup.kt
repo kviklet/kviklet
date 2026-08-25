@@ -73,7 +73,7 @@ fun authenticateClient(
             }
 
             isStartupMessage(frame) -> {
-                val isUserValid = !startupMessageContainsValidUser(frame, frame.size, username)
+                val isUserValid = startupMessageContainsValidUser(frame, frame.size, username)
                 sendAuthRequest(output)
                 waitUntilAuthenticated(input, output, password, isUserValid)
                 return AuthenticatedClient(socket)

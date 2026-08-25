@@ -98,12 +98,22 @@ class PostgresProxyConnectionLifecycleTest {
         assertEquals(expected, target.currentConnections, "Expected the proxy to be handling $expected connection(s)")
     }
 
+    // Reads the size of the proxy's private clientConnections list. Pruning it on teardown is an
+    // internal guarantee (a regression would leak Connection objects, not sockets or slots), so it is
+    // verified here by reflection rather than exposing a production counter that would sit confusingly
+    // next to currentConnections.
+    private fun trackedConnectionCount(): Int {
+        val field = PostgresProxy::class.java.getDeclaredField("clientConnections")
+        field.isAccessible = true
+        return (field.get(proxy.proxy) as Collection<*>).size
+    }
+
     private fun awaitTrackedCount(expected: Int, timeoutMillis: Long = 20_000) {
         val deadline = System.currentTimeMillis() + timeoutMillis
-        while (System.currentTimeMillis() < deadline && proxy.proxy.trackedConnectionCount != expected) {
+        while (System.currentTimeMillis() < deadline && trackedConnectionCount() != expected) {
             Thread.sleep(100)
         }
-        assertEquals(expected, proxy.proxy.trackedConnectionCount, "Expected $expected tracked connection(s)")
+        assertEquals(expected, trackedConnectionCount(), "Expected $expected tracked connection(s)")
     }
 
     // KVI-230: the happy path leaks. Even after a clean disconnect the upstream socket is never
@@ -111,7 +121,7 @@ class PostgresProxyConnectionLifecycleTest {
     @Test
     fun `cleanly disconnected sessions close their upstream connections and are pruned from tracking`() {
         val baselineUpstream = upstreamConnectionCount()
-        val baselineTracked = proxy.proxy.trackedConnectionCount
+        val baselineTracked = trackedConnectionCount()
         val sessionCount = 3
 
         val connections = (1..sessionCount).map { proxyConnection() }
