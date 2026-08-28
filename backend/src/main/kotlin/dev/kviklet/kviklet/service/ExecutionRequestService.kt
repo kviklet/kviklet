@@ -79,6 +79,7 @@ class ExecutionRequestService(
     private val connectionService: ConnectionService,
     private val userAdapter: UserAdapter,
     private val postgresProxyServer: ProxyServer,
+    private val mysqlProxyServer: ProxyServer,
     private val dryRunValidator: DryRunValidator,
     private val roleAdapter: dev.kviklet.kviklet.db.RoleAdapter,
     private val permissionResolver: PermissionResolver,
@@ -958,15 +959,24 @@ class ExecutionRequestService(
         if (reviewStatus != ReviewStatus.APPROVED) {
             throw InvalidReviewException("This request has not been approved yet!")
         }
-        if (connection.type != DatasourceType.POSTGRESQL) {
-            throw RuntimeException("Only Postgres is supported for proxying!")
+        // One long-lived listener per wire protocol: Postgres on its own port, MySQL and MariaDB sharing
+        // one (they speak the same protocol; the session's datasourceType picks the upstream flavor).
+        val proxyServer = when (connection.type) {
+            DatasourceType.POSTGRESQL -> postgresProxyServer
+            DatasourceType.MYSQL, DatasourceType.MARIADB -> mysqlProxyServer
+            else -> throw RuntimeException("Only Postgres, MySQL and MariaDB are supported for proxying!")
         }
         if (connection.auth !is AuthenticationDetails.UserPassword) {
             throw RuntimeException("Only UserPassword authentication is supported for proxying!")
         }
-        if (!postgresProxyServer.isRunning) {
+        if (!proxyServer.isRunning) {
+            val portProperty = if (connection.type == DatasourceType.POSTGRESQL) {
+                "kviklet.proxy.postgres.port"
+            } else {
+                "kviklet.proxy.mysql.port"
+            }
             throw RuntimeException(
-                "The Postgres proxy listener is not available. Set kviklet.proxy.postgres.port to a free port.",
+                "The ${connection.type} proxy listener is not available. Set $portProperty to a free port.",
             )
         }
 
@@ -988,7 +998,7 @@ class ExecutionRequestService(
         // request already has a live session -- the existing one, whose credentials are handed out again.
         // That makes repeated proxy calls idempotent (re-opening the page keeps a running psql connected)
         // instead of accumulating never-expiring registry entries.
-        val session = postgresProxyServer.registerSession(
+        val session = proxyServer.registerSession(
             ProxySession(
                 username = username,
                 password = password,
@@ -997,6 +1007,7 @@ class ExecutionRequestService(
                 targetHost = connection.hostname,
                 targetPort = connection.port,
                 databaseName = connection.databaseName ?: "",
+                datasourceType = connection.type,
                 authenticationDetails = connection.auth,
             ),
             expiresAt = executionRequest.request.temporaryAccessDuration?.let {
@@ -1004,16 +1015,16 @@ class ExecutionRequestService(
             },
         )
         if (session.username == username) {
-            logger.info("Registered proxy session $username on port ${postgresProxyServer.listenPort}")
+            logger.info("Registered proxy session $username on port ${proxyServer.listenPort}")
         } else {
             logger.info(
-                "Reusing existing proxy session ${session.username} on port ${postgresProxyServer.listenPort}",
+                "Reusing existing proxy session ${session.username} on port ${proxyServer.listenPort}",
             )
         }
 
         return ExecutionProxy(
             request = executionRequest.request,
-            port = postgresProxyServer.listenPort,
+            port = proxyServer.listenPort,
             username = session.username,
             password = session.password,
             startTime = firstEventTime,
