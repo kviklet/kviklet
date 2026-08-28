@@ -591,8 +591,8 @@ Kubernetes commands only wait for 5 seconds for output if the command takes long
 ### Proxy, Postgres only
 
 If you create requests for temporary access, you can - instead of using the web interface - run your queries through a kviklet managed proxy and use the DB client of your choice.
-For this the container uses ports 5438-6000, so you need to expose those.
-The user can then create a temporary access request, and click "Start Proxy" once it has been approved. Each request will get a port and a user + a temporary password. With this they can connect to the database. Kviklet validates the temp user and password and proxies all requests to the underlying user on the database. Any executed statements are logged in the auditlog as if they were run via the web interface.
+For this the container listens on a single stable port (5432 by default, configurable via `kviklet.proxy.postgres.port`), so you need to expose that one port.
+The user can then create a temporary access request, and click "Start Proxy" once it has been approved. Each request gets a temporary username and password on that shared port; Kviklet routes each connection to its request by the username. With these they can connect to the database. Kviklet validates the temp user and password and proxies all requests to the underlying user on the database. Any executed statements are logged in the auditlog as if they were run via the web interface.
 Note that the message parsing on the proxy side hasn't been tested with all clients, so if you run into issues with e.g. statements not being logged feel free to open an issue.
 
 ![Postgres Proxy](images/PostgresProxy_light.png#gh-light-mode-only)
