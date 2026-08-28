@@ -4,9 +4,10 @@ package dev.kviklet.kviklet.proxy
 import dev.kviklet.kviklet.db.EventAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.helper.ExecutionRequestFactory
+import dev.kviklet.kviklet.proxy.core.ProxyServer
 import dev.kviklet.kviklet.proxy.helpers.waitForProxyStart
 import dev.kviklet.kviklet.proxy.mocks.EventServiceMock
-import dev.kviklet.kviklet.proxy.postgres.PostgresProxyServer
+import dev.kviklet.kviklet.proxy.postgres.PostgresProtocol
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -31,7 +32,7 @@ class PostgresProxyExpiryTest {
     @Autowired
     lateinit var eventAdapter: EventAdapter
     private lateinit var postgresContainer: PostgreSQLContainer<Nothing>
-    private lateinit var server: PostgresProxyServer
+    private lateinit var server: ProxyServer
     private var port = 0
 
     @BeforeEach
@@ -46,7 +47,7 @@ class PostgresProxyExpiryTest {
             Thread.sleep(1000)
         }
         port = (31001..32000).random()
-        server = PostgresProxyServer(port, eventServiceMock(), null)
+        server = ProxyServer(port, PostgresProtocol(eventServiceMock(), null))
         server.start()
         waitForProxyStart(server)
     }

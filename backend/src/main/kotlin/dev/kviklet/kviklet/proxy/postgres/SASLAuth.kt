@@ -1,6 +1,7 @@
 // This file is not MIT licensed
 package dev.kviklet.kviklet.proxy.postgres
 
+import dev.kviklet.kviklet.proxy.core.writeAndFlush
 import dev.kviklet.kviklet.proxy.postgres.messages.SASLInitialResponse
 import dev.kviklet.kviklet.proxy.postgres.messages.SASLResponse
 import dev.kviklet.kviklet.proxy.postgres.messages.createAuthenticationSASLContinue

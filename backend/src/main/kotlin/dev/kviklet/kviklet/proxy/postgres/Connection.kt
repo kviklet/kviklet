@@ -2,6 +2,8 @@
 package dev.kviklet.kviklet.proxy.postgres
 
 import dev.kviklet.kviklet.db.ExecutePayload
+import dev.kviklet.kviklet.proxy.core.ProxyConnection
+import dev.kviklet.kviklet.proxy.core.writeAndFlush
 import dev.kviklet.kviklet.proxy.postgres.messages.BindMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.CloseMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.ExecuteMessage
@@ -33,7 +35,7 @@ class Connection(
     // relay threads and frees the fd, so teardown closes this rather than the SSL wrapper. Defaults to
     // clientSocket for the plain (non-TLS) case, where they are the same socket.
     private val rawClientSocket: Socket = clientSocket,
-) {
+) : ProxyConnection {
     private var clientInput: InputStream = clientSocket.getInputStream()
     private var clientOutput: OutputStream = clientSocket.getOutputStream()
     private var serverInput: InputStream = targetSocket.getInputStream()
@@ -73,7 +75,7 @@ class Connection(
     // timeout does not bound: a write to a client that has stopped reading would otherwise never reach
     // the flag check and would survive shutdown. closeSockets() is idempotent, so the loop's own
     // teardown running afterwards is harmless.
-    fun close() {
+    override fun close() {
         this.serverTerminating = true
         closeSockets()
     }
@@ -93,7 +95,7 @@ class Connection(
         runCatching { if (!targetSocket.isClosed) targetSocket.close() }
     }
 
-    fun startHandling() {
+    override fun startHandling() {
         // Two blocking threads per session. This (pool) thread drives client->server: it frames, audits
         // and forwards, and it owns all the audit state (framer, prepared statements, portals) so none of
         // that needs synchronization. A single spawned thread pumps server->client raw. Blocking reads

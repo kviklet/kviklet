@@ -1,7 +1,8 @@
 // This file is not MIT licensed
 package dev.kviklet.kviklet.proxy
 
-import dev.kviklet.kviklet.proxy.postgres.PostgresProxyServer
+import dev.kviklet.kviklet.proxy.core.ProxyServer
+import dev.kviklet.kviklet.proxy.postgres.PostgresProtocol
 import dev.kviklet.kviklet.service.EventService
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -14,7 +15,7 @@ class PostgresProxyServerStartupTest {
 
     @Test
     fun `a non-positive port disables the listener and start is a no-op`() {
-        val server = PostgresProxyServer(-1, mockk<EventService>(), null)
+        val server = ProxyServer(-1, PostgresProtocol(mockk<EventService>(), null))
         server.start()
         assertFalse(server.isRunning, "A disabled port (<= 0) must not start the listener")
     }
@@ -24,7 +25,7 @@ class PostgresProxyServerStartupTest {
         // Occupy a port, then point the proxy at it: the bind must fail gracefully (logged and swallowed) so
         // the application still boots with the proxy merely unavailable, rather than dying on the bind.
         ServerSocket(0).use { taken ->
-            val server = PostgresProxyServer(taken.localPort, mockk<EventService>(), null)
+            val server = ProxyServer(taken.localPort, PostgresProtocol(mockk<EventService>(), null))
             server.start()
             assertFalse(server.isRunning, "A failed bind must leave the server not running")
         }

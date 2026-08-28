@@ -3,10 +3,10 @@ package dev.kviklet.kviklet.proxy
 
 import dev.kviklet.kviklet.db.EventAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
+import dev.kviklet.kviklet.proxy.core.TLSCertificate
 import dev.kviklet.kviklet.proxy.helpers.ProxyInstance
 import dev.kviklet.kviklet.proxy.helpers.directConnectionFactory
 import dev.kviklet.kviklet.proxy.helpers.proxyServerFactory
-import dev.kviklet.kviklet.proxy.postgres.TLSCertificate
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
