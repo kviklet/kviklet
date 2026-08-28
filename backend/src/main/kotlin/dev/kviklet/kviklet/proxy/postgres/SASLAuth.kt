@@ -5,8 +5,10 @@ import dev.kviklet.kviklet.proxy.postgres.messages.SASLInitialResponse
 import dev.kviklet.kviklet.proxy.postgres.messages.SASLResponse
 import dev.kviklet.kviklet.proxy.postgres.messages.createAuthenticationSASLContinue
 import dev.kviklet.kviklet.proxy.postgres.messages.createAuthenticationSASLFinal
+import dev.kviklet.kviklet.proxy.postgres.messages.errorResponse
 import java.io.InputStream
 import java.io.OutputStream
+import java.nio.ByteBuffer
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.*
@@ -14,6 +16,9 @@ import javax.crypto.Mac
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
+// Shared thread-safe CSPRNG for nonces and salts; constructing a SecureRandom per call re-seeds needlessly.
+private val secureRandom = SecureRandom()
+
 enum class AuthenticationState {
     WAITING_CLIENT_FIRST,
     WAITING_CLIENT_PROOF,
@@ -68,18 +73,53 @@ class SASLAuthHandler(
         }
     }
     private fun handleClientFirstMessage(buff: ByteArray, read: Int) {
-        clientFirst = SASLInitialResponse.fromBytes(read, buff)
+        val (length, body) = messageBody(buff, read)
+        clientFirst = SASLInitialResponse.fromBytes(length, body)
         serverFirst = "r=${clientFirst!!.getClientNonce() + serverNonce},s=${salt.base64Encoded},i=$iterations"
         sendServerFirstMessage()
     }
+
+    // Extracts (declaredLength, body) from a raw SASL read, matching the contract the relay MessageFramer
+    // uses: the header byte and the int32 length are stripped, and length includes the 4 length bytes.
+    private fun messageBody(buff: ByteArray, read: Int): Pair<Int, ByteArray> {
+        if (read < 5) throw Exception("Incomplete SASL message header")
+        val length = ByteBuffer.wrap(buff, 1, 4).int
+        // length counts itself but not the header byte, so it must be at least 4 and no larger than the
+        // bytes actually read. Comparing against read - 1 avoids the 1 + length overflow for a huge length.
+        if (length < 4 || length > read - 1) {
+            throw Exception("Invalid SASL message length $length")
+        }
+        return length to buff.copyOfRange(5, 1 + length)
+    }
+
     private fun handleClientProof(buff: ByteArray, read: Int) {
-        val clientResp = SASLResponse.fromBytes(read, buff)
-        val authMsg = "${clientFirst!!.saslMessage},$serverFirst,${clientResp.getResponseWithoutProof()}"
-        if (!isUserValid || !verifyClientProof(authMsg, clientResp.getProof())) {
-            state = AuthenticationState.DONE
-            throw Exception("Authentication failed")
+        val (length, body) = messageBody(buff, read)
+        val clientResp = SASLResponse.fromBytes(length, body)
+        // Always run the full proof verification (PBKDF2 + HMAC) before deciding, so an unknown user and a
+        // known user with a wrong password take the same time and cannot be told apart by an attacker
+        // probing for valid usernames. A malformed proof (bad base64, wrong length, too few fields) is just
+        // an authentication failure and must still get a 28P01 error rather than a bare connection reset.
+        val authMsg: String
+        val proofValid: Boolean
+        try {
+            authMsg = "${clientFirst!!.saslMessage},$serverFirst,${clientResp.getResponseWithoutProof()}"
+            proofValid = verifyClientProof(authMsg, clientResp.getProof())
+        } catch (e: Exception) {
+            failAuthentication()
+        }
+        if (!isUserValid || !proofValid) {
+            failAuthentication()
         }
         sendServerFinal(authMsg)
+    }
+
+    private fun failAuthentication(): Nothing {
+        state = AuthenticationState.DONE
+        // Send a proper ErrorResponse so the client reports "password authentication failed" (28P01) instead
+        // of a bare connection reset. The message is deliberately generic: it must not reveal whether the
+        // username or the password was wrong.
+        output.writeAndFlush(errorResponse("password authentication failed", "28P01"))
+        throw Exception("Authentication failed")
     }
 
     private fun sendServerFinal(authMsg: String) {
@@ -98,7 +138,8 @@ class SASLAuthHandler(
         val clientSignature = hmacSha256(storedKey, authMessage)
         val expectedClientKey = xorBytes(Base64.getDecoder().decode(clientProof), clientSignature)
         val recomputedStoredKey = sha256(expectedClientKey)
-        return storedKey.contentEquals(recomputedStoredKey)
+        // Constant-time comparison so the proof check does not leak how many leading bytes matched.
+        return MessageDigest.isEqual(storedKey, recomputedStoredKey)
     }
 
     private fun generateServerResponse(authMessage: String): ByteArray {
@@ -114,15 +155,17 @@ class Salt {
     val base64Encoded: String = Base64.getEncoder().encodeToString(salt)
     private fun generateRandomSalt(size: Int = 24): ByteArray {
         val salt = ByteArray(size)
-        SecureRandom().nextBytes(salt)
+        secureRandom.nextBytes(salt)
         return salt
     }
 }
 
+// SCRAM's replay protection assumes an unpredictable server nonce, so draw from SecureRandom rather than
+// Kotlin's default (non-crypto) Random.
 fun getRandomString(length: Int = 32): String {
     val allowedChars = ('A'..'Z') + ('a'..'z') + ('0'..'9')
     return (1..length)
-        .map { allowedChars.random() }
+        .map { allowedChars[secureRandom.nextInt(allowedChars.size)] }
         .joinToString("")
 }
 
