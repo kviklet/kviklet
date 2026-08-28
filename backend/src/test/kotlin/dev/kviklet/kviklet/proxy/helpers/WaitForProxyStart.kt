@@ -1,9 +1,9 @@
 // This file is not MIT licensed
 package dev.kviklet.kviklet.proxy.helpers
 
-import dev.kviklet.kviklet.proxy.postgres.PostgresProxy
+import dev.kviklet.kviklet.proxy.postgres.PostgresProxyServer
 
-fun waitForProxyStart(proxy: PostgresProxy) {
+fun waitForProxyStart(proxy: PostgresProxyServer) {
     var sleepCycle = 0
     while (!proxy.isRunning && sleepCycle < 10) {
         Thread.sleep(1000)

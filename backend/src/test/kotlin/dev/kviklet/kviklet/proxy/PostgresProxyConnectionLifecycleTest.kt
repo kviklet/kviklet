@@ -6,7 +6,7 @@ import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.proxy.helpers.ProxyInstance
 import dev.kviklet.kviklet.proxy.helpers.directConnectionFactory
 import dev.kviklet.kviklet.proxy.helpers.proxyServerFactory
-import dev.kviklet.kviklet.proxy.postgres.PostgresProxy
+import dev.kviklet.kviklet.proxy.postgres.PostgresProxyServer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -90,7 +90,11 @@ class PostgresProxyConnectionLifecycleTest {
         assertEquals(expected, last, "Upstream connection count on the target database did not settle")
     }
 
-    private fun awaitConnectionCount(expected: Int, target: PostgresProxy = proxy.proxy, timeoutMillis: Long = 20_000) {
+    private fun awaitConnectionCount(
+        expected: Int,
+        target: PostgresProxyServer = proxy.proxy,
+        timeoutMillis: Long = 20_000,
+    ) {
         val deadline = System.currentTimeMillis() + timeoutMillis
         while (System.currentTimeMillis() < deadline && target.currentConnections != expected) {
             Thread.sleep(100)
@@ -103,7 +107,7 @@ class PostgresProxyConnectionLifecycleTest {
     // verified here by reflection rather than exposing a production counter that would sit confusingly
     // next to currentConnections.
     private fun trackedConnectionCount(): Int {
-        val field = PostgresProxy::class.java.getDeclaredField("clientConnections")
+        val field = PostgresProxyServer::class.java.getDeclaredField("clientConnections")
         field.isAccessible = true
         return (field.get(proxy.proxy) as Collection<*>).size
     }

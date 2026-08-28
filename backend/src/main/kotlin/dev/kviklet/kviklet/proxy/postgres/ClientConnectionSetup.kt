@@ -11,7 +11,7 @@ import dev.kviklet.kviklet.proxy.postgres.messages.isSSLRequest
 import dev.kviklet.kviklet.proxy.postgres.messages.isStartupMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.paramMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.readyForQuery
-import dev.kviklet.kviklet.proxy.postgres.messages.startupMessageContainsValidUser
+import dev.kviklet.kviklet.proxy.postgres.messages.startupMessageUser
 import dev.kviklet.kviklet.proxy.postgres.messages.tlsNotSupportedMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.tlsSupportedMessage
 import java.io.InputStream
@@ -24,21 +24,29 @@ import javax.net.ssl.SSLSocket
 // the real server would accept can only be garbage or an attack, so we reject it instead of buffering.
 private const val MAX_STARTUP_PACKET_LENGTH = 10_000
 
-// The (possibly TLS-upgraded) client socket once the client has successfully authenticated.
-class AuthenticatedClient(val socket: Socket)
+// The (possibly TLS-upgraded) client socket once the client has successfully authenticated, together with
+// the session its username routed to. The session is what a single stable listener uses to serve many
+// concurrent requests: the client delivers its username in the startup message, before any upstream work.
+class AuthenticatedSession(val socket: Socket, val session: ProxySession)
 
-// Runs SSL negotiation and client authentication. No upstream database connection is opened here, so
-// an unauthenticated, aborting or idle client can never leak a target connection or pin a slot: the
-// caller's handshake deadline (soTimeout) bounds every read below, and EOF ends the handshake.
+// Runs SSL negotiation and client authentication, routing to a session by the username in the startup
+// message. No upstream database connection is opened here, so an unauthenticated, aborting or idle client
+// can never leak a target connection or pin a slot: the caller's handshake deadline (soTimeout) bounds
+// every read below, and EOF ends the handshake.
 //
-// Returns null when the client goes away before authenticating (immediate close, or a CancelRequest
-// that never authenticates and has nothing to relay).
+// resolveSession returns the session for a username, or null if there is none. An unknown username is not
+// short-circuited: the full SASL exchange still runs (with unknownUserPassword) so it fails identically to a
+// wrong password and an attacker cannot enumerate valid usernames. waitUntilAuthenticated throws on any auth
+// failure, so returning normally guarantees a matched, authenticated session.
+//
+// Returns null when the client goes away before authenticating (immediate close, or a CancelRequest that
+// never authenticates and has nothing to relay).
 fun authenticateClient(
     client: Socket,
     tlsCert: TLSCertificate?,
-    username: String,
-    password: String,
-): AuthenticatedClient? {
+    unknownUserPassword: String,
+    resolveSession: (String) -> ProxySession?,
+): AuthenticatedSession? {
     val handshakeTimeout = client.soTimeout
     var socket = client
     var input = socket.getInputStream()
@@ -73,10 +81,14 @@ fun authenticateClient(
             }
 
             isStartupMessage(frame) -> {
-                val isUserValid = startupMessageContainsValidUser(frame, frame.size, username)
+                val requestedUser = startupMessageUser(frame, frame.size)
+                val session = requestedUser?.let { resolveSession(it) }
                 sendAuthRequest(output)
-                waitUntilAuthenticated(input, output, password, isUserValid)
-                return AuthenticatedClient(socket)
+                // Unknown user -> isUserValid=false and a placeholder password, so SASL fails exactly like a
+                // wrong password. waitUntilAuthenticated throws on failure, so the return below is only
+                // reached when a real session authenticated successfully.
+                waitUntilAuthenticated(input, output, session?.password ?: unknownUserPassword, session != null)
+                return AuthenticatedSession(socket, session!!)
             }
 
             else -> throw Exception("Unexpected message during the client handshake, aborting the connection")
