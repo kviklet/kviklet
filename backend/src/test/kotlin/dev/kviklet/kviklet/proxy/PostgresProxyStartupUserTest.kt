@@ -1,12 +1,10 @@
 // This file is not MIT licensed
 package dev.kviklet.kviklet.proxy
 
-import dev.kviklet.kviklet.proxy.postgres.messages.startupMessageContainsValidUser
 import dev.kviklet.kviklet.proxy.postgres.messages.startupMessageUser
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.nio.ByteBuffer
 
@@ -56,8 +54,9 @@ class PostgresProxyStartupUserTest {
         val frame = startupMessage("user" to "attacker", "database" to "app_db")
 
         assertEquals("attacker", startupMessageUser(frame, frame.size))
-        assertFalse(
-            startupMessageContainsValidUser(frame, frame.size, "app"),
+        assertNotEquals(
+            "app",
+            startupMessageUser(frame, frame.size),
             "user=attacker must not authenticate as the configured proxy user 'app'",
         )
     }
@@ -66,7 +65,7 @@ class PostgresProxyStartupUserTest {
     fun `the correct user is accepted`() {
         val frame = startupMessage("user" to "app", "database" to "app_db")
 
-        assertTrue(startupMessageContainsValidUser(frame, frame.size, "app"))
+        assertEquals("app", startupMessageUser(frame, frame.size))
     }
 
     @Test
@@ -76,7 +75,7 @@ class PostgresProxyStartupUserTest {
         val frame = startupMessage("database" to "user", "app" to "x", "user" to "attacker")
 
         assertEquals("attacker", startupMessageUser(frame, frame.size))
-        assertFalse(startupMessageContainsValidUser(frame, frame.size, "app"))
+        assertNotEquals("app", startupMessageUser(frame, frame.size))
     }
 
     @Test
@@ -85,7 +84,6 @@ class PostgresProxyStartupUserTest {
         val frame = startupMessage("application_name" to "", "user" to "proxyUser")
 
         assertEquals("proxyUser", startupMessageUser(frame, frame.size))
-        assertTrue(startupMessageContainsValidUser(frame, frame.size, "proxyUser"))
     }
 
     @Test
@@ -93,6 +91,5 @@ class PostgresProxyStartupUserTest {
         val frame = startupMessage("database" to "somedb")
 
         assertNull(startupMessageUser(frame, frame.size))
-        assertFalse(startupMessageContainsValidUser(frame, frame.size, "app"))
     }
 }
