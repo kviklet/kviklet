@@ -2,7 +2,7 @@ package dev.kviklet.kviklet
 
 import com.zaxxer.hikari.HikariDataSource
 import dev.kviklet.kviklet.controller.SessionWebsocketHandler
-import dev.kviklet.kviklet.proxy.postgres.TlsCertEnvConfig
+import dev.kviklet.kviklet.proxy.core.TlsCertEnvConfig
 import dev.kviklet.kviklet.security.CorsSettings
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
