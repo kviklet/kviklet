@@ -12,8 +12,8 @@ import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.ReviewPayload
 import dev.kviklet.kviklet.db.UserAdapter
-import dev.kviklet.kviklet.proxy.postgres.INFINITE_ACCESS
-import dev.kviklet.kviklet.proxy.postgres.PostgresProxyServer
+import dev.kviklet.kviklet.proxy.core.INFINITE_ACCESS
+import dev.kviklet.kviklet.proxy.core.ProxyServer
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.PermissionResolver
 import dev.kviklet.kviklet.security.Policy
@@ -77,7 +77,7 @@ class ExecutionRequestService(
     private val mongoDBExecutor: MongoDBExecutor,
     private val connectionService: ConnectionService,
     private val userAdapter: UserAdapter,
-    private val postgresProxyServer: PostgresProxyServer,
+    private val postgresProxyServer: ProxyServer,
     private val dryRunValidator: DryRunValidator,
     private val roleAdapter: dev.kviklet.kviklet.db.RoleAdapter,
     private val permissionResolver: PermissionResolver,
