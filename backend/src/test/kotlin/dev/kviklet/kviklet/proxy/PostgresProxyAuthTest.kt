@@ -40,6 +40,7 @@ class PostgresProxyAuthTest {
     private lateinit var directConnection: Connection
     private lateinit var proxy: ProxyInstance
     private lateinit var postgresContainer: PostgreSQLContainer<Nothing>
+    private val startedProxies = mutableListOf<PostgresProxy>()
 
     @BeforeEach
     fun setup() {
@@ -58,6 +59,7 @@ class PostgresProxyAuthTest {
 
     @AfterEach
     fun tearDown() {
+        this.startedProxies.forEach { it.shutdownServer() }
         this.proxy.proxy.shutdownServer()
         this.proxy.connection.close()
         this.postgresContainer.stop()
@@ -176,7 +178,7 @@ class PostgresProxyAuthTest {
     }
 
     private fun startProxy(proxyUsername: String, proxyPassword: String): Int {
-        val port = (22020..22060).random()
+        val port = (22100..30000).random()
         val executionRequestFactory = ExecutionRequestFactory()
         val request = executionRequestFactory.createDatasourceExecutionRequest()
         val eventService = EventServiceMock(executionRequestAdapter, eventAdapter, request)
@@ -189,6 +191,7 @@ class PostgresProxyAuthTest {
             executionRequestFactory.createDatasourceExecutionRequest(),
             "mock",
         )
+        startedProxies.add(proxy)
         CompletableFuture.runAsync {
             proxy.startServer(port, proxyUsername, proxyPassword, LocalDateTime.now(), 10)
         }
