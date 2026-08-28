@@ -8,6 +8,7 @@ import dev.kviklet.kviklet.proxy.helpers.directConnectionFactory
 import dev.kviklet.kviklet.proxy.helpers.proxyServerFactory
 import dev.kviklet.kviklet.proxy.postgres.TLSCertificate
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -78,6 +79,43 @@ class PostgresProxyTLSTest {
             }
 
             this.proxy.eventService.assertQueryIsAudited("SELECT 1")
+        }
+    }
+
+    @Test
+    fun `an idle TLS session is torn down when the proxy shuts down`() {
+        // Regression: the client TLS socket is an SSLSocket layered over the accepted socket with
+        // autoClose=false, so closing only the SSL wrapper on teardown left the underlying fd and the
+        // relay thread parked on its blocking read forever -- a leaked slot, thread and upstream
+        // connection per TLS access window. Blocking socket reads also ignore the thread-pool interrupt
+        // from shutdownNow(), so only closing the raw socket can free the session. shutdownServer() must
+        // therefore bring the connection count back to zero.
+        val proxyProps = Properties()
+        proxyProps.setProperty("user", "proxyUser")
+        proxyProps.setProperty("password", "proxyPassword")
+        proxyProps.setProperty("ssl", "true")
+        proxyProps.setProperty("sslmode", "require")
+        val ignoreTLSIssuer = "&sslfactory=org.postgresql.ssl.NonValidatingFactory"
+
+        val conn = DriverManager.getConnection(this.proxy.connectionString + ignoreTLSIssuer, proxyProps)
+        try {
+            conn.createStatement().executeQuery("SELECT 1").close()
+            // The TLS session is established and now idle, with no traffic in flight.
+            assertTrue(this.proxy.proxy.currentConnections >= 1)
+
+            this.proxy.proxy.shutdownServer()
+
+            val deadline = System.currentTimeMillis() + 10_000
+            while (this.proxy.proxy.currentConnections != 0 && System.currentTimeMillis() < deadline) {
+                Thread.sleep(100)
+            }
+            assertEquals(
+                0,
+                this.proxy.proxy.currentConnections,
+                "The idle TLS session's slot was never freed; its relay thread is still parked on the read",
+            )
+        } finally {
+            runCatching { conn.close() }
         }
     }
 }

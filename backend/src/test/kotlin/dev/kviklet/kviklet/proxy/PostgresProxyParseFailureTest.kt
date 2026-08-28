@@ -43,8 +43,11 @@ class PostgresProxyParseFailureTest {
         val handler: Thread
 
         init {
-            proxyClientSocket.soTimeout = 10
-            proxyTargetSocket.soTimeout = 10
+            // Match the socket configuration the proxy applies to the relay after setup: the blocking
+            // thread-per-direction relay uses no read timeout (soTimeout 0), parking in a read until data
+            // arrives or the socket is closed on teardown.
+            proxyClientSocket.soTimeout = 0
+            proxyTargetSocket.soTimeout = 0
             val connection = Connection(proxyClientSocket, proxyTargetSocket, eventService, request, "mock")
             handler = thread { connection.startHandling() }
         }
