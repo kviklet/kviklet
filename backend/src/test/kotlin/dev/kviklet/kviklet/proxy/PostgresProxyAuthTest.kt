@@ -13,6 +13,7 @@ import dev.kviklet.kviklet.proxy.helpers.waitForProxyStart
 import dev.kviklet.kviklet.proxy.mocks.EventServiceMock
 import dev.kviklet.kviklet.proxy.postgres.PostgresProtocol
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
+import dev.kviklet.kviklet.service.dto.DatasourceType
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -99,6 +100,7 @@ class PostgresProxyAuthTest {
                 targetHost = postgresContainer.host,
                 targetPort = postgresContainer.getMappedPort(5432),
                 databaseName = "testdb",
+                datasourceType = DatasourceType.POSTGRESQL,
                 authenticationDetails = connAuth,
             ),
             expiresAt = Instant.now().plus(Duration.ofMinutes(10)),
@@ -136,6 +138,7 @@ class PostgresProxyAuthTest {
                 targetHost = postgresContainer.host,
                 targetPort = postgresContainer.getMappedPort(5432),
                 databaseName = "testdb",
+                datasourceType = DatasourceType.POSTGRESQL,
                 authenticationDetails = connAuth,
             ),
             expiresAt = Instant.now().plus(Duration.ofMinutes(10)),
@@ -207,6 +210,7 @@ class PostgresProxyAuthTest {
                     targetHost = postgresContainer.host,
                     targetPort = postgresContainer.getMappedPort(5432),
                     databaseName = "testdb",
+                    datasourceType = DatasourceType.POSTGRESQL,
                     authenticationDetails = connAuth,
                 ),
                 expiresAt = Instant.now().plus(Duration.ofMinutes(10)),
@@ -262,6 +266,7 @@ class PostgresProxyAuthTest {
                 targetHost = postgresContainer.host,
                 targetPort = postgresContainer.getMappedPort(5432),
                 databaseName = "testdb",
+                datasourceType = DatasourceType.POSTGRESQL,
                 authenticationDetails = AuthenticationDetails.UserPassword("test", "test"),
             ),
             expiresAt = Instant.now().plus(Duration.ofMinutes(10)),
