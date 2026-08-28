@@ -16,6 +16,9 @@ import javax.crypto.Mac
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
+// Shared thread-safe CSPRNG for nonces and salts; constructing a SecureRandom per call re-seeds needlessly.
+private val secureRandom = SecureRandom()
+
 enum class AuthenticationState {
     WAITING_CLIENT_FIRST,
     WAITING_CLIENT_PROOF,
@@ -81,27 +84,42 @@ class SASLAuthHandler(
     private fun messageBody(buff: ByteArray, read: Int): Pair<Int, ByteArray> {
         if (read < 5) throw Exception("Incomplete SASL message header")
         val length = ByteBuffer.wrap(buff, 1, 4).int
-        if (read < 1 + length) throw Exception("Incomplete SASL message body")
+        // length counts itself but not the header byte, so it must be at least 4 and no larger than the
+        // bytes actually read. Comparing against read - 1 avoids the 1 + length overflow for a huge length.
+        if (length < 4 || length > read - 1) {
+            throw Exception("Invalid SASL message length $length")
+        }
         return length to buff.copyOfRange(5, 1 + length)
     }
 
     private fun handleClientProof(buff: ByteArray, read: Int) {
         val (length, body) = messageBody(buff, read)
         val clientResp = SASLResponse.fromBytes(length, body)
-        val authMsg = "${clientFirst!!.saslMessage},$serverFirst,${clientResp.getResponseWithoutProof()}"
         // Always run the full proof verification (PBKDF2 + HMAC) before deciding, so an unknown user and a
         // known user with a wrong password take the same time and cannot be told apart by an attacker
-        // probing for valid usernames.
-        val proofValid = verifyClientProof(authMsg, clientResp.getProof())
+        // probing for valid usernames. A malformed proof (bad base64, wrong length, too few fields) is just
+        // an authentication failure and must still get a 28P01 error rather than a bare connection reset.
+        val authMsg: String
+        val proofValid: Boolean
+        try {
+            authMsg = "${clientFirst!!.saslMessage},$serverFirst,${clientResp.getResponseWithoutProof()}"
+            proofValid = verifyClientProof(authMsg, clientResp.getProof())
+        } catch (e: Exception) {
+            failAuthentication()
+        }
         if (!isUserValid || !proofValid) {
-            state = AuthenticationState.DONE
-            // Send a proper ErrorResponse so the client reports "password authentication failed" (28P01)
-            // instead of a bare connection reset. The message is deliberately generic: it must not reveal
-            // whether the username or the password was wrong.
-            output.writeAndFlush(errorResponse("password authentication failed", "28P01"))
-            throw Exception("Authentication failed")
+            failAuthentication()
         }
         sendServerFinal(authMsg)
+    }
+
+    private fun failAuthentication(): Nothing {
+        state = AuthenticationState.DONE
+        // Send a proper ErrorResponse so the client reports "password authentication failed" (28P01) instead
+        // of a bare connection reset. The message is deliberately generic: it must not reveal whether the
+        // username or the password was wrong.
+        output.writeAndFlush(errorResponse("password authentication failed", "28P01"))
+        throw Exception("Authentication failed")
     }
 
     private fun sendServerFinal(authMsg: String) {
@@ -137,7 +155,7 @@ class Salt {
     val base64Encoded: String = Base64.getEncoder().encodeToString(salt)
     private fun generateRandomSalt(size: Int = 24): ByteArray {
         val salt = ByteArray(size)
-        SecureRandom().nextBytes(salt)
+        secureRandom.nextBytes(salt)
         return salt
     }
 }
@@ -146,9 +164,8 @@ class Salt {
 // Kotlin's default (non-crypto) Random.
 fun getRandomString(length: Int = 32): String {
     val allowedChars = ('A'..'Z') + ('a'..'z') + ('0'..'9')
-    val random = SecureRandom()
     return (1..length)
-        .map { allowedChars[random.nextInt(allowedChars.size)] }
+        .map { allowedChars[secureRandom.nextInt(allowedChars.size)] }
         .joinToString("")
 }
 
