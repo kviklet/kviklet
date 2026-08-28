@@ -404,11 +404,11 @@ fun paramMessage(key: String, value: String): ByteArray {
     return responseBuffer.array()
 }
 
-fun errorResponse(message: String): ByteArray {
+fun errorResponse(message: String, code: String = "08P01"): ByteArray {
     val fields = listOf(
         'S' to "ERROR",
         'V' to "ERROR",
-        'C' to "08P01", // protocol_violation
+        'C' to code, // SQLSTATE, defaults to protocol_violation
         'M' to message,
     )
     val fieldBytes = fields.flatMap { (type, value) ->
@@ -433,6 +433,34 @@ fun isStartupMessage(byteArray: ByteArray): Boolean = byteArray[4] == 0x00.toByt
     byteArray[5] == 0x03.toByte() &&
     byteArray[6] == 0x00.toByte() &&
     byteArray[7] == 0x00.toByte()
+
+// The StartupMessage body (after the 4-byte length and 4-byte protocol version) is a sequence of
+// null-terminated key/value strings, terminated by a final empty key. Returns the value of the `user`
+// parameter, or null if it is absent. Only the actual `user` value must gate authentication: matching a
+// substring anywhere in the packet lets a wrong user be accepted when the configured name happens to
+// appear in the database name, application_name, or options.
+fun startupMessageUser(message: ByteArray, msgLen: Int): String? {
+    val fields = mutableListOf<String>()
+    var start = 8
+    var i = 8
+    while (i < msgLen) {
+        if (message[i] == 0x00.toByte()) {
+            // Only a zero-length key (even index) terminates the list; a zero-length value (e.g.
+            // application_name="") is legitimate and must not end the scan early.
+            if (i == start && fields.size % 2 == 0) break
+            fields.add(String(message, start, i - start, Charsets.UTF_8))
+            start = i + 1
+        }
+        i++
+    }
+    // Match "user" only at key positions (even indices); scanning a flattened key+value list would let a
+    // parameter whose value is "user" return the following key.
+    for (k in fields.indices step 2) {
+        if (fields[k] == "user") return fields.getOrNull(k + 1)
+    }
+    return null
+}
+
 fun startupMessageContainsValidUser(message: ByteArray, msgLen: Int, username: String): Boolean =
-    String(message).subSequence(8, msgLen).contains(username)
+    startupMessageUser(message, msgLen) == username
 fun ByteArray.toHexString() = joinToString("") { "%02x".format(it) }
