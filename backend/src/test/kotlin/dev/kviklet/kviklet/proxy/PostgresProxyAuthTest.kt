@@ -143,12 +143,15 @@ class PostgresProxyAuthTest {
     }
 
     @Test
-    fun `a wrong password fails with 28P01 password authentication failed, not a connection reset`() {
-        val port = startProxy(proxyUsername = getRandomString(8), proxyPassword = getRandomString(16))
+    fun `the correct username with a wrong password fails with 28P01, not a connection reset`() {
+        // The username is correct, so this exercises the wrong-password path alone (proof verification
+        // fails while the user is valid) -- the path the always-run-the-proof timing parity is about.
+        val username = getRandomString(8)
+        val port = startProxy(proxyUsername = username, proxyPassword = getRandomString(16))
 
         val throwable = assertThrows<PSQLException> {
             val proxyProps = Properties()
-            proxyProps.setProperty("user", "someuser")
+            proxyProps.setProperty("user", username)
             proxyProps.setProperty("password", "definitely-the-wrong-password")
             DriverManager.getConnection("jdbc:postgresql://localhost:$port/testdb", proxyProps)
         }
