@@ -461,6 +461,4 @@ fun startupMessageUser(message: ByteArray, msgLen: Int): String? {
     return null
 }
 
-fun startupMessageContainsValidUser(message: ByteArray, msgLen: Int, username: String): Boolean =
-    startupMessageUser(message, msgLen) == username
 fun ByteArray.toHexString() = joinToString("") { "%02x".format(it) }

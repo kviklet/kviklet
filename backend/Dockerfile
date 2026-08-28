@@ -21,7 +21,8 @@ COPY --from=build /home/gradle/src/build/libs/*.jar app.jar
 
 # Expose the application on port 8080
 EXPOSE 8080
-#EXPOSE 5438-6000
+# Uncomment to expose the Postgres access proxy (kviklet.proxy.postgres.port, default 5432)
+#EXPOSE 5432
 
 # Start the application
 CMD ["java", "-jar", "app.jar"]
