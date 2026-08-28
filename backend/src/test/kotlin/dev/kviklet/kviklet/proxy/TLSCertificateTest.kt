@@ -1,10 +1,10 @@
 // This file is not MIT licensed
 package dev.kviklet.kviklet.proxy
 
-import dev.kviklet.kviklet.proxy.postgres.TLSCertificate
-import dev.kviklet.kviklet.proxy.postgres.TlsCertEnvConfig
-import dev.kviklet.kviklet.proxy.postgres.preprocessPEMObject
-import dev.kviklet.kviklet.proxy.postgres.tlsCertificateFactory
+import dev.kviklet.kviklet.proxy.core.TLSCertificate
+import dev.kviklet.kviklet.proxy.core.TlsCertEnvConfig
+import dev.kviklet.kviklet.proxy.core.preprocessPEMObject
+import dev.kviklet.kviklet.proxy.core.tlsCertificateFactory
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import java.io.File

@@ -4,12 +4,13 @@ package dev.kviklet.kviklet.proxy
 import dev.kviklet.kviklet.db.EventAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.helper.ExecutionRequestFactory
+import dev.kviklet.kviklet.proxy.core.ProxyServer
 import dev.kviklet.kviklet.proxy.helpers.ProxyInstance
 import dev.kviklet.kviklet.proxy.helpers.directConnectionFactory
 import dev.kviklet.kviklet.proxy.helpers.proxyServerFactory
 import dev.kviklet.kviklet.proxy.helpers.waitForProxyStart
 import dev.kviklet.kviklet.proxy.mocks.EventServiceMock
-import dev.kviklet.kviklet.proxy.postgres.PostgresProxyServer
+import dev.kviklet.kviklet.proxy.postgres.PostgresProtocol
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -39,7 +40,7 @@ class PostgresProxyAuthTest {
     private lateinit var directConnection: Connection
     private lateinit var proxy: ProxyInstance
     private lateinit var postgresContainer: PostgreSQLContainer<Nothing>
-    private val startedProxies = mutableListOf<PostgresProxyServer>()
+    private val startedProxies = mutableListOf<ProxyServer>()
 
     @BeforeEach
     fun setup() {
@@ -83,7 +84,7 @@ class PostgresProxyAuthTest {
         val randomUsername = getRandomString(8)
         val randomPassword = getRandomString(16)
         val connAuth = AuthenticationDetails.UserPassword("test", "test")
-        val proxy = PostgresProxyServer(port, this.proxy.eventService, null)
+        val proxy = ProxyServer(port, PostgresProtocol(this.proxy.eventService, null))
         proxy.start()
         waitForProxyStart(proxy)
         startedProxies.add(proxy)
@@ -117,7 +118,7 @@ class PostgresProxyAuthTest {
         val request = executionRequestFactory.createDatasourceExecutionRequest()
         val eventService = EventServiceMock(executionRequestAdapter, eventAdapter, request)
 
-        val proxy = PostgresProxyServer(port, eventService, null)
+        val proxy = ProxyServer(port, PostgresProtocol(eventService, null))
         proxy.start()
         waitForProxyStart(proxy)
         startedProxies.add(proxy)
@@ -181,7 +182,7 @@ class PostgresProxyAuthTest {
         // The core of the single-stable-port model: many sessions share one listener and are told apart by
         // the username the client sends in its startup message, each with its own temp password.
         val port = (30001..31000).random()
-        val server = PostgresProxyServer(port, this.proxy.eventService, null)
+        val server = ProxyServer(port, PostgresProtocol(this.proxy.eventService, null))
         server.start()
         waitForProxyStart(server)
         startedProxies.add(server)
@@ -243,7 +244,7 @@ class PostgresProxyAuthTest {
         val executionRequestFactory = ExecutionRequestFactory()
         val request = executionRequestFactory.createDatasourceExecutionRequest()
         val eventService = EventServiceMock(executionRequestAdapter, eventAdapter, request)
-        val proxy = PostgresProxyServer(port, eventService, null)
+        val proxy = ProxyServer(port, PostgresProtocol(eventService, null))
         startedProxies.add(proxy)
         proxy.start()
         waitForProxyStart(proxy)

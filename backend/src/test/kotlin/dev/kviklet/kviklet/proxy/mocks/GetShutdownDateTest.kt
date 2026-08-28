@@ -1,7 +1,7 @@
 // This file is not MIT licensed
 package dev.kviklet.kviklet.proxy.mocks
 
-import dev.kviklet.kviklet.proxy.postgres.getShutdownDate
+import dev.kviklet.kviklet.proxy.core.getShutdownDate
 import org.junit.jupiter.api.Test
 import java.time.Instant
 import java.time.LocalDateTime

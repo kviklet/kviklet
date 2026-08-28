@@ -1,9 +1,10 @@
 // This file is not MIT licensed
-package dev.kviklet.kviklet.proxy.postgres
+package dev.kviklet.kviklet.proxy.core
 
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
 import java.io.File
+import java.net.Socket
 import java.security.KeyFactory
 import java.security.KeyStore
 import java.security.PrivateKey
@@ -14,6 +15,7 @@ import java.security.spec.PKCS8EncodedKeySpec
 import java.util.*
 import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLSocket
 
 class TLSCertificate(privKey: String, cert: String) {
     var sslContext: SSLContext
@@ -111,4 +113,19 @@ fun tlsCertificateFactory(env: TlsCertEnvConfig = TlsCertEnvConfig()): TLSCertif
             return null
         }
     }
+}
+
+// Wraps an accepted client socket in a server-mode TLS layer. Protocol-agnostic: both the Postgres SSLRequest
+// and the MySQL CLIENT_SSL handshakes upgrade the same way once the client asks for TLS. autoClose is left at
+// its default so the SSLSocket owns the underlying socket for normal I/O; teardown closes the raw socket
+// directly (see the relay implementations) to reliably unblock parked reads.
+fun enableSSL(clientSocket: Socket, cert: TLSCertificate): Socket {
+    val sslSocket = cert.sslContext.socketFactory.createSocket(
+        clientSocket,
+        null,
+        clientSocket.getPort(),
+        false,
+    ) as SSLSocket
+    sslSocket.useClientMode = false
+    return sslSocket
 }

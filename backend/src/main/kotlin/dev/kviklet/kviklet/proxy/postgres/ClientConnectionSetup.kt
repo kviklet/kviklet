@@ -1,6 +1,11 @@
 // This file is not MIT licensed
 package dev.kviklet.kviklet.proxy.postgres
 
+import dev.kviklet.kviklet.proxy.core.AuthenticatedClient
+import dev.kviklet.kviklet.proxy.core.ProxySession
+import dev.kviklet.kviklet.proxy.core.TLSCertificate
+import dev.kviklet.kviklet.proxy.core.enableSSL
+import dev.kviklet.kviklet.proxy.core.writeAndFlush
 import dev.kviklet.kviklet.proxy.postgres.messages.authenticationOk
 import dev.kviklet.kviklet.proxy.postgres.messages.backendKeyData
 import dev.kviklet.kviklet.proxy.postgres.messages.createAuthenticationSASLStartMessage
@@ -18,7 +23,6 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.net.Socket
 import java.nio.ByteBuffer
-import javax.net.ssl.SSLSocket
 
 // Postgres' own cap on a startup packet (PQ_MAX_STARTUP_PACKET_LENGTH). A declared length beyond what
 // the real server would accept can only be garbage or an attack, so we reject it instead of buffering.
@@ -31,11 +35,6 @@ private const val MAX_PRE_STARTUP_FRAMES = 4
 
 // Fallback total handshake budget used only if the caller left the socket timeout at 0 ("block forever").
 private const val DEFAULT_HANDSHAKE_BUDGET_MS = 10_000L
-
-// The (possibly TLS-upgraded) client socket once the client has successfully authenticated, together with
-// the session its username routed to. The session is what a single stable listener uses to serve many
-// concurrent requests: the client delivers its username in the startup message, before any upstream work.
-class AuthenticatedSession(val socket: Socket, val session: ProxySession)
 
 // Runs SSL negotiation and client authentication, routing to a session by the username in the startup
 // message. No upstream database connection is opened here, so an unauthenticated, aborting or idle client
@@ -54,7 +53,7 @@ fun authenticateClient(
     tlsCert: TLSCertificate?,
     unknownUserPassword: String,
     resolveSession: (String) -> ProxySession?,
-): AuthenticatedSession? {
+): AuthenticatedClient? {
     // The caller's soTimeout is the TOTAL handshake budget, not just a per-read timeout: the socket timeout
     // is shrunk to the remaining budget before every read below, so the whole handshake -- including a slow
     // client dribbling one valid frame just under each timeout -- cannot outlast it and hold its slot forever.
@@ -108,7 +107,9 @@ fun authenticateClient(
                 // wrong password. waitUntilAuthenticated throws on failure, so the return below is only
                 // reached when a real session authenticated successfully.
                 waitUntilAuthenticated(input, output, session?.password ?: unknownUserPassword, session != null)
-                return AuthenticatedSession(socket, session!!)
+                // socket is the (possibly TLS-wrapped) stream the client now speaks on; client is the raw
+                // accepted TCP socket the relay must close to unblock its threads on teardown.
+                return AuthenticatedClient(socket, client, session!!)
             }
 
             else -> throw Exception("Unexpected message during the client handshake, aborting the connection")
@@ -171,17 +172,6 @@ fun handleSSLRequest(client: Socket, cert: TLSCertificate?): Socket {
     val response = if (cert == null) tlsNotSupportedMessage() else tlsSupportedMessage()
     client.getOutputStream().writeAndFlush(response)
     return if (cert == null) client else enableSSL(client, cert)
-}
-
-fun enableSSL(clientSocket: Socket, cert: TLSCertificate): Socket {
-    val sslSocket = cert.sslContext.socketFactory.createSocket(
-        clientSocket,
-        null,
-        clientSocket.getPort(),
-        false,
-    ) as SSLSocket
-    sslSocket.useClientMode = false
-    return sslSocket
 }
 
 fun sendAuthRequest(output: OutputStream) {

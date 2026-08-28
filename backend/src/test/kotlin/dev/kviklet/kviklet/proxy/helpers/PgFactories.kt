@@ -4,9 +4,10 @@ package dev.kviklet.kviklet.proxy.helpers
 import dev.kviklet.kviklet.db.EventAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.helper.ExecutionRequestFactory
+import dev.kviklet.kviklet.proxy.core.ProxyServer
+import dev.kviklet.kviklet.proxy.core.TLSCertificate
 import dev.kviklet.kviklet.proxy.mocks.EventServiceMock
-import dev.kviklet.kviklet.proxy.postgres.PostgresProxyServer
-import dev.kviklet.kviklet.proxy.postgres.TLSCertificate
+import dev.kviklet.kviklet.proxy.postgres.PostgresProtocol
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import org.testcontainers.containers.PostgreSQLContainer
 import java.sql.Connection
@@ -17,7 +18,7 @@ import java.util.*
 class ProxyInstance(
     val port: Int,
     val connectionString: String,
-    val proxy: PostgresProxyServer,
+    val proxy: ProxyServer,
     val connection: Connection,
     val eventService: EventServiceMock,
 )
@@ -44,7 +45,7 @@ fun proxyServerFactory(
     val request = executionRequestFactory.createDatasourceExecutionRequest()
     val eventService = eventServiceOverride ?: EventServiceMock(executionRequestAdapter, eventAdapter, request)
     val port = (12000..20000).random()
-    val proxy = PostgresProxyServer(port, eventService, tlsCertificate, handshakeTimeoutMs)
+    val proxy = ProxyServer(port, PostgresProtocol(eventService, tlsCertificate), handshakeTimeoutMs)
     proxy.start()
     waitForProxyStart(proxy)
     proxy.registerSession(
