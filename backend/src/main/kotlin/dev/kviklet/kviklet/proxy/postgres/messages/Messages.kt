@@ -445,14 +445,20 @@ fun startupMessageUser(message: ByteArray, msgLen: Int): String? {
     var i = 8
     while (i < msgLen) {
         if (message[i] == 0x00.toByte()) {
-            if (i == start) break // empty key marks the end of the parameter list
+            // Only a zero-length key (even index) terminates the list; a zero-length value (e.g.
+            // application_name="") is legitimate and must not end the scan early.
+            if (i == start && fields.size % 2 == 0) break
             fields.add(String(message, start, i - start, Charsets.UTF_8))
             start = i + 1
         }
         i++
     }
-    val userIndex = fields.indexOf("user")
-    return if (userIndex >= 0 && userIndex + 1 < fields.size) fields[userIndex + 1] else null
+    // Match "user" only at key positions (even indices); scanning a flattened key+value list would let a
+    // parameter whose value is "user" return the following key.
+    for (k in fields.indices step 2) {
+        if (fields[k] == "user") return fields.getOrNull(k + 1)
+    }
+    return null
 }
 
 fun startupMessageContainsValidUser(message: ByteArray, msgLen: Int, username: String): Boolean =

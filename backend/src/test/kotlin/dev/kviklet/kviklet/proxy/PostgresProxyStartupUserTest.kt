@@ -70,6 +70,25 @@ class PostgresProxyStartupUserTest {
     }
 
     @Test
+    fun `a value equal to user does not fool the parser into returning the wrong key`() {
+        // A parameter whose value is literally "user", followed by a key named like the proxy user, must not
+        // trick a flat indexOf into returning that following key. The real user is "attacker".
+        val frame = startupMessage("database" to "user", "app" to "x", "user" to "attacker")
+
+        assertEquals("attacker", startupMessageUser(frame, frame.size))
+        assertFalse(startupMessageContainsValidUser(frame, frame.size, "app"))
+    }
+
+    @Test
+    fun `an empty-valued parameter before user does not terminate the scan early`() {
+        // application_name="" is a legitimate empty value; it must not end the parameter scan before `user`.
+        val frame = startupMessage("application_name" to "", "user" to "proxyUser")
+
+        assertEquals("proxyUser", startupMessageUser(frame, frame.size))
+        assertTrue(startupMessageContainsValidUser(frame, frame.size, "proxyUser"))
+    }
+
+    @Test
     fun `a startup message without a user parameter has no user`() {
         val frame = startupMessage("database" to "somedb")
 
