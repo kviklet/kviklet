@@ -172,8 +172,10 @@ class PostgresProxy(
 
         val clientConnection = try {
             finishClientStartup(authenticatedClient.socket, remotePgConn.getConnProps())
-            authenticatedClient.socket.soTimeout = 10
-            forwardSocket.soTimeout = 10
+            // Blocking relay: no read timeout. Each direction parks in a blocking read until data
+            // arrives or the socket is closed on teardown. (The old 10ms timeouts drove the poll loop.)
+            authenticatedClient.socket.soTimeout = 0
+            forwardSocket.soTimeout = 0
             Connection(authenticatedClient.socket, forwardSocket, eventService, executionRequest, userId)
         } catch (e: Exception) {
             // The upstream is open but the session never started, close it so it is not leaked.
