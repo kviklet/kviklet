@@ -24,6 +24,14 @@ import javax.net.ssl.SSLSocket
 // the real server would accept can only be garbage or an attack, so we reject it instead of buffering.
 private const val MAX_STARTUP_PACKET_LENGTH = 10_000
 
+// A legitimate client sends at most one SSLRequest and one GSSENCRequest before its StartupMessage. More
+// pre-startup frames than this means the client is looping (e.g. repeated SSLRequests, each of which would
+// also nest another TLS layer) and it is cut off rather than allowed to spin within the handshake deadline.
+private const val MAX_PRE_STARTUP_FRAMES = 4
+
+// Fallback total handshake budget used only if the caller left the socket timeout at 0 ("block forever").
+private const val DEFAULT_HANDSHAKE_BUDGET_MS = 10_000L
+
 // The (possibly TLS-upgraded) client socket once the client has successfully authenticated, together with
 // the session its username routed to. The session is what a single stable listener uses to serve many
 // concurrent requests: the client delivers its username in the startup message, before any upstream work.
@@ -47,12 +55,23 @@ fun authenticateClient(
     unknownUserPassword: String,
     resolveSession: (String) -> ProxySession?,
 ): AuthenticatedSession? {
-    val handshakeTimeout = client.soTimeout
+    // The caller's soTimeout is the TOTAL handshake budget, not just a per-read timeout: the socket timeout
+    // is shrunk to the remaining budget before every read below, so the whole handshake -- including a slow
+    // client dribbling one valid frame just under each timeout -- cannot outlast it and hold its slot forever.
+    val budgetMs = if (client.soTimeout > 0) client.soTimeout.toLong() else DEFAULT_HANDSHAKE_BUDGET_MS
+    val deadline = System.currentTimeMillis() + budgetMs
     var socket = client
     var input = socket.getInputStream()
     var output = socket.getOutputStream()
+    var preStartupFrames = 0
 
     while (true) {
+        val remaining = deadline - System.currentTimeMillis()
+        if (remaining <= 0) {
+            throw Exception("Client handshake exceeded its deadline, aborting the connection")
+        }
+        socket.soTimeout = remaining.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+
         // Read the whole frame before dispatching. A single read is not guaranteed to be a single
         // frame: TCP can split one, and the fixed-offset detectors below would misread a half-frame
         // (throwing on a split header, or auth-failing a valid user and feeding the tail to SASL on a
@@ -62,15 +81,16 @@ fun authenticateClient(
         when {
             isSSLRequest(frame) -> {
                 socket = handleSSLRequest(socket, tlsCert)
-                socket.soTimeout = handshakeTimeout
                 input = socket.getInputStream()
                 output = socket.getOutputStream()
+                preStartupFrames++
             }
 
             isGSSENCRequest(frame) -> {
                 // We do not offer GSSAPI encryption, decline it and let the client fall back to a
                 // plain StartupMessage instead of discarding the request and deadlocking.
                 output.writeAndFlush(gssEncNotSupportedMessage())
+                preStartupFrames++
             }
 
             isCancelRequest(frame) -> {
@@ -92,6 +112,10 @@ fun authenticateClient(
             }
 
             else -> throw Exception("Unexpected message during the client handshake, aborting the connection")
+        }
+
+        if (preStartupFrames > MAX_PRE_STARTUP_FRAMES) {
+            throw Exception("Too many pre-startup frames before a StartupMessage, aborting the connection")
         }
     }
 }
