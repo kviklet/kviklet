@@ -27,6 +27,10 @@ class MySqlConnection(
     // threads and frees the fd, so teardown closes this rather than the SSL wrapper. Defaults to
     // clientSocket for the plain (non-TLS) case, where they are the same socket.
     private val rawClientSocket: Socket = clientSocket,
+    // The JDBC connection targetSocket was extracted from. Held here so it stays strongly referenced for
+    // the relay's lifetime (a driver may reap the network resources of a connection object that is
+    // garbage-collected without close()) and closed quietly on teardown to release driver bookkeeping.
+    private val upstreamJdbcConnection: AutoCloseable? = null,
 ) : ProxyConnection {
     private var clientInput: InputStream = clientSocket.getInputStream()
     private var clientOutput: OutputStream = clientSocket.getOutputStream()
@@ -117,6 +121,9 @@ class MySqlConnection(
     private fun closeSockets() {
         runCatching { if (!rawClientSocket.isClosed) rawClientSocket.close() }
         runCatching { if (!targetSocket.isClosed) targetSocket.close() }
+        // After the sockets: the driver's own close (a Quit attempt on the already-closed socket) may
+        // fail, which is fine -- this is only about releasing its bookkeeping. JDBC close is idempotent.
+        upstreamJdbcConnection?.let { runCatching { it.close() } }
     }
 
     override fun startHandling() {
