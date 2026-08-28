@@ -68,10 +68,12 @@ class MySqlProtocol(
                 session.executionRequest,
                 session.userId,
                 rawClientSocket = authenticatedClient.rawClientSocket,
+                upstreamJdbcConnection = targetConnection.jdbcConnection,
             )
         } catch (e: Exception) {
             // The upstream is open but the session never started, close it so it is not leaked.
             runCatching { forwardSocket.close() }
+            runCatching { targetConnection.jdbcConnection.close() }
             throw e
         }
     }
