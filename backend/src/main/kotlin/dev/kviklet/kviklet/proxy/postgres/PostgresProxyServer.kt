@@ -10,13 +10,13 @@ import java.net.Socket
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.Date
-import java.util.Timer
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.concurrent.schedule
 
 // When temporaryAccessDuration is null, it indicates infinite access. This constant represents that case.
 val INFINITE_ACCESS = -1L
@@ -34,7 +34,7 @@ class ProxySession(
 ) {
     // Live relay connections for this session, closed when the session expires so an in-flight client
     // cannot keep relaying past the access window. CopyOnWriteArrayList: added by handler threads, iterated
-    // by the expiry timer / shutdown.
+    // by the expiry task / shutdown.
     val connections = CopyOnWriteArrayList<Connection>()
 
     // Flipped to false on expiry or server shutdown. Read during auth routing and connection registration
@@ -44,7 +44,8 @@ class ProxySession(
     var active = true
         internal set
 
-    internal var expiryTimer: Timer? = null
+    // The scheduled expiry, cancelled if the session is torn down early (replaced or on shutdown).
+    internal var expiryFuture: ScheduledFuture<*>? = null
 }
 
 // A long-lived proxy server: one listener on a single stable port that routes every authenticated client to
@@ -63,8 +64,15 @@ class PostgresProxyServer(
 ) {
     private val threadPool = Executors.newCachedThreadPool()
 
+    // One shared daemon-threaded scheduler for every session's expiry, instead of a non-daemon Timer thread
+    // per session (which was wasteful at scale and could hold JVM shutdown open). Daemon so it never keeps
+    // the JVM alive; single thread is plenty since each task only prunes a session and closes its sockets.
+    private val expiryScheduler = Executors.newSingleThreadScheduledExecutor { runnable ->
+        Thread(runnable, "postgres-proxy-expiry").apply { isDaemon = true }
+    }
+
     // Registry keyed by temp username. ConcurrentHashMap because sessions are added by the request thread,
-    // read by connection-handler threads during auth routing, and removed by expiry timers.
+    // read by connection-handler threads during auth routing, and removed by expiry tasks.
     private val sessions = ConcurrentHashMap<String, ProxySession>()
 
     // Every live relay connection across all sessions, iterated on shutdown. Concurrent by nature: handler
@@ -152,11 +160,15 @@ class PostgresProxyServer(
         // never leaves the previous access window running.
         sessions.put(username, session)?.let { expire(it) }
         if (maxTimeMinutes != INFINITE_ACCESS) {
-            val timer = Timer()
-            timer.schedule(getShutdownDate(startTime, maxTimeMinutes)) {
-                expireSession(username)
-            }
-            session.expiryTimer = timer
+            val delayMs = (getShutdownDate(startTime, maxTimeMinutes).time - System.currentTimeMillis())
+                .coerceAtLeast(0)
+            // Bind the task to this exact session, so a fired-but-stale task (from a session already replaced
+            // under the same username) removes only its own entry and never the current one.
+            session.expiryFuture = expiryScheduler.schedule(
+                { expireSession(username, session) },
+                delayMs,
+                TimeUnit.MILLISECONDS,
+            )
         }
     }
 
@@ -169,9 +181,10 @@ class PostgresProxyServer(
         isRunning = false
         sessions.values.forEach {
             it.active = false
-            it.expiryTimer?.cancel()
+            it.expiryFuture?.cancel(false)
         }
         sessions.clear()
+        expiryScheduler.shutdownNow()
         clientConnections.forEach { it.close() }
         threadPool.shutdownNow()
         if (::serverSocket.isInitialized) {
@@ -183,8 +196,12 @@ class PostgresProxyServer(
     // client that arrives after its window closed finds nothing and is rejected.
     private fun resolveSession(username: String): ProxySession? = sessions[username]?.takeIf { it.active }
 
-    private fun expireSession(username: String) {
-        sessions.remove(username)?.let { expire(it) }
+    // Identity remove: only drop the map entry if it still points at this session. A stale task from a
+    // session already replaced under the same username thus no-ops instead of evicting the live session.
+    private fun expireSession(username: String, session: ProxySession) {
+        if (sessions.remove(username, session)) {
+            expire(session)
+        }
     }
 
     // Synchronized against registerConnection so it cannot miss a connection that is being added at the same
@@ -193,7 +210,7 @@ class PostgresProxyServer(
     @Synchronized
     private fun expire(session: ProxySession) {
         session.active = false
-        session.expiryTimer?.cancel()
+        session.expiryFuture?.cancel(false)
         session.connections.forEach { it.close() }
     }
 
