@@ -102,6 +102,18 @@ class PostgresProxyConnectionLifecycleTest {
         assertEquals(expected, target.currentConnections, "Expected the proxy to be handling $expected connection(s)")
     }
 
+    private fun awaitPendingHandshakeCount(
+        expected: Int,
+        target: PostgresProxyServer = proxy.proxy,
+        timeoutMillis: Long = 20_000,
+    ) {
+        val deadline = System.currentTimeMillis() + timeoutMillis
+        while (System.currentTimeMillis() < deadline && target.pendingHandshakes != expected) {
+            Thread.sleep(100)
+        }
+        assertEquals(expected, target.pendingHandshakes, "Expected $expected pending handshake(s)")
+    }
+
     // Reads the size of the proxy's private clientConnections list. Pruning it on teardown is an
     // internal guarantee (a regression would leak Connection objects, not sockets or slots), so it is
     // verified here by reflection rather than exposing a production counter that would sit confusingly
@@ -186,13 +198,14 @@ class PostgresProxyConnectionLifecycleTest {
             handshakeTimeoutMs = 2500,
         )
         try {
-            val baseline = shortProxy.proxy.currentConnections
+            val baseline = shortProxy.proxy.pendingHandshakes
             val socket = Socket("localhost", shortProxy.port)
             try {
-                // While the proxy waits for the handshake the slot is occupied.
-                awaitConnectionCount(baseline + 1, shortProxy.proxy, timeoutMillis = 2000)
-                // After the deadline the proxy gives up and frees the slot.
-                awaitConnectionCount(baseline, shortProxy.proxy)
+                // The idle client never authenticates, so it occupies a pending-handshake slot (not a relay
+                // slot) while the proxy waits for its startup message.
+                awaitPendingHandshakeCount(baseline + 1, shortProxy.proxy, timeoutMillis = 2000)
+                // After the handshake deadline the proxy gives up and frees it.
+                awaitPendingHandshakeCount(baseline, shortProxy.proxy)
             } finally {
                 socket.close()
             }

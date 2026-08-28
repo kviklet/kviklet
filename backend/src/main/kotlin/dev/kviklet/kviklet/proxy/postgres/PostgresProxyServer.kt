@@ -94,6 +94,11 @@ class PostgresProxyServer(
     private val maxPendingHandshakes = 50
     private val activeHandshakes = AtomicInteger(0)
 
+    // Concurrent in-flight (pre-auth) handshakes, exposed for tests and monitoring. Distinct from
+    // currentConnections: an unauthenticated client (idle, aborting, cancelling) occupies one of these,
+    // never a relay slot.
+    val pendingHandshakes: Int get() = activeHandshakes.get()
+
     // Volatile so tests and monitoring see slot releases done by the connection handler threads. Counts only
     // authenticated, actively relaying connections (incremented in registerConnection, not on accept).
     @Volatile
