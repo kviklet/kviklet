@@ -52,17 +52,35 @@ class SASLInitialResponse(
     val saslMessage: String,
 ) : ParsedMessage(header, length, originalContent) {
     companion object {
+        // bytes is the message body (header byte and int32 length already stripped, as the MessageFramer
+        // delivers it): a mechanism-name cstring, an int32 SASL-data length, then the SASL data.
         fun fromBytes(length: Int, bytes: ByteArray): SASLInitialResponse {
             val buffer = ByteBuffer.wrap(bytes)
-            val messageBytes = ByteArray(length)
-            buffer.get(messageBytes)
-            // NOTE: The message parsing below will work as long as only SCRAM-SHA-256 is supported. Once SCRAM-SHA-256-PLUS is added it won't work
-            val message = String(messageBytes).subSequence(26, length).toString()
-            return SASLInitialResponse('p', length, bytes, message)
+            val mechanism = readCString(buffer)
+            if (mechanism != "SCRAM-SHA-256") {
+                throw Exception("Unsupported SASL mechanism '$mechanism'; only SCRAM-SHA-256 is supported")
+            }
+            val saslDataLength = buffer.int
+            val saslData = ByteArray(saslDataLength)
+            buffer.get(saslData)
+            // Strip the gs2 header (e.g. "n,,") to get the SCRAM client-first-bare ("n=...,r=...").
+            val clientFirstBare = stripGs2Header(String(saslData, Charsets.UTF_8))
+            return SASLInitialResponse('p', length, bytes, clientFirstBare)
+        }
+
+        // The gs2 header is a channel-binding flag, an optional authzid and two commas; the client-first-bare
+        // follows the second comma. Validating the shape beats the previous hardcoded offset of 26.
+        private fun stripGs2Header(saslData: String): String {
+            val firstComma = saslData.indexOf(',')
+            val secondComma = if (firstComma >= 0) saslData.indexOf(',', firstComma + 1) else -1
+            if (secondComma < 0) {
+                throw Exception("Malformed SASL initial response: missing gs2 header")
+            }
+            return saslData.substring(secondComma + 1)
         }
     }
 
-    fun getClientNonce(): String = saslMessage.split(',')[1].replace("r=", "")
+    fun getClientNonce(): String = saslMessage.split(',').first { it.startsWith("r=") }.removePrefix("r=")
 }
 
 class SASLResponse(
@@ -73,12 +91,10 @@ class SASLResponse(
 ) : ParsedMessage(header, length, originalContent) {
 
     companion object {
-        fun fromBytes(length: Int, bytes: ByteArray): SASLResponse {
-            val buffer = ByteBuffer.wrap(bytes)
-            val messageBytes = ByteArray(length)
-            buffer.get(messageBytes)
-            return SASLResponse('p', length, bytes, String(messageBytes.copyOfRange(5, length)))
-        }
+        // bytes is the message body (header byte and int32 length already stripped): the SCRAM
+        // client-final message, "c=<channel-binding>,r=<nonce>,p=<proof>".
+        fun fromBytes(length: Int, bytes: ByteArray): SASLResponse =
+            SASLResponse('p', length, bytes, String(bytes, Charsets.UTF_8))
     }
     fun getResponseWithoutProof(): String = saslMessage.split(',').subList(0, 2).joinToString(",")
     fun getProof(): String = saslMessage.split(',')[2].replaceFirst("p=", "")

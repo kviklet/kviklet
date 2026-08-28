@@ -12,6 +12,7 @@ import dev.kviklet.kviklet.proxy.mocks.EventServiceMock
 import dev.kviklet.kviklet.proxy.postgres.PostgresProxy
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -139,6 +140,57 @@ class PostgresProxyAuthTest {
             proxyProps.setProperty("password", randomPassword)
             DriverManager.getConnection("jdbc:postgresql://localhost:$port/testdb", proxyProps)
         }
+    }
+
+    @Test
+    fun `a wrong password fails with 28P01 password authentication failed, not a connection reset`() {
+        val port = startProxy(proxyUsername = getRandomString(8), proxyPassword = getRandomString(16))
+
+        val throwable = assertThrows<PSQLException> {
+            val proxyProps = Properties()
+            proxyProps.setProperty("user", "someuser")
+            proxyProps.setProperty("password", "definitely-the-wrong-password")
+            DriverManager.getConnection("jdbc:postgresql://localhost:$port/testdb", proxyProps)
+        }
+        assertEquals("28P01", throwable.sqlState)
+    }
+
+    @Test
+    fun `a wrong username with the correct password is rejected even when the username is a substring of the packet`() {
+        // The proxy user "test" is a substring of the database name "testdb"; the old substring check would
+        // see "test" in the startup packet and wrongly accept the connection despite the actual user being
+        // "wronguser". With the correct password supplied, only the username gate can reject this.
+        val password = getRandomString(16)
+        val port = startProxy(proxyUsername = "test", proxyPassword = password)
+
+        val throwable = assertThrows<PSQLException> {
+            val proxyProps = Properties()
+            proxyProps.setProperty("user", "wronguser")
+            proxyProps.setProperty("password", password)
+            DriverManager.getConnection("jdbc:postgresql://localhost:$port/testdb", proxyProps)
+        }
+        assertEquals("28P01", throwable.sqlState)
+    }
+
+    private fun startProxy(proxyUsername: String, proxyPassword: String): Int {
+        val port = (22020..22060).random()
+        val executionRequestFactory = ExecutionRequestFactory()
+        val request = executionRequestFactory.createDatasourceExecutionRequest()
+        val eventService = EventServiceMock(executionRequestAdapter, eventAdapter, request)
+        val proxy = PostgresProxy(
+            postgresContainer.host,
+            postgresContainer.getMappedPort(5432),
+            "testdb",
+            AuthenticationDetails.UserPassword("test", "test"),
+            eventService,
+            executionRequestFactory.createDatasourceExecutionRequest(),
+            "mock",
+        )
+        CompletableFuture.runAsync {
+            proxy.startServer(port, proxyUsername, proxyPassword, LocalDateTime.now(), 10)
+        }
+        waitForProxyStart(proxy)
+        return port
     }
 }
 
