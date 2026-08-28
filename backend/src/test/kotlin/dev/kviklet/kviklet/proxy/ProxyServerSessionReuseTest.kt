@@ -8,6 +8,7 @@ import dev.kviklet.kviklet.proxy.core.ProxyProtocol
 import dev.kviklet.kviklet.proxy.core.ProxyServer
 import dev.kviklet.kviklet.proxy.core.ProxySession
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
+import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -46,6 +47,7 @@ class ProxyServerSessionReuseTest {
         targetHost = "localhost",
         targetPort = 5432,
         databaseName = "testdb",
+        datasourceType = DatasourceType.POSTGRESQL,
         authenticationDetails = AuthenticationDetails.UserPassword("test", "test"),
     )
 

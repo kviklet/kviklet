@@ -2,6 +2,7 @@
 package dev.kviklet.kviklet.proxy.core
 
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
+import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ScheduledFuture
@@ -22,6 +23,10 @@ class ProxySession(
     val targetHost: String,
     val targetPort: Int,
     val databaseName: String,
+    // The upstream's datasource flavor. Kept neutral (an enum, not a protocol object) so the session stays
+    // protocol-agnostic: some wire protocols serve more than one flavor (MySQL and MariaDB share one
+    // listener), and the ProxyProtocol reads this to build the right upstream connection.
+    val datasourceType: DatasourceType,
     val authenticationDetails: AuthenticationDetails.UserPassword,
 ) {
     // Live relay connections for this session, closed when the session expires so an in-flight client cannot
