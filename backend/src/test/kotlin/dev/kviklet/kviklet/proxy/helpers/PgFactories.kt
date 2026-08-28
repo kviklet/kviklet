@@ -5,7 +5,7 @@ import dev.kviklet.kviklet.db.EventAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.helper.ExecutionRequestFactory
 import dev.kviklet.kviklet.proxy.mocks.EventServiceMock
-import dev.kviklet.kviklet.proxy.postgres.PostgresProxy
+import dev.kviklet.kviklet.proxy.postgres.PostgresProxyServer
 import dev.kviklet.kviklet.proxy.postgres.TLSCertificate
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import org.testcontainers.containers.PostgreSQLContainer
@@ -13,12 +13,11 @@ import java.sql.Connection
 import java.sql.DriverManager
 import java.time.LocalDateTime
 import java.util.*
-import java.util.concurrent.CompletableFuture
 
 class ProxyInstance(
     val port: Int,
     val connectionString: String,
-    val proxy: PostgresProxy,
+    val proxy: PostgresProxyServer,
     val connection: Connection,
     val eventService: EventServiceMock,
 )
@@ -44,27 +43,26 @@ fun proxyServerFactory(
     val executionRequestFactory = ExecutionRequestFactory()
     val request = executionRequestFactory.createDatasourceExecutionRequest()
     val eventService = eventServiceOverride ?: EventServiceMock(executionRequestAdapter, eventAdapter, request)
-    var proxy = PostgresProxy(
-        postgresContainer.host,
-        postgresContainer.getMappedPort(5432),
-        "testdb",
-        connAuth,
-        eventService,
-        request,
-        "mock",
-        tlsCertificate,
-        handshakeTimeoutMs,
-    )
     val port = (12000..20000).random()
-    CompletableFuture.runAsync {
-        proxy.startServer(port, "proxyUser", "proxyPassword", LocalDateTime.now(), 10)
-    }
+    val proxy = PostgresProxyServer(port, eventService, tlsCertificate, handshakeTimeoutMs)
+    proxy.start()
     waitForProxyStart(proxy)
+    proxy.registerSession(
+        username = "proxyUser",
+        password = "proxyPassword",
+        targetHost = postgresContainer.host,
+        targetPort = postgresContainer.getMappedPort(5432),
+        databaseName = "testdb",
+        authenticationDetails = connAuth,
+        executionRequest = request,
+        userId = "mock",
+        startTime = LocalDateTime.now(),
+        maxTimeMinutes = 10,
+    )
     val proxyJdbcConnectionString = "jdbc:postgresql://localhost:$port/testdb"
     val proxyProps = Properties()
     proxyProps.setProperty("user", "proxyUser")
     proxyProps.setProperty("password", "proxyPassword")
-    val proxyPort = port
-    val proxyConnection = DriverManager.getConnection("jdbc:postgresql://localhost:$port/testdb", proxyProps)
-    return ProxyInstance(proxyPort, proxyJdbcConnectionString, proxy, proxyConnection, eventService)
+    val proxyConnection = DriverManager.getConnection(proxyJdbcConnectionString, proxyProps)
+    return ProxyInstance(port, proxyJdbcConnectionString, proxy, proxyConnection, eventService)
 }

@@ -9,7 +9,7 @@ import dev.kviklet.kviklet.proxy.helpers.directConnectionFactory
 import dev.kviklet.kviklet.proxy.helpers.proxyServerFactory
 import dev.kviklet.kviklet.proxy.helpers.waitForProxyStart
 import dev.kviklet.kviklet.proxy.mocks.EventServiceMock
-import dev.kviklet.kviklet.proxy.postgres.PostgresProxy
+import dev.kviklet.kviklet.proxy.postgres.PostgresProxyServer
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -27,7 +27,6 @@ import java.sql.Connection
 import java.sql.DriverManager
 import java.time.LocalDateTime
 import java.util.*
-import java.util.concurrent.CompletableFuture
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -40,7 +39,7 @@ class PostgresProxyAuthTest {
     private lateinit var directConnection: Connection
     private lateinit var proxy: ProxyInstance
     private lateinit var postgresContainer: PostgreSQLContainer<Nothing>
-    private val startedProxies = mutableListOf<PostgresProxy>()
+    private val startedProxies = mutableListOf<PostgresProxyServer>()
 
     @BeforeEach
     fun setup() {
@@ -84,20 +83,22 @@ class PostgresProxyAuthTest {
         val randomUsername = getRandomString(8)
         val randomPassword = getRandomString(16)
         val connAuth = AuthenticationDetails.UserPassword("test", "test")
-        var proxy = PostgresProxy(
-            postgresContainer.host,
-            postgresContainer.getMappedPort(5432),
-            "testdb",
-            connAuth,
-            this.proxy.eventService,
-            executionRequestFactory.createDatasourceExecutionRequest(),
-            "mock",
-        )
-
-        CompletableFuture.runAsync {
-            proxy.startServer(port, randomUsername, randomPassword, LocalDateTime.now(), 10)
-        }
+        val proxy = PostgresProxyServer(port, this.proxy.eventService, null)
+        proxy.start()
         waitForProxyStart(proxy)
+        startedProxies.add(proxy)
+        proxy.registerSession(
+            username = randomUsername,
+            password = randomPassword,
+            targetHost = postgresContainer.host,
+            targetPort = postgresContainer.getMappedPort(5432),
+            databaseName = "testdb",
+            authenticationDetails = connAuth,
+            executionRequest = executionRequestFactory.createDatasourceExecutionRequest(),
+            userId = "mock",
+            startTime = LocalDateTime.now(),
+            maxTimeMinutes = 10,
+        )
         assertDoesNotThrow {
             val proxyProps = Properties()
             proxyProps.setProperty("user", randomUsername)
@@ -116,26 +117,24 @@ class PostgresProxyAuthTest {
         val request = executionRequestFactory.createDatasourceExecutionRequest()
         val eventService = EventServiceMock(executionRequestAdapter, eventAdapter, request)
 
-        var proxy = PostgresProxy(
-            postgresContainer.host,
-            postgresContainer.getMappedPort(5432),
-            "testdb",
-            connAuth,
-            eventService,
-            executionRequestFactory.createDatasourceExecutionRequest(),
-            "mock",
+        val proxy = PostgresProxyServer(port, eventService, null)
+        proxy.start()
+        waitForProxyStart(proxy)
+        startedProxies.add(proxy)
+        // The registered session's credentials differ from the ones the client connects with below, so the
+        // connection must be rejected.
+        proxy.registerSession(
+            username = "notuser",
+            password = "notpass",
+            targetHost = postgresContainer.host,
+            targetPort = postgresContainer.getMappedPort(5432),
+            databaseName = "testdb",
+            authenticationDetails = connAuth,
+            executionRequest = request,
+            userId = "mock",
+            startTime = LocalDateTime.now(),
+            maxTimeMinutes = 10,
         )
-
-        CompletableFuture.runAsync {
-            // the proxyUsername and proxyPassword below must be less than the randomly generated ones to gurantee failure
-            proxy.startServer(port, "notuser", "notpass", LocalDateTime.now(), 10)
-        }
-        var sleepCycle = 0
-        while (!proxy.isRunning && sleepCycle < 10) {
-            Thread.sleep(1000)
-            sleepCycle++
-        }
-        assert(sleepCycle < 10)
         assertThrows<Exception> {
             val proxyProps = Properties()
             proxyProps.setProperty("user", randomUsername)
@@ -177,25 +176,89 @@ class PostgresProxyAuthTest {
         assertEquals("28P01", throwable.sqlState)
     }
 
+    @Test
+    fun `one listener routes each client to its own session by username`() {
+        // The core of the single-stable-port model: many sessions share one listener and are told apart by
+        // the username the client sends in its startup message, each with its own temp password.
+        val port = (30001..31000).random()
+        val server = PostgresProxyServer(port, this.proxy.eventService, null)
+        server.start()
+        waitForProxyStart(server)
+        startedProxies.add(server)
+
+        val connAuth = AuthenticationDetails.UserPassword("test", "test")
+        val requestFactory = ExecutionRequestFactory()
+        val userA = getRandomString(8)
+        val passA = getRandomString(16)
+        val userB = getRandomString(8)
+        val passB = getRandomString(16)
+        listOf(userA to passA, userB to passB).forEach { (user, pass) ->
+            server.registerSession(
+                username = user,
+                password = pass,
+                targetHost = postgresContainer.host,
+                targetPort = postgresContainer.getMappedPort(5432),
+                databaseName = "testdb",
+                authenticationDetails = connAuth,
+                executionRequest = requestFactory.createDatasourceExecutionRequest(),
+                userId = "mock",
+                startTime = LocalDateTime.now(),
+                maxTimeMinutes = 10,
+            )
+        }
+
+        // Each registered username authenticates with its own password and reaches the target through the
+        // one shared listener.
+        listOf(userA to passA, userB to passB).forEach { (user, pass) ->
+            assertDoesNotThrow {
+                val props = Properties()
+                props.setProperty("user", user)
+                props.setProperty("password", pass)
+                DriverManager.getConnection("jdbc:postgresql://localhost:$port/testdb", props).use { conn ->
+                    conn.createStatement().executeQuery("SELECT 1").close()
+                }
+            }
+        }
+
+        // A username with no session on the same listener is rejected.
+        assertThrows<PSQLException> {
+            val props = Properties()
+            props.setProperty("user", getRandomString(8))
+            props.setProperty("password", passA)
+            DriverManager.getConnection("jdbc:postgresql://localhost:$port/testdb", props)
+        }
+
+        // Crossed credentials (A's name, B's password) fail: routing picks A's session, B's password fails
+        // A's proof.
+        assertThrows<PSQLException> {
+            val props = Properties()
+            props.setProperty("user", userA)
+            props.setProperty("password", passB)
+            DriverManager.getConnection("jdbc:postgresql://localhost:$port/testdb", props)
+        }
+    }
+
     private fun startProxy(proxyUsername: String, proxyPassword: String): Int {
         val port = (22100..30000).random()
         val executionRequestFactory = ExecutionRequestFactory()
         val request = executionRequestFactory.createDatasourceExecutionRequest()
         val eventService = EventServiceMock(executionRequestAdapter, eventAdapter, request)
-        val proxy = PostgresProxy(
-            postgresContainer.host,
-            postgresContainer.getMappedPort(5432),
-            "testdb",
-            AuthenticationDetails.UserPassword("test", "test"),
-            eventService,
-            executionRequestFactory.createDatasourceExecutionRequest(),
-            "mock",
-        )
+        val proxy = PostgresProxyServer(port, eventService, null)
         startedProxies.add(proxy)
-        CompletableFuture.runAsync {
-            proxy.startServer(port, proxyUsername, proxyPassword, LocalDateTime.now(), 10)
-        }
+        proxy.start()
         waitForProxyStart(proxy)
+        proxy.registerSession(
+            username = proxyUsername,
+            password = proxyPassword,
+            targetHost = postgresContainer.host,
+            targetPort = postgresContainer.getMappedPort(5432),
+            databaseName = "testdb",
+            authenticationDetails = AuthenticationDetails.UserPassword("test", "test"),
+            executionRequest = request,
+            userId = "mock",
+            startTime = LocalDateTime.now(),
+            maxTimeMinutes = 10,
+        )
         return port
     }
 }

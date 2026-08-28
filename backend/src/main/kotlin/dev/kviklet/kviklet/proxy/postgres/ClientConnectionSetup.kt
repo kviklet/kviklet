@@ -11,7 +11,7 @@ import dev.kviklet.kviklet.proxy.postgres.messages.isSSLRequest
 import dev.kviklet.kviklet.proxy.postgres.messages.isStartupMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.paramMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.readyForQuery
-import dev.kviklet.kviklet.proxy.postgres.messages.startupMessageContainsValidUser
+import dev.kviklet.kviklet.proxy.postgres.messages.startupMessageUser
 import dev.kviklet.kviklet.proxy.postgres.messages.tlsNotSupportedMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.tlsSupportedMessage
 import java.io.InputStream
@@ -24,27 +24,54 @@ import javax.net.ssl.SSLSocket
 // the real server would accept can only be garbage or an attack, so we reject it instead of buffering.
 private const val MAX_STARTUP_PACKET_LENGTH = 10_000
 
-// The (possibly TLS-upgraded) client socket once the client has successfully authenticated.
-class AuthenticatedClient(val socket: Socket)
+// A legitimate client sends at most one SSLRequest and one GSSENCRequest before its StartupMessage. More
+// pre-startup frames than this means the client is looping (e.g. repeated SSLRequests, each of which would
+// also nest another TLS layer) and it is cut off rather than allowed to spin within the handshake deadline.
+private const val MAX_PRE_STARTUP_FRAMES = 4
 
-// Runs SSL negotiation and client authentication. No upstream database connection is opened here, so
-// an unauthenticated, aborting or idle client can never leak a target connection or pin a slot: the
-// caller's handshake deadline (soTimeout) bounds every read below, and EOF ends the handshake.
+// Fallback total handshake budget used only if the caller left the socket timeout at 0 ("block forever").
+private const val DEFAULT_HANDSHAKE_BUDGET_MS = 10_000L
+
+// The (possibly TLS-upgraded) client socket once the client has successfully authenticated, together with
+// the session its username routed to. The session is what a single stable listener uses to serve many
+// concurrent requests: the client delivers its username in the startup message, before any upstream work.
+class AuthenticatedSession(val socket: Socket, val session: ProxySession)
+
+// Runs SSL negotiation and client authentication, routing to a session by the username in the startup
+// message. No upstream database connection is opened here, so an unauthenticated, aborting or idle client
+// can never leak a target connection or pin a slot: the caller's handshake deadline (soTimeout) bounds
+// every read below, and EOF ends the handshake.
 //
-// Returns null when the client goes away before authenticating (immediate close, or a CancelRequest
-// that never authenticates and has nothing to relay).
+// resolveSession returns the session for a username, or null if there is none. An unknown username is not
+// short-circuited: the full SASL exchange still runs (with unknownUserPassword) so it fails identically to a
+// wrong password and an attacker cannot enumerate valid usernames. waitUntilAuthenticated throws on any auth
+// failure, so returning normally guarantees a matched, authenticated session.
+//
+// Returns null when the client goes away before authenticating (immediate close, or a CancelRequest that
+// never authenticates and has nothing to relay).
 fun authenticateClient(
     client: Socket,
     tlsCert: TLSCertificate?,
-    username: String,
-    password: String,
-): AuthenticatedClient? {
-    val handshakeTimeout = client.soTimeout
+    unknownUserPassword: String,
+    resolveSession: (String) -> ProxySession?,
+): AuthenticatedSession? {
+    // The caller's soTimeout is the TOTAL handshake budget, not just a per-read timeout: the socket timeout
+    // is shrunk to the remaining budget before every read below, so the whole handshake -- including a slow
+    // client dribbling one valid frame just under each timeout -- cannot outlast it and hold its slot forever.
+    val budgetMs = if (client.soTimeout > 0) client.soTimeout.toLong() else DEFAULT_HANDSHAKE_BUDGET_MS
+    val deadline = System.currentTimeMillis() + budgetMs
     var socket = client
     var input = socket.getInputStream()
     var output = socket.getOutputStream()
+    var preStartupFrames = 0
 
     while (true) {
+        val remaining = deadline - System.currentTimeMillis()
+        if (remaining <= 0) {
+            throw Exception("Client handshake exceeded its deadline, aborting the connection")
+        }
+        socket.soTimeout = remaining.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+
         // Read the whole frame before dispatching. A single read is not guaranteed to be a single
         // frame: TCP can split one, and the fixed-offset detectors below would misread a half-frame
         // (throwing on a split header, or auth-failing a valid user and feeding the tail to SASL on a
@@ -54,15 +81,16 @@ fun authenticateClient(
         when {
             isSSLRequest(frame) -> {
                 socket = handleSSLRequest(socket, tlsCert)
-                socket.soTimeout = handshakeTimeout
                 input = socket.getInputStream()
                 output = socket.getOutputStream()
+                preStartupFrames++
             }
 
             isGSSENCRequest(frame) -> {
                 // We do not offer GSSAPI encryption, decline it and let the client fall back to a
                 // plain StartupMessage instead of discarding the request and deadlocking.
                 output.writeAndFlush(gssEncNotSupportedMessage())
+                preStartupFrames++
             }
 
             isCancelRequest(frame) -> {
@@ -73,13 +101,21 @@ fun authenticateClient(
             }
 
             isStartupMessage(frame) -> {
-                val isUserValid = startupMessageContainsValidUser(frame, frame.size, username)
+                val requestedUser = startupMessageUser(frame, frame.size)
+                val session = requestedUser?.let { resolveSession(it) }
                 sendAuthRequest(output)
-                waitUntilAuthenticated(input, output, password, isUserValid)
-                return AuthenticatedClient(socket)
+                // Unknown user -> isUserValid=false and a placeholder password, so SASL fails exactly like a
+                // wrong password. waitUntilAuthenticated throws on failure, so the return below is only
+                // reached when a real session authenticated successfully.
+                waitUntilAuthenticated(input, output, session?.password ?: unknownUserPassword, session != null)
+                return AuthenticatedSession(socket, session!!)
             }
 
             else -> throw Exception("Unexpected message during the client handshake, aborting the connection")
+        }
+
+        if (preStartupFrames > MAX_PRE_STARTUP_FRAMES) {
+            throw Exception("Too many pre-startup frames before a StartupMessage, aborting the connection")
         }
     }
 }

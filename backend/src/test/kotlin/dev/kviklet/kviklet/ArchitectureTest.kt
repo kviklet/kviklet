@@ -10,7 +10,6 @@ import dev.kviklet.kviklet.security.NoPolicy
 import dev.kviklet.kviklet.security.Policy
 import jakarta.annotation.PostConstruct
 import jakarta.persistence.Entity
-import org.springframework.scheduling.annotation.Async
 
 @AnalyzeClasses(packages = ["dev.kviklet.kviklet"], importOptions = [DoNotIncludeTests::class])
 class ArchitectureTest {
@@ -25,7 +24,6 @@ class ArchitectureTest {
         .and().areDeclaredInClassesThat().resideInAPackage("..service..")
         .and().areDeclaredInClassesThat().haveSimpleNameEndingWith("Service")
         .and().doNotHaveModifier(JavaModifier.SYNTHETIC)
-        .and().areNotAnnotatedWith(Async::class.java)
         .and().areNotAnnotatedWith(PostConstruct::class.java)
         .should().beAnnotatedWith(Policy::class.java).orShould().beAnnotatedWith(NoPolicy::class.java)
 }
