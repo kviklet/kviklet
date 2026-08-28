@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory
 import java.net.ServerSocket
 import java.net.Socket
 import java.time.LocalDateTime
-import java.time.ZoneId
+import java.time.ZoneOffset
 import java.util.Date
 import java.util.Timer
 import java.util.concurrent.ConcurrentHashMap
@@ -348,9 +348,12 @@ class PostgresProxyServer(
     }
 }
 
+// startTime is a UTC LocalDateTime (utcTimeNow() / an event's stored createdAt), so it must be resolved to
+// an instant as UTC. Using the host's zone made a finite access window last (UTC offset) hours too long on a
+// negative-offset host and fire immediately -- killing every finite session on arrival -- on a positive one.
 fun getShutdownDate(startTime: LocalDateTime, maxTimeMinutes: Long): Date = Date.from(
     startTime
         .plusMinutes(maxTimeMinutes)
-        .atZone(ZoneId.systemDefault())
+        .atZone(ZoneOffset.UTC)
         .toInstant(),
 )
