@@ -61,6 +61,12 @@ class SASLInitialResponse(
                 throw Exception("Unsupported SASL mechanism '$mechanism'; only SCRAM-SHA-256 is supported")
             }
             val saslDataLength = buffer.int
+            // The length is attacker-controlled and this runs pre-auth, so bound it against what the packet
+            // actually contains before allocating; otherwise ByteArray(saslDataLength) is an unauthenticated
+            // heap-pressure DoS (and a huge value throws OutOfMemoryError, an Error that slips past catch).
+            if (saslDataLength < 0 || saslDataLength > buffer.remaining()) {
+                throw Exception("SASL data length $saslDataLength exceeds the message size")
+            }
             val saslData = ByteArray(saslDataLength)
             buffer.get(saslData)
             // Strip the gs2 header (e.g. "n,,") to get the SCRAM client-first-bare ("n=...,r=...").
