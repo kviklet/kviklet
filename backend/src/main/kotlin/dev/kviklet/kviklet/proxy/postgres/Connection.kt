@@ -27,6 +27,12 @@ class Connection(
     private val eventService: EventService,
     private val executionRequest: ExecutionRequest,
     private val userId: String,
+    // The raw accepted TCP socket underneath clientSocket. For a TLS client, clientSocket is an
+    // SSLSocket layered over this one with autoClose=false, so closing the SSLSocket leaves this fd (and
+    // the parked blocking read on it) open. Closing the underlying socket is what actually unblocks the
+    // relay threads and frees the fd, so teardown closes this rather than the SSL wrapper. Defaults to
+    // clientSocket for the plain (non-TLS) case, where they are the same socket.
+    private val rawClientSocket: Socket = clientSocket,
 ) {
     private var clientInput: InputStream = clientSocket.getInputStream()
     private var clientOutput: OutputStream = clientSocket.getOutputStream()
@@ -67,8 +73,15 @@ class Connection(
     // Closes both sockets. Closing the upstream socket is what actually frees the target database
     // connection, and closing the client socket unblocks a peer still waiting on it. Idempotent, so it
     // is safe to call from the relay loop's teardown and again from a concurrent shutdown.
+    //
+    // On the client side this closes the raw underlying TCP socket, not the SSLSocket wrapper. For a TLS
+    // client the wrapper is created with autoClose=false, so closing it would leave the underlying fd and
+    // its parked blocking read open (a leaked thread, fd and session per TLS access window). Closing the
+    // underlying socket reliably unblocks both the blocking read and a blocking SSL write; it also avoids
+    // SSLSocket.close(), which can block on the TLS output-record lock the pump holds during a write and
+    // would otherwise wedge shutdownServer() under the proxy monitor.
     private fun closeSockets() {
-        runCatching { if (!clientSocket.isClosed) clientSocket.close() }
+        runCatching { if (!rawClientSocket.isClosed) rawClientSocket.close() }
         runCatching { if (!targetSocket.isClosed) targetSocket.close() }
     }
 
