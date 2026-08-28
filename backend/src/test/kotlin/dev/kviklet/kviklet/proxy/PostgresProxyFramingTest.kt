@@ -3,13 +3,10 @@ package dev.kviklet.kviklet.proxy
 
 import dev.kviklet.kviklet.proxy.postgres.messages.MessageFramer
 import dev.kviklet.kviklet.proxy.postgres.messages.QueryMessage
-import dev.kviklet.kviklet.proxy.postgres.readFromAnyStream
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import java.io.ByteArrayInputStream
 import java.nio.ByteBuffer
 
 class PostgresProxyFramingTest {
@@ -125,32 +122,5 @@ class PostgresProxyFramingTest {
         buffer.put('Q'.code.toByte())
         buffer.putInt(Int.MAX_VALUE)
         assertThrows<Exception> { framer.feed(buffer.array()) }
-    }
-
-    @Test
-    fun `reading from a stream at EOF reports the stream as closed`() {
-        val received = mutableListOf<ByteArray>()
-        val open = readFromAnyStream(ByteArrayInputStream(ByteArray(0))) { received.add(it) }
-        assertFalse(open)
-        assertTrue(received.isEmpty())
-    }
-
-    @Test
-    fun `reading a stream that ends after a single byte still delivers that byte`() {
-        val received = mutableListOf<ByteArray>()
-        val open = readFromAnyStream(ByteArrayInputStream(byteArrayOf(42))) { received.add(it) }
-        assertFalse(open)
-        assertEquals(1, received.size)
-        assertEquals(42, received[0][0].toInt())
-    }
-
-    @Test
-    fun `reading a stream with data delivers all of it and keeps the stream open`() {
-        val data = ByteArray(100) { it.toByte() }
-        val received = mutableListOf<ByteArray>()
-        val open = readFromAnyStream(ByteArrayInputStream(data)) { received.add(it) }
-        assertTrue(open)
-        assertEquals(1, received.size)
-        assertTrue(data.contentEquals(received[0]))
     }
 }

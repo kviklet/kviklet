@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.Socket
-import java.net.SocketTimeoutException
 
 class Connection(
     private val clientSocket: Socket,
@@ -28,21 +27,41 @@ class Connection(
     private val eventService: EventService,
     private val executionRequest: ExecutionRequest,
     private val userId: String,
+    // The raw accepted TCP socket underneath clientSocket. For a TLS client, clientSocket is an
+    // SSLSocket layered over this one with autoClose=false, so closing the SSLSocket leaves this fd (and
+    // the parked blocking read on it) open. Closing the underlying socket is what actually unblocks the
+    // relay threads and frees the fd, so teardown closes this rather than the SSL wrapper. Defaults to
+    // clientSocket for the plain (non-TLS) case, where they are the same socket.
+    private val rawClientSocket: Socket = clientSocket,
 ) {
     private var clientInput: InputStream = clientSocket.getInputStream()
     private var clientOutput: OutputStream = clientSocket.getOutputStream()
     private var serverInput: InputStream = targetSocket.getInputStream()
     private var serverOutput: OutputStream = targetSocket.getOutputStream()
+
+    // clientOutput has two writers once the relay runs on two threads: the server->client pump (normal
+    // server bytes) and the client->server thread's abortSession (an injected ErrorResponse pair).
+    // The lock serializes them so one write cannot be split by the other, and -- because both the pump's
+    // forward and abortSession's write consult sessionAborted while holding it -- guarantees no server
+    // chunk is forwarded after the abort pair. It does NOT align the abort pair to a server-message
+    // boundary: the proxy does not frame the server->client stream, so a pump chunk (a raw read) can end
+    // mid-message and the abort pair then follows a partial message. That is harmless here because the
+    // session is being torn down; the client errors out either way. serverOutput has a single writer (the
+    // client->server thread) so it needs no lock.
+    private val clientWriteLock = Any()
     private val clientFramer = MessageFramer()
     private val preparedStatements: MutableMap<String, Statement> = mutableMapOf()
     private val portals: MutableMap<String, Portal> = mutableMapOf()
     private var terminationMessageReceived: Boolean = false
 
-    // Written by close() on the shutdown thread and read by the relay loop on a pool thread, so it needs
-    // a happens-before edge. terminationMessageReceived and sessionAborted are only ever touched on the
-    // relay thread, so they do not.
+    // Written by close() on the shutdown thread and read by both relay threads, so it needs a
+    // happens-before edge. terminationMessageReceived is only touched on the client->server thread.
     @Volatile
     private var serverTerminating: Boolean = false
+
+    // Set by abortSession on the client->server thread and read by the pump thread; every access happens
+    // under clientWriteLock, which supplies the happens-before edge (so no @Volatile is needed), and also
+    // makes "send the final error pair" and "stop forwarding server bytes" one atomic decision.
     private var sessionAborted: Boolean = false
 
     companion object {
@@ -62,32 +81,76 @@ class Connection(
     // Closes both sockets. Closing the upstream socket is what actually frees the target database
     // connection, and closing the client socket unblocks a peer still waiting on it. Idempotent, so it
     // is safe to call from the relay loop's teardown and again from a concurrent shutdown.
+    //
+    // On the client side this closes the raw underlying TCP socket, not the SSLSocket wrapper. For a TLS
+    // client the wrapper is created with autoClose=false, so closing it would leave the underlying fd and
+    // its parked blocking read open (a leaked thread, fd and session per TLS access window). Closing the
+    // underlying socket reliably unblocks both the blocking read and a blocking SSL write; it also avoids
+    // SSLSocket.close(), which can block on the TLS output-record lock the pump holds during a write and
+    // would otherwise wedge shutdownServer() under the proxy monitor.
     private fun closeSockets() {
-        runCatching { if (!clientSocket.isClosed) clientSocket.close() }
+        runCatching { if (!rawClientSocket.isClosed) rawClientSocket.close() }
         runCatching { if (!targetSocket.isClosed) targetSocket.close() }
     }
 
     fun startHandling() {
-        // This basically transfers messages between the client and the server sockets.
+        // Two blocking threads per session. This (pool) thread drives client->server: it frames, audits
+        // and forwards, and it owns all the audit state (framer, prepared statements, portals) so none of
+        // that needs synchronization. A single spawned thread pumps server->client raw. Blocking reads
+        // replace the old 10ms-poll hack, so there is no idle CPU burn and no latency floor.
         // NOTE: At this point the client connection is set up. SSL, Auth etc... are handled in ClientConnectionSetup.kt
         // The finally is the single teardown path for every exit: clean Terminate, client/server EOF,
-        // an aborted session, a parse failure, or an exception. Without it the upstream connection and
-        // both sockets leak for the lifetime of the proxy (KVI-230).
+        // an aborted session, a parse failure, or an exception. It closes both sockets (freeing the
+        // upstream connection, KVI-230) which also unblocks the pump thread, then joins it.
+        val serverToClient = Thread({ pumpServerToClient() }, "pg-proxy-server-to-client")
+        serverToClient.start()
         try {
             while (!terminationMessageReceived && !serverTerminating && !sessionAborted) {
-                val clientOpen = readFromAnyStream(clientInput) { handleClientData(it) }
-                val serverOpen = readFromAnyStream(serverInput) { clientOutput.writeAndFlush(it) }
-                if (!clientOpen || !serverOpen) {
-                    logger.info(
-                        "The {} closed the connection, ending the session",
-                        if (clientOpen) "server" else "client",
-                    )
-                    break
-                }
+                val chunk = try {
+                    readChunk(clientInput)
+                } catch (e: Exception) {
+                    // A read failure during teardown (the socket was closed under us) is expected; only
+                    // an unexpected one is worth surfacing.
+                    if (serverTerminating || sessionAborted) break
+                    throw e
+                } ?: break // client reached EOF
+                handleClientData(chunk)
             }
         } finally {
-            closeSockets()
+            close()
+            serverToClient.join()
         }
+    }
+
+    // Raw server->client relay. No parsing or auditing happens on server responses, so this is a dumb
+    // byte pump. Writes go through clientWriteLock so they cannot interleave with an abort ErrorResponse.
+    private fun pumpServerToClient() {
+        try {
+            while (!serverTerminating) {
+                val chunk = readChunk(serverInput) ?: break // server reached EOF
+                synchronized(clientWriteLock) {
+                    // If an abort sent the final error pair while this chunk was being read, stop rather
+                    // than forwarding server bytes after the ReadyForQuery the client already saw.
+                    if (sessionAborted) break
+                    clientOutput.writeAndFlush(chunk)
+                }
+            }
+        } catch (e: Exception) {
+            // The client->server thread closing the sockets during teardown unblocks this read with an
+            // exception; that is the normal way this thread ends, so it is not an error.
+            logger.info("Server-to-client relay ended: {}", e.message)
+        } finally {
+            // Closing here unblocks the client->server thread if the server was the side that went away.
+            close()
+        }
+    }
+
+    // Blocking read of one chunk. Returns null at EOF. Throws if the socket is closed mid-read.
+    private fun readChunk(input: InputStream): ByteArray? {
+        val buff = ByteArray(8192)
+        val read = input.read(buff)
+        if (read == -1) return null
+        return buff.copyOfRange(0, read)
     }
 
     private fun handleClientData(clientBuffer: ByteArray) {
@@ -145,13 +208,21 @@ class Connection(
     }
 
     private fun abortSession(reason: String) {
-        try {
-            clientOutput.writeAndFlush(errorResponse(reason))
-            clientOutput.writeAndFlush(readyForQuery())
-        } catch (e: Exception) {
-            logger.warn("Failed to send error response to the client while aborting the session", e)
+        // Hold the lock across both writes and the flag so a server->client chunk cannot split the
+        // ErrorResponse/ReadyForQuery pair, and so the pump (which re-checks sessionAborted under the same
+        // lock) forwards nothing after it. Setting the flag inside the lock is what makes the two atomic.
+        // Edge case left as-is because the session is dying anyway: if the pump is blocked writing to a
+        // client that has stopped reading, it holds the lock and this parks until teardown closes the
+        // socket. Bounded by the access window; only unbounded under INFINITE_ACCESS.
+        synchronized(clientWriteLock) {
+            try {
+                clientOutput.writeAndFlush(errorResponse(reason))
+                clientOutput.writeAndFlush(readyForQuery())
+            } catch (e: Exception) {
+                logger.warn("Failed to send error response to the client while aborting the session", e)
+            }
+            sessionAborted = true
         }
-        sessionAborted = true
     }
 
     private fun handleQuery(parsedMessage: QueryMessage) {
@@ -206,33 +277,3 @@ private class Portal(val statement: Statement) {
 
 private class UnknownStatementException(val name: String) :
     Exception("Client referenced the statement or portal '$name' which the proxy has not seen before")
-
-// Because SSLSocket available method always return zero, the code counts on short read timeout hack
-// Originally this was the case only for the server connections, now it is the case for both the client and the server
-// More info about the hack: https://stackoverflow.com/a/29386157
-// Returns false once the stream has reached EOF and no more data will ever arrive
-fun readFromAnyStream(input: InputStream, onInputAvailable: (input: ByteArray) -> Unit): Boolean {
-    val singleByte = ByteArray(1)
-    val bytesRead: Int = try {
-        input.read(singleByte, 0, 1)
-    } catch (e: SocketTimeoutException) {
-        return true
-    }
-    if (bytesRead == -1) {
-        return false
-    }
-
-    val buff = ByteArray(8192)
-    val read = try {
-        input.read(buff)
-    } catch (e: SocketTimeoutException) {
-        // Only the single polled byte was available before the socket timeout kicked in
-        0
-    }
-    if (read == -1) {
-        onInputAvailable(singleByte)
-        return false
-    }
-    onInputAvailable(singleByte + buff.copyOfRange(0, read))
-    return true
-}
