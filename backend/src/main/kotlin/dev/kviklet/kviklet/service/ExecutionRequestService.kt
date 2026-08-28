@@ -1,6 +1,5 @@
 package dev.kviklet.kviklet.service
 
-import dev.kviklet.kviklet.TLSCerts
 import dev.kviklet.kviklet.controller.CreateCommentRequest
 import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
 import dev.kviklet.kviklet.controller.CreateExecutionRequestRequest
@@ -13,8 +12,8 @@ import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.ReviewPayload
 import dev.kviklet.kviklet.db.UserAdapter
-import dev.kviklet.kviklet.proxy.postgres.PostgresProxy
-import dev.kviklet.kviklet.proxy.postgres.tlsCertificateFactory
+import dev.kviklet.kviklet.proxy.postgres.INFINITE_ACCESS
+import dev.kviklet.kviklet.proxy.postgres.PostgresProxyServer
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.PermissionResolver
 import dev.kviklet.kviklet.security.Policy
@@ -57,7 +56,6 @@ import jakarta.transaction.Transactional
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
-import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Service
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
@@ -66,7 +64,6 @@ import java.io.OutputStream
 import java.security.SecureRandom
 import java.time.Duration
 import java.time.LocalDateTime
-import java.util.concurrent.CompletableFuture
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -80,13 +77,12 @@ class ExecutionRequestService(
     private val mongoDBExecutor: MongoDBExecutor,
     private val connectionService: ConnectionService,
     private val userAdapter: UserAdapter,
-    private val proxyTLSCerts: TLSCerts,
+    private val postgresProxyServer: PostgresProxyServer,
     private val dryRunValidator: DryRunValidator,
     private val roleAdapter: dev.kviklet.kviklet.db.RoleAdapter,
     private val permissionResolver: PermissionResolver,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
-    private val proxies = mutableListOf<ExecutionProxy>()
 
     companion object {
         const val MAX_STORED_ROWS = 500
@@ -946,18 +942,9 @@ class ExecutionRequestService(
         }
     }
 
-    private fun cleanUpProxies() {
-        val now = utcTimeNow()
-        val expiredProxies = proxies.filter { it.startTime.plusMinutes(60) < now }
-        expiredProxies.forEach {
-            proxies.remove(it)
-        }
-    }
-
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
     fun proxy(executionRequestId: ExecutionRequestId, userDetails: UserDetailsWithId): ExecutionProxy {
-        cleanUpProxies()
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(executionRequestId)
         val connection = executionRequest.request.connection
         if (connection !is DatasourceConnection) {
@@ -976,6 +963,11 @@ class ExecutionRequestService(
         if (connection.auth !is AuthenticationDetails.UserPassword) {
             throw RuntimeException("Only UserPassword authentication is supported for proxying!")
         }
+        if (!postgresProxyServer.isRunning) {
+            throw RuntimeException(
+                "The Postgres proxy listener is not available. Set kviklet.proxy.postgres.port to a free port.",
+            )
+        }
 
         executionRequest.raiseIfAlreadyExecuted()
 
@@ -984,40 +976,40 @@ class ExecutionRequestService(
             .ifEmpty { listOf(utcTimeNow()) }
             .minOf { it }
 
-        // Randomly generate a temp password for the proxy
+        // A unique temp username per session is required: it is the routing key on the single shared
+        // listener (the client sends it in the startup message, so the proxy knows which session to serve
+        // before any upstream work). The temp password authenticates it. Neither relates to the upstream DB
+        // credentials, which the proxy supplies to the target from the stored connection auth.
+        val username = generateProxyUsername()
         val password = generateRandomPassword(16)
 
-        val usedPorts = proxies.map { it.port }
-        val availablePort = (5438..6000).first { it !in usedPorts }
-
-        startServerAsync(
-            connection.hostname,
-            connection.port,
-            connection.databaseName ?: "",
-            availablePort,
-            connection.auth,
-            // using this instead of the users email because @ for database usernames is not allowed
-            connection.auth.username,
-            password,
+        postgresProxyServer.registerSession(
+            username = username,
+            password = password,
+            targetHost = connection.hostname,
+            targetPort = connection.port,
+            databaseName = connection.databaseName ?: "",
+            authenticationDetails = connection.auth,
             executionRequest = executionRequest.request,
             userId = userDetails.id,
-            firstEventTime,
-            maxTimeMinutes =
-            executionRequest.request.temporaryAccessDuration?.toMinutes()
-                ?: dev.kviklet.kviklet.proxy.postgres.INFINITE_ACCESS,
+            startTime = firstEventTime,
+            maxTimeMinutes = executionRequest.request.temporaryAccessDuration?.toMinutes() ?: INFINITE_ACCESS,
         )
-        logger.info("Started proxy for user ${connection.auth.username} on port 5438")
-        val proxy = ExecutionProxy(
+        logger.info("Registered proxy session $username on port ${postgresProxyServer.listenPort}")
+
+        return ExecutionProxy(
             request = executionRequest.request,
-            port = availablePort,
-            username = connection.auth.username,
+            port = postgresProxyServer.listenPort,
+            username = username,
             password = password,
             startTime = firstEventTime,
         )
-        proxies.add(proxy)
-
-        return proxy
     }
+
+    // The client-facing temp username: prefixed for recognisability, lowercase so no client-side identifier
+    // folding can change what reaches the proxy, and random so it is unique per session (the listener routes
+    // by it). Not the DB username -- that would collide across concurrent sessions on the shared port.
+    private fun generateProxyUsername(): String = "kviklet_" + generateRandomPassword(12).lowercase()
 
     private fun generateRandomPassword(length: Int): String {
         val characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
@@ -1030,44 +1022,6 @@ class ExecutionRequestService(
         }
 
         return password.toString()
-    }
-
-    @Async
-    fun startServerAsync(
-        hostname: String,
-        port: Int,
-        databaseName: String,
-        mappedPort: Int,
-        authenticationDetails: AuthenticationDetails.UserPassword,
-        email: String,
-        tempPassword: String,
-        executionRequest: ExecutionRequest,
-        userId: String,
-        startTime: LocalDateTime,
-        maxTimeMinutes: Long,
-    ): CompletableFuture<Void>? = CompletableFuture.runAsync {
-        try {
-            PostgresProxy(
-                hostname,
-                port,
-                databaseName,
-                authenticationDetails,
-                eventService,
-                executionRequest,
-                userId,
-                tlsCertificateFactory(proxyTLSCerts.proxyCertificates()),
-            ).startServer(
-                mappedPort,
-                email,
-                tempPassword,
-                startTime,
-                maxTimeMinutes,
-            )
-        } catch (e: Exception) {
-            // At least print the exception, otherwise it will fail silently in the background
-            logger.error("Error starting proxy for user $userId on port $port", e)
-            throw e
-        }
     }
 }
 
