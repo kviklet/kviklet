@@ -40,20 +40,28 @@ class Connection(
     private var serverOutput: OutputStream = targetSocket.getOutputStream()
 
     // clientOutput has two writers once the relay runs on two threads: the server->client pump (normal
-    // server bytes) and the client->server thread's abortSession (an injected ErrorResponse). Without a
-    // lock those two could interleave and corrupt a frame on the wire. serverOutput has a single writer
-    // (the client->server thread) so it needs no lock.
+    // server bytes) and the client->server thread's abortSession (an injected ErrorResponse pair).
+    // The lock serializes them so one write cannot be split by the other, and -- because both the pump's
+    // forward and abortSession's write consult sessionAborted while holding it -- guarantees no server
+    // chunk is forwarded after the abort pair. It does NOT align the abort pair to a server-message
+    // boundary: the proxy does not frame the server->client stream, so a pump chunk (a raw read) can end
+    // mid-message and the abort pair then follows a partial message. That is harmless here because the
+    // session is being torn down; the client errors out either way. serverOutput has a single writer (the
+    // client->server thread) so it needs no lock.
     private val clientWriteLock = Any()
     private val clientFramer = MessageFramer()
     private val preparedStatements: MutableMap<String, Statement> = mutableMapOf()
     private val portals: MutableMap<String, Portal> = mutableMapOf()
     private var terminationMessageReceived: Boolean = false
 
-    // Written by close() on the shutdown thread and read by the relay loop on a pool thread, so it needs
-    // a happens-before edge. terminationMessageReceived and sessionAborted are only ever touched on the
-    // relay thread, so they do not.
+    // Written by close() on the shutdown thread and read by both relay threads, so it needs a
+    // happens-before edge. terminationMessageReceived is only touched on the client->server thread.
     @Volatile
     private var serverTerminating: Boolean = false
+
+    // Set by abortSession on the client->server thread and read by the pump thread; every access happens
+    // under clientWriteLock, which supplies the happens-before edge (so no @Volatile is needed), and also
+    // makes "send the final error pair" and "stop forwarding server bytes" one atomic decision.
     private var sessionAborted: Boolean = false
 
     companion object {
@@ -120,7 +128,12 @@ class Connection(
         try {
             while (!serverTerminating) {
                 val chunk = readChunk(serverInput) ?: break // server reached EOF
-                synchronized(clientWriteLock) { clientOutput.writeAndFlush(chunk) }
+                synchronized(clientWriteLock) {
+                    // If an abort sent the final error pair while this chunk was being read, stop rather
+                    // than forwarding server bytes after the ReadyForQuery the client already saw.
+                    if (sessionAborted) break
+                    clientOutput.writeAndFlush(chunk)
+                }
             }
         } catch (e: Exception) {
             // The client->server thread closing the sockets during teardown unblocks this read with an
@@ -195,17 +208,21 @@ class Connection(
     }
 
     private fun abortSession(reason: String) {
-        try {
-            // Hold the lock across both writes so a server->client chunk cannot split the ErrorResponse
-            // and ReadyForQuery pair the client expects.
-            synchronized(clientWriteLock) {
+        // Hold the lock across both writes and the flag so a server->client chunk cannot split the
+        // ErrorResponse/ReadyForQuery pair, and so the pump (which re-checks sessionAborted under the same
+        // lock) forwards nothing after it. Setting the flag inside the lock is what makes the two atomic.
+        // Edge case left as-is because the session is dying anyway: if the pump is blocked writing to a
+        // client that has stopped reading, it holds the lock and this parks until teardown closes the
+        // socket. Bounded by the access window; only unbounded under INFINITE_ACCESS.
+        synchronized(clientWriteLock) {
+            try {
                 clientOutput.writeAndFlush(errorResponse(reason))
                 clientOutput.writeAndFlush(readyForQuery())
+            } catch (e: Exception) {
+                logger.warn("Failed to send error response to the client while aborting the session", e)
             }
-        } catch (e: Exception) {
-            logger.warn("Failed to send error response to the client while aborting the session", e)
+            sessionAborted = true
         }
-        sessionAborted = true
     }
 
     private fun handleQuery(parsedMessage: QueryMessage) {
