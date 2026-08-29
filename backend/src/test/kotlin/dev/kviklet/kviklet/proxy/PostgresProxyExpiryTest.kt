@@ -5,6 +5,8 @@ import dev.kviklet.kviklet.db.EventAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.helper.ExecutionRequestFactory
 import dev.kviklet.kviklet.proxy.core.ProxyServer
+import dev.kviklet.kviklet.proxy.core.ProxySession
+import dev.kviklet.kviklet.proxy.core.getShutdownDate
 import dev.kviklet.kviklet.proxy.helpers.waitForProxyStart
 import dev.kviklet.kviklet.proxy.mocks.EventServiceMock
 import dev.kviklet.kviklet.proxy.postgres.PostgresProtocol
@@ -66,16 +68,17 @@ class PostgresProxyExpiryTest {
 
     private fun register(username: String, password: String, startTime: LocalDateTime, maxTimeMinutes: Long) {
         server.registerSession(
-            username = username,
-            password = password,
-            targetHost = postgresContainer.host,
-            targetPort = postgresContainer.getMappedPort(5432),
-            databaseName = "testdb",
-            authenticationDetails = AuthenticationDetails.UserPassword("test", "test"),
-            executionRequest = ExecutionRequestFactory().createDatasourceExecutionRequest(),
-            userId = "mock",
-            startTime = startTime,
-            maxTimeMinutes = maxTimeMinutes,
+            ProxySession(
+                username = username,
+                password = password,
+                executionRequest = ExecutionRequestFactory().createDatasourceExecutionRequest(),
+                userId = "mock",
+                targetHost = postgresContainer.host,
+                targetPort = postgresContainer.getMappedPort(5432),
+                databaseName = "testdb",
+                authenticationDetails = AuthenticationDetails.UserPassword("test", "test"),
+            ),
+            expiresAt = getShutdownDate(startTime, maxTimeMinutes).toInstant(),
         )
     }
 

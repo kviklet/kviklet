@@ -215,7 +215,7 @@ class Connection(
         // lock) forwards nothing after it. Setting the flag inside the lock is what makes the two atomic.
         // Edge case left as-is because the session is dying anyway: if the pump is blocked writing to a
         // client that has stopped reading, it holds the lock and this parks until teardown closes the
-        // socket. Bounded by the access window; only unbounded under INFINITE_ACCESS.
+        // socket. Bounded by the access window; only unbounded for a never-expiring session.
         synchronized(clientWriteLock) {
             try {
                 clientOutput.writeAndFlush(errorResponse(reason))
