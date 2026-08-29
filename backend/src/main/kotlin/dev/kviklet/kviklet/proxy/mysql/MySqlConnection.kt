@@ -15,6 +15,19 @@ import java.util.concurrent.ConcurrentHashMap
 
 private val logger = LoggerFactory.getLogger("MySqlConnection")
 
+// A payload of exactly 0xFFFFFF signals that the logical payload continues in the next packet, so the
+// reassembled payload needs its own bound: like the Postgres proxy's 1GB message cap, anything beyond it
+// can only be garbage or an attack, and buffering it would be unbounded. MySQL itself caps
+// max_allowed_packet at 1GB.
+private const val MAX_SPLIT_PACKET_LENGTH = 0xFFFFFF
+private const val MAX_ASSEMBLED_PAYLOAD_LENGTH = 0x40000000
+
+// A fail-closed violation on the relay: traffic the proxy must not forward because the audit log could not
+// record it (a failed audit write, an execute of a statement the proxy cannot attribute, a command that
+// sidesteps the audited session). The message is client-facing: it is sent to the client in the ERR packet
+// that aborts the session.
+class FailClosedException(message: String, cause: Throwable? = null) : Exception(message, cause)
+
 class MySqlConnection(
     private val clientSocket: Socket,
     private val targetSocket: Socket,
@@ -45,9 +58,22 @@ class MySqlConnection(
     @Volatile
     private var serverTerminating: Boolean = false
 
-    @Volatile
-    private var awaitingPrepareResponse = false
-    private var lastPreparedQuery: String? = null
+    // clientOutput has two writers: the server->client pump (normal server bytes) and abortSession (an
+    // injected ERR packet, callable from either relay thread). The lock serializes them so one write cannot
+    // be split by the other, and -- because the pump's forward and the abort both consult sessionAborted
+    // while holding it -- guarantees no server chunk is forwarded after the abort ERR. sessionAborted is
+    // only ever accessed under the lock, which supplies the happens-before edge.
+    private val clientWriteLock = Any()
+    private var sessionAborted: Boolean = false
+
+    // MySQL assigns prepared-statement ids server-side, so a COM_STMT_PREPARE's query text can only be
+    // paired with its id when the prepare-ok response arrives. Responses come back in request order, so the
+    // texts wait in a FIFO: pushed by the client->server thread on each prepare, popped by the
+    // server->client pump on each prepare response (ok or err). A single "awaiting" flag instead of a queue
+    // would let two pipelined prepares misattribute (first response paired with second text) and leave the
+    // second id untracked -- and an untracked id's execute is exactly what onExecute must fail closed on.
+    private val prepareLock = Any()
+    private val pendingPrepares = ArrayDeque<String>()
     private val preparedQueries = ConcurrentHashMap<Int, String>()
 
     private val clientParser = MySqlClientPacketParser(
@@ -55,16 +81,20 @@ class MySqlConnection(
             auditQuery(query)
         },
         onPrepare = { query ->
-            synchronized(this) {
-                lastPreparedQuery = query
-                awaitingPrepareResponse = true
+            synchronized(prepareLock) {
+                pendingPrepares.addLast(query)
             }
         },
         onExecute = { stmtId ->
+            // Fail closed: an execute the proxy cannot attribute to query text must not reach the server.
+            // Ids go untracked when the prepare-response pairing was disturbed (see pendingPrepares) or when
+            // the client fabricates an id it never prepared on this connection.
             val query = preparedQueries[stmtId]
-            if (query != null) {
-                auditQuery(query)
-            }
+                ?: throw FailClosedException(
+                    "Kviklet proxy does not know the prepared statement id $stmtId and cannot audit this " +
+                        "execution. The query was blocked and the session closed.",
+                )
+            auditQuery(query)
         },
         onClose = { stmtId ->
             // Release the stored query when the client closes the prepared statement
@@ -77,20 +107,15 @@ class MySqlConnection(
 
     private val serverParser = MySqlServerPacketParser(
         onPrepareOk = { stmtId ->
-            synchronized(this) {
-                if (awaitingPrepareResponse) {
-                    lastPreparedQuery?.let { preparedQueries[stmtId] = it }
-                    awaitingPrepareResponse = false
-                    lastPreparedQuery = null
-                }
+            synchronized(prepareLock) {
+                pendingPrepares.removeFirstOrNull()?.let { preparedQueries[stmtId] = it }
             }
         },
         onPrepareErr = {
-            // The server rejected the COM_STMT_PREPARE; drop the pending state so the
-            // next unrelated OK packet is not mistaken for this prepare's response.
-            synchronized(this) {
-                awaitingPrepareResponse = false
-                lastPreparedQuery = null
+            // The server rejected the oldest outstanding COM_STMT_PREPARE; drop its text so a later
+            // prepare-ok is not paired with the wrong query.
+            synchronized(prepareLock) {
+                pendingPrepares.removeFirstOrNull()
             }
         },
     )
@@ -100,7 +125,12 @@ class MySqlConnection(
             val executePayload = ExecutePayload(query = query)
             eventService.saveEvent(executionRequest.id!!, userId, executePayload)
         } catch (e: Exception) {
-            logger.error("Failed to audit query", e)
+            // Fail closed: a query the audit log did not record must not reach the server.
+            throw FailClosedException(
+                "Kviklet could not record the query in the audit log. The query was blocked and the " +
+                    "session closed.",
+                e,
+            )
         }
     }
 
@@ -126,13 +156,32 @@ class MySqlConnection(
         upstreamJdbcConnection?.let { runCatching { it.close() } }
     }
 
+    // Tells the client why the session is being killed (an ERR packet), then closes both sockets. The ERR
+    // is written under clientWriteLock so a concurrent server->client chunk cannot split it and nothing is
+    // forwarded to the client after it; close() then ends both relay loops.
+    private fun abortSession(reason: String) {
+        synchronized(clientWriteLock) {
+            try {
+                // Sequence id 1: the abort is triggered by a client command packet (sequence id 0), and 1
+                // is where the client expects that command's response. An abort raised from the server side
+                // mid-response may mismatch the client's expected sequence, which is acceptable for a
+                // session that is being torn down.
+                writePacket(clientOutput, 1, buildErrPacket(1105, "HY000", reason))
+            } catch (e: Exception) {
+                logger.warn("Failed to send the ERR packet to the client while aborting the session", e)
+            }
+            sessionAborted = true
+        }
+        close()
+    }
+
     override fun startHandling() {
         // Two blocking threads per session. This (pool) thread drives client->server: it feeds the packet
         // parser (which audits queries and tracks prepared statements) and forwards the raw bytes. A single
         // spawned thread pumps server->client, feeding its parser only to match prepared-statement ids.
-        // The finally is the single teardown path for every exit: clean COM_QUIT, client/server EOF or an
-        // exception. It closes both sockets (freeing the upstream connection) which also unblocks the pump
-        // thread, then joins it.
+        // The finally is the single teardown path for every exit: clean COM_QUIT, client/server EOF, an
+        // aborted session or an exception. It closes both sockets (freeing the upstream connection) which
+        // also unblocks the pump thread, then joins it.
         val serverToClient = Thread({ pumpServerToClient() }, "mysql-proxy-server-to-client")
         serverToClient.start()
         try {
@@ -145,9 +194,25 @@ class MySqlConnection(
                     if (serverTerminating) break
                     throw e
                 } ?: break // client reached EOF
-                // Audit before forwarding: the parser callbacks run synchronously inside addBytes, so every
-                // query is recorded before its bytes reach the server.
-                clientParser.addBytes(chunk)
+                // Fail closed: nothing is forwarded to the server unless the whole chunk was parsed and
+                // audited. The parser callbacks run synchronously inside addBytes, so every query is
+                // recorded before its bytes reach the server; a violation drops the entire chunk (an
+                // already-audited packet in it is dropped too, which is safe -- audited-but-never-executed
+                // is fine, forwarded-but-never-audited is not) and aborts the session with an ERR packet.
+                try {
+                    clientParser.addBytes(chunk)
+                } catch (e: FailClosedException) {
+                    logger.warn("Blocking client traffic and closing the session: ${e.message}", e.cause ?: e)
+                    abortSession(e.message!!)
+                    break
+                } catch (e: Exception) {
+                    logger.error("Failed to parse client traffic, blocking it and closing the session", e)
+                    abortSession(
+                        "Kviklet proxy could not parse the client message. The message was blocked and " +
+                            "the session closed.",
+                    )
+                    break
+                }
                 serverOutput.writeAndFlush(chunk)
             }
         } finally {
@@ -160,8 +225,21 @@ class MySqlConnection(
         try {
             while (!serverTerminating) {
                 val chunk = readChunk(serverInput) ?: break // server reached EOF
-                serverParser.addBytes(chunk)
-                clientOutput.writeAndFlush(chunk)
+                try {
+                    serverParser.addBytes(chunk)
+                } catch (e: FailClosedException) {
+                    // The server side only fails closed on unbounded split packets; without parsing them the
+                    // prepared-statement tracking (and so the audit) can no longer be trusted.
+                    logger.warn("Blocking server traffic and closing the session: ${e.message}", e.cause ?: e)
+                    abortSession(e.message!!)
+                    break
+                }
+                synchronized(clientWriteLock) {
+                    // If an abort sent its ERR packet while this chunk was being read, stop rather than
+                    // forwarding server bytes after the error the client already saw.
+                    if (sessionAborted) break
+                    clientOutput.writeAndFlush(chunk)
+                }
             }
         } catch (e: Exception) {
             // The client->server thread closing the sockets during teardown unblocks this read with an
@@ -182,12 +260,16 @@ class MySqlConnection(
     }
 }
 
-// Buffers a raw MySQL byte stream and slices it into complete packets, invoking [onPacket] once per full
-// packet payload (the 4-byte length + sequence header is consumed here). A partial packet stays buffered
-// until the rest of it arrives, so only the incomplete tail is ever re-copied between calls. Shared by the
-// client and server parsers, which differ only in what they do with a payload.
+// Buffers a raw MySQL byte stream and slices it into complete logical packets, invoking [onPacket] once per
+// full payload (the 4-byte length + sequence header is consumed here). A partial packet stays buffered until
+// the rest of it arrives, so only the incomplete tail is ever re-copied between calls. A payload of exactly
+// 0xFFFFFF means the logical payload continues in the following packet(s); those are reassembled into one
+// payload before [onPacket] runs, so a >16MB statement is audited whole instead of being misread as a
+// truncated query plus garbage commands. Shared by the client and server parsers, which differ only in what
+// they do with a payload.
 private class MySqlPacketFramer(private val onPacket: (ByteArray) -> Unit) {
     private val buffer = ByteArrayOutputStream()
+    private val pendingSplitPayload = ByteArrayOutputStream()
 
     @Synchronized
     fun addBytes(bytes: ByteArray) {
@@ -203,9 +285,27 @@ private class MySqlPacketFramer(private val onPacket: (ByteArray) -> Unit) {
                 break // Need more data for a full packet
             }
 
-            val payload = ByteArray(length)
-            System.arraycopy(data, offset + 4, payload, 0, length)
-            onPacket(payload)
+            if (pendingSplitPayload.size() + length > MAX_ASSEMBLED_PAYLOAD_LENGTH) {
+                throw FailClosedException(
+                    "Kviklet proxy does not support MySQL payloads larger than 1GB. The packet was " +
+                        "blocked and the session closed.",
+                )
+            }
+
+            if (length == MAX_SPLIT_PACKET_LENGTH) {
+                // The logical payload continues in the next packet; buffer this piece and keep going.
+                pendingSplitPayload.write(data, offset + 4, length)
+            } else if (pendingSplitPayload.size() > 0) {
+                // The final piece of a split payload: reassemble and emit as one logical packet.
+                pendingSplitPayload.write(data, offset + 4, length)
+                val payload = pendingSplitPayload.toByteArray()
+                pendingSplitPayload.reset()
+                onPacket(payload)
+            } else {
+                val payload = ByteArray(length)
+                System.arraycopy(data, offset + 4, payload, 0, length)
+                onPacket(payload)
+            }
 
             offset += 4 + length
         }
@@ -228,53 +328,67 @@ class MySqlClientPacketParser(
 
     fun addBytes(bytes: ByteArray) = framer.addBytes(bytes)
 
+    // Dispatches one client command packet to its callback. Deliberately without a catch-all: a violation
+    // (or an unexpected parsing error) must propagate so the relay blocks the packet and aborts the
+    // session -- swallowing it here would forward traffic the audit log never saw.
     private fun handlePacket(payload: ByteArray) {
         if (payload.isEmpty()) return
         val cmd = payload[0].toInt() and 0xFF
-        try {
-            when (cmd) {
-                0x01 -> { // COM_QUIT
-                    onQuit()
-                }
+        when (cmd) {
+            0x01 -> { // COM_QUIT
+                onQuit()
+            }
 
-                0x03 -> { // COM_QUERY
-                    val query = String(payload, 1, payload.size - 1, Charsets.UTF_8)
-                    if (query.trim().isNotEmpty()) {
-                        onQuery(query)
-                    }
-                }
-
-                0x16 -> { // COM_STMT_PREPARE
-                    val query = String(payload, 1, payload.size - 1, Charsets.UTF_8)
-                    if (query.trim().isNotEmpty()) {
-                        onPrepare(query)
-                    }
-                }
-
-                0x17 -> { // COM_STMT_EXECUTE
-                    if (payload.size >= 5) {
-                        val stmtId = (payload[1].toInt() and 0xFF) or
-                            ((payload[2].toInt() and 0xFF) shl 8) or
-                            ((payload[3].toInt() and 0xFF) shl 16) or
-                            ((payload[4].toInt() and 0xFF) shl 24)
-                        onExecute(stmtId)
-                    }
-                }
-
-                0x19 -> { // COM_STMT_CLOSE
-                    if (payload.size >= 5) {
-                        val stmtId = (payload[1].toInt() and 0xFF) or
-                            ((payload[2].toInt() and 0xFF) shl 8) or
-                            ((payload[3].toInt() and 0xFF) shl 16) or
-                            ((payload[4].toInt() and 0xFF) shl 24)
-                        onClose(stmtId)
-                    }
+            0x03 -> { // COM_QUERY
+                val query = String(payload, 1, payload.size - 1, Charsets.UTF_8)
+                if (query.trim().isNotEmpty()) {
+                    onQuery(query)
                 }
             }
-        } catch (e: Exception) {
-            logger.error("Error parsing client packet", e)
+
+            // Legacy schema DDL and mid-session re-authentication carry no auditable SQL text, so they
+            // must not pass through an audited session. No modern client sends them.
+            0x05 -> throw FailClosedException(blockedCommandMessage("COM_CREATE_DB"))
+
+            0x06 -> throw FailClosedException(blockedCommandMessage("COM_DROP_DB"))
+
+            0x11 -> throw FailClosedException(blockedCommandMessage("COM_CHANGE_USER"))
+
+            0x16 -> { // COM_STMT_PREPARE
+                // Every prepare is tracked, even a blank one: the server answers each with exactly one
+                // response, and the response pairing (see pendingPrepares) relies on nothing being skipped.
+                val query = String(payload, 1, payload.size - 1, Charsets.UTF_8)
+                onPrepare(query)
+            }
+
+            0x17 -> { // COM_STMT_EXECUTE
+                onExecute(readStatementId(payload, "COM_STMT_EXECUTE"))
+            }
+
+            0x19 -> { // COM_STMT_CLOSE
+                onClose(readStatementId(payload, "COM_STMT_CLOSE"))
+            }
         }
     }
+
+    // The 4-byte little-endian statement id following the command byte. A packet too short to carry it is
+    // garbage the server cannot meaningfully execute either; fail closed rather than forwarding it.
+    private fun readStatementId(payload: ByteArray, commandName: String): Int {
+        if (payload.size < 5) {
+            throw FailClosedException(
+                "Kviklet proxy could not parse a truncated $commandName packet. The packet was blocked " +
+                    "and the session closed.",
+            )
+        }
+        return (payload[1].toInt() and 0xFF) or
+            ((payload[2].toInt() and 0xFF) shl 8) or
+            ((payload[3].toInt() and 0xFF) shl 16) or
+            ((payload[4].toInt() and 0xFF) shl 24)
+    }
+
+    private fun blockedCommandMessage(commandName: String): String =
+        "Kviklet proxy does not support $commandName because it bypasses the audited session. The " +
+            "command was blocked and the session closed."
 }
 
 class MySqlServerPacketParser(private val onPrepareOk: (Int) -> Unit, private val onPrepareErr: () -> Unit = {}) {
@@ -285,22 +399,20 @@ class MySqlServerPacketParser(private val onPrepareOk: (Int) -> Unit, private va
     private fun handlePacket(payload: ByteArray) {
         if (payload.isEmpty()) return
         val status = payload[0].toInt() and 0xFF
-        // COM_STMT_PREPARE_OK has a fixed 12-byte payload (0x00 status + 4 stmt_id
-        // + 2 columns + 2 params + 1 reserved + 2 warnings). Requiring the exact
-        // length avoids mistaking a generic OK packet (also 0x00) for a prepare-ok.
-        // ERR packets (0xFF) clear any pending prepare so a later OK is not misread.
+        // COM_STMT_PREPARE_OK has a fixed 12-byte payload (0x00 status + 4 stmt_id + 2 columns + 2 params
+        // + 1 reserved + 2 warnings). Requiring the exact length avoids mistaking a generic OK packet
+        // (also 0x00) for a prepare-ok. ERR packets (0xFF) pop the pending prepare so a later OK is not
+        // misread. Both callbacks no-op when no prepare is outstanding, which keeps ordinary resultset
+        // and error traffic from being misread; a client interleaving other commands with an outstanding
+        // prepare can still disturb the pairing, and the executes of a mispaired id then fail closed.
         if (status == 0xFF) {
             onPrepareErr()
         } else if (status == 0x00 && payload.size == 12) {
-            try {
-                val stmtId = (payload[1].toInt() and 0xFF) or
-                    ((payload[2].toInt() and 0xFF) shl 8) or
-                    ((payload[3].toInt() and 0xFF) shl 16) or
-                    ((payload[4].toInt() and 0xFF) shl 24)
-                onPrepareOk(stmtId)
-            } catch (e: Exception) {
-                logger.error("Error parsing server prepare-ok packet", e)
-            }
+            val stmtId = (payload[1].toInt() and 0xFF) or
+                ((payload[2].toInt() and 0xFF) shl 8) or
+                ((payload[3].toInt() and 0xFF) shl 16) or
+                ((payload[4].toInt() and 0xFF) shl 24)
+            onPrepareOk(stmtId)
         }
     }
 }
