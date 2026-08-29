@@ -12,6 +12,8 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.net.Socket
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantLock
 
 private val logger = LoggerFactory.getLogger("MySqlConnection")
 
@@ -21,6 +23,11 @@ private val logger = LoggerFactory.getLogger("MySqlConnection")
 // max_allowed_packet at 1GB.
 private const val MAX_SPLIT_PACKET_LENGTH = 0xFFFFFF
 private const val MAX_ASSEMBLED_PAYLOAD_LENGTH = 0x40000000
+
+// How long abortSession waits for the client write lock before giving up on the courtesy ERR packet and
+// closing the sockets anyway. Kept short: the lock is only ever held for a single relayed write, and the
+// close() that follows a timeout is what actually unblocks a write that has parked.
+private const val ABORT_ERR_TIMEOUT_MS = 2000L
 
 // A fail-closed violation on the relay: traffic the proxy must not forward because the audit log could not
 // record it (a failed audit write, an execute of a statement the proxy cannot attribute, a command that
@@ -62,8 +69,11 @@ class MySqlConnection(
     // injected ERR packet, callable from either relay thread). The lock serializes them so one write cannot
     // be split by the other, and -- because the pump's forward and the abort both consult sessionAborted
     // while holding it -- guarantees no server chunk is forwarded after the abort ERR. sessionAborted is
-    // only ever accessed under the lock, which supplies the happens-before edge.
-    private val clientWriteLock = Any()
+    // only ever accessed under the lock, which supplies the happens-before edge. A ReentrantLock rather than
+    // a monitor so abortSession can take it with a timeout: the pump may be parked in a blocking, unbounded
+    // write to a client that stopped reading while holding this lock, and a plain synchronized abort would
+    // block forever behind it (pinning both threads and the upstream connection).
+    private val clientWriteLock = ReentrantLock()
     private var sessionAborted: Boolean = false
 
     // MySQL assigns prepared-statement ids server-side, so a COM_STMT_PREPARE's query text can only be
@@ -159,18 +169,35 @@ class MySqlConnection(
     // Tells the client why the session is being killed (an ERR packet), then closes both sockets. The ERR
     // is written under clientWriteLock so a concurrent server->client chunk cannot split it and nothing is
     // forwarded to the client after it; close() then ends both relay loops.
+    //
+    // The ERR is best effort: the lock is taken with a timeout, because the pump may be holding it in a
+    // blocking write to a client that has stopped reading. Waiting for it unconditionally would deadlock the
+    // abort -- and therefore teardown -- behind that write. On a timeout the ERR is skipped and close() runs
+    // anyway; closing the sockets unblocks that parked write, so both relay threads still exit.
     private fun abortSession(reason: String) {
-        synchronized(clientWriteLock) {
+        val locked = try {
+            clientWriteLock.tryLock(ABORT_ERR_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+            false
+        }
+        if (locked) {
             try {
                 // Sequence id 1: the abort is triggered by a client command packet (sequence id 0), and 1
                 // is where the client expects that command's response. An abort raised from the server side
                 // mid-response may mismatch the client's expected sequence, which is acceptable for a
                 // session that is being torn down.
                 writePacket(clientOutput, 1, buildErrPacket(1105, "HY000", reason))
+                sessionAborted = true
             } catch (e: Exception) {
                 logger.warn("Failed to send the ERR packet to the client while aborting the session", e)
+            } finally {
+                clientWriteLock.unlock()
             }
-            sessionAborted = true
+        } else {
+            logger.warn(
+                "Could not acquire the client write lock to send an abort ERR (relay write in progress); closing",
+            )
         }
         close()
     }
@@ -234,11 +261,14 @@ class MySqlConnection(
                     abortSession(e.message!!)
                     break
                 }
-                synchronized(clientWriteLock) {
+                clientWriteLock.lock()
+                try {
                     // If an abort sent its ERR packet while this chunk was being read, stop rather than
                     // forwarding server bytes after the error the client already saw.
                     if (sessionAborted) break
                     clientOutput.writeAndFlush(chunk)
+                } finally {
+                    clientWriteLock.unlock()
                 }
             }
         } catch (e: Exception) {
