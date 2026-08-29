@@ -12,8 +12,9 @@ import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.ReviewPayload
 import dev.kviklet.kviklet.db.UserAdapter
-import dev.kviklet.kviklet.proxy.core.INFINITE_ACCESS
 import dev.kviklet.kviklet.proxy.core.ProxyServer
+import dev.kviklet.kviklet.proxy.core.ProxySession
+import dev.kviklet.kviklet.proxy.core.getShutdownDate
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.PermissionResolver
 import dev.kviklet.kviklet.security.Policy
@@ -983,25 +984,38 @@ class ExecutionRequestService(
         val username = generateProxyUsername()
         val password = generateRandomPassword(16)
 
-        postgresProxyServer.registerSession(
-            username = username,
-            password = password,
-            targetHost = connection.hostname,
-            targetPort = connection.port,
-            databaseName = connection.databaseName ?: "",
-            authenticationDetails = connection.auth,
-            executionRequest = executionRequest.request,
-            userId = userDetails.id,
-            startTime = firstEventTime,
-            maxTimeMinutes = executionRequest.request.temporaryAccessDuration?.toMinutes() ?: INFINITE_ACCESS,
+        // registerSession returns the canonical session for this request: the fresh one, or -- when the
+        // request already has a live session -- the existing one, whose credentials are handed out again.
+        // That makes repeated proxy calls idempotent (re-opening the page keeps a running psql connected)
+        // instead of accumulating never-expiring registry entries.
+        val session = postgresProxyServer.registerSession(
+            ProxySession(
+                username = username,
+                password = password,
+                executionRequest = executionRequest.request,
+                userId = userDetails.id,
+                targetHost = connection.hostname,
+                targetPort = connection.port,
+                databaseName = connection.databaseName ?: "",
+                authenticationDetails = connection.auth,
+            ),
+            expiresAt = executionRequest.request.temporaryAccessDuration?.let {
+                getShutdownDate(firstEventTime, it.toMinutes()).toInstant()
+            },
         )
-        logger.info("Registered proxy session $username on port ${postgresProxyServer.listenPort}")
+        if (session.username == username) {
+            logger.info("Registered proxy session $username on port ${postgresProxyServer.listenPort}")
+        } else {
+            logger.info(
+                "Reusing existing proxy session ${session.username} on port ${postgresProxyServer.listenPort}",
+            )
+        }
 
         return ExecutionProxy(
             request = executionRequest.request,
             port = postgresProxyServer.listenPort,
-            username = username,
-            password = password,
+            username = session.username,
+            password = session.password,
             startTime = firstEventTime,
         )
     }

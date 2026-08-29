@@ -5,6 +5,7 @@ import dev.kviklet.kviklet.db.EventAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.helper.ExecutionRequestFactory
 import dev.kviklet.kviklet.proxy.core.ProxyServer
+import dev.kviklet.kviklet.proxy.core.ProxySession
 import dev.kviklet.kviklet.proxy.helpers.ProxyInstance
 import dev.kviklet.kviklet.proxy.helpers.directConnectionFactory
 import dev.kviklet.kviklet.proxy.helpers.proxyServerFactory
@@ -26,7 +27,8 @@ import org.springframework.test.context.ActiveProfiles
 import org.testcontainers.containers.PostgreSQLContainer
 import java.sql.Connection
 import java.sql.DriverManager
-import java.time.LocalDateTime
+import java.time.Duration
+import java.time.Instant
 import java.util.*
 
 @SpringBootTest
@@ -89,16 +91,17 @@ class PostgresProxyAuthTest {
         waitForProxyStart(proxy)
         startedProxies.add(proxy)
         proxy.registerSession(
-            username = randomUsername,
-            password = randomPassword,
-            targetHost = postgresContainer.host,
-            targetPort = postgresContainer.getMappedPort(5432),
-            databaseName = "testdb",
-            authenticationDetails = connAuth,
-            executionRequest = executionRequestFactory.createDatasourceExecutionRequest(),
-            userId = "mock",
-            startTime = LocalDateTime.now(),
-            maxTimeMinutes = 10,
+            ProxySession(
+                username = randomUsername,
+                password = randomPassword,
+                executionRequest = executionRequestFactory.createDatasourceExecutionRequest(),
+                userId = "mock",
+                targetHost = postgresContainer.host,
+                targetPort = postgresContainer.getMappedPort(5432),
+                databaseName = "testdb",
+                authenticationDetails = connAuth,
+            ),
+            expiresAt = Instant.now().plus(Duration.ofMinutes(10)),
         )
         assertDoesNotThrow {
             val proxyProps = Properties()
@@ -125,16 +128,17 @@ class PostgresProxyAuthTest {
         // The registered session's credentials differ from the ones the client connects with below, so the
         // connection must be rejected.
         proxy.registerSession(
-            username = "notuser",
-            password = "notpass",
-            targetHost = postgresContainer.host,
-            targetPort = postgresContainer.getMappedPort(5432),
-            databaseName = "testdb",
-            authenticationDetails = connAuth,
-            executionRequest = request,
-            userId = "mock",
-            startTime = LocalDateTime.now(),
-            maxTimeMinutes = 10,
+            ProxySession(
+                username = "notuser",
+                password = "notpass",
+                executionRequest = request,
+                userId = "mock",
+                targetHost = postgresContainer.host,
+                targetPort = postgresContainer.getMappedPort(5432),
+                databaseName = "testdb",
+                authenticationDetails = connAuth,
+            ),
+            expiresAt = Instant.now().plus(Duration.ofMinutes(10)),
         )
         assertThrows<Exception> {
             val proxyProps = Properties()
@@ -195,16 +199,17 @@ class PostgresProxyAuthTest {
         val passB = getRandomString(16)
         listOf(userA to passA, userB to passB).forEach { (user, pass) ->
             server.registerSession(
-                username = user,
-                password = pass,
-                targetHost = postgresContainer.host,
-                targetPort = postgresContainer.getMappedPort(5432),
-                databaseName = "testdb",
-                authenticationDetails = connAuth,
-                executionRequest = requestFactory.createDatasourceExecutionRequest(),
-                userId = "mock",
-                startTime = LocalDateTime.now(),
-                maxTimeMinutes = 10,
+                ProxySession(
+                    username = user,
+                    password = pass,
+                    executionRequest = requestFactory.createDatasourceExecutionRequest(),
+                    userId = "mock",
+                    targetHost = postgresContainer.host,
+                    targetPort = postgresContainer.getMappedPort(5432),
+                    databaseName = "testdb",
+                    authenticationDetails = connAuth,
+                ),
+                expiresAt = Instant.now().plus(Duration.ofMinutes(10)),
             )
         }
 
@@ -249,16 +254,17 @@ class PostgresProxyAuthTest {
         proxy.start()
         waitForProxyStart(proxy)
         proxy.registerSession(
-            username = proxyUsername,
-            password = proxyPassword,
-            targetHost = postgresContainer.host,
-            targetPort = postgresContainer.getMappedPort(5432),
-            databaseName = "testdb",
-            authenticationDetails = AuthenticationDetails.UserPassword("test", "test"),
-            executionRequest = request,
-            userId = "mock",
-            startTime = LocalDateTime.now(),
-            maxTimeMinutes = 10,
+            ProxySession(
+                username = proxyUsername,
+                password = proxyPassword,
+                executionRequest = request,
+                userId = "mock",
+                targetHost = postgresContainer.host,
+                targetPort = postgresContainer.getMappedPort(5432),
+                databaseName = "testdb",
+                authenticationDetails = AuthenticationDetails.UserPassword("test", "test"),
+            ),
+            expiresAt = Instant.now().plus(Duration.ofMinutes(10)),
         )
         return port
     }

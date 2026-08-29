@@ -1,12 +1,10 @@
 // This file is not MIT licensed
 package dev.kviklet.kviklet.proxy.core
 
-import dev.kviklet.kviklet.service.dto.AuthenticationDetails
-import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import org.slf4j.LoggerFactory
 import java.net.ServerSocket
 import java.net.Socket
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
@@ -101,46 +99,33 @@ class ProxyServer(
         logger.info("Proxy listening on port $listenPort")
     }
 
-    // Registers (replacing any prior session for the same username) and schedules its expiry. Called from the
-    // service layer when an approved request starts proxying. maxTimeMinutes == INFINITE_ACCESS never expires.
+    // Registers the session and schedules its expiry (expiresAt == null never expires). Called from the
+    // service layer when an approved request starts proxying. Returns the canonical session for the request:
+    // if a live session already exists for the same execution request, that one is returned unchanged (with
+    // its original expiry, since the access window is anchored at the first execution) and the new one is
+    // discarded -- so repeated proxy calls on one request hand out the same credentials instead of
+    // accumulating registry entries, which nothing else would ever remove for a never-expiring session.
     // Synchronized against registerConnection/shutdown so a replaced session is torn down cleanly.
     @Synchronized
-    fun registerSession(
-        username: String,
-        password: String,
-        targetHost: String,
-        targetPort: Int,
-        databaseName: String,
-        authenticationDetails: AuthenticationDetails.UserPassword,
-        executionRequest: ExecutionRequest,
-        userId: String,
-        startTime: LocalDateTime,
-        maxTimeMinutes: Long,
-    ) {
-        val session = ProxySession(
-            username,
-            password,
-            executionRequest,
-            userId,
-            targetHost,
-            targetPort,
-            databaseName,
-            authenticationDetails,
-        )
-        // Replace any prior session for the same username, tearing the old one down so a re-proxied request
-        // never leaves the previous access window running.
-        sessions.put(username, session)?.let { expire(it) }
-        if (maxTimeMinutes != INFINITE_ACCESS) {
-            val delayMs = (getShutdownDate(startTime, maxTimeMinutes).time - System.currentTimeMillis())
-                .coerceAtLeast(0)
+    fun registerSession(session: ProxySession, expiresAt: Instant?): ProxySession {
+        val requestId = session.executionRequest.id
+        if (requestId != null) {
+            sessions.values.firstOrNull { it.active && it.executionRequest.id == requestId }?.let { return it }
+        }
+        // Replace any prior session for the same username, tearing the old one down so a re-registered
+        // username never leaves the previous access window running.
+        sessions.put(session.username, session)?.let { expire(it) }
+        if (expiresAt != null) {
+            val delayMs = (expiresAt.toEpochMilli() - System.currentTimeMillis()).coerceAtLeast(0)
             // Bind the task to this exact session, so a fired-but-stale task (from a session already replaced
             // under the same username) removes only its own entry and never the current one.
             session.expiryFuture = expiryScheduler.schedule(
-                { expireSession(username, session) },
+                { expireSession(session.username, session) },
                 delayMs,
                 TimeUnit.MILLISECONDS,
             )
         }
+        return session
     }
 
     // Stops the whole server: no more sessions, every live relay closed, listener closed. Synchronized against
