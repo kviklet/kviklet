@@ -149,21 +149,21 @@ class MySqlProxyFailClosedTest {
     }
 
     @Test
-    fun `two pipelined prepares are attributed to their own statement ids`() {
+    fun `sequential prepares are each attributed to their own statement id`() {
         RelayHarness(executionRequestAdapter, eventAdapter).use { harness ->
             val firstSql = "SELECT * FROM users WHERE id = ?"
             val secondSql = "DELETE FROM users WHERE id = ?"
-            // Both prepares are sent before either response arrives; a single "awaiting prepare" flag
-            // would pair the first response with the second query and lose the second id entirely
-            harness.sendToProxy(
-                mysqlPacket(0, byteArrayOf(0x16) + firstSql.toByteArray(Charsets.UTF_8)) +
-                    mysqlPacket(0, byteArrayOf(0x16) + secondSql.toByteArray(Charsets.UTF_8)),
-            )
-            harness.readPacketForwardedUpstream()
-            harness.readPacketForwardedUpstream()
 
-            harness.sendFromUpstream(prepareOk(sequenceId = 1, stmtId = 1) + prepareOk(sequenceId = 1, stmtId = 2))
+            // Each prepare completes (its prepare-ok is relayed back to the client) before the next is sent,
+            // the way a synchronous client drives the connection
+            harness.sendToProxy(mysqlPacket(0, byteArrayOf(0x16) + firstSql.toByteArray(Charsets.UTF_8)))
+            harness.readPacketForwardedUpstream()
+            harness.sendFromUpstream(prepareOk(sequenceId = 1, stmtId = 1))
             harness.readPacketOnClient()
+
+            harness.sendToProxy(mysqlPacket(0, byteArrayOf(0x16) + secondSql.toByteArray(Charsets.UTF_8)))
+            harness.readPacketForwardedUpstream()
+            harness.sendFromUpstream(prepareOk(sequenceId = 1, stmtId = 2))
             harness.readPacketOnClient()
 
             harness.sendToProxy(comStmtExecute(1))
@@ -172,6 +172,28 @@ class MySqlProxyFailClosedTest {
             harness.readPacketForwardedUpstream()
 
             assertEquals(listOf(firstSql, secondSql), harness.eventService.rawQueries)
+        }
+    }
+
+    @Test
+    fun `a second prepare pipelined before the first response is blocked`() {
+        RelayHarness(executionRequestAdapter, eventAdapter).use { harness ->
+            // Two prepares in one chunk, before either prepare-ok arrives: the proxy cannot pair the
+            // responses reliably, so it must fail closed instead of guessing (which could misattribute a
+            // statement id to the wrong query text)
+            harness.sendToProxy(
+                mysqlPacket(0, byteArrayOf(0x16) + "SELECT * FROM users WHERE id = ?".toByteArray(Charsets.UTF_8)) +
+                    mysqlPacket(0, byteArrayOf(0x16) + "DELETE FROM users WHERE id = ?".toByteArray(Charsets.UTF_8)),
+            )
+
+            val (_, errPayload) = harness.readPacketOnClient()
+            assertEquals(0xFF, errPayload[0].toInt() and 0xFF)
+
+            harness.handler.join(5000)
+            assertFalse(harness.handler.isAlive)
+
+            // The whole chunk is dropped: neither prepare reaches the server
+            assertEquals(-1, harness.readByteForwardedUpstream())
         }
     }
 
