@@ -59,6 +59,9 @@ class ProxyServer(
     private val maxPendingHandshakes = 50
     private val activeHandshakes = AtomicInteger(0)
 
+    // How long the accept loop pauses after a failed accept before trying again.
+    private val acceptFailureBackoffMs = 1000L
+
     // Concurrent in-flight (pre-auth) handshakes, exposed for tests and monitoring. Distinct from
     // currentConnections: an unauthenticated client (idle, aborting, cancelling) occupies one of these, never a
     // relay slot.
@@ -183,9 +186,17 @@ class ProxyServer(
         }
     }
 
+    // A failing accept is almost always persistent (out of file descriptors, listener broken), so retrying
+    // immediately would turn the accept loop into a 100% CPU spin until the condition clears. Back off before
+    // the next attempt instead. During shutdown the closed listener also throws here, but isRunning is already
+    // false by then, so the loop exits without logging or sleeping.
     private fun acceptClientConnection(): Socket? = try {
         serverSocket.accept()
     } catch (e: Exception) {
+        if (isRunning) {
+            logger.warn("Failed to accept a proxy connection, retrying in ${acceptFailureBackoffMs}ms", e)
+            Thread.sleep(acceptFailureBackoffMs)
+        }
         null
     }
 
