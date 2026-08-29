@@ -245,6 +245,36 @@ class MySqlProxyUnitTest {
     }
 
     @Test
+    fun `test MySqlClientPacketParser fails closed on an unlisted command`() {
+        val parser = MySqlClientPacketParser(
+            onQuery = {},
+            onPrepare = {},
+            onExecute = {},
+            onQuit = {},
+        )
+
+        // COM_BINLOG_DUMP (0x12) streams row changes with no auditable SQL and is not on the allowlist
+        val packet = mysqlPacket(0, byteArrayOf(0x12, 0x00, 0x00, 0x00, 0x00))
+        val exception = assertThrows(FailClosedException::class.java) { parser.addBytes(packet) }
+        assertTrue(exception.message!!.contains("COM_BINLOG_DUMP"))
+    }
+
+    @Test
+    fun `test MySqlClientPacketParser audits COM_INIT_DB as a USE statement`() {
+        var parsedQuery = ""
+        val parser = MySqlClientPacketParser(
+            onQuery = { parsedQuery = it },
+            onPrepare = {},
+            onExecute = {},
+            onQuit = {},
+        )
+
+        val packet = mysqlPacket(0, byteArrayOf(0x02) + "reporting".toByteArray(Charsets.UTF_8))
+        parser.addBytes(packet)
+        assertEquals("USE `reporting`", parsedQuery)
+    }
+
+    @Test
     fun `test MySqlClientPacketParser fails closed on a truncated COM_STMT_EXECUTE`() {
         val parser = MySqlClientPacketParser(
             onQuery = {},
