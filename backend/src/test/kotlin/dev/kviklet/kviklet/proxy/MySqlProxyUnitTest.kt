@@ -290,6 +290,34 @@ class MySqlProxyUnitTest {
     }
 
     @Test
+    fun `test MySqlServerPacketParser streams past an oversized split payload and still parses a prepare-ok`() {
+        var returnedStmtId = 0
+        val parser = MySqlServerPacketParser({ returnedStmtId = it })
+
+        // A split logical payload (a 0xFFFFFF continuation packet plus a small final packet) is larger than
+        // any control packet the server parser inspects, so it must be streamed past without buffering
+        val continuation = mysqlPacket(0, ByteArray(0xFFFFFF))
+        val finalPiece = mysqlPacket(1, ByteArray(8))
+        val prepareOk = ByteArray(12).also { it[1] = 55 } // 0x00 status, stmt id 55
+        parser.addBytes(continuation + finalPiece + mysqlPacket(2, prepareOk))
+
+        assertEquals(55, returnedStmtId)
+    }
+
+    @Test
+    fun `test MySqlServerPacketParser streams past a large single packet and still parses a prepare-ok`() {
+        var returnedStmtId = 0
+        val parser = MySqlServerPacketParser({ returnedStmtId = it })
+
+        // A single result packet larger than the control-packet cap, but not split, is also streamed past
+        val bigRow = mysqlPacket(0, ByteArray(5000))
+        val prepareOk = ByteArray(12).also { it[1] = 7 }
+        parser.addBytes(bigRow + mysqlPacket(1, prepareOk))
+
+        assertEquals(7, returnedStmtId)
+    }
+
+    @Test
     fun `test buildInitialHandshake structure`() {
         val salt = ByteArray(20) { it.toByte() }
         val handshake = buildInitialHandshake(1234, salt, false)
