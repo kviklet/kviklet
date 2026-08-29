@@ -182,23 +182,16 @@ class MySqlConnection(
     }
 }
 
-class MySqlClientPacketParser(
-    private val onQuery: (String) -> Unit,
-    private val onPrepare: (String) -> Unit,
-    private val onExecute: (Int) -> Unit,
-    private val onClose: (Int) -> Unit = {},
-    private val onQuit: () -> Unit,
-) {
+// Buffers a raw MySQL byte stream and slices it into complete packets, invoking [onPacket] once per full
+// packet payload (the 4-byte length + sequence header is consumed here). A partial packet stays buffered
+// until the rest of it arrives, so only the incomplete tail is ever re-copied between calls. Shared by the
+// client and server parsers, which differ only in what they do with a payload.
+private class MySqlPacketFramer(private val onPacket: (ByteArray) -> Unit) {
     private val buffer = ByteArrayOutputStream()
 
+    @Synchronized
     fun addBytes(bytes: ByteArray) {
-        synchronized(this) {
-            buffer.write(bytes)
-            processBuffer()
-        }
-    }
-
-    private fun processBuffer() {
+        buffer.write(bytes)
         val data = buffer.toByteArray()
         var offset = 0
         while (data.size - offset >= 4) {
@@ -212,53 +205,7 @@ class MySqlClientPacketParser(
 
             val payload = ByteArray(length)
             System.arraycopy(data, offset + 4, payload, 0, length)
-
-            if (payload.isNotEmpty()) {
-                val cmd = payload[0].toInt() and 0xFF
-                try {
-                    when (cmd) {
-                        0x01 -> { // COM_QUIT
-                            onQuit()
-                        }
-
-                        0x03 -> { // COM_QUERY
-                            val query = String(payload, 1, payload.size - 1, Charsets.UTF_8)
-                            if (query.trim().isNotEmpty()) {
-                                onQuery(query)
-                            }
-                        }
-
-                        0x16 -> { // COM_STMT_PREPARE
-                            val query = String(payload, 1, payload.size - 1, Charsets.UTF_8)
-                            if (query.trim().isNotEmpty()) {
-                                onPrepare(query)
-                            }
-                        }
-
-                        0x17 -> { // COM_STMT_EXECUTE
-                            if (payload.size >= 5) {
-                                val stmtId = (payload[1].toInt() and 0xFF) or
-                                    ((payload[2].toInt() and 0xFF) shl 8) or
-                                    ((payload[3].toInt() and 0xFF) shl 16) or
-                                    ((payload[4].toInt() and 0xFF) shl 24)
-                                onExecute(stmtId)
-                            }
-                        }
-
-                        0x19 -> { // COM_STMT_CLOSE
-                            if (payload.size >= 5) {
-                                val stmtId = (payload[1].toInt() and 0xFF) or
-                                    ((payload[2].toInt() and 0xFF) shl 8) or
-                                    ((payload[3].toInt() and 0xFF) shl 16) or
-                                    ((payload[4].toInt() and 0xFF) shl 24)
-                                onClose(stmtId)
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    logger.error("Error parsing client packet", e)
-                }
-            }
+            onPacket(payload)
 
             offset += 4 + length
         }
@@ -270,58 +217,90 @@ class MySqlClientPacketParser(
     }
 }
 
-class MySqlServerPacketParser(private val onPrepareOk: (Int) -> Unit, private val onPrepareErr: () -> Unit = {}) {
-    private val buffer = ByteArrayOutputStream()
+class MySqlClientPacketParser(
+    private val onQuery: (String) -> Unit,
+    private val onPrepare: (String) -> Unit,
+    private val onExecute: (Int) -> Unit,
+    private val onClose: (Int) -> Unit = {},
+    private val onQuit: () -> Unit,
+) {
+    private val framer = MySqlPacketFramer { payload -> handlePacket(payload) }
 
-    fun addBytes(bytes: ByteArray) {
-        synchronized(this) {
-            buffer.write(bytes)
-            processBuffer()
-        }
-    }
+    fun addBytes(bytes: ByteArray) = framer.addBytes(bytes)
 
-    private fun processBuffer() {
-        val data = buffer.toByteArray()
-        var offset = 0
-        while (data.size - offset >= 4) {
-            val length = (data[offset].toInt() and 0xFF) or
-                ((data[offset + 1].toInt() and 0xFF) shl 8) or
-                ((data[offset + 2].toInt() and 0xFF) shl 16)
+    private fun handlePacket(payload: ByteArray) {
+        if (payload.isEmpty()) return
+        val cmd = payload[0].toInt() and 0xFF
+        try {
+            when (cmd) {
+                0x01 -> { // COM_QUIT
+                    onQuit()
+                }
 
-            if (data.size - offset < 4 + length) {
-                break // Need more data for a full packet
-            }
+                0x03 -> { // COM_QUERY
+                    val query = String(payload, 1, payload.size - 1, Charsets.UTF_8)
+                    if (query.trim().isNotEmpty()) {
+                        onQuery(query)
+                    }
+                }
 
-            val payload = ByteArray(length)
-            System.arraycopy(data, offset + 4, payload, 0, length)
+                0x16 -> { // COM_STMT_PREPARE
+                    val query = String(payload, 1, payload.size - 1, Charsets.UTF_8)
+                    if (query.trim().isNotEmpty()) {
+                        onPrepare(query)
+                    }
+                }
 
-            if (payload.isNotEmpty()) {
-                val status = payload[0].toInt() and 0xFF
-                // COM_STMT_PREPARE_OK has a fixed 12-byte payload (0x00 status + 4 stmt_id
-                // + 2 columns + 2 params + 1 reserved + 2 warnings). Requiring the exact
-                // length avoids mistaking a generic OK packet (also 0x00) for a prepare-ok.
-                // ERR packets (0xFF) clear any pending prepare so a later OK is not misread.
-                if (status == 0xFF) {
-                    onPrepareErr()
-                } else if (status == 0x00 && payload.size == 12) {
-                    try {
+                0x17 -> { // COM_STMT_EXECUTE
+                    if (payload.size >= 5) {
                         val stmtId = (payload[1].toInt() and 0xFF) or
                             ((payload[2].toInt() and 0xFF) shl 8) or
                             ((payload[3].toInt() and 0xFF) shl 16) or
                             ((payload[4].toInt() and 0xFF) shl 24)
-                        onPrepareOk(stmtId)
-                    } catch (e: Exception) {
-                        logger.error("Error parsing server prepare-ok packet", e)
+                        onExecute(stmtId)
+                    }
+                }
+
+                0x19 -> { // COM_STMT_CLOSE
+                    if (payload.size >= 5) {
+                        val stmtId = (payload[1].toInt() and 0xFF) or
+                            ((payload[2].toInt() and 0xFF) shl 8) or
+                            ((payload[3].toInt() and 0xFF) shl 16) or
+                            ((payload[4].toInt() and 0xFF) shl 24)
+                        onClose(stmtId)
                     }
                 }
             }
-
-            offset += 4 + length
+        } catch (e: Exception) {
+            logger.error("Error parsing client packet", e)
         }
+    }
+}
 
-        buffer.reset()
-        if (data.size > offset) {
-            buffer.write(data, offset, data.size - offset)
+class MySqlServerPacketParser(private val onPrepareOk: (Int) -> Unit, private val onPrepareErr: () -> Unit = {}) {
+    private val framer = MySqlPacketFramer { payload -> handlePacket(payload) }
+
+    fun addBytes(bytes: ByteArray) = framer.addBytes(bytes)
+
+    private fun handlePacket(payload: ByteArray) {
+        if (payload.isEmpty()) return
+        val status = payload[0].toInt() and 0xFF
+        // COM_STMT_PREPARE_OK has a fixed 12-byte payload (0x00 status + 4 stmt_id
+        // + 2 columns + 2 params + 1 reserved + 2 warnings). Requiring the exact
+        // length avoids mistaking a generic OK packet (also 0x00) for a prepare-ok.
+        // ERR packets (0xFF) clear any pending prepare so a later OK is not misread.
+        if (status == 0xFF) {
+            onPrepareErr()
+        } else if (status == 0x00 && payload.size == 12) {
+            try {
+                val stmtId = (payload[1].toInt() and 0xFF) or
+                    ((payload[2].toInt() and 0xFF) shl 8) or
+                    ((payload[3].toInt() and 0xFF) shl 16) or
+                    ((payload[4].toInt() and 0xFF) shl 24)
+                onPrepareOk(stmtId)
+            } catch (e: Exception) {
+                logger.error("Error parsing server prepare-ok packet", e)
+            }
         }
     }
 }
