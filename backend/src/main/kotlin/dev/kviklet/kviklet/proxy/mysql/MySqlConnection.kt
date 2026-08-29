@@ -126,6 +126,15 @@ class MySqlConnection(
         onQuit = {
             terminationMessageReceived = true
         },
+        onResetConnection = {
+            // The server forgets every prepared statement and reassigns ids from scratch, so drop the
+            // proxy's tracking too or a reused id would resolve to a stale (wrong) query text.
+            synchronized(prepareLock) {
+                prepareInFlight = false
+                inFlightPrepareQuery = null
+                preparedQueries.clear()
+            }
+        },
     )
 
     private val serverParser = MySqlServerPacketParser(
@@ -388,20 +397,31 @@ class MySqlClientPacketParser(
     private val onExecute: (Int) -> Unit,
     private val onClose: (Int) -> Unit = {},
     private val onQuit: () -> Unit,
+    private val onResetConnection: () -> Unit = {},
 ) {
     private val framer = MySqlPacketFramer { payload -> handlePacket(payload) }
 
     fun addBytes(bytes: ByteArray) = framer.addBytes(bytes)
 
-    // Dispatches one client command packet to its callback. Deliberately without a catch-all: a violation
-    // (or an unexpected parsing error) must propagate so the relay blocks the packet and aborts the
-    // session -- swallowing it here would forward traffic the audit log never saw.
+    // Dispatches one client command packet. This is a default-deny allowlist: a command is handled here only
+    // if the proxy can either audit its SQL or be sure it carries none, and everything else fails closed.
+    // Forwarding an unrecognised command would relay traffic the audit log never saw (COM_BINLOG_DUMP streams
+    // every row change, COM_CHANGE_USER re-authenticates, legacy COM_CREATE_DB/COM_DROP_DB run schema DDL).
+    // There is deliberately no catch-all around the dispatch: a violation (or an unexpected parsing error)
+    // must propagate so the relay blocks the packet and aborts the session.
     private fun handlePacket(payload: ByteArray) {
         if (payload.isEmpty()) return
         val cmd = payload[0].toInt() and 0xFF
         when (cmd) {
-            0x01 -> { // COM_QUIT
-                onQuit()
+            0x01 -> onQuit()
+
+            // COM_QUIT
+
+            0x02 -> { // COM_INIT_DB
+                // Switching the default schema changes what the unqualified names in later audited queries
+                // resolve to, so record it as an explicit USE instead of letting it pass unaudited.
+                val db = String(payload, 1, payload.size - 1, Charsets.UTF_8)
+                onQuery("USE `" + db.replace("`", "``") + "`")
             }
 
             0x03 -> { // COM_QUERY
@@ -411,28 +431,34 @@ class MySqlClientPacketParser(
                 }
             }
 
-            // Legacy schema DDL and mid-session re-authentication carry no auditable SQL text, so they
-            // must not pass through an audited session. No modern client sends them.
-            0x05 -> throw FailClosedException(blockedCommandMessage("COM_CREATE_DB"))
-
-            0x06 -> throw FailClosedException(blockedCommandMessage("COM_DROP_DB"))
-
-            0x11 -> throw FailClosedException(blockedCommandMessage("COM_CHANGE_USER"))
-
             0x16 -> { // COM_STMT_PREPARE
                 // Every prepare is tracked, even a blank one: the server answers each with exactly one
-                // response, and the response pairing (see pendingPrepares) relies on nothing being skipped.
+                // response, and the in-flight pairing relies on nothing being skipped.
                 val query = String(payload, 1, payload.size - 1, Charsets.UTF_8)
                 onPrepare(query)
             }
 
-            0x17 -> { // COM_STMT_EXECUTE
-                onExecute(readStatementId(payload, "COM_STMT_EXECUTE"))
-            }
+            0x17 -> onExecute(readStatementId(payload, "COM_STMT_EXECUTE"))
 
-            0x19 -> { // COM_STMT_CLOSE
-                onClose(readStatementId(payload, "COM_STMT_CLOSE"))
-            }
+            // COM_STMT_EXECUTE
+
+            0x19 -> onClose(readStatementId(payload, "COM_STMT_CLOSE"))
+
+            // COM_STMT_CLOSE
+
+            // COM_RESET_CONNECTION forgets every server-side prepared statement (and reassigns ids from
+            // scratch), so the proxy must drop its own tracking to stay in sync.
+            0x1F -> onResetConnection()
+
+            // Commands that carry no auditable SQL and cannot defeat the audit, relayed unchanged:
+            //   COM_STATISTICS, COM_PING            -- server-info / liveness, no SQL
+            //   COM_STMT_SEND_LONG_DATA             -- parameter bytes for a prepared execute that is audited
+            //   COM_STMT_RESET, COM_STMT_FETCH      -- reset / cursor-read of an already-audited statement
+            //   COM_SET_OPTION                      -- multi-statements stay auditable (COM_QUERY text is
+            //                                          captured verbatim, all statements included)
+            0x09, 0x0E, 0x18, 0x1A, 0x1B, 0x1C -> {}
+
+            else -> throw FailClosedException(blockedCommandMessage(cmd))
         }
     }
 
@@ -451,9 +477,28 @@ class MySqlClientPacketParser(
             ((payload[4].toInt() and 0xFF) shl 24)
     }
 
-    private fun blockedCommandMessage(commandName: String): String =
-        "Kviklet proxy does not support $commandName because it bypasses the audited session. The " +
-            "command was blocked and the session closed."
+    private fun blockedCommandMessage(cmd: Int): String {
+        val name = KNOWN_COMMAND_NAMES[cmd] ?: "0x%02x".format(cmd)
+        return "Kviklet proxy does not permit MySQL command $name because it cannot be audited or bypasses " +
+            "the audited session. The command was blocked and the session closed."
+    }
+
+    companion object {
+        // Names for the more notable blocked commands, only to make the abort message and logs readable;
+        // any command not on the allowlist is blocked whether or not it appears here.
+        private val KNOWN_COMMAND_NAMES = mapOf(
+            0x04 to "COM_FIELD_LIST",
+            0x05 to "COM_CREATE_DB",
+            0x06 to "COM_DROP_DB",
+            0x07 to "COM_REFRESH",
+            0x08 to "COM_SHUTDOWN",
+            0x0C to "COM_PROCESS_KILL",
+            0x11 to "COM_CHANGE_USER",
+            0x12 to "COM_BINLOG_DUMP",
+            0x13 to "COM_TABLE_DUMP",
+            0x1E to "COM_BINLOG_DUMP_GTID",
+        )
+    }
 }
 
 class MySqlServerPacketParser(private val onPrepareOk: (Int) -> Unit, private val onPrepareErr: () -> Unit = {}) {
