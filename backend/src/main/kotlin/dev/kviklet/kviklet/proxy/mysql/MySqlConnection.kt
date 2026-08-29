@@ -76,14 +76,17 @@ class MySqlConnection(
     private val clientWriteLock = ReentrantLock()
     private var sessionAborted: Boolean = false
 
-    // MySQL assigns prepared-statement ids server-side, so a COM_STMT_PREPARE's query text can only be
-    // paired with its id when the prepare-ok response arrives. Responses come back in request order, so the
-    // texts wait in a FIFO: pushed by the client->server thread on each prepare, popped by the
-    // server->client pump on each prepare response (ok or err). A single "awaiting" flag instead of a queue
-    // would let two pipelined prepares misattribute (first response paired with second text) and leave the
-    // second id untracked -- and an untracked id's execute is exactly what onExecute must fail closed on.
+    // MySQL assigns prepared-statement ids server-side, so a COM_STMT_PREPARE's query text can only be paired
+    // with its id when the prepare-ok response arrives. The proxy can only recognise that response
+    // heuristically (a 12-byte 0x00 packet, or a 0xFF ERR), which is reliable only when exactly one prepare
+    // is outstanding and no other command's response can interleave. So at most one prepare is tracked at a
+    // time: the client thread stores the in-flight prepare's text, the server pump pairs it with the id in
+    // the next prepare-ok (or drops it on an ERR). A client that pipelines a second prepare before the first
+    // response arrives is failed closed rather than mis-audited -- pairing the wrong text to an id (or worse,
+    // overwriting a live id's text) would falsify the audit log. All three fields are guarded by prepareLock.
     private val prepareLock = Any()
-    private val pendingPrepares = ArrayDeque<String>()
+    private var prepareInFlight = false
+    private var inFlightPrepareQuery: String? = null
     private val preparedQueries = ConcurrentHashMap<Int, String>()
 
     private val clientParser = MySqlClientPacketParser(
@@ -92,13 +95,23 @@ class MySqlConnection(
         },
         onPrepare = { query ->
             synchronized(prepareLock) {
-                pendingPrepares.addLast(query)
+                // Fail closed on a pipelined prepare: with one already awaiting its response, the proxy
+                // cannot tell which response belongs to which prepare, so it cannot audit them reliably.
+                if (prepareInFlight) {
+                    throw FailClosedException(
+                        "Kviklet proxy received a COM_STMT_PREPARE while a previous prepare was still " +
+                            "awaiting its response; pipelined prepares cannot be reliably audited. The " +
+                            "command was blocked and the session closed.",
+                    )
+                }
+                prepareInFlight = true
+                inFlightPrepareQuery = query
             }
         },
         onExecute = { stmtId ->
             // Fail closed: an execute the proxy cannot attribute to query text must not reach the server.
-            // Ids go untracked when the prepare-response pairing was disturbed (see pendingPrepares) or when
-            // the client fabricates an id it never prepared on this connection.
+            // Ids go untracked when the prepare-response pairing was disturbed (a non-prepare response
+            // interleaved with the prepare) or when the client fabricates an id it never prepared here.
             val query = preparedQueries[stmtId]
                 ?: throw FailClosedException(
                     "Kviklet proxy does not know the prepared statement id $stmtId and cannot audit this " +
@@ -118,14 +131,36 @@ class MySqlConnection(
     private val serverParser = MySqlServerPacketParser(
         onPrepareOk = { stmtId ->
             synchronized(prepareLock) {
-                pendingPrepares.removeFirstOrNull()?.let { preparedQueries[stmtId] = it }
+                // Only pair while a prepare is actually outstanding; otherwise this is an ordinary OK packet
+                // that merely happens to be 12 bytes, not a prepare-ok.
+                if (prepareInFlight) {
+                    val query = inFlightPrepareQuery
+                    prepareInFlight = false
+                    inFlightPrepareQuery = null
+                    // A fresh prepare-ok must never collide with a live id (the client closes an id before it
+                    // can be reassigned). A collision means a non-prepare response was misread as a
+                    // prepare-ok: the statement stream is out of sync, so fail closed rather than overwrite a
+                    // tracked statement's text and falsify its future audit entries.
+                    if (query != null && preparedQueries.putIfAbsent(stmtId, query) != null) {
+                        throw FailClosedException(
+                            "Kviklet proxy saw prepared statement id $stmtId assigned while it was still in " +
+                                "use; the statement stream is out of sync and cannot be audited. The " +
+                                "session was closed.",
+                        )
+                    }
+                }
             }
         },
         onPrepareErr = {
-            // The server rejected the oldest outstanding COM_STMT_PREPARE; drop its text so a later
-            // prepare-ok is not paired with the wrong query.
+            // An ERR while a prepare is outstanding is taken as that prepare failing: drop its text so a
+            // later prepare-ok is not paired with it. (If the ERR actually answered an interleaved command,
+            // the real prepare-ok then finds no prepare in flight and its id goes untracked -- its execute
+            // fails closed, which is safe.)
             synchronized(prepareLock) {
-                pendingPrepares.removeFirstOrNull()
+                if (prepareInFlight) {
+                    prepareInFlight = false
+                    inFlightPrepareQuery = null
+                }
             }
         },
     )
