@@ -1,6 +1,7 @@
 // This file is not MIT licensed
 package dev.kviklet.kviklet.proxy
 
+import dev.kviklet.kviklet.proxy.mysql.FailClosedException
 import dev.kviklet.kviklet.proxy.mysql.MySqlClientPacketParser
 import dev.kviklet.kviklet.proxy.mysql.MySqlServerPacketParser
 import dev.kviklet.kviklet.proxy.mysql.buildErrPacket
@@ -9,6 +10,7 @@ import dev.kviklet.kviklet.proxy.mysql.buildOkPacket
 import dev.kviklet.kviklet.proxy.mysql.verifyPassword
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.io.ByteArrayOutputStream
@@ -186,6 +188,78 @@ class MySqlProxyUnitTest {
     }
 
     @Test
+    fun `test MySqlClientPacketParser parses a packet delivered across two reads`() {
+        var parsedQuery = ""
+        val parser = MySqlClientPacketParser(
+            onQuery = { parsedQuery = it },
+            onPrepare = {},
+            onExecute = {},
+            onQuit = {},
+        )
+
+        val sql = "SELECT * FROM users"
+        val packet = mysqlPacket(0, byteArrayOf(0x03) + sql.toByteArray(Charsets.UTF_8))
+
+        // TCP can split a packet anywhere; nothing may be parsed until it is complete
+        parser.addBytes(packet.copyOfRange(0, 7))
+        assertEquals("", parsedQuery)
+        parser.addBytes(packet.copyOfRange(7, packet.size))
+        assertEquals(sql, parsedQuery)
+    }
+
+    @Test
+    fun `test MySqlClientPacketParser reassembles a split 16MB+ COM_QUERY`() {
+        var parsedQuery = ""
+        val parser = MySqlClientPacketParser(
+            onQuery = { parsedQuery = it },
+            onPrepare = {},
+            onExecute = {},
+            onQuit = {},
+        )
+
+        // A payload of exactly 0xFFFFFF continues in the next packet. Build a query spanning two packets:
+        // the first carries the command byte plus 0xFFFFFF-1 filler chars, the second the final "END".
+        val firstPayload = ByteArray(0xFFFFFF)
+        firstPayload[0] = 0x03 // COM_QUERY
+        for (i in 1 until firstPayload.size) firstPayload[i] = 'a'.code.toByte()
+        val bytes = mysqlPacket(0, firstPayload) + mysqlPacket(1, "END".toByteArray(Charsets.UTF_8))
+
+        parser.addBytes(bytes)
+
+        assertEquals(0xFFFFFF - 1 + 3, parsedQuery.length)
+        assertTrue(parsedQuery.endsWith("aaaEND"))
+    }
+
+    @Test
+    fun `test MySqlClientPacketParser fails closed on COM_CHANGE_USER`() {
+        val parser = MySqlClientPacketParser(
+            onQuery = {},
+            onPrepare = {},
+            onExecute = {},
+            onQuit = {},
+        )
+
+        val packet = mysqlPacket(0, byteArrayOf(0x11) + "someuser".toByteArray(Charsets.UTF_8))
+        val exception = assertThrows(FailClosedException::class.java) { parser.addBytes(packet) }
+        assertTrue(exception.message!!.contains("COM_CHANGE_USER"))
+    }
+
+    @Test
+    fun `test MySqlClientPacketParser fails closed on a truncated COM_STMT_EXECUTE`() {
+        val parser = MySqlClientPacketParser(
+            onQuery = {},
+            onPrepare = {},
+            onExecute = {},
+            onQuit = {},
+        )
+
+        // COM_STMT_EXECUTE needs at least the command byte plus a 4-byte statement id
+        val packet = mysqlPacket(0, byteArrayOf(0x17, 0x01, 0x00))
+        val exception = assertThrows(FailClosedException::class.java) { parser.addBytes(packet) }
+        assertTrue(exception.message!!.contains("COM_STMT_EXECUTE"))
+    }
+
+    @Test
     fun `test buildInitialHandshake structure`() {
         val salt = ByteArray(20) { it.toByte() }
         val handshake = buildInitialHandshake(1234, salt, false)
@@ -207,5 +281,16 @@ class MySqlProxyUnitTest {
         assertEquals(0xFF.toByte(), err[0]) // ERR header
         assertEquals(1045 and 0xFF, err[1].toInt() and 0xFF)
         assertEquals('#'.code.toByte(), err[3])
+    }
+
+    // One wire packet: 3-byte little-endian payload length, 1-byte sequence id, payload
+    private fun mysqlPacket(sequenceId: Int, payload: ByteArray): ByteArray {
+        val header = byteArrayOf(
+            (payload.size and 0xFF).toByte(),
+            ((payload.size ushr 8) and 0xFF).toByte(),
+            ((payload.size ushr 16) and 0xFF).toByte(),
+            (sequenceId and 0xFF).toByte(),
+        )
+        return header + payload
     }
 }
