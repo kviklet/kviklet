@@ -23,6 +23,10 @@ import java.security.SecureRandom
 const val NATIVE_PASSWORD_PLUGIN = "mysql_native_password"
 
 private const val CLIENT_SSL = 0x0800
+private const val CLIENT_PROTOCOL_41 = 0x0200
+private const val CLIENT_COMPRESS = 0x0020
+private const val CLIENT_LOCAL_FILES = 0x0080
+private const val CLIENT_ZSTD_COMPRESSION = 0x04000000
 private const val COM_QUIT = 0x01
 
 // Generous cap on any client packet during the handshake. A HandshakeResponse is far smaller; a declared
@@ -91,6 +95,34 @@ fun authenticateClientMySql(
     // authenticates and has nothing to relay: drop it rather than failing it as malformed.
     if (payload.size == 1 && (payload[0].toInt() and 0xFF) == COM_QUIT) {
         return null
+    }
+
+    // The relay parses every packet on this connection for the audit log, which becomes impossible if the
+    // client switches the stream to a form the parser does not understand (compressed packets) or opens a
+    // side channel the audit never sees (LOAD DATA LOCAL file transfers). None of these capabilities are
+    // advertised in the initial handshake, so a well-behaved client never requests them; one that does
+    // anyway is refused up front (fail closed) instead of trusted to not use them.
+    if (payload.size < 4) {
+        throw IOException("Malformed HandshakeResponse packet (truncated)")
+    }
+    val clientCapabilities = readClientCapabilities(payload)
+    if ((clientCapabilities and CLIENT_PROTOCOL_41) == 0) {
+        writePacket(output, seq + 1, buildErrPacket(1105, "HY000", "Kviklet proxy requires a protocol 4.1 client"))
+        throw IOException("Client does not speak protocol 4.1")
+    }
+    val unsupportedCapabilities = listOfNotNull(
+        "COMPRESS".takeIf { (clientCapabilities and CLIENT_COMPRESS) != 0 },
+        "ZSTD_COMPRESSION".takeIf { (clientCapabilities and CLIENT_ZSTD_COMPRESSION) != 0 },
+        "LOCAL_FILES".takeIf { (clientCapabilities and CLIENT_LOCAL_FILES) != 0 },
+    )
+    if (unsupportedCapabilities.isNotEmpty()) {
+        val names = unsupportedCapabilities.joinToString(", ")
+        writePacket(
+            output,
+            seq + 1,
+            buildErrPacket(1105, "HY000", "Kviklet proxy does not support the client capabilities: $names"),
+        )
+        throw IOException("Client requested unsupported capabilities: $names")
     }
 
     val response = HandshakeResponse.parse(payload)
