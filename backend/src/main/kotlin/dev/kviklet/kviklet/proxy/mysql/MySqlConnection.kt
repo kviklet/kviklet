@@ -299,8 +299,9 @@ class MySqlConnection(
                 try {
                     serverParser.addBytes(chunk)
                 } catch (e: FailClosedException) {
-                    // The server side only fails closed on unbounded split packets; without parsing them the
-                    // prepared-statement tracking (and so the audit) can no longer be trusted.
+                    // The server side fails closed only when a prepare-ok is assigned an id that is still in
+                    // use (a sign the statement stream is out of sync); large result payloads are streamed
+                    // past, not parsed, so they never reach here.
                     logger.warn("Blocking server traffic and closing the session: ${e.message}", e.cause ?: e)
                     abortSession(e.message!!)
                     break
@@ -334,59 +335,85 @@ class MySqlConnection(
     }
 }
 
-// Buffers a raw MySQL byte stream and slices it into complete logical packets, invoking [onPacket] once per
-// full payload (the 4-byte length + sequence header is consumed here). A partial packet stays buffered until
-// the rest of it arrives, so only the incomplete tail is ever re-copied between calls. A payload of exactly
-// 0xFFFFFF means the logical payload continues in the following packet(s); those are reassembled into one
-// payload before [onPacket] runs, so a >16MB statement is audited whole instead of being misread as a
-// truncated query plus garbage commands. Shared by the client and server parsers, which differ only in what
-// they do with a payload.
-private class MySqlPacketFramer(private val onPacket: (ByteArray) -> Unit) {
-    private val buffer = ByteArrayOutputStream()
-    private val pendingSplitPayload = ByteArrayOutputStream()
+// Any control packet the parsers actually inspect (a 12-byte prepare-ok, a small ERR) is far under this, so
+// in the streaming (server) direction a packet larger than this needs neither buffering nor inspection: it
+// is streamed past. Generous enough to never clip a real ERR message.
+private const val MAX_STREAMED_CONTROL_PACKET = 4096
+
+// Slices a raw MySQL byte stream into logical packets, invoking [onPacket] once per full payload (the 4-byte
+// length + sequence header is consumed here). It consumes the input incrementally -- a byte is copied at most
+// once and a partial packet is never re-copied between calls -- so there is no O(n^2) buffer churn under
+// chunked reads. A payload of exactly 0xFFFFFF means the logical payload continues in the following
+// packet(s).
+//
+// [reassemble] chooses what happens to those split payloads, which is the only difference between the two
+// directions:
+//   - client->server (reassemble = true): split payloads are joined and emitted whole (bounded by
+//     MAX_ASSEMBLED_PAYLOAD_LENGTH), so a >16MB statement is audited verbatim instead of being misread as a
+//     truncated query plus garbage commands.
+//   - server->client (reassemble = false): the parser only inspects short control packets, so any payload
+//     over MAX_STREAMED_CONTROL_PACKET (including every 16MB+ split result row) is streamed past without
+//     buffering and never emitted. This keeps server-direction memory at O(1): a large BLOB result can no
+//     longer pin up to 1GB of heap and trip an OutOfMemoryError that would bypass the fail-closed handlers.
+private class MySqlPacketFramer(private val reassemble: Boolean, private val onPacket: (ByteArray) -> Unit) {
+    private val header = ByteArray(4)
+    private var headerFilled = 0
+    private var payloadRemaining = 0
+    private var currentIsContinuation = false
+
+    // True while we are in the middle of a split logical payload (the previous packet was a 0xFFFFFF piece).
+    private var continuingSplit = false
+
+    // True while streaming past a payload we will not emit (server direction only). Decided once, at the
+    // first packet of a logical payload, and held for the whole split chain.
+    private var skipping = false
+
+    // Accumulates the payload to emit: one small packet, or a reassembled split payload in reassemble mode.
+    private val payload = ByteArrayOutputStream()
 
     @Synchronized
     fun addBytes(bytes: ByteArray) {
-        buffer.write(bytes)
-        val data = buffer.toByteArray()
-        var offset = 0
-        while (data.size - offset >= 4) {
-            val length = (data[offset].toInt() and 0xFF) or
-                ((data[offset + 1].toInt() and 0xFF) shl 8) or
-                ((data[offset + 2].toInt() and 0xFF) shl 16)
-
-            if (data.size - offset < 4 + length) {
-                break // Need more data for a full packet
+        var i = 0
+        while (i < bytes.size) {
+            if (headerFilled < 4) {
+                val take = minOf(4 - headerFilled, bytes.size - i)
+                System.arraycopy(bytes, i, header, headerFilled, take)
+                headerFilled += take
+                i += take
+                if (headerFilled < 4) break // wait for the rest of the header
+                val length = (header[0].toInt() and 0xFF) or
+                    ((header[1].toInt() and 0xFF) shl 8) or
+                    ((header[2].toInt() and 0xFF) shl 16)
+                currentIsContinuation = length == MAX_SPLIT_PACKET_LENGTH
+                payloadRemaining = length
+                if (!continuingSplit) {
+                    // First packet of a new logical payload: decide once whether to buffer or stream past it.
+                    skipping = !reassemble && (currentIsContinuation || length > MAX_STREAMED_CONTROL_PACKET)
+                }
+                if (reassemble && payload.size() + length > MAX_ASSEMBLED_PAYLOAD_LENGTH) {
+                    throw FailClosedException(
+                        "Kviklet proxy does not support MySQL payloads larger than 1GB. The packet was " +
+                            "blocked and the session closed.",
+                    )
+                }
             }
-
-            if (pendingSplitPayload.size() + length > MAX_ASSEMBLED_PAYLOAD_LENGTH) {
-                throw FailClosedException(
-                    "Kviklet proxy does not support MySQL payloads larger than 1GB. The packet was " +
-                        "blocked and the session closed.",
-                )
+            if (payloadRemaining > 0) {
+                val take = minOf(payloadRemaining, bytes.size - i)
+                if (!skipping) payload.write(bytes, i, take)
+                payloadRemaining -= take
+                i += take
             }
-
-            if (length == MAX_SPLIT_PACKET_LENGTH) {
-                // The logical payload continues in the next packet; buffer this piece and keep going.
-                pendingSplitPayload.write(data, offset + 4, length)
-            } else if (pendingSplitPayload.size() > 0) {
-                // The final piece of a split payload: reassemble and emit as one logical packet.
-                pendingSplitPayload.write(data, offset + 4, length)
-                val payload = pendingSplitPayload.toByteArray()
-                pendingSplitPayload.reset()
-                onPacket(payload)
-            } else {
-                val payload = ByteArray(length)
-                System.arraycopy(data, offset + 4, payload, 0, length)
-                onPacket(payload)
+            if (headerFilled == 4 && payloadRemaining == 0) {
+                headerFilled = 0
+                if (currentIsContinuation) {
+                    continuingSplit = true // more packets belong to this logical payload
+                } else {
+                    continuingSplit = false
+                    if (!skipping) onPacket(payload.toByteArray())
+                    payload.reset()
+                    skipping = false
+                }
             }
-
-            offset += 4 + length
-        }
-
-        buffer.reset()
-        if (data.size > offset) {
-            buffer.write(data, offset, data.size - offset)
         }
     }
 }
@@ -399,7 +426,8 @@ class MySqlClientPacketParser(
     private val onQuit: () -> Unit,
     private val onResetConnection: () -> Unit = {},
 ) {
-    private val framer = MySqlPacketFramer { payload -> handlePacket(payload) }
+    // reassemble = true: a >16MB client statement is joined so its full text can be audited verbatim.
+    private val framer = MySqlPacketFramer(reassemble = true) { payload -> handlePacket(payload) }
 
     fun addBytes(bytes: ByteArray) = framer.addBytes(bytes)
 
@@ -502,7 +530,9 @@ class MySqlClientPacketParser(
 }
 
 class MySqlServerPacketParser(private val onPrepareOk: (Int) -> Unit, private val onPrepareErr: () -> Unit = {}) {
-    private val framer = MySqlPacketFramer { payload -> handlePacket(payload) }
+    // reassemble = false: the parser only inspects short control packets, so large result payloads (a split
+    // multi-megabyte BLOB row) are streamed past without buffering rather than accumulated up to 1GB.
+    private val framer = MySqlPacketFramer(reassemble = false) { payload -> handlePacket(payload) }
 
     fun addBytes(bytes: ByteArray) = framer.addBytes(bytes)
 
