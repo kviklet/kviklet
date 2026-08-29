@@ -5,6 +5,7 @@ import dev.kviklet.kviklet.db.EventAdapter
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.helper.ExecutionRequestFactory
 import dev.kviklet.kviklet.proxy.core.ProxyServer
+import dev.kviklet.kviklet.proxy.core.ProxySession
 import dev.kviklet.kviklet.proxy.core.TLSCertificate
 import dev.kviklet.kviklet.proxy.mocks.EventServiceMock
 import dev.kviklet.kviklet.proxy.postgres.PostgresProtocol
@@ -12,7 +13,8 @@ import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import org.testcontainers.containers.PostgreSQLContainer
 import java.sql.Connection
 import java.sql.DriverManager
-import java.time.LocalDateTime
+import java.time.Duration
+import java.time.Instant
 import java.util.*
 
 class ProxyInstance(
@@ -49,16 +51,17 @@ fun proxyServerFactory(
     proxy.start()
     waitForProxyStart(proxy)
     proxy.registerSession(
-        username = "proxyUser",
-        password = "proxyPassword",
-        targetHost = postgresContainer.host,
-        targetPort = postgresContainer.getMappedPort(5432),
-        databaseName = "testdb",
-        authenticationDetails = connAuth,
-        executionRequest = request,
-        userId = "mock",
-        startTime = LocalDateTime.now(),
-        maxTimeMinutes = 10,
+        ProxySession(
+            username = "proxyUser",
+            password = "proxyPassword",
+            executionRequest = request,
+            userId = "mock",
+            targetHost = postgresContainer.host,
+            targetPort = postgresContainer.getMappedPort(5432),
+            databaseName = "testdb",
+            authenticationDetails = connAuth,
+        ),
+        expiresAt = Instant.now().plus(Duration.ofMinutes(10)),
     )
     val proxyJdbcConnectionString = "jdbc:postgresql://localhost:$port/testdb"
     val proxyProps = Properties()
