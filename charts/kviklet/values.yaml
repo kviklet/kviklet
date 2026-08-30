@@ -30,6 +30,19 @@ config:
       userOu: "people"
       searchBase: "ou=people"
 
+  # Database access proxies (experimental). Each enabled proxy binds a
+  # long-lived listener inside the pod at startup; disabling one skips the
+  # bind entirely. To make the listeners reachable by database clients, also
+  # enable proxyService below.
+  proxy:
+    postgres:
+      enabled: true
+      port: 5432
+    # One listener serves both MySQL and MariaDB.
+    mysql:
+      enabled: true
+      port: 3306
+
 # Name of the secret containing the kviklets configuration
 # See README.md or the demo deployment for examples
 externalSecretName: "kviklet-secret"
@@ -44,6 +57,16 @@ image:
 service:
   type: ClusterIP
   port: 80
+
+# Separate service exposing the database proxy listeners. Database clients
+# speak raw TCP (an HTTP ingress cannot carry this traffic), so this is
+# typically a LoadBalancer (or NodePort / an ingress controller with TCP
+# passthrough). Kept separate from the HTTP service above so that one can
+# stay ClusterIP behind an ingress.
+proxyService:
+  enabled: false
+  type: LoadBalancer
+  annotations: {}
 
 # -- Define resources for kviklet pods.
 # see https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#resources
