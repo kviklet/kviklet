@@ -32,12 +32,18 @@ import SearchInput from "../components/SearchInput";
 import Button from "../components/Button";
 import useConfig from "../components/ConfigProvider";
 import useNotification from "../hooks/useNotification";
-import Tooltip from "../components/Tooltip";
+import { EnterpriseFeatureModal } from "../components/EnterpriseFeature";
+
+// Styling for license-locked filter-row controls: they look like their live
+// counterparts but carry a lock icon and open the upsell modal instead.
+const lockedChipClasses =
+  "flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1 text-sm font-medium leading-5 text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800";
 
 function ExportButton() {
   const { config } = useConfig();
   const { addNotification } = useNotification();
   const [isExporting, setIsExporting] = useState(false);
+  const [showUpsellModal, setShowUpsellModal] = useState(false);
 
   const hasEnterpriseLicense =
     config?.licenseValid &&
@@ -72,16 +78,22 @@ function ExportButton() {
 
   if (!hasEnterpriseLicense) {
     return (
-      <Tooltip content="Enterprise feature - License required">
+      <>
         <button
           type="button"
-          disabled
-          className="flex cursor-not-allowed items-center gap-1.5 rounded-md border border-slate-300 bg-slate-100 px-3 py-1 text-sm font-medium leading-5 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500"
+          onClick={() => setShowUpsellModal(true)}
+          className={lockedChipClasses}
         >
           <LockClosedIcon className="h-4 w-4 flex-shrink-0" />
           <span className="whitespace-nowrap">Export</span>
         </button>
-      </Tooltip>
+        {showUpsellModal && (
+          <EnterpriseFeatureModal
+            feature="auditLog"
+            setVisible={setShowUpsellModal}
+          />
+        )}
+      </>
     );
   }
 
@@ -133,6 +145,7 @@ function DateRangeFilter({
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [showUpsellModal, setShowUpsellModal] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const hasFilter = from !== null || to !== null;
 
@@ -162,16 +175,22 @@ function DateRangeFilter({
 
   if (disabled) {
     return (
-      <Tooltip content="Enterprise feature - License required">
+      <>
         <button
           type="button"
-          disabled
-          className="flex cursor-not-allowed items-center gap-1.5 rounded-md border border-slate-300 bg-slate-100 px-3 py-1 text-sm font-medium leading-5 text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500"
+          onClick={() => setShowUpsellModal(true)}
+          className={lockedChipClasses}
         >
           <LockClosedIcon className="h-4 w-4 flex-shrink-0" />
           <span>Date range</span>
         </button>
-      </Tooltip>
+        {showUpsellModal && (
+          <EnterpriseFeatureModal
+            feature="auditLog"
+            setVisible={setShowUpsellModal}
+          />
+        )}
+      </>
     );
   }
 

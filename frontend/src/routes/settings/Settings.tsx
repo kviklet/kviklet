@@ -38,6 +38,7 @@ import {
   useUserStatusLoading,
 } from "../../hooks/permissions";
 import RequirePermission from "../../components/RequirePermission";
+import { EnterpriseFeaturePage } from "../../components/EnterpriseFeature";
 import NotAuthorized from "../../components/NotAuthorized";
 import Spinner from "../../components/Spinner";
 
@@ -46,21 +47,15 @@ const Tab = (props: {
   active: boolean;
   link: string;
   dataTestId?: string;
-  disabled?: boolean;
-  tooltip?: string;
 }) => {
   return (
     <Link to={props.link} data-testid={props.dataTestId}>
       <div
         className={
-          "rounded pr-2 " +
-            (props.disabled
-              ? "text-slate-400 dark:text-slate-600"
-              : "text-slate-700 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-900 ") +
+          "rounded pr-2 text-slate-700 hover:bg-slate-100 dark:text-slate-50 dark:hover:bg-slate-900 " +
             (props.active &&
               "rounded bg-slate-200 hover:bg-slate-200 dark:bg-slate-900") || ""
         }
-        title={props.tooltip}
       >
         {props.children}
       </div>
@@ -110,8 +105,6 @@ const Settings = () => {
     name: string;
     tabContent: React.ReactNode;
     link: string;
-    disabled?: boolean;
-    tooltip?: string;
     // Tab renders only if the user holds this permission on at least one resource.
     permission?: Permission;
   }> = [
@@ -208,10 +201,6 @@ const Settings = () => {
       ),
       link: "/settings/role-sync",
       permission: "configuration:get",
-      disabled: !config?.licenseValid,
-      tooltip: !config?.licenseValid
-        ? "Role Sync is an enterprise feature. Visit kviklet.dev to get a license."
-        : undefined,
     },
     {
       name: "api-keys",
@@ -230,10 +219,6 @@ const Settings = () => {
       ),
       link: "/settings/api-keys",
       permission: "api_key:get",
-      disabled: !config?.licenseValid,
-      tooltip: !config?.licenseValid
-        ? "API Keys is an enterprise feature. Visit kviklet.dev to get a license."
-        : undefined,
     },
   ];
 
@@ -253,8 +238,6 @@ const Settings = () => {
                   active={activeTab === tab.name}
                   link={tab.link}
                   key={tab.name}
-                  disabled={tab.disabled}
-                  tooltip={tab.tooltip}
                 >
                   {tab.tabContent}
                 </Tab>
@@ -326,23 +309,7 @@ const Settings = () => {
                       <ApiKeyPage />
                     </RequirePermission>
                   ) : (
-                    <div className="flex h-64 flex-col items-center justify-center text-center">
-                      <LockClosedIcon className="mb-4 h-12 w-12 text-slate-400" />
-                      <h2 className="mb-2 text-xl font-semibold text-slate-700 dark:text-slate-300">
-                        Enterprise Feature
-                      </h2>
-                      <p className="mb-4 text-slate-500 dark:text-slate-400">
-                        API Keys require an enterprise license.
-                      </p>
-                      <a
-                        href="https://kviklet.dev"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                      >
-                        Get a license at kviklet.dev
-                      </a>
-                    </div>
+                    <EnterpriseFeaturePage feature="apiKeys" />
                   )
                 }
               />
@@ -359,23 +326,7 @@ const Settings = () => {
                       <RoleSyncSettings />
                     </RequirePermission>
                   ) : (
-                    <div className="flex h-64 flex-col items-center justify-center text-center">
-                      <LockClosedIcon className="mb-4 h-12 w-12 text-slate-400" />
-                      <h2 className="mb-2 text-xl font-semibold text-slate-700 dark:text-slate-300">
-                        Enterprise Feature
-                      </h2>
-                      <p className="mb-4 text-slate-500 dark:text-slate-400">
-                        Role Sync requires an enterprise license.
-                      </p>
-                      <a
-                        href="https://kviklet.dev"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                      >
-                        Get a license at kviklet.dev
-                      </a>
-                    </div>
+                    <EnterpriseFeaturePage feature="roleSync" />
                   )
                 }
               />
