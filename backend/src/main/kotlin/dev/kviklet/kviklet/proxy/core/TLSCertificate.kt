@@ -1,6 +1,7 @@
 // This file is not MIT licensed
 package dev.kviklet.kviklet.proxy.core
 
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -74,9 +75,20 @@ class TlsCertEnvConfig(
     var PROXY_TLS_CERTIFICATE_CERT: String? = null,
 )
 
+// Never throws: this runs during eager proxy bean creation, so a bad cert path or a malformed PEM/key
+// must degrade to "no TLS" (logged) rather than propagate as a BeanCreationException that fails the whole
+// application boot -- matching how a listener bind failure is handled in ProxyServer.start().
 fun tlsCertificateFactory(env: TlsCertEnvConfig = TlsCertEnvConfig()): TLSCertificate? {
     val logger = LoggerFactory.getLogger("TLSCertificate")
+    return try {
+        loadTlsCertificate(env, logger)
+    } catch (e: Exception) {
+        logger.error("Failed to load the proxy TLS certificate; the proxy will run without TLS", e)
+        null
+    }
+}
 
+private fun loadTlsCertificate(env: TlsCertEnvConfig, logger: Logger): TLSCertificate? {
     when (env.PROXY_TLS_CERTIFICATE_SOURCE.lowercase()) {
         "file" -> {
             if (env.PROXY_TLS_CERTIFICATE_FILE == null || env.PROXY_TLS_CERTIFICATE_KEY_FILE == null) {
