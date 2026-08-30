@@ -35,6 +35,11 @@ class ProxySession(
     // expiry task / shutdown.
     val connections = CopyOnWriteArrayList<ProxyConnection>()
 
+    // Relay slots reserved against the caps whose upstream connect is still in flight (reserved before the
+    // protocol opens the upstream, converted into an entry in [connections] once the relay is built).
+    // Guarded by the owning ProxyServer's monitor, like connection registration itself.
+    internal var reservedConnections: Int = 0
+
     // Flipped to false on expiry or server shutdown. Read during auth routing and connection registration
     // (both under the server monitor) so a connection that authenticated just as the window closed is refused
     // instead of left relaying.

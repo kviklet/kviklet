@@ -9,12 +9,14 @@ import dev.kviklet.kviklet.proxy.helpers.directConnectionFactory
 import dev.kviklet.kviklet.proxy.helpers.proxyServerFactory
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.postgresql.core.PGStream
 import org.postgresql.core.QueryExecutorBase
 import org.postgresql.jdbc.PgConnection
+import org.postgresql.util.PSQLException
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
@@ -208,6 +210,37 @@ class PostgresProxyConnectionLifecycleTest {
         } finally {
             shortProxy.proxy.shutdownServer()
             runCatching { shortProxy.connection.close() }
+        }
+    }
+
+    // KVI-247 #5: a connection over the cap used to be silently closed AFTER the client had fully
+    // authenticated and received ReadyForQuery, so pools saw "connection reset" on first use. The slot
+    // is now reserved before the client startup finishes, and a refusal is a proper 53300 ErrorResponse.
+    @Test
+    fun `a connection over the per-session cap is refused with a too_many_connections error`() {
+        val cappedProxy = proxyServerFactory(
+            postgresContainer,
+            executionRequestAdapter,
+            eventAdapter,
+            maxConnectionsPerSession = 1,
+        )
+        try {
+            // The factory's own connection occupies the single allowed slot.
+            cappedProxy.connection.createStatement().executeQuery("SELECT 1;").close()
+
+            val thrown = assertThrows(PSQLException::class.java) {
+                val props = Properties()
+                props.setProperty("user", "proxyUser")
+                props.setProperty("password", "proxyPassword")
+                DriverManager.getConnection(cappedProxy.connectionString, props).close()
+            }
+            assertEquals("53300", thrown.sqlState, "expected too_many_connections, got: ${thrown.message}")
+
+            // The refusal must not have damaged the connection that legitimately holds the slot.
+            cappedProxy.connection.createStatement().executeQuery("SELECT 1;").close()
+        } finally {
+            cappedProxy.proxy.shutdownServer()
+            runCatching { cappedProxy.connection.close() }
         }
     }
 

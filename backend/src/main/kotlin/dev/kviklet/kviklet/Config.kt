@@ -53,16 +53,18 @@ class WebSocketConfig : WebSocketConfigurer {
 
 @Configuration
 class TLSCerts(
+    // The defaults must be the SpEL "#{null}", not a bare "null": a bare one injects the literal string
+    // "null", which passes the factory's null-checks and ends in File("null").readLines() at boot.
     @Value("\${proxy.tls_certificate_source:NONE}")
     private val certificateSource: String,
-    @Value("\${proxy.tls_certificate_cert:null}")
-    private val certificateCert: String,
-    @Value("\${proxy.tls_certificate_key:null}")
-    private val certificateKey: String,
-    @Value("\${proxy.tls_certificate_cert_file:null}")
-    private val certificateCertFile: String,
-    @Value("\${proxy.tls_certificate_key_file:null}")
-    private val certificateKeyFile: String,
+    @Value("\${proxy.tls_certificate_cert:#{null}}")
+    private val certificateCert: String?,
+    @Value("\${proxy.tls_certificate_key:#{null}}")
+    private val certificateKey: String?,
+    @Value("\${proxy.tls_certificate_cert_file:#{null}}")
+    private val certificateCertFile: String?,
+    @Value("\${proxy.tls_certificate_key_file:#{null}}")
+    private val certificateKeyFile: String?,
 ) {
     @Bean
     @Primary

@@ -8,14 +8,12 @@ import dev.kviklet.kviklet.proxy.postgres.messages.BindMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.CloseMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.ExecuteMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.MessageFramer
-import dev.kviklet.kviklet.proxy.postgres.messages.MessageOrBytes
 import dev.kviklet.kviklet.proxy.postgres.messages.ParseMessage
+import dev.kviklet.kviklet.proxy.postgres.messages.ParsedMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.QueryMessage
 import dev.kviklet.kviklet.proxy.postgres.messages.Statement
 import dev.kviklet.kviklet.proxy.postgres.messages.errorResponse
-import dev.kviklet.kviklet.proxy.postgres.messages.isTermination
 import dev.kviklet.kviklet.proxy.postgres.messages.readyForQuery
-import dev.kviklet.kviklet.proxy.postgres.messages.writableBytes
 import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import org.slf4j.LoggerFactory
@@ -159,7 +157,7 @@ class Connection(
         // and each message is audited immediately before it is forwarded, so the audit log
         // only ever contains queries that were at least attempted.
         val messages = try {
-            clientFramer.feed(clientBuffer).map { MessageOrBytes(it, null) }
+            clientFramer.feed(clientBuffer)
         } catch (e: Exception) {
             logger.warn("Failed to parse client message, blocking it and closing the session", e)
             abortSession(
@@ -167,8 +165,8 @@ class Connection(
             )
             return
         }
-        for (messageOrBytes in messages) {
-            if (messageOrBytes.message?.header == 'F') {
+        for (message in messages) {
+            if (message.header == 'F') {
                 logger.warn("Client sent a fast-path FunctionCall message, blocking it and closing the session")
                 abortSession(
                     "Kviklet proxy does not support fast-path function calls because they bypass the audit log. " +
@@ -177,7 +175,7 @@ class Connection(
                 return
             }
             try {
-                auditMessage(messageOrBytes)
+                auditMessage(message)
             } catch (e: UnknownStatementException) {
                 logger.warn("Client referenced a statement or portal unknown to the proxy, closing the session", e)
                 abortSession(
@@ -192,13 +190,13 @@ class Connection(
                 )
                 return
             }
-            terminationMessageReceived = terminationMessageReceived || messageOrBytes.isTermination()
-            serverOutput.writeAndFlush(messageOrBytes.writableBytes())
+            terminationMessageReceived = terminationMessageReceived || message.isTermination()
+            serverOutput.writeAndFlush(message.toByteArray())
         }
     }
 
-    private fun auditMessage(messageOrBytes: MessageOrBytes) {
-        when (val message = messageOrBytes.message) {
+    private fun auditMessage(message: ParsedMessage) {
+        when (message) {
             is QueryMessage -> handleQuery(message)
             is ParseMessage -> handleParseMessage(message)
             is BindMessage -> handleBindMessage(message)
