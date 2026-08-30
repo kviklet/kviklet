@@ -92,11 +92,9 @@ class PostgresProxyParseFailureTest {
             val firstByte = harness.clientSide.getInputStream().read()
             assertEquals('E'.code, firstByte)
 
-            // The session must terminate
             harness.handler.join(5000)
             assertFalse(harness.handler.isAlive)
 
-            // Nothing must have been forwarded to the target database
             assertEquals(-1, harness.readByteForwardedUpstream())
 
             // The blocked message must not produce an audit event, only executed queries are audited

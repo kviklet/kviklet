@@ -226,7 +226,6 @@ class QueryMessage(
     }
 }
 
-// Reads a zero-terminated string from the buffer, as used throughout the Postgres wire protocol
 fun readCString(buffer: ByteBuffer): String {
     val stringBytes = mutableListOf<Byte>()
     while (true) {

@@ -217,8 +217,6 @@ class PostgresProxyAuthTest {
             )
         }
 
-        // Each registered username authenticates with its own password and reaches the target through the
-        // one shared listener.
         listOf(userA to passA, userB to passB).forEach { (user, pass) ->
             assertDoesNotThrow {
                 val props = Properties()
@@ -230,7 +228,6 @@ class PostgresProxyAuthTest {
             }
         }
 
-        // A username with no session on the same listener is rejected.
         assertThrows<PSQLException> {
             val props = Properties()
             props.setProperty("user", getRandomString(8))

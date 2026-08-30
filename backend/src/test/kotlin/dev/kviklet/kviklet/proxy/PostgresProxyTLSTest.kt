@@ -100,7 +100,6 @@ class PostgresProxyTLSTest {
         val conn = DriverManager.getConnection(this.proxy.connectionString + ignoreTLSIssuer, proxyProps)
         try {
             conn.createStatement().executeQuery("SELECT 1").close()
-            // The TLS session is established and now idle, with no traffic in flight.
             assertTrue(this.proxy.proxy.currentConnections >= 1)
 
             this.proxy.proxy.shutdownServer()

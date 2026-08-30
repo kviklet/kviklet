@@ -251,7 +251,6 @@ class MySqlProxyConnectionLifecycleTest {
                 }
             }
         }
-        // The bound value is decoded from the execute packet and rendered into the prepared text.
         proxy.eventService.assertAuditedQueryContains("SELECT 2 + 40")
     }
 }
