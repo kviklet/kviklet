@@ -21,7 +21,7 @@ import {
 } from "../../api/Permissions";
 import { useHasPermission } from "../../hooks/permissions";
 import useConfig from "../../components/ConfigProvider";
-import EnterpriseFeatureModal from "../../components/EnterpriseFeatureModal";
+import { EnterpriseFeatureModal } from "../../components/EnterpriseFeature";
 
 function DatasourceRequestActions({
   request,
@@ -388,20 +388,9 @@ function DatasourceRequestActions({
       <SQLDumpModal />
       {showProxyUpsellModal && (
         <EnterpriseFeatureModal
-          feature="Database Proxy"
+          feature="databaseProxy"
           setVisible={setShowProxyUpsellModal}
-        >
-          <p>
-            Connect psql, mysql, DataGrip, or any other native client straight
-            to an approved temporary-access request — no credentials to hand
-            out, no separate tunnel.
-          </p>
-          <p>
-            Every statement passes through Kviklet and lands in the audit log,
-            so temporary access stays fully reviewable even outside the web
-            editor.
-          </p>
-        </EnterpriseFeatureModal>
+        />
       )}
     </>
   );

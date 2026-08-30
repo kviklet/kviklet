@@ -5,6 +5,7 @@ import { isApiErrorResponse } from "../api/Errors";
 import useConfig from "./ConfigProvider";
 import { useHasPermission } from "../hooks/permissions";
 import { WarningBanner } from "./Alert";
+import { EnterpriseFeatureModal } from "./EnterpriseFeature";
 
 interface RoleRequirementField {
   roleId: string;
@@ -263,20 +264,35 @@ function ExpiredWithRequirementsUI({
 }
 
 function LockedUI() {
+  const [showUpsellModal, setShowUpsellModal] = useState(false);
   return (
-    <div className="relative opacity-60">
-      <div className="absolute inset-0 z-10 flex items-center justify-center">
-        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 shadow-lg dark:border-slate-600 dark:bg-slate-800 dark:shadow-none">
-          <LockClosedIcon className="h-5 w-5 text-slate-500" />
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-            Enterprise feature
-          </span>
+    <>
+      <div className="relative opacity-60">
+        <div className="absolute inset-0 z-10 flex items-center justify-center">
+          <button
+            type="button"
+            onClick={() => setShowUpsellModal(true)}
+            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 shadow-lg
+                       hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:shadow-none
+                       dark:hover:bg-slate-700"
+          >
+            <LockClosedIcon className="h-5 w-5 text-slate-500" />
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Enterprise feature
+            </span>
+          </button>
+        </div>
+        <div className="pointer-events-none">
+          <div className="h-20 rounded-md bg-slate-100 dark:bg-slate-950"></div>
         </div>
       </div>
-      <div className="pointer-events-none">
-        <div className="h-20 rounded-md bg-slate-100 dark:bg-slate-950"></div>
-      </div>
-    </div>
+      {showUpsellModal && (
+        <EnterpriseFeatureModal
+          feature="roleRequirements"
+          setVisible={setShowUpsellModal}
+        />
+      )}
+    </>
   );
 }
 
