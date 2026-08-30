@@ -5,6 +5,7 @@ import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
 import dev.kviklet.kviklet.controller.CreateExecutionRequestRequest
 import dev.kviklet.kviklet.controller.CreateKubernetesExecutionRequestRequest
 import dev.kviklet.kviklet.controller.CreateReviewRequest
+import dev.kviklet.kviklet.controller.ServerUrlInterceptor
 import dev.kviklet.kviklet.controller.UpdateExecutionRequestRequest
 import dev.kviklet.kviklet.db.CommentPayload
 import dev.kviklet.kviklet.db.EditPayload
@@ -57,15 +58,19 @@ import dev.kviklet.kviklet.shell.KubernetesApi
 import jakarta.transaction.Transactional
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.OutputStream
+import java.net.URI
+import java.net.URISyntaxException
 import java.security.SecureRandom
 import java.time.Duration
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -86,6 +91,10 @@ class ExecutionRequestService(
     private val permissionResolver: PermissionResolver,
     private val licenseService: LicenseService,
     private val configService: ConfigService,
+    // Same override the notification links use: an explicitly configured base URL wins over the
+    // host observed on incoming requests.
+    @Value("\${kviklet.baseUrl:#{null}}")
+    private val serverBaseUrl: String? = null,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -1028,6 +1037,9 @@ class ExecutionRequestService(
                 getShutdownDate(firstEventTime, it.toMinutes()).toInstant()
             },
         )
+        // A reused session reports its original expiry (anchored at the first execution), not a
+        // freshly recomputed one -- so read it back from the canonical session.
+        val expiresAt = session.expiresAt?.let { LocalDateTime.ofInstant(it, ZoneOffset.UTC) }
         if (session.username == username) {
             logger.info("Registered proxy session $username on port ${proxyServer.listenPort}")
         } else {
@@ -1038,11 +1050,29 @@ class ExecutionRequestService(
 
         return ExecutionProxy(
             request = executionRequest.request,
+            host = resolveProxyHost(),
             port = proxyServer.listenPort,
             username = session.username,
             password = session.password,
+            databaseName = connection.databaseName ?: "",
+            type = connection.type,
             startTime = firstEventTime,
+            expiresAt = expiresAt,
         )
+    }
+
+    // The hostname clients point psql/DataGrip at: kviklet.baseUrl if configured, else the host the
+    // frontend reached this server on (recorded by ServerUrlInterceptor). Only the host -- the proxy
+    // listens on its own port, so the base URL's scheme, port and path are irrelevant.
+    private fun resolveProxyHost(): String? {
+        val url = serverBaseUrl.takeIf { !it.isNullOrBlank() } ?: ServerUrlInterceptor.getServerUrl() ?: return null
+        return parseHost(url) ?: parseHost("http://$url")
+    }
+
+    private fun parseHost(url: String): String? = try {
+        URI(url).host
+    } catch (e: URISyntaxException) {
+        null
     }
 
     // The client-facing temp username: prefixed for recognisability, lowercase so no client-side identifier

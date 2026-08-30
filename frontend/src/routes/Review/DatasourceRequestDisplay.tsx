@@ -6,6 +6,7 @@ import {
 import MultiResult from "../../components/MultiResult";
 import Spinner from "../../components/Spinner";
 import DatasourceRequestBox from "./DatasourceRequestBox";
+import ProxyConnectionCard from "./ProxyConnectionCard";
 
 function DatasourceRequestDisplay({
   request,
@@ -35,13 +36,7 @@ function DatasourceRequestDisplay({
       {executionError && (
         <div className="my-4 text-red-500">{executionError}</div>
       )}
-      {proxyResponse && (
-        <div className="my-4 text-lime-500">
-          Server started on {proxyResponse.port} with username{" "}
-          <i>{proxyResponse.username}</i> and password{" "}
-          <i>{proxyResponse.password}</i>
-        </div>
-      )}
+      {proxyResponse && <ProxyConnectionCard proxy={proxyResponse} />}
     </>
   );
 }

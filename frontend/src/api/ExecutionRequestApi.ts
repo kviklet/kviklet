@@ -3,6 +3,7 @@ import { userResponseSchema } from "./UserApi";
 import {
   connectionResponseSchema,
   databaseConnectionResponseSchema,
+  DatabaseType,
 } from "./DatasourceApi";
 import { roleResponseSchema } from "./RoleApi";
 import baseUrl, { apiFetch } from "./base";
@@ -167,9 +168,18 @@ const RawKubernetesRequestSchema = z.object({
 });
 
 const ProxyResponse = z.object({
+  host: z.string().nullable(),
   port: z.number(),
   username: z.string(),
   password: z.string(),
+  databaseName: z.string(),
+  type: z.nativeEnum(DatabaseType),
+  // Not z.coerce.date().nullable(): coercion runs first and turns null into the 1970 epoch,
+  // but a session without a time limit really does send null.
+  expiresAt: z
+    .string()
+    .nullable()
+    .transform((value) => (value ? new Date(value) : null)),
 });
 
 const ChangeExecutionRequestPayloadSchema = z.object({
