@@ -18,8 +18,13 @@ data:
           console: {{ .Values.config.logging.structuredFormat | quote }}
     {{- end }}
 
-    {{- if .Values.config.oidc.enabled }}
     kviklet:
+      proxy:
+        postgres:
+          port: {{ if .Values.config.proxy.postgres.enabled }}{{ .Values.config.proxy.postgres.port }}{{ else }}-1{{ end }}
+        mysql:
+          port: {{ if .Values.config.proxy.mysql.enabled }}{{ .Values.config.proxy.mysql.port }}{{ else }}-1{{ end }}
+    {{- if .Values.config.oidc.enabled }}
       identityProvider:
         type: {{ .Values.config.oidc.provider | quote }}
         {{- if .Values.config.oidc.issuer }}
