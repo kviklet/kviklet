@@ -19,6 +19,8 @@ import {
   NO_EXECUTE_PERMISSION_MESSAGE,
 } from "../../api/Permissions";
 import { useHasPermission } from "../../hooks/permissions";
+import useConfig from "../../components/ConfigProvider";
+import EnterpriseFeatureModal from "../../components/EnterpriseFeatureModal";
 
 function DatasourceRequestActions({
   request,
@@ -47,6 +49,10 @@ function DatasourceRequestActions({
   // so this is the global "can create anywhere" check, not one on this connection.
   const canCreateRequests = useHasPermission("execution_request:edit");
   const [showSQLDumpModal, setShowSQLDumpModal] = useState(false);
+  const [showProxyUpsellModal, setShowProxyUpsellModal] = useState(false);
+  const { config } = useConfig();
+  const licenseValid = config?.licenseValid ?? false;
+  const proxyEnabled = config?.proxyEnabled ?? false;
   const navigate = useNavigate();
 
   const navigateCopy = () => {
@@ -172,23 +178,48 @@ function DatasourceRequestActions({
           },
         ]
       : []),
+    // The proxy entry is always visible so the feature is discoverable: without a license it
+    // opens the enterprise upsell; with a license but the proxy switched off it's grayed out.
     ...(request?.type == "TemporaryAccess"
       ? [
-          {
-            onClick: () => {
-              void startServer();
-            },
-            enabled:
-              isAuthor && canExecute && request?.reviewStatus === "APPROVED",
-            tooltip: !isAuthor
-              ? "Proxy access is granted only to the requester"
-              : request?.reviewStatus !== "APPROVED"
-              ? "Request needs to be approved before starting the proxy"
-              : !canExecute
-              ? NO_EXECUTE_PERMISSION_MESSAGE
-              : undefined,
-            content: "Start Proxy",
-          },
+          !licenseValid
+            ? {
+                onClick: () => {
+                  setShowProxyUpsellModal(true);
+                },
+                enabled: true,
+                content: (
+                  <span className="flex items-center justify-between">
+                    Start Proxy
+                    <span
+                      className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium
+                                 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+                    >
+                      Enterprise
+                    </span>
+                  </span>
+                ),
+              }
+            : {
+                onClick: () => {
+                  void startServer();
+                },
+                enabled:
+                  proxyEnabled &&
+                  isAuthor &&
+                  canExecute &&
+                  request?.reviewStatus === "APPROVED",
+                tooltip: !proxyEnabled
+                  ? "The database proxy is disabled. An admin can enable it in the general settings."
+                  : !isAuthor
+                  ? "Proxy access is granted only to the requester"
+                  : request?.reviewStatus !== "APPROVED"
+                  ? "Request needs to be approved before starting the proxy"
+                  : !canExecute
+                  ? NO_EXECUTE_PERMISSION_MESSAGE
+                  : undefined,
+                content: "Start Proxy",
+              },
         ]
       : []),
   ];
@@ -335,6 +366,23 @@ function DatasourceRequestActions({
         )}
       </div>
       <SQLDumpModal />
+      {showProxyUpsellModal && (
+        <EnterpriseFeatureModal
+          feature="Database Proxy"
+          setVisible={setShowProxyUpsellModal}
+        >
+          <p>
+            Connect psql, mysql, DataGrip, or any other native client straight
+            to an approved temporary-access request — no credentials to hand
+            out, no separate tunnel.
+          </p>
+          <p>
+            Every statement passes through Kviklet and lands in the audit log,
+            so temporary access stays fully reviewable even outside the web
+            editor.
+          </p>
+        </EnterpriseFeatureModal>
+      )}
     </>
   );
 }

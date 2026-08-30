@@ -25,7 +25,7 @@ Kviklet ships with a variety of features that an engineering team needs to manag
 - **Single Query**: Execute a singular statement. Allows the reviewer to review your query before execution.
 - **Auditlog**: Singular plane that logs all executed statements with Author, reason for execution etc.
 - **RBAC**: Configure which team has access to which database/table to as fine of a granularity as the DB Engine allows.
-- **Postgres Proxy**: Start a proxy server to use the DB Client of your choice, but everything will be stored in the Kviklet Auditlog.
+- **Postgres Proxy**: Start a proxy server to use the DB Client of your choice, but everything will be stored in the Kviklet Auditlog. (Enterprise only)
 - **Kubernetes Exec**: Execute a statement on a pod in your kubernetes cluster. (Currently only supports Execution of a single command no live session yet)
 - **Role-Based Review Gates**: Require approvals from specific roles before execution. (Enterprise only)
 - **Role Sync**: Automatically sync user roles from your identity provider groups. (Enterprise only)
@@ -591,6 +591,7 @@ Kubernetes commands only wait for 5 seconds for output if the command takes long
 ### Proxy, Postgres only
 
 If you create requests for temporary access, you can - instead of using the web interface - run your queries through a kviklet managed proxy and use the DB client of your choice.
+The proxy is an enterprise feature: it requires a valid license, and an admin additionally has to switch it on under Settings -> General -> Database Proxy (no restart needed).
 For this the container listens on a single stable port (5432 by default, configurable via `kviklet.proxy.postgres.port`), so you need to expose that one port.
 The user can then create a temporary access request, and click "Start Proxy" once it has been approved. Each request gets a temporary username and password on that shared port; Kviklet routes each connection to its request by the username. With these they can connect to the database. Kviklet validates the temp user and password and proxies all requests to the underlying user on the database. Any executed statements are logged in the auditlog as if they were run via the web interface.
 Note that the message parsing on the proxy side hasn't been tested with all clients, so if you run into issues with e.g. statements not being logged feel free to open an issue.

@@ -21,6 +21,7 @@ class ConfigurationTest {
             Configuration(
                 teamsUrl = "",
                 slackUrl = "",
+                proxyEnabled = false,
             ),
         )
     }
@@ -31,6 +32,7 @@ class ConfigurationTest {
         val configuration = Configuration(
             teamsUrl = "https://teams.com",
             slackUrl = "https://slack.com",
+            proxyEnabled = true,
         )
 
         val savedConfiguration = configurationAdapter.setConfiguration(configuration)
@@ -55,5 +57,22 @@ class ConfigurationTest {
 
         assert(savedConfiguration.teamsUrl == longUrl)
         assert(loadedConfiguration.teamsUrl == longUrl)
+    }
+
+    @Test
+    fun `partial update leaves other keys unchanged and returns the full configuration`() {
+        configurationAdapter.setConfiguration(
+            Configuration(teamsUrl = "https://teams.com", slackUrl = "https://slack.com"),
+        )
+
+        // Null fields mean "leave unchanged"; the returned configuration must still be complete.
+        val savedConfiguration = configurationAdapter.setConfiguration(
+            Configuration(teamsUrl = null, slackUrl = null, proxyEnabled = true),
+        )
+
+        assert(savedConfiguration.teamsUrl == "https://teams.com")
+        assert(savedConfiguration.slackUrl == "https://slack.com")
+        assert(savedConfiguration.proxyEnabled == true)
+        assert(configurationAdapter.getConfiguration().proxyEnabled == true)
     }
 }
