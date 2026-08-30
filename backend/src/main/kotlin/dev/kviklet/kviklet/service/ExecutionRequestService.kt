@@ -15,6 +15,7 @@ import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.proxy.core.ProxyServer
 import dev.kviklet.kviklet.proxy.core.ProxySession
 import dev.kviklet.kviklet.proxy.core.getShutdownDate
+import dev.kviklet.kviklet.security.EnterpriseFeatureException
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.PermissionResolver
 import dev.kviklet.kviklet.security.Policy
@@ -83,6 +84,8 @@ class ExecutionRequestService(
     private val dryRunValidator: DryRunValidator,
     private val roleAdapter: dev.kviklet.kviklet.db.RoleAdapter,
     private val permissionResolver: PermissionResolver,
+    private val licenseService: LicenseService,
+    private val configService: ConfigService,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -947,6 +950,17 @@ class ExecutionRequestService(
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
     fun proxy(executionRequestId: ExecutionRequestId, userDetails: UserDetailsWithId): ExecutionProxy {
+        // Defense in depth with the controller's @EnterpriseOnly: the proxy is an enterprise feature,
+        // and additionally has to be switched on in the general settings. Both are runtime state
+        // (license upload and the settings toggle), so a fresh license works without a restart.
+        if (licenseService.getActiveLicense() == null) {
+            throw EnterpriseFeatureException("The database proxy requires a valid enterprise license")
+        }
+        if (!configService.isProxyEnabled()) {
+            throw IllegalArgumentException(
+                "The database proxy is disabled. An admin can enable it in the general settings.",
+            )
+        }
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(executionRequestId)
         val connection = executionRequest.request.connection
         if (connection !is DatasourceConnection) {

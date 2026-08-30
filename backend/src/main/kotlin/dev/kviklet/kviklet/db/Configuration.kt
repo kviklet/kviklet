@@ -32,17 +32,21 @@ class ConfigurationAdapter(private val configurationRepository: ConfigurationRep
     fun getConfiguration(): Configuration = configurationRepository.findAll().toDto()
 
     fun setConfiguration(configuration: Configuration): Configuration {
-        val configurationEntities = configurationRepository.saveAll(
+        configurationRepository.saveAll(
             listOfNotNull(
                 configuration.teamsUrl?.let { ConfigurationEntity("teamsUrl", it) },
                 configuration.slackUrl?.let { ConfigurationEntity("slackUrl", it) },
+                configuration.proxyEnabled?.let { ConfigurationEntity("proxyEnabled", it.toString()) },
             ),
         )
-        return configurationEntities.toDto()
+        // Null fields mean "leave unchanged", so the saved entities alone are not the full picture:
+        // re-read everything so a partial update still returns the complete stored configuration.
+        return getConfiguration()
     }
 }
 
 fun List<ConfigurationEntity>.toDto(): Configuration = Configuration(
     teamsUrl = this.find { it.key == "teamsUrl" }?.value,
     slackUrl = this.find { it.key == "slackUrl" }?.value,
+    proxyEnabled = this.find { it.key == "proxyEnabled" }?.value?.toBoolean(),
 )

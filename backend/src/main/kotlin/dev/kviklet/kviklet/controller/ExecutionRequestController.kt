@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
 import dev.kviklet.kviklet.security.CurrentUser
+import dev.kviklet.kviklet.security.EnterpriseOnly
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.security.toPermissionStrings
 import dev.kviklet.kviklet.service.ColumnInfo
@@ -805,6 +806,7 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
         description = "Start the Kviklet proxy for a temp access request. Only works for postgresql.",
     )
     @PostMapping("/{executionRequestId}/proxy")
+    @EnterpriseOnly(feature = "Database Proxy")
     fun proxy(
         @PathVariable executionRequestId: ExecutionRequestId,
         @CurrentUser userDetails: UserDetailsWithId,
