@@ -6,6 +6,7 @@ import {
 import Spinner from "../../components/Spinner";
 import ShellResult from "../../components/ShellResult";
 import KubernetesRequestBox from "./KubernetesRequestBox";
+import ProxyConnectionCard from "./ProxyConnectionCard";
 
 function KubernetesRequestDisplay({
   request,
@@ -35,13 +36,7 @@ function KubernetesRequestDisplay({
       {executionError && (
         <div className="my-4 text-red-500">{executionError}</div>
       )}
-      {proxyResponse && (
-        <div className="my-4 text-lime-500">
-          Server started on {proxyResponse.port} with username{" "}
-          <i>{proxyResponse.username}</i> and password{" "}
-          <i>{proxyResponse.password}</i>
-        </div>
-      )}
+      {proxyResponse && <ProxyConnectionCard proxy={proxyResponse} />}
     </>
   );
 }
