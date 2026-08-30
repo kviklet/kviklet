@@ -7,6 +7,7 @@ import {
 } from "../../api/ExecutionRequestApi";
 import Button from "../../components/Button";
 import MenuDropDown from "../../components/MenuDropdown";
+import SplitButtonDropdown from "../../components/SplitButtonDropdown";
 import LoadingCancelButton from "../../components/LoadingCancelButton";
 import { isRelationalDatabase } from "../../hooks/request";
 import Modal from "../../components/Modal";
@@ -114,22 +115,78 @@ function DatasourceRequestActions({
   const menuDropDownItems = [
     {
       onClick: () => {
-        void handleDownloadResults();
-      },
-      enabled: downloadEnabled,
-      tooltip: downloadPossible ? getDisabledReason() : undefined,
-      content: "Execute and Download Results",
-    },
-    {
-      onClick: () => {
         void navigateCopy();
       },
       enabled: canCreateRequests,
       tooltip: canCreateRequests ? undefined : NO_CREATE_PERMISSION_MESSAGE,
       content: "Copy Request",
     },
-    ...(request?.type == "SingleExecution"
+  ];
+
+  // The proxy entry is always visible so the feature is discoverable: without a license it
+  // opens the enterprise upsell; with a license but the proxy switched off it's grayed out.
+  const proxyMenuItem = !licenseValid
+    ? {
+        onClick: () => {
+          setShowProxyUpsellModal(true);
+        },
+        enabled: true,
+        content: (
+          <span className="flex items-center justify-between">
+            Start Proxy
+            <span
+              className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium
+                         text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+            >
+              Enterprise
+            </span>
+          </span>
+        ),
+        description: "Connect a native database client through Kviklet.",
+      }
+    : {
+        onClick: () => {
+          void startServer();
+        },
+        enabled:
+          proxyEnabled &&
+          isAuthor &&
+          canExecute &&
+          request?.reviewStatus === "APPROVED",
+        tooltip: !proxyEnabled
+          ? "The database proxy is disabled. An admin can enable it in the general settings."
+          : !isAuthor
+          ? "Proxy access is granted only to the requester"
+          : request?.reviewStatus !== "APPROVED"
+          ? "Request needs to be approved before starting the proxy"
+          : !canExecute
+          ? NO_EXECUTE_PERMISSION_MESSAGE
+          : undefined,
+        content: "Start Proxy",
+        description: "Connect a native database client through Kviklet.",
+      };
+
+  // The split button's dropdown carries the alternative flavors of the primary action
+  // (GitHub merge-button style): downloading, explaining or dry-running instead of running
+  // inline, or connecting a native client instead of the web session. Only Copy Request,
+  // which is not an execution flavor, stays in the ... menu.
+  const splitButtonItems =
+    request?.type === "SingleExecution"
       ? [
+          ...(downloadPossible
+            ? [
+                {
+                  onClick: () => {
+                    void handleDownloadResults();
+                  },
+                  enabled: downloadEnabled,
+                  tooltip: getDisabledReason(),
+                  content: "Execute and Download Results",
+                  description:
+                    "Run the statement and save the results as a file.",
+                },
+              ]
+            : []),
           {
             onClick: () => {
               void runQuery(true);
@@ -154,75 +211,35 @@ function DatasourceRequestActions({
                 ? NO_EXECUTE_PERMISSION_MESSAGE
                 : undefined,
             content: "Explain",
+            description: "Show the query plan without running the statement.",
           },
-        ]
-      : []),
-    ...(request?.type == "SingleExecution" && request?.connection?.dryRunEnabled
-      ? [
-          {
-            onClick: () => {
-              void runQuery(false, true);
-            },
-            enabled:
-              canExecute &&
-              (request?.connection?.dryRunRequiresApproval === false ||
-                request?.reviewStatus === "APPROVED"),
-            tooltip:
-              request?.connection?.dryRunRequiresApproval === true &&
-              request?.reviewStatus !== "APPROVED"
-                ? "Request needs approval before dry run"
-                : !canExecute
-                ? NO_EXECUTE_PERMISSION_MESSAGE
-                : undefined,
-            content: "Dry Run",
-          },
-        ]
-      : []),
-    // The proxy entry is always visible so the feature is discoverable: without a license it
-    // opens the enterprise upsell; with a license but the proxy switched off it's grayed out.
-    ...(request?.type == "TemporaryAccess"
-      ? [
-          !licenseValid
-            ? {
-                onClick: () => {
-                  setShowProxyUpsellModal(true);
+          ...(request?.connection?.dryRunEnabled
+            ? [
+                {
+                  onClick: () => {
+                    void runQuery(false, true);
+                  },
+                  enabled:
+                    canExecute &&
+                    (request?.connection?.dryRunRequiresApproval === false ||
+                      request?.reviewStatus === "APPROVED"),
+                  tooltip:
+                    request?.connection?.dryRunRequiresApproval === true &&
+                    request?.reviewStatus !== "APPROVED"
+                      ? "Request needs approval before dry run"
+                      : !canExecute
+                      ? NO_EXECUTE_PERMISSION_MESSAGE
+                      : undefined,
+                  content: "Dry Run",
+                  description:
+                    "Run the statement in a transaction that is rolled back.",
                 },
-                enabled: true,
-                content: (
-                  <span className="flex items-center justify-between">
-                    Start Proxy
-                    <span
-                      className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium
-                                 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
-                    >
-                      Enterprise
-                    </span>
-                  </span>
-                ),
-              }
-            : {
-                onClick: () => {
-                  void startServer();
-                },
-                enabled:
-                  proxyEnabled &&
-                  isAuthor &&
-                  canExecute &&
-                  request?.reviewStatus === "APPROVED",
-                tooltip: !proxyEnabled
-                  ? "The database proxy is disabled. An admin can enable it in the general settings."
-                  : !isAuthor
-                  ? "Proxy access is granted only to the requester"
-                  : request?.reviewStatus !== "APPROVED"
-                  ? "Request needs to be approved before starting the proxy"
-                  : !canExecute
-                  ? NO_EXECUTE_PERMISSION_MESSAGE
-                  : undefined,
-                content: "Start Proxy",
-              },
+              ]
+            : []),
         ]
-      : []),
-  ];
+      : request?.type === "TemporaryAccess"
+      ? [proxyMenuItem]
+      : [];
 
   const fileHandler = async (connectionId: string) => {
     try {
@@ -314,21 +331,23 @@ function DatasourceRequestActions({
     }
   };
 
+  const primaryDisabled =
+    request?.reviewStatus !== "APPROVED" ||
+    request?.executionStatus === "EXECUTED" ||
+    (request?.type === "Dump" && !isAuthor) ||
+    (executesDirectly && !canExecute);
+  const primaryRounding = splitButtonItems.length > 0 ? "rounded-r-none" : "";
+
   return (
     <>
       <div className="flex w-full">
         <MenuDropDown items={menuDropDownItems}></MenuDropDown>
         {isRelationalDatabase(request) ? (
           <LoadingCancelButton
-            className="flex-1"
+            className={`flex-1 ${primaryRounding}`}
             id="runQuery"
             variant="primary"
-            disabled={
-              request?.reviewStatus !== "APPROVED" ||
-              request?.executionStatus === "EXECUTED" ||
-              (request?.type === "Dump" && !isAuthor) ||
-              (executesDirectly && !canExecute)
-            }
+            disabled={primaryDisabled}
             onClick={handleButtonClick}
             onCancel={() => void cancelQuery()}
             dataTestId="run-query-button"
@@ -344,15 +363,9 @@ function DatasourceRequestActions({
           </LoadingCancelButton>
         ) : (
           <Button
-            className="flex-1"
+            className={`flex-1 ${primaryRounding}`}
             id="runQuery"
-            variant={
-              (request?.reviewStatus == "APPROVED" &&
-                request?.executionStatus !== "EXECUTED" &&
-                !(executesDirectly && !canExecute) &&
-                "primary") ||
-              "disabled"
-            }
+            variant={primaryDisabled ? "disabled" : "primary"}
             onClick={() => void runQuery()}
             dataTestId="run-query-button"
             title={getDisabledReason()}
@@ -363,6 +376,13 @@ function DatasourceRequestActions({
               ? "Start Session"
               : "Watch Session"}
           </Button>
+        )}
+        {splitButtonItems.length > 0 && (
+          <SplitButtonDropdown
+            items={splitButtonItems}
+            variant={primaryDisabled ? "disabled" : "primary"}
+            dataTestId="execution-options-dropdown"
+          />
         )}
       </div>
       <SQLDumpModal />
