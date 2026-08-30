@@ -36,6 +36,16 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
+            {{- if .Values.config.proxy.postgres.enabled }}
+            - name: pg-proxy
+              containerPort: {{ .Values.config.proxy.postgres.port }}
+              protocol: TCP
+            {{- end }}
+            {{- if .Values.config.proxy.mysql.enabled }}
+            - name: mysql-proxy
+              containerPort: {{ .Values.config.proxy.mysql.port }}
+              protocol: TCP
+            {{- end }}
           envFrom:
             - secretRef:
                 name: {{ .Values.externalSecretName | quote }}
