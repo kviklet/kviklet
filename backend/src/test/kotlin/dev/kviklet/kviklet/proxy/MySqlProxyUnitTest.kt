@@ -138,6 +138,60 @@ class MySqlProxyUnitTest {
     }
 
     @Test
+    fun `test MySqlClientPacketParser parses COM_STMT_SEND_LONG_DATA successfully`() {
+        var longDataStmtId = 0
+        var longDataParamIndex = -1
+        val parser = MySqlClientPacketParser(
+            onQuery = {},
+            onPrepare = {},
+            onExecute = { _, _ -> },
+            onQuit = {},
+            onLongData = { stmtId, paramIndex ->
+                longDataStmtId = stmtId
+                longDataParamIndex = paramIndex
+            },
+        )
+
+        // cmd + stmt id 7 + param index 3 + payload bytes
+        val packet = mysqlPacket(0, byteArrayOf(0x18, 7, 0, 0, 0, 3, 0) + "chunk".toByteArray(Charsets.UTF_8))
+        parser.addBytes(packet)
+
+        assertEquals(7, longDataStmtId)
+        assertEquals(3, longDataParamIndex)
+    }
+
+    @Test
+    fun `test MySqlClientPacketParser fails closed on a truncated COM_STMT_SEND_LONG_DATA`() {
+        val parser = MySqlClientPacketParser(
+            onQuery = {},
+            onPrepare = {},
+            onExecute = { _, _ -> },
+            onQuit = {},
+        )
+
+        // Too short to carry the statement id and the parameter index
+        val packet = mysqlPacket(0, byteArrayOf(0x18, 7, 0, 0, 0))
+        val exception = assertThrows(FailClosedException::class.java) { parser.addBytes(packet) }
+        assertTrue(exception.message!!.contains("COM_STMT_SEND_LONG_DATA"))
+    }
+
+    @Test
+    fun `test MySqlClientPacketParser parses COM_STMT_RESET successfully`() {
+        var resetStmtId = 0
+        val parser = MySqlClientPacketParser(
+            onQuery = {},
+            onPrepare = {},
+            onExecute = { _, _ -> },
+            onQuit = {},
+            onStmtReset = { resetStmtId = it },
+        )
+
+        parser.addBytes(mysqlPacket(0, byteArrayOf(0x1A, 5, 0, 0, 0)))
+
+        assertEquals(5, resetStmtId)
+    }
+
+    @Test
     fun `test MySqlClientPacketParser parses COM_QUIT successfully`() {
         var quitCalled = false
         val parser = MySqlClientPacketParser(

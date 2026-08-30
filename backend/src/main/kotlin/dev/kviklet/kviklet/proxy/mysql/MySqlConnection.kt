@@ -140,27 +140,33 @@ class MySqlConnection(
                 statement.longDataParams,
                 payload,
             )
-            if (interpolated == null) {
+            // Long data is consumed by this execute: the protocol scopes COM_STMT_SEND_LONG_DATA to the
+            // next execute (a client that streams again re-marks the parameters), so a mark must never
+            // leak into a later execute where the parameter's value is back in the packet.
+            statement.longDataParams.clear()
+            // Track the types the server now holds for this statement even when nothing was interpolated:
+            // a later execute with new-params-bound-flag = 0 does not resend them, and decoding it against
+            // an out-of-date cache would render plausible but wrong values.
+            statement.paramTypes = interpolated.paramTypes
+            if (interpolated.query == null) {
                 logger.warn(
                     "Could not decode the parameters of prepared statement $stmtId; " +
                         "auditing its placeholder text",
                 )
                 auditQuery(statement.query)
             } else {
-                // Cache the decoded types: a re-execute with new-params-bound-flag = 0 does not resend them.
-                interpolated.paramTypes?.let { statement.paramTypes = it }
                 auditQuery(interpolated.query)
             }
         },
         onLongData = { stmtId, paramIndex ->
             // The parameter's bytes travel ahead of the execute and are not repeated in the execute
             // packet, so the execute decoder must skip that parameter; it renders as an explicit marker.
-            // The server keeps accumulated long data until COM_STMT_RESET, so the mark does too. An
-            // unknown id needs no action: its execute fails closed anyway.
+            // An unknown id needs no action: its execute fails closed anyway.
             preparedQueries[stmtId]?.longDataParams?.add(paramIndex)
         },
         onStmtReset = { stmtId ->
-            // COM_STMT_RESET discards the statement's accumulated long data server-side.
+            // COM_STMT_RESET discards any accumulated long data server-side before an execute ever
+            // consumes it.
             preparedQueries[stmtId]?.longDataParams?.clear()
         },
         onClose = { stmtId ->

@@ -6,15 +6,18 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.charset.CharacterCodingException
 import java.nio.charset.CodingErrorAction
+import java.util.HexFormat
+import java.util.Locale
 
 // Decodes a COM_STMT_EXECUTE payload's binary parameter values and renders them into the prepared
 // statement's placeholder text, so the audit log records the statement as it actually ran instead of
 // "VALUES (?)". Interpolation is audit-only and strictly best effort: it must never block a legitimate
 // client and must never put a wrong value in the log. So the decode is all-or-nothing -- anything the
 // decoder cannot fully and unambiguously account for (an unknown type code, a layout mismatch, leftover
-// bytes) abandons interpolation entirely (returns null) and the caller audits the placeholder text, which
-// is exactly what was audited before values existed. The rendered SQL aims for readability, not for
-// byte-perfect re-executability (same standard as the Postgres proxy's interpolateQuery).
+// bytes) abandons interpolation entirely (a null query in the result) and the caller audits the
+// placeholder text, which is exactly what was audited before values existed. The rendered SQL aims for
+// readability, not for byte-perfect re-executability (same standard as the Postgres proxy's
+// interpolateQuery).
 
 // Binary-protocol type codes (the low byte of the 2-byte type field in the execute packet).
 private const val TYPE_DECIMAL = 0x00
@@ -57,9 +60,16 @@ private const val EXECUTE_HEADER_LENGTH = 10
 // so the audit log gets an explicit marker instead of a value.
 const val LONG_DATA_PLACEHOLDER = "<long data>"
 
-// paramTypes are the types the values were decoded with (resent types, or the caller's cached ones);
-// the caller caches them because a re-execute with new-params-bound-flag = 0 does not resend them.
-class InterpolatedExecute(val query: String, val paramTypes: IntArray?)
+private val HEX = HexFormat.of()
+
+// query is the interpolated statement, or null when the payload could not be decoded and the caller must
+// audit the placeholder text instead. paramTypes is the type array now in effect for the statement on the
+// server -- the resent one when the execute carried types (reported even when the value decode then
+// fails, so the caller's cache can never go stale against the server's), the cached one otherwise, or
+// null when it is unknown. The caller must store it either way: a later execute with
+// new-params-bound-flag = 0 does not resend types, and decoding it with an out-of-date cache would render
+// plausible but wrong values.
+class InterpolatedExecute(val query: String?, val paramTypes: IntArray?)
 
 fun interpolateExecutePayload(
     query: String,
@@ -67,36 +77,55 @@ fun interpolateExecutePayload(
     cachedParamTypes: IntArray?,
     longDataParams: Set<Int>,
     payload: ByteArray,
-): InterpolatedExecute? {
+): InterpolatedExecute {
     if (paramCount == 0) return InterpolatedExecute(query, null)
-    // The server derived paramCount by really parsing the statement; if this scan disagrees, its idea of
-    // where the placeholders sit cannot be trusted, so do not splice values into the wrong places.
-    val placeholders = findPlaceholders(query)
-    if (placeholders.size != paramCount) return null
-    return try {
-        val buffer = ByteBuffer.wrap(payload).order(ByteOrder.LITTLE_ENDIAN)
-        buffer.position(EXECUTE_HEADER_LENGTH)
-        val nullBitmap = ByteArray((paramCount + 7) / 8)
+    val buffer = ByteBuffer.wrap(payload).order(ByteOrder.LITTLE_ENDIAN)
+    if (payload.size < EXECUTE_HEADER_LENGTH) return InterpolatedExecute(null, null)
+    buffer.position(EXECUTE_HEADER_LENGTH)
+
+    // The wire is read up to and including the type array before anything can bail out on the statement
+    // text: the types are what the server will hold for this statement from now on, and the cache must
+    // track them even when nothing gets interpolated.
+    val nullBitmap = ByteArray((paramCount + 7) / 8)
+    val paramTypes = try {
         buffer.get(nullBitmap)
-        val newParamsBound = (buffer.get().toInt() and 0xFF) == 1
-        val paramTypes = if (newParamsBound) {
+        // The server treats any non-zero new-params-bound byte as "types follow" -- matching only 1 would
+        // let a nonstandard client desync this parse from the server's.
+        val newParamsBound = (buffer.get().toInt() and 0xFF) != 0
+        if (newParamsBound) {
             IntArray(paramCount) { buffer.short.toInt() and 0xFFFF }
         } else {
-            cachedParamTypes ?: return null
+            cachedParamTypes ?: return InterpolatedExecute(null, null)
         }
-        if (paramTypes.size != paramCount) return null
+    } catch (e: BufferUnderflowException) {
+        return InterpolatedExecute(null, null)
+    }
+    if (paramTypes.size != paramCount) return InterpolatedExecute(null, null)
+
+    // The server derived paramCount by really parsing the statement; if this scan disagrees, its idea of
+    // where the placeholders sit cannot be trusted, so do not splice values into the wrong places. The
+    // text is also scanned under both backslash conventions: sql_mode=NO_BACKSLASH_ESCAPES changes how
+    // string literals tokenize, the proxy cannot see which mode the session is in, and interpolating is
+    // only safe when both readings agree on the placeholder positions.
+    val placeholders = findPlaceholders(query, stringBackslashEscapes = true)
+    if (placeholders.size != paramCount || placeholders != findPlaceholders(query, stringBackslashEscapes = false)) {
+        return InterpolatedExecute(null, paramTypes)
+    }
+
+    return try {
+        // The buffer sits at the first value byte: the null bitmap, flag and type array were consumed above.
         val values = ArrayList<String>(paramCount)
         for (i in 0 until paramCount) {
             val isNull = (nullBitmap[i / 8].toInt() shr (i % 8)) and 1 == 1
             values += when {
                 isNull -> "NULL"
                 i in longDataParams -> LONG_DATA_PLACEHOLDER
-                else -> renderValue(paramTypes[i], buffer) ?: return null
+                else -> renderValue(paramTypes[i], buffer) ?: return InterpolatedExecute(null, paramTypes)
             }
         }
         // Leftover bytes mean the layout was not what the decoder assumed, so some value above was
         // probably misread from the wrong offset; none of it can be trusted.
-        if (buffer.hasRemaining()) return null
+        if (buffer.hasRemaining()) return InterpolatedExecute(null, paramTypes)
         val interpolated = StringBuilder(query.length + 16 * paramCount)
         var copiedUpTo = 0
         placeholders.forEachIndexed { i, position ->
@@ -106,10 +135,7 @@ fun interpolateExecutePayload(
         interpolated.append(query, copiedUpTo, query.length)
         InterpolatedExecute(interpolated.toString(), paramTypes)
     } catch (e: BufferUnderflowException) {
-        null
-    } catch (e: IllegalArgumentException) {
-        // A payload shorter than the execute header: buffer.position() rejects the offset.
-        null
+        InterpolatedExecute(null, paramTypes)
     }
 }
 
@@ -197,14 +223,11 @@ private fun renderString(buffer: ByteBuffer): String? {
     }
 }
 
-private fun toHexLiteral(bytes: ByteArray): String = if (bytes.isEmpty()) {
-    "''"
-} else {
-    "0x" + bytes.joinToString("") { "%02x".format(it) }
-}
+private fun toHexLiteral(bytes: ByteArray): String = if (bytes.isEmpty()) "''" else "0x" + HEX.formatHex(bytes)
 
 // Binary DATE/DATETIME/TIMESTAMP: a length byte (0, 4, 7 or 11) then the packed fields; trailing
 // all-zero fields are omitted on the wire, so length 0 is the zero date and length 4 a date-only value.
+// Locale.ROOT keeps %d rendering ASCII digits regardless of the JVM's default locale.
 private fun renderTemporal(buffer: ByteBuffer): String? {
     val length = buffer.get().toInt() and 0xFF
     if (length > buffer.remaining()) return null
@@ -213,13 +236,15 @@ private fun renderTemporal(buffer: ByteBuffer): String? {
     val year = buffer.short.toInt() and 0xFFFF
     val month = buffer.get().toInt() and 0xFF
     val day = buffer.get().toInt() and 0xFF
-    if (length == 4) return "'%04d-%02d-%02d'".format(year, month, day)
+    if (length == 4) return "'%04d-%02d-%02d'".format(Locale.ROOT, year, month, day)
     val hour = buffer.get().toInt() and 0xFF
     val minute = buffer.get().toInt() and 0xFF
     val second = buffer.get().toInt() and 0xFF
-    if (length == 7) return "'%04d-%02d-%02d %02d:%02d:%02d'".format(year, month, day, hour, minute, second)
+    if (length == 7) {
+        return "'%04d-%02d-%02d %02d:%02d:%02d'".format(Locale.ROOT, year, month, day, hour, minute, second)
+    }
     val micros = buffer.int
-    return "'%04d-%02d-%02d %02d:%02d:%02d.%06d'".format(year, month, day, hour, minute, second, micros)
+    return "'%04d-%02d-%02d %02d:%02d:%02d.%06d'".format(Locale.ROOT, year, month, day, hour, minute, second, micros)
 }
 
 // Binary TIME: a length byte (0, 8 or 12), then sign, days and the clock fields. A MySQL TIME is an
@@ -236,16 +261,18 @@ private fun renderTime(buffer: ByteBuffer): String? {
     val seconds = buffer.get().toInt() and 0xFF
     val sign = if (negative) "-" else ""
     val totalHours = days.toLong() * 24 + hours
-    if (length == 8) return "'$sign%02d:%02d:%02d'".format(totalHours, minutes, seconds)
+    if (length == 8) return "'$sign%02d:%02d:%02d'".format(Locale.ROOT, totalHours, minutes, seconds)
     val micros = buffer.int
-    return "'$sign%02d:%02d:%02d.%06d'".format(totalHours, minutes, seconds, micros)
+    return "'$sign%02d:%02d:%02d.%06d'".format(Locale.ROOT, totalHours, minutes, seconds, micros)
 }
 
 // Offsets of the bare `?` placeholders in the statement text. A `?` inside a string literal, a quoted
 // identifier or a comment is not a parameter marker, so those regions are skipped the way the MySQL
-// parser reads them (backslash and doubled-quote escapes in strings, doubled backticks in identifiers,
-// `-- ` and `#` line comments, `/* */` block comments).
-private fun findPlaceholders(query: String): List<Int> {
+// parser reads them (doubled-quote escapes in strings, doubled backticks in identifiers, `-- ` and `#`
+// line comments, `/* */` block comments). stringBackslashEscapes selects whether a backslash escapes the
+// next character inside '...' and "..." (the default) or is an ordinary character
+// (sql_mode=NO_BACKSLASH_ESCAPES); backticks never honor backslash escapes.
+private fun findPlaceholders(query: String, stringBackslashEscapes: Boolean): List<Int> {
     val positions = mutableListOf<Int>()
     var i = 0
     while (i < query.length) {
@@ -255,7 +282,7 @@ private fun findPlaceholders(query: String): List<Int> {
                 i++
             }
 
-            '\'', '"' -> i = skipQuoted(query, i, backslashEscapes = true)
+            '\'', '"' -> i = skipQuoted(query, i, backslashEscapes = stringBackslashEscapes)
 
             '`' -> i = skipQuoted(query, i, backslashEscapes = false)
 

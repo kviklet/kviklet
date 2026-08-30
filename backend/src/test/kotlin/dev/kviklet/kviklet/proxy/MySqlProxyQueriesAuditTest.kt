@@ -330,13 +330,21 @@ class MySqlProxyQueriesAuditTest {
                 }
             }
         }
-        // The statement is prepared once and executed three times; each execute is audited with its own
-        // bound value rendered into the prepared text. This also exercises re-executes that do not resend
-        // parameter types (new-params-bound-flag = 0), where the proxy must use the cached types.
+        // The statement is prepared once and executed three times; each execute is audited exactly once
+        // with its own bound value rendered into the prepared text. This also exercises re-executes that
+        // do not resend parameter types (new-params-bound-flag = 0), where the proxy must use the cached
+        // types.
+        val executes = proxy.eventService.rawQueries.count { it.contains("INSERT INTO audit_reuse") }
+        assertEquals(
+            3,
+            executes,
+            "Each execute of the reused statement must be audited: ${proxy.eventService.rawQueries}",
+        )
         for (value in 1..3) {
-            assertTrue(
-                proxy.eventService.rawQueries.any { it.contains("audit_reuse") && it.contains("VALUES ($value)") },
-                "Execute with value $value must be audited: ${proxy.eventService.rawQueries}",
+            assertEquals(
+                1,
+                proxy.eventService.rawQueries.count { it.contains("audit_reuse") && it.contains("VALUES ($value)") },
+                "Execute with value $value must be audited exactly once: ${proxy.eventService.rawQueries}",
             )
         }
     }
