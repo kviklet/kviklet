@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import { Link } from "react-router-dom";
 import {
   ConfigPayload,
   ConfigPayloadSchema,
@@ -8,6 +9,7 @@ import {
 } from "../../api/ConfigApi";
 import InputField from "../../components/InputField";
 import Button from "../../components/Button";
+import Toggle from "../../components/Toggle";
 import useConfig from "../../components/ConfigProvider";
 import Spinner from "../../components/Spinner";
 import {
@@ -76,12 +78,116 @@ export default function GeneralSettings() {
                 </>
               )}
             </Disclosure>
+            <Disclosure defaultOpen={true}>
+              {({ open }) => (
+                <>
+                  <DisclosureButton className="py-2">
+                    <div className="flex flex-row justify-between">
+                      <div className="flex flex-row items-center gap-2">
+                        <h2>Database Proxy</h2>
+                        <span
+                          className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium
+                                     text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+                        >
+                          Enterprise
+                        </span>
+                      </div>
+                      <div className="flex flex-row">
+                        {open ? (
+                          <ChevronDownIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronDownIcon>
+                        ) : (
+                          <ChevronRightIcon className="h-6 w-6 text-slate-400 dark:text-slate-500"></ChevronRightIcon>
+                        )}
+                      </div>
+                    </div>
+                  </DisclosureButton>
+                  <DisclosurePanel unmount={false}>
+                    {!canEditConfig && (
+                      <ReadOnlyNotice
+                        resource="these settings"
+                        className="mb-2"
+                      />
+                    )}
+                    <ProxySettings
+                      config={config}
+                      canEditConfig={canEditConfig}
+                      onToggle={(enabled) =>
+                        void updateConfig({ proxyEnabled: enabled })
+                      }
+                    />
+                  </DisclosurePanel>
+                </>
+              )}
+            </Disclosure>
           </div>
         )
       )}
     </div>
   );
 }
+
+const ProxySettings = ({
+  config,
+  canEditConfig,
+  onToggle,
+}: {
+  config: ConfigResponse;
+  canEditConfig: boolean;
+  onToggle: (enabled: boolean) => void;
+}) => {
+  const licenseValid = config.licenseValid;
+  const proxyEnabled = config.proxyEnabled ?? false;
+  // With an expired license the toggle stays usable in one direction: an admin can
+  // still switch a running proxy off, just not turn it (back) on.
+  const lockedByLicense = !licenseValid && !proxyEnabled;
+
+  return (
+    <div className="flex flex-col space-y-4">
+      <span className="text-sm dark:text-slate-300">
+        Lets the author of an approved temporary-access request connect native
+        clients like psql or DataGrip through Kviklet, with every statement
+        recorded in the audit log. Requires the proxy ports to be reachable in
+        your deployment.
+      </span>
+      <div className="flex flex-row items-center justify-between">
+        <span className="text-sm">Enable the proxy for approved requests</span>
+        <Toggle
+          active={proxyEnabled}
+          disabled={!canEditConfig || lockedByLicense}
+          tooltip={
+            !canEditConfig
+              ? "You lack the permission to change this setting"
+              : lockedByLicense
+              ? "The database proxy requires an enterprise license"
+              : undefined
+          }
+          onClick={() => onToggle(!proxyEnabled)}
+        />
+      </div>
+      {!licenseValid && (
+        <span className="text-sm text-slate-500 dark:text-slate-400">
+          The database proxy is an enterprise feature.{" "}
+          <a
+            href="https://kviklet.dev"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+          >
+            Get a license at kviklet.dev
+          </a>{" "}
+          or{" "}
+          <Link
+            to="/settings/license"
+            className="text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+          >
+            upload one here
+          </Link>
+          .
+        </span>
+      )}
+    </div>
+  );
+};
 
 const ConfigForm = ({
   config,

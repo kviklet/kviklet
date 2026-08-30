@@ -31,12 +31,16 @@ open class PublicConfigResponse(
     open val validUntil: LocalDate?,
     open val createdAt: LocalDateTime?,
     open val allowedUsers: UInt?,
+    // Public (like licenseValid) because the review page needs it for every user, to decide
+    // whether the proxy action is live, grayed out, or shown as an enterprise upsell.
+    open val proxyEnabled: Boolean,
     open val version: String,
     open val buildDate: String,
     open val gitCommit: String,
 )
 
-data class ConfigRequest(val teamsUrl: String?, val slackUrl: String?)
+// Null fields mean "leave unchanged", so a partial update never wipes the other settings.
+data class ConfigRequest(val teamsUrl: String?, val slackUrl: String?, val proxyEnabled: Boolean? = null)
 
 data class ConfigResponse(
     override val oAuthProvider: String?,
@@ -46,6 +50,7 @@ data class ConfigResponse(
     override val validUntil: LocalDate?,
     override val createdAt: LocalDateTime?,
     override val allowedUsers: UInt?,
+    override val proxyEnabled: Boolean,
     override val version: String,
     override val buildDate: String,
     override val gitCommit: String,
@@ -59,6 +64,7 @@ data class ConfigResponse(
     validUntil,
     createdAt,
     allowedUsers,
+    proxyEnabled,
     version,
     buildDate,
     gitCommit,
@@ -83,6 +89,7 @@ data class ConfigResponse(
                 validUntil = licensesSorted.firstOrNull()?.validUntil,
                 createdAt = licensesSorted.firstOrNull()?.createdAt,
                 allowedUsers = licensesSorted.firstOrNull()?.allowedUsers,
+                proxyEnabled = configuration.proxyEnabled ?: false,
                 version = version,
                 buildDate = buildDate,
                 gitCommit = gitCommit,
@@ -134,6 +141,7 @@ class ConfigController(
                 validUntil = licensesSorted.firstOrNull()?.validUntil,
                 createdAt = licensesSorted.firstOrNull()?.createdAt,
                 allowedUsers = licensesSorted.firstOrNull()?.allowedUsers,
+                proxyEnabled = configService.isProxyEnabled(),
                 version = applicationProperties.version,
                 buildDate = applicationProperties.buildDate,
                 gitCommit = applicationProperties.gitCommit,
@@ -148,6 +156,7 @@ class ConfigController(
             Configuration(
                 teamsUrl = request.teamsUrl,
                 slackUrl = request.slackUrl,
+                proxyEnabled = request.proxyEnabled,
             ),
         )
         return ConfigResponse.fromConfiguration(
