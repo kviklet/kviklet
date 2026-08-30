@@ -190,10 +190,9 @@ const ConfigForm = ({
             <DisclosurePanel unmount={false}>
               <div className="flex flex-col space-y-4">
                 <span className="text-sm dark:text-slate-300">
-                  Lets the author of an approved temporary-access request
-                  connect native clients like psql or DataGrip through Kviklet,
-                  with every statement recorded in the audit log. Requires the
-                  proxy ports to be reachable in your deployment.
+                  Lets users connect native clients like psql or DataGrip
+                  through Kviklet, with every statement recorded in the audit
+                  log.
                 </span>
                 <div className="flex flex-row items-center justify-between">
                   <span className="text-sm">
