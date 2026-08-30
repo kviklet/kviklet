@@ -14,6 +14,7 @@ import dev.kviklet.kviklet.service.dto.CommentEvent
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DBExecutionResult
 import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
+import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.DumpResultLog
 import dev.kviklet.kviklet.service.dto.EditEvent
 import dev.kviklet.kviklet.service.dto.ErrorQueryResult
@@ -621,7 +622,15 @@ data class KubernetesOutputResultLogResponse(
     val outputTruncated: Boolean = false,
 ) : ResultLogResponse(ResultType.KUBERNETES_OUTPUT)
 
-data class ProxyResponse(val port: Int, val username: String, val password: String)
+data class ProxyResponse(
+    val host: String?,
+    val port: Int,
+    val username: String,
+    val password: String,
+    val databaseName: String,
+    val type: DatasourceType,
+    val expiresAt: LocalDateTime?,
+)
 
 data class ExecutionRequestListResponse(
     val requests: List<ExecutionRequestResponse>,
@@ -813,9 +822,13 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
     ): ProxyResponse {
         val proxy = executionRequestService.proxy(executionRequestId, userDetails)
         return ProxyResponse(
+            host = proxy.host,
             port = proxy.port,
             username = proxy.username,
             password = proxy.password,
+            databaseName = proxy.databaseName,
+            type = proxy.type,
+            expiresAt = proxy.expiresAt,
         )
     }
 }

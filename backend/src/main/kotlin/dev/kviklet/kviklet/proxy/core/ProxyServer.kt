@@ -117,6 +117,7 @@ class ProxyServer(
         // Replace any prior session for the same username, tearing the old one down so a re-registered
         // username never leaves the previous access window running.
         sessions.put(session.username, session)?.let { expire(it) }
+        session.expiresAt = expiresAt
         if (expiresAt != null) {
             val delayMs = (expiresAt.toEpochMilli() - System.currentTimeMillis()).coerceAtLeast(0)
             // Bind the task to this exact session, so a fired-but-stale task (from a session already replaced

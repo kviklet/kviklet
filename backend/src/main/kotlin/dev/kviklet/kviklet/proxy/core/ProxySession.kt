@@ -4,6 +4,7 @@ package dev.kviklet.kviklet.proxy.core
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
+import java.time.Instant
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ScheduledFuture
 
@@ -43,4 +44,10 @@ class ProxySession(
 
     // The scheduled expiry, cancelled if the session is torn down early (replaced or on shutdown).
     internal var expiryFuture: ScheduledFuture<*>? = null
+
+    // When the access window closes (null = never). Recorded at registration so a repeated proxy call,
+    // which reuses the live session, can report the original expiry rather than recomputing a later one.
+    @Volatile
+    var expiresAt: Instant? = null
+        internal set
 }

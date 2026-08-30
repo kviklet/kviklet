@@ -360,10 +360,16 @@ data class ExecutionRequestDetailsWithRoles(
 
 data class ExecutionProxy(
     val request: ExecutionRequest,
+    // The host clients connect to (the Kviklet server), resolved from kviklet.baseUrl or the request
+    // host — null only when neither is known yet (no request has hit the server and no baseUrl is set).
+    val host: String?,
     val port: Int,
     val username: String,
     val password: String,
+    val databaseName: String,
+    val type: DatasourceType,
     val startTime: LocalDateTime,
+    val expiresAt: LocalDateTime?,
 ) : SecuredDomainObject {
     override fun getSecuredObjectId() = request.connection.id.toString()
 
