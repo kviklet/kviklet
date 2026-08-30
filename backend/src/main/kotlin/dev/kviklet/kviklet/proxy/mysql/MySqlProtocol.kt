@@ -80,12 +80,28 @@ class MySqlProtocol(
 
     // The MySQL handshake has already answered the client with its OK packet, so the refusal is delivered
     // as the ERR the client reads in response to its first command (1040 Too many connections) -- still a
-    // clear error instead of the silent close it used to get. Sequence id 1 matches a first-command reply.
+    // clear error instead of the silent close it used to get.
+    //
+    // The client's first command must actually be READ before the ERR goes out: the caller closes the
+    // socket right after this, and closing with unread inbound bytes makes the kernel send an RST that
+    // discards the buffered ERR, so the client would race between seeing the error and a bare connection
+    // reset. Consuming the command also gives the ERR the sequence id of a real reply to it.
     override fun refuseOverCapacity(authenticatedClient: AuthenticatedClient) {
+        val socket = authenticatedClient.socket
+        val sequenceId = try {
+            socket.soTimeout = REFUSAL_READ_TIMEOUT_MS
+            readPacket(socket.getInputStream()).first
+        } catch (e: Exception) {
+            0 // no command arrived in time; deliver the ERR unsolicited as a best effort
+        }
         writePacket(
-            authenticatedClient.socket.getOutputStream(),
-            1,
+            socket.getOutputStream(),
+            sequenceId + 1,
             buildErrPacket(1040, "08004", "Too many connections through the Kviklet proxy, try again later"),
         )
     }
 }
+
+// How long a refused client gets to send the first command its ERR answers. Bounds the handler thread's
+// stay in the refusal path; a client that sends nothing gets the ERR unsolicited after this.
+private const val REFUSAL_READ_TIMEOUT_MS = 1000
