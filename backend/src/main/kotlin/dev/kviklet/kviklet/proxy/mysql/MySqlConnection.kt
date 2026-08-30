@@ -35,6 +35,18 @@ private const val ABORT_ERR_TIMEOUT_MS = 2000L
 // that aborts the session.
 class FailClosedException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
+// Everything the proxy tracks about one live server-side prepared statement. query and paramCount are
+// fixed at prepare time: the server pump writes them and the ConcurrentHashMap publishes them to the
+// client thread. The two mutable fields are only ever touched on the client thread (executes, long data
+// and resets are all client commands), so they need no further synchronization: paramTypes caches the
+// last resent parameter types (a re-execute with new-params-bound-flag = 0 omits them), and
+// longDataParams marks the parameters whose value arrived via COM_STMT_SEND_LONG_DATA (absent from the
+// execute packet, rendered as an explicit marker).
+private class PreparedStatementRecord(val query: String, val paramCount: Int) {
+    var paramTypes: IntArray? = null
+    val longDataParams = mutableSetOf<Int>()
+}
+
 class MySqlConnection(
     private val clientSocket: Socket,
     private val targetSocket: Socket,
@@ -87,7 +99,7 @@ class MySqlConnection(
     private val prepareLock = Any()
     private var prepareInFlight = false
     private var inFlightPrepareQuery: String? = null
-    private val preparedQueries = ConcurrentHashMap<Int, String>()
+    private val preparedQueries = ConcurrentHashMap<Int, PreparedStatementRecord>()
 
     private val clientParser = MySqlClientPacketParser(
         onQuery = { query ->
@@ -108,16 +120,54 @@ class MySqlConnection(
                 inFlightPrepareQuery = query
             }
         },
-        onExecute = { stmtId ->
+        onExecute = { stmtId, payload ->
             // Fail closed: an execute the proxy cannot attribute to query text must not reach the server.
             // Ids go untracked when the prepare-response pairing was disturbed (a non-prepare response
             // interleaved with the prepare) or when the client fabricates an id it never prepared here.
-            val query = preparedQueries[stmtId]
+            val statement = preparedQueries[stmtId]
                 ?: throw FailClosedException(
                     "Kviklet proxy does not know the prepared statement id $stmtId and cannot audit this " +
                         "execution. The query was blocked and the session closed.",
                 )
-            auditQuery(query)
+            // Best effort: render the execute's binary parameter values into the placeholder text so the
+            // audit log shows what actually ran. A payload the decoder cannot fully and unambiguously
+            // decode falls back to the placeholder text -- a wrong value in the log would be worse than no
+            // value, and blocking would break legitimate clients over an audit nicety.
+            val interpolated = interpolateExecutePayload(
+                statement.query,
+                statement.paramCount,
+                statement.paramTypes,
+                statement.longDataParams,
+                payload,
+            )
+            // Long data is consumed by this execute: the protocol scopes COM_STMT_SEND_LONG_DATA to the
+            // next execute (a client that streams again re-marks the parameters), so a mark must never
+            // leak into a later execute where the parameter's value is back in the packet.
+            statement.longDataParams.clear()
+            // Track the types the server now holds for this statement even when nothing was interpolated:
+            // a later execute with new-params-bound-flag = 0 does not resend them, and decoding it against
+            // an out-of-date cache would render plausible but wrong values.
+            statement.paramTypes = interpolated.paramTypes
+            if (interpolated.query == null) {
+                logger.warn(
+                    "Could not decode the parameters of prepared statement $stmtId; " +
+                        "auditing its placeholder text",
+                )
+                auditQuery(statement.query)
+            } else {
+                auditQuery(interpolated.query)
+            }
+        },
+        onLongData = { stmtId, paramIndex ->
+            // The parameter's bytes travel ahead of the execute and are not repeated in the execute
+            // packet, so the execute decoder must skip that parameter; it renders as an explicit marker.
+            // An unknown id needs no action: its execute fails closed anyway.
+            preparedQueries[stmtId]?.longDataParams?.add(paramIndex)
+        },
+        onStmtReset = { stmtId ->
+            // COM_STMT_RESET discards any accumulated long data server-side before an execute ever
+            // consumes it.
+            preparedQueries[stmtId]?.longDataParams?.clear()
         },
         onClose = { stmtId ->
             // Release the stored query when the client closes the prepared statement
@@ -138,7 +188,7 @@ class MySqlConnection(
     )
 
     private val serverParser = MySqlServerPacketParser(
-        onPrepareOk = { stmtId ->
+        onPrepareOk = { stmtId, paramCount ->
             synchronized(prepareLock) {
                 // Only pair while a prepare is actually outstanding; otherwise this is an ordinary OK packet
                 // that merely happens to be 12 bytes, not a prepare-ok.
@@ -150,7 +200,9 @@ class MySqlConnection(
                     // can be reassigned). A collision means a non-prepare response was misread as a
                     // prepare-ok: the statement stream is out of sync, so fail closed rather than overwrite a
                     // tracked statement's text and falsify its future audit entries.
-                    if (query != null && preparedQueries.putIfAbsent(stmtId, query) != null) {
+                    if (query != null &&
+                        preparedQueries.putIfAbsent(stmtId, PreparedStatementRecord(query, paramCount)) != null
+                    ) {
                         throw FailClosedException(
                             "Kviklet proxy saw prepared statement id $stmtId assigned while it was still in " +
                                 "use; the statement stream is out of sync and cannot be audited. The " +
@@ -421,10 +473,15 @@ private class MySqlPacketFramer(private val reassemble: Boolean, private val onP
 class MySqlClientPacketParser(
     private val onQuery: (String) -> Unit,
     private val onPrepare: (String) -> Unit,
-    private val onExecute: (Int) -> Unit,
+    // Receives the statement id and the full COM_STMT_EXECUTE payload, so the listener can decode the
+    // bound parameter values for the audit log.
+    private val onExecute: (Int, ByteArray) -> Unit,
     private val onClose: (Int) -> Unit = {},
     private val onQuit: () -> Unit,
     private val onResetConnection: () -> Unit = {},
+    // Statement id and parameter index of a COM_STMT_SEND_LONG_DATA (the data bytes are not passed on).
+    private val onLongData: (Int, Int) -> Unit = { _, _ -> },
+    private val onStmtReset: (Int) -> Unit = {},
 ) {
     // reassemble = true: a >16MB client statement is joined so its full text can be audited verbatim.
     private val framer = MySqlPacketFramer(reassemble = true) { payload -> handlePacket(payload) }
@@ -466,13 +523,31 @@ class MySqlClientPacketParser(
                 onPrepare(query)
             }
 
-            0x17 -> onExecute(readStatementId(payload, "COM_STMT_EXECUTE"))
+            0x17 -> onExecute(readStatementId(payload, "COM_STMT_EXECUTE"), payload)
 
             // COM_STMT_EXECUTE
+
+            // COM_STMT_SEND_LONG_DATA: statement id (4 bytes) then parameter index (2 bytes, little-endian)
+            // after the command byte. The data bytes are relayed but not passed on -- the execute they belong
+            // to is audited with an explicit long-data marker for this parameter.
+            0x18 -> {
+                if (payload.size < 7) {
+                    throw FailClosedException(
+                        "Kviklet proxy could not parse a truncated COM_STMT_SEND_LONG_DATA packet. The " +
+                            "packet was blocked and the session closed.",
+                    )
+                }
+                val paramIndex = (payload[5].toInt() and 0xFF) or ((payload[6].toInt() and 0xFF) shl 8)
+                onLongData(readStatementId(payload, "COM_STMT_SEND_LONG_DATA"), paramIndex)
+            }
 
             0x19 -> onClose(readStatementId(payload, "COM_STMT_CLOSE"))
 
             // COM_STMT_CLOSE
+
+            // COM_STMT_RESET discards a statement's accumulated long data server-side, so the audit-side
+            // long-data tracking must be dropped with it.
+            0x1A -> onStmtReset(readStatementId(payload, "COM_STMT_RESET"))
 
             // COM_RESET_CONNECTION forgets every server-side prepared statement (and reassigns ids from
             // scratch), so the proxy must drop its own tracking to stay in sync.
@@ -480,11 +555,10 @@ class MySqlClientPacketParser(
 
             // Commands that carry no auditable SQL and cannot defeat the audit, relayed unchanged:
             //   COM_STATISTICS, COM_PING            -- server-info / liveness, no SQL
-            //   COM_STMT_SEND_LONG_DATA             -- parameter bytes for a prepared execute that is audited
-            //   COM_STMT_RESET, COM_STMT_FETCH      -- reset / cursor-read of an already-audited statement
+            //   COM_STMT_FETCH                      -- cursor-read of an already-audited statement
             //   COM_SET_OPTION                      -- multi-statements stay auditable (COM_QUERY text is
             //                                          captured verbatim, all statements included)
-            0x09, 0x0E, 0x18, 0x1A, 0x1B, 0x1C -> {}
+            0x09, 0x0E, 0x1B, 0x1C -> {}
 
             else -> throw FailClosedException(blockedCommandMessage(cmd))
         }
@@ -529,7 +603,9 @@ class MySqlClientPacketParser(
     }
 }
 
-class MySqlServerPacketParser(private val onPrepareOk: (Int) -> Unit, private val onPrepareErr: () -> Unit = {}) {
+// onPrepareOk receives the assigned statement id and the statement's parameter count, both read from the
+// prepare-ok payload; the count is what lets the execute decoder parse the binary parameter section.
+class MySqlServerPacketParser(private val onPrepareOk: (Int, Int) -> Unit, private val onPrepareErr: () -> Unit = {}) {
     // reassemble = false: the parser only inspects short control packets, so large result payloads (a split
     // multi-megabyte BLOB row) are streamed past without buffering rather than accumulated up to 1GB.
     private val framer = MySqlPacketFramer(reassemble = false) { payload -> handlePacket(payload) }
@@ -552,7 +628,8 @@ class MySqlServerPacketParser(private val onPrepareOk: (Int) -> Unit, private va
                 ((payload[2].toInt() and 0xFF) shl 8) or
                 ((payload[3].toInt() and 0xFF) shl 16) or
                 ((payload[4].toInt() and 0xFF) shl 24)
-            onPrepareOk(stmtId)
+            val paramCount = (payload[7].toInt() and 0xFF) or ((payload[8].toInt() and 0xFF) shl 8)
+            onPrepareOk(stmtId, paramCount)
         }
     }
 }

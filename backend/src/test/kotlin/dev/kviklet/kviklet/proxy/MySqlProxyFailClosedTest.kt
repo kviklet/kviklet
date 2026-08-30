@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
+import java.io.ByteArrayOutputStream
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.SocketTimeoutException
@@ -197,6 +198,53 @@ class MySqlProxyFailClosedTest {
         }
     }
 
+    @Test
+    fun `an execute whose parameters cannot be decoded is forwarded and audited with the placeholder text`() {
+        RelayHarness(executionRequestAdapter, eventAdapter).use { harness ->
+            val sql = "INSERT INTO logs (message) VALUES (?)"
+            harness.sendToProxy(mysqlPacket(0, byteArrayOf(0x16) + sql.toByteArray(Charsets.UTF_8)))
+            harness.readPacketForwardedUpstream()
+            harness.sendFromUpstream(prepareOk(sequenceId = 1, stmtId = 7, paramCount = 1))
+            harness.readPacketOnClient()
+
+            // The execute carries an unknown parameter type (0x77): the decoder must abandon
+            // interpolation, audit the placeholder text and still forward the packet -- never block a
+            // legitimate client or splice unverifiable values into the audit log.
+            harness.sendToProxy(comStmtExecuteWithParam(7, typeField = 0x77, value = byteArrayOf(1, 0, 0, 0)))
+            val (_, forwarded) = harness.readPacketForwardedUpstream()
+            assertEquals(0x17, forwarded[0].toInt() and 0xFF)
+            harness.eventService.assertAuditedQueryContains(sql)
+        }
+    }
+
+    @Test
+    fun `a long data mark does not outlive its execute`() {
+        RelayHarness(executionRequestAdapter, eventAdapter).use { harness ->
+            val sql = "INSERT INTO logs (message) VALUES (?)"
+            harness.sendToProxy(mysqlPacket(0, byteArrayOf(0x16) + sql.toByteArray(Charsets.UTF_8)))
+            harness.readPacketForwardedUpstream()
+            harness.sendFromUpstream(prepareOk(sequenceId = 1, stmtId = 7, paramCount = 1))
+            harness.readPacketOnClient()
+
+            // First execute: the parameter's bytes were streamed ahead via COM_STMT_SEND_LONG_DATA, so
+            // the execute packet has no value for it and the audit shows the explicit marker.
+            harness.sendToProxy(mysqlPacket(0, byteArrayOf(0x18, 7, 0, 0, 0, 0, 0) + "streamed".toByteArray()))
+            harness.readPacketForwardedUpstream()
+            harness.sendToProxy(comStmtExecuteWithParam(7, typeField = 0xFD, value = null))
+            harness.readPacketForwardedUpstream()
+            harness.eventService.assertAuditedQueryContains("VALUES (<long data>)")
+
+            // Long data is consumed by that execute. A re-execute with the value inline in the packet
+            // must be decoded normally -- a leaked mark would make the decoder skip the value and degrade
+            // (or worse, misread) the audit entry.
+            harness.sendToProxy(
+                comStmtExecuteWithParam(7, typeField = 0xFD, value = byteArrayOf(3) + "abc".toByteArray()),
+            )
+            harness.readPacketForwardedUpstream()
+            harness.eventService.assertAuditedQueryContains("VALUES ('abc')")
+        }
+    }
+
     private fun comQuery(sql: String): ByteArray = mysqlPacket(0, byteArrayOf(0x03) + sql.toByteArray(Charsets.UTF_8))
 
     private fun comStmtExecute(stmtId: Int): ByteArray = mysqlPacket(
@@ -213,13 +261,34 @@ class MySqlProxyFailClosedTest {
     )
 
     // COM_STMT_PREPARE_OK: 0x00 status + 4-byte stmt id + 2 columns + 2 params + 1 reserved + 2 warnings
-    private fun prepareOk(sequenceId: Int, stmtId: Int): ByteArray {
+    private fun prepareOk(sequenceId: Int, stmtId: Int, paramCount: Int = 0): ByteArray {
         val payload = ByteArray(12)
         payload[1] = (stmtId and 0xFF).toByte()
         payload[2] = ((stmtId ushr 8) and 0xFF).toByte()
         payload[3] = ((stmtId ushr 16) and 0xFF).toByte()
         payload[4] = ((stmtId ushr 24) and 0xFF).toByte()
+        payload[7] = (paramCount and 0xFF).toByte()
+        payload[8] = ((paramCount ushr 8) and 0xFF).toByte()
         return mysqlPacket(sequenceId, payload)
+    }
+
+    // A COM_STMT_EXECUTE for one non-NULL parameter with its type resent; a null value means the value
+    // bytes are absent from the packet (the way a long-data parameter is sent).
+    private fun comStmtExecuteWithParam(stmtId: Int, typeField: Int, value: ByteArray?): ByteArray {
+        val payload = ByteArrayOutputStream()
+        payload.write(0x17)
+        payload.write(stmtId and 0xFF)
+        payload.write((stmtId ushr 8) and 0xFF)
+        payload.write((stmtId ushr 16) and 0xFF)
+        payload.write((stmtId ushr 24) and 0xFF)
+        payload.write(0x00) // flags
+        payload.write(byteArrayOf(0x01, 0x00, 0x00, 0x00)) // iteration count
+        payload.write(0x00) // null bitmap: the one parameter is not NULL
+        payload.write(0x01) // new-params-bound flag
+        payload.write(typeField and 0xFF)
+        payload.write((typeField ushr 8) and 0xFF)
+        value?.let { payload.write(it) }
+        return mysqlPacket(0, payload.toByteArray())
     }
 
     private fun mysqlPacket(sequenceId: Int, payload: ByteArray): ByteArray {

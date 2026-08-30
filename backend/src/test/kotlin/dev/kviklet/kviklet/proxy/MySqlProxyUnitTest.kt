@@ -58,7 +58,7 @@ class MySqlProxyUnitTest {
         val parser = MySqlClientPacketParser(
             onQuery = { parsedQuery = it },
             onPrepare = {},
-            onExecute = {},
+            onExecute = { _, _ -> },
             onQuit = {},
         )
 
@@ -87,7 +87,7 @@ class MySqlProxyUnitTest {
         val parser = MySqlClientPacketParser(
             onQuery = {},
             onPrepare = { parsedQuery = it },
-            onExecute = {},
+            onExecute = { _, _ -> },
             onQuit = {},
         )
 
@@ -115,7 +115,7 @@ class MySqlProxyUnitTest {
         val parser = MySqlClientPacketParser(
             onQuery = {},
             onPrepare = {},
-            onExecute = { executedStmtId = it },
+            onExecute = { stmtId, _ -> executedStmtId = stmtId },
             onQuit = {},
         )
 
@@ -138,12 +138,66 @@ class MySqlProxyUnitTest {
     }
 
     @Test
+    fun `test MySqlClientPacketParser parses COM_STMT_SEND_LONG_DATA successfully`() {
+        var longDataStmtId = 0
+        var longDataParamIndex = -1
+        val parser = MySqlClientPacketParser(
+            onQuery = {},
+            onPrepare = {},
+            onExecute = { _, _ -> },
+            onQuit = {},
+            onLongData = { stmtId, paramIndex ->
+                longDataStmtId = stmtId
+                longDataParamIndex = paramIndex
+            },
+        )
+
+        // cmd + stmt id 7 + param index 3 + payload bytes
+        val packet = mysqlPacket(0, byteArrayOf(0x18, 7, 0, 0, 0, 3, 0) + "chunk".toByteArray(Charsets.UTF_8))
+        parser.addBytes(packet)
+
+        assertEquals(7, longDataStmtId)
+        assertEquals(3, longDataParamIndex)
+    }
+
+    @Test
+    fun `test MySqlClientPacketParser fails closed on a truncated COM_STMT_SEND_LONG_DATA`() {
+        val parser = MySqlClientPacketParser(
+            onQuery = {},
+            onPrepare = {},
+            onExecute = { _, _ -> },
+            onQuit = {},
+        )
+
+        // Too short to carry the statement id and the parameter index
+        val packet = mysqlPacket(0, byteArrayOf(0x18, 7, 0, 0, 0))
+        val exception = assertThrows(FailClosedException::class.java) { parser.addBytes(packet) }
+        assertTrue(exception.message!!.contains("COM_STMT_SEND_LONG_DATA"))
+    }
+
+    @Test
+    fun `test MySqlClientPacketParser parses COM_STMT_RESET successfully`() {
+        var resetStmtId = 0
+        val parser = MySqlClientPacketParser(
+            onQuery = {},
+            onPrepare = {},
+            onExecute = { _, _ -> },
+            onQuit = {},
+            onStmtReset = { resetStmtId = it },
+        )
+
+        parser.addBytes(mysqlPacket(0, byteArrayOf(0x1A, 5, 0, 0, 0)))
+
+        assertEquals(5, resetStmtId)
+    }
+
+    @Test
     fun `test MySqlClientPacketParser parses COM_QUIT successfully`() {
         var quitCalled = false
         val parser = MySqlClientPacketParser(
             onQuery = {},
             onPrepare = {},
-            onExecute = {},
+            onExecute = { _, _ -> },
             onQuit = { quitCalled = true },
         )
 
@@ -164,7 +218,11 @@ class MySqlProxyUnitTest {
     @Test
     fun `test MySqlServerPacketParser parses STMT_PREPARE_OK successfully`() {
         var returnedStmtId = 0
-        val parser = MySqlServerPacketParser({ returnedStmtId = it })
+        var returnedParamCount = -1
+        val parser = MySqlServerPacketParser({ stmtId, paramCount ->
+            returnedStmtId = stmtId
+            returnedParamCount = paramCount
+        })
 
         val bos = ByteArrayOutputStream()
         val length = 12 // 1 status + 4 stmt_id + 2 columns + 2 params + 1 filler + 2 warnings
@@ -179,12 +237,18 @@ class MySqlProxyUnitTest {
         bos.write(0)
         bos.write(0)
 
-        // Filler columns, params, warning
-        for (i in 0 until 7) bos.write(0)
+        bos.write(0) // columns (2 bytes)
+        bos.write(0)
+        bos.write(3) // params (2 bytes)
+        bos.write(0)
+        bos.write(0) // filler
+        bos.write(0) // warnings (2 bytes)
+        bos.write(0)
 
         parser.addBytes(bos.toByteArray())
 
         assertEquals(99, returnedStmtId)
+        assertEquals(3, returnedParamCount)
     }
 
     @Test
@@ -193,7 +257,7 @@ class MySqlProxyUnitTest {
         val parser = MySqlClientPacketParser(
             onQuery = { parsedQuery = it },
             onPrepare = {},
-            onExecute = {},
+            onExecute = { _, _ -> },
             onQuit = {},
         )
 
@@ -213,7 +277,7 @@ class MySqlProxyUnitTest {
         val parser = MySqlClientPacketParser(
             onQuery = { parsedQuery = it },
             onPrepare = {},
-            onExecute = {},
+            onExecute = { _, _ -> },
             onQuit = {},
         )
 
@@ -235,7 +299,7 @@ class MySqlProxyUnitTest {
         val parser = MySqlClientPacketParser(
             onQuery = {},
             onPrepare = {},
-            onExecute = {},
+            onExecute = { _, _ -> },
             onQuit = {},
         )
 
@@ -249,7 +313,7 @@ class MySqlProxyUnitTest {
         val parser = MySqlClientPacketParser(
             onQuery = {},
             onPrepare = {},
-            onExecute = {},
+            onExecute = { _, _ -> },
             onQuit = {},
         )
 
@@ -265,7 +329,7 @@ class MySqlProxyUnitTest {
         val parser = MySqlClientPacketParser(
             onQuery = { parsedQuery = it },
             onPrepare = {},
-            onExecute = {},
+            onExecute = { _, _ -> },
             onQuit = {},
         )
 
@@ -279,7 +343,7 @@ class MySqlProxyUnitTest {
         val parser = MySqlClientPacketParser(
             onQuery = {},
             onPrepare = {},
-            onExecute = {},
+            onExecute = { _, _ -> },
             onQuit = {},
         )
 
@@ -292,7 +356,7 @@ class MySqlProxyUnitTest {
     @Test
     fun `test MySqlServerPacketParser streams past an oversized split payload and still parses a prepare-ok`() {
         var returnedStmtId = 0
-        val parser = MySqlServerPacketParser({ returnedStmtId = it })
+        val parser = MySqlServerPacketParser({ stmtId, _ -> returnedStmtId = stmtId })
 
         // A split logical payload (a 0xFFFFFF continuation packet plus a small final packet) is larger than
         // any control packet the server parser inspects, so it must be streamed past without buffering
@@ -307,7 +371,7 @@ class MySqlProxyUnitTest {
     @Test
     fun `test MySqlServerPacketParser streams past a large single packet and still parses a prepare-ok`() {
         var returnedStmtId = 0
-        val parser = MySqlServerPacketParser({ returnedStmtId = it })
+        val parser = MySqlServerPacketParser({ stmtId, _ -> returnedStmtId = stmtId })
 
         // A single result packet larger than the control-packet cap, but not split, is also streamed past
         val bigRow = mysqlPacket(0, ByteArray(5000))

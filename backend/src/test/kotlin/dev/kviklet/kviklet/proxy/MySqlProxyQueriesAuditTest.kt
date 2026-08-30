@@ -17,7 +17,6 @@ import dev.kviklet.kviklet.service.dto.DatasourceType
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
@@ -241,8 +240,7 @@ class MySqlProxyQueriesAuditTest {
 
     @ParameterizedTest
     @MethodSource("datasourceTypes")
-    fun `a server side prepare audits the placeholder text and not the bound value`(type: DatasourceType) {
-        // TODO(KVI-220): once parameter interpolation lands, this should audit the bound value (2) as well.
+    fun `a server side prepare audits the interpolated bound value`(type: DatasourceType) {
         val proxy = startProxy(type)
         proxyConnection(type, proxy, extraParams = "&useServerPrepStmts=true").use { conn ->
             conn.prepareStatement("SELECT ? + 40").use { stmt ->
@@ -253,12 +251,28 @@ class MySqlProxyQueriesAuditTest {
                 }
             }
         }
-        proxy.eventService.assertAuditedQueryContains("? + 40")
-        assertFalse(
-            proxy.eventService.rawQueries.any { it.contains("SELECT 2 + 40") },
-            "Server-side prepares must not interpolate the bound value until KVI-220; got: " +
-                "${proxy.eventService.rawQueries}",
-        )
+        // The execute's binary parameter is decoded and rendered into the prepared text.
+        proxy.eventService.assertAuditedQueryContains("SELECT 2 + 40")
+    }
+
+    @ParameterizedTest
+    @MethodSource("datasourceTypes")
+    fun `a server side prepare audits bound values of mixed types`(type: DatasourceType) {
+        val proxy = startProxy(type)
+        proxyConnection(type, proxy, extraParams = "&useServerPrepStmts=true").use { conn ->
+            conn.createStatement().use { it.execute("DROP TABLE IF EXISTS audit_params") }
+            conn.createStatement().use {
+                it.execute("CREATE TABLE audit_params (id INTEGER, name VARCHAR(64), note TEXT)")
+            }
+            conn.prepareStatement("INSERT INTO audit_params (id, name, note) VALUES (?, ?, ?)").use { stmt ->
+                stmt.setInt(1, 5)
+                stmt.setString(2, "o'brien")
+                stmt.setNull(3, java.sql.Types.VARCHAR)
+                stmt.executeUpdate()
+            }
+        }
+        // An integer, a string needing quote escaping, and a NULL, all rendered into the audited text.
+        proxy.eventService.assertAuditedQueryContains("VALUES (5, 'o''brien', NULL)")
     }
 
     @ParameterizedTest
@@ -298,8 +312,8 @@ class MySqlProxyQueriesAuditTest {
                 stmt.executeUpdate()
             }
         }
-        proxy.eventService.assertAuditedQueryContains("INSERT INTO audit_seq (id) VALUES (?)")
-        proxy.eventService.assertAuditedQueryContains("DELETE FROM audit_seq WHERE id = ?")
+        proxy.eventService.assertAuditedQueryContains("INSERT INTO audit_seq (id) VALUES (1)")
+        proxy.eventService.assertAuditedQueryContains("DELETE FROM audit_seq WHERE id = 1")
     }
 
     @ParameterizedTest
@@ -316,15 +330,48 @@ class MySqlProxyQueriesAuditTest {
                 }
             }
         }
-        // The statement is prepared once and executed three times; each execute is audited with the prepared
-        // placeholder text. The "VALUES (?)" signature separates the executes from the DROP/CREATE DDL, which
-        // also mention the table name.
-        val executes = proxy.eventService.rawQueries.count { it.contains("audit_reuse") && it.contains("VALUES (?)") }
+        // The statement is prepared once and executed three times; each execute is audited exactly once
+        // with its own bound value rendered into the prepared text. This also exercises re-executes that
+        // do not resend parameter types (new-params-bound-flag = 0), where the proxy must use the cached
+        // types.
+        val executes = proxy.eventService.rawQueries.count { it.contains("INSERT INTO audit_reuse") }
         assertEquals(
             3,
             executes,
             "Each execute of the reused statement must be audited: ${proxy.eventService.rawQueries}",
         )
+        for (value in 1..3) {
+            assertEquals(
+                1,
+                proxy.eventService.rawQueries.count { it.contains("audit_reuse") && it.contains("VALUES ($value)") },
+                "Execute with value $value must be audited exactly once: ${proxy.eventService.rawQueries}",
+            )
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("datasourceTypes")
+    fun `a parameter streamed via send long data is audited as an explicit marker`(type: DatasourceType) {
+        val proxy = startProxy(type)
+        proxyConnection(type, proxy, extraParams = "&useServerPrepStmts=true").use { conn ->
+            conn.createStatement().use { it.execute("DROP TABLE IF EXISTS audit_longdata") }
+            conn.createStatement().use { it.execute("CREATE TABLE audit_longdata (id INTEGER, payload TEXT)") }
+            conn.prepareStatement("INSERT INTO audit_longdata (id, payload) VALUES (?, ?)").use { stmt ->
+                stmt.setInt(1, 1)
+                // A stream parameter makes the driver send its bytes ahead of the execute via
+                // COM_STMT_SEND_LONG_DATA; the proxy does not accumulate them (they can be arbitrarily
+                // large), so the audit shows an explicit marker in that position instead of the value.
+                stmt.setCharacterStream(2, java.io.StringReader("streamed payload"))
+                stmt.executeUpdate()
+            }
+        }
+        directConnection(type).createStatement().use { stmt ->
+            stmt.executeQuery("SELECT payload FROM audit_longdata WHERE id = 1").use { rs ->
+                assertTrue(rs.next())
+                assertEquals("streamed payload", rs.getString(1))
+            }
+        }
+        proxy.eventService.assertAuditedQueryContains("VALUES (1, <long data>)")
     }
 
     @ParameterizedTest
