@@ -42,13 +42,19 @@ fun proxyServerFactory(
     tlsCertificate: TLSCertificate? = null,
     eventServiceOverride: EventServiceMock? = null,
     handshakeTimeoutMs: Int = 10_000,
+    maxConnectionsPerSession: Int = 15,
 ): ProxyInstance {
     val connAuth = AuthenticationDetails.UserPassword("test", "test")
     val executionRequestFactory = ExecutionRequestFactory()
     val request = executionRequestFactory.createDatasourceExecutionRequest()
     val eventService = eventServiceOverride ?: EventServiceMock(executionRequestAdapter, eventAdapter, request)
     val port = (12000..20000).random()
-    val proxy = ProxyServer(port, PostgresProtocol(eventService, tlsCertificate), handshakeTimeoutMs)
+    val proxy = ProxyServer(
+        port,
+        PostgresProtocol(eventService, tlsCertificate),
+        handshakeTimeoutMs,
+        maxConnectionsPerSession,
+    )
     proxy.start()
     waitForProxyStart(proxy)
     proxy.registerSession(

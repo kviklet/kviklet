@@ -7,6 +7,8 @@ import dev.kviklet.kviklet.proxy.core.ProxyProtocol
 import dev.kviklet.kviklet.proxy.core.ProxySession
 import dev.kviklet.kviklet.proxy.core.TLSCertificate
 import dev.kviklet.kviklet.proxy.core.tlsCertificateFactory
+import dev.kviklet.kviklet.proxy.core.writeAndFlush
+import dev.kviklet.kviklet.proxy.postgres.messages.errorResponse
 import dev.kviklet.kviklet.service.EventService
 import java.net.Socket
 
@@ -71,5 +73,14 @@ class PostgresProtocol(
             runCatching { forwardSocket.close() }
             throw e
         }
+    }
+
+    // The client has completed SASL but not yet received AuthenticationOk (that happens in connect()), so
+    // an ErrorResponse here surfaces as a clean connect-time failure in the client -- the same 53300 a real
+    // postgres over its connection limit reports.
+    override fun refuseOverCapacity(authenticatedClient: AuthenticatedClient) {
+        authenticatedClient.socket.getOutputStream().writeAndFlush(
+            errorResponse("too many connections through the Kviklet proxy, try again later", "53300"),
+        )
     }
 }
