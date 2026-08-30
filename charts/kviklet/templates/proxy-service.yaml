@@ -1,0 +1,31 @@
+{{- if .Values.proxyService.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fullname" . }}-proxy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kviklet.metaLabels" . | nindent 4 }}
+  {{- with .Values.proxyService.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.proxyService.type }}
+  ports:
+    {{- if .Values.config.proxy.postgres.enabled }}
+    - name: pg-proxy
+      protocol: TCP
+      port: {{ .Values.config.proxy.postgres.port }}
+      targetPort: pg-proxy
+    {{- end }}
+    {{- if .Values.config.proxy.mysql.enabled }}
+    - name: mysql-proxy
+      protocol: TCP
+      port: {{ .Values.config.proxy.mysql.port }}
+      targetPort: mysql-proxy
+    {{- end }}
+  selector:
+      {{- include "kviklet.selectorLabels" . | nindent 8 }}
+{{- end }}

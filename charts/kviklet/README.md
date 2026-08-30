@@ -44,6 +44,35 @@ Any other configuration can be put into the same Secret as the database credenti
 
 If you think some config should be supported natively by the chart and not required as a secret, please open an issue or a PR.
 
+## Database access proxies (experimental)
+
+Kviklet can proxy PostgreSQL and MySQL/MariaDB connections so that approved sessions can be used from a regular database client. The listeners are enabled by default inside the pod (`config.proxy.postgres` on 5432, `config.proxy.mysql` on 3306) but are not exposed outside the pod unless you enable the dedicated proxy service:
+
+```yaml
+proxyService:
+  enabled: true
+  type: LoadBalancer # database clients speak raw TCP, an HTTP ingress cannot carry this traffic
+```
+
+To disable a listener entirely, set e.g. `config.proxy.mysql.enabled: false`.
+
+### TLS
+
+Without a certificate the proxies accept unencrypted connections only. To serve TLS, add the certificate to the same secret as the other environment variables:
+
+```yaml
+stringData:
+  PROXY_TLS_CERTIFICATE_SOURCE: "env"
+  PROXY_TLS_CERTIFICATE_CERT: |
+    -----BEGIN CERTIFICATE-----
+    ...
+  PROXY_TLS_CERTIFICATE_KEY: |
+    -----BEGIN PRIVATE KEY-----
+    ...
+```
+
+The certificate must match the DNS name under which database clients reach the proxy service, which is usually different from the hostname of the web UI.
+
 ## Example
 
 There is a [demo deployment on GCS](../kviklet-demo/README.md) that makes use of this base chart.
