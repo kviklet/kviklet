@@ -86,6 +86,43 @@ class PostgresProxyFramingTest {
     }
 
     @Test
+    fun `messages of varying sizes fed in uneven chunks are all reassembled in order`() {
+        // Exercises every path of the internal buffer window: tiny chunks that split headers,
+        // chunks holding several messages, and partial messages carried across many feeds.
+        val framer = MessageFramer()
+        val queries = (0 until 50).map { i -> "SELECT '" + "x".repeat(i * i * 7 % 9001) + "' -- $i" }
+        val bytes = queries.map { queryMessageBytes(it) }.reduce(ByteArray::plus)
+        val chunkSizes = listOf(1, 7, 8192, 3, 4096, 13, 977)
+        val parsed = mutableListOf<QueryMessage>()
+        var offset = 0
+        var i = 0
+        while (offset < bytes.size) {
+            val next = minOf(offset + chunkSizes[i % chunkSizes.size], bytes.size)
+            framer.feed(bytes.copyOfRange(offset, next)).forEach { parsed.add(it as QueryMessage) }
+            offset = next
+            i++
+        }
+        assertEquals(queries, parsed.map { it.query })
+    }
+
+    @Test
+    fun `small messages still parse after a message large enough to grow and shrink the buffer`() {
+        // A >64KB message forces the internal buffer to grow and then be released on drain;
+        // everything after it must still frame correctly on the fresh buffer.
+        val framer = MessageFramer()
+        val bigQuery = "SELECT '" + "y".repeat(200_000) + "'"
+        val bytes = queryMessageBytes(bigQuery) +
+            queryMessageBytes("SELECT 1") +
+            queryMessageBytes("SELECT 2")
+        val parsed = mutableListOf<QueryMessage>()
+        for (offset in bytes.indices step 8192) {
+            val chunk = bytes.copyOfRange(offset, minOf(offset + 8192, bytes.size))
+            framer.feed(chunk).forEach { parsed.add(it as QueryMessage) }
+        }
+        assertEquals(listOf(bigQuery, "SELECT 1", "SELECT 2"), parsed.map { it.query })
+    }
+
+    @Test
     fun `every parsed message reserializes to exactly the bytes that were fed`() {
         // The relay forwards ParsedMessage.toByteArray() to the server, so a faithful relay
         // requires that reserializing a parsed message reproduces the original wire bytes.
