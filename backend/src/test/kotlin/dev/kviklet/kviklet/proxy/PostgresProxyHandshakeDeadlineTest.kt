@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit
 class PostgresProxyHandshakeDeadlineTest {
 
     private val budgetMs = 1000
+
     // Well past the budget, but short enough that a slow abort (a per-read timeout instead of the total
     // deadline) is caught as a failure rather than hiding behind a generous margin.
     private val maxAcceptableMs = 4000L

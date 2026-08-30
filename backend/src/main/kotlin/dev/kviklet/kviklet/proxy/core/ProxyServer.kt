@@ -26,6 +26,11 @@ class ProxyServer(
     // forever. Set on the accepted socket before the protocol handshake runs; the handshake honours it as its
     // total budget.
     private val handshakeTimeoutMs: Int = 10_000,
+    // Relay caps, applied only to authenticated connections (reserveConnectionSlot). The per-session cap is
+    // the pre-single-port budget each request used to get on its own port, so one client's JDBC pool can no
+    // longer starve everyone else; the global cap is a total-resource ceiling across all sessions.
+    private val maxConnectionsPerSession: Int = 15,
+    private val maxConnections: Int = 100,
 ) {
     private val threadPool = Executors.newCachedThreadPool()
 
@@ -45,12 +50,6 @@ class ProxyServer(
     private val clientConnections = CopyOnWriteArrayList<ProxyConnection>()
 
     private lateinit var serverSocket: ServerSocket
-
-    // Relay caps, applied only to authenticated connections (registerConnection). The per-session cap is the
-    // pre-single-port budget each request used to get on its own port, so one client's JDBC pool can no longer
-    // starve everyone else; the global cap is a total-resource ceiling across all sessions.
-    private val maxConnectionsPerSession = 15
-    private val maxConnections = 100
 
     // Bounds concurrent in-flight handshakes (pre-auth), independent of the relay caps: unauthenticated sockets
     // get their own small budget so a connect flood cannot spawn unbounded handshake threads, yet cannot
@@ -240,18 +239,39 @@ class ProxyServer(
         val session = authenticatedClient.session
 
         // The access window may have closed (server shutdown or session expiry) while the client was still
-        // handshaking; do not open a credentialed upstream connection. registerConnection re-checks this
+        // handshaking; do not open a credentialed upstream connection. attachConnection re-checks this
         // atomically below to also cover a close that fires during the upstream connect itself.
         if (!isRunning || !session.active) return
 
-        // Only now that the client is authenticated does the protocol open the upstream connection and build the
-        // relay. It closes anything it opened if this throws.
-        val clientConnection = protocol.connect(authenticatedClient)
+        // Reserve the relay slot BEFORE the protocol opens the upstream and finishes the client-facing
+        // startup: a cap refusal can then be delivered as a proper protocol error while the client is still
+        // in its connect phase, instead of a silent TCP close right after a successful startup (which pools
+        // surface as "connection reset" on first use). It also avoids opening an upstream connection only
+        // to tear it straight down again.
+        when (reserveConnectionSlot(session)) {
+            SlotReservation.SESSION_GONE -> return
 
-        // Register atomically against shutdown and expiry: if either fired after the check above (e.g. during
-        // the upstream connect), this returns false and we close the just-opened session rather than leaving it
-        // relaying past the access window.
-        if (!registerConnection(session, clientConnection)) {
+            SlotReservation.OVER_CAPACITY -> {
+                runCatching { protocol.refuseOverCapacity(authenticatedClient) }
+                return
+            }
+
+            SlotReservation.RESERVED -> {}
+        }
+
+        // Only now does the protocol open the upstream connection and build the relay. It closes anything
+        // it opened if this throws; the reservation must be handed back too.
+        val clientConnection = try {
+            protocol.connect(authenticatedClient)
+        } catch (e: Exception) {
+            releaseReservedSlot(session)
+            throw e
+        }
+
+        // Attach atomically against shutdown and expiry: if either fired after the reservation (e.g. during
+        // the upstream connect), this returns false and we close the just-opened session rather than leaving
+        // it relaying past the access window.
+        if (!attachConnection(session, clientConnection)) {
             clientConnection.close()
             return
         }
@@ -262,30 +282,51 @@ class ProxyServer(
         }
     }
 
-    // Adds a fully set-up relay to both the session and the global tracking list, but only if the server is
-    // still running, the session still active, and neither the per-session nor the global relay cap is reached.
-    // Returns false otherwise so the caller tears the new session down (nothing else would close it). Counting
-    // authenticated relays here -- not on accept -- is what keeps unauthenticated sockets off the relay budget;
-    // the per-session cap keeps one client's connection pool from starving other sessions.
+    private enum class SlotReservation { RESERVED, OVER_CAPACITY, SESSION_GONE }
+
+    // Claims a relay slot against both caps before the upstream connect. Counting authenticated clients
+    // here -- not on accept -- is what keeps unauthenticated sockets off the relay budget; the per-session
+    // cap keeps one client's connection pool from starving other sessions. The reservation counts toward
+    // currentConnections immediately so the accept-loop gate and the global cap see in-flight connects.
     @Synchronized
-    private fun registerConnection(session: ProxySession, connection: ProxyConnection): Boolean {
+    private fun reserveConnectionSlot(session: ProxySession): SlotReservation {
         if (!isRunning || !session.active) {
-            return false
+            return SlotReservation.SESSION_GONE
         }
         if (currentConnections >= maxConnections) {
             logger.warn("Global proxy connection cap ($maxConnections) reached, refusing a connection")
-            return false
+            return SlotReservation.OVER_CAPACITY
         }
-        if (session.connections.size >= maxConnectionsPerSession) {
+        if (session.connections.size + session.reservedConnections >= maxConnectionsPerSession) {
             logger.warn(
                 "Per-session proxy connection cap ($maxConnectionsPerSession) reached for ${session.username}, " +
                     "refusing a connection",
             )
+            return SlotReservation.OVER_CAPACITY
+        }
+        session.reservedConnections++
+        currentConnections++
+        return SlotReservation.RESERVED
+    }
+
+    @Synchronized
+    private fun releaseReservedSlot(session: ProxySession) {
+        session.reservedConnections--
+        currentConnections--
+    }
+
+    // Converts a reservation into a registered relay, adding it to both the session and the global tracking
+    // list -- but only if the server is still running and the session still active. Returns false otherwise
+    // (handing the reservation back) so the caller tears the new relay down; nothing else would close it.
+    @Synchronized
+    private fun attachConnection(session: ProxySession, connection: ProxyConnection): Boolean {
+        if (!isRunning || !session.active) {
+            releaseReservedSlot(session)
             return false
         }
+        session.reservedConnections--
         clientConnections.add(connection)
         session.connections.add(connection)
-        currentConnections++
         return true
     }
 

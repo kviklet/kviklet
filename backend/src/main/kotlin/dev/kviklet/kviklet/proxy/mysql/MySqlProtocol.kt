@@ -77,4 +77,15 @@ class MySqlProtocol(
             throw e
         }
     }
+
+    // The MySQL handshake has already answered the client with its OK packet, so the refusal is delivered
+    // as the ERR the client reads in response to its first command (1040 Too many connections) -- still a
+    // clear error instead of the silent close it used to get. Sequence id 1 matches a first-command reply.
+    override fun refuseOverCapacity(authenticatedClient: AuthenticatedClient) {
+        writePacket(
+            authenticatedClient.socket.getOutputStream(),
+            1,
+            buildErrPacket(1040, "08004", "Too many connections through the Kviklet proxy, try again later"),
+        )
+    }
 }

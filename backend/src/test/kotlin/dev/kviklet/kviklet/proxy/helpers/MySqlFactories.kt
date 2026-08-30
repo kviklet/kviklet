@@ -63,13 +63,19 @@ fun mysqlProxyServerFactory(
     handshakeTimeoutMs: Int = 10_000,
     username: String = "proxyUser",
     password: String = "proxyPassword",
+    maxConnectionsPerSession: Int = 15,
 ): MySqlProxyInstance {
     val connAuth = AuthenticationDetails.UserPassword("test", "test")
     val executionRequestFactory = ExecutionRequestFactory()
     val request = executionRequestFactory.createDatasourceExecutionRequest()
     val eventService = eventServiceOverride ?: EventServiceMock(executionRequestAdapter, eventAdapter, request)
     val port = (12000..20000).random()
-    val proxy = ProxyServer(port, MySqlProtocol(eventService, tlsCertificate), handshakeTimeoutMs)
+    val proxy = ProxyServer(
+        port,
+        MySqlProtocol(eventService, tlsCertificate),
+        handshakeTimeoutMs,
+        maxConnectionsPerSession,
+    )
     proxy.start()
     waitForProxyStart(proxy)
     proxy.registerSession(

@@ -14,6 +14,7 @@ import dev.kviklet.kviklet.service.dto.DatasourceType
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.params.ParameterizedTest
@@ -29,6 +30,7 @@ import org.testcontainers.utility.DockerImageName
 import java.net.Socket
 import java.sql.Connection
 import java.sql.DriverManager
+import java.sql.SQLException
 import java.util.Properties
 
 @SpringBootTest
@@ -86,13 +88,18 @@ class MySqlProxyConnectionLifecycleTest {
         startedProxies.clear()
     }
 
-    private fun startProxy(type: DatasourceType, handshakeTimeoutMs: Int = 10_000): MySqlProxyInstance {
+    private fun startProxy(
+        type: DatasourceType,
+        handshakeTimeoutMs: Int = 10_000,
+        maxConnectionsPerSession: Int = 15,
+    ): MySqlProxyInstance {
         val instance = mysqlProxyServerFactory(
             container(type),
             type,
             executionRequestAdapter,
             eventAdapter,
             handshakeTimeoutMs = handshakeTimeoutMs,
+            maxConnectionsPerSession = maxConnectionsPerSession,
         )
         startedProxies.add(instance.proxy)
         return instance
@@ -216,6 +223,34 @@ class MySqlProxyConnectionLifecycleTest {
         } finally {
             socket.close()
         }
+    }
+
+    // KVI-247 #5: a connection over the cap used to be silently closed after the client had fully
+    // authenticated (the MySQL handshake ends with an OK packet), so pools saw "connection reset" on
+    // first use. The slot is now reserved before the upstream connect, and a refusal is answered with a
+    // proper ERR packet (1040 Too many connections) the client reads on its first command.
+    @ParameterizedTest
+    @MethodSource("datasourceTypes")
+    fun `a connection over the per-session cap is refused with a too many connections error`(type: DatasourceType) {
+        val proxy = startProxy(type, maxConnectionsPerSession = 1)
+        val first = proxy.connect().also { openedConnections.add(it) }
+        first.createStatement().executeQuery("SELECT 1").close()
+
+        val thrown = assertThrows(SQLException::class.java) {
+            proxy.connect().use { conn ->
+                conn.createStatement().executeQuery("SELECT 1").close()
+            }
+        }
+        val messages = generateSequence<Throwable>(thrown) { it.cause }
+            .mapNotNull { it.message }
+            .joinToString(" | ")
+        assertTrue(
+            messages.contains("Too many connections"),
+            "expected a too-many-connections refusal, got: $messages",
+        )
+
+        // The refusal must not have damaged the connection that legitimately holds the slot.
+        first.createStatement().executeQuery("SELECT 1").close()
     }
 
     @ParameterizedTest
