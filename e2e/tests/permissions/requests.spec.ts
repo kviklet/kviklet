@@ -316,8 +316,9 @@ test("execution actions are disabled without execute permission", async ({
   await expect(runButton).toHaveAttribute("title", EXECUTE_TOOLTIP);
 
   // Dry Run is a per-connection feature toggle (off by default), so only the
-  // always-present download item is asserted here.
-  await page.getByRole("button", { name: "Open options" }).click();
+  // download item, which lives in the split button next to the run button, is
+  // asserted here.
+  await page.getByTestId("execution-options-dropdown").click();
   const menuItem = page.getByRole("menuitem", {
     name: "Execute and Download Results",
   });
@@ -325,9 +326,11 @@ test("execution actions are disabled without execute permission", async ({
   await expect(menuItem).toBeDisabled();
   await expect(menuItem).toHaveClass(/cursor-not-allowed/);
   await expect(menuItem).toHaveAttribute("title", EXECUTE_TOOLTIP);
+  await page.keyboard.press("Escape");
 
   // Copying would open the (for this user unreachable) new-request form, so it
   // is disabled for users who cannot create requests on any connection.
+  await page.getByRole("button", { name: "Open options" }).click();
   const copyItem = page.getByRole("menuitem", { name: "Copy Request" });
   await expect(copyItem).toBeDisabled();
   await expect(copyItem).toHaveAttribute("title", CREATE_TOOLTIP);
@@ -345,12 +348,15 @@ test("execution actions are enabled for the writer", async ({ page }) => {
   await expect(runButton).toBeVisible();
   await expect(runButton).toBeEnabled();
 
-  await page.getByRole("button", { name: "Open options" }).click();
+  await page.getByTestId("execution-options-dropdown").click();
   const downloadItem = page.getByRole("menuitem", {
     name: "Execute and Download Results",
   });
   await expect(downloadItem).toBeEnabled();
   await expect(downloadItem).not.toHaveClass(/cursor-not-allowed/);
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Open options" }).click();
   await expect(
     page.getByRole("menuitem", { name: "Copy Request" }),
   ).toBeEnabled();
