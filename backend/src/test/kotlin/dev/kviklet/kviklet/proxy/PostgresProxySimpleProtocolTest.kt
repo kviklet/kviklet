@@ -141,7 +141,6 @@ class PostgresProxySimpleProtocolTest {
             }
             assertTrue(exception.message!!.contains("audit", ignoreCase = true))
 
-            // The query must never have reached the target database
             val result = directConnection.createStatement().executeQuery(
                 "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'proxy_test_audit_fail');",
             )

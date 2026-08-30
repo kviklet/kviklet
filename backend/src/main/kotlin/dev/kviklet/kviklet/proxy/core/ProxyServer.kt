@@ -59,7 +59,6 @@ class ProxyServer(
     private val maxPendingHandshakes = 50
     private val activeHandshakes = AtomicInteger(0)
 
-    // How long the accept loop pauses after a failed accept before trying again.
     private val acceptFailureBackoffMs = 1000L
 
     // Concurrent in-flight (pre-auth) handshakes, exposed for tests and monitoring. Distinct from
@@ -175,8 +174,6 @@ class ProxyServer(
 
     private fun acceptLoop() {
         while (isRunning) {
-            // Two independent back-pressure gates: too many in-flight handshakes (pre-auth flood) or too many
-            // live relay connections (post-auth resource ceiling). Either way, wait rather than accept.
             if (activeHandshakes.get() >= maxPendingHandshakes || currentConnections >= maxConnections) {
                 Thread.sleep(100)
                 continue

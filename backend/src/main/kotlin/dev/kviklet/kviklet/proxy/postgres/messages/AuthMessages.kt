@@ -69,13 +69,12 @@ class SASLInitialResponse(
             }
             val saslData = ByteArray(saslDataLength)
             buffer.get(saslData)
-            // Strip the gs2 header (e.g. "n,,") to get the SCRAM client-first-bare ("n=...,r=...").
             val clientFirstBare = stripGs2Header(String(saslData, Charsets.UTF_8))
             return SASLInitialResponse('p', length, bytes, clientFirstBare)
         }
 
         // The gs2 header is a channel-binding flag, an optional authzid and two commas; the client-first-bare
-        // follows the second comma. Validating the shape beats the previous hardcoded offset of 26.
+        // follows the second comma.
         private fun stripGs2Header(saslData: String): String {
             val firstComma = saslData.indexOf(',')
             val secondComma = if (firstComma >= 0) saslData.indexOf(',', firstComma + 1) else -1

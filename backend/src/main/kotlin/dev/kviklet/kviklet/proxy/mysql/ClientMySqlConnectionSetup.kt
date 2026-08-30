@@ -301,7 +301,6 @@ class HandshakeResponse(
                 for (i in 0 until 23) {
                     buffer.get()
                 }
-                // Read null-terminated username
                 val usernameBytes = ByteArrayOutputStream()
                 while (true) {
                     val b = buffer.get()
@@ -315,7 +314,6 @@ class HandshakeResponse(
                     throw IOException("CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA is not supported by this proxy")
                 }
 
-                // Read auth response
                 val hasSecureConnection = (capabilities and 0x8000) != 0
                 val authResponse = if (hasSecureConnection) {
                     val authResponseLen = buffer.get().toInt() and 0xFF

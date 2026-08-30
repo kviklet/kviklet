@@ -41,13 +41,10 @@ class MySqlProxyUnitTest {
             clientHash[i] = (sha1Password[i].toInt() xor sha1Concat[i].toInt()).toByte()
         }
 
-        // Must verify successfully
         assertTrue(verifyPassword(scramble, password, clientHash))
 
-        // Must fail with incorrect password
         assertFalse(verifyPassword(scramble, "wrongPassword", clientHash))
 
-        // Must fail with modified client hash
         clientHash[0] = (clientHash[0] + 1).toByte()
         assertFalse(verifyPassword(scramble, password, clientHash))
     }
