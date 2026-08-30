@@ -205,13 +205,6 @@ class TerminationMessage(header: Char = 'X', length: Int = 4, originalContent: B
     }
 }
 
-class MessageOrBytes(val message: ParsedMessage?, val bytes: ByteArray?, val response: ByteArray? = null)
-
-// todo: move MessageOrBytes.writableBytes() and MessageOrBytes.isTermination() to the class
-fun MessageOrBytes.writableBytes(): ByteArray = this.message?.toByteArray() ?: this.bytes!!
-
-fun MessageOrBytes.isTermination(): Boolean = this.message?.isTermination() ?: false
-
 class QueryMessage(
     override val header: Char = 'Q',
     override val length: Int,

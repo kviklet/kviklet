@@ -20,6 +20,10 @@ import javax.crypto.spec.SecretKeySpec
 // Shared thread-safe CSPRNG for nonces and salts; constructing a SecureRandom per call re-seeds needlessly.
 private val secureRandom = SecureRandom()
 
+// Generous cap on a client SASL frame. Real SCRAM messages are a few hundred bytes; a declared length
+// beyond this can only be garbage or an attack, so it is rejected instead of buffered.
+private const val MAX_SASL_MESSAGE_LENGTH = 10_000
+
 enum class AuthenticationState {
     WAITING_CLIENT_FIRST,
     WAITING_CLIENT_PROOF,
@@ -38,6 +42,10 @@ class SASLAuthHandler(
     private val password: String,
     private val isUserValid: Boolean,
     private val iterations: Int = 4096,
+    // Invoked before every read. The handshake passes a hook that re-checks the total deadline and
+    // re-shrinks the socket timeout, so a client dribbling bytes cannot stretch the SASL phase past
+    // the handshake budget.
+    private val beforeRead: () -> Unit = {},
 ) {
     private val serverNonce = getRandomString()
     private val salt = Salt()
@@ -46,26 +54,53 @@ class SASLAuthHandler(
     private var serverFirst: String = ""
     fun handle() {
         while (state != AuthenticationState.DONE) {
-            val buff = ByteArray(8192)
-            val read = input.read(buff)
+            val (length, body) = readSaslFrame()
+            handleMessage(length, body)
+        }
+    }
+
+    // Reads exactly one client SASL frame ('p', int32 length, body), accumulating across TCP-split reads
+    // until the declared length is satisfied: a single read() is not guaranteed to deliver a whole frame,
+    // so a valid login whose SASL message spans two TCP segments must not be rejected.
+    private fun readSaslFrame(): Pair<Int, ByteArray> {
+        val header = ByteArray(5)
+        readFully(header)
+        if (header[0] != 'p'.code.toByte()) {
+            throw Exception("Unexpected message type during SASL authentication")
+        }
+        // length counts itself but not the header byte. It is attacker-controlled and this runs pre-auth,
+        // so bound it before allocating for it.
+        val length = ByteBuffer.wrap(header, 1, 4).int
+        if (length < 4 || length > MAX_SASL_MESSAGE_LENGTH) {
+            throw Exception("Invalid SASL message length $length")
+        }
+        val body = ByteArray(length - 4)
+        readFully(body)
+        return length to body
+    }
+
+    private fun readFully(buffer: ByteArray) {
+        var offset = 0
+        while (offset < buffer.size) {
+            beforeRead()
+            val read = input.read(buffer, offset, buffer.size - offset)
             if (read == -1) {
                 // The client aborted mid-SASL. Treat EOF as terminal so the handshake thread does not
                 // hot-spin on a closed stream.
                 throw Exception("Client closed the connection during SASL authentication")
             }
-            if (read > 0) {
-                handleMessage(buff, read)
-            }
+            offset += read
         }
     }
-    private fun handleMessage(buff: ByteArray, read: Int) {
+
+    private fun handleMessage(length: Int, body: ByteArray) {
         when (state) {
             AuthenticationState.WAITING_CLIENT_FIRST -> {
-                handleClientFirstMessage(buff, read)
+                handleClientFirstMessage(length, body)
             }
 
             AuthenticationState.WAITING_CLIENT_PROOF -> {
-                handleClientProof(buff, read)
+                handleClientProof(length, body)
             }
 
             AuthenticationState.DONE -> {
@@ -73,28 +108,13 @@ class SASLAuthHandler(
             }
         }
     }
-    private fun handleClientFirstMessage(buff: ByteArray, read: Int) {
-        val (length, body) = messageBody(buff, read)
+    private fun handleClientFirstMessage(length: Int, body: ByteArray) {
         clientFirst = SASLInitialResponse.fromBytes(length, body)
         serverFirst = "r=${clientFirst!!.getClientNonce() + serverNonce},s=${salt.base64Encoded},i=$iterations"
         sendServerFirstMessage()
     }
 
-    // Extracts (declaredLength, body) from a raw SASL read, matching the contract the relay MessageFramer
-    // uses: the header byte and the int32 length are stripped, and length includes the 4 length bytes.
-    private fun messageBody(buff: ByteArray, read: Int): Pair<Int, ByteArray> {
-        if (read < 5) throw Exception("Incomplete SASL message header")
-        val length = ByteBuffer.wrap(buff, 1, 4).int
-        // length counts itself but not the header byte, so it must be at least 4 and no larger than the
-        // bytes actually read. Comparing against read - 1 avoids the 1 + length overflow for a huge length.
-        if (length < 4 || length > read - 1) {
-            throw Exception("Invalid SASL message length $length")
-        }
-        return length to buff.copyOfRange(5, 1 + length)
-    }
-
-    private fun handleClientProof(buff: ByteArray, read: Int) {
-        val (length, body) = messageBody(buff, read)
+    private fun handleClientProof(length: Int, body: ByteArray) {
         val clientResp = SASLResponse.fromBytes(length, body)
         // Always run the full proof verification (PBKDF2 + HMAC) before deciding, so an unknown user and a
         // known user with a wrong password take the same time and cannot be told apart by an attacker

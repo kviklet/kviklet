@@ -29,6 +29,9 @@ class ProxyServerSessionReuseTest {
 
         override fun connect(authenticatedClient: AuthenticatedClient): ProxyConnection =
             throw UnsupportedOperationException("not used in registry tests")
+
+        override fun refuseOverCapacity(authenticatedClient: AuthenticatedClient) =
+            throw UnsupportedOperationException("not used in registry tests")
     }
 
     private val requestFactory = ExecutionRequestFactory()

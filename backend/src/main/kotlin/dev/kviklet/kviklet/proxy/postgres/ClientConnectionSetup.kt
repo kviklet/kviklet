@@ -22,6 +22,7 @@ import dev.kviklet.kviklet.proxy.postgres.messages.tlsSupportedMessage
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.Socket
+import java.net.SocketTimeoutException
 import java.nio.ByteBuffer
 
 // Postgres' own cap on a startup packet (PQ_MAX_STARTUP_PACKET_LENGTH). A declared length beyond what
@@ -54,9 +55,7 @@ fun authenticateClient(
     unknownUserPassword: String,
     resolveSession: (String) -> ProxySession?,
 ): AuthenticatedClient? {
-    // The caller's soTimeout is the TOTAL handshake budget, not just a per-read timeout: the socket timeout
-    // is shrunk to the remaining budget before every read below, so the whole handshake -- including a slow
-    // client dribbling one valid frame just under each timeout -- cannot outlast it and hold its slot forever.
+    // The caller's soTimeout is the TOTAL handshake budget, not just a per-read timeout.
     val budgetMs = if (client.soTimeout > 0) client.soTimeout.toLong() else DEFAULT_HANDSHAKE_BUDGET_MS
     val deadline = System.currentTimeMillis() + budgetMs
     var socket = client
@@ -64,70 +63,95 @@ fun authenticateClient(
     var output = socket.getOutputStream()
     var preStartupFrames = 0
 
-    while (true) {
+    // Invoked before EVERY read below, including the partial reads inside readFully and the SASL
+    // exchange: re-checks the deadline and re-shrinks the socket timeout to the remaining budget. A plain
+    // soTimeout resets on every byte received, so without the re-check a client dribbling one byte per
+    // just-under-the-timeout interval could hold a handshake slot for hours; with it the whole handshake
+    // cannot outlast its budget. Reads `socket` through the var so it survives the TLS upgrade.
+    val checkDeadline = {
         val remaining = deadline - System.currentTimeMillis()
         if (remaining <= 0) {
             throw Exception("Client handshake exceeded its deadline, aborting the connection")
         }
         socket.soTimeout = remaining.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+    }
 
-        // Read the whole frame before dispatching. A single read is not guaranteed to be a single
-        // frame: TCP can split one, and the fixed-offset detectors below would misread a half-frame
-        // (throwing on a split header, or auth-failing a valid user and feeding the tail to SASL on a
-        // split StartupMessage).
-        val frame = readStartupFrame(input) ?: return null // client closed before a complete frame
+    fun handshakeLoop(): AuthenticatedClient? {
+        while (true) {
+            // Read the whole frame before dispatching. A single read is not guaranteed to be a single
+            // frame: TCP can split one, and the fixed-offset detectors below would misread a half-frame
+            // (throwing on a split header, or auth-failing a valid user and feeding the tail to SASL on a
+            // split StartupMessage).
+            val frame = readStartupFrame(input, checkDeadline) ?: return null // client closed before a complete frame
 
-        when {
-            isSSLRequest(frame) -> {
-                socket = handleSSLRequest(socket, tlsCert)
-                input = socket.getInputStream()
-                output = socket.getOutputStream()
-                preStartupFrames++
+            when {
+                isSSLRequest(frame) -> {
+                    socket = handleSSLRequest(socket, tlsCert)
+                    input = socket.getInputStream()
+                    output = socket.getOutputStream()
+                    preStartupFrames++
+                }
+
+                isGSSENCRequest(frame) -> {
+                    // We do not offer GSSAPI encryption, decline it and let the client fall back to a
+                    // plain StartupMessage instead of discarding the request and deadlocking.
+                    output.writeAndFlush(gssEncNotSupportedMessage())
+                    preStartupFrames++
+                }
+
+                isCancelRequest(frame) -> {
+                    // A CancelRequest opens a throwaway connection carrying no startup message and never
+                    // authenticates. The proxy hands out zeroed backend key data, so there is nothing to
+                    // cancel: drop it rather than block forever waiting for a startup message.
+                    return null
+                }
+
+                isStartupMessage(frame) -> {
+                    val requestedUser = startupMessageUser(frame, frame.size)
+                    val session = requestedUser?.let { resolveSession(it) }
+                    sendAuthRequest(output)
+                    // Unknown user -> isUserValid=false and a placeholder password, so SASL fails exactly
+                    // like a wrong password. waitUntilAuthenticated throws on failure, so the return below
+                    // is only reached when a real session authenticated successfully.
+                    waitUntilAuthenticated(
+                        input,
+                        output,
+                        session?.password ?: unknownUserPassword,
+                        session != null,
+                        checkDeadline,
+                    )
+                    // socket is the (possibly TLS-wrapped) stream the client now speaks on; client is the
+                    // raw accepted TCP socket the relay must close to unblock its threads on teardown.
+                    return AuthenticatedClient(socket, client, session!!)
+                }
+
+                else -> throw Exception("Unexpected message during the client handshake, aborting the connection")
             }
 
-            isGSSENCRequest(frame) -> {
-                // We do not offer GSSAPI encryption, decline it and let the client fall back to a
-                // plain StartupMessage instead of discarding the request and deadlocking.
-                output.writeAndFlush(gssEncNotSupportedMessage())
-                preStartupFrames++
+            if (preStartupFrames > MAX_PRE_STARTUP_FRAMES) {
+                throw Exception("Too many pre-startup frames before a StartupMessage, aborting the connection")
             }
-
-            isCancelRequest(frame) -> {
-                // A CancelRequest opens a throwaway connection carrying no startup message and never
-                // authenticates. The proxy hands out zeroed backend key data, so there is nothing to
-                // cancel: drop it rather than block forever waiting for a startup message.
-                return null
-            }
-
-            isStartupMessage(frame) -> {
-                val requestedUser = startupMessageUser(frame, frame.size)
-                val session = requestedUser?.let { resolveSession(it) }
-                sendAuthRequest(output)
-                // Unknown user -> isUserValid=false and a placeholder password, so SASL fails exactly like a
-                // wrong password. waitUntilAuthenticated throws on failure, so the return below is only
-                // reached when a real session authenticated successfully.
-                waitUntilAuthenticated(input, output, session?.password ?: unknownUserPassword, session != null)
-                // socket is the (possibly TLS-wrapped) stream the client now speaks on; client is the raw
-                // accepted TCP socket the relay must close to unblock its threads on teardown.
-                return AuthenticatedClient(socket, client, session!!)
-            }
-
-            else -> throw Exception("Unexpected message during the client handshake, aborting the connection")
         }
+    }
 
-        if (preStartupFrames > MAX_PRE_STARTUP_FRAMES) {
-            throw Exception("Too many pre-startup frames before a StartupMessage, aborting the connection")
-        }
+    // A read that blocks with the shrunk timeout throws SocketTimeoutException exactly when the budget
+    // runs out mid-read; surface it under the same deadline message as the between-reads check so the
+    // log tells the real story (slow client, not a network hiccup).
+    try {
+        return handshakeLoop()
+    } catch (e: SocketTimeoutException) {
+        throw Exception("Client handshake exceeded its deadline, aborting the connection", e)
     }
 }
 
 // Reads exactly one startup-phase frame (SSLRequest, GSSENCRequest, CancelRequest or StartupMessage),
 // accumulating across TCP-split reads until the length declared in the first four bytes is satisfied.
 // Each of these frames is followed by a server response the client waits for, so only one frame is ever
-// in flight. Returns null on EOF before a complete frame; the socket timeout still bounds each read.
-fun readStartupFrame(input: InputStream): ByteArray? {
+// in flight. Returns null on EOF before a complete frame; beforeRead runs before every read so the
+// caller's handshake deadline bounds even a byte-by-byte dribble.
+fun readStartupFrame(input: InputStream, beforeRead: () -> Unit = {}): ByteArray? {
     val header = ByteArray(4)
-    if (!readFully(input, header, 0, 4)) {
+    if (!readFully(input, header, 0, 4, beforeRead)) {
         return null
     }
     // The length is a big-endian int32 that includes the four length bytes themselves; the smallest
@@ -138,16 +162,17 @@ fun readStartupFrame(input: InputStream): ByteArray? {
     }
     val frame = ByteArray(declaredLength)
     header.copyInto(frame)
-    if (!readFully(input, frame, 4, declaredLength)) {
+    if (!readFully(input, frame, 4, declaredLength, beforeRead)) {
         return null
     }
     return frame
 }
 
 // Fills buffer[from until to], looping over partial reads. Returns false on EOF before `to` is reached.
-private fun readFully(input: InputStream, buffer: ByteArray, from: Int, to: Int): Boolean {
+private fun readFully(input: InputStream, buffer: ByteArray, from: Int, to: Int, beforeRead: () -> Unit): Boolean {
     var offset = from
     while (offset < to) {
+        beforeRead()
         val read = input.read(buffer, offset, to - offset)
         if (read == -1) {
             return false
@@ -183,8 +208,14 @@ fun sendAuthRequest(output: OutputStream) {
  * flow, which cancels authentication once a password is sent, so an attacker cannot tell a wrong
  * username from a wrong password and enumerate valid users.
  */
-fun waitUntilAuthenticated(input: InputStream, output: OutputStream, password: String, isUserValid: Boolean) {
-    val handler = SASLAuthHandler(output, input, password, isUserValid)
+fun waitUntilAuthenticated(
+    input: InputStream,
+    output: OutputStream,
+    password: String,
+    isUserValid: Boolean,
+    beforeRead: () -> Unit = {},
+) {
+    val handler = SASLAuthHandler(output, input, password, isUserValid, beforeRead = beforeRead)
     handler.handle()
 }
 

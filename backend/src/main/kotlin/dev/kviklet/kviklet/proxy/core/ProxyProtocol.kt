@@ -30,4 +30,10 @@ interface ProxyProtocol {
     // post-authentication finalization the protocol requires, and wraps both sockets in a ready-to-run relay.
     // Throws (after closing anything it opened) if the upstream cannot be established.
     fun connect(authenticatedClient: AuthenticatedClient): ProxyConnection
+
+    // Tells an authenticated client the server cannot take its connection (a relay cap was reached), in the
+    // protocol's own error vocabulary, so the client reports a clear "too many connections" instead of a
+    // bare connection reset. Called instead of connect(), so no upstream exists yet; best-effort, the caller
+    // closes the socket afterwards either way.
+    fun refuseOverCapacity(authenticatedClient: AuthenticatedClient)
 }
