@@ -11,7 +11,7 @@ Kviklet (pronounced Quick-let) embraces the **Four-Eyes Principle** and a high l
 
 Kviklet is a self hosted docker container, that provides you with a Single Page Web app. Login to create SQL requests or approve the ones of others. An optional enterprise license unlocks advanced features like SAML authentication, role-based review requirements, role sync, and API keys. You can request an enterprise license at [kviklet.dev](https://kviklet.dev).
 
-We currently support **Postgres**, **MySQL**, **MS SQL Server** and **MongoDB**.
+We currently support **Postgres**, **MySQL**, **MariaDB**, **MS SQL Server** and **MongoDB**.
 
 ## Features
 
@@ -25,7 +25,7 @@ Kviklet ships with a variety of features that an engineering team needs to manag
 - **Single Query**: Execute a singular statement. Allows the reviewer to review your query before execution.
 - **Auditlog**: Singular plane that logs all executed statements with Author, reason for execution etc.
 - **RBAC**: Configure which team has access to which database/table to as fine of a granularity as the DB Engine allows.
-- **Postgres Proxy**: Start a proxy server to use the DB Client of your choice, but everything will be stored in the Kviklet Auditlog. (Enterprise only)
+- **Proxy** (Postgres, MariaDB, MySQL): Start a proxy server to use the DB Client of your choice, but everything will be stored in the Kviklet Auditlog. (Enterprise only)
 - **Kubernetes Exec**: Execute a statement on a pod in your kubernetes cluster. (Currently only supports Execution of a single command no live session yet)
 - **Role-Based Review Gates**: Require approvals from specific roles before execution. (Enterprise only)
 - **Role Sync**: Automatically sync user roles from your identity provider groups. (Enterprise only)
@@ -38,8 +38,8 @@ Most features are available for all databases (SSO, LDAP, RBAC, Review/Approval 
 | Database   | Statement Review | Temporary Access | Proxy(Beta) | Explain Plan |
 | ---------- | ---------------- | ---------------- | ----------- | ------------ |
 | Postgres   | &check;          | &check;          | &check;     | &check;      |
-| MySQL      | &check;          | &check;          | &cross;     | &check;      |
-| MariaDB    | &check;          | &check;          | &cross;     | &check;      |
+| MySQL      | &check;          | &check;          | &check;     | &check;      |
+| MariaDB    | &check;          | &check;          | &check;     | &check;      |
 | SQL Server | &check;          | &check;          | &cross;     | &check;      |
 | MongoDB    | &check;          | &check;          | &cross;     | &cross;      |
 | Kubernetes | &check;          | &cross;          | &cross;     | &cross;      |
@@ -377,6 +377,7 @@ With a Kviklet Enterprise License you can configure individual connections to re
 Each connection has a **total reviews required** count (`numTotalRequired`) which acts as a floor — the minimum number of distinct approvals needed regardless of roles. On top of that you can add **role requirements** that specify how many approvals must come from users with a particular role (e.g., "1 from DBA, 1 from Security").
 
 A request is only approved when **both** conditions are met:
+
 - The total number of distinct approvals meets `numTotalRequired`
 - Each role requirement is individually satisfied
 
@@ -430,7 +431,6 @@ Configure your OIDC provider to include a `groups` claim in the ID token:
 - **Keycloak**:
 
   Keycloak doesn't include groups in tokens by default so you will need to add a mapper to the client.
-
   1. Navigate to **Clients** in the left menu
   2. Select your Kviklet client
   3. Go to the **Client scopes** tab
@@ -440,15 +440,14 @@ Configure your OIDC provider to include a `groups` claim in the ID token:
   7. Select **Group Membership**
   8. Configure the mapper:
 
-  | Setting | Value |
-  |---------|-------|
-  | Name | `groups` |
-  | Token Claim Name | `groups` |
-  | Full group path | **OFF** |
-  | Add to ID token | **ON** |
-  | Add to access token | **ON** |
-  | Add to userinfo | **ON** |
-
+  | Setting             | Value    |
+  | ------------------- | -------- |
+  | Name                | `groups` |
+  | Token Claim Name    | `groups` |
+  | Full group path     | **OFF**  |
+  | Add to ID token     | **ON**   |
+  | Add to access token | **ON**   |
+  | Add to userinfo     | **ON**   |
   9. Click **Save**
 
   > **Important:** The "Token Claim Name" must match the "Groups Attribute" configured in Kviklet's Role Sync settings (default: `groups`).
@@ -588,18 +587,19 @@ Kviklet also uses /bin/sh to execute the command, so you will need to make sure 
 
 Kubernetes commands only wait for 5 seconds for output if the command takes longer than that Kviklet will wait for up to an hour before timing out the command. This is a a provisional solution, we are looking into websockets to make this more responsive and potentially enable terminal sessions.
 
-### Proxy, Postgres only
+### Proxy - Postgres, MariaDB, MySQL (Enterprise)
 
 If you create requests for temporary access, you can - instead of using the web interface - run your queries through a kviklet managed proxy and use the DB client of your choice.
-The proxy is an enterprise feature: it requires a valid license, and an admin additionally has to switch it on under Settings -> General -> Database Proxy (no restart needed).
-For this the container listens on a single stable port (5432 by default, configurable via `kviklet.proxy.postgres.port`), so you need to expose that one port.
-The user can then create a temporary access request, and click "Start Proxy" once it has been approved. Each request gets a temporary username and password on that shared port; Kviklet routes each connection to its request by the username. With these they can connect to the database. Kviklet validates the temp user and password and proxies all requests to the underlying user on the database. Any executed statements are logged in the auditlog as if they were run via the web interface.
-Note that the message parsing on the proxy side hasn't been tested with all clients, so if you run into issues with e.g. statements not being logged feel free to open an issue.
+The proxy is an enterprise feature: it requires a valid license, and an admin additionally has to switch it on under Settings -> General -> Database Proxy.
+For this the container listens on stable ports (5432 and 3306 by default, configurable via `kviklet.proxy.postgres.port` and `kviklet.proxy.mysql.port`), so you need to expose those ports.
+Users can then create a temporary access request, and click "Start Proxy" once it has been approved. Each request gets a temporary username and password; Kviklet routes each connection to its request by the username. With these they can connect to the database. Kviklet validates the temp user and password and proxies all requests to the underlying user on the database. Any executed statements are logged in the auditlog as if they were run via the web interface.
+
+Note: The proxy does currently not support result tracking. So executed statements are logged but not the results or if a statement succeeds or fails.
 
 ![Postgres Proxy](images/PostgresProxy_light.png#gh-light-mode-only)
 ![Postgres Proxy](images/PostgresProxy_dark.png#gh-dark-mode-only)
 
-#### Postgres Proxy - TLS
+#### Proxy - TLS
 
 Kviklet terminates the TLS connection to the database. That means by default any traffic from and to the proxy itself is not encrypted.  
 If you want kviklet to reencrypt the traffic you can give Kviklet a TLS certificate and key for the proxy by setting the following environment variables:
