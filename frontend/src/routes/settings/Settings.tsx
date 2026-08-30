@@ -180,7 +180,7 @@ const Settings = () => {
       link: "/settings/profile",
     },
     {
-      name: "License",
+      name: "license",
       tabContent: (
         <div className="flex flex-col">
           <div className={tabStyles}>
