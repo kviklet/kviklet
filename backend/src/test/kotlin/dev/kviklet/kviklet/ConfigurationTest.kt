@@ -65,7 +65,6 @@ class ConfigurationTest {
             Configuration(teamsUrl = "https://teams.com", slackUrl = "https://slack.com"),
         )
 
-        // Null fields mean "leave unchanged"; the returned configuration must still be complete.
         val savedConfiguration = configurationAdapter.setConfiguration(
             Configuration(teamsUrl = null, slackUrl = null, proxyEnabled = true),
         )

@@ -94,10 +94,6 @@ class PostgresProxyExpiryTest {
 
     @Test
     fun `an expiring session tears down its live connection while the shared listener keeps serving`() {
-        // A finite session whose window elapses must close its own in-flight connection and free the slot,
-        // while the one shared listener stays up and keeps serving other sessions -- the single-port model's
-        // core difference from the old one-server-per-request lifecycle.
-
         // Expire ~5s from now: a 1-minute window starting (now - 1min + 5s), resolved as UTC by getShutdownDate.
         // The headroom lets the connect + query below finish while the session is still live, even on slow CI.
         register("expiring", "pw", LocalDateTime.now(ZoneOffset.UTC).minusMinutes(1).plusSeconds(5), 1)

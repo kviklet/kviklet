@@ -98,12 +98,11 @@ class Connection(
     override fun startHandling() {
         // Two blocking threads per session. This (pool) thread drives client->server: it frames, audits
         // and forwards, and it owns all the audit state (framer, prepared statements, portals) so none of
-        // that needs synchronization. A single spawned thread pumps server->client raw. Blocking reads
-        // replace the old 10ms-poll hack, so there is no idle CPU burn and no latency floor.
+        // that needs synchronization. A single spawned thread pumps server->client raw.
         // NOTE: At this point the client connection is set up. SSL, Auth etc... are handled in ClientConnectionSetup.kt
         // The finally is the single teardown path for every exit: clean Terminate, client/server EOF,
         // an aborted session, a parse failure, or an exception. It closes both sockets (freeing the
-        // upstream connection, KVI-230) which also unblocks the pump thread, then joins it.
+        // upstream connection) which also unblocks the pump thread, then joins it.
         val serverToClient = Thread({ pumpServerToClient() }, "pg-proxy-server-to-client")
         serverToClient.start()
         try {

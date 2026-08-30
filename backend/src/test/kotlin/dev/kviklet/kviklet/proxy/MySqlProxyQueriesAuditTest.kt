@@ -185,7 +185,6 @@ class MySqlProxyQueriesAuditTest {
     @MethodSource("datasourceTypes")
     fun `special characters and quotes in a literal are audited unmodified`(type: DatasourceType) {
         val proxy = startProxy(type)
-        // Quotes, backticks, a newline and a multi-byte character must survive into the audit log byte-for-byte.
         val sql = "INSERT INTO audit_special (note) VALUES ('o''brien `x`\nsnowman ☃')"
         proxyConnection(type, proxy).createStatement().use { stmt ->
             stmt.execute("DROP TABLE IF EXISTS audit_special")
@@ -251,7 +250,6 @@ class MySqlProxyQueriesAuditTest {
                 }
             }
         }
-        // The execute's binary parameter is decoded and rendered into the prepared text.
         proxy.eventService.assertAuditedQueryContains("SELECT 2 + 40")
     }
 
@@ -271,7 +269,6 @@ class MySqlProxyQueriesAuditTest {
                 stmt.executeUpdate()
             }
         }
-        // An integer, a string needing quote escaping, and a NULL, all rendered into the audited text.
         proxy.eventService.assertAuditedQueryContains("VALUES (5, 'o''brien', NULL)")
     }
 
@@ -522,7 +519,6 @@ class MySqlProxyQueriesAuditTest {
             "Expected an audit-related error, got: ${exception.message}",
         )
 
-        // The blocked statement must never have reached the database.
         directConnection(type).createStatement().use { stmt ->
             stmt.executeQuery(
                 "SELECT count(*) FROM information_schema.tables " +

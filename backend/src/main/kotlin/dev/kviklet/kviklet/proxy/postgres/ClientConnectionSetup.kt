@@ -74,7 +74,7 @@ fun authenticateClient(
         // Read the whole frame before dispatching. A single read is not guaranteed to be a single
         // frame: TCP can split one, and the fixed-offset detectors below would misread a half-frame
         // (throwing on a split header, or auth-failing a valid user and feeding the tail to SASL on a
-        // split StartupMessage). The relay loop was framed for the same reason in KVI-231.
+        // split StartupMessage).
         val frame = readStartupFrame(input) ?: return null // client closed before a complete frame
 
         when {

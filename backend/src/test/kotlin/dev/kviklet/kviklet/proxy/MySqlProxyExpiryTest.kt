@@ -125,9 +125,6 @@ class MySqlProxyExpiryTest {
 
     @Test
     fun `an expiring session tears down its live connection while the shared listener keeps serving`() {
-        // A finite session whose window elapses must close its own in-flight connection and free the slot,
-        // while the one shared listener stays up and keeps serving other sessions.
-
         // Expire ~5s from now. The headroom lets the connect + query below finish while the session is
         // still live, even on slow CI.
         register(

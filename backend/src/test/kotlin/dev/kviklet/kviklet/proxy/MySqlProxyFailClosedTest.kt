@@ -105,11 +105,9 @@ class MySqlProxyFailClosedTest {
             val (_, errPayload) = harness.readPacketOnClient()
             assertEquals(0xFF, errPayload[0].toInt() and 0xFF)
 
-            // The session must terminate
             harness.handler.join(5000)
             assertFalse(harness.handler.isAlive)
 
-            // Nothing must have been forwarded to the target database
             assertEquals(-1, harness.readByteForwardedUpstream())
         }
     }

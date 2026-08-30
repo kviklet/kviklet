@@ -170,7 +170,6 @@ class MySqlConnection(
             preparedQueries[stmtId]?.longDataParams?.clear()
         },
         onClose = { stmtId ->
-            // Release the stored query when the client closes the prepared statement
             preparedQueries.remove(stmtId)
         },
         onQuit = {
@@ -405,8 +404,8 @@ private const val MAX_STREAMED_CONTROL_PACKET = 4096
 //     truncated query plus garbage commands.
 //   - server->client (reassemble = false): the parser only inspects short control packets, so any payload
 //     over MAX_STREAMED_CONTROL_PACKET (including every 16MB+ split result row) is streamed past without
-//     buffering and never emitted. This keeps server-direction memory at O(1): a large BLOB result can no
-//     longer pin up to 1GB of heap and trip an OutOfMemoryError that would bypass the fail-closed handlers.
+//     buffering and never emitted. This keeps server-direction memory at O(1): a large BLOB result would
+//     otherwise pin up to 1GB of heap and trip an OutOfMemoryError that bypasses the fail-closed handlers.
 private class MySqlPacketFramer(private val reassemble: Boolean, private val onPacket: (ByteArray) -> Unit) {
     private val header = ByteArray(4)
     private var headerFilled = 0
@@ -458,7 +457,7 @@ private class MySqlPacketFramer(private val reassemble: Boolean, private val onP
             if (headerFilled == 4 && payloadRemaining == 0) {
                 headerFilled = 0
                 if (currentIsContinuation) {
-                    continuingSplit = true // more packets belong to this logical payload
+                    continuingSplit = true
                 } else {
                     continuingSplit = false
                     if (!skipping) onPacket(payload.toByteArray())
