@@ -49,7 +49,15 @@ class MySqlProxyFailClosedTest {
             // arrives or the socket is closed on teardown.
             proxyClientSocket.soTimeout = 0
             proxyTargetSocket.soTimeout = 0
-            val connection = MySqlConnection(proxyClientSocket, proxyTargetSocket, eventService, request, "mock")
+            val connection = MySqlConnection(
+                proxyClientSocket,
+                proxyTargetSocket.getInputStream(),
+                proxyTargetSocket.getOutputStream(),
+                proxyTargetSocket,
+                eventService,
+                request,
+                "mock",
+            )
             handler = thread { connection.startHandling() }
         }
 

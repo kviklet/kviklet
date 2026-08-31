@@ -64,6 +64,7 @@ fun mysqlProxyServerFactory(
     username: String = "proxyUser",
     password: String = "proxyPassword",
     maxConnectionsPerSession: Int = 15,
+    additionalOptions: String = "",
 ): MySqlProxyInstance {
     val connAuth = AuthenticationDetails.UserPassword("test", "test")
     val executionRequestFactory = ExecutionRequestFactory()
@@ -89,6 +90,7 @@ fun mysqlProxyServerFactory(
             databaseName = "testdb",
             datasourceType = datasourceType,
             authenticationDetails = connAuth,
+            additionalOptions = additionalOptions,
         ),
         expiresAt = Instant.now().plus(Duration.ofMinutes(10)),
     )

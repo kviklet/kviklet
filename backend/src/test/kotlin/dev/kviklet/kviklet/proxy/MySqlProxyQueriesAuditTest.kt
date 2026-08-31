@@ -545,15 +545,15 @@ class MySqlProxyQueriesAuditTest {
         ).createTargetMySqlConnection()
         try {
             val comBinlogDump = mysqlPacket(0, byteArrayOf(0x12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
-            client.socket.getOutputStream().apply {
+            client.serverOutput.apply {
                 write(comBinlogDump)
                 flush()
             }
-            client.socket.soTimeout = 5000
-            val (_, payload) = readPacket(client.socket.getInputStream())
+            client.rawSocket.soTimeout = 5000
+            val (_, payload) = readPacket(client.serverInput)
             assertEquals(0xFF, payload[0].toInt() and 0xFF, "Expected an ERR packet aborting the session")
         } finally {
-            client.socket.close()
+            client.rawSocket.close()
         }
     }
 

@@ -25,6 +25,22 @@ class ProxyInstance(
     val connection: Connection,
     val eventService: EventServiceMock,
 )
+
+// A started proxy with a registered session but no client connection yet -- for tests where the first
+// connection attempt is itself the assertion (e.g. an upstream TLS failure must refuse the client).
+class ProxyServerHandle(
+    val port: Int,
+    val connectionString: String,
+    val proxy: ProxyServer,
+    val eventService: EventServiceMock,
+) {
+    fun connect(): Connection {
+        val proxyProps = Properties()
+        proxyProps.setProperty("user", "proxyUser")
+        proxyProps.setProperty("password", "proxyPassword")
+        return DriverManager.getConnection(connectionString, proxyProps)
+    }
+}
 fun getPostgresContainerConnProps(): Properties {
     val props = Properties()
     props.setProperty("user", "test")
@@ -35,7 +51,7 @@ fun getPostgresContainerConnProps(): Properties {
 fun directConnectionFactory(postgresContainer: PostgreSQLContainer<Nothing>): Connection =
     DriverManager.getConnection(postgresContainer.jdbcUrl, getPostgresContainerConnProps())
 
-fun proxyServerFactory(
+fun startPostgresProxy(
     postgresContainer: PostgreSQLContainer<Nothing>,
     executionRequestAdapter: ExecutionRequestAdapter,
     eventAdapter: EventAdapter,
@@ -43,7 +59,8 @@ fun proxyServerFactory(
     eventServiceOverride: EventServiceMock? = null,
     handshakeTimeoutMs: Int = 10_000,
     maxConnectionsPerSession: Int = 15,
-): ProxyInstance {
+    additionalOptions: String = "",
+): ProxyServerHandle {
     val connAuth = AuthenticationDetails.UserPassword("test", "test")
     val executionRequestFactory = ExecutionRequestFactory()
     val request = executionRequestFactory.createDatasourceExecutionRequest()
@@ -68,13 +85,32 @@ fun proxyServerFactory(
             databaseName = "testdb",
             datasourceType = DatasourceType.POSTGRESQL,
             authenticationDetails = connAuth,
+            additionalOptions = additionalOptions,
         ),
         expiresAt = Instant.now().plus(Duration.ofMinutes(10)),
     )
-    val proxyJdbcConnectionString = "jdbc:postgresql://localhost:$port/testdb"
-    val proxyProps = Properties()
-    proxyProps.setProperty("user", "proxyUser")
-    proxyProps.setProperty("password", "proxyPassword")
-    val proxyConnection = DriverManager.getConnection(proxyJdbcConnectionString, proxyProps)
-    return ProxyInstance(port, proxyJdbcConnectionString, proxy, proxyConnection, eventService)
+    return ProxyServerHandle(port, "jdbc:postgresql://localhost:$port/testdb", proxy, eventService)
+}
+
+fun proxyServerFactory(
+    postgresContainer: PostgreSQLContainer<Nothing>,
+    executionRequestAdapter: ExecutionRequestAdapter,
+    eventAdapter: EventAdapter,
+    tlsCertificate: TLSCertificate? = null,
+    eventServiceOverride: EventServiceMock? = null,
+    handshakeTimeoutMs: Int = 10_000,
+    maxConnectionsPerSession: Int = 15,
+    additionalOptions: String = "",
+): ProxyInstance {
+    val handle = startPostgresProxy(
+        postgresContainer,
+        executionRequestAdapter,
+        eventAdapter,
+        tlsCertificate,
+        eventServiceOverride,
+        handshakeTimeoutMs,
+        maxConnectionsPerSession,
+        additionalOptions,
+    )
+    return ProxyInstance(handle.port, handle.connectionString, handle.proxy, handle.connect(), handle.eventService)
 }

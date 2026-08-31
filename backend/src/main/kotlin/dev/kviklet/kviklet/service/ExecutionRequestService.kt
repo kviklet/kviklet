@@ -1032,6 +1032,7 @@ class ExecutionRequestService(
                 databaseName = connection.databaseName ?: "",
                 datasourceType = connection.type,
                 authenticationDetails = connection.auth,
+                additionalOptions = connection.additionalOptions,
             ),
             expiresAt = executionRequest.request.temporaryAccessDuration?.let {
                 getShutdownDate(firstEventTime, it.toMinutes()).toInstant()
