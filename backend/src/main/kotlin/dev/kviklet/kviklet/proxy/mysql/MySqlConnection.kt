@@ -49,6 +49,12 @@ private class PreparedStatementRecord(val query: String, val paramCount: Int) {
 
 class MySqlConnection(
     private val clientSocket: Socket,
+    // The upstream endpoints as extracted from the JDBC driver: the driver's own stream objects (which,
+    // when upstream TLS is on, are the streams doing the crypto -- the socket's raw streams would carry
+    // ciphertext) and the raw TCP socket underneath them, which teardown closes to reliably kill the
+    // upstream leg from below.
+    private val serverInput: InputStream,
+    private val serverOutput: OutputStream,
     private val targetSocket: Socket,
     private val eventService: EventService,
     private val executionRequest: ExecutionRequest,
@@ -59,15 +65,14 @@ class MySqlConnection(
     // threads and frees the fd, so teardown closes this rather than the SSL wrapper. Defaults to
     // clientSocket for the plain (non-TLS) case, where they are the same socket.
     private val rawClientSocket: Socket = clientSocket,
-    // The JDBC connection targetSocket was extracted from. Held here so it stays strongly referenced for
-    // the relay's lifetime (a driver may reap the network resources of a connection object that is
-    // garbage-collected without close()) and closed quietly on teardown to release driver bookkeeping.
+    // The JDBC connection the upstream endpoints were extracted from. Held here so it stays strongly
+    // referenced for the relay's lifetime (a driver may reap the network resources of a connection object
+    // that is garbage-collected without close()) and closed quietly on teardown to release driver
+    // bookkeeping.
     private val upstreamJdbcConnection: AutoCloseable? = null,
 ) : ProxyConnection {
     private var clientInput: InputStream = clientSocket.getInputStream()
     private var clientOutput: OutputStream = clientSocket.getOutputStream()
-    private var serverInput: InputStream = targetSocket.getInputStream()
-    private var serverOutput: OutputStream = targetSocket.getOutputStream()
 
     // Only touched on the client->server thread; the loop exits after the COM_QUIT chunk was forwarded.
     private var terminationMessageReceived: Boolean = false
@@ -249,10 +254,11 @@ class MySqlConnection(
     }
 
     // Closes both sockets. Closing the upstream socket is what actually frees the target database
-    // connection, and closing the client socket unblocks a peer still waiting on it. On the client side
-    // this closes the raw underlying TCP socket, not the SSLSocket wrapper: for a TLS client the wrapper
-    // would leave the underlying fd and its parked blocking read open, and SSLSocket.close() can also
-    // block on the TLS output-record lock a concurrent write holds (see the Postgres relay).
+    // connection, and closing the client socket unblocks a peer still waiting on it. Both sides close the
+    // raw underlying TCP socket, not any TLS layer above it: closing an SSLSocket (or its streams) would
+    // leave the underlying fd and its parked blocking read open, and SSLSocket.close() can also block on
+    // the TLS output-record lock a concurrent write holds (see the Postgres relay). Killing TLS from below
+    // is safe for a session that is ending anyway.
     private fun closeSockets() {
         runCatching { if (!rawClientSocket.isClosed) rawClientSocket.close() }
         runCatching { if (!targetSocket.isClosed) targetSocket.close() }

@@ -29,6 +29,10 @@ class ProxySession(
     // listener), and the ProxyProtocol reads this to build the right upstream connection.
     val datasourceType: DatasourceType,
     val authenticationDetails: AuthenticationDetails.UserPassword,
+    // The connection's raw additionalOptions string (the query-string tail of its JDBC URL). Carried so the
+    // upstream leg honors the same TLS configuration (sslmode/sslMode, root certs) that JDBC executions of
+    // this connection already honor; each ProxyProtocol parses the keys its driver understands.
+    val additionalOptions: String = "",
 ) {
     // Live relay connections for this session, closed when the session expires so an in-flight client cannot
     // keep relaying past the access window. CopyOnWriteArrayList: added by handler threads, iterated by the

@@ -49,21 +49,24 @@ class MySqlProtocol(
             session.databaseName,
             session.targetHost,
             session.targetPort,
+            session.additionalOptions,
         )
         val targetConnection = targetFactory.createTargetMySqlConnection()
-        val forwardSocket = targetConnection.socket
 
         return try {
             // Blocking relay: no read timeout. Each direction parks in a blocking read until data arrives
             // or the socket is closed on teardown.
             authenticatedClient.socket.soTimeout = 0
-            forwardSocket.soTimeout = 0
+            targetConnection.rawSocket.soTimeout = 0
             // Pass the raw accepted socket as rawClientSocket: for a TLS client authenticatedClient.socket
             // is an SSLSocket layered over it, and only closing the raw socket reliably unblocks the relay
-            // threads on teardown.
+            // threads on teardown. The upstream side mirrors this: the relay pumps the driver's stream
+            // objects (which carry the crypto when upstream TLS is on) while teardown closes the raw socket.
             MySqlConnection(
                 authenticatedClient.socket,
-                forwardSocket,
+                targetConnection.serverInput,
+                targetConnection.serverOutput,
+                targetConnection.rawSocket,
                 eventService,
                 session.executionRequest,
                 session.userId,
@@ -72,7 +75,7 @@ class MySqlProtocol(
             )
         } catch (e: Exception) {
             // The upstream is open but the session never started, close it so it is not leaked.
-            runCatching { forwardSocket.close() }
+            runCatching { targetConnection.rawSocket.close() }
             runCatching { targetConnection.jdbcConnection.close() }
             throw e
         }

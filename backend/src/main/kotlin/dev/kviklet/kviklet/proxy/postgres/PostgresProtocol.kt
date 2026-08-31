@@ -47,6 +47,7 @@ class PostgresProtocol(
             session.databaseName,
             session.targetHost,
             session.targetPort,
+            session.additionalOptions,
         )
         val remotePgConn = targetFactory.createTargetPgConnection()
         val forwardSocket = remotePgConn.getPGStream().socket
