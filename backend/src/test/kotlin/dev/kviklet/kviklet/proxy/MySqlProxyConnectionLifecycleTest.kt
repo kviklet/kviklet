@@ -185,7 +185,7 @@ class MySqlProxyConnectionLifecycleTest {
         ).createTargetMySqlConnection()
         awaitUpstreamCount(direct, baselineUpstream + 1)
 
-        client.socket.close()
+        client.rawSocket.close()
 
         awaitUpstreamCount(direct, baselineUpstream)
         awaitConnectionCount(proxy.proxy, 0)
