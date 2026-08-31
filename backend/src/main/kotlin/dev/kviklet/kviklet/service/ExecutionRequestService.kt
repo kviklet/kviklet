@@ -956,6 +956,7 @@ class ExecutionRequestService(
         }
     }
 
+    // The following function is not MIT licensed
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
     fun proxy(executionRequestId: ExecutionRequestId, userDetails: UserDetailsWithId): ExecutionProxy {
