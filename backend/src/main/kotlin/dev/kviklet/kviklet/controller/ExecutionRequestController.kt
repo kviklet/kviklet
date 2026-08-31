@@ -810,9 +810,11 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
         response.outputStream.use { it.write(download.bytes) }
     }
 
+    // The following function is not MIT licensed
     @Operation(
         summary = "Start Proxy",
-        description = "Start the Kviklet proxy for a temp access request. Only works for postgresql.",
+        description = "Start the Kviklet proxy for a temp access request. " +
+            "Only works for PostgreSQL, MySQL and MariaDB.",
     )
     @PostMapping("/{executionRequestId}/proxy")
     @EnterpriseOnly(feature = "Database Proxy")

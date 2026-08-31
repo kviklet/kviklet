@@ -21,6 +21,8 @@ class ConfigService(
     @Policy(Permission.CONFIGURATION_EDIT)
     @Transactional
     fun setConfiguration(configuration: Configuration): Configuration {
+        // The following block is not MIT licensed - it gates enabling the database proxy
+        // behind a valid enterprise license. Removing it bypasses license enforcement.
         // Turning the proxy on is enterprise-only. Only the false->true transition is gated, so a
         // config save that merely re-sends an already-enabled flag (or turns it off) still works
         // after a license expires.
