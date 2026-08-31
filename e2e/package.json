@@ -5,7 +5,13 @@
   "license": "MIT",
   "devDependencies": {
     "@playwright/test": "^1.49.1",
-    "@types/node": "^20.8.2"
+    "@types/node": "^20.8.2",
+    "pixelmatch": "^6.0.0",
+    "pngjs": "^7.0.0"
   },
-  "scripts": {}
+  "scripts": {
+    "screenshots": "SCREENSHOTS=1 playwright test --project=screenshots",
+    "screenshots:diff": "node scripts/diff-screenshots.mjs",
+    "screenshots:update": "node scripts/diff-screenshots.mjs --update"
+  }
 }

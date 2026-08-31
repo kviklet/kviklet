@@ -31,6 +31,27 @@ Kviklet ships with a variety of features that an engineering team needs to manag
 - **Role Sync**: Automatically sync user roles from your identity provider groups. (Enterprise only)
 - **API Keys**: Programmatic access to the Kviklet API. (Enterprise only)
 
+### Requests
+
+All data requests live in one place — like a pull request list for your production databases:
+
+![Requests](images/RequestsList_light.png#gh-light-mode-only)
+![Requests](images/RequestsList_dark.png#gh-dark-mode-only)
+
+### Live Sessions
+
+An approved temporary access request opens a live SQL session right in the browser:
+
+![Live Session](images/LiveSession_light.png#gh-light-mode-only)
+![Live Session](images/LiveSession_dark.png#gh-dark-mode-only)
+
+### Auditlog
+
+Every executed statement is recorded — whether it ran as a reviewed single query, in a live session, or through the database proxy:
+
+![Auditlog](images/Auditlog_light.png#gh-light-mode-only)
+![Auditlog](images/Auditlog_dark.png#gh-dark-mode-only)
+
 ## Feature by Database/Connection Type
 
 Most features are available for all databases (SSO, LDAP, RBAC, Review/Approval Flow, Auditlog, etc.). But some features are restricted, either because it simply hasn't been built yet or because it makes no sense for that specific purpose. The following table shows which features are available for which database type:
@@ -341,7 +362,7 @@ Here you can configure review requirements and execution limits for each connect
 
 #### AWS IAM AUTH
 
-Kviklet supports using IAM Auth for Postgres and MySQL Database Connections for this choose IAM Auth when creating a new connection.
+Kviklet supports using IAM Auth for Postgres, MySQL and MariaDB Database Connections for this choose IAM Auth when creating a new connection.
 
 ![IAM Auth](images/CreateConnectionIAM_light.png#gh-light-mode-only)
 ![IAM Auth](images/CreateConnectionIAM_dark.png#gh-dark-mode-only)

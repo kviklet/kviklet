@@ -9,4 +9,4 @@ mariadb-data
 lib
 *.tgz
 .idea
-.aider*
+.aider*.DS_Store
