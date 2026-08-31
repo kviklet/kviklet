@@ -37,7 +37,30 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+      // README screenshot generation is opt-in via `npm run screenshots`.
+      testIgnore: /screenshots/,
     },
+
+    // Generates the README screenshots (see tests/screenshots/). Only
+    // registered when explicitly requested so a plain `npx playwright test`
+    // (local or CI) never runs it.
+    ...(process.env.SCREENSHOTS
+      ? [
+          {
+            name: "screenshots",
+            testMatch: /screenshots\/.*\.spec\.ts/,
+            timeout: 60000,
+            use: {
+              ...devices["Desktop Chrome"],
+              // 2x scale factor for crisp retina-quality README images.
+              viewport: { width: 1512, height: 800 },
+              deviceScaleFactor: 2,
+              video: "off" as const,
+              trace: "off" as const,
+            },
+          },
+        ]
+      : []),
 
     /* Test against mobile viewports. */
     // {
