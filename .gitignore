@@ -10,3 +10,4 @@ lib
 *.tgz
 .idea
 .aider*.DS_Store
+charts/kviklet-demo/Chart.lock
