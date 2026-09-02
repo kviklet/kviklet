@@ -50,13 +50,26 @@ function timeSince(date: Date) {
   return Math.floor(seconds) + " seconds ago";
 }
 
-function mapStatus(reviewStatus: string, executionStatus: string) {
-  if (reviewStatus === "AWAITING_APPROVAL" && executionStatus !== "EXECUTED")
+function mapStatus(
+  reviewStatus: string,
+  executionStatus: string,
+  requestType?: string,
+) {
+  const isTerminal = reviewStatus === "REJECTED" || reviewStatus === "CLOSED";
+  // Rejecting or closing a temporary access request ends its session, so the
+  // verdict wins over the execution status. An executed query stays "Executed".
+  if (isTerminal && requestType === "TemporaryAccess")
+    return reviewStatus === "REJECTED" ? "Rejected" : "Closed";
+  else if (
+    reviewStatus === "AWAITING_APPROVAL" &&
+    executionStatus !== "EXECUTED"
+  )
     return "Pending";
   else if (executionStatus === "EXECUTED") return "Executed";
   else if (executionStatus === "ACTIVE") return "Active";
   else if (reviewStatus === "CHANGE_REQUESTED") return "Change Requested";
   else if (reviewStatus === "REJECTED") return "Rejected";
+  else if (reviewStatus === "CLOSED") return "Closed";
   else if (executionStatus === "EXECUTABLE") return "Ready";
   else return "Unknown";
 }
@@ -75,6 +88,8 @@ function mapStatusToLabelColor(status?: string) {
       return "dark:ring-red-400/10 dark:text-red-500 ring-red-500/10 text-red-600 bg-red-50 dark:bg-red-400/10";
     case "Rejected":
       return "dark:ring-red-400/10 dark:text-red-500 ring-red-500/10 text-red-600 bg-red-50 dark:bg-red-400/10";
+    case "Closed":
+      return "dark:ring-gray-400/10 dark:text-gray-500 ring-gray-500/10 text-gray-600 bg-gray-50 dark:bg-gray-400/10";
     default:
       return "dark:ring-gray-400/10 dark:text-gray-500 ring-gray-500/10 text-gray-600 bg-gray-50 dark:bg-gray-400/10";
   }
@@ -91,6 +106,8 @@ function mapStatusToBorderColor(status?: string) {
     case "Change Requested":
     case "Rejected":
       return "border-l-red-500 dark:border-l-red-500";
+    case "Closed":
+      return "border-l-gray-400 dark:border-l-gray-500";
     default:
       return "border-l-gray-400 dark:border-l-gray-500";
   }
@@ -108,6 +125,8 @@ function mapStatusToTextColor(status?: string) {
     case "Change Requested":
     case "Rejected":
       return "text-red-600 dark:text-red-500";
+    case "Closed":
+      return "text-gray-500 dark:text-gray-400";
     default:
       return "text-gray-500 dark:text-gray-400";
   }
@@ -314,6 +333,7 @@ function Requests() {
                 const status = mapStatus(
                   request.reviewStatus,
                   request.executionStatus,
+                  request.type,
                 );
                 const isAuthor =
                   userStatus !== false && userStatus?.id === request.author.id;

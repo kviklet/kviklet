@@ -12,10 +12,13 @@ import dev.kviklet.kviklet.proxy.mocks.EventServiceMock
 import dev.kviklet.kviklet.proxy.mysql.MySqlProtocol
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.DatasourceType
+import dev.kviklet.kviklet.service.dto.ExecutionRequest
+import dev.kviklet.kviklet.service.dto.ReviewStatus
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
@@ -30,6 +33,7 @@ import org.testcontainers.lifecycle.Startables
 import org.testcontainers.utility.DockerImageName
 import java.sql.Connection
 import java.sql.DriverManager
+import java.sql.SQLException
 import java.time.Duration
 import java.time.Instant
 import java.util.Properties
@@ -43,6 +47,7 @@ class MySqlProxyExpiryTest {
     @Autowired
     lateinit var eventAdapter: EventAdapter
     private lateinit var server: ProxyServer
+    private lateinit var eventServiceMock: EventServiceMock
     private var port = 0
 
     companion object {
@@ -75,7 +80,8 @@ class MySqlProxyExpiryTest {
     @BeforeEach
     fun setup() {
         port = (31001..32000).random()
-        server = ProxyServer(port, MySqlProtocol(eventServiceMock(), null))
+        eventServiceMock = eventServiceMock()
+        server = ProxyServer(port, MySqlProtocol(eventServiceMock, null))
         server.start()
         waitForProxyStart(server)
     }
@@ -96,13 +102,14 @@ class MySqlProxyExpiryTest {
         password: String,
         container: JdbcDatabaseContainer<*>,
         datasourceType: DatasourceType,
-        expiresAt: Instant = Instant.now().plus(Duration.ofMinutes(10)),
+        expiresAt: Instant? = Instant.now().plus(Duration.ofMinutes(10)),
+        executionRequest: ExecutionRequest = ExecutionRequestFactory().createDatasourceExecutionRequest(),
     ) {
         server.registerSession(
             ProxySession(
                 username = username,
                 password = password,
-                executionRequest = ExecutionRequestFactory().createDatasourceExecutionRequest(),
+                executionRequest = executionRequest,
                 userId = "mock",
                 targetHost = container.host,
                 targetPort = container.getMappedPort(3306),
@@ -151,6 +158,37 @@ class MySqlProxyExpiryTest {
         connect(DatasourceType.MYSQL, "fresh", "pw2").use { fresh ->
             fresh.createStatement().executeQuery("SELECT 1").close()
         }
+    }
+
+    @Test
+    fun `a statement of a closed request is refused and ends its connection while other sessions keep serving`() {
+        // The registry teardown after a close is best effort; this is the actual boundary: the executability
+        // guard on the audit write refuses the statement, and the proxy ends the session with that reason.
+        val request = ExecutionRequestFactory().createDatasourceExecutionRequest()
+        register("closing", "pw", mysqlContainer, DatasourceType.MYSQL, expiresAt = null, executionRequest = request)
+        register("bystander", "pw2", mysqlContainer, DatasourceType.MYSQL)
+        val conn = connect(DatasourceType.MYSQL, "closing", "pw")
+        conn.createStatement().executeQuery("SELECT 1").close()
+        val bystander = connect(DatasourceType.MYSQL, "bystander", "pw2")
+        bystander.createStatement().executeQuery("SELECT 1").close()
+        assertEquals(2, server.currentConnections)
+
+        eventServiceMock.markNotExecutable(request.id!!, ReviewStatus.CLOSED)
+
+        val error = assertThrows(SQLException::class.java) {
+            conn.createStatement().executeQuery("SELECT 2").close()
+        }
+        assertTrue(error.message!!.contains("closed"), "Unexpected error message: ${error.message}")
+        val deadline = System.currentTimeMillis() + 15_000
+        while (server.currentConnections != 1 && System.currentTimeMillis() < deadline) {
+            Thread.sleep(100)
+        }
+        assertEquals(1, server.currentConnections, "The refused session's connection was not torn down")
+        assertTrue(server.isRunning, "Refusing a statement must not shut the server down")
+        runCatching { conn.close() }
+
+        bystander.createStatement().executeQuery("SELECT 1").close()
+        bystander.close()
     }
 
     @Test

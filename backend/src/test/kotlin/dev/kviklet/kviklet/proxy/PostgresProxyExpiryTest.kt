@@ -12,8 +12,12 @@ import dev.kviklet.kviklet.proxy.mocks.EventServiceMock
 import dev.kviklet.kviklet.proxy.postgres.PostgresProtocol
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.DatasourceType
+import dev.kviklet.kviklet.service.dto.ExecutionRequest
+import dev.kviklet.kviklet.service.dto.ReviewStatus
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -22,6 +26,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.testcontainers.containers.PostgreSQLContainer
 import java.sql.DriverManager
+import java.sql.SQLException
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.Properties
@@ -36,6 +41,7 @@ class PostgresProxyExpiryTest {
     lateinit var eventAdapter: EventAdapter
     private lateinit var postgresContainer: PostgreSQLContainer<Nothing>
     private lateinit var server: ProxyServer
+    private lateinit var eventServiceMock: EventServiceMock
     private var port = 0
 
     @BeforeEach
@@ -50,7 +56,8 @@ class PostgresProxyExpiryTest {
             Thread.sleep(1000)
         }
         port = (31001..32000).random()
-        server = ProxyServer(port, PostgresProtocol(eventServiceMock(), null))
+        eventServiceMock = eventServiceMock()
+        server = ProxyServer(port, PostgresProtocol(eventServiceMock, null))
         server.start()
         waitForProxyStart(server)
     }
@@ -67,12 +74,18 @@ class PostgresProxyExpiryTest {
         ExecutionRequestFactory().createDatasourceExecutionRequest(),
     )
 
-    private fun register(username: String, password: String, startTime: LocalDateTime, maxTimeMinutes: Long) {
+    private fun register(
+        username: String,
+        password: String,
+        startTime: LocalDateTime?,
+        maxTimeMinutes: Long,
+        executionRequest: ExecutionRequest = ExecutionRequestFactory().createDatasourceExecutionRequest(),
+    ) {
         server.registerSession(
             ProxySession(
                 username = username,
                 password = password,
-                executionRequest = ExecutionRequestFactory().createDatasourceExecutionRequest(),
+                executionRequest = executionRequest,
                 userId = "mock",
                 targetHost = postgresContainer.host,
                 targetPort = postgresContainer.getMappedPort(5432),
@@ -80,7 +93,7 @@ class PostgresProxyExpiryTest {
                 datasourceType = DatasourceType.POSTGRESQL,
                 authenticationDetails = AuthenticationDetails.UserPassword("test", "test"),
             ),
-            expiresAt = getShutdownDate(startTime, maxTimeMinutes).toInstant(),
+            expiresAt = startTime?.let { getShutdownDate(it, maxTimeMinutes).toInstant() },
         )
     }
 
@@ -91,6 +104,67 @@ class PostgresProxyExpiryTest {
             setProperty("password", password)
         },
     )
+
+    @Test
+    fun `a statement of a closed request is refused and ends its connection while other sessions keep serving`() {
+        // The registry teardown after a close is best effort; this is the actual boundary: the executability
+        // guard on the audit write refuses the statement, and the proxy ends the session with that reason.
+        val request = ExecutionRequestFactory().createDatasourceExecutionRequest()
+        register("closing", "pw", null, 0, executionRequest = request)
+        register("bystander", "pw2", LocalDateTime.now(ZoneOffset.UTC), 10)
+        val conn = connectAndQuery("closing", "pw")
+        conn.createStatement().executeQuery("SELECT 1").close()
+        val bystander = connectAndQuery("bystander", "pw2")
+        bystander.createStatement().executeQuery("SELECT 1").close()
+        assertEquals(2, server.currentConnections)
+
+        eventServiceMock.markNotExecutable(request.id!!, ReviewStatus.CLOSED)
+
+        val error = assertThrows(SQLException::class.java) {
+            conn.createStatement().executeQuery("SELECT 2").close()
+        }
+        assertTrue(error.message!!.contains("closed"), "Unexpected error message: ${error.message}")
+        val deadline = System.currentTimeMillis() + 15_000
+        while (server.currentConnections != 1 && System.currentTimeMillis() < deadline) {
+            Thread.sleep(100)
+        }
+        assertEquals(1, server.currentConnections, "The refused session's connection was not torn down")
+        assertTrue(server.isRunning, "Refusing a statement must not shut the server down")
+        runCatching { conn.close() }
+
+        // The refused statement was never audited, unlike the ones before the close.
+        eventServiceMock.assertAuditedQueryContains("SELECT 1")
+        assertFalse(eventServiceMock.rawQueries.any { it.contains("SELECT 2") }, "A refused statement was audited")
+        bystander.createStatement().executeQuery("SELECT 1").close()
+        bystander.close()
+    }
+
+    @Test
+    fun `ending a request's sessions tears down its live connection and refuses the old credentials`() {
+        // No expiry at all: the only way this session ends is the request being rejected or closed.
+        val request = ExecutionRequestFactory().createDatasourceExecutionRequest()
+        register("infinite", "pw", null, 0, executionRequest = request)
+        register("bystander", "pw2", LocalDateTime.now(ZoneOffset.UTC), 10)
+        val conn = connectAndQuery("infinite", "pw")
+        conn.createStatement().executeQuery("SELECT 1").close()
+        val bystander = connectAndQuery("bystander", "pw2")
+        bystander.createStatement().executeQuery("SELECT 1").close()
+        assertEquals(2, server.currentConnections)
+
+        server.expireSessionsForRequest(request.id!!)
+
+        val deadline = System.currentTimeMillis() + 15_000
+        while (server.currentConnections != 1 && System.currentTimeMillis() < deadline) {
+            Thread.sleep(100)
+        }
+        assertEquals(1, server.currentConnections, "The ended session's live connection was not torn down")
+        assertThrows(SQLException::class.java) { connectAndQuery("infinite", "pw").close() }
+        runCatching { conn.close() }
+
+        // Only the ended request's session is gone: the other one keeps serving.
+        bystander.createStatement().executeQuery("SELECT 1").close()
+        bystander.close()
+    }
 
     @Test
     fun `an expiring session tears down its live connection while the shared listener keeps serving`() {

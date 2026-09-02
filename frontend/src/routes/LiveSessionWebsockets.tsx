@@ -118,6 +118,10 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
   const needsApproval = request?.reviewStatus !== "APPROVED";
   const readOnlyReason = canExecute
     ? undefined
+    : request?.reviewStatus === "REJECTED"
+    ? "Request has been rejected"
+    : request?.reviewStatus === "CLOSED"
+    ? "Request has been closed"
     : needsApproval
     ? "Request needs to be approved before execution"
     : NO_EXECUTE_PERMISSION_MESSAGE;

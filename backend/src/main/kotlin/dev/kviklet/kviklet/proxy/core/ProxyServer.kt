@@ -1,6 +1,7 @@
 // This file is not MIT licensed
 package dev.kviklet.kviklet.proxy.core
 
+import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import org.slf4j.LoggerFactory
 import java.net.ServerSocket
 import java.net.Socket
@@ -148,6 +149,19 @@ class ProxyServer(
         if (::serverSocket.isInitialized) {
             serverSocket.close()
         }
+    }
+
+    // Ends every live session of one execution request ahead of its scheduled expiry (or, for a session
+    // without a duration, at all): the request was rejected or closed, so its access window is over now. Same
+    // teardown as a timed expiry -- registry entry gone, relay connections closed -- so a client that
+    // reconnects with the old credentials is refused. Synchronized like registerSession so a session being
+    // registered concurrently is either torn down here or registered after the terminal event was handled
+    // (in which case the service layer already refused the proxy call on the review status).
+    @Synchronized
+    fun expireSessionsForRequest(requestId: ExecutionRequestId) {
+        sessions.entries
+            .filter { (_, session) -> session.executionRequest.id == requestId }
+            .forEach { (username, session) -> expireSession(username, session) }
     }
 
     // Only sessions that are still active resolve; expiry removes them from the map and flips active, so a
