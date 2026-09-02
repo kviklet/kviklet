@@ -38,6 +38,40 @@ class EventService(
         return event
     }
 
+    /**
+     * The single write path for execute events (REST execute, live session statements, downloads, dumps,
+     * Kubernetes commands, and every statement relayed by a database proxy). Whether the request may run
+     * anything is decided here, against the request row locked for this transaction, so no caller can
+     * forget the check and no rejection or close can slip in between the check and the write.
+     *
+     * Throws [RequestNotExecutableException] when the request is rejected, closed, or (unless it is a dry
+     * run on a connection that allows those before approval) not approved, and [AlreadyExecutedException]
+     * when its executions are used up. Nothing is written in either case.
+     */
+    @Policy(Permission.EXECUTION_REQUEST_GET)
+    @Transactional
+    fun recordExecution(id: ExecutionRequestId, authorId: String, payload: ExecutePayload): Event {
+        val (_, event) = executionRequestAdapter.addEvent(id, authorId, payload) { details ->
+            if (payload.isDryRun) {
+                details.raiseIfNotDryRunnable()
+            } else {
+                details.raiseIfNotExecutable()
+            }
+        }
+        return event
+    }
+
+    /**
+     * The read-only counterpart of [recordExecution] for a statement that does not produce a new execute
+     * event but must still be refused once the request is rejected or closed, e.g. a client paging through
+     * the results of an already audited proxy query.
+     */
+    @Policy(Permission.EXECUTION_REQUEST_GET)
+    @Transactional
+    fun assertExecutable(id: ExecutionRequestId) {
+        executionRequestAdapter.getExecutionRequestDetails(id).raiseIfNotExecutable()
+    }
+
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
     @Transactional
     fun addResultLogs(id: EventId, resultLogs: List<ResultLog>): Event {

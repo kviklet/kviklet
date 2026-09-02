@@ -25,13 +25,17 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
 import jakarta.persistence.JoinColumn
+import jakarta.persistence.LockModeType
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import org.apache.commons.lang3.builder.ToStringBuilder
 import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.findByIdOrNull
+import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
@@ -135,7 +139,14 @@ class ExecutionRequestEntity(
 
 interface ExecutionRequestRepository :
     JpaRepository<ExecutionRequestEntity, String>,
-    CustomExecutionRequestRepository
+    CustomExecutionRequestRepository {
+    // Locks the request row for the rest of the transaction. Deliberately a single-table query (no fetch
+    // joins) so it maps to a plain SELECT ... FOR UPDATE; the details are loaded afterwards into the same
+    // persistence context and therefore reflect every event committed before the lock was granted.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select e from execution_request e where e.id = :id")
+    fun lockById(@Param("id") id: String): ExecutionRequestEntity?
+}
 
 interface CustomExecutionRequestRepository {
     fun findByIdWithDetails(id: ExecutionRequestId): ExecutionRequestEntity?
@@ -245,9 +256,22 @@ class ExecutionRequestAdapter(
     @Autowired
     private lateinit var entityManager: EntityManager
 
+    // Appends an event and re-materializes the request's status columns. [guard] is run on the freshly
+    // loaded details, after the request row was locked and before anything is written, so a caller can make
+    // the write conditional on the request's current state. The rule itself is the caller's business; the
+    // adapter only guarantees it sees a consistent snapshot: the row lock serializes this against any other
+    // event write on the same request (a rejection or close, for instance), so a statement cannot slip in
+    // between such a write's status check and its commit.
     @Transactional
-    fun addEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Pair<ExecutionRequestDetails, Event> {
+    fun addEvent(
+        id: ExecutionRequestId,
+        authorId: String,
+        payload: Payload,
+        guard: ((ExecutionRequestDetails) -> Unit)? = null,
+    ): Pair<ExecutionRequestDetails, Event> {
+        executionRequestRepository.lockById(id.toString())
         val executionRequestEntity = getExecutionRequestDetailsEntity(id)
+        guard?.invoke(executionRequestEntity.toDetailDto(connectionAdapter.toDto(executionRequestEntity.connection)))
         val userEntity = getUserEntity(authorId)
         val eventEntity = EventEntity(
             executionRequest = executionRequestEntity,

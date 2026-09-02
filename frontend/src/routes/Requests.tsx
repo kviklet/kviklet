@@ -50,11 +50,16 @@ function timeSince(date: Date) {
   return Math.floor(seconds) + " seconds ago";
 }
 
-function mapStatus(reviewStatus: string, executionStatus: string) {
-  // Rejected and closed are terminal and end a running session, so they win over
-  // whatever the execution status still says.
-  if (reviewStatus === "REJECTED") return "Rejected";
-  else if (reviewStatus === "CLOSED") return "Closed";
+function mapStatus(
+  reviewStatus: string,
+  executionStatus: string,
+  requestType?: string,
+) {
+  const isTerminal = reviewStatus === "REJECTED" || reviewStatus === "CLOSED";
+  // Rejecting or closing a temporary access request ends its session, so the
+  // verdict wins over the execution status. An executed query stays "Executed".
+  if (isTerminal && requestType === "TemporaryAccess")
+    return reviewStatus === "REJECTED" ? "Rejected" : "Closed";
   else if (
     reviewStatus === "AWAITING_APPROVAL" &&
     executionStatus !== "EXECUTED"
@@ -63,6 +68,8 @@ function mapStatus(reviewStatus: string, executionStatus: string) {
   else if (executionStatus === "EXECUTED") return "Executed";
   else if (executionStatus === "ACTIVE") return "Active";
   else if (reviewStatus === "CHANGE_REQUESTED") return "Change Requested";
+  else if (reviewStatus === "REJECTED") return "Rejected";
+  else if (reviewStatus === "CLOSED") return "Closed";
   else if (executionStatus === "EXECUTABLE") return "Ready";
   else return "Unknown";
 }
@@ -99,6 +106,8 @@ function mapStatusToBorderColor(status?: string) {
     case "Change Requested":
     case "Rejected":
       return "border-l-red-500 dark:border-l-red-500";
+    case "Closed":
+      return "border-l-gray-400 dark:border-l-gray-500";
     default:
       return "border-l-gray-400 dark:border-l-gray-500";
   }
@@ -116,6 +125,8 @@ function mapStatusToTextColor(status?: string) {
     case "Change Requested":
     case "Rejected":
       return "text-red-600 dark:text-red-500";
+    case "Closed":
+      return "text-gray-500 dark:text-gray-400";
     default:
       return "text-gray-500 dark:text-gray-400";
   }
@@ -322,6 +333,7 @@ function Requests() {
                 const status = mapStatus(
                   request.reviewStatus,
                   request.executionStatus,
+                  request.type,
                 );
                 const isAuthor =
                   userStatus !== false && userStatus?.id === request.author.id;

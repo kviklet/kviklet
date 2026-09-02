@@ -1,5 +1,7 @@
 package dev.kviklet.kviklet
 
+import dev.kviklet.kviklet.db.ExecutePayload
+import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.helper.ConnectionHelper
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper
@@ -7,6 +9,8 @@ import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.proxy.core.ProxyServer
 import dev.kviklet.kviklet.proxy.core.ProxySession
+import dev.kviklet.kviklet.service.EventService
+import dev.kviklet.kviklet.service.RequestNotExecutableException
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.DatasourceType
@@ -19,6 +23,8 @@ import org.hamcrest.Matchers.containsString
 import org.hamcrest.Matchers.hasSize
 import org.hamcrest.Matchers.notNullValue
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -61,6 +67,10 @@ class ExecutionTest {
     @Autowired
     @Qualifier("postgresProxyServer")
     private lateinit var postgresProxyServer: ProxyServer
+
+    @Autowired private lateinit var eventService: EventService
+
+    @Autowired private lateinit var executionRequestAdapter: ExecutionRequestAdapter
 
     private lateinit var testUser: User
     private lateinit var testReviewer: User
@@ -180,15 +190,48 @@ class ExecutionTest {
             executeTemporaryAccessStatement(temporaryAccessRequest.getId(), authorCookie).andExpect(status().isOk)
             verifyExecutionStatus(temporaryAccessRequest.getId(), "ACTIVE", authorCookie)
             val proxySession = registerProxySession(temporaryAccessRequest.request)
+            try {
+                val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+                rejectRequest(temporaryAccessRequest.getId(), "Not anymore.", reviewerCookie)
+                    .andExpect(status().isOk)
 
-            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
-            rejectRequest(temporaryAccessRequest.getId(), "Not anymore.", reviewerCookie).andExpect(status().isOk)
+                verifyRequestStatus(temporaryAccessRequest.getId(), "REJECTED", authorCookie)
+                verifyExecutionStatus(temporaryAccessRequest.getId(), "EXECUTED", authorCookie)
+                // The policy gate refuses a non-approved request before the service runs
+                executeTemporaryAccessStatement(temporaryAccessRequest.getId(), authorCookie)
+                    .andExpect(status().isForbidden)
+                assertProxySessionEnded(proxySession)
+            } finally {
+                postgresProxyServer.expireSessionsForRequest(temporaryAccessRequest.request.id!!)
+            }
+        }
 
-            verifyRequestStatus(temporaryAccessRequest.getId(), "REJECTED", authorCookie)
-            verifyExecutionStatus(temporaryAccessRequest.getId(), "EXECUTED", authorCookie)
-            executeTemporaryAccessStatement(temporaryAccessRequest.getId(), authorCookie)
-                .andExpect(status().is4xxClientError)
-            assertProxySessionEnded(proxySession)
+        @Test
+        fun `A non-terminal review leaves a running temporary access session and its proxy alone`() {
+            val temporaryAccessRequest = executionRequestHelper.createApprovedRequest(
+                db,
+                testUser,
+                testReviewer,
+                connection = testConnection,
+                requestType = RequestType.TemporaryAccess,
+            )
+            val authorCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            executeTemporaryAccessStatement(temporaryAccessRequest.getId(), authorCookie).andExpect(status().isOk)
+            val proxySession = registerProxySession(temporaryAccessRequest.request)
+            try {
+                val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+                requestChanges(temporaryAccessRequest.getId(), "Hmm.", reviewerCookie).andExpect(status().isOk)
+                verifyRequestStatus(temporaryAccessRequest.getId(), "CHANGE_REQUESTED", authorCookie)
+                assertProxySessionStillLive(proxySession)
+
+                approveRequest(temporaryAccessRequest.getId(), "Fine after all.", reviewerCookie)
+                    .andExpect(status().isOk)
+                verifyRequestStatus(temporaryAccessRequest.getId(), "APPROVED", authorCookie)
+                verifyExecutionStatus(temporaryAccessRequest.getId(), "ACTIVE", authorCookie)
+                assertProxySessionStillLive(proxySession)
+            } finally {
+                postgresProxyServer.expireSessionsForRequest(temporaryAccessRequest.request.id!!)
+            }
         }
 
         @Test
@@ -670,6 +713,143 @@ class ExecutionTest {
         ).andExpect(status().isOk).andReturn()
     }
 
+    // The executability rule is enforced once, where the execute event is written, for every writer path:
+    // REST execute, live session statements, downloads, dumps, Kubernetes commands and proxied statements.
+    // These call that write path directly (no security context, so no policy gate in front of it), which is
+    // exactly the situation of a proxy relay thread.
+    @Nested
+    inner class ExecutionGuardTests {
+
+        private fun closedRequest(requestType: RequestType = RequestType.SingleExecution): ExecutionRequestDetails {
+            val request = executionRequestHelper.createApprovedRequest(
+                db,
+                testUser,
+                testReviewer,
+                connection = testConnection,
+                requestType = requestType,
+            )
+            val authorCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            closeRequest(request.getId(), "Closing", authorCookie).andExpect(status().isOk)
+            return request
+        }
+
+        private fun eventCount(request: ExecutionRequestDetails) =
+            executionRequestAdapter.getExecutionRequestDetails(request.request.id!!).events.size
+
+        private fun assertRefusedWithoutEvent(
+            request: ExecutionRequestDetails,
+            payload: ExecutePayload,
+            expectedMessage: String,
+        ) {
+            val eventsBefore = eventCount(request)
+            val error = assertThrows(RequestNotExecutableException::class.java) {
+                eventService.recordExecution(request.request.id!!, testUser.getId()!!, payload)
+            }
+            assertEquals(expectedMessage, error.message)
+            assertEquals(eventsBefore, eventCount(request), "A refused execution must not leave an event behind")
+        }
+
+        @Test
+        fun `a statement execution of a closed request is refused`() {
+            assertRefusedWithoutEvent(
+                closedRequest(),
+                ExecutePayload(query = "SELECT 1;"),
+                "This request has been closed!",
+            )
+        }
+
+        @Test
+        fun `a live session or proxy statement of a rejected temporary access request is refused`() {
+            val request = executionRequestHelper.createApprovedRequest(
+                db,
+                testUser,
+                testReviewer,
+                connection = testConnection,
+                requestType = RequestType.TemporaryAccess,
+            )
+            val authorCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            executeTemporaryAccessStatement(request.getId(), authorCookie).andExpect(status().isOk)
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+            rejectRequest(request.getId(), "No.", reviewerCookie).andExpect(status().isOk)
+
+            assertRefusedWithoutEvent(
+                request,
+                ExecutePayload(query = "SELECT 1;"),
+                "This request has been rejected!",
+            )
+        }
+
+        @Test
+        fun `a download of a closed request is refused`() {
+            assertRefusedWithoutEvent(
+                closedRequest(),
+                ExecutePayload(query = "SELECT 1;", isDownload = true),
+                "This request has been closed!",
+            )
+        }
+
+        @Test
+        fun `a dump of a closed request is refused`() {
+            assertRefusedWithoutEvent(
+                closedRequest(RequestType.Dump),
+                ExecutePayload(isDump = true),
+                "This request has been closed!",
+            )
+        }
+
+        @Test
+        fun `a kubernetes command of a closed request is refused`() {
+            assertRefusedWithoutEvent(
+                closedRequest(),
+                ExecutePayload(command = "ls", containerName = "app", podName = "pod", namespace = "default"),
+                "This request has been closed!",
+            )
+        }
+
+        @Test
+        fun `a dry run of a closed request is refused`() {
+            assertRefusedWithoutEvent(
+                closedRequest(),
+                ExecutePayload(query = "SELECT 1;", isDryRun = true),
+                "This request has been closed!",
+            )
+        }
+
+        @Test
+        fun `a dry run before approval is recorded when the connection does not require approval for it`() {
+            val connection = connectionHelper.createPostgresConnection(
+                db,
+                dryRunEnabled = true,
+                dryRunRequiresApproval = false,
+            )
+            val request = executionRequestHelper.createExecutionRequest(db, testUser, connection = connection)
+
+            eventService.recordExecution(
+                request.request.id!!,
+                testUser.getId()!!,
+                ExecutePayload(query = "SELECT 1;", isDryRun = true),
+            )
+
+            assertEquals(1, eventCount(request))
+        }
+
+        @Test
+        fun `a dry run before approval is refused when the connection requires approval for it`() {
+            val connection = connectionHelper.createPostgresConnection(
+                db,
+                dryRunEnabled = true,
+                dryRunRequiresApproval = true,
+            )
+            val request = executionRequestHelper.createExecutionRequest(db, testUser, connection = connection)
+
+            assertRefusedWithoutEvent(
+                request,
+                ExecutePayload(query = "SELECT 1;", isDryRun = true),
+                "This request has not been approved yet!",
+            )
+        }
+    }
+
     private fun createUserWithSpecificPermissions(): User {
         val userPolicies = listOf(
             Policy(
@@ -934,11 +1114,17 @@ class ExecutionTest {
 
     // A live session is canonical for its request: registering another one for the same request hands the
     // live one back. Once it was ended, a new registration wins -- so that is how the teardown is observed.
+    // Callers expire the request's sessions in a finally block, so the probe never outlives the test.
     private fun assertProxySessionEnded(session: ProxySession) {
         val replacement = proxySession(session.executionRequest, session.username + "_next")
         val registered = postgresProxyServer.registerSession(replacement, expiresAt = null)
-        postgresProxyServer.expireSessionsForRequest(session.executionRequest.id!!)
         assert(registered === replacement) { "The proxy session of the closed request is still live" }
+    }
+
+    private fun assertProxySessionStillLive(session: ProxySession) {
+        val replacement = proxySession(session.executionRequest, session.username + "_probe")
+        val registered = postgresProxyServer.registerSession(replacement, expiresAt = null)
+        assert(registered === session) { "The proxy session was ended by a non-terminal review" }
     }
 
     private fun proxySession(request: ExecutionRequest, username: String) = ProxySession(
@@ -988,11 +1174,12 @@ class ExecutionTest {
                 .andExpect(status().isOk)
 
             approveRequest(testExecutionRequest.getId(), "Too late.", reviewerCookie)
-                .andExpect(status().is4xxClientError)
+                .andExpect(status().isBadRequest)
+            // The policy gate refuses a non-approved request before the service runs
             executeRequest(testExecutionRequest.getId(), authorCookie)
-                .andExpect(status().is4xxClientError)
+                .andExpect(status().isForbidden)
             closeRequest(testExecutionRequest.getId(), "Closing again", authorCookie)
-                .andExpect(status().is4xxClientError)
+                .andExpect(status().isBadRequest)
 
             verifyRequestEvents(testExecutionRequest.getId(), 1, authorCookie)
             verifyRequestStatus(testExecutionRequest.getId(), "CLOSED", authorCookie)
@@ -1005,7 +1192,7 @@ class ExecutionTest {
             rejectRequest(testExecutionRequest.getId(), "No.", reviewerCookie).andExpect(status().isOk)
 
             closeRequest(testExecutionRequest.getId(), "Closing my request", authorCookie)
-                .andExpect(status().is4xxClientError)
+                .andExpect(status().isBadRequest)
             verifyRequestStatus(testExecutionRequest.getId(), "REJECTED", authorCookie)
         }
 
@@ -1013,7 +1200,7 @@ class ExecutionTest {
         fun `reviewers cannot submit CLOSE as a review action`() {
             val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
             performReviewAction(testExecutionRequest.getId(), "CLOSE", "Closing as reviewer", reviewerCookie)
-                .andExpect(status().is4xxClientError)
+                .andExpect(status().isBadRequest)
             verifyRequestStatus(testExecutionRequest.getId(), "AWAITING_APPROVAL", reviewerCookie)
         }
 
@@ -1030,14 +1217,19 @@ class ExecutionTest {
             executeTemporaryAccessStatement(temporaryAccessRequest.getId(), authorCookie).andExpect(status().isOk)
             verifyExecutionStatus(temporaryAccessRequest.getId(), "ACTIVE", authorCookie)
             val proxySession = registerProxySession(temporaryAccessRequest.request)
+            try {
+                closeRequest(temporaryAccessRequest.getId(), "Done for today", authorCookie)
+                    .andExpect(status().isOk)
 
-            closeRequest(temporaryAccessRequest.getId(), "Done for today", authorCookie).andExpect(status().isOk)
-
-            verifyRequestStatus(temporaryAccessRequest.getId(), "CLOSED", authorCookie)
-            verifyExecutionStatus(temporaryAccessRequest.getId(), "EXECUTED", authorCookie)
-            executeTemporaryAccessStatement(temporaryAccessRequest.getId(), authorCookie)
-                .andExpect(status().is4xxClientError)
-            assertProxySessionEnded(proxySession)
+                verifyRequestStatus(temporaryAccessRequest.getId(), "CLOSED", authorCookie)
+                verifyExecutionStatus(temporaryAccessRequest.getId(), "EXECUTED", authorCookie)
+                // The policy gate refuses a non-approved request before the service runs
+                executeTemporaryAccessStatement(temporaryAccessRequest.getId(), authorCookie)
+                    .andExpect(status().isForbidden)
+                assertProxySessionEnded(proxySession)
+            } finally {
+                postgresProxyServer.expireSessionsForRequest(temporaryAccessRequest.request.id!!)
+            }
         }
 
         @Test

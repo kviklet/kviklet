@@ -115,12 +115,12 @@ const LiveSessionWebsockets: React.FC<LiveSessionWebsocketsProps> = ({
   // The backend folds executability (approved, or dry-run enabled) into the execute
   // permission, so pre-approval canExecute is false even for a fully permitted author —
   // the blocker to name then is approval, not their permission.
-  const isClosed =
-    request?.reviewStatus === "REJECTED" || request?.reviewStatus === "CLOSED";
   const needsApproval = request?.reviewStatus !== "APPROVED";
   const readOnlyReason = canExecute
     ? undefined
-    : isClosed
+    : request?.reviewStatus === "REJECTED"
+    ? "Request has been rejected"
+    : request?.reviewStatus === "CLOSED"
     ? "Request has been closed"
     : needsApproval
     ? "Request needs to be approved before execution"
