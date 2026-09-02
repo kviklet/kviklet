@@ -50,6 +50,13 @@ function ReviewEvent({
             {timestamp}
           </div>
         );
+      case "CLOSE":
+        return (
+          <div className="text-sm text-slate-500">
+            {event.author?.fullName} closed
+            {timestamp}
+          </div>
+        );
     }
   };
 
@@ -76,6 +83,14 @@ function ReviewEvent({
           <div className="z-0 -ml-1 mr-2 inline-block h-4 w-4 items-center bg-slate-50 fill-slate-950 pb-6 dark:bg-slate-950 dark:fill-slate-50">
             <div className="inline pr-2 text-red-500">
               <FontAwesomeIcon icon={solid("pen")} />
+            </div>
+          </div>
+        );
+      case "CLOSE":
+        return (
+          <div className="z-0 -ml-1 mr-2 inline-block h-4 w-4 items-center bg-slate-50 fill-slate-950 pb-6 dark:bg-slate-950 dark:fill-slate-50">
+            <div className="inline pr-2 text-slate-500">
+              <FontAwesomeIcon icon={solid("times")} />
             </div>
           </div>
         );

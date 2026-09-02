@@ -12,8 +12,10 @@ import dev.kviklet.kviklet.proxy.mocks.EventServiceMock
 import dev.kviklet.kviklet.proxy.postgres.PostgresProtocol
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.DatasourceType
+import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -22,6 +24,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.testcontainers.containers.PostgreSQLContainer
 import java.sql.DriverManager
+import java.sql.SQLException
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.util.Properties
@@ -67,12 +70,18 @@ class PostgresProxyExpiryTest {
         ExecutionRequestFactory().createDatasourceExecutionRequest(),
     )
 
-    private fun register(username: String, password: String, startTime: LocalDateTime, maxTimeMinutes: Long) {
+    private fun register(
+        username: String,
+        password: String,
+        startTime: LocalDateTime?,
+        maxTimeMinutes: Long,
+        executionRequest: ExecutionRequest = ExecutionRequestFactory().createDatasourceExecutionRequest(),
+    ) {
         server.registerSession(
             ProxySession(
                 username = username,
                 password = password,
-                executionRequest = ExecutionRequestFactory().createDatasourceExecutionRequest(),
+                executionRequest = executionRequest,
                 userId = "mock",
                 targetHost = postgresContainer.host,
                 targetPort = postgresContainer.getMappedPort(5432),
@@ -80,7 +89,7 @@ class PostgresProxyExpiryTest {
                 datasourceType = DatasourceType.POSTGRESQL,
                 authenticationDetails = AuthenticationDetails.UserPassword("test", "test"),
             ),
-            expiresAt = getShutdownDate(startTime, maxTimeMinutes).toInstant(),
+            expiresAt = startTime?.let { getShutdownDate(it, maxTimeMinutes).toInstant() },
         )
     }
 
@@ -91,6 +100,33 @@ class PostgresProxyExpiryTest {
             setProperty("password", password)
         },
     )
+
+    @Test
+    fun `ending a request's sessions tears down its live connection and refuses the old credentials`() {
+        // No expiry at all: the only way this session ends is the request being rejected or closed.
+        val request = ExecutionRequestFactory().createDatasourceExecutionRequest()
+        register("infinite", "pw", null, 0, executionRequest = request)
+        register("bystander", "pw2", LocalDateTime.now(ZoneOffset.UTC), 10)
+        val conn = connectAndQuery("infinite", "pw")
+        conn.createStatement().executeQuery("SELECT 1").close()
+        val bystander = connectAndQuery("bystander", "pw2")
+        bystander.createStatement().executeQuery("SELECT 1").close()
+        assertEquals(2, server.currentConnections)
+
+        server.expireSessionsForRequest(request.id!!)
+
+        val deadline = System.currentTimeMillis() + 15_000
+        while (server.currentConnections != 1 && System.currentTimeMillis() < deadline) {
+            Thread.sleep(100)
+        }
+        assertEquals(1, server.currentConnections, "The ended session's live connection was not torn down")
+        assertThrows(SQLException::class.java) { connectAndQuery("infinite", "pw").close() }
+        runCatching { conn.close() }
+
+        // Only the ended request's session is gone: the other one keeps serving.
+        bystander.createStatement().executeQuery("SELECT 1").close()
+        bystander.close()
+    }
 
     @Test
     fun `an expiring session tears down its live connection while the shared listener keeps serving`() {

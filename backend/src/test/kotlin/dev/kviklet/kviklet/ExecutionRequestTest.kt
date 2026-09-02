@@ -53,6 +53,66 @@ class ExecutionRequestTest {
     }
 
     @Test
+    fun `test review status with a close`() {
+        val request = executionRequestFactory.createDatasourceExecutionRequest()
+        val events = mutableSetOf<Event>(
+            eventFactory.createReviewApprovedEvent(request = request, createdAt = t1),
+            eventFactory.createReviewClosedEvent(request = request, author = request.author, createdAt = t2),
+        )
+        val details = executionRequestDetailsFactory.createExecutionRequestDetails(
+            request = request,
+            events = events,
+        )
+        assert(details.resolveReviewStatus() == ReviewStatus.CLOSED)
+    }
+
+    @Test
+    fun `test closing an infinite temporary access session ends it`() {
+        val request = executionRequestFactory.createDatasourceExecutionRequest(
+            type = RequestType.TemporaryAccess,
+            temporaryAccessDuration = null,
+        )
+        val executor = userFactory.createUser()
+        val executeTime = utcTimeNow().minusHours(2)
+        val events = mutableSetOf<Event>(
+            eventFactory.createReviewApprovedEvent(request = request, createdAt = executeTime.minusMinutes(1)),
+            eventFactory.createExecuteEvent(request = request, author = executor, createdAt = executeTime),
+        )
+        val details = executionRequestDetailsFactory.createExecutionRequestDetails(
+            request = request,
+            events = events,
+        )
+        assert(details.resolveExecutionStatus() == ExecutionStatus.ACTIVE)
+
+        details.addEvent(
+            eventFactory.createReviewClosedEvent(request = request, author = request.author, createdAt = utcTimeNow()),
+        )
+        assert(details.resolveReviewStatus() == ReviewStatus.CLOSED)
+        assert(details.resolveExecutionStatus() == ExecutionStatus.EXECUTED)
+    }
+
+    @Test
+    fun `test rejecting a running temporary access session ends it`() {
+        val request = executionRequestFactory.createDatasourceExecutionRequest(
+            type = RequestType.TemporaryAccess,
+            temporaryAccessDuration = Duration.ofMinutes(60),
+        )
+        val executor = userFactory.createUser()
+        val executeTime = utcTimeNow().minusMinutes(10)
+        val events = mutableSetOf<Event>(
+            eventFactory.createReviewApprovedEvent(request = request, createdAt = executeTime.minusMinutes(1)),
+            eventFactory.createExecuteEvent(request = request, author = executor, createdAt = executeTime),
+            eventFactory.createReviewRejectedEvent(request = request, createdAt = utcTimeNow()),
+        )
+        val details = executionRequestDetailsFactory.createExecutionRequestDetails(
+            request = request,
+            events = events,
+        )
+        assert(details.resolveReviewStatus() == ReviewStatus.REJECTED)
+        assert(details.resolveExecutionStatus() == ExecutionStatus.EXECUTED)
+    }
+
+    @Test
     fun `test review status with one change and then approval`() {
         val request = executionRequestFactory.createDatasourceExecutionRequest()
         val reviewer = userFactory.createUser()

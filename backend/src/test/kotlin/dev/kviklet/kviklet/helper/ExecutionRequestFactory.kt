@@ -96,6 +96,21 @@ class EventFactory : Factory() {
         action = ReviewAction.REJECT,
     )
 
+    fun createReviewClosedEvent(
+        id: EventId = EventId("test-event " + nextId()),
+        request: ExecutionRequest? = null,
+        createdAt: LocalDateTime = utcTimeNow(),
+        author: User? = null,
+        comment: String = "closed",
+    ): ReviewEvent = ReviewEvent(
+        eventId = id,
+        request = request ?: executionRequestFactory.createDatasourceExecutionRequest(),
+        author = author ?: userFactory.createUser(),
+        createdAt = createdAt,
+        comment = comment,
+        action = ReviewAction.CLOSE,
+    )
+
     fun createReviewRequestedChangeEvent(
         id: EventId = EventId("test-event " + nextId()),
         request: ExecutionRequest? = null,

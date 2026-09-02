@@ -41,6 +41,11 @@ enum class ReviewAction {
     APPROVE,
     REQUEST_CHANGE,
     REJECT,
+
+    // The author withdrawing their own request. Behaves exactly like REJECT (locks reviews and execution, ends a
+    // running temporary access session), but is recorded separately so the UI can say "closed" instead of
+    // "rejected".
+    CLOSE,
 }
 
 /**

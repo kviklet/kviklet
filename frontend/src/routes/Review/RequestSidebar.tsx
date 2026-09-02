@@ -84,7 +84,10 @@ function RequestSidebar({
       request.reviewStatus === "CHANGE_REQUESTED") &&
     request.executionStatus !== "EXECUTED";
   const showYouApproved =
-    hasApproved && !isOwnRequest && request.reviewStatus !== "REJECTED";
+    hasApproved &&
+    !isOwnRequest &&
+    request.reviewStatus !== "REJECTED" &&
+    request.reviewStatus !== "CLOSED";
 
   const handleApprove = async () => {
     if (!sendReview || reviewSubmitting) {

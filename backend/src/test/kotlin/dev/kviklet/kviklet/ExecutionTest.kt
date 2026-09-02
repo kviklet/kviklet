@@ -5,7 +5,12 @@ import dev.kviklet.kviklet.helper.ConnectionHelper
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper
 import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
+import dev.kviklet.kviklet.proxy.core.ProxyServer
+import dev.kviklet.kviklet.proxy.core.ProxySession
+import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.Connection
+import dev.kviklet.kviklet.service.dto.DatasourceType
+import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.RequestType
@@ -20,6 +25,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.core.io.FileUrlResource
@@ -51,6 +57,10 @@ class ExecutionTest {
     @Autowired private lateinit var connectionHelper: ConnectionHelper
 
     @Autowired private lateinit var executionRequestHelper: ExecutionRequestHelper
+
+    @Autowired
+    @Qualifier("postgresProxyServer")
+    private lateinit var postgresProxyServer: ProxyServer
 
     private lateinit var testUser: User
     private lateinit var testReviewer: User
@@ -155,6 +165,30 @@ class ExecutionTest {
             // Verify that no new events were added after rejection
             verifyRequestEvents(testExecutionRequest.getId(), 1, cookie)
             verifyLatestEvent(testExecutionRequest.getId(), "REVIEW", "REJECT", cookie)
+        }
+
+        @Test
+        fun `Rejecting a running temporary access request ends the session and its proxy`() {
+            val temporaryAccessRequest = executionRequestHelper.createApprovedRequest(
+                db,
+                testUser,
+                testReviewer,
+                connection = testConnection,
+                requestType = RequestType.TemporaryAccess,
+            )
+            val authorCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            executeTemporaryAccessStatement(temporaryAccessRequest.getId(), authorCookie).andExpect(status().isOk)
+            verifyExecutionStatus(temporaryAccessRequest.getId(), "ACTIVE", authorCookie)
+            val proxySession = registerProxySession(temporaryAccessRequest.request)
+
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+            rejectRequest(temporaryAccessRequest.getId(), "Not anymore.", reviewerCookie).andExpect(status().isOk)
+
+            verifyRequestStatus(temporaryAccessRequest.getId(), "REJECTED", authorCookie)
+            verifyExecutionStatus(temporaryAccessRequest.getId(), "EXECUTED", authorCookie)
+            executeTemporaryAccessStatement(temporaryAccessRequest.getId(), authorCookie)
+                .andExpect(status().is4xxClientError)
+            assertProxySessionEnded(proxySession)
         }
 
         @Test
@@ -873,6 +907,52 @@ class ExecutionTest {
         }
     }
 
+    private fun executeTemporaryAccessStatement(executionRequestId: String, cookie: Cookie) = mockMvc.perform(
+        post("/execution-requests/$executionRequestId/execute")
+            .cookie(cookie)
+            .content("""{"query": "SELECT 1;"}""")
+            .contentType("application/json"),
+    )
+
+    private fun verifyExecutionStatus(executionRequestId: String, expectedStatus: String, cookie: Cookie) {
+        mockMvc.perform(
+            get("/execution-requests/$executionRequestId")
+                .cookie(cookie),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.executionStatus").value(expectedStatus))
+    }
+
+    // Registers a never-expiring proxy session for the request on the application's Postgres proxy
+    // listener (which does not bind a port under the test profile, so no client can connect; the registry
+    // alone is what these tests observe).
+    private fun registerProxySession(request: ExecutionRequest): ProxySession {
+        val session = proxySession(request, "kviklet_" + request.id.toString().filter { it.isLetterOrDigit() })
+        val registered = postgresProxyServer.registerSession(session, expiresAt = null)
+        assert(registered === session) { "The request unexpectedly already had a live proxy session" }
+        return session
+    }
+
+    // A live session is canonical for its request: registering another one for the same request hands the
+    // live one back. Once it was ended, a new registration wins -- so that is how the teardown is observed.
+    private fun assertProxySessionEnded(session: ProxySession) {
+        val replacement = proxySession(session.executionRequest, session.username + "_next")
+        val registered = postgresProxyServer.registerSession(replacement, expiresAt = null)
+        postgresProxyServer.expireSessionsForRequest(session.executionRequest.id!!)
+        assert(registered === replacement) { "The proxy session of the closed request is still live" }
+    }
+
+    private fun proxySession(request: ExecutionRequest, username: String) = ProxySession(
+        username = username,
+        password = "pw",
+        executionRequest = request,
+        userId = testUser.getId()!!,
+        targetHost = db.host,
+        targetPort = db.getMappedPort(5432),
+        databaseName = db.databaseName,
+        datasourceType = DatasourceType.POSTGRESQL,
+        authenticationDetails = AuthenticationDetails.UserPassword(db.username, db.password),
+    )
+
     private fun closeRequest(executionRequestId: String, comment: String, cookie: Cookie) = mockMvc.perform(
         post("/execution-requests/$executionRequestId/close")
             .cookie(cookie)
@@ -896,7 +976,68 @@ class ExecutionTest {
             val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
             closeRequest(testExecutionRequest.getId(), "Closing my request", cookie)
                 .andExpect(status().isOk)
-            verifyRequestStatus(testExecutionRequest.getId(), "REJECTED", cookie)
+            verifyRequestStatus(testExecutionRequest.getId(), "CLOSED", cookie)
+            verifyLatestEvent(testExecutionRequest.getId(), "REVIEW", "CLOSE", cookie)
+        }
+
+        @Test
+        fun `a closed request is locked from reviews, execution and closing again`() {
+            val authorCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+            closeRequest(testExecutionRequest.getId(), "Closing my request", authorCookie)
+                .andExpect(status().isOk)
+
+            approveRequest(testExecutionRequest.getId(), "Too late.", reviewerCookie)
+                .andExpect(status().is4xxClientError)
+            executeRequest(testExecutionRequest.getId(), authorCookie)
+                .andExpect(status().is4xxClientError)
+            closeRequest(testExecutionRequest.getId(), "Closing again", authorCookie)
+                .andExpect(status().is4xxClientError)
+
+            verifyRequestEvents(testExecutionRequest.getId(), 1, authorCookie)
+            verifyRequestStatus(testExecutionRequest.getId(), "CLOSED", authorCookie)
+        }
+
+        @Test
+        fun `a rejected request cannot be closed`() {
+            val authorCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+            rejectRequest(testExecutionRequest.getId(), "No.", reviewerCookie).andExpect(status().isOk)
+
+            closeRequest(testExecutionRequest.getId(), "Closing my request", authorCookie)
+                .andExpect(status().is4xxClientError)
+            verifyRequestStatus(testExecutionRequest.getId(), "REJECTED", authorCookie)
+        }
+
+        @Test
+        fun `reviewers cannot submit CLOSE as a review action`() {
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+            performReviewAction(testExecutionRequest.getId(), "CLOSE", "Closing as reviewer", reviewerCookie)
+                .andExpect(status().is4xxClientError)
+            verifyRequestStatus(testExecutionRequest.getId(), "AWAITING_APPROVAL", reviewerCookie)
+        }
+
+        @Test
+        fun `closing a running temporary access request ends the session and its proxy`() {
+            val temporaryAccessRequest = executionRequestHelper.createApprovedRequest(
+                db,
+                testUser,
+                testReviewer,
+                connection = testConnection,
+                requestType = RequestType.TemporaryAccess,
+            )
+            val authorCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            executeTemporaryAccessStatement(temporaryAccessRequest.getId(), authorCookie).andExpect(status().isOk)
+            verifyExecutionStatus(temporaryAccessRequest.getId(), "ACTIVE", authorCookie)
+            val proxySession = registerProxySession(temporaryAccessRequest.request)
+
+            closeRequest(temporaryAccessRequest.getId(), "Done for today", authorCookie).andExpect(status().isOk)
+
+            verifyRequestStatus(temporaryAccessRequest.getId(), "CLOSED", authorCookie)
+            verifyExecutionStatus(temporaryAccessRequest.getId(), "EXECUTED", authorCookie)
+            executeTemporaryAccessStatement(temporaryAccessRequest.getId(), authorCookie)
+                .andExpect(status().is4xxClientError)
+            assertProxySessionEnded(proxySession)
         }
 
         @Test

@@ -10,14 +10,15 @@ function CommentBox({
   sendReview,
   closeRequest,
   userId,
-  isRejected,
+  isClosed,
   canReview = true,
   hasApproved = false,
 }: {
   sendReview: (comment: string, type: ReviewTypes) => Promise<boolean>;
   closeRequest?: (comment: string) => Promise<boolean>;
   userId?: string;
-  isRejected?: boolean;
+  /** The request was rejected or closed: no further reviews or closing. */
+  isClosed?: boolean;
   /** Whether the backend would allow this user to review this request (execution_request:review). */
   canReview?: boolean;
   /** The user's approval already stands — hide the Approve pill so it doesn't read as "didn't take". */
@@ -48,7 +49,7 @@ function CommentBox({
       id: ReviewTypes.Approve,
       title: "Approve",
       description: "Give your approval to execute this request",
-      enabled: canReview && !isOwnRequest && !isRejected && !hasApproved,
+      enabled: canReview && !isOwnRequest && !isClosed && !hasApproved,
       danger: false,
     },
     {
@@ -56,21 +57,21 @@ function CommentBox({
       title: "Request Changes",
       description:
         "Request a change on this Request, you can later approve it again",
-      enabled: canReview && !isOwnRequest && !isRejected,
+      enabled: canReview && !isOwnRequest && !isClosed,
       danger: true,
     },
     {
       id: ReviewTypes.Reject,
       title: "Reject",
       description: "Reject this request from ever executing",
-      enabled: canReview && !isOwnRequest && !isRejected,
+      enabled: canReview && !isOwnRequest && !isClosed,
       danger: true,
     },
     {
       id: ReviewTypes.Close,
       title: "Close",
       description: "Close this request without executing it",
-      enabled: !!(isOwnRequest && closeRequest) && !isRejected,
+      enabled: !!(isOwnRequest && closeRequest) && !isClosed,
       danger: false,
     },
   ];
@@ -213,7 +214,7 @@ function CommentBox({
           className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm text-slate-500 shadow-sm transition-colors hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:border-slate-600"
           onClick={() => setExpanded(true)}
         >
-          {isOwnRequest || isRejected || !canReview || hasApproved
+          {isOwnRequest || isClosed || !canReview || hasApproved
             ? "Leave a comment…"
             : "Leave a comment or review…"}
         </button>

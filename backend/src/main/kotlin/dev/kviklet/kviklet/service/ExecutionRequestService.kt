@@ -457,8 +457,12 @@ class ExecutionRequestService(
         if (executionRequest.request.author.getId() == authorId) {
             throw InvalidReviewException("A user can't review their own request!")
         }
-        if (executionRequest.resolveReviewStatus() == ReviewStatus.REJECTED) {
-            throw InvalidReviewException("Can't review an already rejected request!")
+        val reviewStatus = executionRequest.resolveReviewStatus()
+        if (reviewStatus.isTerminal()) {
+            throw InvalidReviewException("Can't review an already ${reviewStatus.name.lowercase()} request!")
+        }
+        if (request.action == ReviewAction.CLOSE) {
+            throw InvalidReviewException("Only the author can close a request, reviewers reject it instead!")
         }
         val reviewEvent = eventService.saveEvent(
             id,
@@ -476,14 +480,15 @@ class ExecutionRequestService(
     @Policy(Permission.EXECUTION_REQUEST_EDIT)
     fun close(id: ExecutionRequestId, comment: String, authorId: String): Event {
         val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
-        if (executionRequest.resolveReviewStatus() == ReviewStatus.REJECTED) {
-            throw InvalidReviewException("Can't close an already rejected request!")
+        val reviewStatus = executionRequest.resolveReviewStatus()
+        if (reviewStatus.isTerminal()) {
+            throw InvalidReviewException("Can't close an already ${reviewStatus.name.lowercase()} request!")
         }
 
         val reviewEvent = eventService.saveEvent(
             id,
             authorId,
-            ReviewPayload(comment = comment, action = ReviewAction.REJECT),
+            ReviewPayload(comment = comment, action = ReviewAction.CLOSE),
         )
         val updatedExecutionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
         ReviewStatusUpdatedEvent.from(updatedExecutionRequestDetails, reviewEvent).let {
@@ -1101,8 +1106,13 @@ class ExecutionRequestService(
  * SQL dump): the request must be approved and must not have used up its executions.
  */
 fun ExecutionRequestDetails.raiseIfNotExecutable() {
-    if (resolveReviewStatus() != ReviewStatus.APPROVED) {
-        throw InvalidReviewException("This request has not been approved yet!")
+    when (val reviewStatus = resolveReviewStatus()) {
+        ReviewStatus.APPROVED -> {}
+
+        ReviewStatus.REJECTED, ReviewStatus.CLOSED ->
+            throw InvalidReviewException("This request has been ${reviewStatus.name.lowercase()}!")
+
+        else -> throw InvalidReviewException("This request has not been approved yet!")
     }
     raiseIfAlreadyExecuted()
 }

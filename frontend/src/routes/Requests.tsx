@@ -51,12 +51,18 @@ function timeSince(date: Date) {
 }
 
 function mapStatus(reviewStatus: string, executionStatus: string) {
-  if (reviewStatus === "AWAITING_APPROVAL" && executionStatus !== "EXECUTED")
+  // Rejected and closed are terminal and end a running session, so they win over
+  // whatever the execution status still says.
+  if (reviewStatus === "REJECTED") return "Rejected";
+  else if (reviewStatus === "CLOSED") return "Closed";
+  else if (
+    reviewStatus === "AWAITING_APPROVAL" &&
+    executionStatus !== "EXECUTED"
+  )
     return "Pending";
   else if (executionStatus === "EXECUTED") return "Executed";
   else if (executionStatus === "ACTIVE") return "Active";
   else if (reviewStatus === "CHANGE_REQUESTED") return "Change Requested";
-  else if (reviewStatus === "REJECTED") return "Rejected";
   else if (executionStatus === "EXECUTABLE") return "Ready";
   else return "Unknown";
 }
@@ -75,6 +81,8 @@ function mapStatusToLabelColor(status?: string) {
       return "dark:ring-red-400/10 dark:text-red-500 ring-red-500/10 text-red-600 bg-red-50 dark:bg-red-400/10";
     case "Rejected":
       return "dark:ring-red-400/10 dark:text-red-500 ring-red-500/10 text-red-600 bg-red-50 dark:bg-red-400/10";
+    case "Closed":
+      return "dark:ring-gray-400/10 dark:text-gray-500 ring-gray-500/10 text-gray-600 bg-gray-50 dark:bg-gray-400/10";
     default:
       return "dark:ring-gray-400/10 dark:text-gray-500 ring-gray-500/10 text-gray-600 bg-gray-50 dark:bg-gray-400/10";
   }
