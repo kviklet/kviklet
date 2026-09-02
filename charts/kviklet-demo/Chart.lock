@@ -1,6 +1,0 @@
-dependencies:
-- name: kviklet
-  repository: file://../kviklet
-  version: 0.2.0
-digest: sha256:dd209083aecdd05fc60a088d85a0a8740c2fc8bea1e65a602bd2c1f46a6bb7a3
-generated: "2026-08-09T03:20:28.347237+02:00"

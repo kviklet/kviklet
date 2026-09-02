@@ -57,7 +57,7 @@ jobs:
       - name: Deploy Demo Chart
         run: |
           cd charts/kviklet-demo
-          helm dependency build
+          helm dependency update
           helm upgrade --install kviklet-demo . \
             --namespace kviklet \
             --create-namespace \
