@@ -140,9 +140,6 @@ class ExecutionRequestEntity(
 interface ExecutionRequestRepository :
     JpaRepository<ExecutionRequestEntity, String>,
     CustomExecutionRequestRepository {
-    // Locks the request row for the rest of the transaction. Deliberately a single-table query (no fetch
-    // joins) so it maps to a plain SELECT ... FOR UPDATE; the details are loaded afterwards into the same
-    // persistence context and therefore reflect every event committed before the lock was granted.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select e from execution_request e where e.id = :id")
     fun lockById(@Param("id") id: String): ExecutionRequestEntity?
@@ -256,22 +253,24 @@ class ExecutionRequestAdapter(
     @Autowired
     private lateinit var entityManager: EntityManager
 
-    // Appends an event and re-materializes the request's status columns. [guard] is run on the freshly
-    // loaded details, after the request row was locked and before anything is written, so a caller can make
-    // the write conditional on the request's current state. The rule itself is the caller's business; the
-    // adapter only guarantees it sees a consistent snapshot: the row lock serializes this against any other
-    // event write on the same request (a rejection or close, for instance), so a statement cannot slip in
-    // between such a write's status check and its commit.
+    private fun lockAndRefresh(id: ExecutionRequestId): ExecutionRequestEntity {
+        val entity = executionRequestRepository.lockById(id.toString())
+            ?: throw EntityNotFound("Execution Request Not Found", "Execution request $id does not exist.")
+        // A surrounding transaction may already have loaded the request and its events before the lock.
+        // Refresh under the lock so validation and materialized statuses include concurrent commits.
+        entityManager.refresh(entity)
+        return entity
+    }
+
     @Transactional
-    fun addEvent(
-        id: ExecutionRequestId,
-        authorId: String,
-        payload: Payload,
-        guard: ((ExecutionRequestDetails) -> Unit)? = null,
-    ): Pair<ExecutionRequestDetails, Event> {
-        executionRequestRepository.lockById(id.toString())
-        val executionRequestEntity = getExecutionRequestDetailsEntity(id)
-        guard?.invoke(executionRequestEntity.toDetailDto(connectionAdapter.toDto(executionRequestEntity.connection)))
+    fun getExecutionRequestDetailsForUpdate(id: ExecutionRequestId): ExecutionRequestDetails {
+        val entity = lockAndRefresh(id)
+        return entity.toDetailDto(connectionAdapter.toDto(entity.connection))
+    }
+
+    @Transactional
+    fun addEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Pair<ExecutionRequestDetails, Event> {
+        val executionRequestEntity = lockAndRefresh(id)
         val userEntity = getUserEntity(authorId)
         val eventEntity = EventEntity(
             executionRequest = executionRequestEntity,

@@ -62,10 +62,7 @@ export default function ActivityTimeline({
             sendReview={sendReview}
             closeRequest={closeRequest}
             userId={request?.author?.id}
-            isClosed={
-              request.reviewStatus === "REJECTED" ||
-              request.reviewStatus === "CLOSED"
-            }
+            isRejected={request.reviewStatus === "REJECTED"}
             hasApproved={hasApproved}
             canReview={hasPermission(
               request.permissions,

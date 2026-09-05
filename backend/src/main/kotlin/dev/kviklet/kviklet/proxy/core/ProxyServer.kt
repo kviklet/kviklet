@@ -151,12 +151,7 @@ class ProxyServer(
         }
     }
 
-    // Ends every live session of one execution request ahead of its scheduled expiry (or, for a session
-    // without a duration, at all): the request was rejected or closed, so its access window is over now. Same
-    // teardown as a timed expiry -- registry entry gone, relay connections closed -- so a client that
-    // reconnects with the old credentials is refused. Synchronized like registerSession so a session being
-    // registered concurrently is either torn down here or registered after the terminal event was handled
-    // (in which case the service layer already refused the proxy call on the review status).
+    // Use the same teardown as timed expiry, including sessions with no duration.
     @Synchronized
     fun expireSessionsForRequest(requestId: ExecutionRequestId) {
         sessions.entries

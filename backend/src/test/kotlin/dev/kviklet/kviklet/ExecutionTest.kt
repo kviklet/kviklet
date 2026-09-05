@@ -2,6 +2,7 @@ package dev.kviklet.kviklet
 
 import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
+import dev.kviklet.kviklet.db.ReviewPayload
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.helper.ConnectionHelper
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper
@@ -9,15 +10,19 @@ import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.proxy.core.ProxyServer
 import dev.kviklet.kviklet.proxy.core.ProxySession
+import dev.kviklet.kviklet.service.AlreadyExecutedException
 import dev.kviklet.kviklet.service.EventService
-import dev.kviklet.kviklet.service.RequestNotExecutableException
+import dev.kviklet.kviklet.service.InvalidReviewException
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.DatasourceType
+import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.RequestType
+import dev.kviklet.kviklet.service.dto.ReviewAction
+import dev.kviklet.kviklet.service.dto.ReviewStatus
 import jakarta.servlet.http.Cookie
 import org.hamcrest.Matchers.containsString
 import org.hamcrest.Matchers.hasSize
@@ -45,8 +50,13 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.support.TransactionTemplate
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import java.util.zip.ZipInputStream
 
 @SpringBootTest
@@ -67,6 +77,8 @@ class ExecutionTest {
     @Autowired
     @Qualifier("postgresProxyServer")
     private lateinit var postgresProxyServer: ProxyServer
+
+    @Autowired private lateinit var transactionManager: PlatformTransactionManager
 
     @Autowired private lateinit var eventService: EventService
 
@@ -720,6 +732,99 @@ class ExecutionTest {
     @Nested
     inner class ExecutionGuardTests {
 
+        @ParameterizedTest
+        @ValueSource(booleans = [false, true])
+        fun `rejection wins over an execution or approval with previously loaded state`(review: Boolean) {
+            val request = executionRequestHelper.createApprovedRequest(
+                db,
+                testUser,
+                testReviewer,
+                connection = testConnection,
+            )
+            val id = request.request.id!!
+            val loaded = CountDownLatch(1)
+            val rejected = CountDownLatch(1)
+            val executor = Executors.newSingleThreadExecutor()
+            try {
+                val contender = executor.submit {
+                    assertThrows(InvalidReviewException::class.java) {
+                        TransactionTemplate(transactionManager).executeWithoutResult {
+                            executionRequestAdapter.getExecutionRequestDetails(id)
+                            loaded.countDown()
+                            check(rejected.await(10, TimeUnit.SECONDS))
+                            eventService.saveEvent(
+                                id,
+                                testReviewer.getId()!!,
+                                if (review) {
+                                    ReviewPayload(comment = "", action = ReviewAction.APPROVE)
+                                } else {
+                                    ExecutePayload(query = "SELECT 1")
+                                },
+                            )
+                        }
+                    }
+                }
+                check(loaded.await(10, TimeUnit.SECONDS))
+                eventService.saveEvent(
+                    id,
+                    testUser.getId()!!,
+                    ReviewPayload(comment = "", action = ReviewAction.REJECT),
+                )
+                val eventsAfterRejection = executionRequestAdapter.getExecutionRequestDetails(id).events.size
+                rejected.countDown()
+                contender.get(10, TimeUnit.SECONDS)
+                val details = executionRequestAdapter.getExecutionRequestDetails(id)
+                assertEquals(ReviewStatus.REJECTED, details.resolveReviewStatus())
+                assertEquals("REJECTED", details.request.reviewStatus)
+                assertEquals(eventsAfterRejection, details.events.size)
+            } finally {
+                rejected.countDown()
+                executor.shutdownNow()
+            }
+        }
+
+        @Test
+        fun `concurrent executions cannot exceed the execution limit`() {
+            val request = executionRequestHelper.createApprovedRequest(
+                db,
+                testUser,
+                testReviewer,
+                connection = testConnection,
+            )
+            val id = request.request.id!!
+            val loaded = CountDownLatch(1)
+            val execute = CountDownLatch(1)
+            val executor = Executors.newSingleThreadExecutor()
+            try {
+                val contender = executor.submit {
+                    assertThrows(AlreadyExecutedException::class.java) {
+                        TransactionTemplate(transactionManager).executeWithoutResult {
+                            executionRequestAdapter.getExecutionRequestDetails(id)
+                            loaded.countDown()
+                            check(execute.await(10, TimeUnit.SECONDS))
+                            eventService.saveEvent(id, testUser.getId()!!, ExecutePayload(query = "SELECT 2"))
+                        }
+                    }
+                }
+                TransactionTemplate(transactionManager).executeWithoutResult {
+                    executionRequestAdapter.getExecutionRequestDetailsForUpdate(id)
+                    check(loaded.await(10, TimeUnit.SECONDS))
+                    execute.countDown()
+                    eventService.saveEvent(id, testUser.getId()!!, ExecutePayload(query = "SELECT 1"))
+                }
+                contender.get(10, TimeUnit.SECONDS)
+                assertEquals(
+                    1,
+                    executionRequestAdapter.getExecutionRequestDetails(id).events.count {
+                        it is ExecuteEvent
+                    },
+                )
+            } finally {
+                execute.countDown()
+                executor.shutdownNow()
+            }
+        }
+
         private fun closedRequest(requestType: RequestType = RequestType.SingleExecution): ExecutionRequestDetails {
             val request = executionRequestHelper.createApprovedRequest(
                 db,
@@ -742,8 +847,8 @@ class ExecutionTest {
             expectedMessage: String,
         ) {
             val eventsBefore = eventCount(request)
-            val error = assertThrows(RequestNotExecutableException::class.java) {
-                eventService.recordExecution(request.request.id!!, testUser.getId()!!, payload)
+            val error = assertThrows(InvalidReviewException::class.java) {
+                eventService.saveEvent(request.request.id!!, testUser.getId()!!, payload)
             }
             assertEquals(expectedMessage, error.message)
             assertEquals(eventsBefore, eventCount(request), "A refused execution must not leave an event behind")
@@ -754,7 +859,7 @@ class ExecutionTest {
             assertRefusedWithoutEvent(
                 closedRequest(),
                 ExecutePayload(query = "SELECT 1;"),
-                "This request has been closed!",
+                "This request has been rejected!",
             )
         }
 
@@ -780,38 +885,11 @@ class ExecutionTest {
         }
 
         @Test
-        fun `a download of a closed request is refused`() {
-            assertRefusedWithoutEvent(
-                closedRequest(),
-                ExecutePayload(query = "SELECT 1;", isDownload = true),
-                "This request has been closed!",
-            )
-        }
-
-        @Test
-        fun `a dump of a closed request is refused`() {
-            assertRefusedWithoutEvent(
-                closedRequest(RequestType.Dump),
-                ExecutePayload(isDump = true),
-                "This request has been closed!",
-            )
-        }
-
-        @Test
-        fun `a kubernetes command of a closed request is refused`() {
-            assertRefusedWithoutEvent(
-                closedRequest(),
-                ExecutePayload(command = "ls", containerName = "app", podName = "pod", namespace = "default"),
-                "This request has been closed!",
-            )
-        }
-
-        @Test
         fun `a dry run of a closed request is refused`() {
             assertRefusedWithoutEvent(
                 closedRequest(),
                 ExecutePayload(query = "SELECT 1;", isDryRun = true),
-                "This request has been closed!",
+                "This request has been rejected!",
             )
         }
 
@@ -824,7 +902,7 @@ class ExecutionTest {
             )
             val request = executionRequestHelper.createExecutionRequest(db, testUser, connection = connection)
 
-            eventService.recordExecution(
+            eventService.saveEvent(
                 request.request.id!!,
                 testUser.getId()!!,
                 ExecutePayload(query = "SELECT 1;", isDryRun = true),
@@ -1162,46 +1240,7 @@ class ExecutionTest {
             val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
             closeRequest(testExecutionRequest.getId(), "Closing my request", cookie)
                 .andExpect(status().isOk)
-            verifyRequestStatus(testExecutionRequest.getId(), "CLOSED", cookie)
-            verifyLatestEvent(testExecutionRequest.getId(), "REVIEW", "CLOSE", cookie)
-        }
-
-        @Test
-        fun `a closed request is locked from reviews, execution and closing again`() {
-            val authorCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
-            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
-            closeRequest(testExecutionRequest.getId(), "Closing my request", authorCookie)
-                .andExpect(status().isOk)
-
-            approveRequest(testExecutionRequest.getId(), "Too late.", reviewerCookie)
-                .andExpect(status().isBadRequest)
-            // The policy gate refuses a non-approved request before the service runs
-            executeRequest(testExecutionRequest.getId(), authorCookie)
-                .andExpect(status().isForbidden)
-            closeRequest(testExecutionRequest.getId(), "Closing again", authorCookie)
-                .andExpect(status().isBadRequest)
-
-            verifyRequestEvents(testExecutionRequest.getId(), 1, authorCookie)
-            verifyRequestStatus(testExecutionRequest.getId(), "CLOSED", authorCookie)
-        }
-
-        @Test
-        fun `a rejected request cannot be closed`() {
-            val authorCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
-            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
-            rejectRequest(testExecutionRequest.getId(), "No.", reviewerCookie).andExpect(status().isOk)
-
-            closeRequest(testExecutionRequest.getId(), "Closing my request", authorCookie)
-                .andExpect(status().isBadRequest)
-            verifyRequestStatus(testExecutionRequest.getId(), "REJECTED", authorCookie)
-        }
-
-        @Test
-        fun `reviewers cannot submit CLOSE as a review action`() {
-            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
-            performReviewAction(testExecutionRequest.getId(), "CLOSE", "Closing as reviewer", reviewerCookie)
-                .andExpect(status().isBadRequest)
-            verifyRequestStatus(testExecutionRequest.getId(), "AWAITING_APPROVAL", reviewerCookie)
+            verifyRequestStatus(testExecutionRequest.getId(), "REJECTED", cookie)
         }
 
         @Test
@@ -1221,7 +1260,7 @@ class ExecutionTest {
                 closeRequest(temporaryAccessRequest.getId(), "Done for today", authorCookie)
                     .andExpect(status().isOk)
 
-                verifyRequestStatus(temporaryAccessRequest.getId(), "CLOSED", authorCookie)
+                verifyRequestStatus(temporaryAccessRequest.getId(), "REJECTED", authorCookie)
                 verifyExecutionStatus(temporaryAccessRequest.getId(), "EXECUTED", authorCookie)
                 // The policy gate refuses a non-approved request before the service runs
                 executeTemporaryAccessStatement(temporaryAccessRequest.getId(), authorCookie)

@@ -232,11 +232,13 @@ class ExecutionRequestService(
 
         val connection = connectionService.getDatasourceConnection(executionRequest.request.connection.id)
 
+        executionRequest.raiseIfNotExecutable()
+
         if (connection !is DatasourceConnection) {
             throw IllegalArgumentException("Only Datasource connections can be dumped")
         }
 
-        val event = eventService.recordExecution(
+        val event = eventService.saveEvent(
             executionRequestId,
             userId,
             ExecutePayload(
@@ -295,7 +297,7 @@ class ExecutionRequestService(
         request: UpdateExecutionRequestRequest,
         userId: String,
     ): ExecutionRequestDetailsWithRoles {
-        val executionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
+        val executionRequestDetails = executionRequestAdapter.getExecutionRequestDetailsForUpdate(id)
 
         when (executionRequestDetails.request) {
             is DatasourceExecutionRequest -> {
@@ -427,10 +429,11 @@ class ExecutionRequestService(
         ) {
             details
         } else {
+            val current = executionRequestAdapter.getExecutionRequestDetailsForUpdate(details.request.id!!)
             executionRequestAdapter.updateExecutionRequest(
                 id = details.request.id!!,
-                executionStatus = resolvedExecutionStatus,
-                reviewStatus = resolvedReviewStatus,
+                executionStatus = current.resolveExecutionStatus(),
+                reviewStatus = current.resolveReviewStatus(),
             )
         }
     }
@@ -453,16 +456,12 @@ class ExecutionRequestService(
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_REVIEW)
     fun createReview(id: ExecutionRequestId, request: CreateReviewRequest, authorId: String): Event {
-        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetailsForUpdate(id)
         if (executionRequest.request.author.getId() == authorId) {
             throw InvalidReviewException("A user can't review their own request!")
         }
-        val reviewStatus = executionRequest.resolveReviewStatus()
-        if (reviewStatus.isTerminal()) {
-            throw InvalidReviewException("Can't review an already ${reviewStatus.name.lowercase()} request!")
-        }
-        if (request.action == ReviewAction.CLOSE) {
-            throw InvalidReviewException("Only the author can close a request, reviewers reject it instead!")
+        if (executionRequest.resolveReviewStatus() == ReviewStatus.REJECTED) {
+            throw InvalidReviewException("Can't review an already rejected request!")
         }
         val reviewEvent = eventService.saveEvent(
             id,
@@ -473,64 +472,48 @@ class ExecutionRequestService(
         ReviewStatusUpdatedEvent.from(updatedExecutionRequestDetails, reviewEvent).let {
             applicationEventPublisher.publishEvent(it)
         }
-        endProxySessionsIfTerminal(updatedExecutionRequestDetails)
+        endProxySessionsIfRejected(updatedExecutionRequestDetails)
         return reviewEvent
     }
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_EDIT)
     fun close(id: ExecutionRequestId, comment: String, authorId: String): Event {
-        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
-        val reviewStatus = executionRequest.resolveReviewStatus()
-        if (reviewStatus.isTerminal()) {
-            throw InvalidReviewException("Can't close an already ${reviewStatus.name.lowercase()} request!")
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetailsForUpdate(id)
+        if (executionRequest.resolveReviewStatus() == ReviewStatus.REJECTED) {
+            throw InvalidReviewException("Can't close an already rejected request!")
         }
 
         val reviewEvent = eventService.saveEvent(
             id,
             authorId,
-            ReviewPayload(comment = comment, action = ReviewAction.CLOSE),
+            ReviewPayload(comment = comment, action = ReviewAction.REJECT),
         )
         val updatedExecutionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
         ReviewStatusUpdatedEvent.from(updatedExecutionRequestDetails, reviewEvent).let {
             applicationEventPublisher.publishEvent(it)
         }
-        endProxySessionsIfTerminal(updatedExecutionRequestDetails)
+        endProxySessionsIfRejected(updatedExecutionRequestDetails)
         return reviewEvent
     }
 
-    // A rejected or closed request must stop relaying at once, not on its scheduled expiry (never, for a
-    // session without a duration). The teardown is best-effort UX: the security boundary is the executability
-    // guard on every audited statement. Deferred to after commit so a session is only torn down once the
-    // terminal status is durable and every subsequent statement is refused by that guard; run inline when no
-    // transaction is active.
-    private fun endProxySessionsIfTerminal(details: ExecutionRequestDetails) {
-        val reviewStatus = details.resolveReviewStatus()
-        if (!reviewStatus.isTerminal()) {
-            return
-        }
+    private fun endProxySessionsIfRejected(details: ExecutionRequestDetails) {
+        if (!details.isRejected()) return
         val requestId = details.request.id!!
-        val endSessions = {
-            listOf(postgresProxyServer, mysqlProxyServer).forEach { proxyServer ->
-                try {
-                    proxyServer.expireSessionsForRequest(requestId)
-                } catch (e: Exception) {
-                    logger.error(
-                        "Failed to end proxy sessions of ${reviewStatus.name.lowercase()} request $requestId",
-                        e,
-                    )
+        // Both callers are transactional; never tear down a session for a rolled-back rejection.
+        TransactionSynchronizationManager.registerSynchronization(
+            object : TransactionSynchronization {
+                override fun afterCommit() {
+                    listOf(postgresProxyServer, mysqlProxyServer).forEach { server ->
+                        try {
+                            server.expireSessionsForRequest(requestId)
+                        } catch (e: Exception) {
+                            logger.error("Failed to end proxy sessions for rejected request $requestId", e)
+                        }
+                    }
                 }
-            }
-        }
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(
-                object : TransactionSynchronization {
-                    override fun afterCommit() = endSessions()
-                },
-            )
-        } else {
-            endSessions()
-        }
+            },
+        )
     }
 
     @Transactional
@@ -563,7 +546,7 @@ class ExecutionRequestService(
 
             RequestType.Dump -> throw RuntimeException("Dump requests can't be executed via the /execute endpoint")
         }
-        val event = eventService.recordExecution(
+        val event = eventService.saveEvent(
             id,
             userId,
             ExecutePayload(
@@ -633,7 +616,7 @@ class ExecutionRequestService(
             throw IllegalArgumentException(validationResult.reason)
         }
 
-        val event = eventService.recordExecution(
+        val event = eventService.saveEvent(
             id,
             userId,
             ExecutePayload(
@@ -684,7 +667,7 @@ class ExecutionRequestService(
             throw RuntimeException("This should never happen! Probably there is a way to refactor this code")
         }
 
-        val event = eventService.recordExecution(
+        val event = eventService.saveEvent(
             id,
             userId,
             ExecutePayload(
@@ -763,7 +746,14 @@ class ExecutionRequestService(
             if (!connection.dryRunEnabled) {
                 throw IllegalArgumentException("Dry run is not enabled for this connection")
             }
-            // Whether the dry run needs approval is checked when its execute event is written
+            // Check approval requirement
+            if (connection.dryRunRequiresApproval) {
+                val reviewStatus = executionRequest.resolveReviewStatus()
+                if (reviewStatus != ReviewStatus.APPROVED) {
+                    throw InvalidReviewException("This request has not been approved yet!")
+                }
+            }
+            // Execute dry run
             return executeDatasourceRequestDryRun(
                 id,
                 executionRequest,
@@ -771,7 +761,8 @@ class ExecutionRequestService(
                 userId,
             )
         } else {
-            // Approval and the execution budget are checked when the execute event is written
+            // Normal execution - always requires approval
+            executionRequest.raiseIfNotExecutable()
             return when (connection) {
                 is DatasourceConnection -> {
                     executeDatasourceRequest(id, executionRequest, connection, query, userId)
@@ -807,6 +798,7 @@ class ExecutionRequestService(
                 "Result download is not available for dump requests, use the SQL dump endpoint instead",
             )
         }
+        executionRequest.raiseIfNotExecutable()
 
         val result = executeDatasourceRequest(id, executionRequest, connection, query, userId, isDownload = true)
 
@@ -1003,7 +995,7 @@ class ExecutionRequestService(
                 "The database proxy is disabled. An admin can enable it in the general settings.",
             )
         }
-        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(executionRequestId)
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetailsForUpdate(executionRequestId)
         val connection = executionRequest.request.connection
         if (connection !is DatasourceConnection) {
             throw RuntimeException("Only Datasource connections be proxied")
@@ -1129,32 +1121,14 @@ class ExecutionRequestService(
 }
 
 /**
- * The shared gate for every path that runs a request against its target (execute, download, SQL dump,
- * Kubernetes command, proxied statement): the request must be approved and must not have used up its
- * executions. Enforced centrally by [EventService.recordExecution] when the execute event is written.
+ * The shared gate for every path that runs a request against the database (execute, download,
+ * SQL dump): the request must be approved and must not have used up its executions.
  */
 fun ExecutionRequestDetails.raiseIfNotExecutable() {
-    val reviewStatus = resolveReviewStatus()
-    if (reviewStatus != ReviewStatus.APPROVED) {
-        throw RequestNotExecutableException(reviewStatus)
+    if (resolveReviewStatus() != ReviewStatus.APPROVED) {
+        throw InvalidReviewException("This request has not been approved yet!")
     }
     raiseIfAlreadyExecuted()
-}
-
-/**
- * The gate for dry runs: they are allowed before approval unless the connection says otherwise, but never
- * on a rejected or closed request.
- */
-fun ExecutionRequestDetails.raiseIfNotDryRunnable() {
-    val reviewStatus = resolveReviewStatus()
-    if (reviewStatus.isTerminal()) {
-        throw RequestNotExecutableException(reviewStatus)
-    }
-    val connection = request.connection
-    val requiresApproval = connection is DatasourceConnection && connection.dryRunRequiresApproval
-    if (requiresApproval && reviewStatus != ReviewStatus.APPROVED) {
-        throw RequestNotExecutableException(reviewStatus)
-    }
 }
 
 fun ExecutionRequestDetails.raiseIfAlreadyExecuted() {
@@ -1173,21 +1147,7 @@ fun ExecutionRequestDetails.raiseIfAlreadyExecuted() {
     }
 }
 
-open class InvalidReviewException(message: String) : RuntimeException(message)
-
-/**
- * The request's review status does not allow running anything. A subtype of [InvalidReviewException] so
- * every existing REST and websocket error path handles it unchanged; the proxies catch it specifically to
- * tell the client why the session ends.
- */
-class RequestNotExecutableException(val status: ReviewStatus) :
-    InvalidReviewException(
-        when (status) {
-            ReviewStatus.REJECTED -> "This request has been rejected!"
-            ReviewStatus.CLOSED -> "This request has been closed!"
-            else -> "This request has not been approved yet!"
-        },
-    )
+class InvalidReviewException(message: String) : RuntimeException(message)
 
 class DownloadException(message: String) : RuntimeException(message)
 

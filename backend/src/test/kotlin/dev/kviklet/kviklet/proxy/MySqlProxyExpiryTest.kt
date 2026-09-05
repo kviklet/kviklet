@@ -173,12 +173,12 @@ class MySqlProxyExpiryTest {
         bystander.createStatement().executeQuery("SELECT 1").close()
         assertEquals(2, server.currentConnections)
 
-        eventServiceMock.markNotExecutable(request.id!!, ReviewStatus.CLOSED)
+        eventServiceMock.markNotExecutable(request.id!!, ReviewStatus.REJECTED)
 
         val error = assertThrows(SQLException::class.java) {
             conn.createStatement().executeQuery("SELECT 2").close()
         }
-        assertTrue(error.message!!.contains("closed"), "Unexpected error message: ${error.message}")
+        assertTrue(error.message!!.contains("rejected"), "Unexpected error message: ${error.message}")
         val deadline = System.currentTimeMillis() + 15_000
         while (server.currentConnections != 1 && System.currentTimeMillis() < deadline) {
             Thread.sleep(100)

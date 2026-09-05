@@ -84,10 +84,7 @@ function RequestSidebar({
       request.reviewStatus === "CHANGE_REQUESTED") &&
     request.executionStatus !== "EXECUTED";
   const showYouApproved =
-    hasApproved &&
-    !isOwnRequest &&
-    request.reviewStatus !== "REJECTED" &&
-    request.reviewStatus !== "CLOSED";
+    hasApproved && !isOwnRequest && request.reviewStatus !== "REJECTED";
 
   const handleApprove = async () => {
     if (!sendReview || reviewSubmitting) {
@@ -105,14 +102,10 @@ function RequestSidebar({
     <aside className="flex w-full flex-col gap-4 border-slate-200 dark:border-slate-700 md:order-last md:w-60 md:shrink-0 md:border-l md:pl-4">
       <div
         className={`${mapStatusToLabelColor(
-          mapStatus(
-            request.reviewStatus,
-            request.executionStatus,
-            request.type,
-          ),
+          mapStatus(request.reviewStatus, request.executionStatus),
         )} w-fit rounded-md px-2 py-1 text-sm font-medium ring-1 ring-inset`}
       >
-        {mapStatus(request.reviewStatus, request.executionStatus, request.type)}
+        {mapStatus(request.reviewStatus, request.executionStatus)}
       </div>
       {children}
       <SidebarDivider />

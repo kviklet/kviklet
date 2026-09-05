@@ -27,12 +27,6 @@ enum class ReviewStatus {
     APPROVED,
     REJECTED,
     CHANGE_REQUESTED,
-
-    // Withdrawn by its author. Terminal like REJECTED: no further reviews or executions.
-    CLOSED,
-    ;
-
-    fun isTerminal(): Boolean = this == REJECTED || this == CLOSED
 }
 
 enum class ExecutionStatus {
@@ -154,9 +148,6 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         if (isRejected()) {
             return ReviewStatus.REJECTED
         }
-        if (isClosed()) {
-            return ReviewStatus.CLOSED
-        }
 
         val progress = getApprovalProgress()
 
@@ -173,13 +164,13 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         return ReviewStatus.APPROVED
     }
 
-    fun isRejected(): Boolean = hasReviewAction(ReviewAction.REJECT)
+    fun isRejected(): Boolean {
+        val rejectedReview = events.filter { it.type == EventType.REVIEW }
+            .mapNotNull { it as? ReviewEvent }
+            .find { it.action == ReviewAction.REJECT }
 
-    fun isClosed(): Boolean = hasReviewAction(ReviewAction.CLOSE)
-
-    private fun hasReviewAction(action: ReviewAction): Boolean = events.filter { it.type == EventType.REVIEW }
-        .mapNotNull { it as? ReviewEvent }
-        .any { it.action == action }
+        return rejectedReview != null
+    }
 
     fun getApproversAfterReset(): List<User> {
         val resetTimestamp = latestResetTimestamp()
@@ -294,11 +285,7 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
                 if (executions.isEmpty()) {
                     return ExecutionStatus.EXECUTABLE
                 }
-                // Rejecting or closing a request while its session is running ends the session for good, so
-                // the request must not stay ACTIVE (and must not be re-enterable) regardless of its duration.
-                if (resolveReviewStatus().isTerminal()) {
-                    return ExecutionStatus.EXECUTED
-                }
+                if (isRejected()) return ExecutionStatus.EXECUTED
                 val firstExecution = executions.minBy { it.createdAt }
                 // Default to 1 hour if not set, can be for old temporary access requests all new ones should have this set
                 // If temporaryAccessDuration is null, it means infinite access

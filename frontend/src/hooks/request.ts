@@ -61,7 +61,7 @@ const latestResetTimestamp = (
 const latestReviewAction = (
   request: ExecutionRequestResponseWithComments,
   userId: string | undefined,
-): "APPROVE" | "REQUEST_CHANGE" | "REJECT" | "CLOSE" | undefined => {
+): "APPROVE" | "REQUEST_CHANGE" | "REJECT" | undefined => {
   if (!userId) {
     return undefined;
   }

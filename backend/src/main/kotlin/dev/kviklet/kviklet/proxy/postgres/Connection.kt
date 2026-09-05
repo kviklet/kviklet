@@ -15,7 +15,7 @@ import dev.kviklet.kviklet.proxy.postgres.messages.Statement
 import dev.kviklet.kviklet.proxy.postgres.messages.errorResponse
 import dev.kviklet.kviklet.proxy.postgres.messages.readyForQuery
 import dev.kviklet.kviklet.service.EventService
-import dev.kviklet.kviklet.service.RequestNotExecutableException
+import dev.kviklet.kviklet.service.InvalidReviewException
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import org.slf4j.LoggerFactory
 import java.io.InputStream
@@ -177,8 +177,8 @@ class Connection(
             }
             try {
                 auditMessage(message)
-            } catch (e: RequestNotExecutableException) {
-                // The request was rejected or closed while this session was live: the statement was not
+            } catch (e: InvalidReviewException) {
+                // The request was rejected while this session was live: the statement was not
                 // recorded and must not run, and the session is over (its registry teardown after the
                 // review is only best effort, this refusal is what actually ends the access).
                 logger.info("Request ${executionRequest.id} is no longer executable, closing the session")
@@ -234,7 +234,7 @@ class Connection(
 
     private fun handleQuery(parsedMessage: QueryMessage) {
         val executePayload = ExecutePayload(query = parsedMessage.query)
-        eventService.recordExecution(executionRequest.id!!, userId, executePayload)
+        eventService.saveEvent(executionRequest.id!!, userId, executePayload)
     }
 
     private fun handleExecute(parsedMessage: ExecuteMessage) {
@@ -248,7 +248,7 @@ class Connection(
             return
         }
         val executePayload = ExecutePayload(query = portal.statement.interpolateQuery())
-        eventService.recordExecution(executionRequest.id!!, userId, executePayload)
+        eventService.saveEvent(executionRequest.id!!, userId, executePayload)
         portal.audited = true
     }
 

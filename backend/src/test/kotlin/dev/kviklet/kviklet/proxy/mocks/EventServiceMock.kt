@@ -6,7 +6,7 @@ import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.Payload
 import dev.kviklet.kviklet.service.EventService
-import dev.kviklet.kviklet.service.RequestNotExecutableException
+import dev.kviklet.kviklet.service.InvalidReviewException
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventType
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
@@ -24,9 +24,7 @@ open class EventServiceMock(
     var queries: ArrayList<String> = ArrayList<String>()
     var rawQueries: ArrayList<String> = ArrayList<String>()
 
-    // Requests the real service would refuse to execute for (rejected or closed), by id. Stands in for
-    // the executability guard of recordExecution, which the real implementation resolves from the request's
-    // review events.
+    // Simulates the review status checked by the real event service.
     private val terminalRequests = ConcurrentHashMap<ExecutionRequestId, ReviewStatus>()
 
     fun markNotExecutable(requestId: ExecutionRequestId, status: ReviewStatus) {
@@ -46,16 +44,12 @@ open class EventServiceMock(
         }
         assertTrue(this.queries.contains(processedQuery))
     }
-    override fun recordExecution(id: ExecutionRequestId, authorId: String, payload: ExecutePayload): Event {
-        assertExecutable(id)
-        return saveEvent(id, authorId, payload)
-    }
-
     override fun assertExecutable(id: ExecutionRequestId) {
-        terminalRequests[id]?.let { throw RequestNotExecutableException(it) }
+        terminalRequests[id]?.let { throw InvalidReviewException("This request has been rejected!") }
     }
 
     override fun saveEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Event {
+        assertExecutable(id)
         if (payload.type.compareTo(EventType.EXECUTE) == 0) {
             val executePayload = payload as ExecutePayload
             executePayload.query?.let { rawQueries.add(it) }
