@@ -9,6 +9,7 @@ import dev.kviklet.kviklet.service.EntityNotFound
 import dev.kviklet.kviklet.service.InvalidLicenseException
 import dev.kviklet.kviklet.service.InvalidReviewException
 import dev.kviklet.kviklet.service.LicenseRestrictionException
+import dev.kviklet.kviklet.service.RequestNotExecutableException
 import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
@@ -24,8 +25,8 @@ data class ErrorResponse(val message: String)
 
 @ControllerAdvice
 class ExceptionHandlerController {
-    @ExceptionHandler(InvalidReviewException::class)
-    fun handleInvalidRequest(ex: InvalidReviewException): ResponseEntity<ErrorResponse> =
+    @ExceptionHandler(InvalidReviewException::class, RequestNotExecutableException::class)
+    fun handleInvalidRequest(ex: RuntimeException): ResponseEntity<ErrorResponse> =
         ResponseEntity(ErrorResponse(ex.message ?: "Unknown Error"), HttpStatus.BAD_REQUEST)
 
     companion object {

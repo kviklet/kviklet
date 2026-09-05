@@ -13,6 +13,7 @@ import dev.kviklet.kviklet.proxy.core.ProxySession
 import dev.kviklet.kviklet.service.AlreadyExecutedException
 import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.InvalidReviewException
+import dev.kviklet.kviklet.service.RequestNotExecutableException
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.DatasourceType
@@ -531,6 +532,26 @@ class ExecutionTest {
         }
 
         @Test
+        fun `explain refuses temporary access with a bad request response`() {
+            val request = executionRequestHelper.createApprovedRequest(
+                db,
+                testUser,
+                testReviewer,
+                connection = testConnection,
+                requestType = RequestType.TemporaryAccess,
+            )
+            val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            mockMvc.perform(
+                post("/execution-requests/${request.getId()}/execute")
+                    .cookie(cookie)
+                    .content("""{"explain": true}""")
+                    .contentType("application/json"),
+            )
+                .andExpect(status().isBadRequest)
+                .andExpect(jsonPath("$.message").value("Can only explain single queries!"))
+        }
+
+        @Test
         fun `explain works on unapproved SELECT statements`() {
             val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
 
@@ -747,7 +768,12 @@ class ExecutionTest {
             val executor = Executors.newSingleThreadExecutor()
             try {
                 val contender = executor.submit {
-                    assertThrows(InvalidReviewException::class.java) {
+                    val expected = if (review) {
+                        InvalidReviewException::class.java
+                    } else {
+                        RequestNotExecutableException::class.java
+                    }
+                    assertThrows(expected) {
                         TransactionTemplate(transactionManager).executeWithoutResult {
                             executionRequestAdapter.getExecutionRequestDetails(id)
                             loaded.countDown()
@@ -847,7 +873,7 @@ class ExecutionTest {
             expectedMessage: String,
         ) {
             val eventsBefore = eventCount(request)
-            val error = assertThrows(InvalidReviewException::class.java) {
+            val error = assertThrows(RequestNotExecutableException::class.java) {
                 eventService.saveEvent(request.request.id!!, testUser.getId()!!, payload)
             }
             assertEquals(expectedMessage, error.message)

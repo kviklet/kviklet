@@ -6,7 +6,7 @@ import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.Payload
 import dev.kviklet.kviklet.service.EventService
-import dev.kviklet.kviklet.service.InvalidReviewException
+import dev.kviklet.kviklet.service.RequestNotExecutableException
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventType
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
@@ -45,7 +45,7 @@ open class EventServiceMock(
         assertTrue(this.queries.contains(processedQuery))
     }
     override fun assertExecutable(id: ExecutionRequestId) {
-        terminalRequests[id]?.let { throw InvalidReviewException("This request has been rejected!") }
+        terminalRequests[id]?.let { throw RequestNotExecutableException("This request has been rejected!") }
     }
 
     override fun saveEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Event {

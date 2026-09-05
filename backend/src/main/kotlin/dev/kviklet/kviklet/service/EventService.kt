@@ -41,13 +41,13 @@ class EventService(
         when (payload) {
             is ExecutePayload -> {
                 val connection = details.request.connection
-                if (details.isRejected()) throw InvalidReviewException("This request has been rejected!")
+                if (details.isRejected()) throw RequestNotExecutableException("This request has been rejected!")
                 if (!payload.isDryRun) {
                     details.raiseIfNotExecutable()
                 } else if (connection is DatasourceConnection && connection.dryRunRequiresApproval &&
                     details.resolveReviewStatus() != ReviewStatus.APPROVED
                 ) {
-                    throw InvalidReviewException("This request has not been approved yet!")
+                    throw RequestNotExecutableException("This request has not been approved yet!")
                 }
             }
 

@@ -750,7 +750,7 @@ class ExecutionRequestService(
             if (connection.dryRunRequiresApproval) {
                 val reviewStatus = executionRequest.resolveReviewStatus()
                 if (reviewStatus != ReviewStatus.APPROVED) {
-                    throw InvalidReviewException("This request has not been approved yet!")
+                    throw RequestNotExecutableException("This request has not been approved yet!")
                 }
             }
             // Execute dry run
@@ -890,7 +890,7 @@ class ExecutionRequestService(
 
         val requestType = executionRequest.request.type
         if (requestType != RequestType.SingleExecution) {
-            throw InvalidReviewException("Can only explain single queries!")
+            throw RequestNotExecutableException("Can only explain single queries!")
         }
         val parsedStatements = CCJSqlParserUtil.parseStatements(executionRequest.request.statement)
         val selectStatements = parsedStatements.filter { it is net.sf.jsqlparser.statement.select.Select }
@@ -1005,7 +1005,7 @@ class ExecutionRequestService(
             throw RuntimeException("Only the author of the request can proxy it!")
         }
         if (reviewStatus != ReviewStatus.APPROVED) {
-            throw InvalidReviewException("This request has not been approved yet!")
+            throw RequestNotExecutableException("This request has not been approved yet!")
         }
         // One long-lived listener per wire protocol: Postgres on its own port, MySQL and MariaDB sharing
         // one (they speak the same protocol; the session's datasourceType picks the upstream flavor).
@@ -1126,7 +1126,7 @@ class ExecutionRequestService(
  */
 fun ExecutionRequestDetails.raiseIfNotExecutable() {
     if (resolveReviewStatus() != ReviewStatus.APPROVED) {
-        throw InvalidReviewException("This request has not been approved yet!")
+        throw RequestNotExecutableException("This request has not been approved yet!")
     }
     raiseIfAlreadyExecuted()
 }
@@ -1148,6 +1148,8 @@ fun ExecutionRequestDetails.raiseIfAlreadyExecuted() {
 }
 
 class InvalidReviewException(message: String) : RuntimeException(message)
+
+class RequestNotExecutableException(message: String) : RuntimeException(message)
 
 class DownloadException(message: String) : RuntimeException(message)
 
