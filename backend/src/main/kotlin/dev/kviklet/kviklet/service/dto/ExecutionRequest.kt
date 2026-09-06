@@ -285,6 +285,7 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
                 if (executions.isEmpty()) {
                     return ExecutionStatus.EXECUTABLE
                 }
+                if (isRejected()) return ExecutionStatus.EXECUTED
                 val firstExecution = executions.minBy { it.createdAt }
                 // Default to 1 hour if not set, can be for old temporary access requests all new ones should have this set
                 // If temporaryAccessDuration is null, it means infinite access

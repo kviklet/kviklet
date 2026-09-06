@@ -1,6 +1,7 @@
 // This file is not MIT licensed
 package dev.kviklet.kviklet.proxy.core
 
+import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import org.slf4j.LoggerFactory
 import java.net.ServerSocket
 import java.net.Socket
@@ -148,6 +149,14 @@ class ProxyServer(
         if (::serverSocket.isInitialized) {
             serverSocket.close()
         }
+    }
+
+    // Use the same teardown as timed expiry, including sessions with no duration.
+    @Synchronized
+    fun expireSessionsForRequest(requestId: ExecutionRequestId) {
+        sessions.entries
+            .filter { (_, session) -> session.executionRequest.id == requestId }
+            .forEach { (username, session) -> expireSession(username, session) }
     }
 
     // Only sessions that are still active resolve; expiry removes them from the map and flips active, so a

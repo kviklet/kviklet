@@ -15,6 +15,7 @@ import dev.kviklet.kviklet.proxy.postgres.messages.Statement
 import dev.kviklet.kviklet.proxy.postgres.messages.errorResponse
 import dev.kviklet.kviklet.proxy.postgres.messages.readyForQuery
 import dev.kviklet.kviklet.service.EventService
+import dev.kviklet.kviklet.service.RequestNotExecutableException
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import org.slf4j.LoggerFactory
 import java.io.InputStream
@@ -176,6 +177,13 @@ class Connection(
             }
             try {
                 auditMessage(message)
+            } catch (e: RequestNotExecutableException) {
+                // The request was rejected while this session was live: the statement was not
+                // recorded and must not run, and the session is over (its registry teardown after the
+                // review is only best effort, this refusal is what actually ends the access).
+                logger.info("Request ${executionRequest.id} is no longer executable, closing the session")
+                abortSession(e.message!!)
+                return
             } catch (e: UnknownStatementException) {
                 logger.warn("Client referenced a statement or portal unknown to the proxy, closing the session", e)
                 abortSession(
@@ -233,8 +241,10 @@ class Connection(
         val portal = portals[parsedMessage.portalName]
             ?: throw UnknownStatementException(parsedMessage.portalName)
         // A portal is executed repeatedly when the client pages through results (fetchSize),
-        // audit the query once per Bind rather than once per fetched batch
+        // audit the query once per Bind rather than once per fetched batch. Fetching more of an audited
+        // query is still an execution, so it is refused as well once the request is no longer executable.
         if (portal.audited) {
+            eventService.assertExecutable(executionRequest.id!!)
             return
         }
         val executePayload = ExecutePayload(query = portal.statement.interpolateQuery())

@@ -6,12 +6,14 @@ import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.Payload
 import dev.kviklet.kviklet.service.EventService
+import dev.kviklet.kviklet.service.RequestNotExecutableException
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventType
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import org.junit.jupiter.api.Assertions.assertTrue
 import java.util.ArrayList
+import java.util.concurrent.ConcurrentHashMap
 
 open class EventServiceMock(
     executionRequestAdapter: ExecutionRequestAdapter,
@@ -20,6 +22,13 @@ open class EventServiceMock(
 ) : EventService(executionRequestAdapter, eventAdapter) {
     var queries: ArrayList<String> = ArrayList<String>()
     var rawQueries: ArrayList<String> = ArrayList<String>()
+
+    // Simulates execution refusals from the real event service.
+    private val terminalRequests = ConcurrentHashMap<ExecutionRequestId, RequestNotExecutableException>()
+
+    fun markNotExecutable(requestId: ExecutionRequestId, error: RequestNotExecutableException) {
+        terminalRequests[requestId] = error
+    }
     fun assertAuditedQueryContains(fragment: String) {
         assertTrue(
             this.rawQueries.any { it.contains(fragment) },
@@ -34,7 +43,12 @@ open class EventServiceMock(
         }
         assertTrue(this.queries.contains(processedQuery))
     }
+    override fun assertExecutable(id: ExecutionRequestId) {
+        terminalRequests[id]?.let { throw it }
+    }
+
     override fun saveEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Event {
+        assertExecutable(id)
         if (payload.type.compareTo(EventType.EXECUTE) == 0) {
             val executePayload = payload as ExecutePayload
             executePayload.query?.let { rawQueries.add(it) }

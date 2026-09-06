@@ -206,6 +206,8 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
         explainEnabled: Boolean = true,
         maxExecutions: Int = 1,
         storeResults: Boolean = false,
+        dryRunEnabled: Boolean = false,
+        dryRunRequiresApproval: Boolean = true,
     ): Connection {
         val connection = connectionAdapter.createDatasourceConnection(
             ConnectionId("ds-conn-test-$connectionCount"),
@@ -228,8 +230,8 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             temporaryAccessEnabled = true,
             explainEnabled = explainEnabled,
             storeResults = storeResults,
-            dryRunEnabled = false,
-            dryRunRequiresApproval = true,
+            dryRunEnabled = dryRunEnabled,
+            dryRunRequiresApproval = dryRunRequiresApproval,
         )
         connectionCount++
         return connection
