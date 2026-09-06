@@ -413,10 +413,12 @@ class ExecutionRequestAdapter(
         )
     }
 
+    @Transactional(readOnly = true)
     fun listExecutionRequests(): List<ExecutionRequestDetails> = executionRequestRepository.findAllWithDetails().map {
         it.toDetailDto(connectionAdapter.toDto(it.connection))
     }
 
+    @Transactional(readOnly = true)
     fun listExecutionRequestsFiltered(
         reviewStatuses: Set<ReviewStatus>? = null,
         executionStatuses: Set<ExecutionStatus>? = null,

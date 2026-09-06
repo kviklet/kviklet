@@ -61,8 +61,10 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
+import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
+import org.springframework.transaction.support.TransactionTemplate
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -93,12 +95,14 @@ class ExecutionRequestService(
     private val permissionResolver: PermissionResolver,
     private val licenseService: LicenseService,
     private val configService: ConfigService,
+    transactionManager: PlatformTransactionManager,
     // Same override the notification links use: an explicitly configured base URL wins over the
     // host observed on incoming requests.
     @Value("\${kviklet.baseUrl:#{null}}")
     private val serverBaseUrl: String? = null,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
+    private val statusTransaction = TransactionTemplate(transactionManager)
 
     companion object {
         const val MAX_STORED_ROWS = 500
@@ -364,12 +368,10 @@ class ExecutionRequestService(
         return resolveRoles(result)
     }
 
-    @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
     fun list(): List<ExecutionRequestDetails> =
         executionRequestAdapter.listExecutionRequests().map { ensureMaterializedStatuses(it) }
 
-    @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
     fun list(
         reviewStatuses: Set<ReviewStatus>?,
@@ -412,7 +414,6 @@ class ExecutionRequestService(
         )
     }
 
-    @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
     fun get(id: ExecutionRequestId): ExecutionRequestDetailsWithRoles =
         resolveRoles(ensureMaterializedStatuses(executionRequestAdapter.getExecutionRequestDetails(id)))
@@ -429,12 +430,15 @@ class ExecutionRequestService(
         ) {
             details
         } else {
-            val current = executionRequestAdapter.getExecutionRequestDetailsForUpdate(details.request.id!!)
-            executionRequestAdapter.updateExecutionRequest(
-                id = details.request.id!!,
-                executionStatus = current.resolveExecutionStatus(),
-                reviewStatus = current.resolveReviewStatus(),
-            )
+            // Commit each repair before processing the next request so listings do not accumulate locks.
+            statusTransaction.execute {
+                val current = executionRequestAdapter.getExecutionRequestDetailsForUpdate(details.request.id!!)
+                executionRequestAdapter.updateExecutionRequest(
+                    id = details.request.id!!,
+                    executionStatus = current.resolveExecutionStatus(),
+                    reviewStatus = current.resolveReviewStatus(),
+                )
+            }!!
         }
     }
 
