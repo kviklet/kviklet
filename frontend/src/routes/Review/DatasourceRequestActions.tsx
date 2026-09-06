@@ -69,10 +69,18 @@ function DatasourceRequestActions({
     });
   };
 
+  const sessionLabel = !isAuthor
+    ? "Watch session"
+    : request?.executionStatus === "EXECUTED"
+    ? "View session"
+    : request?.executionStatus === "ACTIVE"
+    ? "Resume session"
+    : "Open session";
+
   const getDisabledReason = () => {
     if (request?.reviewStatus !== "APPROVED") {
       return "Request needs to be approved before execution";
-    } else if (request?.executionStatus === "EXECUTED") {
+    } else if (executesDirectly && request?.executionStatus === "EXECUTED") {
       return "Request has already been executed";
     } else if (request?.type === "Dump" && !isAuthor) {
       return "Only the requester can download the dump";
@@ -333,7 +341,7 @@ function DatasourceRequestActions({
 
   const primaryDisabled =
     request?.reviewStatus !== "APPROVED" ||
-    request?.executionStatus === "EXECUTED" ||
+    (executesDirectly && request?.executionStatus === "EXECUTED") ||
     (request?.type === "Dump" && !isAuthor) ||
     (executesDirectly && !canExecute);
   const primaryRounding = splitButtonItems.length > 0 ? "rounded-r-none" : "";
@@ -356,9 +364,7 @@ function DatasourceRequestActions({
             {request?.type === "SingleExecution"
               ? "Run Query"
               : request?.type === "TemporaryAccess"
-              ? isAuthor
-                ? "Start Session"
-                : "Watch Session"
+              ? sessionLabel
               : "Get SQL Dump"}
           </LoadingCancelButton>
         ) : (
@@ -370,11 +376,7 @@ function DatasourceRequestActions({
             dataTestId="run-query-button"
             title={getDisabledReason()}
           >
-            {request?.type == "SingleExecution"
-              ? "Run Query"
-              : isAuthor
-              ? "Start Session"
-              : "Watch Session"}
+            {request?.type == "SingleExecution" ? "Run Query" : sessionLabel}
           </Button>
         )}
         {splitButtonItems.length > 0 && (

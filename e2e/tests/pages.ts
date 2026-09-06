@@ -343,6 +343,7 @@ class LiveSessionPage {
 
   async executeQuery(query: string) {
     await this.page.waitForSelector('[data-testid="monaco-editor-wrapper"]');
+    await expect(this.page.getByRole("region", { name: "Session workspace" })).toHaveAttribute("aria-busy", "false");
 
     await this.page.click('[data-testid="monaco-editor-wrapper"]');
 

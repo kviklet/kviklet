@@ -14,7 +14,6 @@ import Auditlog from "./routes/Auditlog";
 import { NotificationContextProvider } from "./components/NotifcationStatusProvider";
 import { ConfigProvider } from "./components/ConfigProvider";
 import RequestReview from "./routes/Review";
-import LiveSessionWebsockets from "./routes/LiveSessionWebsockets";
 import { useHasPermission, useUserStatusLoading } from "./hooks/permissions";
 import RequirePermission from "./components/RequirePermission";
 import NotAuthorized from "./components/NotAuthorized";
@@ -129,18 +128,10 @@ function App() {
                     }
                   ></Route>
                   <Route
-                    path="requests/:requestId"
+                    path="requests/:requestId/*"
                     element={
                       <ProtectedRoute>
                         <RequestReview />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="requests/:requestId/session"
-                    element={
-                      <ProtectedRoute>
-                        <LiveSessionWebsockets />
                       </ProtectedRoute>
                     }
                   />

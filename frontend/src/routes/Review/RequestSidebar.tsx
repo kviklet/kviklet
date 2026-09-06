@@ -100,13 +100,17 @@ function RequestSidebar({
 
   return (
     <aside className="flex w-full flex-col gap-4 border-slate-200 dark:border-slate-700 md:order-last md:w-60 md:shrink-0 md:border-l md:pl-4">
-      <div
-        className={`${mapStatusToLabelColor(
-          mapStatus(request.reviewStatus, request.executionStatus),
-        )} w-fit rounded-md px-2 py-1 text-sm font-medium ring-1 ring-inset`}
-      >
-        {mapStatus(request.reviewStatus, request.executionStatus)}
-      </div>
+      {!(
+        request._type === "DATASOURCE" && request.type === "TemporaryAccess"
+      ) && (
+        <div
+          className={`${mapStatusToLabelColor(
+            mapStatus(request.reviewStatus, request.executionStatus),
+          )} w-fit rounded-md px-2 py-1 text-sm font-medium ring-1 ring-inset`}
+        >
+          {mapStatus(request.reviewStatus, request.executionStatus)}
+        </div>
+      )}
       {children}
       <SidebarDivider />
       <div className="grid grid-cols-2 gap-4 md:flex md:flex-col">
