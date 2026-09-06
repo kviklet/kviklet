@@ -1000,6 +1000,9 @@ class ExecutionRequestService(
             )
         }
         val executionRequest = executionRequestAdapter.getExecutionRequestDetailsForUpdate(executionRequestId)
+        if (executionRequest.request.type != RequestType.TemporaryAccess) {
+            throw RequestNotExecutableException("Only temporary access requests can start a proxy.")
+        }
         val connection = executionRequest.request.connection
         if (connection !is DatasourceConnection) {
             throw RuntimeException("Only Datasource connections be proxied")

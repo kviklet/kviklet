@@ -14,6 +14,8 @@ import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EnumSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
@@ -128,6 +130,24 @@ class ProxyGateTest {
         mockMvc.perform(post("/execution-requests/${request.getId()}/proxy").cookie(cookie))
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.message", containsString("disabled")))
+    }
+
+    @ParameterizedTest
+    @EnumSource(RequestType::class, names = ["SingleExecution", "Dump"])
+    fun `starting a proxy for a non-temporary request returns 400`(requestType: RequestType) {
+        installTestLicense()
+        configurationAdapter.setConfiguration(Configuration(teamsUrl = null, slackUrl = null, proxyEnabled = true))
+        val request = executionRequestHelper.createApprovedRequest(
+            dbcontainer = db,
+            author = adminUser,
+            approver = reviewerUser,
+            requestType = requestType,
+        )
+        val cookie = userHelper.login(email = adminUser.email, mockMvc = mockMvc)
+
+        mockMvc.perform(post("/execution-requests/${request.getId()}/proxy").cookie(cookie))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.message").value("Only temporary access requests can start a proxy."))
     }
 
     @Test
