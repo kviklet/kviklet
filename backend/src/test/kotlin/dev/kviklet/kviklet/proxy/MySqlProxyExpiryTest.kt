@@ -10,10 +10,11 @@ import dev.kviklet.kviklet.proxy.helpers.mysqlClientJdbcUrl
 import dev.kviklet.kviklet.proxy.helpers.waitForProxyStart
 import dev.kviklet.kviklet.proxy.mocks.EventServiceMock
 import dev.kviklet.kviklet.proxy.mysql.MySqlProtocol
+import dev.kviklet.kviklet.service.AlreadyExecutedException
+import dev.kviklet.kviklet.service.RequestNotExecutableException
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
-import dev.kviklet.kviklet.service.dto.ReviewStatus
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -23,6 +24,8 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
@@ -160,25 +163,31 @@ class MySqlProxyExpiryTest {
         }
     }
 
-    @Test
-    fun `a statement of a closed request is refused and ends its connection while other sessions keep serving`() {
-        // The registry teardown after a close is best effort; this is the actual boundary: the executability
+    @ParameterizedTest
+    @ValueSource(strings = ["rejected", "expired", "exhausted"])
+    fun `an execution refusal ends its connection while other sessions keep serving`(reason: String) {
+        // Session teardown is best effort; this is the actual boundary: the executability
         // guard on the audit write refuses the statement, and the proxy ends the session with that reason.
         val request = ExecutionRequestFactory().createDatasourceExecutionRequest()
-        register("closing", "pw", mysqlContainer, DatasourceType.MYSQL, expiresAt = null, executionRequest = request)
+        register("ending", "pw", mysqlContainer, DatasourceType.MYSQL, expiresAt = null, executionRequest = request)
         register("bystander", "pw2", mysqlContainer, DatasourceType.MYSQL)
-        val conn = connect(DatasourceType.MYSQL, "closing", "pw")
+        val conn = connect(DatasourceType.MYSQL, "ending", "pw")
         conn.createStatement().executeQuery("SELECT 1").close()
         val bystander = connect(DatasourceType.MYSQL, "bystander", "pw2")
         bystander.createStatement().executeQuery("SELECT 1").close()
         assertEquals(2, server.currentConnections)
 
-        eventServiceMock.markNotExecutable(request.id!!, ReviewStatus.REJECTED)
+        val refusal = when (reason) {
+            "rejected" -> RequestNotExecutableException("This request has been rejected!")
+            "expired" -> AlreadyExecutedException("This request's temporary access window has expired.")
+            else -> AlreadyExecutedException("This request's execution allowance is exhausted.")
+        }
+        eventServiceMock.markNotExecutable(request.id!!, refusal)
 
         val error = assertThrows(SQLException::class.java) {
             conn.createStatement().executeQuery("SELECT 2").close()
         }
-        assertTrue(error.message!!.contains("rejected"), "Unexpected error message: ${error.message}")
+        assertTrue(error.message!!.contains(refusal.message!!), "Unexpected error message: ${error.message}")
         val deadline = System.currentTimeMillis() + 15_000
         while (server.currentConnections != 1 && System.currentTimeMillis() < deadline) {
             Thread.sleep(100)
@@ -187,6 +196,9 @@ class MySqlProxyExpiryTest {
         assertTrue(server.isRunning, "Refusing a statement must not shut the server down")
         runCatching { conn.close() }
 
+        // The refused statement was never audited, unlike the ones before the refusal.
+        eventServiceMock.assertAuditedQueryContains("SELECT 1")
+        assertFalse(eventServiceMock.rawQueries.any { it.contains("SELECT 2") }, "A refused statement was audited")
         bystander.createStatement().executeQuery("SELECT 1").close()
         bystander.close()
     }

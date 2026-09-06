@@ -1141,7 +1141,7 @@ fun ExecutionRequestDetails.raiseIfAlreadyExecuted() {
 
             RequestType.TemporaryAccess ->
                 throw AlreadyExecutedException(
-                    "This request has timed out, temporary access is only valid for 60 minutes!",
+                    "This request's temporary access window has expired.",
                 )
         }
     }
@@ -1149,10 +1149,10 @@ fun ExecutionRequestDetails.raiseIfAlreadyExecuted() {
 
 class InvalidReviewException(message: String) : RuntimeException(message)
 
-class RequestNotExecutableException(message: String) : RuntimeException(message)
+open class RequestNotExecutableException(message: String) : RuntimeException(message)
 
 class DownloadException(message: String) : RuntimeException(message)
 
 class MissingQueryException(message: String) : RuntimeException(message)
 
-class AlreadyExecutedException(message: String) : RuntimeException(message)
+class AlreadyExecutedException(message: String) : RequestNotExecutableException(message)
