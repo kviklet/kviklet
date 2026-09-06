@@ -1132,6 +1132,9 @@ class ExecutionRequestService(
  * SQL dump): the request must be approved and must not have used up its executions.
  */
 fun ExecutionRequestDetails.raiseIfNotExecutable() {
+    if (isRejected()) {
+        throw RequestNotExecutableException("This request has been rejected!")
+    }
     if (resolveReviewStatus() != ReviewStatus.APPROVED) {
         throw RequestNotExecutableException("This request has not been approved yet!")
     }

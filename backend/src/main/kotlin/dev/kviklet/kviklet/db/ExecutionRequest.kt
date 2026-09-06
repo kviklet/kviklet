@@ -457,9 +457,8 @@ class ExecutionRequestAdapter(
         ?: throw EntityNotFound("User Not Found", "User with id $id does not exist.")
 
     @Transactional
-    fun getExecutionRequestDetails(id: ExecutionRequestId): ExecutionRequestDetails = getExecutionRequestDetailsEntity(
-        id,
-    ).toDetailDto(
-        connectionAdapter.toDto(getExecutionRequestDetailsEntity(id).connection),
-    )
+    fun getExecutionRequestDetails(id: ExecutionRequestId): ExecutionRequestDetails {
+        val entity = getExecutionRequestDetailsEntity(id)
+        return entity.toDetailDto(connectionAdapter.toDto(entity.connection))
+    }
 }
