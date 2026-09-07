@@ -2,11 +2,7 @@ import ResizableEditor from "./Review/ResizableEditor";
 import { defineSessionEditorThemes } from "./Review/sessionEditorThemes";
 import { useContext, useEffect, useRef, useState } from "react";
 import * as monaco from "monaco-editor/esm/vs/editor/editor.api";
-import {
-  CodeBracketIcon,
-  PlayIcon,
-  ChevronDownIcon,
-} from "@heroicons/react/20/solid";
+import { PlayIcon } from "@heroicons/react/20/solid";
 import Button from "../components/Button";
 import MultiResult from "../components/MultiResult";
 import Spinner from "../components/Spinner";
@@ -14,7 +10,6 @@ import SplitButtonDropdown from "../components/SplitButtonDropdown";
 import { isRelationalDatabase } from "../hooks/request";
 import useLiveSession from "../hooks/useLiveSession";
 import useNotification from "../hooks/useNotification";
-import ActivityTimeline from "./Review/ActivityTimeline";
 import {
   downloadResults,
   Execute,
@@ -28,6 +23,9 @@ import { WarningBanner } from "../components/Alert";
 import { ThemeStatusContext } from "../components/ThemeStatusProvider";
 import { UserStatusContext } from "../components/UserStatusProvider";
 
+// The editor sits where a query request shows its statement, so it borrows that
+// box's chrome; the request sidebar owns status and expiry, so nothing here
+// repeats them beyond the disabled button's tooltip.
 export default function LiveSessionWebsockets({
   request,
   expired,
@@ -48,27 +46,25 @@ export default function LiveSessionWebsockets({
   const [hasSelection, setHasSelection] = useState(false);
   const [hasContent, setHasContent] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
   const executingRef = useRef(false);
   const { currentTheme } = useContext(ThemeStatusContext);
   const { userStatus } = useContext(UserStatusContext);
   const { addNotification } = useNotification();
   const isAuthor = !!userStatus && userStatus.id === request.author.id;
   const needsApproval = request.reviewStatus !== "APPROVED";
+  const hasExecutePermission = hasPermission(
+    request.permissions,
+    "execution_request:execute",
+  );
   const canExecute =
-    isAuthor &&
-    !expired &&
-    !needsApproval &&
-    hasPermission(request.permissions, "execution_request:execute");
+    isAuthor && !expired && !needsApproval && hasExecutePermission;
   const readOnlyReason = expired
-    ? "Access has expired. Your query and activity are still available."
-    : request.reviewStatus === "REJECTED"
-    ? "This request is closed. Execution is disabled."
+    ? "Access has expired"
     : needsApproval
-    ? "This session is read-only until the request has been approved."
+    ? "Request needs to be approved before execution"
     : !isAuthor
-    ? `You are watching this session. Only ${request.author.fullName} can run statements.`
-    : !canExecute
+    ? `Only ${request.author.fullName} can run statements`
+    : !hasExecutePermission
     ? NO_EXECUTE_PERMISSION_MESSAGE
     : undefined;
   const {
@@ -113,7 +109,7 @@ export default function LiveSessionWebsockets({
       fontFamily: "'SFMono-Regular', Consolas, 'Liberation Mono', monospace",
       fontSize: 14,
       lineHeight: 24,
-      padding: { top: 20, bottom: 20 },
+      padding: { top: 12, bottom: 12 },
       lineNumbersMinChars: 3,
       glyphMargin: false,
       folding: false,
@@ -202,135 +198,81 @@ export default function LiveSessionWebsockets({
   const busy = isLoading || downloading;
   const downloadPossible =
     request._type === "DATASOURCE" && isRelationalDatabase(request);
+  // Expiry and approval are visible in the sidebar; only a missing permission
+  // needs spelling out, since nothing else on the page explains it.
+  const showPermissionBanner =
+    isAuthor && !expired && !needsApproval && !hasExecutePermission;
 
   return (
     <section aria-label="Session workspace" aria-busy={!isReady}>
-      {readOnlyReason && (
-        <WarningBanner className="mb-4" data-testid="read-only-banner">
-          {readOnlyReason}
+      {showPermissionBanner && (
+        <WarningBanner className="mb-3" data-testid="read-only-banner">
+          {NO_EXECUTE_PERMISSION_MESSAGE}
         </WarningBanner>
       )}
-      <div className="rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-t-lg border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
-          <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
-            <CodeBracketIcon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-            Query editor
-          </div>
-          <div className="flex items-center gap-3">
-            {isAuthor && (
-              <>
-                <span className="hidden text-xs text-slate-500 dark:text-slate-400 sm:inline">
-                  {navigator.userAgent.includes("Macintosh") ? "⌘" : "Ctrl"} +
-                  Enter
-                </span>
-                <div className="flex">
-                  <Button
-                    className={downloadPossible ? "rounded-r-none" : ""}
-                    variant={
-                      isLoading || (canEdit && hasContent && !downloading)
-                        ? "primary"
-                        : "disabled"
-                    }
-                    onClick={() => (isLoading ? cancelQuery() : void run())}
-                    title={readOnlyReason}
-                    dataTestId="run-query-button"
-                  >
-                    <span className="flex items-center gap-2">
-                      <PlayIcon className="h-4 w-4" />
-                      {isLoading
-                        ? "Cancel query"
-                        : downloading
-                        ? "Downloading…"
-                        : hasSelection
-                        ? "Run selection"
-                        : "Run query"}
-                    </span>
-                  </Button>
-                  {downloadPossible && (
-                    <SplitButtonDropdown
-                      variant={canExecute && !busy ? "primary" : "disabled"}
-                      items={[
-                        {
-                          content: "Run and download…",
-                          description:
-                            "Execute the query or selection and save its results.",
-                          enabled: canEdit && hasContent && !busy,
-                          tooltip: readOnlyReason,
-                          onClick: () => void run(true),
-                        },
-                      ]}
-                    />
-                  )}
-                </div>
-              </>
-            )}
-            {!isAuthor && (
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                Watching
-              </span>
-            )}
-          </div>
-        </div>
+      <div className="overflow-hidden rounded border border-slate-300 dark:border-slate-700">
         <ResizableEditor>
           <div className="h-full w-full" ref={monacoEl} />
         </ResizableEditor>
-        <div className="flex items-center justify-between px-4 py-3 text-sm">
-          <span className="font-medium text-slate-700 dark:text-slate-200">
-            Results
-          </span>
-          <span
-            role="status"
-            className="text-xs text-slate-500 dark:text-slate-400"
-          >
-            {isLoading
-              ? "Running query…"
-              : results
-              ? `${results.length} ${
-                  results.length === 1 ? "result" : "results"
-                }`
-              : "No query executed yet"}
-          </span>
-        </div>
-        <div
-          className="min-h-40 overflow-x-auto px-4 pb-4"
-          aria-busy={isLoading}
-        >
-          {isLoading ? (
-            <div className="flex justify-center py-10">
-              <Spinner />
-            </div>
-          ) : results && results.length > 0 ? (
-            <MultiResult resultList={results} />
-          ) : (
-            <div className="py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-              {expired
-                ? "Review previous executions in Activity below."
-                : "Run a query to see its results here."}
-            </div>
-          )}
-        </div>
       </div>
-      <div className="mt-5">
-        <button
-          type="button"
-          aria-expanded={historyOpen}
-          aria-controls="session-activity"
-          onClick={() => setHistoryOpen(!historyOpen)}
-          className="flex items-center gap-2 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
-        >
-          <ChevronDownIcon
-            className={`h-4 w-4 transition-transform ${
-              historyOpen ? "" : "-rotate-90"
-            }`}
-          />
-          Activity
-        </button>
-        <div id="session-activity" hidden={!historyOpen}>
-          <ActivityTimeline
-            request={request}
-            websocketEvents={websocketEvents}
-          />
-        </div>
+      <div className="mt-3 flex flex-wrap items-center justify-end gap-3">
+        {isAuthor ? (
+          <>
+            <span className="hidden text-xs text-slate-500 dark:text-slate-400 sm:inline">
+              {navigator.userAgent.includes("Macintosh") ? "⌘" : "Ctrl"} + Enter
+            </span>
+            <div className="flex">
+              <Button
+                className={downloadPossible ? "rounded-r-none" : ""}
+                variant={
+                  isLoading || (canEdit && hasContent && !downloading)
+                    ? "primary"
+                    : "disabled"
+                }
+                onClick={() => (isLoading ? cancelQuery() : void run())}
+                title={readOnlyReason}
+                dataTestId="run-query-button"
+              >
+                <span className="flex items-center gap-2">
+                  <PlayIcon className="h-4 w-4" />
+                  {isLoading
+                    ? "Cancel query"
+                    : downloading
+                    ? "Downloading…"
+                    : hasSelection
+                    ? "Run selection"
+                    : "Run query"}
+                </span>
+              </Button>
+              {downloadPossible && (
+                <SplitButtonDropdown
+                  variant={canExecute && !busy ? "primary" : "disabled"}
+                  items={[
+                    {
+                      content: "Run and download…",
+                      description:
+                        "Execute the query or selection and save its results.",
+                      enabled: canEdit && hasContent && !busy,
+                      tooltip: readOnlyReason,
+                      onClick: () => void run(true),
+                    },
+                  ]}
+                />
+              )}
+            </div>
+          </>
+        ) : (
+          <span className="text-sm text-slate-500 dark:text-slate-400">
+            You are watching this session. {readOnlyReason}.
+          </span>
+        )}
+      </div>
+      <div className="mt-4 flex justify-center" aria-busy={isLoading}>
+        {isLoading ? (
+          <Spinner />
+        ) : results && results.length > 0 ? (
+          <MultiResult resultList={results} />
+        ) : null}
       </div>
     </section>
   );

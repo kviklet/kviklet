@@ -128,9 +128,9 @@ test.describe("E2E Tests for Multiple Databases", () => {
           liveSessionName,
           `Testing ${db.name} live session`
         );
-        // The connection requires no reviews, so the user is dropped
-        // directly into the live session
-        await page.waitForURL("**/session");
+        // The connection requires no reviews, so the session editor is
+        // ready right on the new request's page
+        await page.waitForURL("**/requests/*");
         await expect(
           page.getByTestId("monaco-editor-wrapper")
         ).toBeVisible();

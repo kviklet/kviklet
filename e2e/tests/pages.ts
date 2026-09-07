@@ -325,10 +325,10 @@ class RequestsReviewPage {
     await this.page.getByTestId("submit-review-button").click();
   }
 
+  // The session editor sits inline on the request page.
   async startLiveSession() {
     await this.navigate();
-    await this.page.getByTestId("run-query-button").click();
-    await this.page.waitForURL("**/session");
+    await this.page.waitForURL("**/requests/*");
   }
 
   async executeRequest() {

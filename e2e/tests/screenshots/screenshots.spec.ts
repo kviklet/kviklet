@@ -101,7 +101,7 @@ for (const theme of THEMES) {
     });
 
     test(`LiveSession ${theme}`, async ({ page }) => {
-      await page.goto(`/requests/${seeded.liveSessionRequestId}/session`);
+      await page.goto(`/requests/${seeded.liveSessionRequestId}`);
       const editor = page.getByTestId("monaco-editor-wrapper");
       await expect(editor).toBeVisible();
       // Let the websocket deliver the session's initial editor content —
@@ -188,8 +188,7 @@ for (const theme of THEMES) {
       await expect(
         page.getByRole("heading", { name: PROXY_REQUEST_TITLE }),
       ).toBeVisible();
-      await page.getByTestId("execution-options-dropdown").click();
-      await page.getByText("Start Proxy", { exact: true }).click();
+      await page.getByTestId("start-proxy-button").click();
       await expect(page.getByText("Proxy session active")).toBeVisible();
       await shoot(page, "PostgresProxy", theme);
     });

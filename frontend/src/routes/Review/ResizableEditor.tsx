@@ -50,7 +50,7 @@ export default function ResizableEditor({ children }: { children: ReactNode }) {
         onPointerCancel={() => {
           drag.current = null;
         }}
-        className="flex h-4 cursor-row-resize touch-none items-center justify-center border-y border-slate-200 bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 dark:border-slate-700 dark:bg-slate-800"
+        className="flex h-4 cursor-row-resize touch-none items-center justify-center border-t border-slate-200 bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 dark:border-slate-700 dark:bg-slate-900"
       >
         <span className="h-1 w-8 rounded-full bg-slate-300 dark:bg-slate-600" />
       </div>

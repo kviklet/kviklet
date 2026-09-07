@@ -52,10 +52,8 @@ const navigateToCreatedRequest = (
       text: "No approval is required for this connection — your session is ready.",
       type: "info",
     });
-    void navigate(`/requests/${response.id}/session`);
-  } else {
-    void navigate(`/requests/${response.id}`);
   }
+  void navigate(`/requests/${response.id}`);
 };
 
 const languageString = (connection: ConnectionResponse): string => {

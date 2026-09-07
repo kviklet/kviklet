@@ -1,4 +1,4 @@
-import { Route, Navigate, Routes } from "react-router-dom";
+import { Route, Navigate, Routes, useParams } from "react-router-dom";
 import Settings from "./routes/settings/Settings";
 import RootLayout from "./layout/RootLayout";
 import { Requests } from "./routes/Requests";
@@ -51,6 +51,13 @@ export const ProtectedRoute = ({
   }
   return children;
 };
+function SessionRedirect() {
+  const { requestId } = useParams();
+  return (
+    <Navigate to={`/requests/${encodeURIComponent(requestId ?? "")}`} replace />
+  );
+}
+
 function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-50">
@@ -128,12 +135,17 @@ function App() {
                     }
                   ></Route>
                   <Route
-                    path="requests/:requestId/*"
+                    path="requests/:requestId"
                     element={
                       <ProtectedRoute>
                         <RequestReview />
                       </ProtectedRoute>
                     }
+                  />
+                  {/* The session now lives on the request page; old links keep working. */}
+                  <Route
+                    path="requests/:requestId/session"
+                    element={<SessionRedirect />}
                   />
                   <Route path="login" element={<Login />} />
                 </Route>

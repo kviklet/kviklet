@@ -3,7 +3,15 @@ import {
   ExecutionRequestResponseWithComments,
 } from "../../api/ExecutionRequestApi";
 
+const formatTime = (timestamp: number) =>
+  new Date(timestamp).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
 // Match the backend: the first non-dry-run execution starts the access window.
+// `label` is the single line the sidebar shows under the request type; the
+// status pill carries the state itself, so the label never repeats it.
 export function sessionAccess(
   request: ExecutionRequestResponseWithComments,
   liveEvents: Execute[],
@@ -15,35 +23,35 @@ export function sessionAccess(
   const firstExecution = executions.length
     ? Math.min(...executions.map((event) => event.createdAt.getTime()))
     : undefined;
+  const duration = request.temporaryAccessDuration;
   const expiresAt =
-    firstExecution !== undefined && request.temporaryAccessDuration != null
-      ? firstExecution + request.temporaryAccessDuration * 60_000
+    firstExecution !== undefined && duration != null
+      ? firstExecution + duration * 60_000
       : undefined;
   const expired =
     request.executionStatus === "EXECUTED" ||
     (expiresAt !== undefined && now >= expiresAt);
-  if (expired) return { expired, label: "Access expired", expiresAt };
-  if (request.reviewStatus === "REJECTED")
-    return { expired, label: "Request closed", expiresAt };
-  if (request.reviewStatus === "CHANGE_REQUESTED")
-    return { expired, label: "Changes requested", expiresAt };
+  if (expired) {
+    return {
+      expired,
+      expiresAt,
+      label:
+        expiresAt !== undefined ? `Expired at ${formatTime(expiresAt)}` : "",
+    };
+  }
+  if (duration == null) return { expired, expiresAt, label: "No expiry" };
   if (request.reviewStatus !== "APPROVED")
-    return { expired, label: "Awaiting approval", expiresAt };
-  if (request.temporaryAccessDuration == null)
-    return { expired, label: "No expiry", expiresAt };
+    return { expired, expiresAt, label: `Valid for ${duration} minutes` };
   if (expiresAt === undefined)
     return {
       expired,
-      label: `${request.temporaryAccessDuration} minutes of access · Starts with your first query`,
       expiresAt,
+      label: `${duration} minutes · starts with the first query`,
     };
-  const minutes = Math.min(
-    request.temporaryAccessDuration,
-    Math.ceil((expiresAt - now) / 60_000),
-  );
+  const minutes = Math.min(duration, Math.ceil((expiresAt - now) / 60_000));
   return {
     expired,
-    label: `${minutes} ${minutes === 1 ? "minute" : "minutes"} remaining`,
     expiresAt,
+    label: `${minutes} min left · expires at ${formatTime(expiresAt)}`,
   };
 }

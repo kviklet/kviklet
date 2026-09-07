@@ -9,6 +9,7 @@ import Button from "../../components/Button";
 import InitialBubble from "../../components/InitialBubble";
 import ConnectionLink from "./components/ConnectionLink";
 import ApprovalProgress from "./ApprovalProgress";
+import { sessionAccess } from "./sessionAccess";
 
 const requestTypeLabel = (
   request: ExecutionRequestResponseWithComments,
@@ -51,12 +52,21 @@ function SidebarDivider() {
 function RequestSidebar({
   request,
   sendReview,
+  access,
   children,
 }: {
   request: ExecutionRequestResponseWithComments;
   sendReview?: (comment: string, type: ReviewTypes) => Promise<boolean>;
+  /** Temporary access only: the live access window, so status and expiry
+   *  update without waiting for the backend to recompute the request. */
+  access?: ReturnType<typeof sessionAccess>;
   children: ReactNode;
 }) {
+  const status = mapStatus(
+    request.reviewStatus,
+    access?.expired ? "EXECUTED" : request.executionStatus,
+    request.type,
+  );
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const userContext = useContext(UserStatusContext);
   const progress = request.approvalProgress;
@@ -100,17 +110,14 @@ function RequestSidebar({
 
   return (
     <aside className="flex w-full flex-col gap-4 border-slate-200 dark:border-slate-700 md:order-last md:w-60 md:shrink-0 md:border-l md:pl-4">
-      {!(
-        request._type === "DATASOURCE" && request.type === "TemporaryAccess"
-      ) && (
-        <div
-          className={`${mapStatusToLabelColor(
-            mapStatus(request.reviewStatus, request.executionStatus),
-          )} w-fit rounded-md px-2 py-1 text-sm font-medium ring-1 ring-inset`}
-        >
-          {mapStatus(request.reviewStatus, request.executionStatus)}
-        </div>
-      )}
+      <div
+        className={`${mapStatusToLabelColor(
+          status,
+        )} w-fit rounded-md px-2 py-1 text-sm font-medium ring-1 ring-inset`}
+        data-testid="request-status"
+      >
+        {status}
+      </div>
       {children}
       <SidebarDivider />
       <div className="grid grid-cols-2 gap-4 md:flex md:flex-col">
@@ -128,11 +135,12 @@ function RequestSidebar({
         </SidebarSection>
         <SidebarSection label="Type">
           {requestTypeLabel(request)}
-          {request.type === "TemporaryAccess" && (
-            <div className="text-slate-500 dark:text-slate-400">
-              {request.temporaryAccessDuration != null
-                ? `Valid for ${request.temporaryAccessDuration} minutes`
-                : "Valid indefinitely"}
+          {request.type === "TemporaryAccess" && access?.label && (
+            <div
+              className="text-slate-500 dark:text-slate-400"
+              data-testid="session-access-status"
+            >
+              {access.label}
             </div>
           )}
         </SidebarSection>
