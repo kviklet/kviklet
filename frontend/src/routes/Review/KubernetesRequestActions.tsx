@@ -1,9 +1,8 @@
-import { FC, useContext } from "react";
+import { FC } from "react";
 import { useNavigate } from "react-router-dom";
 import { KubernetesExecutionRequestResponseWithComments } from "../../api/ExecutionRequestApi";
 import Button from "../../components/Button";
 import MenuDropDown from "../../components/MenuDropdown";
-import { UserStatusContext } from "../../components/UserStatusProvider";
 import {
   hasPermission,
   NO_CREATE_PERMISSION_MESSAGE,
@@ -20,10 +19,6 @@ const KubernetesRequestActions: FC<KubernetesRequestActionsProps> = ({
   request,
   runQuery,
 }) => {
-  const userContext = useContext(UserStatusContext);
-  const isAuthor =
-    !!userContext.userStatus &&
-    userContext.userStatus.id === request?.author?.id;
   const canExecute = hasPermission(
     request?.permissions,
     "execution_request:execute",
@@ -31,12 +26,10 @@ const KubernetesRequestActions: FC<KubernetesRequestActionsProps> = ({
   // Copying opens the new-request form, where the connection can still be changed —
   // so this is the global "can create anywhere" check, not one on this connection.
   const canCreateRequests = useHasPermission("execution_request:edit");
-  const executesDirectly = request?.type === "SingleExecution";
-
   const getDisabledReason = () => {
     if (request?.reviewStatus !== "APPROVED") {
       return "Request needs to be approved before execution";
-    } else if (executesDirectly && !canExecute) {
+    } else if (!canExecute) {
       return NO_EXECUTE_PERMISSION_MESSAGE;
     }
     return undefined;
@@ -71,27 +64,25 @@ const KubernetesRequestActions: FC<KubernetesRequestActionsProps> = ({
     },
   ];
 
+  // Temporary access has no primary action here: its session editor sits inline
+  // on the request page.
   return (
     <div className="flex w-full">
       <MenuDropDown items={menuDropDownItems}></MenuDropDown>
-      <Button
-        className="flex-1"
-        id="runQuery"
-        variant={
-          (request?.reviewStatus == "APPROVED" &&
-            !(executesDirectly && !canExecute) &&
-            "primary") ||
-          "disabled"
-        }
-        title={getDisabledReason()}
-        onClick={() => void runQuery(false)}
-      >
-        {request?.type == "SingleExecution"
-          ? "Run Command"
-          : isAuthor
-          ? "Start Session"
-          : "Watch Session"}
-      </Button>
+      {request?.type === "SingleExecution" && (
+        <Button
+          className="flex-1"
+          id="runQuery"
+          variant={
+            (request?.reviewStatus == "APPROVED" && canExecute && "primary") ||
+            "disabled"
+          }
+          title={getDisabledReason()}
+          onClick={() => void runQuery(false)}
+        >
+          Run Command
+        </Button>
+      )}
     </div>
   );
 };

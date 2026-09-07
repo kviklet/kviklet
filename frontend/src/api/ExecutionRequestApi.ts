@@ -535,7 +535,9 @@ const ColumnSchema = z.object({
 const SelectExecuteResponseSchema = withType(
   z.object({
     columns: z.array(ColumnSchema),
-    data: z.array(z.record(z.coerce.string())),
+    // SQL NULL arrives as JSON null; coercing it would make it read as the
+    // string "null", so the table could not tell the two apart.
+    data: z.array(z.record(z.union([z.null(), z.coerce.string()]))),
   }),
   "select",
 );

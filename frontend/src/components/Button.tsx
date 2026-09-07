@@ -18,8 +18,9 @@ function Button(props: {
     "bg-green-700 font-medium text-white hover:bg-green-800 dark:hover:bg-green-600 dark:bg-green-700 dark:text-slate-50 transition-colors";
   const disabledStyle =
     "bg-slate-300 text-slate-500 hover:bg-slate-300 hover:border-slate-300 dark:bg-slate-700 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:border-slate-700 dark:hover:text-slate-500";
+  // Same fill as the options menu, so neutral actions read as one family.
   const defaultStyle =
-    "border border-gray-300 hover:border-gray-400 dark:border-slate-700 dark:hover:border-slate-500 dark:bg-slate-800 dark:text-slate-50 transition-colors";
+    "bg-slate-100 text-slate-900 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-50 dark:hover:bg-slate-700 transition-colors";
   const dangerStyle =
     "bg-red-600 text-white hover:bg-red-800 transition-colors dark:bg-red-700 dark:hover:bg-red-600";
 

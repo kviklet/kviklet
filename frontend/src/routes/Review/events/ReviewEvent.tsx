@@ -38,14 +38,14 @@ function ReviewEvent({
         );
       case "REJECT":
         return (
-          <div className="text-sm text-red-500">
+          <div className="text-sm text-red-600 dark:text-red-400">
             {event.author?.fullName} rejected
             {timestamp}
           </div>
         );
       case "REQUEST_CHANGE":
         return (
-          <div className="text-sm text-red-500">
+          <div className="text-sm text-red-600 dark:text-red-400">
             {event.author?.fullName} requested changes
             {timestamp}
           </div>
@@ -66,7 +66,7 @@ function ReviewEvent({
       case "REJECT":
         return (
           <div className="z-0 -ml-1 mr-2 inline-block h-4 w-4 items-center bg-slate-50 fill-slate-950 pb-6 dark:bg-slate-950 dark:fill-slate-50">
-            <div className="inline pr-2 text-red-500">
+            <div className="inline pr-2 text-red-600 dark:text-red-400">
               <FontAwesomeIcon icon={solid("times")} />
             </div>
           </div>
@@ -74,7 +74,7 @@ function ReviewEvent({
       case "REQUEST_CHANGE":
         return (
           <div className="z-0 -ml-1 mr-2 inline-block h-4 w-4 items-center bg-slate-50 fill-slate-950 pb-6 dark:bg-slate-950 dark:fill-slate-50">
-            <div className="inline pr-2 text-red-500">
+            <div className="inline pr-2 text-red-600 dark:text-red-400">
               <FontAwesomeIcon icon={solid("pen")} />
             </div>
           </div>

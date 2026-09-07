@@ -76,16 +76,11 @@ function DatasourceRequestActions({
       return "Request has already been executed";
     } else if (request?.type === "Dump" && !isAuthor) {
       return "Only the requester can download the dump";
-    } else if (executesDirectly && !canExecute) {
+    } else if (!canExecute) {
       return NO_EXECUTE_PERMISSION_MESSAGE;
     }
     return undefined;
   };
-
-  // Start/Watch Session only navigates to the live session; the execute permission is
-  // enforced there. Run Query and Get SQL Dump execute right here.
-  const executesDirectly =
-    request?.type === "SingleExecution" || request?.type === "Dump";
 
   // Downloading executes the stored statement, so it's only available for relational
   // (non-Mongo) single-execution requests. Temporary access downloads run from the live
@@ -112,27 +107,27 @@ function DatasourceRequestActions({
       });
     }
   };
-  const menuDropDownItems = [
-    {
-      onClick: () => {
-        void navigateCopy();
-      },
-      enabled: canCreateRequests,
-      tooltip: canCreateRequests ? undefined : NO_CREATE_PERMISSION_MESSAGE,
-      content: "Copy Request",
+  const copyMenuItem = {
+    onClick: () => {
+      void navigateCopy();
     },
-  ];
+    enabled: canCreateRequests,
+    tooltip: canCreateRequests ? undefined : NO_CREATE_PERMISSION_MESSAGE,
+    content: "Copy Request",
+  };
 
-  // The proxy entry is always visible so the feature is discoverable: without a license it
+  // Temporary access runs its web session inline, so Start Proxy is the request's only
+  // primary action. It stays visible so the feature is discoverable: without a license it
   // opens the enterprise upsell; with a license but the proxy switched off it's grayed out.
-  const proxyMenuItem = !licenseValid
+  const proxyAction = !licenseValid
     ? {
         onClick: () => {
           setShowProxyUpsellModal(true);
         },
         enabled: true,
+        tooltip: undefined,
         content: (
-          <span className="flex items-center justify-between">
+          <span className="flex items-center justify-center gap-2">
             Start Proxy
             <span
               className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium
@@ -142,7 +137,6 @@ function DatasourceRequestActions({
             </span>
           </span>
         ),
-        description: "Connect a native database client through Kviklet.",
       }
     : {
         onClick: () => {
@@ -163,7 +157,6 @@ function DatasourceRequestActions({
           ? NO_EXECUTE_PERMISSION_MESSAGE
           : undefined,
         content: "Start Proxy",
-        description: "Connect a native database client through Kviklet.",
       };
 
   // The split button's dropdown carries the alternative flavors of the primary action
@@ -237,9 +230,8 @@ function DatasourceRequestActions({
               ]
             : []),
         ]
-      : request?.type === "TemporaryAccess"
-      ? [proxyMenuItem]
       : [];
+  const menuDropDownItems = [copyMenuItem];
 
   const fileHandler = async (connectionId: string) => {
     try {
@@ -335,14 +327,25 @@ function DatasourceRequestActions({
     request?.reviewStatus !== "APPROVED" ||
     request?.executionStatus === "EXECUTED" ||
     (request?.type === "Dump" && !isAuthor) ||
-    (executesDirectly && !canExecute);
+    !canExecute;
   const primaryRounding = splitButtonItems.length > 0 ? "rounded-r-none" : "";
 
   return (
     <>
       <div className="flex w-full">
         <MenuDropDown items={menuDropDownItems}></MenuDropDown>
-        {isRelationalDatabase(request) ? (
+        {request?.type === "TemporaryAccess" ? (
+          <Button
+            className="flex-1"
+            id="startProxy"
+            variant={proxyAction.enabled ? undefined : "disabled"}
+            onClick={proxyAction.onClick}
+            title={proxyAction.tooltip}
+            dataTestId="start-proxy-button"
+          >
+            {proxyAction.content}
+          </Button>
+        ) : isRelationalDatabase(request) ? (
           <LoadingCancelButton
             className={`flex-1 ${primaryRounding}`}
             id="runQuery"
@@ -353,13 +356,7 @@ function DatasourceRequestActions({
             dataTestId="run-query-button"
             title={getDisabledReason()}
           >
-            {request?.type === "SingleExecution"
-              ? "Run Query"
-              : request?.type === "TemporaryAccess"
-              ? isAuthor
-                ? "Start Session"
-                : "Watch Session"
-              : "Get SQL Dump"}
+            {request?.type === "SingleExecution" ? "Run Query" : "Get SQL Dump"}
           </LoadingCancelButton>
         ) : (
           <Button
@@ -370,11 +367,7 @@ function DatasourceRequestActions({
             dataTestId="run-query-button"
             title={getDisabledReason()}
           >
-            {request?.type == "SingleExecution"
-              ? "Run Query"
-              : isAuthor
-              ? "Start Session"
-              : "Watch Session"}
+            Run Query
           </Button>
         )}
         {splitButtonItems.length > 0 && (

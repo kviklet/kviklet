@@ -1,4 +1,4 @@
-import { Route, Navigate, Routes } from "react-router-dom";
+import { Route, Navigate, Routes, useParams } from "react-router-dom";
 import Settings from "./routes/settings/Settings";
 import RootLayout from "./layout/RootLayout";
 import { Requests } from "./routes/Requests";
@@ -14,7 +14,6 @@ import Auditlog from "./routes/Auditlog";
 import { NotificationContextProvider } from "./components/NotifcationStatusProvider";
 import { ConfigProvider } from "./components/ConfigProvider";
 import RequestReview from "./routes/Review";
-import LiveSessionWebsockets from "./routes/LiveSessionWebsockets";
 import { useHasPermission, useUserStatusLoading } from "./hooks/permissions";
 import RequirePermission from "./components/RequirePermission";
 import NotAuthorized from "./components/NotAuthorized";
@@ -52,6 +51,13 @@ export const ProtectedRoute = ({
   }
   return children;
 };
+function SessionRedirect() {
+  const { requestId } = useParams();
+  return (
+    <Navigate to={`/requests/${encodeURIComponent(requestId ?? "")}`} replace />
+  );
+}
+
 function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-50">
@@ -136,13 +142,10 @@ function App() {
                       </ProtectedRoute>
                     }
                   />
+                  {/* The session now lives on the request page; old links keep working. */}
                   <Route
                     path="requests/:requestId/session"
-                    element={
-                      <ProtectedRoute>
-                        <LiveSessionWebsockets />
-                      </ProtectedRoute>
-                    }
+                    element={<SessionRedirect />}
                   />
                   <Route path="login" element={<Login />} />
                 </Route>

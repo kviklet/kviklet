@@ -325,10 +325,10 @@ class RequestsReviewPage {
     await this.page.getByTestId("submit-review-button").click();
   }
 
+  // The session editor sits inline on the request page.
   async startLiveSession() {
     await this.navigate();
-    await this.page.getByTestId("run-query-button").click();
-    await this.page.waitForURL("**/session");
+    await this.page.waitForURL("**/requests/*");
   }
 
   async executeRequest() {
@@ -343,6 +343,7 @@ class LiveSessionPage {
 
   async executeQuery(query: string) {
     await this.page.waitForSelector('[data-testid="monaco-editor-wrapper"]');
+    await expect(this.page.getByRole("region", { name: "Session workspace" })).toHaveAttribute("aria-busy", "false");
 
     await this.page.click('[data-testid="monaco-editor-wrapper"]');
 

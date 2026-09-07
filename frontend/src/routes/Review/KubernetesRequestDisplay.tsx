@@ -34,7 +34,9 @@ function KubernetesRequestDisplay({
           (results && <ShellResult {...results}></ShellResult>)}
       </div>
       {executionError && (
-        <div className="my-4 text-red-500">{executionError}</div>
+        <div className="my-4 text-red-600 dark:text-red-400">
+          {executionError}
+        </div>
       )}
       {proxyResponse && <ProxyConnectionCard proxy={proxyResponse} />}
     </>

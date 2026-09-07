@@ -167,7 +167,7 @@ function ExecuteEvent({
                             );
                           } else if (result.type === "ERROR") {
                             return (
-                              <div className="flex justify-between text-red-500">
+                              <div className="flex justify-between text-red-600 dark:text-red-400">
                                 <span>
                                   Query resulted in Error "{result.message}""
                                   with code "{result.errorCode}"".

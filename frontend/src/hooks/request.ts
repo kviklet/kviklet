@@ -262,6 +262,7 @@ const useRequest = (id: string) => {
     executionError,
     loading,
     proxyResponse,
+    refreshRequest,
     isRelationalDatabase,
   };
 };

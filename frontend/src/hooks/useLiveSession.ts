@@ -24,6 +24,7 @@ const useLiveSession = (
     undefined,
   );
   const [isLoading, setIsLoading] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   const [updatedRows, setUpdatedRows] = useState<number | undefined>(undefined);
   const [websocketEvents, setWebsocketEvents] = useState<Execute[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -64,6 +65,7 @@ const useLiveSession = (
     };
 
     socket.onclose = (event) => {
+      setIsReady(false);
       console.log("WebSocket connection closed", event);
       if (!event.wasClean) {
         console.error("Connection lost unexpectedly. Please refresh the page.");
@@ -79,7 +81,14 @@ const useLiveSession = (
     ws.current = socket;
 
     return () => {
-      if (socket.readyState === WebSocket.OPEN) {
+      debouncedUpdateContent.flush();
+      debouncedUpdateContent.cancel();
+      socket.onclose = null;
+      socket.onerror = null;
+      socket.onmessage = null;
+      if (socket.readyState === WebSocket.CONNECTING) {
+        socket.onopen = () => socket.close();
+      } else if (socket.readyState === WebSocket.OPEN) {
         socket.close();
       }
     };
@@ -105,6 +114,7 @@ const useLiveSession = (
       console.log(messageData);
       switch (messageData.type) {
         case "status":
+          setIsReady(true);
           // If this ref is in our in-flight set, it's our own echo - ignore it
           if (inFlightRefsRef.current.has(messageData.ref)) {
             inFlightRefsRef.current.delete(messageData.ref);
@@ -272,6 +282,7 @@ const useLiveSession = (
     updateContent: debouncedUpdateContent,
     cancelQuery,
     isLoading,
+    isReady,
     results,
     updatedRows,
     websocketEvents,

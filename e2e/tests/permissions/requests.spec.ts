@@ -409,7 +409,7 @@ test("a session turns read-only when the author's write role is revoked", async 
     "Session for the revocation test",
   );
   await page.waitForURL("**/requests/*");
-  const sessionUrl = `${new URL(page.url()).pathname}/session`;
+  const sessionUrl = new URL(page.url()).pathname;
 
   // An admin approves it, then removes the writer's role.
   await loginPage.logout();

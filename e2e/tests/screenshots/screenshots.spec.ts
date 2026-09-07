@@ -41,12 +41,7 @@ async function useTheme(page: Page, theme: Theme) {
   }, theme);
 }
 
-async function shoot(
-  page: Page,
-  name: string,
-  theme: Theme,
-  target?: Locator,
-) {
+async function shoot(page: Page, name: string, theme: Theme, target?: Locator) {
   // Web fonts still loading would shift text between runs.
   await page.evaluate(() => document.fonts.ready);
   const file = path.join(OUTPUT_DIR, `${name}_${theme}.png`);
@@ -101,25 +96,36 @@ for (const theme of THEMES) {
     });
 
     test(`LiveSession ${theme}`, async ({ page }) => {
-      await page.goto(`/requests/${seeded.liveSessionRequestId}/session`);
+      await page.goto(`/requests/${seeded.liveSessionRequestId}`);
       const editor = page.getByTestId("monaco-editor-wrapper");
       await expect(editor).toBeVisible();
-      // Let the websocket deliver the session's initial editor content —
-      // typing before it lands gets wiped by the incoming sync.
-      await page.waitForTimeout(1000);
+      // The session's initial editor content arrives with the websocket's
+      // first status message; typing before it lands gets wiped or duplicated
+      // by the incoming sync, so wait for the workspace to report ready.
+      await expect(
+        page.getByRole("region", { name: "Session workspace" }),
+      ).toHaveAttribute("aria-busy", "false");
       await editor.click();
       // The session editor content is synced server-side, so it may already
       // hold the query from a previous themed run — replace, don't append.
-      // Monaco binds select-all to the platform's native chord.
-      await page.keyboard.press(
-        process.platform === "darwin" ? "Meta+A" : "Control+A",
-      );
+      // Monaco picks its chords from the user agent, and the emulated Desktop
+      // Chrome device reports Linux, so select-all is Ctrl+A even on macOS.
+      await page.keyboard.press("Control+A");
       await page.keyboard.press("Backspace");
       await page.keyboard.type(LIVE_SESSION_QUERY);
+      // The line is wider than the editor, which scrolls to keep the cursor in
+      // view; jump back so the statement reads from its start.
+      await page.keyboard.press("Home");
+      // A one-line query does not need the default editor height; shrink it
+      // so the whole results table fits into the frame.
+      const resize = page.getByRole("separator", {
+        name: "Resize query editor",
+      });
+      await resize.focus();
+      for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowUp");
+      await expect(resize).toHaveAttribute("aria-valuenow", "160");
       await page.getByTestId("run-query-button").click();
-      await expect(
-        page.getByTestId("result-table-cell").first(),
-      ).toBeVisible();
+      await expect(page.getByTestId("result-table-cell").first()).toBeVisible();
       await shoot(page, "LiveSession", theme);
     });
 
@@ -188,8 +194,7 @@ for (const theme of THEMES) {
       await expect(
         page.getByRole("heading", { name: PROXY_REQUEST_TITLE }),
       ).toBeVisible();
-      await page.getByTestId("execution-options-dropdown").click();
-      await page.getByText("Start Proxy", { exact: true }).click();
+      await page.getByTestId("start-proxy-button").click();
       await expect(page.getByText("Proxy session active")).toBeVisible();
       await shoot(page, "PostgresProxy", theme);
     });
