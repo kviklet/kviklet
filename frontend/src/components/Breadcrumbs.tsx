@@ -31,6 +31,15 @@ function Breadcrumbs({
             >
               {item.label}
             </Link>
+          ) : index === items.length - 1 ? (
+            // The trailing crumb is the page's only title, so it carries the
+            // heading role.
+            <h1
+              aria-current="page"
+              className="min-w-0 truncate font-medium text-slate-900 dark:text-slate-50"
+            >
+              {item.label}
+            </h1>
           ) : (
             <span className="min-w-0 truncate text-slate-900 dark:text-slate-50">
               {item.label}

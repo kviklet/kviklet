@@ -72,12 +72,12 @@ function RequestReviewContent() {
         (request && (
           <div className="m-auto mt-10 max-w-5xl">
             <Breadcrumbs
+              className="mb-4"
               items={[
                 { label: "Requests", to: "/requests" },
                 { label: request.title },
               ]}
             />
-            <h1 className="my-2 text-3xl">{request?.title}</h1>
             <div className="flex flex-col gap-6 md:flex-row md:items-start">
               <RequestSidebar
                 request={request}
