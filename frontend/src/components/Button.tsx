@@ -21,7 +21,7 @@ function Button(props: {
   // An inset ring instead of a border keeps this variant the same height as
   // the filled ones, so mixed rows of buttons line up.
   const defaultStyle =
-    "ring-1 ring-inset ring-gray-300 hover:ring-gray-400 dark:ring-slate-700 dark:hover:ring-slate-500 dark:bg-slate-800 dark:text-slate-50 transition-colors";
+    "ring-1 ring-inset ring-gray-300 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-50 dark:ring-slate-700 dark:hover:bg-slate-700 transition-colors";
   const dangerStyle =
     "bg-red-600 text-white hover:bg-red-800 transition-colors dark:bg-red-700 dark:hover:bg-red-600";
 
