@@ -12,6 +12,7 @@ import DatasourceRequestActions from "./DatasourceRequestActions";
 import DatasourceRequestDisplay from "./DatasourceRequestDisplay";
 import KubernetesRequestActions from "./KubernetesRequestActions";
 import KubernetesRequestDisplay from "./KubernetesRequestDisplay";
+import ProxyConnectionCard from "./ProxyConnectionCard";
 import RequestSidebar from "./RequestSidebar";
 
 interface RequestReviewParams {
@@ -103,7 +104,6 @@ function RequestReviewContent() {
                     results={results}
                     dataLoading={dataLoading}
                     executionError={executionError}
-                    proxyResponse={proxyResponse}
                   ></DatasourceRequestDisplay>
                 ) : (
                   <KubernetesRequestDisplay
@@ -112,14 +112,17 @@ function RequestReviewContent() {
                     results={kubernetesResults}
                     dataLoading={dataLoading}
                     executionError={executionError}
-                    proxyResponse={proxyResponse}
                   ></KubernetesRequestDisplay>
                 )}
                 {access &&
                   // The session takes the statement's place. It only connects once
                   // the request is approved; before that the page has nothing to
                   // sync and reviewers should not open sessions on pending requests.
-                  (request.reviewStatus === "APPROVED" ? (
+                  // A started proxy takes over the slot: the user connects with
+                  // their own client, so the web editor has nothing left to do.
+                  (proxyResponse ? (
+                    <ProxyConnectionCard proxy={proxyResponse} />
+                  ) : request.reviewStatus === "APPROVED" ? (
                     <LiveSessionWebsockets
                       request={request}
                       expired={access.expired}

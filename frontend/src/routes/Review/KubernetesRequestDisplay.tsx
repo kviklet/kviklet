@@ -1,12 +1,10 @@
 import {
-  ProxyResponse,
   KubernetesExecutionRequestResponseWithComments,
   KubernetesExecuteResponse,
 } from "../../api/ExecutionRequestApi";
 import Spinner from "../../components/Spinner";
 import ShellResult from "../../components/ShellResult";
 import KubernetesRequestBox from "./KubernetesRequestBox";
-import ProxyConnectionCard from "./ProxyConnectionCard";
 
 function KubernetesRequestDisplay({
   request,
@@ -14,14 +12,12 @@ function KubernetesRequestDisplay({
   results,
   dataLoading,
   executionError,
-  proxyResponse,
 }: {
   request: KubernetesExecutionRequestResponseWithComments;
   updateRequest: (request: { command?: string }) => Promise<void>;
   results: KubernetesExecuteResponse | undefined;
   dataLoading: boolean;
   executionError: string | undefined;
-  proxyResponse: ProxyResponse | undefined;
 }) {
   return (
     <>
@@ -38,7 +34,6 @@ function KubernetesRequestDisplay({
           {executionError}
         </div>
       )}
-      {proxyResponse && <ProxyConnectionCard proxy={proxyResponse} />}
     </>
   );
 }
