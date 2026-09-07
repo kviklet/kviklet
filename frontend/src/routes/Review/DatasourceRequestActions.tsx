@@ -338,7 +338,7 @@ function DatasourceRequestActions({
           <Button
             className="flex-1"
             id="startProxy"
-            variant={proxyAction.enabled ? "primary" : "disabled"}
+            variant={proxyAction.enabled ? undefined : "disabled"}
             onClick={proxyAction.onClick}
             title={proxyAction.tooltip}
             dataTestId="start-proxy-button"
