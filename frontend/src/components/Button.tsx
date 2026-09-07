@@ -18,10 +18,9 @@ function Button(props: {
     "bg-green-700 font-medium text-white hover:bg-green-800 dark:hover:bg-green-600 dark:bg-green-700 dark:text-slate-50 transition-colors";
   const disabledStyle =
     "bg-slate-300 text-slate-500 hover:bg-slate-300 hover:border-slate-300 dark:bg-slate-700 dark:text-slate-500 dark:hover:bg-slate-700 dark:hover:border-slate-700 dark:hover:text-slate-500";
-  // An inset ring instead of a border keeps this variant the same height as
-  // the filled ones, so mixed rows of buttons line up.
+  // Same fill as the options menu, so neutral actions read as one family.
   const defaultStyle =
-    "ring-1 ring-inset ring-gray-300 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-50 dark:ring-slate-700 dark:hover:bg-slate-700 transition-colors";
+    "bg-slate-100 text-slate-900 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-50 dark:hover:bg-slate-700 transition-colors";
   const dangerStyle =
     "bg-red-600 text-white hover:bg-red-800 transition-colors dark:bg-red-700 dark:hover:bg-red-600";
 
