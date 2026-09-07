@@ -7,6 +7,22 @@ import {
   SettingsPage,
 } from "./pages";
 
+test.describe("Login redirect", () => {
+  test("Opening a page while logged out returns there after login", async ({
+    page,
+  }) => {
+    await page.goto("/settings/users");
+    await page.waitForURL(/\/login\?redirect=/);
+
+    await page.getByTestId("email-input").fill("admin@admin.com");
+    await page.getByTestId("password-input").fill("admin");
+    await page.getByTestId("login-button").click();
+
+    await expect(page).toHaveURL(/\/settings\/users$/);
+    await expect(page.getByTestId("user-admin@admin.com")).toBeVisible();
+  });
+});
+
 test.describe("E2E Tests for Multiple Databases", () => {
   let loginPage: LoginPage;
   let settingsPage: SettingsPage;
@@ -95,7 +111,7 @@ test.describe("E2E Tests for Multiple Databases", () => {
           db.host,
           db.port,
           db.database,
-          db.additionalOptions
+          db.additionalOptions,
         );
         // Verify the connection appears in the table
         await expect(page.locator(`text=${connectionName}`)).toBeVisible();
@@ -106,12 +122,12 @@ test.describe("E2E Tests for Multiple Databases", () => {
           connectionName,
           requestName,
           `Testing ${db.name} connection`,
-          db.testQuery
+          db.testQuery,
         );
         // Creating a request lands on its detail page
         await page.waitForURL("**/requests/*");
         await expect(
-          page.getByRole("heading", { name: requestName })
+          page.getByRole("heading", { name: requestName }),
         ).toBeVisible();
       });
 
@@ -126,14 +142,12 @@ test.describe("E2E Tests for Multiple Databases", () => {
         await requestsPage.createSession(
           connectionName,
           liveSessionName,
-          `Testing ${db.name} live session`
+          `Testing ${db.name} live session`,
         );
         // The connection requires no reviews, so the session editor is
         // ready right on the new request's page
         await page.waitForURL("**/requests/*");
-        await expect(
-          page.getByTestId("monaco-editor-wrapper")
-        ).toBeVisible();
+        await expect(page.getByTestId("monaco-editor-wrapper")).toBeVisible();
       });
 
       test(`Execute ${db.name} Live Session`, async ({ page }) => {
@@ -182,9 +196,9 @@ test.describe("Kubernetes Connection Timeout Settings", () => {
     await expect(
       page.getByTestId("kubernetes-exec-initial-wait-timeout-seconds"),
     ).toHaveValue("5");
-    await expect(page.getByTestId("kubernetes-exec-timeout-minutes")).toHaveValue(
-      "60",
-    );
+    await expect(
+      page.getByTestId("kubernetes-exec-timeout-minutes"),
+    ).toHaveValue("60");
 
     // Update values
     await page
@@ -203,9 +217,9 @@ test.describe("Kubernetes Connection Timeout Settings", () => {
     await expect(
       page.getByTestId("kubernetes-exec-initial-wait-timeout-seconds"),
     ).toHaveValue("2");
-    await expect(page.getByTestId("kubernetes-exec-timeout-minutes")).toHaveValue(
-      "30",
-    );
+    await expect(
+      page.getByTestId("kubernetes-exec-timeout-minutes"),
+    ).toHaveValue("30");
   });
 });
 
@@ -238,7 +252,7 @@ test.describe("User Management Tests", () => {
     await settingsPage.addUser(
       "Developer Account",
       "developer@example.com",
-      "developerpass"
+      "developerpass",
     );
     await settingsPage.addDeveloperRoleToUser("developer@example.com");
     await expect(page.getByText("developer@example.com")).toBeVisible();
@@ -251,7 +265,6 @@ test.describe("User Management Tests", () => {
     await expect(page.getByTestId("requests-list")).toBeVisible();
   });
 });
-
 
 test.describe("Connection Review Workflow", () => {
   let adminLoginPage: LoginPage;
@@ -276,7 +289,7 @@ test.describe("Connection Review Workflow", () => {
     await settingsPage.addUser(
       "Developer Review Account",
       developerEmail,
-      developerPassword
+      developerPassword,
     );
     await settingsPage.addDeveloperRoleToUser(developerEmail);
     await page.getByTestId("settings-dropdown").click();
@@ -299,7 +312,7 @@ test.describe("Connection Review Workflow", () => {
       "5432",
       "postgres",
       undefined,
-      1 // Set required reviews to 1
+      1, // Set required reviews to 1
     );
 
     // Admin creates a request
@@ -307,7 +320,7 @@ test.describe("Connection Review Workflow", () => {
       "Review Required Connection",
       "Test Review Request",
       "This request requires a review",
-      "SELECT 1 AS result;"
+      "SELECT 1 AS result;",
     );
 
     // Admin logs out

@@ -1,4 +1,10 @@
-import { Route, Navigate, Routes, useParams } from "react-router-dom";
+import {
+  Route,
+  Navigate,
+  Routes,
+  useLocation,
+  useParams,
+} from "react-router-dom";
 import Settings from "./routes/settings/Settings";
 import RootLayout from "./layout/RootLayout";
 import { Requests } from "./routes/Requests";
@@ -18,6 +24,7 @@ import { useHasPermission, useUserStatusLoading } from "./hooks/permissions";
 import RequirePermission from "./components/RequirePermission";
 import NotAuthorized from "./components/NotAuthorized";
 import Spinner from "./components/Spinner";
+import { loginPathFor } from "./hooks/loginRedirect";
 
 export interface ProtectedRouteProps {
   children: ReactElement;
@@ -42,12 +49,20 @@ export const ProtectedRoute = ({
   children,
 }: ProtectedRouteProps): ReactElement => {
   const userContext = useContext(UserStatusContext);
+  const location = useLocation();
 
   if (userContext.userStatus === undefined) {
     return <div>Loading...</div>;
   }
   if (userContext.userStatus === false) {
-    return <Navigate to="/login" />;
+    // Remember where the user wanted to go so the login page can send them back there —
+    // unless they just logged out, in which case the next login starts from the index page.
+    return (
+      <Navigate
+        to={userContext.loggedOut ? "/login" : loginPathFor(location)}
+        replace
+      />
+    );
   }
   return children;
 };

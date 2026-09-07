@@ -10,6 +10,10 @@ import Spinner from "../components/Spinner";
 import { isApiErrorResponse } from "../api/Errors";
 import useNotification from "../hooks/useNotification";
 import { attemptLogin } from "../api/LoginApi";
+import {
+  useLoginRedirectTarget,
+  withRedirectTarget,
+} from "../hooks/loginRedirect";
 
 const StyledInput = (props: {
   name: string;
@@ -45,6 +49,13 @@ const Login = () => {
 
   const { addNotification } = useNotification();
 
+  // Where to go after logging in: the page that bounced the user here, or the index page.
+  // SSO logins leave the app for the identity provider, so the backend has to carry the
+  // target through that round trip; it takes it as the same `redirect` parameter.
+  const redirectTarget = useLoginRedirectTarget();
+  const ssoUrl = (path: string) =>
+    withRedirectTarget(`${baseUrl}${path}`, redirectTarget);
+
   const hasSso = !!config?.oauthProvider || !!config?.samlEnabled;
   const showForm = !hasSso || showLocalLogin;
 
@@ -76,7 +87,7 @@ const Login = () => {
       if (config.oauthProvider === "google") {
         return (
           <a
-            href={`${baseUrl}/oauth2/authorization/google`}
+            href={ssoUrl("/oauth2/authorization/google")}
             className="block w-full"
           >
             <GoogleButton type="light" className="m-auto"></GoogleButton>
@@ -86,7 +97,7 @@ const Login = () => {
       if (config.oauthProvider === "keycloak") {
         return (
           <a
-            href={`${baseUrl}/oauth2/authorization/keycloak`}
+            href={ssoUrl("/oauth2/authorization/keycloak")}
             className="block w-full"
           >
             <Button className="mx-auto w-full">Login with Keycloak</Button>
@@ -95,7 +106,7 @@ const Login = () => {
       } else {
         return (
           <a
-            href={`${baseUrl}/oauth2/authorization/${config.oauthProvider}`}
+            href={ssoUrl(`/oauth2/authorization/${config.oauthProvider}`)}
             className="block w-full"
           >
             <Button className="mx-auto w-full">
@@ -110,7 +121,7 @@ const Login = () => {
   const samlButton = () => {
     if (config?.samlEnabled) {
       return (
-        <a href={`${baseUrl}/saml2/authenticate/saml`} className="block w-full">
+        <a href={ssoUrl("/saml2/authenticate/saml")} className="block w-full">
           <Button className="mx-auto w-full">Login with SAML</Button>
         </a>
       );
@@ -118,9 +129,9 @@ const Login = () => {
   };
 
   if (userContext.userStatus) {
-    // Already (or freshly) logged in — the index landing routes users without
-    // execution_request:get to their profile instead of the requests list.
-    return <Navigate to="/" replace />;
+    // Already (or freshly) logged in. Without a target this is the index landing, which
+    // routes users without execution_request:get to their profile instead of the requests list.
+    return <Navigate to={redirectTarget} replace />;
   }
 
   return (
