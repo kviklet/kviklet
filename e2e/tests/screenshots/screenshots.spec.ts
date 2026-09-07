@@ -113,11 +113,10 @@ for (const theme of THEMES) {
       await page.keyboard.press("Control+A");
       await page.keyboard.press("Backspace");
       await page.keyboard.type(LIVE_SESSION_QUERY);
-      // The line is wider than the editor, which scrolls to keep the cursor in
-      // view; jump back so the statement reads from its start.
-      await page.keyboard.press("Home");
-      // A one-line query does not need the default editor height; shrink it
-      // so the whole results table fits into the frame.
+      // Monaco renders whitespace as its own glyphs, so match a bare token.
+      await expect(editor).toContainText("shipping_id;");
+      // The query needs fewer lines than the default editor height offers;
+      // shrink it so the whole results table still fits into the frame.
       const resize = page.getByRole("separator", {
         name: "Resize query editor",
       });

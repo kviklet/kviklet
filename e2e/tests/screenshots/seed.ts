@@ -29,8 +29,11 @@ export const HERO_STATEMENT =
   "UPDATE shipping SET tracking_number = 'TRACK1359' where shipping_id='13';";
 export const PROXY_REQUEST_TITLE = "Investigate order sync delay";
 export const LIVE_SESSION_REQUEST_TITLE = "Analyze shipping delays";
-export const LIVE_SESSION_QUERY =
-  "SELECT shipping_id, customer, tracking_number, status FROM shipping ORDER BY shipping_id;";
+export const LIVE_SESSION_QUERY = [
+  "SELECT shipping_id, customer, tracking_number, status",
+  "FROM shipping",
+  "ORDER BY shipping_id;",
+].join("\n");
 export const PENDING_REQUEST_TITLE = "Backfill missing order totals for July";
 
 const CONNECTIONS: {
