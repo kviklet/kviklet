@@ -58,6 +58,9 @@ for (const theme of ["light", "dark"] as const) {
       (value) => localStorage.setItem("theme", value),
       theme,
     );
+    // The page's countdown interval must run on the fake clock, so the clock
+    // has to be in place before the page creates it.
+    await page.clock.install();
     await page.goto(`/requests/${encodeURIComponent(id)}`);
     await expect(page.getByTestId("request-status")).toHaveText("Ready");
     await expect(page.getByTestId("session-access-status")).toContainText(
@@ -104,7 +107,6 @@ for (const theme of ["light", "dark"] as const) {
     await page.getByRole("menuitem", { name: /Run and download/ }).click();
     expect(await (await download).failure()).toBeNull();
     // Expiry is visible without requiring a navigation or another execution.
-    await page.clock.install();
     await page.clock.fastForward(61 * 60_000);
     await expect(page.getByTestId("request-status")).toHaveText("Expired");
     await expect(run).toBeDisabled();
