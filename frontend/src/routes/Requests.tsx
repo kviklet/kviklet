@@ -57,11 +57,13 @@ function mapStatus(
 ) {
   if (reviewStatus === "AWAITING_APPROVAL" && executionStatus !== "EXECUTED")
     return "Pending";
-  // A temporary access window that has run out was not "executed" in the
-  // single-statement sense; it simply closed.
-  else if (executionStatus === "EXECUTED")
-    return type === "TemporaryAccess" ? "Expired" : "Executed";
-  else if (executionStatus === "ACTIVE") return "Active";
+  else if (executionStatus === "EXECUTED") {
+    if (type !== "TemporaryAccess") return "Executed";
+    // A temporary access window that has run out was not "executed" in the
+    // single-statement sense; it simply closed. A rejection closes a running
+    // session the same way, and then the rejection is the state that matters.
+    return reviewStatus === "REJECTED" ? "Rejected" : "Expired";
+  } else if (executionStatus === "ACTIVE") return "Active";
   else if (reviewStatus === "CHANGE_REQUESTED") return "Change Requested";
   else if (reviewStatus === "REJECTED") return "Rejected";
   else if (executionStatus === "EXECUTABLE") return "Ready";
