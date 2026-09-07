@@ -257,7 +257,7 @@ export default function ConnectionChooser() {
   return (
     <div>
       <div className=" border-b border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
-        <h1 className=" m-5 mx-auto max-w-5xl pl-1.5 text-xl">
+        <h1 className="m-5 mx-auto max-w-5xl px-4 text-xl xl:px-1.5">
           {" "}
           {chosenConnection?._type === "KUBERNETES"
             ? "Request Access to a Kubernetes Pod"
@@ -266,7 +266,7 @@ export default function ConnectionChooser() {
             : "Request Access"}
         </h1>
       </div>
-      <div className="mx-auto mt-5 flex max-w-5xl">
+      <div className="mx-auto mt-5 flex max-w-5xl px-4 xl:px-0">
         {loading ? (
           <Spinner size="lg" page />
         ) : (
