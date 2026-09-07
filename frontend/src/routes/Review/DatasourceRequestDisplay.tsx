@@ -29,12 +29,20 @@ function DatasourceRequestDisplay({
         request={request}
         updateRequest={updateRequest}
       ></DatasourceRequestBox>
-      <div className="mt-4 flex justify-center">
-        {(dataLoading && <Spinner></Spinner>) ||
-          (results && <MultiResult resultList={results}></MultiResult>)}
+      <div className="mt-4">
+        {(dataLoading && (
+          <div className="flex justify-center py-6">
+            <Spinner />
+          </div>
+        )) ||
+          (results && results.length > 0 && (
+            <MultiResult resultList={results} />
+          ))}
       </div>
       {executionError && (
-        <div className="my-4 text-red-500">{executionError}</div>
+        <div className="my-4 text-red-600 dark:text-red-400">
+          {executionError}
+        </div>
       )}
       {proxyResponse && <ProxyConnectionCard proxy={proxyResponse} />}
     </>

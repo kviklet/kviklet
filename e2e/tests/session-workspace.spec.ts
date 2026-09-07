@@ -74,6 +74,12 @@ for (const theme of ["light", "dark"] as const) {
     await expect(run).toHaveText("Run selection");
     await page.keyboard.press("Control+Enter");
     await expect(page.getByTestId("result-component")).toContainText("42");
+    // Wide result sets get an explicit expand instead of a hidden header click.
+    await page.getByTestId("result-expand-button").click();
+    const dialog = page.getByRole("dialog", { name: "Query results" });
+    await expect(dialog.getByTestId("result-table-cell")).toHaveText("42");
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
     await expect(page.getByTestId("session-access-status")).toContainText(
       "min left",
     );
