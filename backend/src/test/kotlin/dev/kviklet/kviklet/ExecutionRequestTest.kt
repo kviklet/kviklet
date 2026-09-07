@@ -53,6 +53,27 @@ class ExecutionRequestTest {
     }
 
     @Test
+    fun `test rejecting a running temporary access session ends it`() {
+        val request = executionRequestFactory.createDatasourceExecutionRequest(
+            type = RequestType.TemporaryAccess,
+            temporaryAccessDuration = Duration.ofMinutes(60),
+        )
+        val executor = userFactory.createUser()
+        val executeTime = utcTimeNow().minusMinutes(10)
+        val events = mutableSetOf<Event>(
+            eventFactory.createReviewApprovedEvent(request = request, createdAt = executeTime.minusMinutes(1)),
+            eventFactory.createExecuteEvent(request = request, author = executor, createdAt = executeTime),
+            eventFactory.createReviewRejectedEvent(request = request, createdAt = utcTimeNow()),
+        )
+        val details = executionRequestDetailsFactory.createExecutionRequestDetails(
+            request = request,
+            events = events,
+        )
+        assert(details.resolveReviewStatus() == ReviewStatus.REJECTED)
+        assert(details.resolveExecutionStatus() == ExecutionStatus.EXECUTED)
+    }
+
+    @Test
     fun `test review status with one change and then approval`() {
         val request = executionRequestFactory.createDatasourceExecutionRequest()
         val reviewer = userFactory.createUser()

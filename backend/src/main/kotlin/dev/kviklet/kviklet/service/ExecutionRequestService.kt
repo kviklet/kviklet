@@ -61,6 +61,10 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
+import org.springframework.transaction.support.TransactionTemplate
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -91,12 +95,14 @@ class ExecutionRequestService(
     private val permissionResolver: PermissionResolver,
     private val licenseService: LicenseService,
     private val configService: ConfigService,
+    transactionManager: PlatformTransactionManager,
     // Same override the notification links use: an explicitly configured base URL wins over the
     // host observed on incoming requests.
     @Value("\${kviklet.baseUrl:#{null}}")
     private val serverBaseUrl: String? = null,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
+    private val statusTransaction = TransactionTemplate(transactionManager)
 
     companion object {
         const val MAX_STORED_ROWS = 500
@@ -295,7 +301,7 @@ class ExecutionRequestService(
         request: UpdateExecutionRequestRequest,
         userId: String,
     ): ExecutionRequestDetailsWithRoles {
-        val executionRequestDetails = executionRequestAdapter.getExecutionRequestDetails(id)
+        val executionRequestDetails = executionRequestAdapter.getExecutionRequestDetailsForUpdate(id)
 
         when (executionRequestDetails.request) {
             is DatasourceExecutionRequest -> {
@@ -362,12 +368,10 @@ class ExecutionRequestService(
         return resolveRoles(result)
     }
 
-    @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
     fun list(): List<ExecutionRequestDetails> =
         executionRequestAdapter.listExecutionRequests().map { ensureMaterializedStatuses(it) }
 
-    @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
     fun list(
         reviewStatuses: Set<ReviewStatus>?,
@@ -410,7 +414,6 @@ class ExecutionRequestService(
         )
     }
 
-    @Transactional
     @Policy(Permission.EXECUTION_REQUEST_GET)
     fun get(id: ExecutionRequestId): ExecutionRequestDetailsWithRoles =
         resolveRoles(ensureMaterializedStatuses(executionRequestAdapter.getExecutionRequestDetails(id)))
@@ -427,11 +430,15 @@ class ExecutionRequestService(
         ) {
             details
         } else {
-            executionRequestAdapter.updateExecutionRequest(
-                id = details.request.id!!,
-                executionStatus = resolvedExecutionStatus,
-                reviewStatus = resolvedReviewStatus,
-            )
+            // Commit each repair before processing the next request so listings do not accumulate locks.
+            statusTransaction.execute {
+                val current = executionRequestAdapter.getExecutionRequestDetailsForUpdate(details.request.id!!)
+                executionRequestAdapter.updateExecutionRequest(
+                    id = details.request.id!!,
+                    executionStatus = current.resolveExecutionStatus(),
+                    reviewStatus = current.resolveReviewStatus(),
+                )
+            }!!
         }
     }
 
@@ -453,7 +460,7 @@ class ExecutionRequestService(
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_REVIEW)
     fun createReview(id: ExecutionRequestId, request: CreateReviewRequest, authorId: String): Event {
-        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetailsForUpdate(id)
         if (executionRequest.request.author.getId() == authorId) {
             throw InvalidReviewException("A user can't review their own request!")
         }
@@ -469,13 +476,14 @@ class ExecutionRequestService(
         ReviewStatusUpdatedEvent.from(updatedExecutionRequestDetails, reviewEvent).let {
             applicationEventPublisher.publishEvent(it)
         }
+        endProxySessionsIfRejected(updatedExecutionRequestDetails)
         return reviewEvent
     }
 
     @Transactional
     @Policy(Permission.EXECUTION_REQUEST_EDIT)
     fun close(id: ExecutionRequestId, comment: String, authorId: String): Event {
-        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(id)
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetailsForUpdate(id)
         if (executionRequest.resolveReviewStatus() == ReviewStatus.REJECTED) {
             throw InvalidReviewException("Can't close an already rejected request!")
         }
@@ -489,7 +497,27 @@ class ExecutionRequestService(
         ReviewStatusUpdatedEvent.from(updatedExecutionRequestDetails, reviewEvent).let {
             applicationEventPublisher.publishEvent(it)
         }
+        endProxySessionsIfRejected(updatedExecutionRequestDetails)
         return reviewEvent
+    }
+
+    private fun endProxySessionsIfRejected(details: ExecutionRequestDetails) {
+        if (!details.isRejected()) return
+        val requestId = details.request.id!!
+        // Both callers are transactional; never tear down a session for a rolled-back rejection.
+        TransactionSynchronizationManager.registerSynchronization(
+            object : TransactionSynchronization {
+                override fun afterCommit() {
+                    listOf(postgresProxyServer, mysqlProxyServer).forEach { server ->
+                        try {
+                            server.expireSessionsForRequest(requestId)
+                        } catch (e: Exception) {
+                            logger.error("Failed to end proxy sessions for rejected request $requestId", e)
+                        }
+                    }
+                }
+            },
+        )
     }
 
     @Transactional
@@ -726,7 +754,7 @@ class ExecutionRequestService(
             if (connection.dryRunRequiresApproval) {
                 val reviewStatus = executionRequest.resolveReviewStatus()
                 if (reviewStatus != ReviewStatus.APPROVED) {
-                    throw InvalidReviewException("This request has not been approved yet!")
+                    throw RequestNotExecutableException("This request has not been approved yet!")
                 }
             }
             // Execute dry run
@@ -866,7 +894,7 @@ class ExecutionRequestService(
 
         val requestType = executionRequest.request.type
         if (requestType != RequestType.SingleExecution) {
-            throw InvalidReviewException("Can only explain single queries!")
+            throw RequestNotExecutableException("Can only explain single queries!")
         }
         val parsedStatements = CCJSqlParserUtil.parseStatements(executionRequest.request.statement)
         val selectStatements = parsedStatements.filter { it is net.sf.jsqlparser.statement.select.Select }
@@ -971,7 +999,10 @@ class ExecutionRequestService(
                 "The database proxy is disabled. An admin can enable it in the general settings.",
             )
         }
-        val executionRequest = executionRequestAdapter.getExecutionRequestDetails(executionRequestId)
+        val executionRequest = executionRequestAdapter.getExecutionRequestDetailsForUpdate(executionRequestId)
+        if (executionRequest.request.type != RequestType.TemporaryAccess) {
+            throw RequestNotExecutableException("Only temporary access requests can start a proxy.")
+        }
         val connection = executionRequest.request.connection
         if (connection !is DatasourceConnection) {
             throw RuntimeException("Only Datasource connections be proxied")
@@ -981,7 +1012,7 @@ class ExecutionRequestService(
             throw RuntimeException("Only the author of the request can proxy it!")
         }
         if (reviewStatus != ReviewStatus.APPROVED) {
-            throw InvalidReviewException("This request has not been approved yet!")
+            throw RequestNotExecutableException("This request has not been approved yet!")
         }
         // One long-lived listener per wire protocol: Postgres on its own port, MySQL and MariaDB sharing
         // one (they speak the same protocol; the session's datasourceType picks the upstream flavor).
@@ -1101,8 +1132,11 @@ class ExecutionRequestService(
  * SQL dump): the request must be approved and must not have used up its executions.
  */
 fun ExecutionRequestDetails.raiseIfNotExecutable() {
+    if (isRejected()) {
+        throw RequestNotExecutableException("This request has been rejected!")
+    }
     if (resolveReviewStatus() != ReviewStatus.APPROVED) {
-        throw InvalidReviewException("This request has not been approved yet!")
+        throw RequestNotExecutableException("This request has not been approved yet!")
     }
     raiseIfAlreadyExecuted()
 }
@@ -1117,7 +1151,7 @@ fun ExecutionRequestDetails.raiseIfAlreadyExecuted() {
 
             RequestType.TemporaryAccess ->
                 throw AlreadyExecutedException(
-                    "This request has timed out, temporary access is only valid for 60 minutes!",
+                    "This request's temporary access window has expired.",
                 )
         }
     }
@@ -1125,8 +1159,10 @@ fun ExecutionRequestDetails.raiseIfAlreadyExecuted() {
 
 class InvalidReviewException(message: String) : RuntimeException(message)
 
+open class RequestNotExecutableException(message: String) : RuntimeException(message)
+
 class DownloadException(message: String) : RuntimeException(message)
 
 class MissingQueryException(message: String) : RuntimeException(message)
 
-class AlreadyExecutedException(message: String) : RuntimeException(message)
+class AlreadyExecutedException(message: String) : RequestNotExecutableException(message)

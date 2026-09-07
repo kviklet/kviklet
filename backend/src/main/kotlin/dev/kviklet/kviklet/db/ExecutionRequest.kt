@@ -25,13 +25,17 @@ import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
 import jakarta.persistence.JoinColumn
+import jakarta.persistence.LockModeType
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import org.apache.commons.lang3.builder.ToStringBuilder
 import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Lock
+import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.findByIdOrNull
+import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
@@ -135,7 +139,11 @@ class ExecutionRequestEntity(
 
 interface ExecutionRequestRepository :
     JpaRepository<ExecutionRequestEntity, String>,
-    CustomExecutionRequestRepository
+    CustomExecutionRequestRepository {
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select e from execution_request e where e.id = :id")
+    fun lockById(@Param("id") id: String): ExecutionRequestEntity?
+}
 
 interface CustomExecutionRequestRepository {
     fun findByIdWithDetails(id: ExecutionRequestId): ExecutionRequestEntity?
@@ -245,9 +253,29 @@ class ExecutionRequestAdapter(
     @Autowired
     private lateinit var entityManager: EntityManager
 
+    private fun lockAndRefresh(id: ExecutionRequestId): ExecutionRequestEntity {
+        val entity = executionRequestRepository.lockById(id.toString())
+            ?: throw EntityNotFound("Execution Request Not Found", "Execution request $id does not exist.")
+        // A surrounding transaction may already have loaded the request and its events before the lock.
+        // Refresh under the lock so validation and materialized statuses include concurrent commits.
+        entityManager.refresh(entity)
+        return entity
+    }
+
+    @Transactional
+    fun getExecutionRequestDetailsForUpdate(id: ExecutionRequestId): ExecutionRequestDetails {
+        val entity = lockAndRefresh(id)
+        return entity.toDetailDto(connectionAdapter.toDto(entity.connection))
+    }
+
+    /**
+     * The caller must lock, refresh, and validate the request via getExecutionRequestDetailsForUpdate
+     * in the same transaction before appending an event. EventService.saveEvent owns this sequence.
+     */
     @Transactional
     fun addEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Pair<ExecutionRequestDetails, Event> {
-        val executionRequestEntity = getExecutionRequestDetailsEntity(id)
+        val executionRequestEntity = executionRequestRepository.findByIdOrNull(id.toString())
+            ?: throw EntityNotFound("Execution Request Not Found", "Execution request $id does not exist.")
         val userEntity = getUserEntity(authorId)
         val eventEntity = EventEntity(
             executionRequest = executionRequestEntity,
@@ -390,10 +418,12 @@ class ExecutionRequestAdapter(
         )
     }
 
+    @Transactional(readOnly = true)
     fun listExecutionRequests(): List<ExecutionRequestDetails> = executionRequestRepository.findAllWithDetails().map {
         it.toDetailDto(connectionAdapter.toDto(it.connection))
     }
 
+    @Transactional(readOnly = true)
     fun listExecutionRequestsFiltered(
         reviewStatuses: Set<ReviewStatus>? = null,
         executionStatuses: Set<ExecutionStatus>? = null,
@@ -427,9 +457,8 @@ class ExecutionRequestAdapter(
         ?: throw EntityNotFound("User Not Found", "User with id $id does not exist.")
 
     @Transactional
-    fun getExecutionRequestDetails(id: ExecutionRequestId): ExecutionRequestDetails = getExecutionRequestDetailsEntity(
-        id,
-    ).toDetailDto(
-        connectionAdapter.toDto(getExecutionRequestDetailsEntity(id).connection),
-    )
+    fun getExecutionRequestDetails(id: ExecutionRequestId): ExecutionRequestDetails {
+        val entity = getExecutionRequestDetailsEntity(id)
+        return entity.toDetailDto(connectionAdapter.toDto(entity.connection))
+    }
 }
