@@ -1,6 +1,6 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach, MockedFunction } from "vitest";
-import { useRequests } from "./Requests";
+import { mapStatus, useRequests } from "./Requests";
 import {
   ExecutionRequestResponse,
   getRequestsPaginated,
@@ -40,6 +40,30 @@ const listResponse = (
   hasMore = false,
   cursor: Date | null = null,
 ): ListResult => ({ requests, hasMore, cursor }) as ListResult;
+
+describe("request status labels", () => {
+  it.each(["EXECUTABLE", "ACTIVE", "EXECUTED"])(
+    "shows rejected temporary access as Rejected when execution status is %s",
+    (executionStatus) => {
+      expect(mapStatus("REJECTED", executionStatus, "TemporaryAccess")).toBe(
+        "Rejected",
+      );
+    },
+  );
+
+  it.each([
+    ["ACTIVE", "Active"],
+    ["EXECUTED", "Expired"],
+    ["EXECUTABLE", "Ready"],
+  ])(
+    "keeps approved temporary access %s labeled %s",
+    (executionStatus, label) => {
+      expect(mapStatus("APPROVED", executionStatus, "TemporaryAccess")).toBe(
+        label,
+      );
+    },
+  );
+});
 
 describe("useRequests hook", () => {
   beforeEach(() => {

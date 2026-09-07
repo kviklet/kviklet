@@ -55,6 +55,7 @@ function mapStatus(
   executionStatus: string,
   type?: string,
 ) {
+  if (reviewStatus === "REJECTED") return "Rejected";
   if (reviewStatus === "AWAITING_APPROVAL" && executionStatus !== "EXECUTED")
     return "Pending";
   // A temporary access window that has run out was not "executed" in the
@@ -63,7 +64,6 @@ function mapStatus(
     return type === "TemporaryAccess" ? "Expired" : "Executed";
   else if (executionStatus === "ACTIVE") return "Active";
   else if (reviewStatus === "CHANGE_REQUESTED") return "Change Requested";
-  else if (reviewStatus === "REJECTED") return "Rejected";
   else if (executionStatus === "EXECUTABLE") return "Ready";
   else return "Unknown";
 }
