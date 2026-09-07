@@ -32,6 +32,22 @@ export function sessionAccess(
     request.executionStatus === "EXECUTED" ||
     (expiresAt !== undefined && now >= expiresAt);
   if (expired) {
+    // Rejecting a running session ends it before its deadline, so the deadline
+    // never came and would read as a time in the future.
+    const rejection = request.events.find(
+      (event) => event._type === "REVIEW" && event.action === "REJECT",
+    );
+    if (
+      rejection !== undefined &&
+      firstExecution !== undefined &&
+      (expiresAt === undefined || rejection.createdAt.getTime() < expiresAt)
+    ) {
+      return {
+        expired,
+        expiresAt,
+        label: `Ended at ${formatTime(rejection.createdAt.getTime())}`,
+      };
+    }
     return {
       expired,
       expiresAt,

@@ -56,6 +56,31 @@ describe("temporary access window", () => {
     expect(access.expired).toBe(true);
     expect(access.label).toBe(`Expired at ${time(start + 60 * 60_000)}`);
   });
+  it("ends at the rejection time when a running session is rejected", () => {
+    const rejectedAt = start + 10 * 60_000;
+    const access = sessionAccess(
+      {
+        ...request,
+        reviewStatus: "REJECTED",
+        executionStatus: "EXECUTED",
+        events: [
+          execution(start),
+          {
+            _type: "REVIEW",
+            type: "REVIEW",
+            id: "reject",
+            comment: "",
+            action: "REJECT",
+            createdAt: new Date(rejectedAt),
+          },
+        ],
+      },
+      [],
+      rejectedAt + 60_000,
+    );
+    expect(access.expired).toBe(true);
+    expect(access.label).toBe(`Ended at ${time(rejectedAt)}`);
+  });
   it("honors a server-reported expiry even without execution history", () => {
     expect(
       sessionAccess({ ...request, executionStatus: "EXECUTED" }, [], start),

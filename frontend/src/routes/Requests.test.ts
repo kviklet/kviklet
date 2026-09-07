@@ -1,6 +1,6 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { vi, describe, it, expect, beforeEach, MockedFunction } from "vitest";
-import { useRequests } from "./Requests";
+import { mapStatus, useRequests } from "./Requests";
 import {
   ExecutionRequestResponse,
   getRequestsPaginated,
@@ -40,6 +40,30 @@ const listResponse = (
   hasMore = false,
   cursor: Date | null = null,
 ): ListResult => ({ requests, hasMore, cursor }) as ListResult;
+
+describe("mapStatus", () => {
+  it("labels a temporary access window that ran out as expired", () => {
+    expect(mapStatus("APPROVED", "EXECUTED", "TemporaryAccess")).toBe(
+      "Expired",
+    );
+  });
+  it("labels a rejected temporary access session as rejected, not expired", () => {
+    // The backend closes a running session on rejection and reports it EXECUTED.
+    expect(mapStatus("REJECTED", "EXECUTED", "TemporaryAccess")).toBe(
+      "Rejected",
+    );
+  });
+  it("labels a rejected temporary access request that never started as rejected", () => {
+    expect(mapStatus("REJECTED", "EXECUTABLE", "TemporaryAccess")).toBe(
+      "Rejected",
+    );
+  });
+  it("labels an executed statement as executed", () => {
+    expect(mapStatus("APPROVED", "EXECUTED", "SingleExecution")).toBe(
+      "Executed",
+    );
+  });
+});
 
 describe("useRequests hook", () => {
   beforeEach(() => {
