@@ -1,12 +1,10 @@
 import {
-  ProxyResponse,
   ExecuteResponseResult,
   DatasourceExecutionRequestResponseWithComments,
 } from "../../api/ExecutionRequestApi";
 import MultiResult from "../../components/MultiResult";
 import Spinner from "../../components/Spinner";
 import DatasourceRequestBox from "./DatasourceRequestBox";
-import ProxyConnectionCard from "./ProxyConnectionCard";
 
 function DatasourceRequestDisplay({
   request,
@@ -14,14 +12,12 @@ function DatasourceRequestDisplay({
   results,
   dataLoading,
   executionError,
-  proxyResponse,
 }: {
   request: DatasourceExecutionRequestResponseWithComments | undefined;
   updateRequest: (request: { statement?: string }) => Promise<void>;
   results: ExecuteResponseResult[] | undefined;
   dataLoading: boolean;
   executionError: string | undefined;
-  proxyResponse: ProxyResponse | undefined;
 }) {
   return (
     <>
@@ -44,7 +40,6 @@ function DatasourceRequestDisplay({
           {executionError}
         </div>
       )}
-      {proxyResponse && <ProxyConnectionCard proxy={proxyResponse} />}
     </>
   );
 }
