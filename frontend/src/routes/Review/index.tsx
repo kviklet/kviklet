@@ -70,7 +70,7 @@ function RequestReviewContent() {
     <div>
       {(loading && <Spinner size="lg" page />) ||
         (request && (
-          <div className="m-auto mt-10 max-w-5xl">
+          <div className="m-auto mt-10 max-w-5xl px-4 xl:px-0">
             <Breadcrumbs
               className="mb-4"
               items={[
@@ -147,7 +147,7 @@ function RequestReviewContent() {
             </div>
           </div>
         )) || (
-          <div className="m-auto mt-10 max-w-3xl">
+          <div className="m-auto mt-10 max-w-3xl px-4 md:px-0">
             <NotAuthorized
               resource="this request"
               message="It may not exist, or your role has no access to its connection."
