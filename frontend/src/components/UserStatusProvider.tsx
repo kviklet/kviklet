@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { StatusResponse, checklogin } from "../api/StatusApi";
 import { useLocation } from "react-router-dom";
 import { Permission } from "../api/Permissions";
+import { logout } from "../api/LoginApi";
 
 type UserContext = {
   userStatus: StatusResponse | false | undefined;
@@ -11,12 +12,22 @@ type UserContext = {
    * still loading, so permission-gated controls never flash before we know.
    */
   hasPermission: (permission: Permission) => boolean;
+  /** Ends the session and commits the logged-out status. */
+  logout: () => Promise<void>;
+  /**
+   * True after a deliberate logout, until the next login. ProtectedRoute uses this to send the
+   * user to a plain /login rather than one that would bring them back to the page they just
+   * left.
+   */
+  loggedOut: boolean;
 };
 
 const UserStatusContext = React.createContext<UserContext>({
   userStatus: undefined,
   refreshState: async () => {},
   hasPermission: () => false,
+  logout: async () => {},
+  loggedOut: false,
 });
 
 type Props = {
@@ -31,6 +42,8 @@ export const UserStatusProvider: React.FC<Props> = ({ children }) => {
     userStatus: undefined,
     refreshState: async () => {},
   });
+
+  const [loggedOut, setLoggedOut] = useState(false);
 
   const location = useLocation();
   // Status fetches fire on every navigation and on login, and responses can come back out of
@@ -49,9 +62,22 @@ export const UserStatusProvider: React.FC<Props> = ({ children }) => {
         refreshState: fetchStatus,
       };
       setUserStatus(statusObject);
+      if (status) {
+        setLoggedOut(false);
+      }
     } catch (error) {
       console.error("Failed to fetch user status:", error);
     }
+  };
+
+  const logoutUser = async () => {
+    await logout();
+    // Flag first: the status refresh below commits the logged-out state, and ProtectedRoute
+    // must already know it was a logout when it redirects. Don't navigate to /login
+    // imperatively here — with the stale logged-in status still in context the login page
+    // would bounce straight back to "/" (and fire unauthenticated fetches there).
+    setLoggedOut(true);
+    await fetchStatus();
   };
 
   const handleVisibilityChange = () => {
@@ -78,8 +104,10 @@ export const UserStatusProvider: React.FC<Props> = ({ children }) => {
     return {
       ...userStatus,
       hasPermission: (permission: Permission) => permissions.has(permission),
+      logout: logoutUser,
+      loggedOut,
     };
-  }, [userStatus]);
+  }, [userStatus, loggedOut]);
 
   return (
     <UserStatusContext.Provider value={contextValue}>

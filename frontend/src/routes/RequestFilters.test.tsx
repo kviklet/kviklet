@@ -51,6 +51,8 @@ const renderFilterBar = () =>
         userStatus: currentUser,
         refreshState: async () => {},
         hasPermission: () => true,
+        logout: async () => {},
+        loggedOut: false,
       }}
     >
       <Harness />

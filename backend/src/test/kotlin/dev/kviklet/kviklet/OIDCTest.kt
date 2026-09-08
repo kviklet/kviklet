@@ -5,6 +5,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlInput
 import com.gargoylesoftware.htmlunit.html.HtmlPage
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.helper.FrontendStub
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -118,7 +119,7 @@ class OIDCTest {
             try {
                 val returnPage = appPage.getElementsByTagName("button").get(0).click<HtmlPage>()
                 // Assert it redirect to the app on successful login
-                assertThat(returnPage.url.toString()).isEqualTo("http://localhost:5173/requests")
+                assertThat(returnPage.url.toString()).isEqualTo("http://localhost:5173/")
             } catch (e: Exception) {
                 // If the frontend hasn't started this exception is expected but the redirect worked
                 assertThat(e.message).contains("HttpHostConnectException: Connect to localhost:5173")
@@ -130,6 +131,63 @@ class OIDCTest {
 
         // Assert that a new user was created
         assertThat(userAdapter.listUsers().size).isEqualTo(userCountBeforeOIDC + 1)
+    }
+
+    @Test
+    fun `OIDC login returns to the page that was requested before the login`() {
+        val webClient = WebClient().apply {
+            options.apply {
+                isRedirectEnabled = true
+                isJavaScriptEnabled = false
+                isThrowExceptionOnScriptError = false
+                isUseInsecureSSL = true
+                isCssEnabled = false
+            }
+        }
+        val frontend = FrontendStub(webClient)
+
+        try {
+            // The frontend appends the page to return to when it links to the login start.
+            val loginUrl = "http://localhost:$port/oauth2/authorization/dex?redirect=%2Frequests%2Fabc%3Ftab%3Dcomments"
+
+            val dexLoginPage = webClient.getPage<HtmlPage>(loginUrl)
+            dexLoginPage.getElementByName<HtmlInput>("login").type("admin@example.com")
+            dexLoginPage.getElementByName<HtmlInput>("password").type("password")
+            val appPage = dexLoginPage.getElementById("submit-login").click<HtmlPage>()
+            appPage.getElementsByTagName("button").get(0).click<HtmlPage>()
+
+            assertThat(frontend.lastFrontendUrl).isEqualTo("http://localhost:5173/requests/abc?tab=comments")
+        } finally {
+            webClient.close()
+        }
+    }
+
+    @Test
+    fun `OIDC login drops redirect targets that point off-site`() {
+        val webClient = WebClient().apply {
+            options.apply {
+                isRedirectEnabled = true
+                isJavaScriptEnabled = false
+                isThrowExceptionOnScriptError = false
+                isUseInsecureSSL = true
+                isCssEnabled = false
+            }
+        }
+        val frontend = FrontendStub(webClient)
+
+        try {
+            val loginUrl = "http://localhost:$port/oauth2/authorization/dex?redirect=%2F%2Fevil.example%2Fphish"
+
+            val dexLoginPage = webClient.getPage<HtmlPage>(loginUrl)
+            dexLoginPage.getElementByName<HtmlInput>("login").type("admin@example.com")
+            dexLoginPage.getElementByName<HtmlInput>("password").type("password")
+            val appPage = dexLoginPage.getElementById("submit-login").click<HtmlPage>()
+            appPage.getElementsByTagName("button").get(0).click<HtmlPage>()
+
+            assertThat(frontend.lastFrontendUrl).isEqualTo("http://localhost:5173/")
+        } finally {
+            webClient.close()
+        }
     }
 
     @Test
@@ -175,7 +233,7 @@ class OIDCTest {
             try {
                 val returnPage = appPage.getElementsByTagName("button").get(0).click<HtmlPage>()
                 // Assert it redirect to the app on successful login
-                assertThat(returnPage.url.toString()).isEqualTo("http://localhost:5173/requests")
+                assertThat(returnPage.url.toString()).isEqualTo("http://localhost:5173/")
             } catch (e: Exception) {
                 // If the frontend hasn't started this exception is expected but the redirect worked
                 assertThat(e.message).contains("HttpHostConnectException: Connect to localhost:5173")
@@ -235,7 +293,7 @@ class OIDCTest {
             try {
                 val returnPage = appPage.getElementsByTagName("button").get(0).click<HtmlPage>()
                 // Assert it redirect to the app on successful login
-                assertThat(returnPage.url.toString()).isEqualTo("http://localhost:5173/requests")
+                assertThat(returnPage.url.toString()).isEqualTo("http://localhost:5173/")
             } catch (e: Exception) {
                 // If the frontend hasn't started this exception is expected but the redirect worked
                 assertThat(e.message).contains("HttpHostConnectException: Connect to localhost:5173")

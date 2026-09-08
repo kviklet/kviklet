@@ -1,6 +1,7 @@
 // This file is not MIT licensed
 package dev.kviklet.kviklet.security.saml
 
+import dev.kviklet.kviklet.security.LoginRedirectTargetFilter
 import dev.kviklet.kviklet.security.PolicyGrantedAuthority
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import jakarta.servlet.http.HttpServletRequest
@@ -60,8 +61,9 @@ class SamlLoginSuccessHandler(private val samlUserService: SamlUserService) :
         }
 
         val baseUrl = getBaseUrl(request)
-        val redirectUrl = "$baseUrl/requests"
-        redirectStrategy.sendRedirect(request, response, redirectUrl)
+        // Back to the page that sent the user to the login, or the frontend's index page.
+        val target = LoginRedirectTargetFilter.consume(request) ?: "/"
+        redirectStrategy.sendRedirect(request, response, "$baseUrl$target")
     }
 
     private fun getBaseUrl(request: HttpServletRequest): String {

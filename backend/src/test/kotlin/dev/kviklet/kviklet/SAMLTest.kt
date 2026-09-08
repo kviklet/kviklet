@@ -7,6 +7,7 @@ import dev.kviklet.kviklet.db.LicenseAdapter
 import dev.kviklet.kviklet.db.RoleAdapter
 import dev.kviklet.kviklet.db.RoleSyncConfigAdapter
 import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.helper.FrontendStub
 import dev.kviklet.kviklet.service.dto.LicenseFile
 import dev.kviklet.kviklet.service.dto.Role
 import dev.kviklet.kviklet.service.dto.RoleId
@@ -491,6 +492,48 @@ class SAMLTest {
         assertThat(createdUser?.samlNameId).isNotNull()
         assertThat(createdUser?.fullName).isNotNull()
         assertThat(createdUser?.password).isNull()
+    }
+
+    @Test
+    fun `SAML login returns to the page that was requested before the login`() {
+        val webClient = WebClient().apply {
+            options.apply {
+                isRedirectEnabled = true
+                isJavaScriptEnabled = false
+                isThrowExceptionOnScriptError = false
+                isUseInsecureSSL = true
+                isCssEnabled = false
+            }
+        }
+        val frontend = FrontendStub(webClient)
+
+        try {
+            // The frontend appends the page to return to when it links to the login start.
+            val loginUrl = "http://localhost:$port/saml2/authenticate/saml?redirect=%2Fsettings%2Fusers"
+
+            val samlRedirectPage = webClient.getPage<HtmlPage>(loginUrl)
+            val keycloakLoginPage = samlRedirectPage.forms[0].getElementsByTagName("input")
+                .filterIsInstance<HtmlInput>()
+                .find { it.getAttribute("type") == "submit" }
+                ?.click<HtmlPage>() ?: throw RuntimeException("Could not find submit button in SAML form")
+
+            (keycloakLoginPage.getElementById("username") as HtmlInput).type("testuser")
+            (keycloakLoginPage.getElementById("password") as HtmlInput).type("testpass")
+            val redirectPage = keycloakLoginPage.getElementsByTagName("input")
+                .filterIsInstance<HtmlInput>()
+                .find { it.getAttribute("type") == "submit" }
+                ?.click<HtmlPage>() ?: throw RuntimeException("Could not find submit button on Keycloak page")
+
+            // Keycloak answers with a self-submitting form carrying the SAML response.
+            if (redirectPage.asXml().contains("Authentication Redirect")) {
+                val inputs = redirectPage.forms[0].getElementsByTagName("input").filterIsInstance<HtmlInput>()
+                (inputs.find { it.getAttribute("type") == "submit" } ?: inputs[0]).click<HtmlPage>()
+            }
+
+            assertThat(frontend.lastFrontendUrl).isEqualTo("http://localhost:5173/settings/users")
+        } finally {
+            webClient.close()
+        }
     }
 
     @Test
