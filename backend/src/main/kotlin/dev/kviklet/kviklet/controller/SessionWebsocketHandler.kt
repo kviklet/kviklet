@@ -124,8 +124,7 @@ class SessionWebsocketHandler(
         val uri = session.uri ?: throw IllegalStateException("Session URI is null")
         val path = UriComponentsBuilder.fromUri(uri).build().pathSegments
         val segment = path.lastOrNull() ?: throw IllegalArgumentException("RequestId not found in URI")
-        // pathSegments keeps percent-encoding, and ids can end in a space
-        // (IdGenerator pads 21-char base58 ids), which clients send as %20.
+        // pathSegments keeps percent-encoding, so decode whatever the client escaped.
         return UriUtils.decode(segment, Charsets.UTF_8)
     }
 
