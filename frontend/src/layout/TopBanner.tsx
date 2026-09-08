@@ -13,7 +13,6 @@ import {
   PopoverPanel,
   Transition,
 } from "@headlessui/react";
-import { logout } from "../api/LoginApi";
 import { UserStatusContext } from "../components/UserStatusProvider";
 import RequirePermission from "../components/RequirePermission";
 
@@ -34,14 +33,8 @@ function TopBanner() {
     }
   };
 
-  const logoutHandler = async () => {
-    await logout();
-    // Don't navigate to /login imperatively: the user status in context is still the
-    // stale logged-in value, so the login page would immediately bounce back to "/"
-    // (and fire unauthenticated fetches there). Refreshing the status commits the
-    // logged-out state, and ProtectedRoute then redirects to /login on its own.
-    await userContext.refreshState();
-  };
+  // The provider commits the logged-out status and ProtectedRoute then redirects to /login.
+  const logoutHandler = () => userContext.logout();
 
   const loggedIn = userContext.userStatus !== undefined;
 

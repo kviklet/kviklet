@@ -42,6 +42,7 @@ import org.springframework.security.ldap.authentication.BindAuthenticator
 import org.springframework.security.ldap.authentication.LdapAuthenticationProvider
 import org.springframework.security.ldap.search.FilterBasedLdapUserSearch
 import org.springframework.security.ldap.userdetails.UserDetailsContextMapper
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestRedirectFilter
 import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
@@ -187,6 +188,9 @@ class SecurityConfig(
             // Don't add ApiKeyAuthFilter here - it's handled by the API key chain
             addFilterBefore<WebAsyncManagerIntegrationFilter>(ForwardedHeaderFilter())
             addFilterBefore<UsernamePasswordAuthenticationFilter>(CsrfHeaderFilter())
+            // Must run before the OAuth2 and SAML filters that start the SSO redirect (the
+            // SAML one is ordered right after the OAuth2 one in Spring's filter order).
+            addFilterBefore<OAuth2AuthorizationRequestRedirectFilter>(LoginRedirectTargetFilter())
             if (corsSettings.allowedOrigins.isNotEmpty()) {
                 cors { }
             }
