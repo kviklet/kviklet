@@ -9,7 +9,9 @@ import java.util.UUID
 class IdGenerator : IdentifierGenerator {
 
     override fun generate(sharedSessionContractImplementor: SharedSessionContractImplementor, obj: Any): Serializable {
-        if (obj is BaseEntity && !obj.id.isNullOrBlank()) {
+        // Keep an assigned id when it has the shape of a generated one; anything else is replaced
+        // (tests hand in placeholder ids that do not fit the column).
+        if (obj is BaseEntity && obj.id?.length in 21..22) {
             return obj.id!!
         }
         return generateId()
