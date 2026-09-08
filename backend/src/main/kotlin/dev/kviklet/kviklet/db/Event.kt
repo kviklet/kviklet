@@ -129,19 +129,15 @@ class EventEntity(
         .append("id", id)
         .toString()
 
-    fun toDto(request: ExecutionRequest? = null, connection: Connection): Event {
-        if (request == null) {
-            val executionDetails = executionRequest.toDetailDto(connection)
-            return executionDetails.events.find { it.eventId.toString() == id }!!
-        }
-        return Event.create(
-            id = EventId(id!!),
-            createdAt = createdAt,
-            payload = payload,
-            author = author.toDto(),
-            request = request,
-        )
-    }
+    // Built from this entity's own columns rather than looked up in the parent's events collection:
+    // that collection can be a stale snapshot that does not contain this event yet.
+    fun toDto(request: ExecutionRequest? = null, connection: Connection): Event = Event.create(
+        id = EventId(id!!),
+        createdAt = createdAt,
+        payload = payload,
+        author = author.toDto(),
+        request = request ?: executionRequest.toDto(connection),
+    )
 }
 
 interface CustomEventRepository {
