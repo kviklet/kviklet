@@ -1,0 +1,85 @@
+databaseChangeLog:
+  - changeSet:
+      id: 049-store-ids-without-padding
+      author: jascha
+      comment: >
+        Ids lived in CHAR(22) columns, which Postgres pads with a trailing space for the
+        21-character ids the generator produces about 3% of the time. Browsers drop that space
+        from URLs, so the same id had two spellings. VARCHAR stores ids exactly as written: the
+        cast from CHAR strips the padding, and the VARCHAR columns that copied padded ids as data
+        are trimmed first so foreign keys still match once the referenced columns lose theirs.
+      changes:
+        - sql:
+            sql: UPDATE api_keys SET user_id = rtrim(user_id)
+        - sql:
+            sql: UPDATE event SET author_id = rtrim(author_id)
+        - sql:
+            sql: UPDATE execution_request SET author_id = rtrim(author_id)
+        - sql:
+            sql: UPDATE live_session SET id = rtrim(id), execution_request_id = rtrim(execution_request_id)
+        - sql:
+            sql: UPDATE role_sync_mapping SET id = rtrim(id)
+        - modifyDataType:
+            tableName: user
+            columnName: id
+            newDataType: varchar(22)
+        - modifyDataType:
+            tableName: role
+            columnName: id
+            newDataType: varchar(22)
+        - modifyDataType:
+            tableName: policy
+            columnName: id
+            newDataType: varchar(22)
+        - modifyDataType:
+            tableName: policy
+            columnName: role_id
+            newDataType: varchar(22)
+        - modifyDataType:
+            tableName: user_role
+            columnName: user_id
+            newDataType: varchar(22)
+        - modifyDataType:
+            tableName: user_role
+            columnName: role_id
+            newDataType: varchar(22)
+        - modifyDataType:
+            tableName: execution_request
+            columnName: id
+            newDataType: varchar(22)
+        - modifyDataType:
+            tableName: event
+            columnName: id
+            newDataType: varchar(22)
+        - modifyDataType:
+            tableName: event
+            columnName: execution_request_id
+            newDataType: varchar(22)
+        - modifyDataType:
+            tableName: api_keys
+            columnName: id
+            newDataType: varchar(22)
+        - modifyDataType:
+            tableName: license
+            columnName: id
+            newDataType: varchar(22)
+        - modifyDataType:
+            tableName: role_sync_mapping
+            columnName: role_id
+            newDataType: varchar(22)
+
+  - changeSet:
+      id: 049-clear-spring-sessions-after-id-trim
+      author: jascha
+      comment: >
+        Sessions carry the user id in serialized form; a padded id in there would no longer
+        match its trimmed row, so everyone logs in again once.
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: spring_session
+      changes:
+        - delete:
+            tableName: spring_session_attributes
+        - delete:
+            tableName: spring_session
