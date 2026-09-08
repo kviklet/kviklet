@@ -15,10 +15,11 @@ import java.sql.Connection
 import java.sql.DriverManager
 
 /**
- * Before changeset 049 ids lived in CHAR(22) columns, so the 21-character ids the generator used
- * to pad with a space came back from the database with that space. The changeset moves them to
- * VARCHAR and must strip the padding everywhere an id is stored, including the VARCHAR columns
- * that copied a padded id as data, without breaking any reference between the rows.
+ * Before changeset 049 ids lived in CHAR(22) columns, so the shorter ids the generator used to
+ * produce (21 characters in about 3% of cases, 20 in about 0.05%) came back from the database
+ * padded with spaces. The changeset moves them to VARCHAR and must strip the padding everywhere an
+ * id is stored, including the VARCHAR columns that copied a padded id as data, without breaking
+ * any reference between the rows.
  */
 class IdPaddingMigrationTest {
 
@@ -31,9 +32,10 @@ class IdPaddingMigrationTest {
         }
     }
 
+    // CHAR(22) padded every shorter id with as many spaces as it took to reach 22 characters.
     private fun padded(id: String): String {
-        assertEquals(21, id.length, "test ids must be 21 characters before padding")
-        return "$id "
+        assertTrue(id.length < 22, "test ids must be shorter than the column")
+        return id.padEnd(22, ' ')
     }
 
     private val userId = padded("Huiyz7BRyvAJpyALHFXTZ")
@@ -42,7 +44,7 @@ class IdPaddingMigrationTest {
     private val requestId = padded("5RQj8YkA1xrbhS9dyz6ne")
     private val eventId = padded("Kw2mVrEZ4nT6ScGqLd8Hp")
     private val apiKeyId = padded("9fXpN3bJaLvWq7RtYe2Um")
-    private val liveSessionId = padded("Dh4kCsA8uMxQ2nBrPe6Vt")
+    private val liveSessionId = padded("Dh4kCsA8uMxQ2nBrPe6V")
 
     @Test
     fun `migration strips the padding from ids and keeps every reference intact`() {

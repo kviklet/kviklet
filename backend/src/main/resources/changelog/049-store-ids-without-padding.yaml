@@ -3,11 +3,12 @@ databaseChangeLog:
       id: 049-store-ids-without-padding
       author: jascha
       comment: >
-        Ids lived in CHAR(22) columns, which Postgres pads with a trailing space for the
-        21-character ids the generator produces about 3% of the time. Browsers drop that space
-        from URLs, so the same id had two spellings. VARCHAR stores ids exactly as written: the
-        cast from CHAR strips the padding, and the VARCHAR columns that copied padded ids as data
-        are trimmed first so foreign keys still match once the referenced columns lose theirs.
+        Ids lived in CHAR(22) columns, which Postgres pads with trailing spaces for the shorter
+        ids the generator produced (21 characters in about 3% of cases, fewer even more rarely).
+        Browsers drop those spaces from URLs, so the same id had two spellings. VARCHAR stores ids
+        exactly as written: the cast from CHAR strips the padding, and the VARCHAR columns that
+        copied padded ids as data are trimmed first so foreign keys still match once the
+        referenced columns lose theirs.
       changes:
         - sql:
             sql: UPDATE api_keys SET user_id = rtrim(user_id)

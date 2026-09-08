@@ -6,18 +6,24 @@ import java.io.Serializable
 import java.nio.ByteBuffer
 import java.util.UUID
 
+/** Width of the id columns; generated ids never exceed it. */
+const val ID_LENGTH = 22
+
 class IdGenerator : IdentifierGenerator {
 
     override fun generate(sharedSessionContractImplementor: SharedSessionContractImplementor, obj: Any): Serializable {
-        // Keep an assigned id when it has the shape of a generated one; anything else is replaced
-        // (tests hand in placeholder ids that do not fit the column).
-        if (obj is BaseEntity && obj.id?.length in 21..22) {
+        // Keep an assigned id that fits the column. Anything longer is a placeholder (tests hand
+        // in UUIDs) and is replaced.
+        if (obj is BaseEntity && obj.id?.length in 1..ID_LENGTH) {
             return obj.id!!
         }
         return generateId()
     }
 
-    /** A base58-encoded random UUID: 22 characters, or 21 when the leading digits are small. */
+    /**
+     * A random UUID in base58: 22 characters for most values, 21 for about one in 32, 20 for
+     * about one in 1800, and so on down. Shorter ids are stored as they are; nothing pads them.
+     */
     fun generateId(): Serializable {
         val uuid = UUID.randomUUID()
         val bb: ByteBuffer = ByteBuffer.allocate(16)
