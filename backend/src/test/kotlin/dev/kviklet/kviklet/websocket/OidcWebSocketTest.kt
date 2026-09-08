@@ -222,9 +222,8 @@ class OidcWebSocketTest {
             }
         }
 
-        // Path-segment encoding, not URLEncoder: generated ids can end in a space
-        // (IdGenerator pads 21-char base58 ids), which URLEncoder would turn into a
-        // literal "+" in the path and break the server-side lookup.
+        // Path-segment encoding, not URLEncoder, which would turn a space into a literal "+"
+        // in the path and break the server-side lookup.
         val encodedRequestId = UriUtils.encodePathSegment(executionRequest.getId(), Charsets.UTF_8)
         val url = "ws://localhost:$port/sql/$encodedRequestId"
         val headers = WebSocketHttpHeaders()
