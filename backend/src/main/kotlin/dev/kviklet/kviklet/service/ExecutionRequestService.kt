@@ -376,6 +376,7 @@ class ExecutionRequestService(
     fun list(
         reviewStatuses: Set<ReviewStatus>?,
         executionStatuses: Set<ExecutionStatus>?,
+        types: Set<RequestType>?,
         connectionIds: Set<ConnectionId>?,
         authorId: String?,
         createdAfter: LocalDateTime?,
@@ -393,6 +394,7 @@ class ExecutionRequestService(
         val requests = executionRequestAdapter.listExecutionRequestsFiltered(
             reviewStatuses = reviewStatuses,
             executionStatuses = executionStatuses,
+            types = types,
             connectionIds = connectionIds,
             authorId = authorId,
             createdAfter = createdAfter,

@@ -700,6 +700,7 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
     fun list(
         @RequestParam(required = false) reviewStatuses: Set<ReviewStatus>?,
         @RequestParam(required = false) executionStatuses: Set<ExecutionStatus>?,
+        @RequestParam(required = false) types: Set<RequestType>?,
         @RequestParam(required = false) connectionIds: Set<ConnectionId>?,
         @RequestParam(required = false) authorId: String?,
         @RequestParam(required = false) createdAfter: Instant?,
@@ -710,6 +711,7 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
         executionRequestService.list(
             reviewStatuses = reviewStatuses,
             executionStatuses = executionStatuses,
+            types = types,
             connectionIds = connectionIds,
             authorId = authorId,
             createdAfter = createdAfter?.atZone(ZoneOffset.UTC)?.toLocalDateTime(),

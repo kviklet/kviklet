@@ -4,6 +4,8 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ClockIcon,
+  CodeBracketIcon,
+  CommandLineIcon,
   XMarkIcon,
 } from "@heroicons/react/20/solid";
 import { getConnections, ConnectionResponse } from "../api/DatasourceApi";
@@ -13,9 +15,14 @@ import { UserStatusContext } from "../components/UserStatusProvider";
 import Tooltip from "../components/Tooltip";
 import InitialBubble from "../components/InitialBubble";
 
+// Dumps are deliberately not offered here: the feature is rarely used and a
+// third option would only add noise to the picker.
+type RequestKind = "SingleExecution" | "TemporaryAccess";
+
 interface RequestListFilters {
   connectionIds: string[];
   authorId: string | null;
+  type: RequestKind | null;
   createdFrom: string | null;
   createdTo: string | null;
   onlyPending: boolean;
@@ -24,14 +31,36 @@ interface RequestListFilters {
 const emptyFilters: RequestListFilters = {
   connectionIds: [],
   authorId: null,
+  type: null,
   createdFrom: null,
   createdTo: null,
   onlyPending: false,
 };
 
+const requestKinds: {
+  value: RequestKind;
+  label: string;
+  hint: string;
+  icon: typeof CodeBracketIcon;
+}[] = [
+  {
+    value: "SingleExecution",
+    label: "Queries",
+    hint: "Runs once after approval",
+    icon: CodeBracketIcon,
+  },
+  {
+    value: "TemporaryAccess",
+    label: "Sessions",
+    hint: "Live access for a set time",
+    icon: CommandLineIcon,
+  },
+];
+
 const hasActiveFilters = (filters: RequestListFilters): boolean =>
   filters.connectionIds.length > 0 ||
   filters.authorId !== null ||
+  filters.type !== null ||
   filters.createdFrom !== null ||
   filters.createdTo !== null ||
   filters.onlyPending;
@@ -106,12 +135,14 @@ const panelClasses =
 
 function OptionRow({
   label,
+  hint,
   selected,
   onClick,
   testId,
   leading,
 }: {
   label: string;
+  hint?: string;
   selected: boolean;
   onClick: () => void;
   testId?: string;
@@ -125,7 +156,14 @@ function OptionRow({
       className="flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
     >
       {leading}
-      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate">{label}</span>
+        {hint && (
+          <span className="block truncate text-xs text-slate-400 dark:text-slate-500">
+            {hint}
+          </span>
+        )}
+      </span>
       {selected && (
         <CheckIcon className="h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
       )}
@@ -195,6 +233,9 @@ function RequestFilterBar({
         "1 author";
 
   const otherUsers = users.filter((u) => u.id !== currentUserId);
+
+  const typeLabel =
+    requestKinds.find((kind) => kind.value === filters.type)?.label ?? "Type";
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -282,6 +323,40 @@ function RequestFilterBar({
           </PopoverPanel>
         </Popover>
       )}
+
+      <Popover className="relative">
+        <FilterPill
+          label={typeLabel}
+          active={filters.type !== null}
+          onClear={() => onChange({ ...filters, type: null })}
+          testId="filter-type"
+        />
+        <PopoverPanel className={panelClasses}>
+          {({ close }) => (
+            <div>
+              {requestKinds.map((kind) => (
+                <OptionRow
+                  key={kind.value}
+                  label={kind.label}
+                  hint={kind.hint}
+                  leading={
+                    <kind.icon className="h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
+                  }
+                  selected={filters.type === kind.value}
+                  onClick={() => {
+                    onChange({
+                      ...filters,
+                      type: filters.type === kind.value ? null : kind.value,
+                    });
+                    close();
+                  }}
+                  testId={`filter-type-${kind.value}`}
+                />
+              ))}
+            </div>
+          )}
+        </PopoverPanel>
+      </Popover>
 
       <Popover className="relative">
         <FilterPill

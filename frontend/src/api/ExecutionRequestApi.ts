@@ -324,6 +324,7 @@ const postStartServer = async (
 interface GetRequestsParams {
   reviewStatuses?: string[];
   executionStatuses?: string[];
+  types?: string[];
   connectionIds?: string[];
   authorId?: string;
   createdAfter?: Date;
@@ -347,6 +348,10 @@ const getRequestsPaginated = async (
     params.executionStatuses.forEach((status) =>
       searchParams.append("executionStatuses", status),
     );
+  }
+
+  if (params?.types && params.types.length > 0) {
+    params.types.forEach((type) => searchParams.append("types", type));
   }
 
   if (params?.connectionIds && params.connectionIds.length > 0) {

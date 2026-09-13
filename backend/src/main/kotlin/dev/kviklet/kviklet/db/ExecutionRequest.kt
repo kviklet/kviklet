@@ -151,6 +151,7 @@ interface CustomExecutionRequestRepository {
     fun findAllWithDetailsFiltered(
         reviewStatuses: Set<ReviewStatus>?,
         executionStatuses: Set<ExecutionStatus>?,
+        types: Set<RequestType>?,
         connectionIds: Set<ConnectionId>?,
         authorId: String?,
         createdAfter: LocalDateTime?,
@@ -185,6 +186,7 @@ class CustomExecutionRequestRepositoryImpl(private val entityManager: EntityMana
     override fun findAllWithDetailsFiltered(
         reviewStatuses: Set<ReviewStatus>?,
         executionStatuses: Set<ExecutionStatus>?,
+        types: Set<RequestType>?,
         connectionIds: Set<ConnectionId>?,
         authorId: String?,
         createdAfter: LocalDateTime?,
@@ -208,6 +210,12 @@ class CustomExecutionRequestRepositoryImpl(private val entityManager: EntityMana
         executionStatuses?.let {
             if (it.isNotEmpty()) {
                 query.where(qExecutionRequestEntity.executionStatus.`in`(it))
+            }
+        }
+
+        types?.let {
+            if (it.isNotEmpty()) {
+                query.where(qExecutionRequestEntity.executionType.`in`(it))
             }
         }
 
@@ -427,6 +435,7 @@ class ExecutionRequestAdapter(
     fun listExecutionRequestsFiltered(
         reviewStatuses: Set<ReviewStatus>? = null,
         executionStatuses: Set<ExecutionStatus>? = null,
+        types: Set<RequestType>? = null,
         connectionIds: Set<ConnectionId>? = null,
         authorId: String? = null,
         createdAfter: LocalDateTime? = null,
@@ -436,6 +445,7 @@ class ExecutionRequestAdapter(
     ): List<ExecutionRequestDetails> = executionRequestRepository.findAllWithDetailsFiltered(
         reviewStatuses = reviewStatuses,
         executionStatuses = executionStatuses,
+        types = types,
         connectionIds = connectionIds,
         authorId = authorId,
         createdAfter = createdAfter,

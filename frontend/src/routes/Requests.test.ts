@@ -128,6 +128,7 @@ describe("useRequests hook", () => {
       expect(lastCallParams()).toEqual({
         reviewStatuses: undefined,
         executionStatuses: undefined,
+        types: undefined,
         connectionIds: undefined,
         authorId: undefined,
         createdAfter: undefined,
@@ -146,6 +147,14 @@ describe("useRequests hook", () => {
         reviewStatuses: ["AWAITING_APPROVAL"],
         executionStatuses: ["EXECUTABLE", "ACTIVE"],
       });
+    });
+
+    it("sends the selected request type as a single-element list", async () => {
+      const filters = { ...emptyFilters, type: "TemporaryAccess" as const };
+      renderHook(() => useRequests(filters, ""));
+      await waitFor(() => expect(mockGetRequestsPaginated).toHaveBeenCalled());
+
+      expect(lastCallParams()).toMatchObject({ types: ["TemporaryAccess"] });
     });
 
     it("passes selected connection ids and author id", async () => {

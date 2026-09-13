@@ -8,6 +8,7 @@ import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.Policy
+import dev.kviklet.kviklet.service.dto.RequestType
 import jakarta.servlet.http.Cookie
 import org.hamcrest.Matchers.hasSize
 import org.junit.jupiter.api.AfterEach
@@ -147,6 +148,53 @@ class ExecutionRequestPaginationTest {
                 .andExpect(jsonPath("$.requests", hasSize<Collection<*>>(1)))
                 .andExpect(jsonPath("$.requests[0].id").value(req2.getId()))
                 .andExpect(jsonPath("$.requests[0].executionStatus").value("EXECUTABLE"))
+        }
+
+        @Test
+        fun `filter by type returns only requests of that type`() {
+            val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+            val query = executionRequestHelper.createExecutionRequest(db, testUser, connection = testConnection)
+            val session = executionRequestHelper.createExecutionRequest(
+                db,
+                testUser,
+                statement = null,
+                connection = testConnection,
+                requestType = RequestType.TemporaryAccess,
+            )
+            executionRequestHelper.createExecutionRequest(
+                db,
+                testUser,
+                statement = null,
+                connection = testConnection,
+                requestType = RequestType.Dump,
+            )
+
+            mockMvc.perform(
+                get("/execution-requests/")
+                    .param("types", "SingleExecution")
+                    .cookie(cookie),
+            ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.requests", hasSize<Collection<*>>(1)))
+                .andExpect(jsonPath("$.requests[0].id").value(query.getId()))
+                .andExpect(jsonPath("$.requests[0].type").value("SingleExecution"))
+
+            mockMvc.perform(
+                get("/execution-requests/")
+                    .param("types", "TemporaryAccess")
+                    .cookie(cookie),
+            ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.requests", hasSize<Collection<*>>(1)))
+                .andExpect(jsonPath("$.requests[0].id").value(session.getId()))
+                .andExpect(jsonPath("$.requests[0].type").value("TemporaryAccess"))
+
+            mockMvc.perform(
+                get("/execution-requests/")
+                    .param("types", "SingleExecution")
+                    .param("types", "TemporaryAccess")
+                    .cookie(cookie),
+            ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.requests", hasSize<Collection<*>>(2)))
         }
 
         @Test
