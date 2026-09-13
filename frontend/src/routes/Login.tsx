@@ -1,12 +1,13 @@
 import { ChangeEvent, FormEvent, useContext, useState } from "react";
 import Button from "../components/Button";
 import GoogleButton from "react-google-button";
-import { Navigate } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import { UserStatusContext } from "../components/UserStatusProvider";
 import image from "../logo.png";
 import baseUrl from "../api/base";
 import useConfig from "../components/ConfigProvider";
 import Spinner from "../components/Spinner";
+import { Error } from "../components/Alert";
 import { isApiErrorResponse } from "../api/Errors";
 import useNotification from "../hooks/useNotification";
 import { attemptLogin } from "../api/LoginApi";
@@ -53,6 +54,10 @@ const Login = () => {
   // SSO logins leave the app for the identity provider, so the backend has to carry the
   // target through that round trip; it takes it as the same `redirect` parameter.
   const redirectTarget = useLoginRedirectTarget();
+  // SSO logins fail on the identity provider round trip, so the backend reports the reason
+  // (e.g. a deactivated account) through this parameter instead of an API response.
+  const [searchParams] = useSearchParams();
+  const ssoError = searchParams.get("error");
   const ssoUrl = (path: string) =>
     withRedirectTarget(`${baseUrl}${path}`, redirectTarget);
 
@@ -146,6 +151,11 @@ const Login = () => {
           </div>
           <div className="mb-6 text-center text-2xl">Sign in to Kviklet</div>
           <div className="rounded-md p-6 shadow-xl dark:bg-slate-900 dark:shadow-none">
+            {ssoError && (
+              <div className="mb-4" data-testid="login-error">
+                <Error>{ssoError}</Error>
+              </div>
+            )}
             {oAuthButton()}
             {samlButton()}
 

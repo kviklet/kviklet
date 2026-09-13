@@ -21,6 +21,8 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketHttpHeaders
 import org.springframework.web.socket.WebSocketSession
@@ -136,6 +138,27 @@ class WebSocketHandlerTest {
         Thread.sleep(250)
         assertEquals(expectedMessages, messages.size, "Expected $expectedMessages messages but received: $messages")
         return messages.map { objectMapper.readTree(it) }
+    }
+
+    @Test
+    fun `deactivating a user closes their websocket`() {
+        val (session, messages, _) = openSession()
+        waitForResponses(messages, 1)
+        assertTrue(session.isOpen)
+
+        val admin = userHelper.createUser(permissions = listOf("*"))
+        val adminCookie = userHelper.login(admin.email, "123456", mockMvc)
+        mockMvc.perform(
+            MockMvcRequestBuilders.put("/users/${testUser.getId()}/status").cookie(adminCookie)
+                .content("""{"active": false}""")
+                .contentType("application/json"),
+        ).andExpect(MockMvcResultMatchers.status().isOk)
+
+        val deadline = System.currentTimeMillis() + 10_000
+        while (session.isOpen && System.currentTimeMillis() < deadline) {
+            Thread.sleep(50)
+        }
+        assertFalse(session.isOpen, "Expected the websocket of the deactivated user to be closed")
     }
 
     @Test

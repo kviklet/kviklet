@@ -2,16 +2,18 @@ package dev.kviklet.kviklet.controller
 
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserId
+import dev.kviklet.kviklet.security.CurrentUser
+import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.UserService
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 import org.springframework.validation.annotation.Validated
-import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
@@ -43,11 +45,20 @@ data class EditUserRequest(
     val password: String?,
 )
 
-data class UserResponse(val id: String, val email: String, val fullName: String?, val roles: List<RoleResponse>) {
+data class UserStatusRequest(val active: Boolean)
+
+data class UserResponse(
+    val id: String,
+    val email: String,
+    val fullName: String?,
+    val active: Boolean,
+    val roles: List<RoleResponse>,
+) {
     constructor(user: User) : this(
         id = user.getId()!!,
         email = user.email,
         fullName = user.fullName,
+        active = user.active,
         roles = user.roles.map { RoleResponse.fromDto(it) },
     )
 }
@@ -109,8 +120,17 @@ class UserController(private val userService: UserService) {
         }
     }
 
-    @DeleteMapping("/{id}")
-    fun deleteUser(@PathVariable id: String) {
-        userService.deleteUser(UserId(id))
-    }
+    @PutMapping("/{id}/status")
+    fun setUserStatus(
+        @PathVariable id: String,
+        @RequestBody @Valid
+        request: UserStatusRequest,
+        @CurrentUser userDetails: UserDetailsWithId,
+    ): UserResponse = UserResponse(
+        userService.setUserActive(
+            userId = UserId(id),
+            active = request.active,
+            currentUserId = userDetails.id,
+        ),
+    )
 }

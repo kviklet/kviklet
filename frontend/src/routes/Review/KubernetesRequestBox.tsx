@@ -5,6 +5,7 @@ import { AbsoluteInitialBubble as InitialBubble } from "../../components/Initial
 import { Highlighter } from "./components/Highlighter";
 import { FC, useContext, useEffect, useState, MouseEvent } from "react";
 import { UserStatusContext } from "../../components/UserStatusProvider";
+import UserName from "../../components/UserName";
 
 interface KubernetesRequestBoxProps {
   request: KubernetesExecutionRequestResponseWithComments;
@@ -37,7 +38,7 @@ const KubernetesRequestBox: FC<KubernetesRequestBoxProps> = ({
       <InitialBubble name={request?.author.fullName} />
       <div className="py-2">
         <div className="text-sm text-slate-800 dark:text-slate-50">
-          {request?.author?.fullName}{" "}
+          {request?.author && <UserName user={request.author} />}{" "}
           <span
             className="text-slate-500 dark:text-slate-400"
             title={

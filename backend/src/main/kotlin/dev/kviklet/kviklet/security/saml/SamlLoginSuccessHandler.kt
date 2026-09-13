@@ -4,6 +4,7 @@ package dev.kviklet.kviklet.security.saml
 import dev.kviklet.kviklet.security.LoginRedirectTargetFilter
 import dev.kviklet.kviklet.security.PolicyGrantedAuthority
 import dev.kviklet.kviklet.security.UserDetailsWithId
+import dev.kviklet.kviklet.security.frontendBaseUrl
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -53,24 +54,16 @@ class SamlLoginSuccessHandler(private val samlUserService: SamlUserService) :
                 request.session?.invalidate()
 
                 // Redirect to error page
-                val baseUrl = getBaseUrl(request)
+                val baseUrl = frontendBaseUrl(request)
                 val errorMessage = java.net.URLEncoder.encode(e.message ?: "SAML login failed", "UTF-8")
                 redirectStrategy.sendRedirect(request, response, "$baseUrl/login?error=$errorMessage")
                 return
             }
         }
 
-        val baseUrl = getBaseUrl(request)
+        val baseUrl = frontendBaseUrl(request)
         // Back to the page that sent the user to the login, or the frontend's index page.
         val target = LoginRedirectTargetFilter.consume(request) ?: "/"
         redirectStrategy.sendRedirect(request, response, "$baseUrl$target")
-    }
-
-    private fun getBaseUrl(request: HttpServletRequest): String {
-        val scheme = request.scheme
-        val serverName = request.serverName
-        val serverPort = request.serverPort
-
-        return "$scheme://$serverName${if (serverPort != 80 && serverPort != 443) ":5173" else ""}"
     }
 }

@@ -5,6 +5,7 @@ import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 import { AbsoluteInitialBubble as InitialBubble } from "../../../components/InitialBubble";
 import { Highlighter } from "../components/Highlighter";
 import TimelineItem from "./TimelineItem";
+import UserName from "../../../components/UserName";
 
 function EditEvent({
   event,
@@ -24,7 +25,7 @@ function EditEvent({
             </div>
           </div>
           <div className="text-sm text-slate-500">
-            {event?.author?.fullName} edited:
+            {event?.author && <UserName user={event.author} />} edited:
           </div>
         </>
       }

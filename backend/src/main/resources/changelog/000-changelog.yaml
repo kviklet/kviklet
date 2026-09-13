@@ -146,3 +146,6 @@ databaseChangeLog:
   - include:
       file: 050-widen-connection-credentials.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 051-add-user-active.yaml
+      relativeToChangelogFile: true

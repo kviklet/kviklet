@@ -159,6 +159,14 @@ class ProxyServer(
             .forEach { (username, session) -> expireSession(username, session) }
     }
 
+    // Ends every proxy session a deactivated user obtained, closing their live relays.
+    @Synchronized
+    fun expireSessionsForUser(userId: String) {
+        sessions.entries
+            .filter { (_, session) -> session.userId == userId }
+            .forEach { (username, session) -> expireSession(username, session) }
+    }
+
     // Only sessions that are still active resolve; expiry removes them from the map and flips active, so a
     // client that arrives after its window closed finds nothing and is rejected.
     private fun resolveSession(username: String): ProxySession? = sessions[username]?.takeIf { it.active }

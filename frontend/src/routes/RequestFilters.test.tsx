@@ -31,8 +31,20 @@ const makeConnection = (id: string, displayName: string) =>
 
 const usersResponse = {
   users: [
-    { id: "me", email: "me@example.com", fullName: "Current User", roles: [] },
-    { id: "u2", email: "other@example.com", fullName: "Other User", roles: [] },
+    {
+      id: "me",
+      email: "me@example.com",
+      fullName: "Current User",
+      active: true,
+      roles: [],
+    },
+    {
+      id: "u2",
+      email: "other@example.com",
+      fullName: "Other User",
+      active: true,
+      roles: [],
+    },
   ],
 };
 

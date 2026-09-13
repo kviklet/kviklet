@@ -9,6 +9,7 @@ import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 import { AbsoluteInitialBubble as InitialBubble } from "../../../components/InitialBubble";
 import { componentMap } from "../components/Highlighter";
 import TimelineItem from "./TimelineItem";
+import UserName from "../../../components/UserName";
 
 function Comment({
   event,
@@ -35,9 +36,13 @@ function Comment({
           )}
           <div className="text-sm text-slate-500">
             {event?._type === "COMMENT" ? (
-              <div>{`${event?.author?.fullName} commented:`}</div>
+              <div>
+                {event?.author && <UserName user={event.author} />} commented:
+              </div>
             ) : (
-              <div>{`${event?.author?.fullName} approved`} </div>
+              <div>
+                {event?.author && <UserName user={event.author} />} approved{" "}
+              </div>
             )}
           </div>
         </>

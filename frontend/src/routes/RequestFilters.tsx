@@ -140,6 +140,7 @@ function OptionRow({
   onClick,
   testId,
   leading,
+  muted,
 }: {
   label: string;
   hint?: string;
@@ -147,6 +148,8 @@ function OptionRow({
   onClick: () => void;
   testId?: string;
   leading?: ReactNode;
+  // Grays the label out, used for deactivated users that stay selectable for history.
+  muted?: boolean;
 }) {
   return (
     <button
@@ -157,7 +160,9 @@ function OptionRow({
     >
       {leading}
       <span className="min-w-0 flex-1">
-        <span className="block truncate">{label}</span>
+        <span className={`block truncate ${muted ? "opacity-60" : ""}`}>
+          {label}
+        </span>
         {hint && (
           <span className="block truncate text-xs text-slate-400 dark:text-slate-500">
             {hint}
@@ -302,6 +307,8 @@ function RequestFilterBar({
                   <OptionRow
                     key={user.id}
                     label={user.fullName ?? user.email}
+                    hint={user.active ? undefined : "Deactivated"}
+                    muted={!user.active}
                     leading={
                       <InitialBubble
                         name={user.fullName ?? user.email}

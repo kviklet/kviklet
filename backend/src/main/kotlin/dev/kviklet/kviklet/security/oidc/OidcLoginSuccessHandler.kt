@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.security.oidc
 
 import dev.kviklet.kviklet.security.KvikletOAuthPrincipal
 import dev.kviklet.kviklet.security.LoginRedirectTargetFilter
+import dev.kviklet.kviklet.security.frontendBaseUrl
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.transaction.Transactional
@@ -32,17 +33,9 @@ class OidcLoginSuccessHandler : SimpleUrlAuthenticationSuccessHandler() {
             SecurityContextHolder.getContext().authentication = newAuth
         }
 
-        val baseUrl = request?.let { getBaseUrl(it) }
+        val baseUrl = request?.let { frontendBaseUrl(it) }
         // Back to the page that sent the user to the login, or the frontend's index page.
         val target = request?.let { LoginRedirectTargetFilter.consume(it) } ?: "/"
         redirectStrategy.sendRedirect(request, response, "$baseUrl$target")
-    }
-
-    private fun getBaseUrl(request: HttpServletRequest): String {
-        val scheme = request.scheme
-        val serverName = request.serverName
-        val serverPort = request.serverPort
-
-        return "$scheme://$serverName${if (serverPort != 80 && serverPort != 443) ":5173" else ""}"
     }
 }

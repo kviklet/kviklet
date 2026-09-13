@@ -6,6 +6,7 @@ import dev.kviklet.kviklet.service.DownloadException
 import dev.kviklet.kviklet.service.EmailAlreadyExistsException
 import dev.kviklet.kviklet.service.EntityAlreadyExists
 import dev.kviklet.kviklet.service.EntityNotFound
+import dev.kviklet.kviklet.service.InactiveUserExistsException
 import dev.kviklet.kviklet.service.InvalidLicenseException
 import dev.kviklet.kviklet.service.InvalidReviewException
 import dev.kviklet.kviklet.service.LicenseRestrictionException
@@ -17,6 +18,8 @@ import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.authentication.BadCredentialsException
+import org.springframework.security.authentication.DisabledException
+import org.springframework.web.HttpRequestMethodNotSupportedException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -114,6 +117,21 @@ class ExceptionHandlerController {
         return ResponseEntity(ErrorResponse(ex.message ?: "Bad Credentials"), HttpStatus.UNAUTHORIZED)
     }
 
+    @ExceptionHandler(DisabledException::class)
+    fun handleDisabledException(ex: DisabledException, request: HttpServletRequest): ResponseEntity<Any> {
+        logger.warn("Deactivated user login attempt at ${request.requestURI}")
+        return ResponseEntity(ErrorResponse(ex.message ?: "Account deactivated"), HttpStatus.UNAUTHORIZED)
+    }
+
+    @ExceptionHandler(InactiveUserExistsException::class)
+    fun handleInactiveUserExistsException(
+        ex: InactiveUserExistsException,
+        request: HttpServletRequest,
+    ): ResponseEntity<Any> {
+        logger.warn("Inactive user exists at ${request.requestURI}: ${ex.message}")
+        return ResponseEntity(ErrorResponse(ex.message ?: "Deactivated user exists"), HttpStatus.CONFLICT)
+    }
+
     @ExceptionHandler(EntityNotFound::class)
     fun handleEntityNotFound(ex: EntityNotFound, request: HttpServletRequest): ResponseEntity<Any> {
         logger.warn("Entity not found at ${request.requestURI}: ${ex.message}")
@@ -124,6 +142,15 @@ class ExceptionHandlerController {
     fun handleEntityAlreadyExists(ex: EntityAlreadyExists, request: HttpServletRequest): ResponseEntity<Any> {
         logger.warn("Entity already exists at ${request.requestURI}: ${ex.message}")
         return ResponseEntity(ErrorResponse(ex.message), HttpStatus.CONFLICT)
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException::class)
+    fun handleMethodNotSupported(
+        ex: HttpRequestMethodNotSupportedException,
+        request: HttpServletRequest,
+    ): ResponseEntity<Any> {
+        logger.warn("Method not supported at ${request.requestURI}: ${ex.message}")
+        return ResponseEntity(ErrorResponse(ex.message ?: "Method not allowed"), HttpStatus.METHOD_NOT_ALLOWED)
     }
 
     @ExceptionHandler(Exception::class)

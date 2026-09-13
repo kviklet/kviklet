@@ -1,0 +1,31 @@
+package dev.kviklet.kviklet.security.oidc
+
+import dev.kviklet.kviklet.security.frontendBaseUrl
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
+import org.slf4j.LoggerFactory
+import org.springframework.security.core.AuthenticationException
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler
+import org.springframework.stereotype.Component
+import java.net.URLEncoder
+
+/**
+ * Sends a failed OAuth2/OIDC login back to the frontend login page with the reason, the same way
+ * the SAML handler does, so that e.g. a deactivated user learns why they were refused instead of
+ * landing on a bare backend error page.
+ */
+@Component
+class OidcLoginFailureHandler : SimpleUrlAuthenticationFailureHandler() {
+
+    private val logger = LoggerFactory.getLogger(OidcLoginFailureHandler::class.java)
+
+    override fun onAuthenticationFailure(
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        exception: AuthenticationException,
+    ) {
+        logger.warn("OAuth2 login failed: ${exception.message}")
+        val message = URLEncoder.encode(exception.message ?: "Login failed", "UTF-8")
+        redirectStrategy.sendRedirect(request, response, "${frontendBaseUrl(request)}/login?error=$message")
+    }
+}

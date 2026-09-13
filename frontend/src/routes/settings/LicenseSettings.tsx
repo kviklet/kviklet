@@ -20,7 +20,10 @@ export default function LicenseSettings() {
           <Spinner size="lg" page />
         ) : (
           <div className="flex flex-col gap-y-2">
-            <LicenseInfo license={config} userCount={users.length.toString()} />
+            <LicenseInfo
+              license={config}
+              userCount={users.filter((user) => user.active).length.toString()}
+            />
             <LicenseStatus license={config} />
             <RequirePermission permission="configuration:edit">
               <LicenseDropZone refreshLicense={refreshConfig}></LicenseDropZone>
@@ -44,7 +47,10 @@ const LicenseInfo = ({
       name: "License Valid until",
       stat: license.validUntil?.toDateString() || "-",
     },
-    { name: "Users", stat: `${userCount}/${license.allowedUsers || "-"}` },
+    {
+      name: "Active users",
+      stat: `${userCount}/${license.allowedUsers || "-"}`,
+    },
   ];
 
   return (

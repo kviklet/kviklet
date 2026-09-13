@@ -18,6 +18,7 @@ import Button from "../../components/Button";
 import Modal from "../../components/Modal";
 import SettingsTable, { Column } from "../../components/SettingsTable";
 import { useHasPermission } from "../../hooks/permissions";
+import UserName from "../../components/UserName";
 
 export default function ApiKeyPage() {
   const canCreate = useHasPermission("api_key:create");
@@ -150,7 +151,7 @@ export default function ApiKeyPage() {
     },
     {
       header: "Created By",
-      render: (key) => key.user.fullName || key.user.email,
+      render: (key) => <UserName user={key.user} />,
     },
     {
       header: "Created",

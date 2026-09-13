@@ -9,6 +9,7 @@ import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import { Highlighter } from "../components/Highlighter";
 import JsonViewer from "../../../components/JsonViewer";
 import TimelineItem from "./TimelineItem";
+import UserName from "../../../components/UserName";
 
 function ExecuteEvent({
   event,
@@ -35,13 +36,15 @@ function ExecuteEvent({
           </div>
           {event?.isDump && (
             <div className="text-sm text-slate-500">
-              {event?.author?.fullName} requested a SQL dump from the database.
+              {event?.author && <UserName user={event.author} />} requested a
+              SQL dump from the database.
             </div>
           )}
           {event?.query && (
             <div className="flex items-center text-sm text-slate-500">
               <span>
-                {event?.author?.fullName} {sqlStatementText}
+                {event?.author && <UserName user={event.author} />}{" "}
+                {sqlStatementText}
               </span>
               {event?.isDryRun && (
                 <span className="ml-2 rounded bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
@@ -52,7 +55,8 @@ function ExecuteEvent({
           )}
           {event?.command && (
             <div className="text-sm text-slate-500">
-              {event?.author?.fullName} ran the following command:
+              {event?.author && <UserName user={event.author} />} ran the
+              following command:
             </div>
           )}
         </>
