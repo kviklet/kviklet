@@ -30,7 +30,8 @@ class EncryptionConfigProperties {
  * decryption with the wrong key fail deterministically, and the key id selects the configured key
  * (current or previous) up front instead of guessing. Values without the prefix are legacy
  * `base64(iv || AES/CBC/PKCS5Padding)` ciphertexts from before this format existed; they are still
- * readable and get rewritten in the new format the next time the connection is saved.
+ * readable while a single key is configured and get rewritten in the new format the next time the
+ * connection is saved.
  */
 @Service
 class EncryptionService(private val config: EncryptionConfigProperties) {
@@ -95,28 +96,28 @@ class EncryptionService(private val config: EncryptionConfigProperties) {
     }
 
     /**
-     * Legacy CBC values carry no key id and no integrity check, so the key has to be found by trial.
-     * A wrong key yields a valid PKCS5 padding about once in 256 attempts, which is why the result is
-     * additionally required to be valid UTF-8 before it is accepted. The previous key is tried first
-     * because when an upgrade and a rotation happen together every legacy value was written with it,
-     * so the wrong-key trial is skipped entirely in the common case.
+     * Legacy CBC values carry no key id and no integrity check, so there is no safe way to pick
+     * between two keys: the wrong one yields a valid PKCS5 padding about once in 256 attempts and
+     * the garbage would then be re-encrypted over the real credential. They are therefore only
+     * decrypted while a single key is configured. Upgrading with the existing key alone rewrites
+     * every value in the GCM format on startup, after which a rotation is safe.
      */
     private fun decryptLegacy(encrypted: String): String {
+        val keys = configuredKeys()
+        check(keys.size == 1) {
+            "Found a credential encrypted by an older Kviklet version while ENCRYPTION_KEY_PREVIOUS is set. " +
+                "Such values cannot be safely decrypted with two keys. Start Kviklet once with only " +
+                "ENCRYPTION_KEY_CURRENT set to the key these credentials were encrypted with, which rewrites " +
+                "them in the new format, and rotate the key afterwards."
+        }
         val decoded = Base64.getDecoder().decode(encrypted)
         val iv = IvParameterSpec(decoded.copyOfRange(0, LEGACY_CBC_IV_BYTES))
         val ciphertext = decoded.copyOfRange(LEGACY_CBC_IV_BYTES, decoded.size)
-
-        var lastError: Exception? = null
-        for (key in configuredKeys().reversed()) {
-            try {
-                val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
-                cipher.init(Cipher.DECRYPT_MODE, key.spec, iv)
-                return decodeStrictUtf8(cipher.doFinal(ciphertext))
-            } catch (e: Exception) {
-                lastError = e
-            }
-        }
-        throw lastError ?: IllegalStateException("No encryption key found")
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        cipher.init(Cipher.DECRYPT_MODE, keys.single().spec, iv)
+        // A misconfigured single key can still pass the padding check by chance, so at least require
+        // the result to be valid text before it gets rewritten under the new format.
+        return decodeStrictUtf8(cipher.doFinal(ciphertext))
     }
 
     private fun decodeStrictUtf8(bytes: ByteArray): String = try {

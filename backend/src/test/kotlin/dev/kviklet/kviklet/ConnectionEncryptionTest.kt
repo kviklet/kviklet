@@ -13,6 +13,7 @@ import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ReviewConfig
+import io.kotest.assertions.throwables.shouldThrowAny
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldStartWith
@@ -397,26 +398,48 @@ class ConnectionEncryptionTest(
     }
 
     @Test
-    fun `legacy CBC encrypted credentials under the previous key are migrated to the current key`() {
+    fun `legacy CBC encrypted credentials are not touched while a previous key is configured`() {
         val id = seedLegacyEncryptedConnection("legacyuser", "legacypassword", TEST_ENCRYPTION_KEY)
+        val legacyStored = connectionRepository.findById(id.toString()).get()
 
         encryptionConfig.key = EncryptionConfigProperties.KeyProperties(
             current = NEW_ENCRYPTION_KEY,
             previous = TEST_ENCRYPTION_KEY,
         )
-        val credentials = credentialsOf(id)
-        credentials.username shouldBe "legacyuser"
-        credentials.password shouldBe "legacypassword"
+        val error = shouldThrowAny { connectionAdapter.getConnection(id) }
+        error.message!! shouldStartWith "Found a credential encrypted by an older Kviklet version"
 
-        // The previous key can now be dropped
+        val untouchedStored = connectionRepository.findById(id.toString()).get()
+        untouchedStored.storedUsername shouldBe legacyStored.storedUsername
+        untouchedStored.storedPassword shouldBe legacyStored.storedPassword
+    }
+
+    @Test
+    fun `legacy CBC encrypted credentials can be rotated after they were migrated with a single key`() {
+        val id = seedLegacyEncryptedConnection("legacyuser", "legacypassword", TEST_ENCRYPTION_KEY)
+
+        // First start of the new version: only the existing key is configured, values move to GCM
+        credentialsOf(id).username shouldBe "legacyuser"
+        val migratedStored = connectionRepository.findById(id.toString()).get()
+        migratedStored.storedUsername!! shouldStartWith "aes-gcm:"
+
+        // Second start: rotate with both keys, which now only ever touches GCM values
+        encryptionConfig.key = EncryptionConfigProperties.KeyProperties(
+            current = NEW_ENCRYPTION_KEY,
+            previous = TEST_ENCRYPTION_KEY,
+        )
+        val rotated = credentialsOf(id)
+        rotated.username shouldBe "legacyuser"
+        rotated.password shouldBe "legacypassword"
+        val rotatedStored = connectionRepository.findById(id.toString()).get()
+        rotatedStored.storedUsername shouldNotBe migratedStored.storedUsername
+
+        // Third start: the previous key can be dropped
         encryptionConfig.key = EncryptionConfigProperties.KeyProperties(
             current = NEW_ENCRYPTION_KEY,
             previous = null,
         )
-        val afterRotation = credentialsOf(id)
-        afterRotation.username shouldBe "legacyuser"
-        afterRotation.password shouldBe "legacypassword"
-        connectionRepository.findById(id.toString()).get().storedUsername!! shouldStartWith "aes-gcm:"
+        credentialsOf(id).password shouldBe "legacypassword"
     }
 
     @Test

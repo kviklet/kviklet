@@ -100,24 +100,26 @@ class EncryptionServiceTest {
     }
 
     @Test
-    fun `legacy CBC ciphertexts under the previous key never decrypt to garbage during rotation`() {
-        val ciphertexts = List(ATTEMPTS) { LegacyCbcEncryption.encrypt("rotationuser", KEY_A) }
+    fun `legacy CBC ciphertexts are refused while a previous key is configured`() {
+        val underPrevious = LegacyCbcEncryption.encrypt("rotationuser", KEY_A)
+        val underCurrent = LegacyCbcEncryption.encrypt("rotationuser", KEY_B)
 
         keys(current = KEY_B, previous = KEY_A)
-        ciphertexts.forEach { ciphertext ->
-            service.decrypt(ciphertext) shouldBe "rotationuser"
+        listOf(underPrevious, underCurrent).forEach { ciphertext ->
+            val error = shouldThrowAny { service.decrypt(ciphertext) }
+            error.message!! shouldStartWith "Found a credential encrypted by an older Kviklet version"
         }
     }
 
     @Test
-    fun `legacy CBC ciphertexts under the current key still decrypt while a previous key is configured`() {
+    fun `legacy CBC ciphertexts under a wrong single key never decrypt to garbage`() {
         // Long enough that a wrong-key decryption cannot pass for valid text by accident
         val plaintext = "a-rather-long-password-with-more-than-three-blocks"
         val ciphertexts = List(ATTEMPTS) { LegacyCbcEncryption.encrypt(plaintext, KEY_A) }
 
-        keys(current = KEY_A, previous = KEY_B)
+        keys(KEY_B)
         ciphertexts.forEach { ciphertext ->
-            service.decrypt(ciphertext) shouldBe plaintext
+            shouldThrowAny { service.decrypt(ciphertext) }
         }
     }
 
