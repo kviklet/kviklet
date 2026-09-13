@@ -152,6 +152,7 @@ const useRequests = (filters: RequestListFilters, searchTerm: string) => {
         executionStatuses: filters.onlyPending
           ? ["EXECUTABLE", "ACTIVE"]
           : undefined,
+        types: filters.type ? [filters.type] : undefined,
         connectionIds:
           filters.connectionIds.length > 0 ? filters.connectionIds : undefined,
         authorId: filters.authorId ?? undefined,

@@ -141,6 +141,25 @@ describe("RequestFilterBar", () => {
       );
     });
 
+    it("selects a request type exclusively and toggles it off again", async () => {
+      renderFilterBar();
+
+      userEvent.click(await screen.findByTestId("filter-type"));
+      userEvent.click(await screen.findByTestId("filter-type-TemporaryAccess"));
+      expect(lastFilters.type).toBe("TemporaryAccess");
+      expect(screen.getByTestId("filter-type")).toHaveTextContent("Sessions");
+
+      userEvent.click(screen.getByTestId("filter-type"));
+      userEvent.click(await screen.findByTestId("filter-type-SingleExecution"));
+      expect(lastFilters.type).toBe("SingleExecution");
+      expect(screen.getByTestId("filter-type")).toHaveTextContent("Queries");
+
+      userEvent.click(screen.getByTestId("filter-type"));
+      userEvent.click(await screen.findByTestId("filter-type-SingleExecution"));
+      expect(lastFilters.type).toBeNull();
+      expect(screen.getByTestId("filter-type")).toHaveTextContent("Type");
+    });
+
     it("clears a single filter from its pill", async () => {
       renderFilterBar();
 
@@ -177,10 +196,13 @@ describe("RequestFilterBar", () => {
       userEvent.click(document.body);
       userEvent.click(screen.getByTestId("filter-author"));
       userEvent.click(await screen.findByTestId("filter-author-mine"));
+      userEvent.click(screen.getByTestId("filter-type"));
+      userEvent.click(await screen.findByTestId("filter-type-SingleExecution"));
       userEvent.click(screen.getByTestId("filter-pending"));
       expect(lastFilters).toMatchObject({
         connectionIds: ["conn-a"],
         authorId: "me",
+        type: "SingleExecution",
         onlyPending: true,
       });
 
