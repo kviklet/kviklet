@@ -172,8 +172,8 @@ class ConnectionAdapter(
     }
 
     private fun reEncryptAndSaveIfNeeded(connection: ConnectionEntity) {
-        val needsReEncryption = encryptionConfig.enabled && (encryptionConfig.key?.bothKeysProvided() ?: false)
-        if (needsReEncryption) {
+        val storedValues = listOfNotNull(connection.storedUsername, connection.storedPassword)
+        if (storedValues.any { encryptionService.needsReEncryption(it) }) {
             save(connection)
         }
     }
