@@ -97,6 +97,91 @@ describe("RequestFilterBar", () => {
     });
   });
 
+  describe("inline search", () => {
+    it("narrows connections by name and toggles the first match on Enter", async () => {
+      renderFilterBar();
+
+      userEvent.click(await screen.findByTestId("filter-connection"));
+      const search = await screen.findByTestId("filter-connection-search");
+      expect(search).toHaveFocus();
+
+      userEvent.type(search, "staging");
+      expect(
+        screen.queryByTestId("filter-connection-Prod Postgres"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByTestId("filter-connection-Staging MySQL"),
+      ).toBeVisible();
+
+      userEvent.type(search, "{enter}");
+      expect(lastFilters.connectionIds).toEqual(["conn-b"]);
+      // The popover stays open for multiselect, and the query is kept
+      expect(search).toHaveValue("staging");
+    });
+
+    it("shows a hint when nothing matches", async () => {
+      renderFilterBar();
+
+      userEvent.click(await screen.findByTestId("filter-connection"));
+      userEvent.type(
+        await screen.findByTestId("filter-connection-search"),
+        "nope",
+      );
+      expect(screen.getByText("No matches")).toBeVisible();
+      expect(lastFilters.connectionIds).toEqual([]);
+    });
+
+    it("narrows authors by name or email, keeping 'Your requests' when it matches", async () => {
+      renderFilterBar();
+
+      userEvent.click(await screen.findByTestId("filter-author"));
+      const search = await screen.findByTestId("filter-author-search");
+      await screen.findByText("Other User");
+
+      userEvent.type(search, "other@");
+      expect(screen.getByText("Other User")).toBeVisible();
+      expect(
+        screen.queryByTestId("filter-author-mine"),
+      ).not.toBeInTheDocument();
+
+      userEvent.clear(search);
+      userEvent.type(search, "your");
+      expect(screen.getByTestId("filter-author-mine")).toBeVisible();
+      expect(screen.queryByText("Other User")).not.toBeInTheDocument();
+
+      userEvent.clear(search);
+      userEvent.type(search, "other{enter}");
+      expect(lastFilters.authorId).toBe("u2");
+      expect(
+        screen.queryByTestId("filter-author-search"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("resets the query when the dropdown is reopened", async () => {
+      renderFilterBar();
+
+      userEvent.click(await screen.findByTestId("filter-connection"));
+      userEvent.type(
+        await screen.findByTestId("filter-connection-search"),
+        "staging",
+      );
+      userEvent.keyboard("{Escape}");
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("filter-connection-search"),
+        ).not.toBeInTheDocument(),
+      );
+
+      userEvent.click(screen.getByTestId("filter-connection"));
+      expect(await screen.findByTestId("filter-connection-search")).toHaveValue(
+        "",
+      );
+      expect(
+        screen.getByTestId("filter-connection-Prod Postgres"),
+      ).toBeVisible();
+    });
+  });
+
   describe("selection semantics", () => {
     it("toggles connections in and out of the multiselect", async () => {
       renderFilterBar();
