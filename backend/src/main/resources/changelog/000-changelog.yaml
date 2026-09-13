@@ -143,3 +143,6 @@ databaseChangeLog:
   - include:
       file: 049-store-ids-without-padding.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 050-widen-connection-credentials.yaml
+      relativeToChangelogFile: true

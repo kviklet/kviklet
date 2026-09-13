@@ -171,9 +171,13 @@ class ConnectionAdapter(
         save(connection)
     }
 
+    /*
+     * Rewrites the stored credentials whenever they are not encrypted with the current key in the
+     * current format: after a key rotation, or for values written before authenticated encryption.
+     */
     private fun reEncryptAndSaveIfNeeded(connection: ConnectionEntity) {
-        val needsReEncryption = encryptionConfig.enabled && (encryptionConfig.key?.bothKeysProvided() ?: false)
-        if (needsReEncryption) {
+        val storedValues = listOfNotNull(connection.storedUsername, connection.storedPassword)
+        if (storedValues.any { encryptionService.needsReEncryption(it) }) {
             save(connection)
         }
     }

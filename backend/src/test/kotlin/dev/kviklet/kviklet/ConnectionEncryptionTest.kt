@@ -1,8 +1,10 @@
 package dev.kviklet.kviklet
 
 import dev.kviklet.kviklet.db.ConnectionAdapter
+import dev.kviklet.kviklet.db.ConnectionEntity
 import dev.kviklet.kviklet.db.ConnectionRepository
 import dev.kviklet.kviklet.db.EncryptionConfigProperties
+import dev.kviklet.kviklet.helper.LegacyCbcEncryption
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.ConnectionId
@@ -13,6 +15,7 @@ import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ReviewConfig
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.string.shouldStartWith
 import io.kotest.matchers.types.shouldBeInstanceOf
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -80,6 +83,40 @@ class ConnectionEncryptionTest(
         dryRunEnabled = false,
         dryRunRequiresApproval = true,
     ) as DatasourceConnection
+
+    /**
+     * Seeds a connection the way a deployment that enabled encryption before the switch to
+     * authenticated encryption stored it: AES/CBC ciphertexts without any format marker.
+     */
+    private fun seedLegacyEncryptedConnection(username: String, password: String, key: String): ConnectionId {
+        val id = ConnectionId(UUID.randomUUID().toString())
+        connectionRepository.saveAndFlush(
+            ConnectionEntity(
+                id = id.toString(),
+                connectionType = ConnectionType.DATASOURCE,
+                displayName = "Legacy Connection",
+                description = "Stored before authenticated encryption",
+                reviewConfig = ReviewConfig(numTotalRequired = 1),
+                isEncrypted = true,
+                storedUsername = LegacyCbcEncryption.encrypt(username, key),
+                storedPassword = LegacyCbcEncryption.encrypt(password, key),
+                authenticationType = AuthenticationType.USER_PASSWORD,
+                databaseName = "legacydb",
+                datasourceType = DatasourceType.POSTGRESQL,
+                protocol = DatabaseProtocol.POSTGRESQL,
+                hostname = "localhost",
+                port = 5432,
+                additionalJDBCOptions = "",
+            ),
+        )
+        return id
+    }
+
+    private fun credentialsOf(connectionId: ConnectionId): AuthenticationDetails.UserPassword {
+        val connection = connectionAdapter.getConnection(connectionId) as DatasourceConnection
+        connection.auth.shouldBeInstanceOf<AuthenticationDetails.UserPassword>()
+        return connection.auth as AuthenticationDetails.UserPassword
+    }
 
     @Test
     fun `test behavior when encryption is disabled`() {
@@ -335,5 +372,103 @@ class ConnectionEncryptionTest(
         val secondUserPasswordAuth = secondRetrievedConnection.auth as AuthenticationDetails.UserPassword
         secondUserPasswordAuth.username shouldBe "unencrypteduser"
         secondUserPasswordAuth.password shouldBe "unencryptedpassword"
+    }
+
+    @Test
+    fun `legacy CBC encrypted credentials are migrated to authenticated encryption on read`() {
+        val id = seedLegacyEncryptedConnection("legacyuser", "legacypassword", TEST_ENCRYPTION_KEY)
+        val legacyStored = connectionRepository.findById(id.toString()).get()
+        legacyStored.storedUsername shouldNotBe "legacyuser"
+
+        val credentials = credentialsOf(id)
+        credentials.username shouldBe "legacyuser"
+        credentials.password shouldBe "legacypassword"
+
+        val migratedStored = connectionRepository.findById(id.toString()).get()
+        migratedStored.isEncrypted shouldBe true
+        migratedStored.storedUsername!! shouldStartWith "aes-gcm:"
+        migratedStored.storedPassword!! shouldStartWith "aes-gcm:"
+        migratedStored.storedUsername shouldNotBe legacyStored.storedUsername
+        migratedStored.storedPassword shouldNotBe legacyStored.storedPassword
+
+        val secondRead = credentialsOf(id)
+        secondRead.username shouldBe "legacyuser"
+        secondRead.password shouldBe "legacypassword"
+    }
+
+    @Test
+    fun `legacy CBC encrypted credentials under the previous key are migrated to the current key`() {
+        val id = seedLegacyEncryptedConnection("legacyuser", "legacypassword", TEST_ENCRYPTION_KEY)
+
+        encryptionConfig.key = EncryptionConfigProperties.KeyProperties(
+            current = NEW_ENCRYPTION_KEY,
+            previous = TEST_ENCRYPTION_KEY,
+        )
+        val credentials = credentialsOf(id)
+        credentials.username shouldBe "legacyuser"
+        credentials.password shouldBe "legacypassword"
+
+        // The previous key can now be dropped
+        encryptionConfig.key = EncryptionConfigProperties.KeyProperties(
+            current = NEW_ENCRYPTION_KEY,
+            previous = null,
+        )
+        val afterRotation = credentialsOf(id)
+        afterRotation.username shouldBe "legacyuser"
+        afterRotation.password shouldBe "legacypassword"
+        connectionRepository.findById(id.toString()).get().storedUsername!! shouldStartWith "aes-gcm:"
+    }
+
+    @Test
+    fun `listing connections migrates legacy CBC encrypted credentials`() {
+        // The startup initializer lists all connections, so this is the path production migrations take
+        val id = seedLegacyEncryptedConnection("legacyuser", "legacypassword", TEST_ENCRYPTION_KEY)
+
+        val listed = connectionAdapter.listConnections().single { it.id == id } as DatasourceConnection
+        val credentials = listed.auth as AuthenticationDetails.UserPassword
+        credentials.username shouldBe "legacyuser"
+        credentials.password shouldBe "legacypassword"
+
+        connectionRepository.findById(id.toString()).get().storedUsername!! shouldStartWith "aes-gcm:"
+    }
+
+    @Test
+    fun `credentials are only rewritten while they are not yet encrypted with the current key`() {
+        val connection = createTestDatasourceConnection(
+            displayName = "Stable Connection",
+            username = "stableuser",
+            password = "stablepassword",
+            databaseName = "stabledb",
+        )
+        val initialStored = connectionRepository.findById(connection.id.toString()).get()
+
+        encryptionConfig.key = EncryptionConfigProperties.KeyProperties(
+            current = NEW_ENCRYPTION_KEY,
+            previous = TEST_ENCRYPTION_KEY,
+        )
+        credentialsOf(connection.id).username shouldBe "stableuser"
+        val rotatedStored = connectionRepository.findById(connection.id.toString()).get()
+        rotatedStored.storedUsername shouldNotBe initialStored.storedUsername
+        rotatedStored.storedPassword shouldNotBe initialStored.storedPassword
+
+        credentialsOf(connection.id).username shouldBe "stableuser"
+        val rereadStored = connectionRepository.findById(connection.id.toString()).get()
+        rereadStored.storedUsername shouldBe rotatedStored.storedUsername
+        rereadStored.storedPassword shouldBe rotatedStored.storedPassword
+    }
+
+    @Test
+    fun `long credentials survive encryption`() {
+        val longPassword = "p".repeat(200)
+        val connection = createTestDatasourceConnection(
+            displayName = "Long Credentials Connection",
+            username = "u".repeat(200),
+            password = longPassword,
+            databaseName = "longdb",
+        )
+
+        val credentials = credentialsOf(connection.id)
+        credentials.username shouldBe "u".repeat(200)
+        credentials.password shouldBe longPassword
     }
 }

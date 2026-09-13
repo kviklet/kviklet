@@ -565,6 +565,8 @@ ENCRYPTION_KEY_CURRENT=some-secret
 
 Kviklet will encrypt all your existing credentials on startup, and use the secret for future connections that you create.
 
+Credentials are encrypted with AES-256-GCM. Each stored value carries a short id of the key it was encrypted with, so Kviklet always knows which key to use and a wrong key is rejected instead of producing garbage. Credentials that were encrypted by older Kviklet versions (AES-CBC without such an id) are still readable and are rewritten in the new format on startup.
+
 ### Key Rotation
 
 If you want to rotate the key you can simply add another variable for the previous key and change the current one:
@@ -574,7 +576,7 @@ ENCRYPTION_KEY_PREVIOUS=some-secret
 ENCRYPTION_KEY_CURRENT=another-secret
 ```
 
-Kviklet will re-encrypt all connections on startup, so that you can then restart the container with the previous key removed.
+Kviklet will re-encrypt all connections on startup, so that you can then restart the container with the previous key removed. If a credential turns out to be encrypted with a key that is no longer configured, Kviklet fails loudly when reading it instead of overwriting it.
 
 ## API Keys
 
