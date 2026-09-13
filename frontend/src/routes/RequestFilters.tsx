@@ -1,9 +1,16 @@
-import { ReactNode, useContext, useEffect, useState } from "react";
+import {
+  KeyboardEvent,
+  ReactNode,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import {
   CheckIcon,
   ChevronDownIcon,
   ClockIcon,
+  MagnifyingGlassIcon,
   XMarkIcon,
 } from "@heroicons/react/20/solid";
 import { getConnections, ConnectionResponse } from "../api/DatasourceApi";
@@ -133,6 +140,159 @@ function OptionRow({
   );
 }
 
+const matchesQuery = (
+  query: string,
+  ...fields: (string | null | undefined)[]
+) => fields.some((field) => field?.toLowerCase().includes(query.toLowerCase()));
+
+function OptionSearch({
+  value,
+  onChange,
+  onEnter,
+  placeholder,
+  testId,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onEnter: () => void;
+  placeholder: string;
+  testId: string;
+}) {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      onEnter();
+    }
+  };
+  return (
+    <div className="mb-1 flex items-center gap-2 border-b border-slate-200 px-2.5 pb-1.5 pt-1 dark:border-slate-700">
+      <MagnifyingGlassIcon className="h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
+      <input
+        type="text"
+        autoFocus
+        data-testid={testId}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        className="w-full border-0 bg-transparent p-0 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0 dark:text-slate-200 dark:placeholder:text-slate-500"
+      />
+    </div>
+  );
+}
+
+function NoMatches() {
+  return (
+    <div className="px-2.5 py-1.5 text-sm text-slate-400 dark:text-slate-500">
+      No matches
+    </div>
+  );
+}
+
+function ConnectionOptions({
+  connections,
+  selectedIds,
+  onToggle,
+}: {
+  connections: ConnectionResponse[];
+  selectedIds: string[];
+  onToggle: (id: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const visible = connections.filter((connection) =>
+    matchesQuery(query, connection.displayName),
+  );
+  return (
+    <>
+      <OptionSearch
+        value={query}
+        onChange={setQuery}
+        onEnter={() => visible[0] && onToggle(visible[0].id)}
+        placeholder="Search connections..."
+        testId="filter-connection-search"
+      />
+      <div className="max-h-64 overflow-y-auto">
+        {visible.length === 0 && <NoMatches />}
+        {visible.map((connection) => (
+          <OptionRow
+            key={connection.id}
+            label={connection.displayName}
+            selected={selectedIds.includes(connection.id)}
+            onClick={() => onToggle(connection.id)}
+            testId={`filter-connection-${connection.displayName}`}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
+function AuthorOptions({
+  currentUserId,
+  currentUserName,
+  users,
+  selectedId,
+  onSelect,
+}: {
+  currentUserId: string;
+  currentUserName: string | undefined;
+  users: UserResponse[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const showMine = matchesQuery(query, "Your requests", currentUserName);
+  const visible = users.filter((user) =>
+    matchesQuery(query, user.fullName, user.email),
+  );
+  const firstMatchId = showMine ? currentUserId : visible[0]?.id;
+  return (
+    <>
+      <OptionSearch
+        value={query}
+        onChange={setQuery}
+        onEnter={() => firstMatchId && onSelect(firstMatchId)}
+        placeholder="Search authors..."
+        testId="filter-author-search"
+      />
+      <div className="max-h-64 overflow-y-auto">
+        {showMine && (
+          <OptionRow
+            label="Your requests"
+            leading={
+              <InitialBubble
+                name={currentUserName}
+                className="!h-5 !w-5 shrink-0 !text-[9px]"
+              />
+            }
+            selected={selectedId === currentUserId}
+            onClick={() => onSelect(currentUserId)}
+            testId="filter-author-mine"
+          />
+        )}
+        {showMine && visible.length > 0 && (
+          <div className="mx-2.5 my-1 border-t border-slate-200 dark:border-slate-700" />
+        )}
+        {!showMine && visible.length === 0 && <NoMatches />}
+        {visible.map((user) => (
+          <OptionRow
+            key={user.id}
+            label={user.fullName ?? user.email}
+            leading={
+              <InitialBubble
+                name={user.fullName ?? user.email}
+                className="!h-5 !w-5 shrink-0 !text-[9px]"
+              />
+            }
+            selected={selectedId === user.id}
+            onClick={() => onSelect(user.id)}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
 const dateInputClasses =
   "mt-1 block w-full rounded-md border-slate-300 py-1.5 text-sm text-slate-900 focus:border-indigo-600 focus:ring-indigo-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:[color-scheme:dark]";
 
@@ -207,17 +367,11 @@ function RequestFilterBar({
             testId="filter-connection"
           />
           <PopoverPanel className={panelClasses}>
-            <div className="max-h-64 overflow-y-auto">
-              {connections.map((connection) => (
-                <OptionRow
-                  key={connection.id}
-                  label={connection.displayName}
-                  selected={filters.connectionIds.includes(connection.id)}
-                  onClick={() => toggleConnection(connection.id)}
-                  testId={`filter-connection-${connection.displayName}`}
-                />
-              ))}
-            </div>
+            <ConnectionOptions
+              connections={connections}
+              selectedIds={filters.connectionIds}
+              onToggle={toggleConnection}
+            />
           </PopoverPanel>
         </Popover>
       )}
@@ -232,52 +386,19 @@ function RequestFilterBar({
           />
           <PopoverPanel className={panelClasses}>
             {({ close }) => (
-              <div className="max-h-64 overflow-y-auto">
-                <OptionRow
-                  label="Your requests"
-                  leading={
-                    <InitialBubble
-                      name={currentUserName}
-                      className="!h-5 !w-5 shrink-0 !text-[9px]"
-                    />
-                  }
-                  selected={filters.authorId === currentUserId}
-                  onClick={() => {
-                    onChange({
-                      ...filters,
-                      authorId:
-                        filters.authorId === currentUserId
-                          ? null
-                          : currentUserId,
-                    });
-                    close();
-                  }}
-                  testId="filter-author-mine"
-                />
-                {otherUsers.length > 0 && (
-                  <div className="mx-2.5 my-1 border-t border-slate-200 dark:border-slate-700" />
-                )}
-                {otherUsers.map((user) => (
-                  <OptionRow
-                    key={user.id}
-                    label={user.fullName ?? user.email}
-                    leading={
-                      <InitialBubble
-                        name={user.fullName ?? user.email}
-                        className="!h-5 !w-5 shrink-0 !text-[9px]"
-                      />
-                    }
-                    selected={filters.authorId === user.id}
-                    onClick={() => {
-                      onChange({
-                        ...filters,
-                        authorId: filters.authorId === user.id ? null : user.id,
-                      });
-                      close();
-                    }}
-                  />
-                ))}
-              </div>
+              <AuthorOptions
+                currentUserId={currentUserId}
+                currentUserName={currentUserName}
+                users={otherUsers}
+                selectedId={filters.authorId}
+                onSelect={(id) => {
+                  onChange({
+                    ...filters,
+                    authorId: filters.authorId === id ? null : id,
+                  });
+                  close();
+                }}
+              />
             )}
           </PopoverPanel>
         </Popover>
