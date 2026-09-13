@@ -29,9 +29,7 @@ class EncryptionConfigProperties {
  * Values are stored as `aes-gcm:<key id>:<base64(iv || ciphertext || tag)>`. The GCM tag makes a
  * decryption with the wrong key fail deterministically, and the key id selects the configured key
  * (current or previous) up front instead of guessing. Values without the prefix are legacy
- * `base64(iv || AES/CBC/PKCS5Padding)` ciphertexts from before this format existed; they are still
- * readable while a single key is configured and get rewritten in the new format the next time the
- * connection is saved.
+ * `base64(iv || AES/CBC/PKCS5Padding)` ciphertexts from before this format existed.
  */
 @Service
 class EncryptionService(private val config: EncryptionConfigProperties) {
@@ -62,10 +60,6 @@ class EncryptionService(private val config: EncryptionConfigProperties) {
         return if (isLegacyFormat(encrypted)) decryptLegacy(encrypted) else decryptGcm(encrypted)
     }
 
-    /**
-     * True if the stored value is not encrypted with the current key in the current format, i.e. it
-     * should be rewritten so that a previous key can eventually be dropped.
-     */
     fun needsReEncryption(encrypted: String): Boolean {
         if (isLegacyFormat(encrypted)) return true
         return parse(encrypted).keyId != deriveKey(loadKey()).id
@@ -99,24 +93,22 @@ class EncryptionService(private val config: EncryptionConfigProperties) {
      * Legacy CBC values carry no key id and no integrity check, so there is no safe way to pick
      * between two keys: the wrong one yields a valid PKCS5 padding about once in 256 attempts and
      * the garbage would then be re-encrypted over the real credential. They are therefore only
-     * decrypted while a single key is configured. Upgrading with the existing key alone rewrites
-     * every value in the GCM format on startup, after which a rotation is safe.
+     * decrypted while the current key is the only one configured.
      */
     private fun decryptLegacy(encrypted: String): String {
-        val keys = configuredKeys()
-        check(keys.size == 1) {
+        check(config.key?.previous.isNullOrBlank()) {
             "Found a credential encrypted by an older Kviklet version while ENCRYPTION_KEY_PREVIOUS is set. " +
                 "Such values cannot be safely decrypted with two keys. Start Kviklet once with only " +
                 "ENCRYPTION_KEY_CURRENT set to the key these credentials were encrypted with, which rewrites " +
                 "them in the new format, and rotate the key afterwards."
         }
+        val key = deriveKey(loadKey())
         val decoded = Base64.getDecoder().decode(encrypted)
         val iv = IvParameterSpec(decoded.copyOfRange(0, LEGACY_CBC_IV_BYTES))
         val ciphertext = decoded.copyOfRange(LEGACY_CBC_IV_BYTES, decoded.size)
         val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
-        cipher.init(Cipher.DECRYPT_MODE, keys.single().spec, iv)
-        // A misconfigured single key can still pass the padding check by chance, so at least require
-        // the result to be valid text before it gets rewritten under the new format.
+        cipher.init(Cipher.DECRYPT_MODE, key.spec, iv)
+        // A wrong key can still pass the padding check by chance, so at least require valid text
         return decodeStrictUtf8(cipher.doFinal(ciphertext))
     }
 
@@ -130,7 +122,6 @@ class EncryptionService(private val config: EncryptionConfigProperties) {
         throw IllegalStateException("Decrypted value is not valid text, the key is probably wrong", e)
     }
 
-    /** Current key first, then the previous one if configured. */
     private fun configuredKeys(): List<DerivedKey> {
         val keys = config.key ?: throw IllegalStateException("No encryption key found")
         return listOfNotNull(keys.current, keys.previous?.takeIf { it.isNotBlank() }).map { deriveKey(it) }

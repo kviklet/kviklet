@@ -11,19 +11,17 @@ import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.matchers.string.shouldStartWith
 import org.junit.jupiter.api.Test
+import java.security.MessageDigest
 import java.util.Base64
+import javax.crypto.Cipher
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 class EncryptionServiceTest {
 
     companion object {
         private const val KEY_A = "testEncryptionKey123"
         private const val KEY_B = "newEncryptionKey456"
-
-        // Decrypting an AES/CBC block with the wrong key yields a valid PKCS5 padding about once in
-        // 256 attempts. Over this many independent ciphertexts the chance that the flaw never shows
-        // is (255/256)^3000, well below one in a hundred thousand, so the test is reliably red on
-        // unauthenticated encryption and deterministic on authenticated encryption.
-        private const val ATTEMPTS = 3000
     }
 
     private val config = EncryptionConfigProperties().apply { enabled = true }
@@ -31,6 +29,22 @@ class EncryptionServiceTest {
 
     private fun keys(current: String, previous: String? = null) {
         config.key = EncryptionConfigProperties.KeyProperties(current = current, previous = previous)
+    }
+
+    private fun keyIdOf(encrypted: String): String = encrypted.split(':')[1]
+
+    private fun payloadOf(encrypted: String): ByteArray = Base64.getDecoder().decode(encrypted.split(':')[2])
+
+    private fun gcmValue(keyId: String, payload: ByteArray): String =
+        "aes-gcm:$keyId:" + Base64.getEncoder().encodeToString(payload)
+
+    /** A legacy CBC value whose (unpadded) plaintext block is exactly [block], for crafting bad padding. */
+    private fun legacyValueWithRawBlock(block: ByteArray, key: String): String {
+        val cipher = Cipher.getInstance("AES/CBC/NoPadding")
+        val iv = ByteArray(16) { it.toByte() }
+        val keyBytes = MessageDigest.getInstance("SHA-256").digest(key.toByteArray())
+        cipher.init(Cipher.ENCRYPT_MODE, SecretKeySpec(keyBytes, "AES"), IvParameterSpec(iv))
+        return Base64.getEncoder().encodeToString(iv + cipher.doFinal(block))
     }
 
     @Test
@@ -49,37 +63,12 @@ class EncryptionServiceTest {
     }
 
     @Test
-    fun `decrypting with the wrong key never returns a wrong plaintext`() {
-        keys(KEY_A)
-        val ciphertexts = List(ATTEMPTS) { service.encrypt("rotationuser") }
-
-        keys(KEY_B)
-        ciphertexts.forEach { ciphertext ->
-            shouldThrowAny { service.decrypt(ciphertext) }
-        }
-    }
-
-    @Test
     fun `values encrypted with the previous key are still decrypted during rotation`() {
         keys(KEY_A)
-        val ciphertexts = List(ATTEMPTS) { service.encrypt("rotationuser") }
+        val encrypted = service.encrypt("rotationuser")
 
         keys(current = KEY_B, previous = KEY_A)
-        ciphertexts.forEach { ciphertext ->
-            service.decrypt(ciphertext) shouldBe "rotationuser"
-        }
-    }
-
-    @Test
-    fun `tampered ciphertext is rejected`() {
-        keys(KEY_A)
-        val encrypted = service.encrypt("rotationuser")
-        val payloadStart = encrypted.lastIndexOf(':') + 1
-        val payload = Base64.getDecoder().decode(encrypted.substring(payloadStart))
-        payload[payload.size - 1] = (payload[payload.size - 1].toInt() xor 0x01).toByte()
-        val tampered = encrypted.substring(0, payloadStart) + Base64.getEncoder().encodeToString(payload)
-
-        shouldThrowAny { service.decrypt(tampered) }
+        service.decrypt(encrypted) shouldBe "rotationuser"
     }
 
     @Test
@@ -89,12 +78,31 @@ class EncryptionServiceTest {
 
         keys(KEY_B)
         val error = shouldThrowAny { service.decrypt(encrypted) }
-        error.message shouldNotBe null
         error.message!! shouldStartWith "No configured encryption key matches"
     }
 
     @Test
-    fun `legacy CBC ciphertexts still decrypt`() {
+    fun `a wrong key is rejected even when the key id claims otherwise`() {
+        keys(KEY_A)
+        val encryptedUnderA = service.encrypt("rotationuser")
+        keys(KEY_B)
+        val forged = gcmValue(keyIdOf(service.encrypt("anything")), payloadOf(encryptedUnderA))
+
+        shouldThrowAny { service.decrypt(forged) }
+    }
+
+    @Test
+    fun `tampered ciphertext is rejected`() {
+        keys(KEY_A)
+        val encrypted = service.encrypt("rotationuser")
+        val payload = payloadOf(encrypted)
+        payload[payload.size - 1] = (payload[payload.size - 1].toInt() xor 0x01).toByte()
+
+        shouldThrowAny { service.decrypt(gcmValue(keyIdOf(encrypted), payload)) }
+    }
+
+    @Test
+    fun `legacy CBC ciphertexts decrypt with a single configured key`() {
         keys(KEY_A)
         service.decrypt(LegacyCbcEncryption.encrypt("legacyuser", KEY_A)) shouldBe "legacyuser"
     }
@@ -112,15 +120,25 @@ class EncryptionServiceTest {
     }
 
     @Test
-    fun `legacy CBC ciphertexts under a wrong single key never decrypt to garbage`() {
-        // Long enough that a wrong-key decryption cannot pass for valid text by accident
-        val plaintext = "a-rather-long-password-with-more-than-three-blocks"
-        val ciphertexts = List(ATTEMPTS) { LegacyCbcEncryption.encrypt(plaintext, KEY_A) }
+    fun `legacy CBC ciphertext with invalid padding is rejected`() {
+        keys(KEY_A)
+        // 0x11 exceeds the block size, so it can never be a valid PKCS5 padding byte
+        val block = ByteArray(16) { 'a'.code.toByte() }.also { it[15] = 0x11 }
 
-        keys(KEY_B)
-        ciphertexts.forEach { ciphertext ->
-            shouldThrowAny { service.decrypt(ciphertext) }
+        shouldThrowAny { service.decrypt(legacyValueWithRawBlock(block, KEY_A)) }
+    }
+
+    @Test
+    fun `legacy CBC ciphertext with valid padding but invalid text is rejected`() {
+        keys(KEY_A)
+        // Valid one-byte padding, but 0xFF can never appear in UTF-8
+        val block = ByteArray(16) { 'a'.code.toByte() }.also {
+            it[14] = 0xFF.toByte()
+            it[15] = 0x01
         }
+
+        val error = shouldThrowAny { service.decrypt(legacyValueWithRawBlock(block, KEY_A)) }
+        error.message!! shouldStartWith "Decrypted value is not valid text"
     }
 
     @Test
