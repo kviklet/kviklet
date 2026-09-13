@@ -1,25 +1,12 @@
-import {
-  ChangeEvent,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  useCallback,
-} from "react";
+import { ChangeEvent, useEffect, useRef, useState, useCallback } from "react";
 import {
   ExecutionRequestResponse,
   getRequestsPaginated,
 } from "../api/ExecutionRequestApi";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import Spinner from "../components/Spinner";
 import InitialBubble from "../components/InitialBubble";
-import {
-  CircleStackIcon,
-  CloudIcon,
-  EyeIcon,
-  PlayIcon,
-} from "@heroicons/react/20/solid";
-import { UserStatusContext } from "../components/UserStatusProvider";
+import { CircleStackIcon, CloudIcon } from "@heroicons/react/20/solid";
 import { isApiErrorResponse } from "../api/Errors";
 import useNotification from "../hooks/useNotification";
 import SearchInput from "../components/SearchInput";
@@ -250,8 +237,6 @@ function Requests() {
     searchTerm,
   );
   const observerTarget = useRef<HTMLDivElement>(null);
-  const { userStatus } = useContext(UserStatusContext);
-  const navigate = useNavigate();
 
   // Infinite scroll observer
   useEffect(() => {
@@ -325,18 +310,6 @@ function Requests() {
                   request.executionStatus,
                   request.type,
                 );
-                const isAuthor =
-                  userStatus !== false && userStatus?.id === request.author.id;
-                const canOpenSession =
-                  request.type === "TemporaryAccess" &&
-                  (status === "Ready" || status === "Active") &&
-                  isAuthor;
-                // Non-authors can only spectate, so link them in once the
-                // session is actually running
-                const canWatchSession =
-                  request.type === "TemporaryAccess" &&
-                  status === "Active" &&
-                  !isAuthor;
                 return (
                   <Link
                     key={request.id}
@@ -387,7 +360,7 @@ function Requests() {
                               {request.description}
                             </p>
                           )}
-                          <div className="mt-1.5 flex items-center justify-between gap-2">
+                          <div className="mt-1.5">
                             <p className="text-xs text-slate-400 dark:text-slate-500">
                               <span>{shortTypeLabel(request.type)}</span>
                               <span className="mx-1.5">·</span>
@@ -395,29 +368,6 @@ function Requests() {
                                 {status}
                               </span>
                             </p>
-                            {(canOpenSession || canWatchSession) && (
-                              <button
-                                type="button"
-                                data-testid={`${
-                                  canOpenSession ? "open" : "watch"
-                                }-session-${request.title}`}
-                                className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-indigo-600 ring-1 ring-inset ring-indigo-600/30 transition-colors hover:bg-indigo-50 dark:text-indigo-400 dark:ring-indigo-400/30 dark:hover:bg-indigo-400/10"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  void navigate(`/requests/${request.id}`);
-                                }}
-                              >
-                                {canOpenSession ? (
-                                  <PlayIcon className="h-3.5 w-3.5" />
-                                ) : (
-                                  <EyeIcon className="h-3.5 w-3.5" />
-                                )}
-                                {canOpenSession
-                                  ? "Open session"
-                                  : "Watch session"}
-                              </button>
-                            )}
                           </div>
                         </div>
                       </div>
