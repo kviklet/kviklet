@@ -22,7 +22,7 @@ import org.springframework.test.context.DynamicPropertySource
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
-    properties = ["server.port=8084"],
+    properties = ["server.port=8084", "kviklet.baseUrl=http://localhost:5173"],
 )
 @ActiveProfiles("test")
 @DirtiesContext
