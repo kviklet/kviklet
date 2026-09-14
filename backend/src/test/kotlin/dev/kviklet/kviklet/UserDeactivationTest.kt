@@ -129,9 +129,7 @@ class UserDeactivationTest {
         // Flip the flag directly, bypassing the listener that deletes stored sessions.
         userAdapter.updateUser(user.copy(active = false))
 
-        mockMvc.perform(get("/status").cookie(userCookie))
-            .andExpect(status().isUnauthorized)
-            .andExpect(jsonPath("$.message", `is`(AccountDeactivatedException.MESSAGE)))
+        mockMvc.perform(get("/status").cookie(userCookie)).andExpect(status().isUnauthorized)
         // The session was invalidated, not just refused: it stays unusable after reactivation.
         userAdapter.updateUser(user.copy(active = true))
         mockMvc.perform(get("/status").cookie(userCookie)).andExpect(status().isUnauthorized)

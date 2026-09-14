@@ -195,8 +195,9 @@ class SecurityConfig(
             // Must run before the OAuth2 and SAML filters that start the SSO redirect (the
             // SAML one is ordered right after the OAuth2 one in Spring's filter order).
             addFilterBefore<OAuth2AuthorizationRequestRedirectFilter>(LoginRedirectTargetFilter())
+            val entryPoint = CustomAuthenticationEntryPoint()
             // Last before authorization, when the session's security context has been loaded.
-            addFilterBefore<AuthorizationFilter>(ActiveUserFilter(userAdapter))
+            addFilterBefore<AuthorizationFilter>(ActiveUserFilter(userAdapter, entryPoint))
             if (corsSettings.allowedOrigins.isNotEmpty()) {
                 cors { }
             }
@@ -222,7 +223,7 @@ class SecurityConfig(
             }
 
             exceptionHandling {
-                authenticationEntryPoint = CustomAuthenticationEntryPoint()
+                authenticationEntryPoint = entryPoint
                 accessDeniedHandler = CustomAccessDeniedHandler()
             }
 

@@ -28,7 +28,10 @@ class UserService(
 
         if (existingUser != null) {
             if (!existingUser.active) {
-                throw InactiveUserExistsException(email)
+                throw EntityAlreadyExists(
+                    "A deactivated account already exists for $email. Reactivate it instead of creating a new user.",
+                    "User ${existingUser.getId()} is deactivated.",
+                )
             }
             throw EmailAlreadyExistsException(email)
         }
@@ -127,6 +130,3 @@ class UserService(
 data class UserDeactivatedEvent(val userId: String, val email: String)
 
 class EmailAlreadyExistsException(email: String) : Exception("User with email $email already exists")
-
-class InactiveUserExistsException(email: String) :
-    Exception("A deactivated account already exists for $email. Reactivate it instead of creating a new user.")

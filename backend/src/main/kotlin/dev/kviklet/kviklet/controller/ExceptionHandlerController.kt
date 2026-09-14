@@ -6,7 +6,6 @@ import dev.kviklet.kviklet.service.DownloadException
 import dev.kviklet.kviklet.service.EmailAlreadyExistsException
 import dev.kviklet.kviklet.service.EntityAlreadyExists
 import dev.kviklet.kviklet.service.EntityNotFound
-import dev.kviklet.kviklet.service.InactiveUserExistsException
 import dev.kviklet.kviklet.service.InvalidLicenseException
 import dev.kviklet.kviklet.service.InvalidReviewException
 import dev.kviklet.kviklet.service.LicenseRestrictionException
@@ -121,15 +120,6 @@ class ExceptionHandlerController {
     fun handleDisabledException(ex: DisabledException, request: HttpServletRequest): ResponseEntity<Any> {
         logger.warn("Deactivated user login attempt at ${request.requestURI}")
         return ResponseEntity(ErrorResponse(ex.message ?: "Account deactivated"), HttpStatus.UNAUTHORIZED)
-    }
-
-    @ExceptionHandler(InactiveUserExistsException::class)
-    fun handleInactiveUserExistsException(
-        ex: InactiveUserExistsException,
-        request: HttpServletRequest,
-    ): ResponseEntity<Any> {
-        logger.warn("Inactive user exists at ${request.requestURI}: ${ex.message}")
-        return ResponseEntity(ErrorResponse(ex.message ?: "Deactivated user exists"), HttpStatus.CONFLICT)
     }
 
     @ExceptionHandler(EntityNotFound::class)
