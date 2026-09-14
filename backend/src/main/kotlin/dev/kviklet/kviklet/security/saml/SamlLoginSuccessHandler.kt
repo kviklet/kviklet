@@ -5,8 +5,10 @@ import dev.kviklet.kviklet.security.LoginRedirectTargetFilter
 import dev.kviklet.kviklet.security.PolicyGrantedAuthority
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.security.frontendBaseUrl
+import dev.kviklet.kviklet.security.userFacingLoginFailureMessage
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
@@ -22,6 +24,8 @@ class SamlLoginSuccessHandler(private val samlUserService: SamlUserService) :
     SimpleUrlAuthenticationSuccessHandler() {
 
     private val securityContextRepository = HttpSessionSecurityContextRepository()
+
+    private val logger = LoggerFactory.getLogger(SamlLoginSuccessHandler::class.java)
 
     override fun onAuthenticationSuccess(
         request: HttpServletRequest?,
@@ -53,9 +57,11 @@ class SamlLoginSuccessHandler(private val samlUserService: SamlUserService) :
                 SecurityContextHolder.clearContext()
                 request.session?.invalidate()
 
-                // Redirect to error page
+                // Redirect to the login page with a reason; only messages written for the user are
+                // forwarded, the cause itself stays in the log.
+                logger.warn("SAML login failed", e)
                 val baseUrl = frontendBaseUrl(request)
-                val errorMessage = java.net.URLEncoder.encode(e.message ?: "SAML login failed", "UTF-8")
+                val errorMessage = java.net.URLEncoder.encode(userFacingLoginFailureMessage(e), "UTF-8")
                 redirectStrategy.sendRedirect(request, response, "$baseUrl/login?error=$errorMessage")
                 return
             }
