@@ -29,7 +29,7 @@ class ActiveUserFilter(private val userAdapter: UserAdapter) : OncePerRequestFil
             request.getSession(false)?.invalidate()
             response.status = HttpServletResponse.SC_UNAUTHORIZED
             response.contentType = MediaType.APPLICATION_JSON_VALUE
-            response.writer.write("""{"message": "${UserAuthService.ACCOUNT_DEACTIVATED_MESSAGE}"}""")
+            response.writer.write("""{"message": "${AccountDeactivatedException.MESSAGE}"}""")
             return
         }
         chain.doFilter(request, response)

@@ -27,7 +27,6 @@ import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.AuthenticationProvider
 import org.springframework.security.authentication.BadCredentialsException
-import org.springframework.security.authentication.DisabledException
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -346,7 +345,7 @@ class CustomAuthenticationProvider(val userAdapter: UserAdapter, val passwordEnc
         }
         // Checked only after the credentials matched, so the message does not reveal account existence.
         if (!user.active) {
-            throw DisabledException(UserAuthService.ACCOUNT_DEACTIVATED_MESSAGE)
+            throw AccountDeactivatedException()
         }
 
         // Create a CustomUserDetails object

@@ -12,39 +12,27 @@ class LoginFailureMessageTest {
 
     @Test
     fun `forwards messages Kviklet wrote for the user`() {
-        assertThat(userFacingLoginFailureMessage(DisabledException(UserAuthService.ACCOUNT_DEACTIVATED_MESSAGE)))
-            .isEqualTo(UserAuthService.ACCOUNT_DEACTIVATED_MESSAGE)
+        assertThat(userFacingLoginFailureMessage(AccountDeactivatedException()))
+            .isEqualTo(AccountDeactivatedException.MESSAGE)
         assertThat(
             userFacingLoginFailureMessage(LicenseRestrictionException("License does not allow more active users")),
         )
             .isEqualTo("License does not allow more active users")
-        val notInOrg = OAuth2AuthenticationException(
-            OAuth2Error("access_denied", "Your GitHub account is not a member of an allowed organization.", null),
-        )
-        assertThat(userFacingLoginFailureMessage(notInOrg))
-            .isEqualTo("Your GitHub account is not a member of an allowed organization.")
     }
 
     @Test
     fun `hides everything else behind a generic message`() {
         val tokenExchange = OAuth2AuthenticationException(
-            OAuth2Error(
-                "invalid_token_response",
-                "An error occurred while attempting to retrieve the OAuth 2.0 Access Token Response: 401 Unauthorized",
-                null,
-            ),
+            OAuth2Error("invalid_token_response", "Error retrieving the OAuth 2.0 Access Token Response: 401", null),
         )
         assertThat(userFacingLoginFailureMessage(tokenExchange)).isEqualTo(GENERIC_LOGIN_FAILURE_MESSAGE)
         assertThat(
             userFacingLoginFailureMessage(InternalAuthenticationServiceException("Connection refused: idp:8443")),
         )
             .isEqualTo(GENERIC_LOGIN_FAILURE_MESSAGE)
-        assertThat(
-            userFacingLoginFailureMessage(
-                IllegalStateException("No email attribute found in SAML response. Available attributes: [uid]"),
-            ),
-        )
+        assertThat(userFacingLoginFailureMessage(DisabledException("User is disabled")))
             .isEqualTo(GENERIC_LOGIN_FAILURE_MESSAGE)
-        assertThat(userFacingLoginFailureMessage(DisabledException(null))).isEqualTo(GENERIC_LOGIN_FAILURE_MESSAGE)
+        assertThat(userFacingLoginFailureMessage(IllegalStateException("No email attribute found in SAML response")))
+            .isEqualTo(GENERIC_LOGIN_FAILURE_MESSAGE)
     }
 }

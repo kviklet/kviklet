@@ -5,6 +5,7 @@ import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
+import dev.kviklet.kviklet.security.AccountDeactivatedException
 import dev.kviklet.kviklet.security.IdpIdentifier
 import dev.kviklet.kviklet.security.UserAuthService
 import dev.kviklet.kviklet.service.dto.LicenseFile
@@ -92,7 +93,7 @@ class UserDeactivationTest {
         // ... and neither does logging in again.
         attemptLogin(user.email)
             .andExpect(status().isUnauthorized)
-            .andExpect(jsonPath("$.message", `is`(UserAuthService.ACCOUNT_DEACTIVATED_MESSAGE)))
+            .andExpect(jsonPath("$.message", `is`(AccountDeactivatedException.MESSAGE)))
 
         // The record, its roles and its history stay for auditing; the list still contains the user.
         val storedUser = userAdapter.findById(user.getId()!!)
@@ -130,7 +131,7 @@ class UserDeactivationTest {
 
         mockMvc.perform(get("/status").cookie(userCookie))
             .andExpect(status().isUnauthorized)
-            .andExpect(jsonPath("$.message", `is`(UserAuthService.ACCOUNT_DEACTIVATED_MESSAGE)))
+            .andExpect(jsonPath("$.message", `is`(AccountDeactivatedException.MESSAGE)))
         // The session was invalidated, not just refused: it stays unusable after reactivation.
         userAdapter.updateUser(user.copy(active = true))
         mockMvc.perform(get("/status").cookie(userCookie)).andExpect(status().isUnauthorized)
@@ -237,7 +238,7 @@ class UserDeactivationTest {
         assertThatThrownBy {
             userAuthService.findOrCreateUser(IdpIdentifier.Oidc("old-subject"), "sso@example.com", "SSO User")
         }.isInstanceOf(DisabledException::class.java)
-            .hasMessage(UserAuthService.ACCOUNT_DEACTIVATED_MESSAGE)
+            .hasMessage(AccountDeactivatedException.MESSAGE)
 
         // Recreated IdP account with the same email: still refused, and the new identity is not attached.
         assertThatThrownBy {

@@ -7,7 +7,6 @@ import dev.kviklet.kviklet.service.LicenseRestrictionException
 import dev.kviklet.kviklet.service.LicenseService
 import dev.kviklet.kviklet.service.RoleSyncService
 import dev.kviklet.kviklet.service.dto.Role
-import org.springframework.security.authentication.DisabledException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -32,10 +31,6 @@ class UserAuthService(
     private val licenseService: LicenseService,
     private val roleSyncService: RoleSyncService,
 ) {
-    companion object {
-        const val ACCOUNT_DEACTIVATED_MESSAGE = "Your Kviklet account has been deactivated. Contact your administrator."
-    }
-
     /**
      * Find existing user or create new one during authentication.
      * Handles migration between auth methods (e.g., password → OIDC).
@@ -89,7 +84,7 @@ class UserAuthService(
         // must neither reactivate it nor attach a new identity or synced roles to it. Only an admin
         // reactivates; the next login then migrates the identity as usual.
         if (!user.active) {
-            throw DisabledException(ACCOUNT_DEACTIVATED_MESSAGE)
+            throw AccountDeactivatedException()
         }
 
         // 5. Update user with current IdP identifier, clear others consistently
