@@ -1,6 +1,7 @@
 #!/bin/bash
+echo "Starting setup of MySQL RDS instance with IAM authentication..."
 set -e
-
+export AWS_PAGER=""
 # Configuration variables
 DB_INSTANCE_IDENTIFIER="test-mysql-iam"
 DB_NAME="testdb"
@@ -8,7 +9,7 @@ DB_USERNAME="iamdbuser"
 INSTANCE_CLASS="db.t3.micro"  # Smallest available instance class
 ALLOCATED_STORAGE=20          # Minimum storage in GB
 VPC_SECURITY_GROUP_NAME="mysql-iam-test-sg"
-AWS_REGION=$(aws configure get region)
+AWS_REGION="${AWS_REGION:-$(aws configure get region)}"
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 # Function to check if security group exists
@@ -152,6 +153,7 @@ echo "Checking and creating RDS instance..."
 if ! rds_instance_exists; then
   echo "Creating RDS instance..."
   MASTER_PASSWORD=$(openssl rand -base64 15 | tr -dc 'a-zA-Z0-9!@#$%^&*()' | head -c 20)A1!
+  echo "::add-mask::$MASTER_PASSWORD"
   aws rds create-db-instance \
       --db-instance-identifier $DB_INSTANCE_IDENTIFIER \
       --db-instance-class $INSTANCE_CLASS \
@@ -163,7 +165,9 @@ if ! rds_instance_exists; then
       --vpc-security-group-ids $SECURITY_GROUP_ID \
       --enable-iam-database-authentication \
       --publicly-accessible \
-      --backup-retention-period 1 \
+      --backup-retention-period 0 \
+      --deletion-protection false \
+      --skip-final-snapshot \
       --db-name $DB_NAME
 
   echo "Waiting for RDS instance to be available..."
