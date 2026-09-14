@@ -128,11 +128,7 @@ function RequestSidebar({
               name={request.author.fullName}
               muted={!request.author.active}
             />
-            <UserName
-              user={request.author}
-              className="min-w-0 truncate"
-              badge
-            />
+            <UserName user={request.author} className="min-w-0 truncate" />
           </div>
         </SidebarSection>
         <SidebarSection label="Connection">

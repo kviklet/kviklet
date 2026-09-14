@@ -58,7 +58,7 @@ const InitialBubble = (props: {
 }) => {
   return (
     <div
-      className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
         props.muted ? mutedColor : avatarColorFromName(props.name || "")
       } ${props.className ?? ""}`}
     >
