@@ -215,7 +215,7 @@ class ExecutionTest {
                     .andExpect(status().isForbidden)
                 assertProxySessionEnded(proxySession)
             } finally {
-                postgresProxyServer.expireSessionsForRequest(temporaryAccessRequest.request.id!!)
+                postgresProxyServer.expireSessions { it.executionRequest.id == temporaryAccessRequest.request.id }
             }
         }
 
@@ -243,7 +243,7 @@ class ExecutionTest {
                 verifyExecutionStatus(temporaryAccessRequest.getId(), "ACTIVE", authorCookie)
                 assertProxySessionStillLive(proxySession)
             } finally {
-                postgresProxyServer.expireSessionsForRequest(temporaryAccessRequest.request.id!!)
+                postgresProxyServer.expireSessions { it.executionRequest.id == temporaryAccessRequest.request.id }
             }
         }
 
@@ -1293,7 +1293,7 @@ class ExecutionTest {
                     .andExpect(status().isForbidden)
                 assertProxySessionEnded(proxySession)
             } finally {
-                postgresProxyServer.expireSessionsForRequest(temporaryAccessRequest.request.id!!)
+                postgresProxyServer.expireSessions { it.executionRequest.id == temporaryAccessRequest.request.id }
             }
         }
 

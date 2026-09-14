@@ -507,7 +507,7 @@ class ExecutionRequestService(
                 override fun afterCommit() {
                     listOf(postgresProxyServer, mysqlProxyServer).forEach { server ->
                         try {
-                            server.expireSessionsForRequest(requestId)
+                            server.expireSessions { it.executionRequest.id == requestId }
                         } catch (e: Exception) {
                             logger.error("Failed to end proxy sessions for rejected request $requestId", e)
                         }

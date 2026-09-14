@@ -29,7 +29,7 @@ class UserDeactivationListener(
         deleteBrowserSessions(event.email)
         listOf(postgresProxyServer, mysqlProxyServer).forEach { server ->
             try {
-                server.expireSessionsForUser(event.userId)
+                server.expireSessions { it.userId == event.userId }
             } catch (e: Exception) {
                 logger.error("Failed to end proxy sessions for deactivated user ${event.userId}", e)
             }
