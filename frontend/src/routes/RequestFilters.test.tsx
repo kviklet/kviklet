@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi, describe, it, expect, beforeEach, MockedFunction } from "vitest";
 import {
@@ -31,8 +31,27 @@ const makeConnection = (id: string, displayName: string) =>
 
 const usersResponse = {
   users: [
-    { id: "me", email: "me@example.com", fullName: "Current User", roles: [] },
-    { id: "u2", email: "other@example.com", fullName: "Other User", roles: [] },
+    {
+      id: "me",
+      email: "me@example.com",
+      fullName: "Current User",
+      active: true,
+      roles: [],
+    },
+    {
+      id: "u3",
+      email: "gone@example.com",
+      fullName: "Former User",
+      active: false,
+      roles: [],
+    },
+    {
+      id: "u2",
+      email: "other@example.com",
+      fullName: "Other User",
+      active: true,
+      roles: [],
+    },
   ],
 };
 
@@ -138,6 +157,27 @@ describe("RequestFilterBar", () => {
       expect(lastFilters.authorId).toBe("u2");
       expect(screen.getByTestId("filter-author")).toHaveTextContent(
         "Other User",
+      );
+    });
+
+    it("lists deactivated users last but keeps them selectable", async () => {
+      renderFilterBar();
+      userEvent.click(await screen.findByTestId("filter-author"));
+      const other = await screen.findByText("Other User");
+      const former = screen.getByText("Former User");
+      expect(
+        other.compareDocumentPosition(former) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        within(former.closest("button") as HTMLElement).getByTestId(
+          "deactivated-badge",
+        ),
+      ).toBeVisible();
+
+      userEvent.click(former);
+      expect(screen.getByTestId("filter-author")).toHaveTextContent(
+        "Former User",
       );
     });
 

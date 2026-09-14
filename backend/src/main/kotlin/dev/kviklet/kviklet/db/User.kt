@@ -48,6 +48,11 @@ class UserEntity(
     @Column(unique = true)
     var email: String = "",
 
+    // Deactivated users keep their record and history for auditing but cannot log in and do not
+    // occupy a license seat.
+    @Column(nullable = false)
+    var active: Boolean = true,
+
     @ManyToMany(cascade = [CascadeType.PERSIST], fetch = FetchType.LAZY)
     @JoinTable(
         name = "user_role",
@@ -65,6 +70,7 @@ class UserEntity(
         samlNameId = samlNameId,
         githubId = githubId,
         email = email,
+        active = active,
         roles = roles.map { it.toDto() }.toMutableSet(),
     )
 }
@@ -87,6 +93,7 @@ data class User(
     val samlNameId: String? = null,
     val githubId: String? = null,
     val email: String = "",
+    val active: Boolean = true,
     val roles: Set<Role> = HashSet(),
 ) : SecuredDomainObject {
 
@@ -128,6 +135,10 @@ interface UserRepository : JpaRepository<UserEntity, String> {
     fun findBySamlNameId(samlNameId: String): UserEntity?
 
     fun findByGithubId(githubId: String): UserEntity?
+
+    fun existsByIdAndActiveTrue(id: String): Boolean
+
+    fun countByActiveTrue(): Long
 }
 
 @Service
@@ -162,6 +173,13 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
         return userEntity.toDto()
     }
 
+    // Cheap per-request check (no entity or role loading), used to end the sessions of deactivated users.
+    @Transactional(readOnly = true)
+    fun isActive(id: String): Boolean = userRepository.existsByIdAndActiveTrue(id)
+
+    @Transactional(readOnly = true)
+    fun countActiveUsers(): Long = userRepository.countByActiveTrue()
+
     @Transactional(readOnly = true)
     fun findById(id: String): User {
         val userEntity = userRepository.findByIdOrNull(id) ?: throw EntityNotFound(
@@ -181,6 +199,7 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
             samlNameId = user.samlNameId,
             githubId = user.githubId,
             email = user.email,
+            active = user.active,
             roles = roleRepository.findAllById(user.roles.map { it.getId() }.toSet()).toMutableSet(),
         )
         val savedUserEntity = userRepository.save(userEntity)
@@ -203,6 +222,7 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
             userEntity.samlNameId = user.samlNameId
             userEntity.githubId = user.githubId
             userEntity.email = user.email
+            userEntity.active = user.active
             userEntity.roles = roleRepository.findAllById(user.roles.map { it.getId() }.toSet()).toMutableSet()
             val savedUserEntity = userRepository.save(userEntity)
             return savedUserEntity.toDto()
@@ -221,6 +241,7 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
         userEntity.samlNameId = user.samlNameId
         userEntity.githubId = user.githubId
         userEntity.email = user.email
+        userEntity.active = user.active
         // update Roles
         user.roles.let { newRoleIds ->
             val newRoles = roleRepository.findAllById(newRoleIds.map { it.getId() }.toSet())
@@ -229,11 +250,6 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
         val savedUserEntity = userRepository.save(userEntity)
 
         return savedUserEntity.toDto()
-    }
-
-    @Transactional
-    fun deleteUser(id: String) {
-        userRepository.deleteById(id)
     }
 
     @Transactional

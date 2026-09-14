@@ -7,6 +7,7 @@ import { Review } from "../../../api/ExecutionRequestApi";
 import { componentMap } from "../components/Highlighter";
 import { ReactElement } from "react";
 import TimelineItem from "./TimelineItem";
+import UserName from "../../../components/UserName";
 
 function ReviewEvent({
   event,
@@ -32,21 +33,21 @@ function ReviewEvent({
       case "APPROVE":
         return (
           <div className="text-sm text-slate-500">
-            {event.author?.fullName} approved
+            {event.author && <UserName user={event.author} />} approved
             {timestamp}
           </div>
         );
       case "REJECT":
         return (
           <div className="text-sm text-red-600 dark:text-red-400">
-            {event.author?.fullName} rejected
+            {event.author && <UserName user={event.author} />} rejected
             {timestamp}
           </div>
         );
       case "REQUEST_CHANGE":
         return (
           <div className="text-sm text-red-600 dark:text-red-400">
-            {event.author?.fullName} requested changes
+            {event.author && <UserName user={event.author} />} requested changes
             {timestamp}
           </div>
         );
@@ -97,7 +98,10 @@ function ReviewEvent({
     >
       {event.comment.trim() !== "" && (
         <div className="relative rounded-md border shadow-md dark:border-slate-700 dark:shadow-none">
-          <InitialBubble name={event?.author?.fullName} />
+          <InitialBubble
+            name={event?.author?.fullName}
+            muted={event?.author?.active === false}
+          />
           <div className="rounded-md px-4 py-3 dark:bg-slate-900">
             <ReactMarkdown components={componentMap}>
               {event.comment}

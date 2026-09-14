@@ -4,6 +4,7 @@ package dev.kviklet.kviklet.service
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import dev.kviklet.kviklet.db.LicenseAdapter
+import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.security.NoPolicy
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
@@ -18,7 +19,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Service
-class LicenseService(private val licenseAdapter: LicenseAdapter) {
+class LicenseService(private val licenseAdapter: LicenseAdapter, private val userAdapter: UserAdapter) {
     private val pem = this::class.java.getResource("/kviklet-key.pem")?.readText()?.trim()
         ?: throw RuntimeException("Could not load public key for license verification")
 
@@ -79,6 +80,18 @@ class LicenseService(private val licenseAdapter: LicenseAdapter) {
 
     @NoPolicy
     fun getActiveLicense(): License? = getLicenses().filter { it.isValid() }.maxByOrNull { it.file.createdAt }
+
+    /**
+     * Seats are counted against active users only: deactivating a user frees their seat, and both creating
+     * and reactivating a user need a free one. Without a license there is no seat limit.
+     */
+    @NoPolicy
+    fun assertSeatAvailable() {
+        val license = getActiveLicense() ?: return
+        if (license.allowedUsers <= userAdapter.countActiveUsers().toUInt()) {
+            throw LicenseRestrictionException("License does not allow more active users")
+        }
+    }
 }
 
 class InvalidLicenseException(message: String, e: Exception? = null) : IllegalArgumentException(message, e)

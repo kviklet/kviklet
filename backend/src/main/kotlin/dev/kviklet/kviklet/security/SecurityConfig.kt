@@ -5,6 +5,7 @@ import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.security.ldap.LdapProperties
 import dev.kviklet.kviklet.security.ldap.LdapUserDetailsService
 import dev.kviklet.kviklet.security.oauth2.GithubOAuth2UserService
+import dev.kviklet.kviklet.security.oidc.OidcLoginFailureHandler
 import dev.kviklet.kviklet.security.oidc.OidcLoginSuccessHandler
 import dev.kviklet.kviklet.security.oidc.OidcUserService
 import dev.kviklet.kviklet.security.saml.SamlLoginSuccessHandler
@@ -46,6 +47,7 @@ import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequest
 import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.access.AccessDeniedHandler
+import org.springframework.security.web.access.intercept.AuthorizationFilter
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler
 import org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter
@@ -76,6 +78,7 @@ class CorsSettings {
 @EnableWebSecurity
 class SecurityConfig(
     private val oidcLoginSuccessHandler: OidcLoginSuccessHandler,
+    private val oidcLoginFailureHandler: OidcLoginFailureHandler,
     private val customAuthenticationProvider: CustomAuthenticationProvider,
     private val oidcUserService: OidcUserService,
     private val githubOAuth2UserService: GithubOAuth2UserService,
@@ -88,6 +91,7 @@ class SecurityConfig(
     private val userService: UserService,
     private val passwordEncoder: PasswordEncoder,
     private val corsSettings: CorsSettings,
+    private val userAdapter: UserAdapter,
 ) {
 
     @Autowired(required = false)
@@ -191,6 +195,9 @@ class SecurityConfig(
             // Must run before the OAuth2 and SAML filters that start the SSO redirect (the
             // SAML one is ordered right after the OAuth2 one in Spring's filter order).
             addFilterBefore<OAuth2AuthorizationRequestRedirectFilter>(LoginRedirectTargetFilter())
+            val entryPoint = CustomAuthenticationEntryPoint()
+            // Last before authorization, when the session's security context has been loaded.
+            addFilterBefore<AuthorizationFilter>(ActiveUserFilter(userAdapter, entryPoint))
             if (corsSettings.allowedOrigins.isNotEmpty()) {
                 cors { }
             }
@@ -199,6 +206,7 @@ class SecurityConfig(
             if (idpProperties.isOauth2Enabled()) {
                 oauth2Login {
                     authenticationSuccessHandler = oidcLoginSuccessHandler
+                    authenticationFailureHandler = oidcLoginFailureHandler
                     userInfoEndpoint {
                         oidcUserService = this@SecurityConfig.oidcUserService
                         userService = this@SecurityConfig.githubOAuth2UserService
@@ -215,7 +223,7 @@ class SecurityConfig(
             }
 
             exceptionHandling {
-                authenticationEntryPoint = CustomAuthenticationEntryPoint()
+                authenticationEntryPoint = entryPoint
                 accessDeniedHandler = CustomAccessDeniedHandler()
             }
 
@@ -335,6 +343,10 @@ class CustomAuthenticationProvider(val userAdapter: UserAdapter, val passwordEnc
 
         if (user == null || user.subject != null || !passwordEncoder.matches(password, user.password)) {
             throw BadCredentialsException("Invalid username or password, or user is an OAuth user.")
+        }
+        // Checked only after the credentials matched, so the message does not reveal account existence.
+        if (!user.active) {
+            throw AccountDeactivatedException()
         }
 
         // Create a CustomUserDetails object

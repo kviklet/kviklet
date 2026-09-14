@@ -1,7 +1,6 @@
 // This file is not MIT licensed
 package dev.kviklet.kviklet.proxy.core
 
-import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import org.slf4j.LoggerFactory
 import java.net.ServerSocket
 import java.net.Socket
@@ -151,11 +150,12 @@ class ProxyServer(
         }
     }
 
-    // Use the same teardown as timed expiry, including sessions with no duration.
+    // Ends every session matching [predicate] (a rejected request's, a deactivated user's) with the same
+    // teardown as timed expiry, including sessions with no duration.
     @Synchronized
-    fun expireSessionsForRequest(requestId: ExecutionRequestId) {
+    fun expireSessions(predicate: (ProxySession) -> Boolean) {
         sessions.entries
-            .filter { (_, session) -> session.executionRequest.id == requestId }
+            .filter { (_, session) -> predicate(session) }
             .forEach { (username, session) -> expireSession(username, session) }
     }
 

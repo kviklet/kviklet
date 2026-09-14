@@ -14,6 +14,7 @@ import { isApiErrorResponse } from "../api/Errors";
 import { UserStatusContext } from "../components/UserStatusProvider";
 import Tooltip from "../components/Tooltip";
 import InitialBubble from "../components/InitialBubble";
+import UserName from "../components/UserName";
 
 // Dumps are deliberately not offered here: the feature is rarely used and a
 // third option would only add noise to the picker.
@@ -141,7 +142,7 @@ function OptionRow({
   testId,
   leading,
 }: {
-  label: string;
+  label: ReactNode;
   hint?: string;
   selected: boolean;
   onClick: () => void;
@@ -232,7 +233,10 @@ function RequestFilterBar({
         users.find((u) => u.id === filters.authorId)?.email ??
         "1 author";
 
-  const otherUsers = users.filter((u) => u.id !== currentUserId);
+  // Deactivated users stay selectable for history but sort below the active ones.
+  const otherUsers = users
+    .filter((u) => u.id !== currentUserId)
+    .sort((a, b) => Number(b.active) - Number(a.active));
 
   const typeLabel =
     requestKinds.find((kind) => kind.value === filters.type)?.label ?? "Type";
@@ -301,10 +305,11 @@ function RequestFilterBar({
                 {otherUsers.map((user) => (
                   <OptionRow
                     key={user.id}
-                    label={user.fullName ?? user.email}
+                    label={<UserName user={user} badge />}
                     leading={
                       <InitialBubble
                         name={user.fullName ?? user.email}
+                        muted={!user.active}
                         className="!h-5 !w-5 shrink-0 !text-[9px]"
                       />
                     }

@@ -16,6 +16,7 @@ import {
   emptyFilters,
   hasActiveFilters,
 } from "./RequestFilters";
+import UserName from "../components/UserName";
 
 function timeSince(date: Date) {
   const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -326,6 +327,7 @@ function Requests() {
                       <div className="flex items-start gap-3">
                         <InitialBubble
                           name={request.author.fullName || request.author.email}
+                          muted={!request.author.active}
                           className="h-9 w-9 shrink-0"
                         />
                         <div className="min-w-0 flex-1">
@@ -343,9 +345,10 @@ function Requests() {
                             </span>
                           </div>
                           <p className="mt-0.5 flex flex-wrap items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
-                            <span className="truncate font-medium text-slate-600 dark:text-slate-300">
-                              {request.author.fullName || request.author.email}
-                            </span>
+                            <UserName
+                              user={request.author}
+                              className="truncate font-medium text-slate-600 dark:text-slate-300"
+                            />
                             <span className="shrink-0">→</span>
                             <span className="inline-flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
                               {request._type === "DATASOURCE" ? (

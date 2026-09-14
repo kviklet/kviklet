@@ -10,6 +10,7 @@ import InitialBubble from "../../components/InitialBubble";
 import ConnectionLink from "./components/ConnectionLink";
 import ApprovalProgress from "./ApprovalProgress";
 import { sessionAccess } from "./sessionAccess";
+import UserName from "../../components/UserName";
 
 const requestTypeLabel = (
   request: ExecutionRequestResponseWithComments,
@@ -123,8 +124,11 @@ function RequestSidebar({
       <div className="grid grid-cols-2 gap-4 md:flex md:flex-col">
         <SidebarSection label="Requester">
           <div className="flex items-center gap-2">
-            <InitialBubble name={request.author.fullName} />
-            <span className="min-w-0 truncate">{request.author.fullName}</span>
+            <InitialBubble
+              name={request.author.fullName}
+              muted={!request.author.active}
+            />
+            <UserName user={request.author} className="min-w-0 truncate" />
           </div>
         </SidebarSection>
         <SidebarSection label="Connection">

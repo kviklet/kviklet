@@ -5,6 +5,7 @@ import { timeSince } from "../Requests";
 import { AbsoluteInitialBubble as InitialBubble } from "../../components/InitialBubble";
 import { Highlighter } from "./components/Highlighter";
 import { UserStatusContext } from "../../components/UserStatusProvider";
+import UserName from "../../components/UserName";
 
 function DatasourceRequestBox({
   request,
@@ -30,10 +31,13 @@ function DatasourceRequestBox({
 
   return (
     <div className="relative border-slate-500 dark:border dark:border-slate-950 dark:bg-slate-950">
-      <InitialBubble name={request?.author.fullName} />
+      <InitialBubble
+        name={request?.author.fullName}
+        muted={request?.author.active === false}
+      />
       <div className="py-2">
         <div className="text-sm text-slate-800 dark:text-slate-50">
-          {request?.author?.fullName}{" "}
+          {request?.author && <UserName user={request.author} badge />}{" "}
           <span
             className="text-slate-500 dark:text-slate-400"
             title={

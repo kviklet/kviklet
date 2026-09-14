@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.security.UserDetailsWithId
+import dev.kviklet.kviklet.service.UserDeactivatedEvent
 import dev.kviklet.kviklet.service.UserService
 import dev.kviklet.kviklet.service.dto.DBExecutionResult
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
@@ -18,6 +19,8 @@ import org.springframework.security.concurrent.DelegatingSecurityContextExecutor
 import org.springframework.security.core.context.SecurityContext
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
+import org.springframework.transaction.event.TransactionPhase
+import org.springframework.transaction.event.TransactionalEventListener
 import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
@@ -108,6 +111,21 @@ class SessionWebsocketHandler(
         logger.info(
             "New WebSocket connection established: ${session.id}, userId: ${userDetailsWithId.id}, requestId: $requestId",
         )
+    }
+
+    // Deactivation must end live access too; the browser session is already gone by now, but an open
+    // socket would keep streaming updates. Closing triggers afterConnectionClosed for the cleanup.
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onUserDeactivated(event: UserDeactivatedEvent) {
+        sessionObservers.values.flatten()
+            .filter { it.user.getId() == event.userId }
+            .forEach { observer ->
+                try {
+                    observer.webSocketSession.close(CloseStatus.POLICY_VIOLATION.withReason("Account deactivated"))
+                } catch (e: Exception) {
+                    logger.warn("Failed to close WebSocket of deactivated user ${event.userId}", e)
+                }
+            }
     }
 
     override fun afterConnectionClosed(session: WebSocketSession, status: CloseStatus) {

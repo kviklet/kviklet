@@ -68,12 +68,7 @@ class UserAuthService(
 
             if (user == null) {
                 // 4. Create new user - check license user limit
-                if (license != null) {
-                    val maxUsers = license.allowedUsers
-                    if (maxUsers <= userAdapter.listUsers().size.toUInt()) {
-                        throw LicenseRestrictionException("License does not allow more users")
-                    }
-                }
+                licenseService.assertSeatAvailable()
 
                 val defaultRole = roleAdapter.findById(Role.DEFAULT_ROLE_ID)
                 user = User(
@@ -83,6 +78,13 @@ class UserAuthService(
                 )
                 isNewUser = true
             }
+        }
+
+        // A deactivated account is refused before anything about it is touched: a successful IdP login
+        // must neither reactivate it nor attach a new identity or synced roles to it. Only an admin
+        // reactivates; the next login then migrates the identity as usual.
+        if (!user.active) {
+            throw AccountDeactivatedException()
         }
 
         // 5. Update user with current IdP identifier, clear others consistently

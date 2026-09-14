@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Button from "../../components/Button";
@@ -8,6 +8,7 @@ import {
   createUser,
   createUserRequestSchema,
   fetchUsers,
+  setUserActive,
   updateUser,
 } from "../../api/UserApi";
 import InputField from "../../components/InputField";
@@ -19,6 +20,10 @@ import { Error, Success } from "../../components/Alert";
 import RoleComboBox from "./RoleComboBox";
 import RequirePermission from "../../components/RequirePermission";
 import { useHasPermission } from "../../hooks/permissions";
+import DeleteConfirm from "../../components/DeleteConfirm";
+import UserName from "../../components/UserName";
+import InitialBubble from "../../components/InitialBubble";
+import { UserStatusContext } from "../../components/UserStatusProvider";
 
 function UserForm(props: {
   disableModal: () => void;
@@ -140,6 +145,23 @@ export const useUsers = () => {
     return true;
   }
 
+  async function setActive(userId: string, active: boolean) {
+    const response = await setUserActive(userId, active);
+    if (isApiErrorResponse(response)) {
+      setError(response.message);
+      clearNotifications();
+      return false;
+    }
+    setUsers(users.map((u) => (u.id === userId ? response : u)));
+    setSuccess(
+      active
+        ? `${response.fullName || response.email} has been reactivated`
+        : `${response.fullName || response.email} has been deactivated`,
+    );
+    clearNotifications();
+    return true;
+  }
+
   async function createNewUser(
     email: string,
     password: string,
@@ -167,35 +189,110 @@ export const useUsers = () => {
     users,
     createNewUser,
     setRoles,
+    setActive,
     error,
     success,
     loading,
   };
 };
 
+// Shared by the header and the rows: the user cell flexes, the role combobox and the action
+// get the fixed room they need (the combobox is 8rem wide, 15rem from lg up, plus padding).
+const userGridClasses =
+  "grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_11rem_6rem] lg:grid-cols-[minmax(0,1fr)_18rem_6rem]";
+
+// Row actions are plain text links rather than filled buttons: a column of red buttons
+// would dominate the table for what is a rare, reversible admin action.
+const actionClasses =
+  "text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300";
+const disabledActionClasses =
+  "cursor-not-allowed text-sm font-medium text-slate-300 dark:text-slate-600";
+
 const UserRow = (props: {
   user: UserResponse;
   roles: RoleResponse[];
+  isCurrentUser: boolean;
   setRoles: (roles: RoleResponse[]) => Promise<boolean>;
+  setActive: (active: boolean) => Promise<boolean>;
 }) => {
   const canEditRoles = useHasPermission("user:edit_roles");
+  const [confirmDeactivate, setConfirmDeactivate] = useState(false);
+  const deactivated = !props.user.active;
+  // Deactivated accounts are muted; their roles stay editable so an admin can review
+  // them before reactivating.
+  const secondaryClasses = deactivated
+    ? "text-slate-400 dark:text-slate-500"
+    : "text-slate-600 dark:text-slate-400";
+
+  const action = () => {
+    if (!canEditRoles) {
+      return null;
+    }
+    if (props.isCurrentUser) {
+      return (
+        <button
+          type="button"
+          disabled
+          className={disabledActionClasses}
+          title="You cannot deactivate your own account"
+          data-testid="deactivate-user"
+        >
+          Deactivate
+        </button>
+      );
+    }
+    if (deactivated) {
+      return (
+        <button
+          type="button"
+          className={actionClasses}
+          onClick={() => void props.setActive(true)}
+          data-testid="reactivate-user"
+        >
+          Reactivate
+        </button>
+      );
+    }
+    return (
+      <button
+        type="button"
+        className={actionClasses}
+        onClick={() => setConfirmDeactivate(true)}
+        data-testid="deactivate-user"
+      >
+        Deactivate
+      </button>
+    );
+  };
+
   return (
     <div
       className="flex flex-row border-b border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
       data-testid={`user-${props.user.email}`}
+      data-deactivated={deactivated ? "true" : undefined}
     >
-      <div className="grid w-full grid-cols-2 px-6 py-4 md:grid-cols-3">
-        <div className="flex items-center">
-          <div className="font-medium text-slate-900 dark:text-slate-100">
-            {props.user.fullName}
+      <div className={`w-full px-6 py-3 ${userGridClasses}`}>
+        <div className="flex min-w-0 items-center gap-3">
+          <InitialBubble
+            name={props.user.fullName || props.user.email}
+            muted={deactivated}
+            className="shrink-0"
+          />
+          <div className="flex min-w-0 flex-col">
+            <UserName
+              user={props.user}
+              className="min-w-0 truncate font-medium text-slate-900 dark:text-slate-100"
+              badge
+            />
+            <div
+              className={`truncate text-sm ${secondaryClasses}`}
+              title={props.user.email}
+            >
+              {props.user.email}
+            </div>
           </div>
         </div>
         <div className="flex items-center">
-          <div className="text-slate-600 dark:text-slate-400">
-            {props.user.email}
-          </div>
-        </div>
-        <div className="flex items-center justify-end">
           {canEditRoles ? (
             <RoleComboBox
               roles={props.user.roles}
@@ -204,22 +301,42 @@ const UserRow = (props: {
             />
           ) : (
             <div
-              className="text-slate-600 dark:text-slate-400"
+              className={secondaryClasses}
               title="You lack permission to change user roles."
             >
               {props.user.roles.map((role) => role.name).join(", ")}
             </div>
           )}
         </div>
+        <div className="flex items-center justify-end">{action()}</div>
       </div>
+      {confirmDeactivate && (
+        <Modal setVisible={setConfirmDeactivate}>
+          <DeleteConfirm
+            title={`Deactivate ${props.user.fullName || props.user.email}?`}
+            message="They are logged out immediately and can no longer sign in, and their license seat is freed. Their requests, reviews and other history stay, and you can reactivate the account at any time."
+            onConfirm={async () => {
+              await props.setActive(false);
+              setConfirmDeactivate(false);
+            }}
+            onCancel={() => setConfirmDeactivate(false)}
+          />
+        </Modal>
+      )}
     </div>
   );
 };
 
 const UserSettings = () => {
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
-  const { users, createNewUser, error, success, setRoles, loading } =
+  const { users, createNewUser, error, success, setRoles, setActive, loading } =
     useUsers();
+  const { userStatus } = useContext(UserStatusContext);
+  const currentUserId = userStatus ? userStatus.id : undefined;
+  // Deactivated accounts sink to the bottom so the active team stays in view.
+  const sortedUsers = [...users].sort(
+    (a, b) => Number(b.active) - Number(a.active),
+  );
   // The role list feeds the role combobox; without role:get the fetch would only
   // produce a 403 toast, so skip it entirely.
   const canListRoles = useHasPermission("role:get");
@@ -277,29 +394,31 @@ const UserSettings = () => {
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow dark:border-slate-700 dark:bg-slate-900">
           {/* Table header */}
           <div className="bg-slate-50 dark:bg-slate-800">
-            <div className="grid grid-cols-2 px-6 py-3 md:grid-cols-3">
+            <div className={`px-6 py-3 ${userGridClasses}`}>
               <div className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-300">
-                Name
+                User
               </div>
               <div className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-300">
-                Email
-              </div>
-              <div className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-300 md:text-right">
                 Roles
+              </div>
+              <div>
+                <span className="sr-only">Actions</span>
               </div>
             </div>
           </div>
 
           {/* User rows */}
           <div>
-            {users.map((user) => (
+            {sortedUsers.map((user) => (
               <UserRow
                 key={user.id}
                 user={user}
                 roles={roles}
+                isCurrentUser={user.id === currentUserId}
                 setRoles={(roles) => {
                   return setRoles(user.id, roles);
                 }}
+                setActive={(active) => setActive(user.id, active)}
               />
             ))}
           </div>

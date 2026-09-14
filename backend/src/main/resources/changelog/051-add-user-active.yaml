@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 051-add-user-active
+      author: Jascha
+      changes:
+        - addColumn:
+            tableName: user
+            columns:
+              - column:
+                  name: active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false

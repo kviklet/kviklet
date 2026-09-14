@@ -46,12 +46,21 @@ function firstTwoLetters(input: string): string {
   return result;
 }
 
-const InitialBubble = (props: { name?: string | null; className?: string }) => {
+// Deactivated accounts lose their avatar color so the bubble reads as muted as the name
+// next to it.
+const mutedColor =
+  "bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500";
+
+const InitialBubble = (props: {
+  name?: string | null;
+  className?: string;
+  muted?: boolean;
+}) => {
   return (
     <div
-      className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${avatarColorFromName(
-        props.name || "",
-      )} ${props.className ?? ""}`}
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+        props.muted ? mutedColor : avatarColorFromName(props.name || "")
+      } ${props.className ?? ""}`}
     >
       {firstTwoLetters(props.name ?? "")}
     </div>
@@ -61,10 +70,12 @@ const InitialBubble = (props: { name?: string | null; className?: string }) => {
 const AbsoluteInitialBubble = (props: {
   name?: string | null;
   className?: string;
+  muted?: boolean;
 }) => {
   return (
     <InitialBubble
       name={props.name}
+      muted={props.muted}
       className={`absolute -left-12 ${props.className}`}
     />
   );

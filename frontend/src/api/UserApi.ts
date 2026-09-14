@@ -7,6 +7,7 @@ const userResponseSchema = z.object({
   id: z.string(),
   email: z.string(),
   fullName: z.string().nullable(),
+  active: z.boolean(),
   roles: roleResponseSchema.array(),
 });
 
@@ -89,11 +90,30 @@ async function updateUser(
   );
 }
 
+async function setUserActive(
+  id: string,
+  active: boolean,
+): Promise<ApiResponse<UserResponse>> {
+  return fetchWithErrorHandling(
+    `${baseUrl}/users/${id}/status`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ active }),
+    },
+    userResponseSchema,
+  );
+}
+
 export {
   fetchUsers,
   userResponseSchema,
   createUser,
   createUserRequestSchema,
   updateUser,
+  setUserActive,
 };
 export type { UserResponse, CreateUserRequest };

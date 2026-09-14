@@ -17,6 +17,8 @@ import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.authentication.BadCredentialsException
+import org.springframework.security.authentication.DisabledException
+import org.springframework.web.HttpRequestMethodNotSupportedException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.bind.annotation.ExceptionHandler
@@ -114,6 +116,12 @@ class ExceptionHandlerController {
         return ResponseEntity(ErrorResponse(ex.message ?: "Bad Credentials"), HttpStatus.UNAUTHORIZED)
     }
 
+    @ExceptionHandler(DisabledException::class)
+    fun handleDisabledException(ex: DisabledException, request: HttpServletRequest): ResponseEntity<Any> {
+        logger.warn("Deactivated user login attempt at ${request.requestURI}")
+        return ResponseEntity(ErrorResponse(ex.message ?: "Account deactivated"), HttpStatus.UNAUTHORIZED)
+    }
+
     @ExceptionHandler(EntityNotFound::class)
     fun handleEntityNotFound(ex: EntityNotFound, request: HttpServletRequest): ResponseEntity<Any> {
         logger.warn("Entity not found at ${request.requestURI}: ${ex.message}")
@@ -124,6 +132,15 @@ class ExceptionHandlerController {
     fun handleEntityAlreadyExists(ex: EntityAlreadyExists, request: HttpServletRequest): ResponseEntity<Any> {
         logger.warn("Entity already exists at ${request.requestURI}: ${ex.message}")
         return ResponseEntity(ErrorResponse(ex.message), HttpStatus.CONFLICT)
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException::class)
+    fun handleMethodNotSupported(
+        ex: HttpRequestMethodNotSupportedException,
+        request: HttpServletRequest,
+    ): ResponseEntity<Any> {
+        logger.warn("Method not supported at ${request.requestURI}: ${ex.message}")
+        return ResponseEntity(ErrorResponse(ex.message ?: "Method not allowed"), HttpStatus.METHOD_NOT_ALLOWED)
     }
 
     @ExceptionHandler(Exception::class)

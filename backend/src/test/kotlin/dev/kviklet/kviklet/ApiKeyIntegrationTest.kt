@@ -23,6 +23,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delet
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.time.LocalDateTime
@@ -110,6 +111,29 @@ class ApiKeyIntegrationTest {
 
         val response = objectMapper.readTree(result.response.contentAsString)
         return response["key"]?.asText() ?: throw IllegalStateException("API key creation failed - no key returned")
+    }
+
+    // ============= Deactivation =============
+
+    @Test
+    fun `an api key keeps working after its creator is deactivated`() {
+        // API keys are programmatic credentials owned by the organisation, not by whoever created them.
+        val user = userHelper.createUser(permissions = listOf("*"))
+        val apiKey = createApiKey(user)
+        val userCookie = userHelper.login(mockMvc = mockMvc, email = user.email)
+        val admin = userHelper.createUser(permissions = listOf("*"), email = "admin@example.com")
+        val adminCookie = userHelper.login(mockMvc = mockMvc, email = admin.email)
+
+        mockMvc.perform(
+            put("/users/${user.getId()}/status").cookie(adminCookie)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"active": false}"""),
+        ).andExpect(status().isOk)
+
+        // The user's own session is gone ...
+        mockMvc.perform(get("/connections/").cookie(userCookie)).andExpect(status().isUnauthorized)
+        // ... but the key still authenticates.
+        mockMvc.perform(get("/connections/").header("Authorization", "Bearer $apiKey")).andExpect(status().isOk)
     }
 
     // ============= Connection Management Tests =============

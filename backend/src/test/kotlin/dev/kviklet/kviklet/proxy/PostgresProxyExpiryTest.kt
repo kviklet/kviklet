@@ -160,7 +160,7 @@ class PostgresProxyExpiryTest {
         bystander.createStatement().executeQuery("SELECT 1").close()
         assertEquals(2, server.currentConnections)
 
-        server.expireSessionsForRequest(request.id!!)
+        server.expireSessions { it.executionRequest.id == request.id }
 
         val deadline = System.currentTimeMillis() + 15_000
         while (server.currentConnections != 1 && System.currentTimeMillis() < deadline) {
