@@ -28,7 +28,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
-    properties = ["server.port=8081"],
+    properties = ["server.port=8081", "kviklet.baseUrl=http://localhost:5173"],
 )
 @AutoConfigureMockMvc
 @ActiveProfiles("test")

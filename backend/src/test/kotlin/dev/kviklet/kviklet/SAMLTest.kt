@@ -39,7 +39,7 @@ import java.time.LocalDateTime
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
-    properties = ["server.port=8082"],
+    properties = ["server.port=8082", "kviklet.baseUrl=http://localhost:5173"],
 )
 @AutoConfigureMockMvc
 @ActiveProfiles("test")

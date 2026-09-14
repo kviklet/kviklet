@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.controller
 
+import dev.kviklet.kviklet.service.BaseUrlResolver
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.stereotype.Component
@@ -26,15 +27,7 @@ class ServerUrlInterceptor : HandlerInterceptor {
                         return true
                     }
 
-                    val scheme = request.scheme // http or https
-                    val serverName = request.serverName // hostname or IP address
-                    val serverPort = request.serverPort // port number
-
-                    serverUrl = if (serverPort == 80 || serverPort == 443) {
-                        "$scheme://$serverName"
-                    } else {
-                        "$scheme://$serverName:$serverPort"
-                    }
+                    serverUrl = BaseUrlResolver.originOf(request)
                 }
             }
         }

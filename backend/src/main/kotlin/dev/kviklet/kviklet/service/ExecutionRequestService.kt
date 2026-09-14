@@ -5,7 +5,6 @@ import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
 import dev.kviklet.kviklet.controller.CreateExecutionRequestRequest
 import dev.kviklet.kviklet.controller.CreateKubernetesExecutionRequestRequest
 import dev.kviklet.kviklet.controller.CreateReviewRequest
-import dev.kviklet.kviklet.controller.ServerUrlInterceptor
 import dev.kviklet.kviklet.controller.UpdateExecutionRequestRequest
 import dev.kviklet.kviklet.db.CommentPayload
 import dev.kviklet.kviklet.db.EditPayload
@@ -58,7 +57,6 @@ import dev.kviklet.kviklet.shell.KubernetesApi
 import jakarta.transaction.Transactional
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
@@ -95,11 +93,8 @@ class ExecutionRequestService(
     private val permissionResolver: PermissionResolver,
     private val licenseService: LicenseService,
     private val configService: ConfigService,
+    private val baseUrlResolver: BaseUrlResolver,
     transactionManager: PlatformTransactionManager,
-    // Same override the notification links use: an explicitly configured base URL wins over the
-    // host observed on incoming requests.
-    @Value("\${kviklet.baseUrl:#{null}}")
-    private val serverBaseUrl: String? = null,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private val statusTransaction = TransactionTemplate(transactionManager)
@@ -1096,11 +1091,10 @@ class ExecutionRequestService(
         )
     }
 
-    // The hostname clients point psql/DataGrip at: kviklet.baseUrl if configured, else the host the
-    // frontend reached this server on (recorded by ServerUrlInterceptor). Only the host -- the proxy
+    // The hostname clients point psql/DataGrip at: only the host of Kviklet's base URL -- the proxy
     // listens on its own port, so the base URL's scheme, port and path are irrelevant.
     private fun resolveProxyHost(): String? {
-        val url = serverBaseUrl.takeIf { !it.isNullOrBlank() } ?: ServerUrlInterceptor.getServerUrl() ?: return null
+        val url = baseUrlResolver.resolve() ?: return null
         return parseHost(url) ?: parseHost("http://$url")
     }
 
