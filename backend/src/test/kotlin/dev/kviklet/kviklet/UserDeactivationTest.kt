@@ -3,11 +3,16 @@ package dev.kviklet.kviklet
 import dev.kviklet.kviklet.db.LicenseAdapter
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.helper.ExecutionRequestFactory
 import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
+import dev.kviklet.kviklet.proxy.core.ProxyServer
+import dev.kviklet.kviklet.proxy.core.ProxySession
 import dev.kviklet.kviklet.security.AccountDeactivatedException
 import dev.kviklet.kviklet.security.IdpIdentifier
 import dev.kviklet.kviklet.security.UserAuthService
+import dev.kviklet.kviklet.service.dto.AuthenticationDetails
+import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.LicenseFile
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -17,6 +22,7 @@ import org.hamcrest.CoreMatchers.not
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.security.authentication.DisabledException
@@ -24,6 +30,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -53,8 +60,13 @@ class UserDeactivationTest {
     @Autowired
     private lateinit var mockMvc: MockMvc
 
+    @Autowired
+    @Qualifier("postgresProxyServer")
+    private lateinit var postgresProxyServer: ProxyServer
+
     @AfterEach
     fun tearDown() {
+        postgresProxyServer.expireSessions { true }
         licenseAdapter.deleteAll()
         userHelper.deleteAll()
         roleHelper.deleteAll()
@@ -277,6 +289,65 @@ class UserDeactivationTest {
         )
         assertThat(created.active).isTrue()
     }
+
+    @Test
+    fun `deactivating a user ends their proxy sessions and leaves the others alone`() {
+        userHelper.createUser(permissions = listOf("*"))
+        val adminCookie = userHelper.login(mockMvc = mockMvc)
+        val user = userHelper.createUser(permissions = listOf("*"), email = "dev@example.com")
+        val other = userHelper.createUser(permissions = listOf("*"), email = "other@example.com")
+        val session = postgresProxyServer.registerSession(proxySession("dev-session", user.getId()!!), expiresAt = null)
+        val bystander = postgresProxyServer.registerSession(
+            proxySession("other-session", other.getId()!!),
+            expiresAt = null,
+        )
+
+        setStatus(user.getId()!!, active = false, cookie = adminCookie).andExpect(status().isOk)
+
+        assertThat(session.active).isFalse()
+        assertThat(bystander.active).isTrue()
+    }
+
+    @Test
+    fun `editing a deactivated user keeps them deactivated`() {
+        userHelper.createUser(permissions = listOf("*"))
+        val adminCookie = userHelper.login(mockMvc = mockMvc)
+        val user = userHelper.createUser(permissions = listOf("*"), email = "dev@example.com")
+        setStatus(user.getId()!!, active = false, cookie = adminCookie).andExpect(status().isOk)
+
+        // Profile edit ...
+        mockMvc.perform(
+            patch("/users/${user.getId()}").cookie(adminCookie)
+                .content("""{"fullName": "Renamed"}""")
+                .contentType("application/json"),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.fullName", `is`("Renamed")))
+            .andExpect(jsonPath("$.active", `is`(false)))
+
+        // ... and role edit, which takes the other update path.
+        val roleIds = user.roles.map { "\"${it.getId()}\"" }.joinToString(",")
+        mockMvc.perform(
+            patch("/users/${user.getId()}").cookie(adminCookie)
+                .content("""{"roles": [$roleIds]}""")
+                .contentType("application/json"),
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.active", `is`(false)))
+
+        assertThat(userAdapter.findById(user.getId()!!).active).isFalse()
+        attemptLogin(user.email).andExpect(status().isUnauthorized)
+    }
+
+    private fun proxySession(username: String, userId: String) = ProxySession(
+        username = username,
+        password = "pw",
+        executionRequest = ExecutionRequestFactory().createDatasourceExecutionRequest(),
+        userId = userId,
+        targetHost = "localhost",
+        targetPort = 5432,
+        databaseName = "testdb",
+        datasourceType = DatasourceType.POSTGRESQL,
+        authenticationDetails = AuthenticationDetails.UserPassword("test", "test"),
+    )
 
     private fun createUserRequest(email: String, cookie: jakarta.servlet.http.Cookie) = mockMvc.perform(
         post("/users/").cookie(cookie).content(

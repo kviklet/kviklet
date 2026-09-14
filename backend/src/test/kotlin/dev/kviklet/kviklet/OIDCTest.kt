@@ -6,6 +6,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.helper.FrontendStub
+import dev.kviklet.kviklet.security.AccountDeactivatedException
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -25,6 +26,7 @@ import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
+import java.net.URLEncoder
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
@@ -188,6 +190,44 @@ class OIDCTest {
         } finally {
             webClient.close()
         }
+    }
+
+    @Test
+    fun `OIDC login of a deactivated user is sent back to the login page with the reason`() {
+        val user = userAdapter.createUser(
+            User(email = "admin@example.com", fullName = "Admin User", password = "password", active = false),
+        )
+        val userCountBefore = userAdapter.listUsers().size
+        val webClient = WebClient().apply {
+            options.apply {
+                isRedirectEnabled = true
+                isJavaScriptEnabled = false
+                isThrowExceptionOnScriptError = false
+                isUseInsecureSSL = true
+                isCssEnabled = false
+            }
+        }
+        val frontend = FrontendStub(webClient)
+
+        try {
+            val dexLoginPage = webClient.getPage<HtmlPage>("http://localhost:$port/oauth2/authorization/dex")
+            dexLoginPage.getElementByName<HtmlInput>("login").type("admin@example.com")
+            dexLoginPage.getElementByName<HtmlInput>("password").type("password")
+            val appPage = dexLoginPage.getElementById("submit-login").click<HtmlPage>()
+            appPage.getElementsByTagName("button").get(0).click<HtmlPage>()
+
+            val expectedError = URLEncoder.encode(AccountDeactivatedException.MESSAGE, "UTF-8")
+            assertThat(frontend.lastFrontendUrl).isEqualTo("http://localhost:5173/login?error=$expectedError")
+        } finally {
+            webClient.close()
+        }
+
+        // The IdP login neither reactivated the account nor attached the OIDC identity to it.
+        val stored = userAdapter.findById(user.getId()!!)
+        assertThat(stored.active).isFalse()
+        assertThat(stored.subject).isNull()
+        assertThat(stored.password).isEqualTo("password")
+        assertThat(userAdapter.listUsers().size).isEqualTo(userCountBefore)
     }
 
     @Test
