@@ -98,7 +98,10 @@ function ReviewEvent({
     >
       {event.comment.trim() !== "" && (
         <div className="relative rounded-md border shadow-md dark:border-slate-700 dark:shadow-none">
-          <InitialBubble name={event?.author?.fullName} />
+          <InitialBubble
+            name={event?.author?.fullName}
+            muted={event?.author?.active === false}
+          />
           <div className="rounded-md px-4 py-3 dark:bg-slate-900">
             <ReactMarkdown components={componentMap}>
               {event.comment}

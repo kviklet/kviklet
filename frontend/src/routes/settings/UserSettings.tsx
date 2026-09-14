@@ -21,7 +21,8 @@ import RoleComboBox from "./RoleComboBox";
 import RequirePermission from "../../components/RequirePermission";
 import { useHasPermission } from "../../hooks/permissions";
 import DeleteConfirm from "../../components/DeleteConfirm";
-import Toggle from "../../components/Toggle";
+import UserName from "../../components/UserName";
+import InitialBubble from "../../components/InitialBubble";
 import { UserStatusContext } from "../../components/UserStatusProvider";
 
 function UserForm(props: {
@@ -195,10 +196,17 @@ export const useUsers = () => {
   };
 };
 
-// Shared by the header and the rows: name and email flex, the role combobox and the action
-// button get the fixed room they need (the combobox is 8rem wide, 15rem from lg up).
+// Shared by the header and the rows: the user cell flexes, the role combobox and the action
+// get the fixed room they need (the combobox is 8rem wide, 15rem from lg up, plus padding).
 const userGridClasses =
-  "grid grid-cols-2 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_12rem_6rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_19rem_6rem]";
+  "grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_11rem_6rem] lg:grid-cols-[minmax(0,1fr)_18rem_6rem]";
+
+// Row actions are plain text links rather than filled buttons: a column of red buttons
+// would dominate the table for what is a rare, reversible admin action.
+const actionClasses =
+  "text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300";
+const disabledActionClasses =
+  "cursor-not-allowed text-sm font-medium text-slate-300 dark:text-slate-600";
 
 const UserRow = (props: {
   user: UserResponse;
@@ -209,42 +217,79 @@ const UserRow = (props: {
 }) => {
   const canEditRoles = useHasPermission("user:edit_roles");
   const [confirmDeactivate, setConfirmDeactivate] = useState(false);
-  const inactive = !props.user.active;
-  // Deactivated accounts are grayed out; their roles stay editable so an admin can review
+  const deactivated = !props.user.active;
+  // Deactivated accounts are muted; their roles stay editable so an admin can review
   // them before reactivating.
-  const nameClasses = inactive
-    ? "text-slate-400 dark:text-slate-500"
-    : "text-slate-900 dark:text-slate-100";
-  const emailClasses = inactive
+  const secondaryClasses = deactivated
     ? "text-slate-400 dark:text-slate-500"
     : "text-slate-600 dark:text-slate-400";
+
+  const action = () => {
+    if (!canEditRoles) {
+      return null;
+    }
+    if (props.isCurrentUser) {
+      return (
+        <button
+          type="button"
+          disabled
+          className={disabledActionClasses}
+          title="You cannot deactivate your own account"
+          data-testid="deactivate-user"
+        >
+          Deactivate
+        </button>
+      );
+    }
+    if (deactivated) {
+      return (
+        <button
+          type="button"
+          className={actionClasses}
+          onClick={() => void props.setActive(true)}
+          data-testid="reactivate-user"
+        >
+          Reactivate
+        </button>
+      );
+    }
+    return (
+      <button
+        type="button"
+        className={actionClasses}
+        onClick={() => setConfirmDeactivate(true)}
+        data-testid="deactivate-user"
+      >
+        Deactivate
+      </button>
+    );
+  };
 
   return (
     <div
       className="flex flex-row border-b border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
       data-testid={`user-${props.user.email}`}
-      data-inactive={inactive ? "true" : undefined}
+      data-deactivated={deactivated ? "true" : undefined}
     >
-      <div className={`w-full px-6 py-4 ${userGridClasses}`}>
-        <div className="flex min-w-0 flex-col justify-center gap-1">
-          <div
-            className={`truncate font-medium ${nameClasses}`}
-            title={props.user.fullName ?? undefined}
-          >
-            {props.user.fullName}
-          </div>
-          {inactive && (
-            <span
-              className="w-fit rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-              data-testid="inactive-badge"
+      <div className={`w-full px-6 py-3 ${userGridClasses}`}>
+        <div className="flex min-w-0 items-center gap-3">
+          <InitialBubble
+            name={props.user.fullName || props.user.email}
+            muted={deactivated}
+            className="shrink-0"
+          />
+          <div className="flex min-w-0 flex-col">
+            <UserName
+              user={props.user}
+              className="min-w-0 truncate font-medium text-slate-900 dark:text-slate-100"
+              badge
+            />
+            <div
+              className={`truncate text-sm ${secondaryClasses}`}
+              title={props.user.email}
             >
-              Inactive
-            </span>
-          )}
-        </div>
-        <div className="flex min-w-0 items-center">
-          <div className={`truncate ${emailClasses}`} title={props.user.email}>
-            {props.user.email}
+              {props.user.email}
+            </div>
           </div>
         </div>
         <div className="flex items-center">
@@ -256,29 +301,14 @@ const UserRow = (props: {
             />
           ) : (
             <div
-              className={emailClasses}
+              className={secondaryClasses}
               title="You lack permission to change user roles."
             >
               {props.user.roles.map((role) => role.name).join(", ")}
             </div>
           )}
         </div>
-        <div className="flex items-center justify-end">
-          {canEditRoles && !props.isCurrentUser && (
-            <Button
-              size="sm"
-              variant={inactive ? "success" : "danger"}
-              onClick={() =>
-                inactive
-                  ? void props.setActive(true)
-                  : setConfirmDeactivate(true)
-              }
-              dataTestId={inactive ? "reactivate-user" : "deactivate-user"}
-            >
-              {inactive ? "Reactivate" : "Deactivate"}
-            </Button>
-          )}
-        </div>
+        <div className="flex items-center justify-end">{action()}</div>
       </div>
       {confirmDeactivate && (
         <Modal setVisible={setConfirmDeactivate}>
@@ -299,15 +329,14 @@ const UserRow = (props: {
 
 const UserSettings = () => {
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
-  const [showInactive, setShowInactive] = useState(false);
   const { users, createNewUser, error, success, setRoles, setActive, loading } =
     useUsers();
   const { userStatus } = useContext(UserStatusContext);
   const currentUserId = userStatus ? userStatus.id : undefined;
-  const inactiveCount = users.filter((user) => !user.active).length;
-  const visibleUsers = showInactive
-    ? users
-    : users.filter((user) => user.active);
+  // Deactivated accounts sink to the bottom so the active team stays in view.
+  const sortedUsers = [...users].sort(
+    (a, b) => Number(b.active) - Number(a.active),
+  );
   // The role list feeds the role combobox; without role:get the fetch would only
   // produce a 403 toast, so skip it entirely.
   const canListRoles = useHasPermission("role:get");
@@ -342,37 +371,20 @@ const UserSettings = () => {
           <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
             Users
           </h2>
-          <div className="flex items-center gap-4">
-            {inactiveCount > 0 && (
-              <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                <Toggle
-                  active={showInactive}
-                  onClick={() => setShowInactive(!showInactive)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowInactive(!showInactive)}
-                  data-testid="show-inactive-users"
-                >
-                  Show inactive users ({inactiveCount})
-                </button>
-              </div>
-            )}
-            <RequirePermission permission="user:create">
-              <Button
-                onClick={() => setShowCreateUserModal(true)}
-                variant="primary"
-                dataTestId="add-user-button"
-              >
-                Add User
-              </Button>
-            </RequirePermission>
-          </div>
+          <RequirePermission permission="user:create">
+            <Button
+              onClick={() => setShowCreateUserModal(true)}
+              variant="primary"
+              dataTestId="add-user-button"
+            >
+              Add User
+            </Button>
+          </RequirePermission>
         </div>
       </div>
 
       {/* User list */}
-      {visibleUsers.length === 0 ? (
+      {users.length === 0 ? (
         <div className="flex h-64 items-center justify-center rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
           <p className="text-slate-500 dark:text-slate-400">
             No users found. Create one to get started.
@@ -384,21 +396,20 @@ const UserSettings = () => {
           <div className="bg-slate-50 dark:bg-slate-800">
             <div className={`px-6 py-3 ${userGridClasses}`}>
               <div className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-300">
-                Name
-              </div>
-              <div className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-300">
-                Email
+                User
               </div>
               <div className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-300">
                 Roles
               </div>
-              <div></div>
+              <div>
+                <span className="sr-only">Actions</span>
+              </div>
             </div>
           </div>
 
           {/* User rows */}
           <div>
-            {visibleUsers.map((user) => (
+            {sortedUsers.map((user) => (
               <UserRow
                 key={user.id}
                 user={user}

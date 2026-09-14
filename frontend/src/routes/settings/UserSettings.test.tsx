@@ -64,18 +64,34 @@ describe("UserSettings", () => {
     });
   });
 
-  it("hides inactive users until asked to show them", async () => {
+  it("lists deactivated users last, muted and badged", async () => {
+    mockFetchUsers.mockResolvedValue({
+      users: [
+        user("bob", "Bob Inactive", false),
+        user("me", "Current Admin", true),
+        user("alice", "Alice Active", true),
+      ],
+    });
     renderPage();
 
-    expect(await screen.findByTestId("user-alice@example.com")).toBeVisible();
-    expect(screen.queryByTestId("user-bob@example.com")).toBeNull();
-
-    userEvent.click(screen.getByText("Show inactive users (1)"));
-
     const bobRow = await screen.findByTestId("user-bob@example.com");
-    expect(bobRow).toHaveAttribute("data-inactive", "true");
-    expect(within(bobRow).getByTestId("inactive-badge")).toBeVisible();
+    expect(bobRow).toHaveAttribute("data-deactivated", "true");
+    expect(within(bobRow).getByTestId("deactivated-badge")).toBeVisible();
     expect(within(bobRow).getByTestId("reactivate-user")).toBeVisible();
+
+    const rows = screen
+      .getAllByTestId(/^user-/)
+      .map((row) => row.getAttribute("data-testid"));
+    expect(rows).toEqual([
+      "user-me@example.com",
+      "user-alice@example.com",
+      "user-bob@example.com",
+    ]);
+    expect(
+      within(screen.getByTestId("user-alice@example.com")).queryByTestId(
+        "deactivated-badge",
+      ),
+    ).toBeNull();
   });
 
   it("deactivates another user after confirmation, never the current user", async () => {
@@ -83,7 +99,7 @@ describe("UserSettings", () => {
     renderPage();
 
     const myRow = await screen.findByTestId("user-me@example.com");
-    expect(within(myRow).queryByTestId("deactivate-user")).toBeNull();
+    expect(within(myRow).getByTestId("deactivate-user")).toBeDisabled();
 
     const aliceRow = screen.getByTestId("user-alice@example.com");
     userEvent.click(within(aliceRow).getByTestId("deactivate-user"));
@@ -94,19 +110,28 @@ describe("UserSettings", () => {
     await waitFor(() =>
       expect(mockSetUserActive).toHaveBeenCalledWith("alice", false),
     );
-    // Now inactive, so hidden from the default view.
+    // The row stays in the list, now marked deactivated and sorted below the active ones.
     await waitFor(() =>
-      expect(screen.queryByTestId("user-alice@example.com")).toBeNull(),
+      expect(screen.getByTestId("user-alice@example.com")).toHaveAttribute(
+        "data-deactivated",
+        "true",
+      ),
     );
-    expect(screen.getByText("Show inactive users (2)")).toBeVisible();
+    const rows = screen
+      .getAllByTestId(/^user-/)
+      .map((row) => row.getAttribute("data-testid"));
+    expect(rows).toEqual([
+      "user-me@example.com",
+      "user-alice@example.com",
+      "user-bob@example.com",
+    ]);
+    expect(screen.getByText("Alice Active has been deactivated")).toBeVisible();
   });
 
-  it("reactivates an inactive user", async () => {
+  it("reactivates a deactivated user", async () => {
     mockSetUserActive.mockResolvedValue(user("bob", "Bob Inactive", true));
     renderPage();
 
-    await screen.findByTestId("user-alice@example.com");
-    userEvent.click(screen.getByText("Show inactive users (1)"));
     const bobRow = await screen.findByTestId("user-bob@example.com");
     userEvent.click(within(bobRow).getByTestId("reactivate-user"));
 
@@ -115,9 +140,14 @@ describe("UserSettings", () => {
     );
     await waitFor(() =>
       expect(screen.getByTestId("user-bob@example.com")).not.toHaveAttribute(
-        "data-inactive",
+        "data-deactivated",
       ),
     );
+    expect(
+      within(screen.getByTestId("user-bob@example.com")).getByTestId(
+        "deactivate-user",
+      ),
+    ).toBeEnabled();
   });
 
   it("surfaces a rejected reactivation", async () => {
@@ -126,8 +156,6 @@ describe("UserSettings", () => {
     });
     renderPage();
 
-    await screen.findByTestId("user-alice@example.com");
-    userEvent.click(screen.getByText("Show inactive users (1)"));
     const bobRow = await screen.findByTestId("user-bob@example.com");
     userEvent.click(within(bobRow).getByTestId("reactivate-user"));
 
@@ -135,7 +163,7 @@ describe("UserSettings", () => {
       await screen.findByText("License does not allow more active users"),
     ).toBeVisible();
     expect(screen.getByTestId("user-bob@example.com")).toHaveAttribute(
-      "data-inactive",
+      "data-deactivated",
       "true",
     );
   });

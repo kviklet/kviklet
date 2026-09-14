@@ -28,17 +28,19 @@ test("an admin can deactivate and reactivate a user", async ({ page }) => {
   // The admin cannot deactivate themselves.
   await expect(
     page.getByTestId(`user-${ADMIN.email}`).getByTestId("deactivate-user"),
-  ).toHaveCount(0);
+  ).toBeDisabled();
 
   const devRow = page.getByTestId(`user-${dev.email}`);
   await devRow.getByTestId("deactivate-user").click();
   await page.getByRole("button", { name: "Confirm" }).click();
 
-  // Inactive users are hidden by default and listed behind the toggle, grayed out.
-  await expect(devRow).toHaveCount(0);
-  await page.getByTestId("show-inactive-users").click();
-  await expect(devRow).toHaveAttribute("data-inactive", "true");
-  await expect(devRow.getByTestId("inactive-badge")).toBeVisible();
+  // Deactivated users stay listed, marked and sorted below the active ones.
+  await expect(devRow).toHaveAttribute("data-deactivated", "true");
+  await expect(devRow.getByTestId("deactivated-badge")).toBeVisible();
+  await expect(page.getByTestId(/^user-/).last()).toHaveAttribute(
+    "data-deactivated",
+    "true",
+  );
 
   // The deactivated user is refused with an explanation.
   await loginPage.logout();
@@ -54,10 +56,9 @@ test("an admin can deactivate and reactivate a user", async ({ page }) => {
   // Reactivation restores the same account.
   await loginPage.loginFresh(ADMIN.email, ADMIN.password);
   await settingsPage.navigateToUsers();
-  await page.getByTestId("show-inactive-users").click();
   await devRow.getByTestId("reactivate-user").click();
-  await expect(devRow).not.toHaveAttribute("data-inactive", "true");
-  await expect(devRow.getByTestId("deactivate-user")).toBeVisible();
+  await expect(devRow).not.toHaveAttribute("data-deactivated", "true");
+  await expect(devRow.getByTestId("deactivate-user")).toBeEnabled();
 
   await loginPage.loginFresh(dev.email, PASSWORD);
   await expect(page.getByTestId("requests-list")).toBeVisible();

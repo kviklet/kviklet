@@ -124,8 +124,15 @@ function RequestSidebar({
       <div className="grid grid-cols-2 gap-4 md:flex md:flex-col">
         <SidebarSection label="Requester">
           <div className="flex items-center gap-2">
-            <InitialBubble name={request.author.fullName} />
-            <UserName user={request.author} className="min-w-0 truncate" />
+            <InitialBubble
+              name={request.author.fullName}
+              muted={!request.author.active}
+            />
+            <UserName
+              user={request.author}
+              className="min-w-0 truncate"
+              badge
+            />
           </div>
         </SidebarSection>
         <SidebarSection label="Connection">

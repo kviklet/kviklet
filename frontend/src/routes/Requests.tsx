@@ -327,6 +327,7 @@ function Requests() {
                       <div className="flex items-start gap-3">
                         <InitialBubble
                           name={request.author.fullName || request.author.email}
+                          muted={!request.author.active}
                           className="h-9 w-9 shrink-0"
                         />
                         <div className="min-w-0 flex-1">

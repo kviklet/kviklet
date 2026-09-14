@@ -14,6 +14,7 @@ import { isApiErrorResponse } from "../api/Errors";
 import { UserStatusContext } from "../components/UserStatusProvider";
 import Tooltip from "../components/Tooltip";
 import InitialBubble from "../components/InitialBubble";
+import UserName from "../components/UserName";
 
 // Dumps are deliberately not offered here: the feature is rarely used and a
 // third option would only add noise to the picker.
@@ -140,16 +141,13 @@ function OptionRow({
   onClick,
   testId,
   leading,
-  muted,
 }: {
-  label: string;
+  label: ReactNode;
   hint?: string;
   selected: boolean;
   onClick: () => void;
   testId?: string;
   leading?: ReactNode;
-  // Grays the label out, used for deactivated users that stay selectable for history.
-  muted?: boolean;
 }) {
   return (
     <button
@@ -160,9 +158,7 @@ function OptionRow({
     >
       {leading}
       <span className="min-w-0 flex-1">
-        <span className={`block truncate ${muted ? "opacity-60" : ""}`}>
-          {label}
-        </span>
+        <span className="block truncate">{label}</span>
         {hint && (
           <span className="block truncate text-xs text-slate-400 dark:text-slate-500">
             {hint}
@@ -237,7 +233,10 @@ function RequestFilterBar({
         users.find((u) => u.id === filters.authorId)?.email ??
         "1 author";
 
-  const otherUsers = users.filter((u) => u.id !== currentUserId);
+  // Deactivated users stay selectable for history but sort below the active ones.
+  const otherUsers = users
+    .filter((u) => u.id !== currentUserId)
+    .sort((a, b) => Number(b.active) - Number(a.active));
 
   const typeLabel =
     requestKinds.find((kind) => kind.value === filters.type)?.label ?? "Type";
@@ -306,12 +305,11 @@ function RequestFilterBar({
                 {otherUsers.map((user) => (
                   <OptionRow
                     key={user.id}
-                    label={user.fullName ?? user.email}
-                    hint={user.active ? undefined : "Deactivated"}
-                    muted={!user.active}
+                    label={<UserName user={user} badge />}
                     leading={
                       <InitialBubble
                         name={user.fullName ?? user.email}
+                        muted={!user.active}
                         className="!h-5 !w-5 shrink-0 !text-[9px]"
                       />
                     }
