@@ -82,7 +82,7 @@ const server = setupServer(
 beforeAll(() => {
   server.listen();
   // Mock IntersectionObserver
-  global.IntersectionObserver = class IntersectionObserver {
+  globalThis.IntersectionObserver = class IntersectionObserver {
     constructor() {}
     disconnect() {}
     observe() {}
