@@ -5,11 +5,13 @@ import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.service.dto.Policy
 import dev.kviklet.kviklet.service.dto.Role
 import dev.kviklet.kviklet.service.dto.RoleId
+import dev.kviklet.kviklet.telemetry.RoleCreated
+import dev.kviklet.kviklet.telemetry.Telemetry
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
-class RoleService(private val roleAdapter: RoleAdapter) {
+class RoleService(private val roleAdapter: RoleAdapter, private val telemetry: Telemetry) {
 
     @dev.kviklet.kviklet.security.Policy(Permission.ROLE_EDIT)
     @Transactional
@@ -44,7 +46,7 @@ class RoleService(private val roleAdapter: RoleAdapter) {
             description = description,
             policies = policies ?: emptySet(),
         )
-        return roleAdapter.create(role)
+        return roleAdapter.create(role).also { telemetry.track(RoleCreated) }
     }
 
     @dev.kviklet.kviklet.security.Policy(Permission.ROLE_GET)

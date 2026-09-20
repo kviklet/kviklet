@@ -31,9 +31,12 @@ Kviklet ships with a variety of features that an engineering team needs to manag
 - **Role Sync**: Automatically sync user roles from your identity provider groups. (Enterprise only)
 - **API Keys**: Programmatic access to the Kviklet API. (Enterprise only)
 
+<details>
+<summary>More screenshots</summary>
+
 ### Requests
 
-All data requests live in one place — like a pull request list for your production databases:
+All data requests live in one place. Like open PRs for your production databases:
 
 ![Requests](images/RequestsList_light.png#gh-light-mode-only)
 ![Requests](images/RequestsList_dark.png#gh-dark-mode-only)
@@ -52,6 +55,8 @@ Every executed statement is recorded — whether it ran as a reviewed single que
 ![Auditlog](images/Auditlog_light.png#gh-light-mode-only)
 ![Auditlog](images/Auditlog_dark.png#gh-dark-mode-only)
 
+</details>
+
 ## Feature by Database/Connection Type
 
 Most features are available for all databases (SSO, LDAP, RBAC, Review/Approval Flow, Auditlog, etc.). But some features are restricted, either because it simply hasn't been built yet or because it makes no sense for that specific purpose. The following table shows which features are available for which database type:
@@ -69,7 +74,7 @@ Most features are available for all databases (SSO, LDAP, RBAC, Review/Approval 
 
 Kviklet ships as a simple docker container.
 You can find the available versions under [Releases](https://github.com/kviklet/kviklet/releases). We recommend regularly updating the version you are using as we continue to build new features.  
-The latest one currently is `ghcr.io/kviklet/kviklet:0.7.0`, you can also use `:main` but it might happen every now and then that we accidentally merge something buggy. Though we try to avoid that.
+The latest one currently is `ghcr.io/kviklet/kviklet:0.8.0`, you can also use `:main` but it might happen every now and then that we accidentally merge something buggy. Though we try to avoid that.
 
 ### Quick Start
 
@@ -452,6 +457,7 @@ Configure your OIDC provider to include a `groups` claim in the ID token:
 - **Keycloak**:
 
   Keycloak doesn't include groups in tokens by default so you will need to add a mapper to the client.
+
   1. Navigate to **Clients** in the left menu
   2. Select your Kviklet client
   3. Go to the **Client scopes** tab
@@ -469,6 +475,7 @@ Configure your OIDC provider to include a `groups` claim in the ID token:
   | Add to ID token     | **ON**   |
   | Add to access token | **ON**   |
   | Add to userinfo     | **ON**   |
+
   9. Click **Save**
 
   > **Important:** The "Token Claim Name" must match the "Groups Attribute" configured in Kviklet's Role Sync settings (default: `groups`).
@@ -536,6 +543,26 @@ KVIKLET_BASE_URL=https://kviklet.example.com
 ```
 
 This ensures all notification links point to the correct public URL.
+
+### Telemetry
+
+Kviklet reports anonymous usage statistics to help us understand which features are used and where
+errors happen. To switch it off, set:
+
+```
+KVIKLET_TELEMETRY_ENABLED=false
+```
+
+Kviklet logs one line at startup saying whether telemetry is on.
+
+**What is sent.** Every event carries a random instance id (generated once and stored in Kviklet's
+database), the base URL Kviklet is reached on (see above; often an internal hostname), and the Kviklet
+version. Users are identified only by an opaque id scoped to the instance, so unique users can be
+counted, but no email addresses or names are ever sent. The exact events and their properties are
+defined in `backend/src/main/kotlin/dev/kviklet/kviklet/telemetry/TelemetryEvent.kt`.
+
+**What is never sent.** Queries, statements, results, command output, error messages, connection
+names, hostnames, credentials, request titles or descriptions, comments, and user or role names.
 
 ### Logging
 

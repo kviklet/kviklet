@@ -3,7 +3,6 @@ package dev.kviklet.kviklet.security.ldap
 import dev.kviklet.kviklet.security.IdpIdentifier
 import dev.kviklet.kviklet.security.PolicyGrantedAuthority
 import dev.kviklet.kviklet.security.UserAuthService
-import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.RoleSyncService
 import org.springframework.ldap.core.LdapTemplate
 import org.springframework.ldap.query.LdapQueryBuilder
@@ -27,7 +26,7 @@ class LdapUserDetailsService(
 
         val authorities = user.roles.flatMap { it.policies }.map { PolicyGrantedAuthority(it) }
 
-        return UserDetailsWithId(
+        return LdapUserDetailsWithId(
             user.getId()!!,
             user.email,
             user.password ?: "a random password since spring somehow requires one",

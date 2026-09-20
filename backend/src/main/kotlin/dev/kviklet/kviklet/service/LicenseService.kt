@@ -10,6 +10,8 @@ import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.service.dto.License
 import dev.kviklet.kviklet.service.dto.LicenseFile
+import dev.kviklet.kviklet.telemetry.LicenseUploaded
+import dev.kviklet.kviklet.telemetry.Telemetry
 import jakarta.annotation.PostConstruct
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -19,7 +21,11 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Service
-class LicenseService(private val licenseAdapter: LicenseAdapter, private val userAdapter: UserAdapter) {
+class LicenseService(
+    private val licenseAdapter: LicenseAdapter,
+    private val userAdapter: UserAdapter,
+    private val telemetry: Telemetry,
+) {
     private val pem = this::class.java.getResource("/kviklet-key.pem")?.readText()?.trim()
         ?: throw RuntimeException("Could not load public key for license verification")
 
@@ -76,6 +82,7 @@ class LicenseService(private val licenseAdapter: LicenseAdapter, private val use
         )
 
         licenseAdapter.createLicense(license.file)
+        telemetry.track(LicenseUploaded)
     }
 
     @NoPolicy

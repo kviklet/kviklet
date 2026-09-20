@@ -54,6 +54,13 @@ import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.UpdateQueryResult
 import dev.kviklet.kviklet.service.dto.utcTimeNow
 import dev.kviklet.kviklet.shell.KubernetesApi
+import dev.kviklet.kviklet.telemetry.ExecutionMode
+import dev.kviklet.kviklet.telemetry.ProxySessionStarted
+import dev.kviklet.kviklet.telemetry.RequestClosed
+import dev.kviklet.kviklet.telemetry.RequestCreated
+import dev.kviklet.kviklet.telemetry.RequestExecuted
+import dev.kviklet.kviklet.telemetry.ReviewSubmitted
+import dev.kviklet.kviklet.telemetry.Telemetry
 import jakarta.transaction.Transactional
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
 import org.slf4j.LoggerFactory
@@ -94,6 +101,7 @@ class ExecutionRequestService(
     private val licenseService: LicenseService,
     private val configService: ConfigService,
     private val baseUrlResolver: BaseUrlResolver,
+    private val telemetry: Telemetry,
     transactionManager: PlatformTransactionManager,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -142,6 +150,15 @@ class ExecutionRequestService(
         RequestCreatedEvent.fromRequest(executionRequestDetails).let {
             applicationEventPublisher.publishEvent(it)
         }
+        val connection = executionRequestDetails.request.connection
+        telemetry.track(
+            RequestCreated(
+                requestType = executionRequestDetails.request.type,
+                connectionType = connection.connectionType,
+                datasourceType = (connection as? DatasourceConnection)?.type,
+                requiredReviews = connection.reviewConfig.numTotalRequired,
+            ),
+        )
         return executionRequestDetails
     }
 
@@ -287,6 +304,7 @@ class ExecutionRequestService(
 
         val resultLogs = listOf(DumpResultLog(totalBytesRead))
         eventService.addResultLogs(event.eventId!!, resultLogs)
+        trackExecution(executionRequest, ExecutionMode.DUMP, null)
     }
 
     @Transactional
@@ -474,6 +492,7 @@ class ExecutionRequestService(
             applicationEventPublisher.publishEvent(it)
         }
         endProxySessionsIfRejected(updatedExecutionRequestDetails)
+        telemetry.track(ReviewSubmitted(request.action))
         return reviewEvent
     }
 
@@ -495,6 +514,7 @@ class ExecutionRequestService(
             applicationEventPublisher.publishEvent(it)
         }
         endProxySessionsIfRejected(updatedExecutionRequestDetails)
+        telemetry.track(RequestClosed)
         return reviewEvent
     }
 
@@ -760,7 +780,7 @@ class ExecutionRequestService(
                 executionRequest,
                 connection,
                 userId,
-            )
+            ).also { trackExecution(executionRequest, ExecutionMode.DRY_RUN, it) }
         } else {
             // Normal execution - always requires approval
             executionRequest.raiseIfNotExecutable()
@@ -772,8 +792,28 @@ class ExecutionRequestService(
                 is KubernetesConnection -> {
                     executeKubernetesRequest(id, executionRequest, connection, userId, query)
                 }
-            }
+            }.also { trackExecution(executionRequest, ExecutionMode.EXECUTE, it) }
         }
+    }
+
+    /** Outcome only: whether the run succeeded and the vendor's numeric error code, never a message. */
+    private fun trackExecution(details: ExecutionRequestDetails, mode: ExecutionMode, result: ExecutionResult?) {
+        val connection = details.request.connection
+        val errorCode = when (result) {
+            is DBExecutionResult -> result.results.filterIsInstance<ErrorQueryResult>().firstOrNull()?.errorCode
+            is KubernetesExecutionResult -> result.exitCode?.takeIf { it != 0 }
+            null -> null
+        }
+        telemetry.track(
+            RequestExecuted(
+                requestType = details.request.type,
+                connectionType = connection.connectionType,
+                datasourceType = (connection as? DatasourceConnection)?.type,
+                executionMode = mode,
+                succeeded = errorCode == null,
+                errorCode = errorCode,
+            ),
+        )
     }
 
     /**
@@ -802,6 +842,7 @@ class ExecutionRequestService(
         executionRequest.raiseIfNotExecutable()
 
         val result = executeDatasourceRequest(id, executionRequest, connection, query, userId, isDownload = true)
+        trackExecution(executionRequest, ExecutionMode.DOWNLOAD, result)
 
         return buildDownloadResult(executionRequest, result.results)
     }
@@ -915,6 +956,7 @@ class ExecutionRequestService(
         )
 
         return DBExecutionResult(results = result, executionRequest = executionRequest)
+            .also { trackExecution(executionRequest, ExecutionMode.EXPLAIN, it) }
     }
 
     @Transactional
@@ -1072,6 +1114,7 @@ class ExecutionRequestService(
         val expiresAt = session.expiresAt?.let { LocalDateTime.ofInstant(it, ZoneOffset.UTC) }
         if (session.username == username) {
             logger.info("Registered proxy session $username on port ${proxyServer.listenPort}")
+            telemetry.track(ProxySessionStarted(connection.type))
         } else {
             logger.info(
                 "Reusing existing proxy session ${session.username} on port ${proxyServer.listenPort}",

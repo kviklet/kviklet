@@ -168,10 +168,15 @@ interface EventRepository :
     JpaRepository<EventEntity, String>,
     CustomEventRepository {
     fun findByType(type: EventType): List<EventEntity>
+
+    fun countByTypeAndCreatedAtGreaterThanEqual(type: EventType, since: LocalDateTime): Long
 }
 
 @Service
 class EventAdapter(private val eventRepository: EventRepository, private val connectionAdapter: ConnectionAdapter) {
+    fun countExecutionsSince(since: LocalDateTime): Long =
+        eventRepository.countByTypeAndCreatedAtGreaterThanEqual(EventType.EXECUTE, since)
+
     fun getExecutions(from: LocalDateTime? = null, to: LocalDateTime? = null): List<ExecuteEvent> {
         val events = eventRepository.findExecutionsFiltered(from, to)
         return events.map {

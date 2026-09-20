@@ -12,12 +12,15 @@ import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.AuthenticationType
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
+import dev.kviklet.kviklet.service.dto.ConnectionType
 import dev.kviklet.kviklet.service.dto.ConnectionWithPermissions
 import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.KubernetesConnection
 import dev.kviklet.kviklet.service.dto.ReviewConfig
+import dev.kviklet.kviklet.telemetry.ConnectionCreated
+import dev.kviklet.kviklet.telemetry.Telemetry
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
 
@@ -40,6 +43,7 @@ class ConnectionService(
     private val licenseService: LicenseService,
     private val roleAdapter: RoleAdapter,
     private val permissionResolver: PermissionResolver,
+    private val telemetry: Telemetry,
 ) {
 
     @Transactional
@@ -269,7 +273,19 @@ class ConnectionService(
             category,
             dryRunEnabled,
             dryRunRequiresApproval,
-        ).withPermissions()
+        ).withPermissions().also {
+            telemetry.track(
+                ConnectionCreated(
+                    connectionType = ConnectionType.DATASOURCE,
+                    datasourceType = type,
+                    authenticationType = authenticationType,
+                    requiredReviews = reviewConfig.numTotalRequired,
+                    temporaryAccessEnabled = temporaryAccessEnabled,
+                    dumpsEnabled = dumpsEnabled,
+                    dryRunEnabled = dryRunEnabled,
+                ),
+            )
+        }
     }
 
     @Policy(Permission.DATASOURCE_CONNECTION_CREATE, checkIsPresentOnly = true)
@@ -379,7 +395,19 @@ class ConnectionService(
             category,
             kubernetesExecInitialWaitTimeoutSeconds = kubernetesExecInitialWaitTimeoutSeconds ?: 5L,
             kubernetesExecTimeoutMinutes = kubernetesExecTimeoutMinutes ?: 60L,
-        ).withPermissions()
+        ).withPermissions().also {
+            telemetry.track(
+                ConnectionCreated(
+                    connectionType = ConnectionType.KUBERNETES,
+                    datasourceType = null,
+                    authenticationType = null,
+                    requiredReviews = reviewConfig.numTotalRequired,
+                    temporaryAccessEnabled = false,
+                    dumpsEnabled = false,
+                    dryRunEnabled = false,
+                ),
+            )
+        }
     }
 
     @Transactional

@@ -10,6 +10,8 @@ import dev.kviklet.kviklet.service.InvalidLicenseException
 import dev.kviklet.kviklet.service.InvalidReviewException
 import dev.kviklet.kviklet.service.LicenseRestrictionException
 import dev.kviklet.kviklet.service.RequestNotExecutableException
+import dev.kviklet.kviklet.telemetry.ServerError
+import dev.kviklet.kviklet.telemetry.Telemetry
 import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
@@ -22,11 +24,12 @@ import org.springframework.web.HttpRequestMethodNotSupportedException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.bind.annotation.ExceptionHandler
+import org.springframework.web.servlet.HandlerMapping
 
 data class ErrorResponse(val message: String)
 
 @ControllerAdvice
-class ExceptionHandlerController {
+class ExceptionHandlerController(private val telemetry: Telemetry) {
     @ExceptionHandler(InvalidReviewException::class, RequestNotExecutableException::class)
     fun handleInvalidRequest(ex: RuntimeException): ResponseEntity<ErrorResponse> =
         ResponseEntity(ErrorResponse(ex.message ?: "Unknown Error"), HttpStatus.BAD_REQUEST)
@@ -146,6 +149,16 @@ class ExceptionHandlerController {
     @ExceptionHandler(Exception::class)
     fun handleAllExceptions(ex: Exception, request: HttpServletRequest): ResponseEntity<Any> {
         logger.error("Exception occurred at ${request.requestURI}", ex)
+        telemetry.track(
+            ServerError(
+                exceptionClass = ex.javaClass.name,
+                rootCauseClass = generateSequence<Throwable>(ex) { it.cause?.takeIf { cause -> cause !== it } }
+                    .last().javaClass.name,
+                httpMethod = request.method,
+                // The matched pattern (e.g. /requests/{id}), never the actual path with its ids.
+                route = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE) as? String ?: "unknown",
+            ),
+        )
         return ResponseEntity(ErrorResponse("An unexpected error occurred :("), HttpStatus.INTERNAL_SERVER_ERROR)
     }
 }

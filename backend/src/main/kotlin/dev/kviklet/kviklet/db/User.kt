@@ -180,6 +180,8 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
     @Transactional(readOnly = true)
     fun countActiveUsers(): Long = userRepository.countByActiveTrue()
 
+    fun countUsers(): Long = userRepository.count()
+
     @Transactional(readOnly = true)
     fun findById(id: String): User {
         val userEntity = userRepository.findByIdOrNull(id) ?: throw EntityNotFound(
