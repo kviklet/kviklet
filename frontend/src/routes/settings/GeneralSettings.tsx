@@ -241,43 +241,6 @@ const ConfigForm = ({
           </>
         )}
       </Disclosure>
-      <Disclosure defaultOpen={true}>
-        {({ open }) => (
-          <>
-            <DisclosureButton className="py-2" type="button">
-              <SectionHeader title="Usage Telemetry" open={open} />
-            </DisclosureButton>
-            <DisclosurePanel unmount={false}>
-              <div className="flex flex-col space-y-2">
-                <span className="text-sm dark:text-slate-300">
-                  Anonymous usage telemetry is{" "}
-                  <span className="font-medium">
-                    {config.telemetryEnabled ? "enabled" : "disabled"}
-                  </span>{" "}
-                  on this instance. It reports feature usage counts, the
-                  version, and the address Kviklet is reached on. It never
-                  includes queries, results, error messages, names, or email
-                  addresses.
-                </span>
-                <span className="text-sm text-slate-500 dark:text-slate-400">
-                  See the{" "}
-                  <a
-                    href="https://github.com/kviklet/kviklet/blob/main/Readme.md#telemetry"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-600 underline hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                  >
-                    Readme section on Telemetry
-                  </a>{" "}
-                  for the full list of what is reported. Set the environment
-                  variable <code>KVIKLET_TELEMETRY_ENABLED=false</code> to turn
-                  it off.
-                </span>
-              </div>
-            </DisclosurePanel>
-          </>
-        )}
-      </Disclosure>
       {!readOnly && (
         <div className="mt-4 flex flex-row-reverse">
           <Button htmlType="submit" variant="primary">

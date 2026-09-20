@@ -549,7 +549,7 @@ PostHog. To switch it off, set:
 KVIKLET_TELEMETRY_ENABLED=false
 ```
 
-The general settings page shows whether telemetry is on, and Kviklet logs one line at startup saying so.
+Kviklet logs one line at startup saying whether telemetry is on.
 
 **What is sent.** Every event carries a random instance id (generated once and stored in Kviklet's
 database), the base URL Kviklet is reached on (see above; often an internal hostname), and the Kviklet

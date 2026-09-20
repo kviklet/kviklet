@@ -21,7 +21,6 @@ const ConfigResponseSchema = z.object({
   version: z.string(),
   buildDate: z.string(),
   gitCommit: z.string(),
-  telemetryEnabled: z.boolean().default(false),
 });
 
 export const ConfigPayloadSchema = ConfigResponseSchema.omit({
@@ -35,7 +34,6 @@ export const ConfigPayloadSchema = ConfigResponseSchema.omit({
   version: true,
   buildDate: true,
   gitCommit: true,
-  telemetryEnabled: true,
 }).extend({
   // Optional on writes: a PUT that leaves it out keeps the stored value, so the
   // notification form can never flip the proxy toggle as a side effect.
