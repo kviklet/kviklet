@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.telemetry
 
 import dev.kviklet.kviklet.security.KvikletOAuthPrincipal
 import dev.kviklet.kviklet.security.UserDetailsWithId
+import dev.kviklet.kviklet.security.ldap.LdapUserDetailsWithId
 import org.springframework.context.annotation.Lazy
 import org.springframework.context.event.EventListener
 import org.springframework.security.authentication.event.AuthenticationSuccessEvent
@@ -23,12 +24,20 @@ class LoginTelemetryListener(private val telemetry: Telemetry) {
     @EventListener
     fun onAuthenticationSuccess(event: AuthenticationSuccessEvent) {
         val authentication = event.authentication
-        val method = when (authentication) {
-            is OAuth2LoginAuthenticationToken, is OAuth2AuthenticationToken -> LoginMethod.OIDC
-            is Saml2Authentication -> LoginMethod.SAML
-            else -> LoginMethod.PASSWORD
-        }
-        telemetry.track(UserLoggedIn(method), userId = userId(authentication))
+        telemetry.track(UserLoggedIn(methodOf(authentication)), userId = userId(authentication))
+    }
+
+    private fun methodOf(authentication: Authentication): LoginMethod = when {
+        authentication is OAuth2LoginAuthenticationToken -> LoginMethod.OIDC
+
+        authentication is OAuth2AuthenticationToken -> LoginMethod.OIDC
+
+        authentication is Saml2Authentication -> LoginMethod.SAML
+
+        // LDAP and local logins share a token type; only the principal tells them apart.
+        authentication.principal is LdapUserDetailsWithId -> LoginMethod.LDAP
+
+        else -> LoginMethod.PASSWORD
     }
 
     private fun userId(authentication: Authentication): String? = when (val principal = authentication.principal) {

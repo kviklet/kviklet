@@ -17,7 +17,7 @@ import dev.kviklet.kviklet.service.dto.ReviewAction
  */
 sealed class TelemetryEvent(val name: String)
 
-enum class LoginMethod { PASSWORD, OIDC, SAML }
+enum class LoginMethod { PASSWORD, LDAP, OIDC, SAML }
 
 /** How the acting user reached Kviklet: the web frontend (any browser session) or an API key. */
 enum class TelemetryClient { WEB, API_KEY }

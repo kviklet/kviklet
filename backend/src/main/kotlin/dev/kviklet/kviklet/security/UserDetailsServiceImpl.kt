@@ -29,8 +29,12 @@ class UserDetailsServiceImpl(private val userAdapter: UserAdapter) : UserDetails
         ?: throw UsernameNotFoundException("User '$email' not found.")
 }
 
-class UserDetailsWithId(val id: String, email: String, password: String?, authorities: Collection<GrantedAuthority>) :
-    User(email, password, authorities),
+open class UserDetailsWithId(
+    val id: String,
+    email: String,
+    password: String?,
+    authorities: Collection<GrantedAuthority>,
+) : User(email, password, authorities),
     Serializable {
     companion object {
         private const val serialVersionUID = 1L // Serializable version UID
