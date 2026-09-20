@@ -143,6 +143,9 @@ interface ExecutionRequestRepository :
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select e from execution_request e where e.id = :id")
     fun lockById(@Param("id") id: String): ExecutionRequestEntity?
+
+    @Query("select count(e) from execution_request e where e.createdAt >= :since")
+    fun countCreatedSince(@Param("since") since: LocalDateTime): Long
 }
 
 interface CustomExecutionRequestRepository {
@@ -427,6 +430,8 @@ class ExecutionRequestAdapter(
     }
 
     @Transactional(readOnly = true)
+    fun countCreatedSince(since: LocalDateTime): Long = executionRequestRepository.countCreatedSince(since)
+
     fun listExecutionRequests(): List<ExecutionRequestDetails> = executionRequestRepository.findAllWithDetails().map {
         it.toDetailDto(connectionAdapter.toDto(it.connection))
     }

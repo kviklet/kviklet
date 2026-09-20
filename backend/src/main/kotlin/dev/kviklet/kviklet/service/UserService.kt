@@ -7,6 +7,8 @@ import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.service.dto.Role
+import dev.kviklet.kviklet.telemetry.Telemetry
+import dev.kviklet.kviklet.telemetry.UserCreated
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
@@ -19,6 +21,7 @@ class UserService(
     private val roleAdapter: RoleAdapter,
     private val licenseService: LicenseService,
     private val applicationEventPublisher: ApplicationEventPublisher,
+    private val telemetry: Telemetry,
 ) {
 
     @Transactional
@@ -46,7 +49,7 @@ class UserService(
             password = passwordEncoder.encode(password),
             roles = setOf(defaultRole),
         )
-        return userAdapter.createUser(user)
+        return userAdapter.createUser(user).also { telemetry.track(UserCreated) }
     }
 
     @Transactional

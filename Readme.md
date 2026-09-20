@@ -452,6 +452,7 @@ Configure your OIDC provider to include a `groups` claim in the ID token:
 - **Keycloak**:
 
   Keycloak doesn't include groups in tokens by default so you will need to add a mapper to the client.
+
   1. Navigate to **Clients** in the left menu
   2. Select your Kviklet client
   3. Go to the **Client scopes** tab
@@ -469,6 +470,7 @@ Configure your OIDC provider to include a `groups` claim in the ID token:
   | Add to ID token     | **ON**   |
   | Add to access token | **ON**   |
   | Add to userinfo     | **ON**   |
+
   9. Click **Save**
 
   > **Important:** The "Token Claim Name" must match the "Groups Attribute" configured in Kviklet's Role Sync settings (default: `groups`).
@@ -536,6 +538,48 @@ KVIKLET_BASE_URL=https://kviklet.example.com
 ```
 
 This ensures all notification links point to the correct public URL.
+
+### Telemetry
+
+Kviklet reports anonymous usage statistics to help us understand which features are used and where
+errors happen. Everything is sent from the backend to PostHog (EU region); the browser never talks to
+PostHog. To switch it off, set:
+
+```
+KVIKLET_TELEMETRY_ENABLED=false
+```
+
+The general settings page shows whether telemetry is on, and Kviklet logs one line at startup saying so.
+
+**What is sent.** Every event carries a random instance id (generated once and stored in Kviklet's
+database), the base URL Kviklet is reached on (see above; often an internal hostname), and the Kviklet
+version. Users are identified only by an opaque id scoped to the instance, so unique users can be
+counted, but no email addresses, names, or IP addresses are ever sent, and no PostHog person profiles
+are created.
+
+**What is never sent.** Queries, statements, results, command output, error messages, connection
+names, hostnames, credentials, request titles or descriptions, comments, and user or role names. Every
+event is a typed class in `backend/src/main/kotlin/dev/kviklet/kviklet/telemetry/TelemetryEvent.kt`
+whose properties can only be enums, numbers, booleans, or a handful of allowlisted strings, and a test
+enforces that.
+
+The events:
+
+| Event                   | Properties                                                                                                                                                                                                                |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `instance_heartbeat`    | Daily: version, git commit, metadata database type, user and connection counts by type, requests and executions in the last 24h, which auth methods are enabled, whether a license, the proxy, and encryption are enabled |
+| `request_created`       | request type, connection type, datasource type, required reviews                                                                                                                                                          |
+| `review_submitted`      | review action                                                                                                                                                                                                             |
+| `request_closed`        |                                                                                                                                                                                                                           |
+| `request_executed`      | request type, connection type, datasource type, execution mode (execute, dry run, download, explain, dump), success, vendor error code                                                                                    |
+| `live_session_started`  | datasource type                                                                                                                                                                                                           |
+| `proxy_session_started` | datasource type                                                                                                                                                                                                           |
+| `connection_created`    | connection type, datasource type, authentication type, required reviews, which optional features are enabled                                                                                                              |
+| `user_created`          |                                                                                                                                                                                                                           |
+| `user_logged_in`        | login method (password, OIDC, SAML)                                                                                                                                                                                       |
+| `role_created`          |                                                                                                                                                                                                                           |
+| `license_uploaded`      |                                                                                                                                                                                                                           |
+| `server_error`          | exception class, root cause class, HTTP method, route pattern (e.g. `/requests/{id}`, never the actual path)                                                                                                              |
 
 ### Logging
 

@@ -8,6 +8,7 @@ import dev.kviklet.kviklet.service.ConfigService
 import dev.kviklet.kviklet.service.LicenseService
 import dev.kviklet.kviklet.service.dto.Configuration
 import dev.kviklet.kviklet.service.dto.License
+import dev.kviklet.kviklet.telemetry.Telemetry
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.AccessDeniedException
@@ -37,6 +38,8 @@ open class PublicConfigResponse(
     open val version: String,
     open val buildDate: String,
     open val gitCommit: String,
+    // Public so the settings page can show whether anonymous usage telemetry is on.
+    open val telemetryEnabled: Boolean,
 )
 
 // Null fields mean "leave unchanged", so a partial update never wipes the other settings.
@@ -54,6 +57,7 @@ data class ConfigResponse(
     override val version: String,
     override val buildDate: String,
     override val gitCommit: String,
+    override val telemetryEnabled: Boolean,
     val teamsUrl: String?,
     val slackUrl: String?,
 ) : PublicConfigResponse(
@@ -68,6 +72,7 @@ data class ConfigResponse(
     version,
     buildDate,
     gitCommit,
+    telemetryEnabled,
 ) {
     companion object {
         fun fromConfiguration(
@@ -79,6 +84,7 @@ data class ConfigResponse(
             version: String,
             buildDate: String,
             gitCommit: String,
+            telemetryEnabled: Boolean,
         ): ConfigResponse {
             val licensesSorted = licenses.sortedByDescending { it.file.createdAt }
             return ConfigResponse(
@@ -93,6 +99,7 @@ data class ConfigResponse(
                 version = version,
                 buildDate = buildDate,
                 gitCommit = gitCommit,
+                telemetryEnabled = telemetryEnabled,
                 teamsUrl = configuration.teamsUrl,
                 slackUrl = configuration.slackUrl,
             )
@@ -114,6 +121,7 @@ class ConfigController(
     val configService: ConfigService,
     val licenseService: LicenseService,
     val applicationProperties: ApplicationProperties,
+    val telemetry: Telemetry,
 ) {
 
     @GetMapping("/")
@@ -131,6 +139,7 @@ class ConfigController(
                 applicationProperties.version,
                 applicationProperties.buildDate,
                 applicationProperties.gitCommit,
+                telemetry.enabled,
             )
         } catch (e: AccessDeniedException) {
             return PublicConfigResponse(
@@ -145,6 +154,7 @@ class ConfigController(
                 version = applicationProperties.version,
                 buildDate = applicationProperties.buildDate,
                 gitCommit = applicationProperties.gitCommit,
+                telemetryEnabled = telemetry.enabled,
             )
         }
     }
@@ -168,6 +178,7 @@ class ConfigController(
             applicationProperties.version,
             applicationProperties.buildDate,
             applicationProperties.gitCommit,
+            telemetry.enabled,
         )
     }
 

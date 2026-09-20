@@ -66,6 +66,12 @@ sealed class Connection(
     override fun getSecuredObjectId() = id.toString()
     override fun getDomainObjectType() = Resource.DATASOURCE_CONNECTION
 
+    val connectionType: ConnectionType
+        get() = when (this) {
+            is DatasourceConnection -> ConnectionType.DATASOURCE
+            is KubernetesConnection -> ConnectionType.KUBERNETES
+        }
+
     override fun getRelated(resource: Resource): SecuredDomainObject? = when (resource) {
         Resource.DATASOURCE_CONNECTION -> this
         Resource.EXECUTION_REQUEST -> null

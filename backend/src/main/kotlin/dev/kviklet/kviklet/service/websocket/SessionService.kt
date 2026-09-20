@@ -4,10 +4,13 @@ import dev.kviklet.kviklet.db.LiveSessionAdapter
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.service.ExecutionRequestService
+import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.ExecutionResult
 import dev.kviklet.kviklet.service.dto.LiveSession
 import dev.kviklet.kviklet.service.dto.LiveSessionId
+import dev.kviklet.kviklet.telemetry.LiveSessionStarted
+import dev.kviklet.kviklet.telemetry.Telemetry
 import jakarta.persistence.LockModeType
 import jakarta.persistence.QueryHint
 import org.springframework.data.jpa.repository.Lock
@@ -19,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional
 class SessionService(
     private val sessionAdapter: LiveSessionAdapter,
     private val executionRequestService: ExecutionRequestService,
+    private val telemetry: Telemetry,
 ) {
 
     @Transactional
@@ -31,7 +35,10 @@ class SessionService(
         if (existingSession != null) {
             return existingSession
         }
-        return sessionAdapter.createLiveSession(executionRequestId, "")
+        return sessionAdapter.createLiveSession(executionRequestId, "").also {
+            val connection = it.executionRequest.request.connection
+            telemetry.track(LiveSessionStarted((connection as? DatasourceConnection)?.type))
+        }
     }
 
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)

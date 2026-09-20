@@ -52,5 +52,6 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://kviklet-postgres:5432/kviklet
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
+      - KVIKLET_TELEMETRY_ENABLED=false
     depends_on:
       - kviklet-postgres
