@@ -67,7 +67,7 @@ data class UserCreated(val authMethod: LoginMethod) : TelemetryEvent("user_creat
 /** An existing user signed in through an identity provider for the first time and got that identity attached. */
 data class UserMigratedToSso(val authMethod: LoginMethod) : TelemetryEvent("user_migrated_to_sso")
 
-data class UserLoggedIn(val loginMethod: LoginMethod) : TelemetryEvent("user_logged_in")
+data class UserLoggedIn(val authMethod: LoginMethod) : TelemetryEvent("user_logged_in")
 
 object RoleCreated : TelemetryEvent("role_created")
 
