@@ -7,6 +7,7 @@ import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.service.dto.Role
+import dev.kviklet.kviklet.telemetry.LoginMethod
 import dev.kviklet.kviklet.telemetry.Telemetry
 import dev.kviklet.kviklet.telemetry.UserCreated
 import org.springframework.context.ApplicationEventPublisher
@@ -49,7 +50,7 @@ class UserService(
             password = passwordEncoder.encode(password),
             roles = setOf(defaultRole),
         )
-        return userAdapter.createUser(user).also { telemetry.track(UserCreated) }
+        return userAdapter.createUser(user).also { telemetry.track(UserCreated(LoginMethod.PASSWORD)) }
     }
 
     @Transactional

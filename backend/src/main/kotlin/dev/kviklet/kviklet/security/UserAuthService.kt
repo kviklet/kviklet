@@ -7,6 +7,10 @@ import dev.kviklet.kviklet.service.LicenseRestrictionException
 import dev.kviklet.kviklet.service.LicenseService
 import dev.kviklet.kviklet.service.RoleSyncService
 import dev.kviklet.kviklet.service.dto.Role
+import dev.kviklet.kviklet.telemetry.LoginMethod
+import dev.kviklet.kviklet.telemetry.Telemetry
+import dev.kviklet.kviklet.telemetry.UserCreated
+import dev.kviklet.kviklet.telemetry.UserMigratedToSso
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -30,6 +34,7 @@ class UserAuthService(
     private val roleAdapter: RoleAdapter,
     private val licenseService: LicenseService,
     private val roleSyncService: RoleSyncService,
+    private val telemetry: Telemetry,
 ) {
     /**
      * Find existing user or create new one during authentication.
@@ -61,10 +66,12 @@ class UserAuthService(
         // 2. Find by IdP-specific identifier
         var user = findByIdpIdentifier(idpIdentifier)
         var isNewUser = false
+        var isMigratedUser = false
 
         if (user == null) {
             // 3. Try to find by email (migration case)
             user = userAdapter.findByEmail(email)
+            isMigratedUser = user != null
 
             if (user == null) {
                 // 4. Create new user - check license user limit
@@ -94,7 +101,19 @@ class UserAuthService(
         val resolvedRoles = roleSyncService.resolveRoles(idpGroups, user.roles, isNewUser)
         user = user.copy(roles = resolvedRoles)
 
-        return userAdapter.createOrUpdateUser(user)
+        val saved = userAdapter.createOrUpdateUser(user)
+        if (isNewUser) telemetry.track(UserCreated(idpIdentifier.toLoginMethod()))
+        if (isMigratedUser) telemetry.track(UserMigratedToSso(idpIdentifier.toLoginMethod()))
+        return saved
+    }
+
+    private fun IdpIdentifier.toLoginMethod(): LoginMethod = when (this) {
+        is IdpIdentifier.Saml -> LoginMethod.SAML
+
+        is IdpIdentifier.Ldap -> LoginMethod.LDAP
+
+        // GitHub signs in through the OAuth2 login flow, the same one the login listener reports as OIDC.
+        is IdpIdentifier.Oidc, is IdpIdentifier.GitHub -> LoginMethod.OIDC
     }
 
     private fun findByIdpIdentifier(idpIdentifier: IdpIdentifier): User? = when (idpIdentifier) {

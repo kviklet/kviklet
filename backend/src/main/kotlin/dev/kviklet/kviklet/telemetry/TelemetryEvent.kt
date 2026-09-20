@@ -62,7 +62,10 @@ data class ConnectionCreated(
     val dryRunEnabled: Boolean,
 ) : TelemetryEvent("connection_created")
 
-object UserCreated : TelemetryEvent("user_created")
+data class UserCreated(val authMethod: LoginMethod) : TelemetryEvent("user_created")
+
+/** An existing user signed in through an identity provider for the first time and got that identity attached. */
+data class UserMigratedToSso(val authMethod: LoginMethod) : TelemetryEvent("user_migrated_to_sso")
 
 data class UserLoggedIn(val loginMethod: LoginMethod) : TelemetryEvent("user_logged_in")
 
