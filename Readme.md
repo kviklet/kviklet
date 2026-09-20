@@ -31,9 +31,12 @@ Kviklet ships with a variety of features that an engineering team needs to manag
 - **Role Sync**: Automatically sync user roles from your identity provider groups. (Enterprise only)
 - **API Keys**: Programmatic access to the Kviklet API. (Enterprise only)
 
+<details>
+<summary>More screenshots</summary>
+
 ### Requests
 
-All data requests live in one place — like a pull request list for your production databases:
+All data requests live in one place. Like open PRs for your production databases:
 
 ![Requests](images/RequestsList_light.png#gh-light-mode-only)
 ![Requests](images/RequestsList_dark.png#gh-dark-mode-only)
@@ -51,6 +54,8 @@ Every executed statement is recorded — whether it ran as a reviewed single que
 
 ![Auditlog](images/Auditlog_light.png#gh-light-mode-only)
 ![Auditlog](images/Auditlog_dark.png#gh-dark-mode-only)
+
+</details>
 
 ## Feature by Database/Connection Type
 
