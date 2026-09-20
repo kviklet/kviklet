@@ -430,11 +430,12 @@ class ExecutionRequestAdapter(
     }
 
     @Transactional(readOnly = true)
-    fun countCreatedSince(since: LocalDateTime): Long = executionRequestRepository.countCreatedSince(since)
-
     fun listExecutionRequests(): List<ExecutionRequestDetails> = executionRequestRepository.findAllWithDetails().map {
         it.toDetailDto(connectionAdapter.toDto(it.connection))
     }
+
+    @Transactional(readOnly = true)
+    fun countCreatedSince(since: LocalDateTime): Long = executionRequestRepository.countCreatedSince(since)
 
     @Transactional(readOnly = true)
     fun listExecutionRequestsFiltered(
