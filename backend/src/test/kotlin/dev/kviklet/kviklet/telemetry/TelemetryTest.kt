@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.telemetry
 
 import dev.kviklet.kviklet.ApplicationProperties
 import dev.kviklet.kviklet.db.ConfigurationAdapter
+import dev.kviklet.kviklet.security.ApiKeyAuthentication
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.BaseUrlResolver
 import dev.kviklet.kviklet.service.dto.ReviewAction
@@ -94,7 +95,26 @@ class TelemetryTest {
 
         val payload = sink.sent.single()
         payload.distinctId shouldBe "instance-1:user-42"
+        payload.properties["client"] shouldBe "WEB"
         payload.properties.values.any { it.toString().contains("someone@example.com") } shouldBe false
+    }
+
+    @Test
+    fun `an api key caller is reported as such`() {
+        val user = UserDetailsWithId("user-42", "someone@example.com", "secret", emptyList())
+        SecurityContextHolder.getContext().authentication = ApiKeyAuthentication(user, emptyList())
+
+        telemetry().track(RequestClosed)
+
+        val payload = sink.sent.single()
+        payload.distinctId shouldBe "instance-1:user-42"
+        payload.properties["client"] shouldBe "API_KEY"
+    }
+
+    @Test
+    fun `instance level events carry no client`() {
+        telemetry().track(RequestClosed)
+        sink.sent.single().properties.containsKey("client") shouldBe false
     }
 
     @Test

@@ -19,6 +19,9 @@ sealed class TelemetryEvent(val name: String)
 
 enum class LoginMethod { PASSWORD, OIDC, SAML }
 
+/** How the acting user reached Kviklet: the web frontend (any browser session) or an API key. */
+enum class TelemetryClient { WEB, API_KEY }
+
 enum class ExecutionMode { EXECUTE, DRY_RUN, DOWNLOAD, EXPLAIN, DUMP }
 
 /** The database Kviklet itself stores its data in, derived from the JDBC URL. */

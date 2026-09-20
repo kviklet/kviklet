@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.telemetry
 
 import dev.kviklet.kviklet.ApplicationProperties
 import dev.kviklet.kviklet.db.ConfigurationAdapter
+import dev.kviklet.kviklet.security.ApiKeyAuthentication
 import dev.kviklet.kviklet.security.KvikletOAuthPrincipal
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.BaseUrlResolver
@@ -9,6 +10,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.annotation.Lazy
 import org.springframework.context.event.EventListener
+import org.springframework.security.core.Authentication
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 import org.springframework.transaction.support.TransactionSynchronization
@@ -68,7 +70,8 @@ class Telemetry(
     fun track(event: TelemetryEvent, userId: String? = null) {
         if (!enabled) return
         try {
-            val payload = toPayload(event, userId ?: currentUserId())
+            val authentication = SecurityContextHolder.getContext().authentication
+            val payload = toPayload(event, userId ?: userIdOf(authentication), clientOf(authentication))
             if (TransactionSynchronizationManager.isSynchronizationActive()) {
                 TransactionSynchronizationManager.registerSynchronization(
                     object : TransactionSynchronization {
@@ -92,7 +95,7 @@ class Telemetry(
         }
     }
 
-    private fun toPayload(event: TelemetryEvent, userId: String?): TelemetryPayload {
+    private fun toPayload(event: TelemetryEvent, userId: String?, client: TelemetryClient?): TelemetryPayload {
         val instanceId = instanceId()
         val properties = LinkedHashMap<String, Any?>()
         properties["instance_id"] = instanceId
@@ -104,6 +107,7 @@ class Telemetry(
         // Opaque ids only: no person profiles, so nothing can ever be attached to a user.
         properties["\$process_person_profile"] = false
         properties["\$lib"] = "kviklet"
+        if (userId != null) properties["client"] = client?.name
         properties.putAll(eventProperties(event))
         return TelemetryPayload(
             event = event.name,
@@ -130,12 +134,18 @@ class Telemetry(
         return id
     }
 
-    private fun currentUserId(): String? =
-        when (val principal = SecurityContextHolder.getContext().authentication?.principal) {
-            is UserDetailsWithId -> principal.id
-            is KvikletOAuthPrincipal -> principal.getUserDetails().id
-            else -> null
-        }
+    private fun userIdOf(authentication: Authentication?): String? = when (val principal = authentication?.principal) {
+        is UserDetailsWithId -> principal.id
+        is KvikletOAuthPrincipal -> principal.getUserDetails().id
+        else -> null
+    }
+
+    /** Null without an authentication (login listeners, the heartbeat): nothing to say about the client. */
+    private fun clientOf(authentication: Authentication?): TelemetryClient? = when (authentication) {
+        null -> null
+        is ApiKeyAuthentication -> TelemetryClient.API_KEY
+        else -> TelemetryClient.WEB
+    }
 
     companion object {
         const val INSTANCE_ID_KEY = "telemetryInstanceId"

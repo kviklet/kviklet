@@ -7,7 +7,6 @@ import dev.kviklet.kviklet.service.dto.Role
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Component
@@ -55,11 +54,7 @@ class ApiKeyAuthFilter(private val apiKeyService: ApiKeyService, private val pas
                 user.password ?: "default password",
                 policies,
             )
-            val authentication = UsernamePasswordAuthenticationToken(
-                userDetails,
-                user.password ?: "default password",
-                policies,
-            )
+            val authentication = ApiKeyAuthentication(userDetails, policies)
 
             // Set authentication in context
             SecurityContextHolder.getContext().authentication = authentication

@@ -555,7 +555,7 @@ The general settings page shows whether telemetry is on, and Kviklet logs one li
 database), the base URL Kviklet is reached on (see above; often an internal hostname), and the Kviklet
 version. Users are identified only by an opaque id scoped to the instance, so unique users can be
 counted, but no email addresses, names, or IP addresses are ever sent, and no PostHog person profiles
-are created.
+are created. User events also say whether the action came through the web frontend or an API key.
 
 **What is never sent.** Queries, statements, results, command output, error messages, connection
 names, hostnames, credentials, request titles or descriptions, comments, and user or role names. Every
