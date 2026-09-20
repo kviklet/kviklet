@@ -1,6 +1,5 @@
 package dev.kviklet.kviklet.telemetry
 
-import io.kotest.matchers.shouldBe
 import org.hamcrest.Matchers.nullValue
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpMethod
@@ -18,14 +17,10 @@ import java.time.Instant
 
 class PostHogSinkTest {
 
-    private val properties = TelemetryProperties().apply {
-        posthog.host = "https://eu.i.posthog.com/"
-        posthog.key = "phc_test"
-        maxQueueSize = 3
-    }
+    private val properties = TelemetryProperties().apply { maxQueueSize = 3 }
     private val restTemplate = RestTemplate()
     private val server = MockRestServiceServer.bindTo(restTemplate).build()
-    private val sink = PostHogSink(properties, restTemplate)
+    private val sink = PostHogSink(properties, restTemplate, host = "https://eu.i.posthog.com/")
 
     private fun payload(event: String) = TelemetryPayload(
         event = event,
@@ -39,7 +34,7 @@ class PostHogSinkTest {
         server.expect(requestTo("https://eu.i.posthog.com/batch"))
             .andExpect(method(HttpMethod.POST))
             .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-            .andExpect(jsonPath("$.api_key").value("phc_test"))
+            .andExpect(jsonPath("$.api_key").value(PostHogSink.PROJECT_KEY))
             .andExpect(jsonPath("$.batch.length()").value(2))
             .andExpect(jsonPath("$.batch[0].event").value("request_created"))
             .andExpect(jsonPath("$.batch[0].distinct_id").value("instance-1"))
@@ -94,6 +89,5 @@ class PostHogSinkTest {
         sink.flush()
 
         server.verify()
-        properties.posthog.key shouldBe "phc_test"
     }
 }

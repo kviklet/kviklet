@@ -24,7 +24,11 @@ import java.util.concurrent.TimeUnit
  */
 @Component
 @Lazy(false)
-class PostHogSink(private val properties: TelemetryProperties, private val restTemplate: RestTemplate) : TelemetrySink {
+class PostHogSink(
+    properties: TelemetryProperties,
+    private val restTemplate: RestTemplate,
+    private val host: String = HOST,
+) : TelemetrySink {
 
     // Not the shared RestTemplate bean: telemetry needs tight timeouts so a slow PostHog never holds a thread.
     @Autowired
@@ -64,7 +68,7 @@ class PostHogSink(private val properties: TelemetryProperties, private val restT
 
     private fun post(batch: List<TelemetryPayload>): Boolean {
         val body = mapOf(
-            "api_key" to properties.posthog.key,
+            "api_key" to PROJECT_KEY,
             "batch" to batch.map {
                 mapOf(
                     "event" to it.event,
@@ -76,7 +80,7 @@ class PostHogSink(private val properties: TelemetryProperties, private val restT
         )
         val headers = HttpHeaders().apply { contentType = MediaType.APPLICATION_JSON }
         return try {
-            val url = URI.create(properties.posthog.host.trimEnd('/') + "/batch")
+            val url = URI.create(host.trimEnd('/') + "/batch")
             restTemplate.postForEntity(url, HttpEntity(body, headers), String::class.java)
             logger.debug("Sent {} telemetry events", batch.size)
             true
@@ -89,5 +93,9 @@ class PostHogSink(private val properties: TelemetryProperties, private val restT
     companion object {
         const val MAX_BATCH_SIZE = 100
         const val FLUSH_INTERVAL_SECONDS = 10L
+
+        /** Kviklet's PostHog project. The key is public and write-only; it can only add events, never read them. */
+        const val HOST = "https://eu.i.posthog.com"
+        const val PROJECT_KEY = "phc_DcrfGJ4vyZrfm9FVh2NRHy76pBEbw36e42BbHhFAir9d"
     }
 }

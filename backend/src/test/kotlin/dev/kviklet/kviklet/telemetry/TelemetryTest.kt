@@ -32,11 +32,8 @@ class TelemetryTest {
     private val configurationAdapter = mockk<ConfigurationAdapter>(relaxed = true)
     private val applicationProperties = ApplicationProperties().apply { version = "1.2.3" }
 
-    private fun telemetry(enabled: Boolean = true, key: String = "phc_test"): Telemetry {
-        val properties = TelemetryProperties().apply {
-            this.enabled = enabled
-            posthog.key = key
-        }
+    private fun telemetry(enabled: Boolean = true): Telemetry {
+        val properties = TelemetryProperties().apply { this.enabled = enabled }
         every { configurationAdapter.getConfiguration(Telemetry.INSTANCE_ID_KEY) } returns "instance-1"
         return Telemetry(
             properties,
@@ -57,13 +54,7 @@ class TelemetryTest {
 
     @Test
     fun `nothing is sent when telemetry is switched off`() {
-        telemetry(enabled = false).track(RequestClosed)
-        sink.sent.shouldBeEmpty()
-    }
-
-    @Test
-    fun `nothing is sent without a PostHog key`() {
-        val telemetry = telemetry(key = "")
+        val telemetry = telemetry(enabled = false)
         telemetry.enabled shouldBe false
         telemetry.track(RequestClosed)
         sink.sent.shouldBeEmpty()
@@ -133,7 +124,7 @@ class TelemetryTest {
     @Test
     fun `a new instance id is generated once and stored`() {
         every { configurationAdapter.getConfiguration(Telemetry.INSTANCE_ID_KEY) } returns null
-        val properties = TelemetryProperties().apply { posthog.key = "phc_test" }
+        val properties = TelemetryProperties()
         val telemetry = Telemetry(
             properties,
             sink,
@@ -155,7 +146,7 @@ class TelemetryTest {
         val failing = object : TelemetrySink {
             override fun send(payload: TelemetryPayload) = throw IllegalStateException("boom")
         }
-        val properties = TelemetryProperties().apply { posthog.key = "phc_test" }
+        val properties = TelemetryProperties()
         every { configurationAdapter.getConfiguration(Telemetry.INSTANCE_ID_KEY) } returns "instance-1"
         val telemetry =
             Telemetry(properties, failing, configurationAdapter, BaseUrlResolver(null), applicationProperties)

@@ -40,7 +40,7 @@ class Telemetry(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    val enabled: Boolean = properties.enabled && properties.posthog.key.isNotBlank()
+    val enabled: Boolean = properties.enabled
 
     @Volatile
     private var instanceId: String? = null
@@ -49,10 +49,6 @@ class Telemetry(
     fun onReady() {
         if (!properties.enabled) {
             logger.info("Usage telemetry is disabled (KVIKLET_TELEMETRY_ENABLED=false)")
-            return
-        }
-        if (properties.posthog.key.isBlank()) {
-            logger.info("Usage telemetry is disabled: no PostHog key is configured")
             return
         }
         logger.info(
