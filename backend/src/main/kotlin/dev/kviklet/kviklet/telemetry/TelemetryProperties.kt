@@ -4,7 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.stereotype.Component
 
 /**
- * Anonymous usage telemetry. Everything Kviklet reports is listed in the README under "Telemetry";
+ * Anonymous usage telemetry. The events Kviklet reports are the [TelemetryEvent] subclasses;
  * `KVIKLET_TELEMETRY_ENABLED=false` switches all of it off.
  */
 @Component

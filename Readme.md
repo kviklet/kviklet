@@ -558,32 +558,11 @@ Kviklet logs one line at startup saying whether telemetry is on.
 **What is sent.** Every event carries a random instance id (generated once and stored in Kviklet's
 database), the base URL Kviklet is reached on (see above; often an internal hostname), and the Kviklet
 version. Users are identified only by an opaque id scoped to the instance, so unique users can be
-counted, but no email addresses or names are ever sent.
+counted, but no email addresses or names are ever sent. The exact events and their properties are
+defined in `backend/src/main/kotlin/dev/kviklet/kviklet/telemetry/TelemetryEvent.kt`.
 
 **What is never sent.** Queries, statements, results, command output, error messages, connection
 names, hostnames, credentials, request titles or descriptions, comments, and user or role names.
-
-<details>
-<summary>The full list of events and their properties</summary>
-
-| Event                   | Properties                                                                                                                                                                                                                |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `instance_heartbeat`    | Daily: version, git commit, metadata database type, user and connection counts by type, requests and executions in the last 24h, which auth methods are enabled, whether a license, the proxy, and encryption are enabled |
-| `request_created`       | request type, connection type, datasource type, required reviews                                                                                                                                                          |
-| `review_submitted`      | review action                                                                                                                                                                                                             |
-| `request_closed`        |                                                                                                                                                                                                                           |
-| `request_executed`      | request type, connection type, datasource type, execution mode (execute, dry run, download, explain, dump), success, vendor error code                                                                                    |
-| `live_session_started`  | datasource type                                                                                                                                                                                                           |
-| `proxy_session_started` | datasource type                                                                                                                                                                                                           |
-| `connection_created`    | connection type, datasource type, authentication type, required reviews, which optional features are enabled                                                                                                              |
-| `user_created`          | auth method (password, LDAP, OIDC, SAML)                                                                                                                                                                                  |
-| `user_migrated_to_sso`  | auth method: an existing user signed in through an identity provider for the first time                                                                                                                                   |
-| `user_logged_in`        | auth method (password, LDAP, OIDC, SAML)                                                                                                                                                                                  |
-| `role_created`          |                                                                                                                                                                                                                           |
-| `license_uploaded`      |                                                                                                                                                                                                                           |
-| `server_error`          | exception class, root cause class, HTTP method, route pattern (e.g. `/requests/{id}`, never the actual path)                                                                                                              |
-
-</details>
 
 ### Logging
 
