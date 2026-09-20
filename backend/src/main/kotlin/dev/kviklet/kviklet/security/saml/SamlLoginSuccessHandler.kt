@@ -6,6 +6,9 @@ import dev.kviklet.kviklet.security.PolicyGrantedAuthority
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.security.userFacingLoginFailureMessage
 import dev.kviklet.kviklet.service.BaseUrlResolver
+import dev.kviklet.kviklet.telemetry.LoginMethod
+import dev.kviklet.kviklet.telemetry.Telemetry
+import dev.kviklet.kviklet.telemetry.UserLoggedIn
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
@@ -23,6 +26,7 @@ import org.springframework.stereotype.Component
 class SamlLoginSuccessHandler(
     private val samlUserService: SamlUserService,
     private val baseUrlResolver: BaseUrlResolver,
+    private val telemetry: Telemetry,
 ) : SimpleUrlAuthenticationSuccessHandler() {
 
     private val securityContextRepository = HttpSessionSecurityContextRepository()
@@ -54,6 +58,8 @@ class SamlLoginSuccessHandler(
 
                 // Explicitly save to session
                 securityContextRepository.saveContext(context, request, response)
+                // Not reported by LoginTelemetryListener: the Kviklet user only exists from this point on.
+                telemetry.track(UserLoggedIn(LoginMethod.SAML), userId = user.getId())
             } catch (e: Exception) {
                 // Clear any partial authentication and invalidate session
                 SecurityContextHolder.clearContext()

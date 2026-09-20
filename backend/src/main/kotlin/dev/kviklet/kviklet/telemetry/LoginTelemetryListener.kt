@@ -24,6 +24,9 @@ class LoginTelemetryListener(private val telemetry: Telemetry) {
     @EventListener
     fun onAuthenticationSuccess(event: AuthenticationSuccessEvent) {
         val authentication = event.authentication
+        // A SAML authentication still carries the raw assertion here; Kviklet resolves (or creates) its own
+        // user only afterwards, in SamlLoginSuccessHandler, which reports the login itself.
+        if (authentication is Saml2Authentication) return
         telemetry.track(UserLoggedIn(methodOf(authentication)), userId = userId(authentication))
     }
 
@@ -31,8 +34,6 @@ class LoginTelemetryListener(private val telemetry: Telemetry) {
         authentication is OAuth2LoginAuthenticationToken -> LoginMethod.OIDC
 
         authentication is OAuth2AuthenticationToken -> LoginMethod.OIDC
-
-        authentication is Saml2Authentication -> LoginMethod.SAML
 
         // LDAP and local logins share a token type; only the principal tells them apart.
         authentication.principal is LdapUserDetailsWithId -> LoginMethod.LDAP

@@ -50,11 +50,11 @@ class LoginTelemetryListenerTest {
     }
 
     @Test
-    fun `a saml login is recognised by its token`() {
+    fun `a saml login is left to the saml success handler, which knows the user`() {
         val principal = mockk<Saml2AuthenticatedPrincipal>()
         every { principal.name } returns "d@example.com"
         fire(Saml2Authentication(principal, "<response/>", emptyList()))
-        verify { telemetry.track(UserLoggedIn(LoginMethod.SAML), null) }
+        verify(exactly = 0) { telemetry.track(any(), any()) }
     }
 
     private interface OidcPrincipal :
