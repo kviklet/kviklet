@@ -70,7 +70,7 @@ class TelemetryTest {
     }
 
     @Test
-    fun `events carry the instance id, domain and version but no person profile or ip`() {
+    fun `events carry the instance id, domain and version but no person profile`() {
         telemetry().track(ReviewSubmitted(ReviewAction.APPROVE))
 
         val payload = sink.sent.single()
@@ -81,9 +81,6 @@ class TelemetryTest {
         payload.properties["version"] shouldBe "1.2.3"
         payload.properties["review_action"] shouldBe "APPROVE"
         payload.properties["\$process_person_profile"] shouldBe false
-        payload.properties["\$geoip_disable"] shouldBe true
-        payload.properties.containsKey("\$ip") shouldBe true
-        payload.properties["\$ip"] shouldBe null
     }
 
     @Test

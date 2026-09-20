@@ -30,7 +30,7 @@ class PostHogSinkTest {
     private fun payload(event: String) = TelemetryPayload(
         event = event,
         distinctId = "instance-1",
-        properties = mapOf("instance_id" to "instance-1", "\$ip" to null),
+        properties = mapOf("instance_id" to "instance-1", "required_reviews" to null),
         timestamp = Instant.parse("2026-09-20T10:00:00Z"),
     )
 
@@ -87,7 +87,7 @@ class PostHogSinkTest {
     @Test
     fun `the properties are sent as given`() {
         server.expect(requestTo("https://eu.i.posthog.com/batch"))
-            .andExpect(jsonPath("$.batch[0].properties.\$ip").value(nullValue()))
+            .andExpect(jsonPath("$.batch[0].properties.required_reviews").value(nullValue()))
             .andRespond(withSuccess())
 
         sink.send(payload("request_created"))

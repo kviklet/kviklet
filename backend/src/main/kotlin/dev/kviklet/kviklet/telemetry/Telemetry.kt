@@ -23,8 +23,8 @@ import kotlin.reflect.full.primaryConstructor
 /**
  * The single entry point for usage telemetry. Turns a [TelemetryEvent] into a PostHog payload,
  * stamps it with the instance id, the domain Kviklet is reached on and the version, and hands it to
- * the [TelemetrySink]. Users are identified only by an opaque id scoped to this instance; no email,
- * name, or IP address is ever sent.
+ * the [TelemetrySink]. Users are identified only by an opaque id scoped to this instance; no email or
+ * name is ever sent, and no user IP address either, since only the server talks to PostHog.
  *
  * [track] never throws and is safe to call inside a transaction: the event is only delivered once
  * the transaction commits, so a rolled-back action does not show up in the statistics.
@@ -101,9 +101,9 @@ class Telemetry(
         properties["instance_id"] = instanceId
         properties["domain"] = baseUrlResolver.resolve()
         properties["version"] = applicationProperties.version
-        // Server-side events carry the instance's egress IP; keep PostHog from storing or geolocating it.
-        properties["\$geoip_disable"] = true
-        properties["\$ip"] = null
+        // The request reaches PostHog from the deployment's egress address, never a user's browser, and
+        // PostHog turns it into the deployment's country and region. That is deliberate: it is the one
+        // location signal that survives an internal hostname or localhost as the domain.
         // Opaque ids only: no person profiles, so nothing can ever be attached to a user.
         properties["\$process_person_profile"] = false
         properties["\$lib"] = "kviklet"
