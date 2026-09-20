@@ -47,7 +47,7 @@ class PostHogSink(private val properties: TelemetryProperties, private val restT
         }
     }
 
-    @Scheduled(fixedDelayString = "\${kviklet.telemetry.flush-interval-seconds:10}", timeUnit = TimeUnit.SECONDS)
+    @Scheduled(fixedDelay = FLUSH_INTERVAL_SECONDS, timeUnit = TimeUnit.SECONDS)
     fun flush() {
         while (queue.isNotEmpty()) {
             val batch = mutableListOf<TelemetryPayload>()
@@ -88,5 +88,6 @@ class PostHogSink(private val properties: TelemetryProperties, private val restT
 
     companion object {
         const val MAX_BATCH_SIZE = 100
+        const val FLUSH_INTERVAL_SECONDS = 10L
     }
 }

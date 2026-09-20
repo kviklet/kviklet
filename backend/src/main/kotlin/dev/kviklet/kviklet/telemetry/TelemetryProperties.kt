@@ -13,14 +13,8 @@ class TelemetryProperties {
     var enabled: Boolean = true
     var posthog: PostHog = PostHog()
 
-    /** Seconds between flushes of queued events. */
-    var flushIntervalSeconds: Long = 10
-
     /** Events queued beyond this are dropped rather than held in memory. */
     var maxQueueSize: Int = 1000
-
-    /** Delay before the first heartbeat, so the domain has usually been observed by then. */
-    var heartbeatInitialDelay: String = "PT10M"
 
     class PostHog {
         var host: String = "https://eu.i.posthog.com"

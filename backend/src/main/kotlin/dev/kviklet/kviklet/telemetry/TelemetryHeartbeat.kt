@@ -45,10 +45,8 @@ class TelemetryHeartbeat(
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    @Scheduled(
-        initialDelayString = "\${kviklet.telemetry.heartbeat-initial-delay:PT10M}",
-        fixedDelayString = "PT24H",
-    )
+    // The first heartbeat waits a little so the domain has usually been observed by then.
+    @Scheduled(initialDelayString = "PT10M", fixedDelayString = "PT24H")
     @Transactional(readOnly = true)
     fun sendHeartbeat() {
         if (!telemetry.enabled) return
