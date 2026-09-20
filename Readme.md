@@ -542,8 +542,7 @@ This ensures all notification links point to the correct public URL.
 ### Telemetry
 
 Kviklet reports anonymous usage statistics to help us understand which features are used and where
-errors happen. Everything is sent from the backend to PostHog (EU region); the browser never talks to
-PostHog. To switch it off, set:
+errors happen. To switch it off, set:
 
 ```
 KVIKLET_TELEMETRY_ENABLED=false
@@ -554,19 +553,13 @@ Kviklet logs one line at startup saying whether telemetry is on.
 **What is sent.** Every event carries a random instance id (generated once and stored in Kviklet's
 database), the base URL Kviklet is reached on (see above; often an internal hostname), and the Kviklet
 version. Users are identified only by an opaque id scoped to the instance, so unique users can be
-counted, but no email addresses or names are ever sent, and no PostHog person profiles are created.
-User events also say whether the action came through the web frontend or an API key. Because only the
-backend talks to PostHog, the only network address involved is the deployment's own, which PostHog
-uses to determine the country and region of the instance; user IP addresses never leave the browser
-session.
+counted, but no email addresses or names are ever sent.
 
 **What is never sent.** Queries, statements, results, command output, error messages, connection
-names, hostnames, credentials, request titles or descriptions, comments, and user or role names. Every
-event is a typed class in `backend/src/main/kotlin/dev/kviklet/kviklet/telemetry/TelemetryEvent.kt`
-whose properties can only be enums, numbers, booleans, or a handful of allowlisted strings, and a test
-enforces that.
+names, hostnames, credentials, request titles or descriptions, comments, and user or role names.
 
-The events:
+<details>
+<summary>The full list of events and their properties</summary>
 
 | Event                   | Properties                                                                                                                                                                                                                |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -584,6 +577,8 @@ The events:
 | `role_created`          |                                                                                                                                                                                                                           |
 | `license_uploaded`      |                                                                                                                                                                                                                           |
 | `server_error`          | exception class, root cause class, HTTP method, route pattern (e.g. `/requests/{id}`, never the actual path)                                                                                                              |
+
+</details>
 
 ### Logging
 
