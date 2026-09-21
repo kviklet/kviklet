@@ -1,4 +1,4 @@
-import { FC, ReactNode, useEffect, useRef, useState } from "react";
+import { FC, useEffect, useRef, useState } from "react";
 import {
   ArrowsPointingInIcon,
   ArrowsPointingOutIcon,
@@ -7,6 +7,7 @@ import {
 } from "@heroicons/react/20/solid";
 import { ExecuteResponseResult } from "../api/ExecutionRequestApi";
 import Table from "./Table";
+import IconButton from "./IconButton";
 import JsonViewer from "./JsonViewer";
 
 const plural = (count: number, noun: string) =>
@@ -27,32 +28,6 @@ const summarize = (result: ExecuteResponseResult) => {
       return plural(result.documents.length, "document");
   }
 };
-
-const IconButton = ({
-  label,
-  onClick,
-  disabled,
-  children,
-  testId,
-}: {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  children: ReactNode;
-  testId?: string;
-}) => (
-  <button
-    type="button"
-    aria-label={label}
-    title={label}
-    disabled={disabled}
-    onClick={onClick}
-    data-testid={testId}
-    className="rounded p-0.5 text-slate-500 transition-colors disabled:cursor-default disabled:text-slate-300 hover:bg-slate-200 hover:text-slate-900 disabled:hover:bg-transparent dark:text-slate-400 dark:disabled:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-50"
-  >
-    {children}
-  </button>
-);
 
 // The panel borrows the editor's chrome so query and result read as one
 // workspace. Wide result sets get an explicit expand into a full-viewport
