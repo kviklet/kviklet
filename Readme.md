@@ -7,29 +7,35 @@ Secure access to production environments without impairing developer productivit
 ![Kviklet](images/ExecutedRequest_light.png#gh-light-mode-only)
 ![Kviklet](images/ExecutedRequest_dark.png#gh-dark-mode-only)
 
-Kviklet (pronounced Quick-let) embraces the **Four-Eyes Principle** and a high level of configurability to allow a **Pull Request-like Review and Approval** flow for individual SQL statements or Database sessions. This allows engineering teams to self regulate on who gets access to what data and when, allowing organizations to stay secure and compliant while embracing modern, empowering and truly "DevOps" workflows.
+Kviklet (pronounced Quick-let) applies the Four-Eyes Principle to production database access, with a pull request-like review and approval workflow for individual SQL statements or time-limited database sessions. Engineers can review and approve each other’s requests without routing every query through a DBA or operations team.
 
-Kviklet is a self hosted docker container, that provides you with a Single Page Web app. Login to create SQL requests or approve the ones of others. An optional enterprise license unlocks advanced features like SAML authentication, role-based review requirements, role sync, and API keys. You can request an enterprise license at [kviklet.dev](https://kviklet.dev).
+Kviklet is self-hosted and runs as a Docker container with a PostgreSQL database for application state. Its web interface lets you submit, review, and execute requests. An optional enterprise license unlocks SAML authentication, role-based review requirements, role sync, and API keys. Request an enterprise license at [kviklet.dev](https://kviklet.dev).
 
-We currently support **Postgres**, **MySQL**, **MariaDB**, **MS SQL Server** and **MongoDB**.
+Supported databases are **Postgres**, **MySQL**, **MariaDB**, **MS SQL Server** and **MongoDB**.
 
-## Features
+## Access Model
 
-Kviklet ships with a variety of features that an engineering team needs to manage their production database access in a **simple but secure** manner:
+We recommend connecting Kviklet to your existing identity provider. Kviklet supports SSO through OIDC (Google, Keycloak, etc.) or SAML (enterprise only), as well as LDAP authentication (Active Directory, etc.).  
+Users then create **requests** for **connections** which map to a specific database user. These requests are either:
 
-- **SSO (OIDC, Google, Keycloak, etc.)**: Log into Kviklet without the need for a username or password. No more shared credentials for DB access.
-- **LDAP Support**: Log into Kviklet with your LDAP credentials.
-- **SAML Support**: Log into Kviklet with your SAML credentials. (Enterprise only)
-- **Review/Approval Flow**: Leave Comments and Suggestions on other developers data requests.
-- **Temporary Access (1h)**: Execute any statement on a db for 1h after having been approved
-- **Single Query**: Execute a singular statement. Allows the reviewer to review your query before execution.
-- **Auditlog**: Singular plane that logs all executed statements with Author, reason for execution etc.
-- **RBAC**: Configure which team has access to which database/table to as fine of a granularity as the DB Engine allows.
-- **Proxy** (Postgres, MariaDB, MySQL): Start a proxy server to use the DB Client of your choice, but everything will be stored in the Kviklet Auditlog. (Enterprise only)
-- **Kubernetes Exec**: Execute a statement on a pod in your kubernetes cluster. (Currently only supports Execution of a single command no live session yet)
-- **Role-Based Review Gates**: Require approvals from specific roles before execution. (Enterprise only)
-- **Role Sync**: Automatically sync user roles from your identity provider groups. (Enterprise only)
-- **API Keys**: Programmatic access to the Kviklet API. (Enterprise only)
+- **Single Query**: a specific SQL statement submitted for review.
+- **Temporary Access**: a time-limited session in which you can run multiple statements.
+
+Depending on configuration the requests are reviewed and approved by other users before Kviklet allows execution.
+
+Kviklet connects to the database on the user’s behalf. The connection’s database password is never shown to the user.
+
+An admin can configure which role has access to which connection and which review gates are required for execution. The database-level access is managed via the underlying database's RBAC mechanisms. E.g. it is possible to create a read-only role for a read-only connection and assign fewer review requirements for that one than a write connection.
+
+Kviklet records executed statements and associates them with the user and access request. For complete coverage of manual database access, restrict direct connections and route any manual access through Kviklet. **Engineers don’t need to receive or share the underlying database credentials.**
+
+**Additional Enterprise features include:**
+
+- **SAML**: Support for SAML authentication.
+- **Proxy** (Postgres, MariaDB, MySQL): Use your preferred database client through an approved temporary-access session with a temporary password. Executed statements are recorded in Kviklet’s audit log.
+- **Role-Based Review Gates**: Require approvals from specific roles before execution.
+- **Role Sync**: Automatically sync user roles from your identity provider groups.
+- **API Keys**: Programmatic access to the Kviklet API.
 
 <details>
 <summary>More screenshots</summary>
@@ -48,18 +54,18 @@ An approved temporary access request opens a live SQL session right in the brows
 ![Live Session](images/LiveSession_light.png#gh-light-mode-only)
 ![Live Session](images/LiveSession_dark.png#gh-dark-mode-only)
 
-### Auditlog
+### Audit log
 
 Every executed statement is recorded — whether it ran as a reviewed single query, in a live session, or through the database proxy:
 
-![Auditlog](images/Auditlog_light.png#gh-light-mode-only)
-![Auditlog](images/Auditlog_dark.png#gh-dark-mode-only)
+![audit log](images/Auditlog_light.png#gh-light-mode-only)
+![audit log](images/Auditlog_dark.png#gh-dark-mode-only)
 
 </details>
 
 ## Feature by Database/Connection Type
 
-Most features are available for all databases (SSO, LDAP, RBAC, Review/Approval Flow, Auditlog, etc.). But some features are restricted, either because it simply hasn't been built yet or because it makes no sense for that specific purpose. The following table shows which features are available for which database type:
+Most features are available for all databases (SSO, LDAP, RBAC, Review/Approval Flow, audit log, etc.). But some features are restricted, either because it simply hasn't been built yet or because it makes no sense for that specific purpose. The following table shows which features are available for which database type:
 
 | Database   | Statement Review | Temporary Access | Proxy(Beta) | Explain Plan |
 | ---------- | ---------------- | ---------------- | ----------- | ------------ |
@@ -378,7 +384,7 @@ Kviklet uses AWS's `DefaultCredentialsProvider` to find credentials and generate
 
 Additionally, you can provide an AWS role ARN that Kviklet will assume, and use those credentials to create the temporary DB token. This is particularly useful for connecting to databases that are not in the same AWS account as Kviklet. To use this feature, simply enter the role ARN in the designated field when creating or editing an IAM Auth connection. Leaving the field empty will use the default credentials provider (no role assumption).
 
-The AWS region to use during token generation is inferred from your connection URL so there is no options to set it.
+The AWS region to use during token generation is inferred from your connection URL so there is no option to set it.
 
 To learn how to setup IAM Auth for your database follow the official AWS documentation: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html
 The main two points are:
@@ -457,7 +463,6 @@ Configure your OIDC provider to include a `groups` claim in the ID token:
 - **Keycloak**:
 
   Keycloak doesn't include groups in tokens by default so you will need to add a mapper to the client.
-
   1. Navigate to **Clients** in the left menu
   2. Select your Kviklet client
   3. Go to the **Client scopes** tab
@@ -475,7 +480,6 @@ Configure your OIDC provider to include a `groups` claim in the ID token:
   | Add to ID token     | **ON**   |
   | Add to access token | **ON**   |
   | Add to userinfo     | **ON**   |
-
   9. Click **Save**
 
   > **Important:** The "Token Claim Name" must match the "Groups Attribute" configured in Kviklet's Role Sync settings (default: `groups`).
@@ -633,14 +637,14 @@ If you want to use the Kubernetes Exec feature you have to create a separate kub
 
 Kviklet also uses /bin/sh to execute the command, so you will need to make sure your pods have a shell or at least a symlink in /bin/sh. If this bothers you feel free to open an issue, we can potentially make this configurable or find another solution.
 
-Kubernetes commands only wait for 5 seconds for output if the command takes longer than that Kviklet will wait for up to an hour before timing out the command. This is a a provisional solution, we are looking into websockets to make this more responsive and potentially enable terminal sessions.
+Kubernetes commands only wait for 5 seconds for output if the command takes longer than that Kviklet will wait for up to an hour before timing out the command. This is a provisional solution, we are looking into websockets to make this more responsive and potentially enable terminal sessions.
 
 ### Proxy - Postgres, MariaDB, MySQL (Enterprise)
 
 If you create requests for temporary access, you can - instead of using the web interface - run your queries through a kviklet managed proxy and use the DB client of your choice.
 The proxy is an enterprise feature: it requires a valid license, and an admin additionally has to switch it on under Settings -> General -> Database Proxy.
 For this the container listens on stable ports (5432 and 3306 by default, configurable via `kviklet.proxy.postgres.port` and `kviklet.proxy.mysql.port`), so you need to expose those ports.
-Users can then create a temporary access request, and click "Start Proxy" once it has been approved. Each request gets a temporary username and password; Kviklet routes each connection to its request by the username. With these they can connect to the database. Kviklet validates the temp user and password and proxies all requests to the underlying user on the database. Any executed statements are logged in the auditlog as if they were run via the web interface.
+Users can then create a temporary access request, and click "Start Proxy" once it has been approved. Each request gets a temporary username and password; Kviklet routes each connection to its request by the username. With these they can connect to the database. Kviklet validates the temp user and password and proxies all requests to the underlying user on the database. Any executed statements are logged in the audit log as if they were run via the web interface.
 
 Note: The proxy does currently not support result tracking. So executed statements are logged but not the results or if a statement succeeds or fails.
 
