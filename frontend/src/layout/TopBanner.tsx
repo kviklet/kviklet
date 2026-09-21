@@ -40,19 +40,19 @@ function TopBanner() {
 
   return (
     <div className="supports-backdrop-blur:bg-white/95 sticky top-0 z-40 mx-auto h-16 w-full flex-none border-b border-slate-900/10 backdrop-blur transition-colors duration-500 dark:border-b-slate-700">
-      <div className="mx-4 px-8 py-4">
+      <div className="mx-4 px-2 py-4 sm:px-8">
         <div className="relative flex items-center">
           <Link to="/">
             <div className="flex">
               <img src={image} className="h-8 invert dark:invert-0" />
-              <h1 className="ml-2 text-xl font-bold text-slate-700 dark:text-slate-50">
+              <h1 className="ml-2 hidden text-xl font-bold text-slate-700 dark:text-slate-50 sm:block">
                 Kviklet
               </h1>
             </div>
           </Link>
           <div className="relative ml-auto flex items-center">
             <nav className="text-sm font-semibold leading-6 text-slate-700 dark:text-slate-200">
-              <ul className="flex space-x-8">
+              <ul className="flex space-x-4 sm:space-x-8">
                 {/* Creating a request needs the connection list plus the right to create
                     a request on at least one connection, hence the double gate. */}
                 <RequirePermission permission="datasource_connection:get">
@@ -81,10 +81,10 @@ function TopBanner() {
                 </RequirePermission>
               </ul>
             </nav>
-            <div className="ml-6 flex items-center border-l border-slate-200 pl-6 dark:border-slate-800">
+            <div className="ml-3 flex items-center border-l border-slate-200 pl-3 dark:border-slate-800 sm:ml-6 sm:pl-6">
               <Popover className="relative h-6">
                 <PopoverButton
-                  className="mr-4 h-6 w-6 text-slate-400 transition-colors hover:text-slate-800 dark:text-slate-500 dark:hover:text-slate-200"
+                  className="mr-3 h-6 w-6 text-slate-400 transition-colors hover:text-slate-800 dark:text-slate-500 dark:hover:text-slate-200 sm:mr-4"
                   data-testid="settings-dropdown"
                 >
                   <span className="sr-only">Settings Drop Down</span>
@@ -171,7 +171,7 @@ function TopBanner() {
               <a href="https://github.com/kviklet/kviklet">
                 <svg
                   viewBox="0 0 16 16"
-                  className="ml-4 mr-6 h-5 w-5"
+                  className="ml-3 mr-3 h-5 w-5 sm:ml-4 sm:mr-6"
                   fill="currentColor"
                   aria-hidden="true"
                 >
