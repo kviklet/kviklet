@@ -25,7 +25,15 @@ export default function LicenseSettings() {
               userCount={users.filter((user) => user.active).length.toString()}
             />
             <LicenseStatus license={config} />
-            <RequirePermission permission="configuration:edit">
+            <RequirePermission
+              permission="configuration:edit"
+              fallback={
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                  Only administrators can upload a license. Ask your Kviklet
+                  admin to upload it for you.
+                </p>
+              }
+            >
               <LicenseDropZone refreshLicense={refreshConfig}></LicenseDropZone>
             </RequirePermission>
           </div>
