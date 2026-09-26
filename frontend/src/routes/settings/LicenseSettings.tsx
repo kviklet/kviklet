@@ -7,11 +7,12 @@ import Button from "../../components/Button";
 import { useUsers } from "./UserSettings";
 import useConfig from "../../components/ConfigProvider";
 import useNotification from "../../hooks/useNotification";
-import RequirePermission from "../../components/RequirePermission";
+import { useHasPermission } from "../../hooks/permissions";
 
 export default function LicenseSettings() {
   const { config, refreshConfig } = useConfig();
   const { users } = useUsers();
+  const canUpload = useHasPermission("configuration:edit");
 
   return (
     <div>
@@ -25,9 +26,10 @@ export default function LicenseSettings() {
               userCount={users.filter((user) => user.active).length.toString()}
             />
             <LicenseStatus license={config} />
-            <RequirePermission permission="configuration:edit">
-              <LicenseDropZone refreshLicense={refreshConfig}></LicenseDropZone>
-            </RequirePermission>
+            <LicenseDropZone
+              refreshLicense={refreshConfig}
+              readOnly={!canUpload}
+            />
           </div>
         )}
       </div>
@@ -117,14 +119,17 @@ const LicenseStatus = ({ license }: { license: ConfigResponse }) => {
 
 const LicenseDropZone = ({
   refreshLicense,
+  readOnly,
 }: {
   refreshLicense: () => Promise<void>;
+  readOnly: boolean;
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const { addNotification } = useNotification();
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (readOnly) return;
     if (event.target.files && event.target.files.length > 0) {
       setSelectedFile(event.target.files[0]);
     }
@@ -138,7 +143,7 @@ const LicenseDropZone = ({
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(true);
+    if (!readOnly) setIsDragging(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
@@ -151,6 +156,7 @@ const LicenseDropZone = ({
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
+    if (readOnly) return;
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       setSelectedFile(e.dataTransfer.files[0]);
     }
@@ -185,7 +191,7 @@ const LicenseDropZone = ({
 
   return (
     <div className="flex flex-col">
-      {(selectedFile && (
+      {(!readOnly && selectedFile && (
         <div className="flex w-full flex-col items-center justify-center rounded-lg bg-white shadow dark:border dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
           <div className="flex flex-col items-center justify-center pb-6 pt-5">
             <DocumentTextIcon className="h-12 w-12 text-slate-500 dark:text-slate-400" />
@@ -198,47 +204,68 @@ const LicenseDropZone = ({
         <div className="flex w-full items-center justify-center">
           <label
             htmlFor="dropzone-file"
-            className={`flex h-64 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed ${
-              isDragging
+            aria-disabled={readOnly}
+            className={`flex h-64 w-full flex-col items-center justify-center rounded-lg border-2 border-dashed ${
+              readOnly
+                ? "cursor-not-allowed border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-950"
+                : isDragging
                 ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950"
-                : "border-slate-300 bg-slate-50 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600 dark:hover:bg-slate-900"
+                : "cursor-pointer border-slate-300 bg-slate-50 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-slate-600 dark:hover:bg-slate-900"
             }`}
             onDragOver={handleDragOver}
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
-            <div className="flex flex-col items-center justify-center pb-6 pt-5">
-              <ArrowUpCircleIcon className="h-12 w-12 text-slate-500 dark:text-slate-400" />
-              <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
-                <span className="font-semibold">Click to upload</span> or drag
-                and drop
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                [license_name].json
-              </p>
+            <div className="flex flex-col items-center justify-center px-4 pb-6 pt-5 text-center">
+              {readOnly ? (
+                <p
+                  id="license-upload-notice"
+                  className="max-w-sm text-sm text-slate-500 dark:text-slate-400"
+                >
+                  You need to be an administrator to upload a license file.
+                </p>
+              ) : (
+                <>
+                  <ArrowUpCircleIcon className="h-12 w-12 text-slate-500 dark:text-slate-400" />
+                  <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
+                    <span className="font-semibold">Click to upload</span> or
+                    drag and drop
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    [license_name].json
+                  </p>
+                </>
+              )}
             </div>
             <input
               id="dropzone-file"
               type="file"
               className="hidden"
+              disabled={readOnly}
+              aria-label="License file"
+              aria-describedby={readOnly ? "license-upload-notice" : undefined}
               onChange={handleFileChange}
             />
           </label>
         </div>
       )}
-      <p className="ml-auto mt-2 text-sm text-slate-500 dark:text-slate-400">
-        {!selectedFile && "Upload a license file to activate it."}
-      </p>
-      <Button
-        variant={selectedFile ? "primary" : "disabled"}
-        className="ml-auto mt-2"
-        onClick={() => {
-          void handleUpload();
-        }}
-      >
-        Upload
-      </Button>
+      {!readOnly && (
+        <>
+          <p className="ml-auto mt-2 text-sm text-slate-500 dark:text-slate-400">
+            {!selectedFile && "Upload a license file to activate it."}
+          </p>
+          <Button
+            variant={selectedFile ? "primary" : "disabled"}
+            className="ml-auto mt-2"
+            onClick={() => {
+              void handleUpload();
+            }}
+          >
+            Upload
+          </Button>
+        </>
+      )}
     </div>
   );
 };

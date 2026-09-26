@@ -129,8 +129,33 @@ test("a default-role user can see the license page but cannot upload", async ({
 
   await page.goto("/settings/license");
   await expect(page.getByText("License Valid until")).toBeVisible();
+  await expect(page.getByText("Upload a license", { exact: true })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByText("You need to be an administrator to upload a license file."),
+  ).toBeVisible();
   await expect(page.getByText("Click to upload")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Upload" })).toHaveCount(0);
+  await expect(page.getByLabel("License file")).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Upload", exact: true }),
+  ).toHaveCount(0);
+
+  const dataTransfer = await page.evaluateHandle(() => {
+    const transfer = new DataTransfer();
+    transfer.items.add(
+      new File(["{}"], "license.json", { type: "application/json" }),
+    );
+    return transfer;
+  });
+  const dropzone = page.locator('label[for="dropzone-file"]');
+  await dropzone.dispatchEvent("dragenter", { dataTransfer });
+  await dropzone.dispatchEvent("drop", { dataTransfer });
+  await expect(page.getByText("license.json", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Upload", exact: true }),
+  ).toHaveCount(0);
+  await dataTransfer.dispose();
 });
 
 test("a user with the view-roles permission gets read-only roles surfaces", async ({
@@ -196,4 +221,14 @@ test("an admin sees the full settings area", async ({ page }) => {
   await page.goto("/settings/license");
   await expect(page.getByText("Click to upload")).toBeVisible();
   await expect(page.getByRole("button", { name: "Upload" })).toBeVisible();
+  await expect(page.getByLabel("License file")).toBeEnabled();
+  await page.getByLabel("License file").setInputFiles({
+    name: "license.json",
+    mimeType: "application/json",
+    buffer: Buffer.from("{}"),
+  });
+  await expect(page.getByText("license.json", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Upload", exact: true }),
+  ).toBeEnabled();
 });
