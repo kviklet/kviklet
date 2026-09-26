@@ -85,12 +85,22 @@ fun rdsRegionFromHost(host: String): Region {
 // A Hikari pool whose password is a freshly minted RDS IAM token on every physical connect: Hikari calls
 // getPassword() each time it opens a connection. RDS checks the token only then, so an established
 // connection outliving its 15-minute token is fine and no special pool lifetime is needed.
+//
+// The host is validated as an RDS endpoint up front: a bad host must fail with a plain
+// IllegalArgumentException (a 400 for the caller) at creation, not wrapped in Hikari's pool
+// initialization failure on the first connect.
 class AwsIamDataSource(
     private val tokenProvider: RdsIamTokenProvider,
+    url: String,
     private val username: String,
     private val roleArn: String? = null,
 ) : HikariDataSource() {
-    private val uri: URI by lazy { URI.create(jdbcUrl.removePrefix("jdbc:")) }
+    private val uri: URI = URI.create(url.removePrefix("jdbc:"))
+
+    init {
+        rdsRegionFromHost(uri.host)
+        jdbcUrl = url
+    }
 
     override fun getPassword(): String = tokenProvider.generateToken(uri.host, uri.port, username, roleArn)
 }

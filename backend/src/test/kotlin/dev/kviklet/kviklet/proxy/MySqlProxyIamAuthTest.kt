@@ -149,6 +149,17 @@ class MySqlProxyIamAuthTest {
     }
 
     @Test
+    fun `an IAM session raises a configured sslMode=disable to trust`() {
+        val proxy = startIamProxy(
+            tlsMariadb,
+            DatasourceType.MARIADB,
+            RecordingRdsIamTokenProvider("test"),
+            additionalOptions = "?sslMode=disable",
+        )
+        assertTrue(upstreamSslCipher(connect(proxy)).isNotEmpty())
+    }
+
+    @Test
     fun `an IAM session against a server without TLS is refused instead of sending the token in the clear`() {
         val proxy = startIamProxy(noTlsMariadb, DatasourceType.MARIADB, RecordingRdsIamTokenProvider("test"))
         assertRefused(proxy)

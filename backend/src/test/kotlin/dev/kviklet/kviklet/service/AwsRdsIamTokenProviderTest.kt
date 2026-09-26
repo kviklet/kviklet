@@ -57,6 +57,14 @@ class AwsRdsIamTokenProviderTest {
     }
 
     @Test
+    fun `the IAM datasource rejects a non-RDS host when it is created, not on first connect`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            AwsIamDataSource(provider, "jdbc:postgresql://db.example.com:5432/testdb", "iamdbuser")
+        }
+        AwsIamDataSource(provider, "jdbc:postgresql://mydb.abc123.eu-central-1.rds.amazonaws.com:5432/x", "u").close()
+    }
+
+    @Test
     fun `a host that is not an RDS endpoint is rejected`() {
         assertThrows(IllegalArgumentException::class.java) { rdsRegionFromHost("localhost") }
         assertThrows(IllegalArgumentException::class.java) { rdsRegionFromHost("db.example.com") }

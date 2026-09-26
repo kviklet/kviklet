@@ -101,8 +101,7 @@ class DataSourceConfig(
     @Primary
     fun dataSource(rdsIamTokenProvider: RdsIamTokenProvider): DataSource {
         if (iamAuth) {
-            return AwsIamDataSource(rdsIamTokenProvider, username).apply {
-                jdbcUrl = url
+            return AwsIamDataSource(rdsIamTokenProvider, url, username).apply {
                 username = this@DataSourceConfig.username
             }
         }

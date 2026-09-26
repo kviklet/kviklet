@@ -53,8 +53,7 @@ class TargetPostgresSocketFactory(
             .forEach { (key, value) -> props.setProperty(key.lowercase(), value) }
         if (authenticationDetails is AuthenticationDetails.AwsIam && !SslMode.of(props).requireEncryption()) {
             // RDS only accepts IAM tokens over TLS, and the token is a bearer credential that must not
-            // travel in the clear. Raise anything weaker than require (the JDBC executor appends
-            // sslmode=require for IAM connections in the same way); verify-ca/verify-full are kept.
+            // travel in the clear. Raise anything weaker than require; verify-ca/verify-full are kept.
             props.setProperty("sslmode", SslMode.REQUIRE.value)
         }
 

@@ -126,8 +126,10 @@ class PostgresProxyIamAuthTest {
     }
 
     @Test
-    fun `an IAM session forces TLS on the upstream leg even without any sslmode configured`() {
-        val handle = startIamProxy(tlsPostgres, RecordingRdsIamTokenProvider("test"))
+    fun `an IAM session raises a configured sslmode=disable to require`() {
+        // pgjdbc's default (prefer) would negotiate TLS with this container anyway, so only an explicit
+        // plaintext setting that still ends up encrypted proves the raise.
+        val handle = startIamProxy(tlsPostgres, RecordingRdsIamTokenProvider("test"), "?sslmode=disable")
         assertTrue(upstreamUsesTls(connect(handle)))
     }
 

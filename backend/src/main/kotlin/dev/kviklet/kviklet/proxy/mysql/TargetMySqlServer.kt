@@ -139,8 +139,8 @@ private const val SSL_MODE_DISABLE = "disable"
 // and requiring TLS honors the intent while refusing the silent downgrade half of "preferred".
 //
 // An IAM session never runs in plaintext: RDS presents the token via mysql_clear_password, which the driver
-// (rightly) refuses to send unless the channel is TLS, and the JDBC executor forces TLS for IAM connections
-// the same way. Configured verification modes are kept; only disable is raised to trust.
+// (rightly) refuses to send unless the channel is TLS. Configured verification modes are kept; only disable
+// is raised to trust.
 private fun upstreamSslMode(additionalOptions: String, authenticationDetails: AuthenticationDetails): String {
     val sslMode = configuredUpstreamSslMode(additionalOptions)
     return if (authenticationDetails is AuthenticationDetails.AwsIam && sslMode == SSL_MODE_DISABLE) {

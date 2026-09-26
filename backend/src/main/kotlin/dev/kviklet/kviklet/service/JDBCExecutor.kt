@@ -280,8 +280,7 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
             }
 
     private fun createAwsIamConnection(url: String, auth: AuthenticationDetails.AwsIam): HikariDataSource =
-        AwsIamDataSource(rdsIamTokenProvider, auth.username, auth.roleArn).apply {
-            jdbcUrl = url
+        AwsIamDataSource(rdsIamTokenProvider, url, auth.username, auth.roleArn).apply {
             this.username = auth.username
             maximumPoolSize = 1
         }

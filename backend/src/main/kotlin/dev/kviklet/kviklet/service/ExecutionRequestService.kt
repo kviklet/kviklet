@@ -1060,6 +1060,11 @@ class ExecutionRequestService(
             DatasourceType.MYSQL, DatasourceType.MARIADB -> mysqlProxyServer
             else -> throw RuntimeException("Only Postgres, MySQL and MariaDB are supported for proxying!")
         }
+        if (connection.auth is AuthenticationDetails.AwsIam) {
+            // The token signer needs the region from the RDS endpoint. Fail here with a clear message
+            // instead of starting a session whose every client connect dies inside the signer.
+            rdsRegionFromHost(connection.hostname)
+        }
         if (!proxyServer.isRunning) {
             val portProperty = if (connection.type == DatasourceType.POSTGRESQL) {
                 "kviklet.proxy.postgres.port"
