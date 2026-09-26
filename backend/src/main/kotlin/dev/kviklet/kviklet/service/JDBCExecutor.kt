@@ -284,10 +284,5 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
             jdbcUrl = url
             this.username = auth.username
             maximumPoolSize = 1
-
-            // RDS only checks the token when a connection is opened, so an established connection may outlive
-            // its token. Recycling pooled connections within the 15-minute token window is a conservative
-            // choice, not a requirement.
-            maxLifetime = 840000
         }
 }

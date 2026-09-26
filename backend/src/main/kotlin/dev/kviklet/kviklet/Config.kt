@@ -103,7 +103,6 @@ class DataSourceConfig(
         if (iamAuth) {
             return AwsIamDataSource(rdsIamTokenProvider, username).apply {
                 jdbcUrl = url
-                maxLifetime = 840000
                 username = this@DataSourceConfig.username
             }
         }

@@ -83,7 +83,8 @@ fun rdsRegionFromHost(host: String): Region {
 }
 
 // A Hikari pool whose password is a freshly minted RDS IAM token on every physical connect: Hikari calls
-// getPassword() each time it opens a connection, so the token only has to be valid at connect time.
+// getPassword() each time it opens a connection. RDS checks the token only then, so an established
+// connection outliving its 15-minute token is fine and no special pool lifetime is needed.
 class AwsIamDataSource(
     private val tokenProvider: RdsIamTokenProvider,
     private val username: String,
