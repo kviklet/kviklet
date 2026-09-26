@@ -2,7 +2,7 @@
 package dev.kviklet.kviklet.proxy.postgres
 
 import dev.kviklet.kviklet.proxy.core.parseAdditionalOptions
-import dev.kviklet.kviklet.service.AwsRdsIamTokenProvider
+import dev.kviklet.kviklet.proxy.core.upstreamPassword
 import dev.kviklet.kviklet.service.RdsIamTokenProvider
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import org.postgresql.core.PGStream
@@ -26,7 +26,7 @@ class TargetPostgresSocketFactory(
     private val targetHost: String,
     private val targetPort: Int,
     additionalOptions: String = "",
-    private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRdsIamTokenProvider(),
+    private val rdsIamTokenProvider: RdsIamTokenProvider,
 ) {
     private val targetPgConnProps: Properties
     private val hostSpec: Array<HostSpec>
@@ -46,9 +46,6 @@ class TargetPostgresSocketFactory(
     init {
         val props = Properties()
         props.setProperty("user", authenticationDetails.username)
-        if (authenticationDetails is AuthenticationDetails.UserPassword) {
-            props.setProperty("password", authenticationDetails.password)
-        }
         val database = if (databaseName != "") databaseName else authenticationDetails.username
         props.setProperty("PGDBNAME", database)
         parseAdditionalOptions(additionalOptions)
@@ -67,17 +64,10 @@ class TargetPostgresSocketFactory(
 
     fun createTargetPgConnection(): TargetPostgresConnection {
         val props = Properties().apply { putAll(targetPgConnProps) }
-        if (authenticationDetails is AuthenticationDetails.AwsIam) {
-            props.setProperty(
-                "password",
-                rdsIamTokenProvider.generateToken(
-                    targetHost,
-                    targetPort,
-                    authenticationDetails.username,
-                    authenticationDetails.roleArn,
-                ),
-            )
-        }
+        props.setProperty(
+            "password",
+            authenticationDetails.upstreamPassword(targetHost, targetPort, rdsIamTokenProvider),
+        )
         val factory = ConnectionFactoryImpl()
         val queryExecutor = factory.openConnectionImpl(
             this.hostSpec,

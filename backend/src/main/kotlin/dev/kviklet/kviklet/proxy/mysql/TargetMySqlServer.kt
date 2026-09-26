@@ -2,7 +2,7 @@
 package dev.kviklet.kviklet.proxy.mysql
 
 import dev.kviklet.kviklet.proxy.core.parseAdditionalOptions
-import dev.kviklet.kviklet.service.AwsRdsIamTokenProvider
+import dev.kviklet.kviklet.proxy.core.upstreamPassword
 import dev.kviklet.kviklet.service.RdsIamTokenProvider
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.DatasourceType
@@ -46,12 +46,15 @@ class TargetMySqlSocketFactory(
     private val targetHost: String,
     private val targetPort: Int,
     private val additionalOptions: String = "",
-    private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRdsIamTokenProvider(),
+    private val rdsIamTokenProvider: RdsIamTokenProvider,
 ) {
     fun createTargetMySqlConnection(): TargetMySqlConnection {
         val props = Properties()
         props.setProperty("user", authenticationDetails.username)
-        props.setProperty("password", upstreamPassword())
+        props.setProperty(
+            "password",
+            authenticationDetails.upstreamPassword(targetHost, targetPort, rdsIamTokenProvider),
+        )
         val sslMode = upstreamSslMode(additionalOptions, authenticationDetails)
         props.setProperty("sslMode", sslMode)
         if (sslMode == SSL_MODE_DISABLE) {
@@ -87,17 +90,6 @@ class TargetMySqlSocketFactory(
                 e,
             )
         }
-    }
-
-    private fun upstreamPassword(): String = when (authenticationDetails) {
-        is AuthenticationDetails.UserPassword -> authenticationDetails.password
-
-        is AuthenticationDetails.AwsIam -> rdsIamTokenProvider.generateToken(
-            targetHost,
-            targetPort,
-            authenticationDetails.username,
-            authenticationDetails.roleArn,
-        )
     }
 
     // The relay pumps the driver's own stream objects, not the socket's: with upstream TLS the driver keeps

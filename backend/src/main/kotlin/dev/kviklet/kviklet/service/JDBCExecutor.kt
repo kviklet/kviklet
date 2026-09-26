@@ -10,7 +10,6 @@ import dev.kviklet.kviklet.service.dto.UpdateQueryResult
 import org.slf4j.LoggerFactory
 import org.springframework.boot.jdbc.DataSourceBuilder
 import org.springframework.stereotype.Service
-import java.net.URI
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.sql.Statement
@@ -263,23 +262,6 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
         }
     }
 
-    // A Hikari pool whose password is a freshly minted RDS IAM token on every physical connect. Hikari
-    // calls getPassword() each time it opens a connection, so a pool member that outlives the 15-minute
-    // token window is not a problem: the token only has to be valid at connect time.
-    class AwsIamDataSource(
-        private val tokenProvider: RdsIamTokenProvider,
-        private val username: String,
-        private val roleArn: String? = null,
-    ) : HikariDataSource() {
-        private lateinit var uri: URI
-
-        fun initialize() {
-            uri = URI.create(jdbcUrl.removePrefix("jdbc:"))
-        }
-
-        override fun getPassword(): String = tokenProvider.generateToken(uri.host, uri.port, username, roleArn)
-    }
-
     fun createConnection(url: String, authenticationDetails: AuthenticationDetails): HikariDataSource =
         when (authenticationDetails) {
             is AuthenticationDetails.UserPassword -> createUserPasswordConnection(url, authenticationDetails)
@@ -303,8 +285,9 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
             this.username = auth.username
             maximumPoolSize = 1
 
-            // Token lifetime is 15 minutes, so set max lifetime to 14 minutes
+            // RDS only checks the token when a connection is opened, so an established connection may outlive
+            // its token. Recycling pooled connections within the 15-minute token window is a conservative
+            // choice, not a requirement.
             maxLifetime = 840000
-            initialize()
         }
 }
