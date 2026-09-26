@@ -163,7 +163,6 @@ const LicenseDropZone = ({
   };
 
   const handleUpload = async () => {
-    if (readOnly) return;
     if (selectedFile) {
       const error = await uploadLicense(selectedFile);
       if (error) {
@@ -251,18 +250,22 @@ const LicenseDropZone = ({
           </label>
         </div>
       )}
-      <p className="ml-auto mt-2 text-sm text-slate-500 dark:text-slate-400">
-        {!readOnly && !selectedFile && "Upload a license file to activate it."}
-      </p>
-      <Button
-        variant={!readOnly && selectedFile ? "primary" : "disabled"}
-        className="ml-auto mt-2"
-        onClick={() => {
-          void handleUpload();
-        }}
-      >
-        Upload
-      </Button>
+      {!readOnly && (
+        <>
+          <p className="ml-auto mt-2 text-sm text-slate-500 dark:text-slate-400">
+            {!selectedFile && "Upload a license file to activate it."}
+          </p>
+          <Button
+            variant={selectedFile ? "primary" : "disabled"}
+            className="ml-auto mt-2"
+            onClick={() => {
+              void handleUpload();
+            }}
+          >
+            Upload
+          </Button>
+        </>
+      )}
     </div>
   );
 };

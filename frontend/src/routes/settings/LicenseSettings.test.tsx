@@ -69,5 +69,8 @@ describe("LicenseSettings", () => {
     ).toBeVisible();
     expect(screen.queryByText("Click to upload")).not.toBeInTheDocument();
     expect(screen.getByLabelText("License file")).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Upload" }),
+    ).not.toBeInTheDocument();
   });
 });

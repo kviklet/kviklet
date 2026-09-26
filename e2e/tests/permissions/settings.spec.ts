@@ -139,7 +139,7 @@ test("a default-role user can see the license page but cannot upload", async ({
   await expect(page.getByLabel("License file")).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "Upload", exact: true }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
 
   const dataTransfer = await page.evaluateHandle(() => {
     const transfer = new DataTransfer();
@@ -154,7 +154,7 @@ test("a default-role user can see the license page but cannot upload", async ({
   await expect(page.getByText("license.json", { exact: true })).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Upload", exact: true }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
   await dataTransfer.dispose();
 });
 
