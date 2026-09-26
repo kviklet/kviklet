@@ -10,13 +10,6 @@ import dev.kviklet.kviklet.service.dto.UpdateQueryResult
 import org.slf4j.LoggerFactory
 import org.springframework.boot.jdbc.DataSourceBuilder
 import org.springframework.stereotype.Service
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
-import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.rds.RdsUtilities
-import software.amazon.awssdk.services.sts.StsClient
-import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider
-import java.net.URI
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.sql.Statement
@@ -34,7 +27,7 @@ data class ColumnInfo(
 )
 
 @Service
-class JDBCExecutor {
+class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRdsIamTokenProvider()) {
 
     private val activeStatements = ConcurrentHashMap<String, Statement>()
 
@@ -269,69 +262,6 @@ class JDBCExecutor {
         }
     }
 
-    class AwsIamDataSource(private val username: String, private val roleArn: String? = null) : HikariDataSource() {
-        private lateinit var rdsUtilities: RdsUtilities
-        private lateinit var uri: URI
-        private lateinit var region: Region
-        private val logger = LoggerFactory.getLogger(javaClass)
-
-        fun initialize() {
-            uri = URI.create(jdbcUrl.removePrefix("jdbc:"))
-            region = extractRegionFromHost(uri.host)
-
-            rdsUtilities = RdsUtilities.builder()
-                .region(region)
-                .credentialsProvider(createCredentialsProvider())
-                .build()
-        }
-
-        private fun createCredentialsProvider(): AwsCredentialsProvider = if (!roleArn.isNullOrEmpty()) {
-            logger.info("Using IAM role {} for authentication", roleArn)
-            StsAssumeRoleCredentialsProvider.builder()
-                .asyncCredentialUpdateEnabled(true)
-                .stsClient(StsClient.builder().region(region).build())
-                .refreshRequest { r ->
-                    r.roleArn(roleArn).roleSessionName("KvikletRdsIamSession").build()
-                }
-                .build()
-        } else {
-            logger.info("Using default credentials for authentication")
-            DefaultCredentialsProvider.create()
-        }
-
-        private fun extractRegionFromHost(host: String): Region {
-            // Expected format: <db-instance>.<region>.rds.amazonaws.com
-            val parts = host.split(".")
-            if (parts.size < 5 ||
-                parts[parts.size - 3] != "rds" ||
-                parts[parts.size - 2] != "amazonaws" ||
-                parts[parts.size - 1] != "com"
-            ) {
-                throw IllegalArgumentException(
-                    "Invalid RDS endpoint format. Expected: <db-instance>.<region>.rds.amazonaws.com",
-                )
-            }
-
-            // The region is the second-to-last segment before "rds.amazonaws.com"
-            val regionString = parts[parts.size - 4]
-
-            return try {
-                Region.of(regionString)
-            } catch (e: IllegalArgumentException) {
-                throw IllegalArgumentException("Invalid AWS region: $regionString", e)
-            }
-        }
-
-        override fun getPassword(): String {
-            val token = rdsUtilities.generateAuthenticationToken { builder ->
-                builder.hostname(uri.host)
-                    .port(uri.port)
-                    .username(username)
-            }
-            return token
-        }
-    }
-
     fun createConnection(url: String, authenticationDetails: AuthenticationDetails): HikariDataSource =
         when (authenticationDetails) {
             is AuthenticationDetails.UserPassword -> createUserPasswordConnection(url, authenticationDetails)
@@ -350,13 +280,8 @@ class JDBCExecutor {
             }
 
     private fun createAwsIamConnection(url: String, auth: AuthenticationDetails.AwsIam): HikariDataSource =
-        AwsIamDataSource(auth.username, auth.roleArn).apply {
-            jdbcUrl = url
+        AwsIamDataSource(rdsIamTokenProvider, url, auth.username, auth.roleArn).apply {
             this.username = auth.username
             maximumPoolSize = 1
-
-            // Token lifetime is 15 minutes, so set max lifetime to 14 minutes
-            maxLifetime = 840000
-            initialize()
         }
 }

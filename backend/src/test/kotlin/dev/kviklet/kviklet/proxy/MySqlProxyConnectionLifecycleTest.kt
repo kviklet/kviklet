@@ -9,8 +9,10 @@ import dev.kviklet.kviklet.proxy.helpers.mysqlClientJdbcUrl
 import dev.kviklet.kviklet.proxy.helpers.mysqlDirectConnectionFactory
 import dev.kviklet.kviklet.proxy.helpers.mysqlProxyServerFactory
 import dev.kviklet.kviklet.proxy.mysql.TargetMySqlSocketFactory
+import dev.kviklet.kviklet.service.RdsIamTokenProvider
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.DatasourceType
+import io.mockk.mockk
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -182,6 +184,7 @@ class MySqlProxyConnectionLifecycleTest {
             "testdb",
             "localhost",
             proxy.port,
+            rdsIamTokenProvider = mockk<RdsIamTokenProvider>(),
         ).createTargetMySqlConnection()
         awaitUpstreamCount(direct, baselineUpstream + 1)
 

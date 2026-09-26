@@ -2,6 +2,8 @@
 package dev.kviklet.kviklet.proxy.mysql
 
 import dev.kviklet.kviklet.proxy.core.parseAdditionalOptions
+import dev.kviklet.kviklet.proxy.core.upstreamPassword
+import dev.kviklet.kviklet.service.RdsIamTokenProvider
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import java.io.InputStream
@@ -39,17 +41,21 @@ class TargetMySqlConnection(
 // format-changing capability; those are pinned off below. It speaks to MySQL servers natively.
 class TargetMySqlSocketFactory(
     private val datasourceType: DatasourceType,
-    private val authenticationDetails: AuthenticationDetails.UserPassword,
+    private val authenticationDetails: AuthenticationDetails,
     private val databaseName: String,
     private val targetHost: String,
     private val targetPort: Int,
     private val additionalOptions: String = "",
+    private val rdsIamTokenProvider: RdsIamTokenProvider,
 ) {
     fun createTargetMySqlConnection(): TargetMySqlConnection {
         val props = Properties()
         props.setProperty("user", authenticationDetails.username)
-        props.setProperty("password", authenticationDetails.password)
-        val sslMode = upstreamSslMode(additionalOptions)
+        props.setProperty(
+            "password",
+            authenticationDetails.upstreamPassword(targetHost, targetPort, rdsIamTokenProvider),
+        )
+        val sslMode = upstreamSslMode(additionalOptions, authenticationDetails)
         props.setProperty("sslMode", sslMode)
         if (sslMode == SSL_MODE_DISABLE) {
             // caching_sha2_password full auth over a plaintext connection needs the server's RSA public
@@ -131,7 +137,20 @@ private const val SSL_MODE_DISABLE = "disable"
 // this mapping does not know: silently ignoring it would downgrade a connection that asked for TLS to
 // plaintext. PREFERRED maps to trust for the same reason -- the MariaDB driver has no opportunistic mode,
 // and requiring TLS honors the intent while refusing the silent downgrade half of "preferred".
-private fun upstreamSslMode(additionalOptions: String): String {
+//
+// An IAM session never runs in plaintext: RDS presents the token via mysql_clear_password, which the driver
+// (rightly) refuses to send unless the channel is TLS. Configured verification modes are kept; only disable
+// is raised to trust.
+private fun upstreamSslMode(additionalOptions: String, authenticationDetails: AuthenticationDetails): String {
+    val sslMode = configuredUpstreamSslMode(additionalOptions)
+    return if (authenticationDetails is AuthenticationDetails.AwsIam && sslMode == SSL_MODE_DISABLE) {
+        "trust"
+    } else {
+        sslMode
+    }
+}
+
+private fun configuredUpstreamSslMode(additionalOptions: String): String {
     val configured = parseAdditionalOptions(additionalOptions)
         .entries.firstOrNull { it.key.equals("sslMode", ignoreCase = true) }
         ?.value ?: return SSL_MODE_DISABLE
