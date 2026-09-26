@@ -219,17 +219,6 @@ const LicenseDropZone = ({
             onDrop={handleDrop}
           >
             <div className="flex flex-col items-center justify-center px-4 pb-6 pt-5 text-center">
-              <ArrowUpCircleIcon className="h-12 w-12 text-slate-500 dark:text-slate-400" />
-              <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
-                {readOnly ? (
-                  <span className="font-semibold">Upload a license</span>
-                ) : (
-                  <>
-                    <span className="font-semibold">Click to upload</span> or
-                    drag and drop
-                  </>
-                )}
-              </p>
               {readOnly ? (
                 <p
                   id="license-upload-notice"
@@ -238,9 +227,16 @@ const LicenseDropZone = ({
                   You need to be an administrator to upload a license file.
                 </p>
               ) : (
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  [license_name].json
-                </p>
+                <>
+                  <ArrowUpCircleIcon className="h-12 w-12 text-slate-500 dark:text-slate-400" />
+                  <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
+                    <span className="font-semibold">Click to upload</span> or
+                    drag and drop
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    [license_name].json
+                  </p>
+                </>
               )}
             </div>
             <input
