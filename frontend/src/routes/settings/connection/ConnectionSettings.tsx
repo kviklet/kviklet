@@ -152,16 +152,17 @@ const ConnectionSettings = () => {
                 </RequirePermission>
               </div>
               <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow dark:border-slate-700 dark:bg-slate-900">
-                <table className="min-w-full">
+                {/* Fixed layout with shared column widths keeps the columns of all category tables aligned. */}
+                <table className="w-full table-fixed">
                   <thead className="bg-slate-50 dark:bg-slate-800">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-300">
+                      <th className="w-1/3 px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-300">
                         Name
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-300">
                         Description
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-300">
+                      <th className="w-36 px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-300">
                         Type
                       </th>
                     </tr>
@@ -174,13 +175,19 @@ const ConnectionSettings = () => {
                         className="cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
                         data-testid={`connections-table-row-${connection.id}`}
                       >
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900 dark:text-slate-100">
+                        <td
+                          className="truncate px-6 py-4 text-sm text-slate-900 dark:text-slate-100"
+                          title={connection.displayName}
+                        >
                           {connection.displayName}
                         </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-900 dark:text-slate-100">
+                        <td
+                          className="truncate px-6 py-4 text-sm text-slate-900 dark:text-slate-100"
+                          title={connection.description}
+                        >
                           {connection.description}
                         </td>
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
+                        <td className="truncate px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
                           {"_type" in connection &&
                           connection._type === "KUBERNETES"
                             ? "Kubernetes"
