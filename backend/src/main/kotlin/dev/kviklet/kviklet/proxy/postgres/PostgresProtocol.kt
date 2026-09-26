@@ -9,7 +9,9 @@ import dev.kviklet.kviklet.proxy.core.TLSCertificate
 import dev.kviklet.kviklet.proxy.core.tlsCertificateFactory
 import dev.kviklet.kviklet.proxy.core.writeAndFlush
 import dev.kviklet.kviklet.proxy.postgres.messages.errorResponse
+import dev.kviklet.kviklet.service.AwsRdsIamTokenProvider
 import dev.kviklet.kviklet.service.EventService
+import dev.kviklet.kviklet.service.RdsIamTokenProvider
 import java.net.Socket
 
 // The Postgres wire-protocol half of the proxy, plugged into a generic ProxyServer. It knows how to run the
@@ -18,6 +20,7 @@ import java.net.Socket
 class PostgresProtocol(
     private val eventService: EventService,
     private val tlsCertificate: TLSCertificate? = tlsCertificateFactory(),
+    private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRdsIamTokenProvider(),
 ) : ProxyProtocol {
 
     companion object {
@@ -48,6 +51,7 @@ class PostgresProtocol(
             session.targetHost,
             session.targetPort,
             session.additionalOptions,
+            rdsIamTokenProvider,
         )
         val remotePgConn = targetFactory.createTargetPgConnection()
         val forwardSocket = remotePgConn.getPGStream().socket

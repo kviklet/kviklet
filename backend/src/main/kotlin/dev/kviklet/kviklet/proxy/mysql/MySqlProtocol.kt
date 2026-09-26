@@ -7,7 +7,9 @@ import dev.kviklet.kviklet.proxy.core.ProxyProtocol
 import dev.kviklet.kviklet.proxy.core.ProxySession
 import dev.kviklet.kviklet.proxy.core.TLSCertificate
 import dev.kviklet.kviklet.proxy.core.tlsCertificateFactory
+import dev.kviklet.kviklet.service.AwsRdsIamTokenProvider
 import dev.kviklet.kviklet.service.EventService
+import dev.kviklet.kviklet.service.RdsIamTokenProvider
 import java.net.Socket
 
 // The MySQL/MariaDB wire-protocol half of the proxy, plugged into a generic ProxyServer. It knows how to
@@ -17,6 +19,7 @@ import java.net.Socket
 class MySqlProtocol(
     private val eventService: EventService,
     private val tlsCertificate: TLSCertificate? = tlsCertificateFactory(),
+    private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRdsIamTokenProvider(),
 ) : ProxyProtocol {
 
     companion object {
@@ -50,6 +53,7 @@ class MySqlProtocol(
             session.targetHost,
             session.targetPort,
             session.additionalOptions,
+            rdsIamTokenProvider,
         )
         val targetConnection = targetFactory.createTargetMySqlConnection()
 

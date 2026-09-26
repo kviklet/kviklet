@@ -1060,9 +1060,6 @@ class ExecutionRequestService(
             DatasourceType.MYSQL, DatasourceType.MARIADB -> mysqlProxyServer
             else -> throw RuntimeException("Only Postgres, MySQL and MariaDB are supported for proxying!")
         }
-        if (connection.auth !is AuthenticationDetails.UserPassword) {
-            throw RuntimeException("Only UserPassword authentication is supported for proxying!")
-        }
         if (!proxyServer.isRunning) {
             val portProperty = if (connection.type == DatasourceType.POSTGRESQL) {
                 "kviklet.proxy.postgres.port"

@@ -5,6 +5,7 @@ import dev.kviklet.kviklet.proxy.core.ProxyServer
 import dev.kviklet.kviklet.proxy.core.TlsCertEnvConfig
 import dev.kviklet.kviklet.proxy.core.tlsCertificateFactory
 import dev.kviklet.kviklet.service.EventService
+import dev.kviklet.kviklet.service.RdsIamTokenProvider
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -26,9 +27,11 @@ class MySqlProxyServerConfig {
     fun mysqlProxyServer(
         eventService: EventService,
         tlsCertConfig: TlsCertEnvConfig,
+        rdsIamTokenProvider: RdsIamTokenProvider,
         @Value("\${kviklet.proxy.mysql.port:3306}") port: Int,
     ): ProxyServer {
-        val server = ProxyServer(port, MySqlProtocol(eventService, tlsCertificateFactory(tlsCertConfig)))
+        val protocol = MySqlProtocol(eventService, tlsCertificateFactory(tlsCertConfig), rdsIamTokenProvider)
+        val server = ProxyServer(port, protocol)
         server.start()
         return server
     }
