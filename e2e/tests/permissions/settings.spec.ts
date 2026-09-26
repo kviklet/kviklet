@@ -133,9 +133,7 @@ test("a default-role user can see the license page but cannot upload", async ({
     page.getByText("Upload a license", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText(
-      "License uploads are not enabled for your account. Contact your administrator to upload a license.",
-    ),
+    page.getByText("You need to be an administrator to upload a license file."),
   ).toBeVisible();
   await expect(page.getByText("Click to upload")).toHaveCount(0);
   await expect(page.getByLabel("License file")).toBeDisabled();

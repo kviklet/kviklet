@@ -235,8 +235,7 @@ const LicenseDropZone = ({
                   id="license-upload-notice"
                   className="max-w-sm text-sm text-slate-500 dark:text-slate-400"
                 >
-                  License uploads are not enabled for your account. Contact your
-                  administrator to upload a license.
+                  You need to be an administrator to upload a license file.
                 </p>
               ) : (
                 <p className="text-xs text-slate-500 dark:text-slate-400">
