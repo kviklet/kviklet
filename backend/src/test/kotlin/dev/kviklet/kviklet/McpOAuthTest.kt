@@ -108,6 +108,25 @@ open class McpOAuthTest {
     }
 
     @Test
+    fun `a client that registers with the advertised scope, like Claude Code, can log in`() {
+        val user = userHelper.createUser()
+        val clientId = registerClient(scope = "mcp")
+
+        val tokens = obtainTokens(user, clientId)
+
+        callWhoami(tokens["access_token"].asString()).andExpect(status().isOk)
+    }
+
+    @Test
+    fun `registering with any other scope is refused`() {
+        mockMvc.perform(
+            post("/oauth2/register").contentType(MediaType.APPLICATION_JSON)
+                .content(registrationRequest(scope = "mcp admin")),
+        ).andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.error").value("invalid_scope"))
+    }
+
+    @Test
     fun `tokens are audience restricted to the MCP endpoint`() {
         val user = userHelper.createUser()
         val token = obtainAccessToken(user, resource = "http://localhost/some-other-api")
@@ -345,20 +364,20 @@ open class McpOAuthTest {
         return objectMapper.readTree(response.contentAsString)
     }
 
-    private fun registerClient(): String {
+    private fun registerClient(scope: String? = null): String {
         val response = mockMvc.perform(
-            post("/oauth2/register").contentType(MediaType.APPLICATION_JSON).content(registrationRequest()),
+            post("/oauth2/register").contentType(MediaType.APPLICATION_JSON).content(registrationRequest(scope)),
         ).andExpect(status().isCreated).andReturn().response
         return objectMapper.readTree(response.contentAsString)["client_id"].asString()
     }
 
-    private fun registrationRequest() = """
+    private fun registrationRequest(scope: String? = null) = """
         {
             "client_name": "Claude Code",
             "redirect_uris": ["$redirectUri"],
             "grant_types": ["authorization_code", "refresh_token"],
             "response_types": ["code"],
-            "token_endpoint_auth_method": "none"
+            "token_endpoint_auth_method": "none"${scope?.let { ",\n            \"scope\": \"$it\"" } ?: ""}
         }
     """.trimIndent()
 

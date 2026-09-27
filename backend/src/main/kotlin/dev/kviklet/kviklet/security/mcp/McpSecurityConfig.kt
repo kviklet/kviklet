@@ -32,6 +32,9 @@ import org.springframework.security.config.annotation.web.configurers.oauth2.ser
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.AuthenticationException
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException
+import org.springframework.security.oauth2.core.OAuth2Error
+import org.springframework.security.oauth2.core.OAuth2ErrorCodes
 import org.springframework.security.oauth2.jwt.JwtClaimNames
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
@@ -44,7 +47,10 @@ import org.springframework.security.oauth2.server.authorization.OAuth2TokenType
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AuthorizationCodeRequestAuthenticationProvider
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AuthorizationCodeRequestAuthenticationToken
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AuthorizationGrantAuthenticationToken
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientRegistrationAuthenticationContext
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientRegistrationAuthenticationProvider
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientRegistrationAuthenticationToken
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientRegistrationAuthenticationValidator
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository
@@ -72,6 +78,7 @@ import org.springframework.web.util.UriComponentsBuilder
 import tools.jackson.databind.json.JsonMapper
 import java.time.Duration
 import java.util.UUID
+import java.util.function.Consumer
 
 /** The one scope MCP clients are granted: acting as the user, with the user's own permissions. */
 const val MCP_SCOPE = "mcp"
@@ -163,6 +170,7 @@ class McpSecurityConfig(
         }
         http.securityMatcher(RequestMatcher { endpointsMatcher.matches(it) })
         http.with(McpAuthorizationServerConfigurer.mcpAuthorizationServer()) { mcp ->
+            mcp.dynamicClientRegistrationValidator(mcpClientRegistrationValidator)
             mcp.authorizationServer { authServer ->
                 authServer.authorizationEndpoint { endpoint ->
                     endpoint.consentPage(MCP_CONSENT_ENDPOINT)
@@ -294,6 +302,28 @@ private fun defaultToMcpAudience(context: JwtEncodingContext) {
         context.claims.claim(JwtClaimNames.AUD, listOf(currentIssuer() + MCP_ENDPOINT))
     }
 }
+
+/**
+ * Spring's default registration checks, except for the scope: MCP clients such as Claude Code
+ * register with the scopes the protected resource advertises, i.e. [MCP_SCOPE], which the default
+ * rejects outright. Any other scope is still refused.
+ */
+private val mcpClientRegistrationValidator: Consumer<OAuth2ClientRegistrationAuthenticationContext> =
+    OAuth2ClientRegistrationAuthenticationValidator.DEFAULT_REDIRECT_URI_VALIDATOR
+        .andThen(OAuth2ClientRegistrationAuthenticationValidator.DEFAULT_JWK_SET_URI_VALIDATOR)
+        .andThen { context ->
+            val scopes = context.getAuthentication<OAuth2ClientRegistrationAuthenticationToken>()
+                .clientRegistration.scopes.orEmpty()
+            if (scopes.any { it != MCP_SCOPE }) {
+                throw OAuth2AuthenticationException(
+                    OAuth2Error(
+                        OAuth2ErrorCodes.INVALID_SCOPE,
+                        "Invalid Client Registration: scope",
+                        "https://datatracker.ietf.org/doc/html/rfc7591#section-3.2.2",
+                    ),
+                )
+            }
+        }
 
 /** How long a client stays logged in without being used. Refresh tokens rotate on every use. */
 private val REFRESH_TOKEN_TIME_TO_LIVE: Duration = Duration.ofDays(30)
