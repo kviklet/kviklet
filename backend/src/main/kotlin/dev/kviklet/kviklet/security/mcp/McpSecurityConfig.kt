@@ -32,6 +32,8 @@ import org.springframework.security.config.annotation.web.configurers.oauth2.ser
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.AuthenticationException
+import org.springframework.security.oauth2.core.AuthorizationGrantType
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException
 import org.springframework.security.oauth2.core.OAuth2Error
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes
@@ -39,8 +41,8 @@ import org.springframework.security.oauth2.jwt.JwtClaimNames
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder
-import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsent
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType
@@ -121,12 +123,18 @@ class McpSecurityConfig(
         registeredClientRepository: RegisteredClientRepository,
     ): OAuth2AuthorizationService = JdbcOAuth2AuthorizationService(jdbcOperations, registeredClientRepository)
 
+    /**
+     * Consent is never stored. The authorization server counts scopes the user approved before as
+     * approved again, so a stored consent would turn a later "Cancel" into an approval.
+     */
     @Bean
-    fun authorizationConsentService(
-        jdbcOperations: JdbcOperations,
-        registeredClientRepository: RegisteredClientRepository,
-    ): OAuth2AuthorizationConsentService =
-        JdbcOAuth2AuthorizationConsentService(jdbcOperations, registeredClientRepository)
+    fun authorizationConsentService(): OAuth2AuthorizationConsentService = object : OAuth2AuthorizationConsentService {
+        override fun save(authorizationConsent: OAuth2AuthorizationConsent) = Unit
+
+        override fun remove(authorizationConsent: OAuth2AuthorizationConsent) = Unit
+
+        override fun findById(registeredClientId: String, principalName: String): OAuth2AuthorizationConsent? = null
+    }
 
     @Bean
     fun authorizationServerSettings(): AuthorizationServerSettings = AuthorizationServerSettings.builder().build()
@@ -303,34 +311,52 @@ private fun defaultToMcpAudience(context: JwtEncodingContext) {
     }
 }
 
+/** The only grants MCP clients get: the browser login and refreshing its tokens. */
+private val MCP_GRANT_TYPES = setOf(AuthorizationGrantType.AUTHORIZATION_CODE, AuthorizationGrantType.REFRESH_TOKEN)
+
 /**
  * Spring's default registration checks, except for the scope: MCP clients such as Claude Code
  * register with the scopes the protected resource advertises, i.e. [MCP_SCOPE], which the default
  * rejects outright. Any other scope is still refused.
+ *
+ * Clients must also be public clients limited to [MCP_GRANT_TYPES]. Registration is open to anyone,
+ * and every client is granted [MCP_SCOPE]; a client allowed e.g. token exchange could trade a user's
+ * token for fresh ones indefinitely, without the user ever consenting.
  */
 private val mcpClientRegistrationValidator: Consumer<OAuth2ClientRegistrationAuthenticationContext> =
     OAuth2ClientRegistrationAuthenticationValidator.DEFAULT_REDIRECT_URI_VALIDATOR
         .andThen(OAuth2ClientRegistrationAuthenticationValidator.DEFAULT_JWK_SET_URI_VALIDATOR)
         .andThen { context ->
-            val scopes = context.getAuthentication<OAuth2ClientRegistrationAuthenticationToken>()
-                .clientRegistration.scopes.orEmpty()
-            if (scopes.any { it != MCP_SCOPE }) {
-                throw OAuth2AuthenticationException(
-                    OAuth2Error(
-                        OAuth2ErrorCodes.INVALID_SCOPE,
-                        "Invalid Client Registration: scope",
-                        "https://datatracker.ietf.org/doc/html/rfc7591#section-3.2.2",
-                    ),
-                )
+            val registration = context.getAuthentication<OAuth2ClientRegistrationAuthenticationToken>()
+                .clientRegistration
+            if (registration.scopes.orEmpty().any { it != MCP_SCOPE }) {
+                throw invalidRegistration(OAuth2ErrorCodes.INVALID_SCOPE, "scope")
+            }
+            if (registration.grantTypes.orEmpty().any { grant -> MCP_GRANT_TYPES.none { it.value == grant } }) {
+                throw invalidRegistration(INVALID_CLIENT_METADATA, "grant_types")
+            }
+            if (registration.tokenEndpointAuthenticationMethod != ClientAuthenticationMethod.NONE.value) {
+                throw invalidRegistration(INVALID_CLIENT_METADATA, "token_endpoint_auth_method")
             }
         }
+
+private const val INVALID_CLIENT_METADATA = "invalid_client_metadata"
+
+private fun invalidRegistration(errorCode: String, field: String) = OAuth2AuthenticationException(
+    OAuth2Error(
+        errorCode,
+        "Invalid Client Registration: $field",
+        "https://datatracker.ietf.org/doc/html/rfc7591#section-3.2.2",
+    ),
+)
 
 /** How long a client stays logged in without being used. Refresh tokens rotate on every use. */
 private val REFRESH_TOKEN_TIME_TO_LIVE: Duration = Duration.ofDays(30)
 
 /**
  * Every registered client may request [MCP_SCOPE], whatever it asked for at registration, must use
- * PKCE, and gets rotating refresh tokens.
+ * PKCE, and gets rotating refresh tokens. Its grants and client authentication are set again here,
+ * on top of what [mcpClientRegistrationValidator] lets through.
  */
 private val grantMcpScopeOnRegistration = object : ObjectPostProcessor<OAuth2ClientRegistrationAuthenticationProvider> {
     override fun <O : OAuth2ClientRegistrationAuthenticationProvider> postProcess(provider: O): O {
@@ -338,6 +364,14 @@ private val grantMcpScopeOnRegistration = object : ObjectPostProcessor<OAuth2Cli
         provider.setRegisteredClientConverter { registration ->
             val client = defaultConverter.convert(registration)
             RegisteredClient.from(client)
+                .authorizationGrantTypes {
+                    it.clear()
+                    it.addAll(MCP_GRANT_TYPES)
+                }
+                .clientAuthenticationMethods {
+                    it.clear()
+                    it.add(ClientAuthenticationMethod.NONE)
+                }
                 .scope(MCP_SCOPE)
                 .clientSettings(
                     ClientSettings.withSettings(client.clientSettings.settings).requireProofKey(true).build(),

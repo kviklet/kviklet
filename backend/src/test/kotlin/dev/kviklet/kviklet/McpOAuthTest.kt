@@ -86,7 +86,6 @@ open class McpOAuthTest {
     @AfterEach
     fun tearDown() {
         jdbcTemplate.update("DELETE FROM oauth2_authorization")
-        jdbcTemplate.update("DELETE FROM oauth2_authorization_consent")
         jdbcTemplate.update("DELETE FROM oauth2_registered_client")
         apiKeyRepository.deleteAll()
         userHelper.deleteAll()
@@ -124,6 +123,23 @@ open class McpOAuthTest {
                 .content(registrationRequest(scope = "mcp admin")),
         ).andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.error").value("invalid_scope"))
+    }
+
+    @Test
+    fun `only public clients limited to the login and refresh grants can register`() {
+        // Registration is open to anyone and every client gets the mcp scope, so any other grant,
+        // e.g. token exchange, would let a client mint tokens for users who never consented.
+        val requests = listOf(
+            registrationRequest(grantTypes = """["urn:ietf:params:oauth:grant-type:token-exchange"]"""),
+            registrationRequest(grantTypes = """["authorization_code", "client_credentials"]"""),
+            registrationRequest(authMethod = "client_secret_basic"),
+            registrationRequest(authMethod = null),
+        )
+        requests.forEach { request ->
+            mockMvc.perform(post("/oauth2/register").contentType(MediaType.APPLICATION_JSON).content(request))
+                .andExpect(status().isBadRequest)
+                .andExpect(jsonPath("$.error").value("invalid_client_metadata"))
+        }
     }
 
     @Test
@@ -292,6 +308,20 @@ open class McpOAuthTest {
     }
 
     @Test
+    fun `denying consent works for a client the user approved before`() {
+        val user = userHelper.createUser()
+        val clientId = registerClient()
+        obtainTokens(user, clientId)
+        val cookie = login(user)
+        val state = queryParam(startAuthorization(cookie, clientId, mcpResource), "state")
+
+        val clientRedirect = submitConsent(cookie, clientId, state, approve = false)
+
+        assertThat(queryParam(clientRedirect, "error")).isEqualTo("access_denied")
+        assertThat(clientRedirect).doesNotContain("code=")
+    }
+
+    @Test
     fun `consent can only be submitted with the Kviklet request header`() {
         // Without the header a form on another site could approve a client in the user's name.
         val mockMvcWithoutHeader = MockMvcBuilders.webAppContextSetup(context)
@@ -371,15 +401,20 @@ open class McpOAuthTest {
         return objectMapper.readTree(response.contentAsString)["client_id"].asString()
     }
 
-    private fun registrationRequest(scope: String? = null) = """
-        {
-            "client_name": "Claude Code",
-            "redirect_uris": ["$redirectUri"],
-            "grant_types": ["authorization_code", "refresh_token"],
-            "response_types": ["code"],
-            "token_endpoint_auth_method": "none"${scope?.let { ",\n            \"scope\": \"$it\"" } ?: ""}
-        }
-    """.trimIndent()
+    private fun registrationRequest(
+        scope: String? = null,
+        grantTypes: String = """["authorization_code", "refresh_token"]""",
+        authMethod: String? = "none",
+    ): String = objectMapper.writeValueAsString(
+        buildMap {
+            put("client_name", "Claude Code")
+            put("redirect_uris", listOf(redirectUri))
+            put("grant_types", objectMapper.readTree(grantTypes))
+            put("response_types", listOf("code"))
+            authMethod?.let { put("token_endpoint_auth_method", it) }
+            scope?.let { put("scope", it) }
+        },
+    )
 
     // Built as a URL: the authorization server reads GET parameters from the query string, which
     // MockMvc's param() leaves empty.
