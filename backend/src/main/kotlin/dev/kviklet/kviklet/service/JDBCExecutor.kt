@@ -160,6 +160,10 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
         } catch (e: SQLException) {
             val result = sqlExceptionToResult(e)
             return TestCredentialsResult(success = false, message = result.message)
+        } catch (e: IllegalArgumentException) {
+            // A hostname that is not an RDS endpoint fails IAM datasource creation before any connect; for a
+            // connection test that is a failed test with the validation message, not a request error.
+            return TestCredentialsResult(success = false, message = e.message ?: "Invalid connection settings")
         }
     }
 

@@ -10,6 +10,7 @@ import software.amazon.awssdk.services.rds.RdsUtilities
 import software.amazon.awssdk.services.sts.StsClient
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider
 import java.net.URI
+import java.sql.SQLException
 import java.util.concurrent.ConcurrentHashMap
 
 // Mints the short-lived password an RDS IAM connection presents. Every place that dials an IAM connection
@@ -102,5 +103,14 @@ class AwsIamDataSource(
         jdbcUrl = url
     }
 
-    override fun getPassword(): String = tokenProvider.generateToken(uri.host, uri.port, username, roleArn)
+    // A token that cannot be minted (STS refuses the role, no credentials in the environment, ...) is
+    // reported as a SQLException: that is the one failure type every caller of the pool already handles as
+    // a connection failure (a failed connection test, an error result on an execution), and it is the only
+    // type Hikari unwraps from its pool-initialization failure. The AWS SDK's own RuntimeExceptions would
+    // instead escape the executor's error handling as a bare 500.
+    override fun getPassword(): String = try {
+        tokenProvider.generateToken(uri.host, uri.port, username, roleArn)
+    } catch (e: RuntimeException) {
+        throw SQLException("Could not obtain an RDS IAM authentication token: ${e.message}", e)
+    }
 }
