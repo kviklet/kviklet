@@ -5,10 +5,10 @@ import org.springframework.boot.gradle.tasks.run.BootRun
 plugins {
     id("org.springframework.boot") version "4.1.1"
     id("io.spring.dependency-management") version "1.1.7"
-    kotlin("jvm") version "2.3.21"
-    kotlin("plugin.spring") version "2.3.21"
-    kotlin("plugin.jpa") version "2.3.21"
-    kotlin("kapt") version "2.3.21" // needed for query-dsl
+    kotlin("jvm") version "2.2.21"
+    kotlin("plugin.spring") version "2.2.21"
+    kotlin("plugin.jpa") version "2.2.21"
+    kotlin("kapt") version "2.2.21" // needed for query-dsl
 }
 
 kapt {
@@ -21,6 +21,11 @@ kapt {
 
     correctErrorTypes = true
 }
+
+// Kotlin 2.3.20+ makes the kotlin-jpa preset all-open every @Entity, which turns our LAZY associations
+// from effectively eager (Hibernate cannot proxy final classes) into really lazy. Stay on 2.2 until the
+// code is ready for that; this also pins the Kotlin version Boot's BOM manages.
+extra["kotlin.version"] = "2.2.21"
 
 group = "com.example"
 version = "0.0.1-SNAPSHOT"
