@@ -39,9 +39,7 @@ import org.springframework.security.core.Authentication
 import org.springframework.security.core.AuthenticationException
 import org.springframework.security.oauth2.core.AuthorizationGrantType
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod
-import org.springframework.security.oauth2.core.OAuth2AuthenticationException
-import org.springframework.security.oauth2.core.OAuth2Error
-import org.springframework.security.oauth2.core.OAuth2ErrorCodes
+import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames
 import org.springframework.security.oauth2.jwt.JwtClaimNames
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
@@ -50,13 +48,13 @@ import org.springframework.security.oauth2.server.authorization.JdbcOAuth2Author
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsent
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService
+import org.springframework.security.oauth2.server.authorization.OAuth2ClientRegistration
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AuthorizationCodeRequestAuthenticationProvider
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AuthorizationCodeRequestAuthenticationToken
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AuthorizationGrantAuthenticationToken
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientRegistrationAuthenticationContext
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientRegistrationAuthenticationProvider
-import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientRegistrationAuthenticationToken
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2ClientRegistrationAuthenticationValidator
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient
@@ -201,6 +199,19 @@ class McpSecurityConfig(
                     endpoint.consentPage(MCP_CONSENT_ENDPOINT)
                     endpoint.authorizationRequestConverters { converters ->
                         converters.replaceAll(::DefaultScopeAuthorizationRequestConverter)
+                    }
+                }
+                // Advertise only what registered clients can actually use (see grantMcpScopeOnRegistration).
+                authServer.authorizationServerMetadataEndpoint { endpoint ->
+                    endpoint.authorizationServerMetadataCustomizer { metadata ->
+                        metadata.grantTypes { grantTypes ->
+                            grantTypes.clear()
+                            grantTypes.addAll(MCP_GRANT_TYPES.map { it.value })
+                        }
+                        metadata.tokenEndpointAuthenticationMethods { methods ->
+                            methods.clear()
+                            methods.add(ClientAuthenticationMethod.NONE.value)
+                        }
                     }
                 }
                 authServer.clientAuthentication { clientAuthentication ->
@@ -355,64 +366,42 @@ private fun defaultToMcpAudience(context: JwtEncodingContext) {
 private val MCP_GRANT_TYPES = setOf(AuthorizationGrantType.AUTHORIZATION_CODE, AuthorizationGrantType.REFRESH_TOKEN)
 
 /**
- * Spring's default registration checks, except for the scope: MCP clients such as Claude Code
- * register with the scopes the protected resource advertises, i.e. [MCP_SCOPE], which the default
- * rejects outright. Any other scope is still refused.
- *
- * Clients must also be public clients limited to [MCP_GRANT_TYPES]. Registration is open to anyone,
- * and every client is granted [MCP_SCOPE]; a client allowed e.g. token exchange could trade a user's
- * token for fresh ones indefinitely, without the user ever consenting.
+ * Spring's default registration checks reject scopes, and more requested metadata than MCP clients
+ * need. Registration is lenient instead: [grantMcpScopeOnRegistration] replaces the scopes, grants
+ * and client authentication with the only ones there are, and the response tells the client what it
+ * got, as RFC 7591 allows. Only the redirect URIs are checked, since those can really be wrong.
  */
 private val mcpClientRegistrationValidator: Consumer<OAuth2ClientRegistrationAuthenticationContext> =
     OAuth2ClientRegistrationAuthenticationValidator.DEFAULT_REDIRECT_URI_VALIDATOR
-        .andThen(OAuth2ClientRegistrationAuthenticationValidator.DEFAULT_JWK_SET_URI_VALIDATOR)
-        .andThen { context ->
-            val registration = context.getAuthentication<OAuth2ClientRegistrationAuthenticationToken>()
-                .clientRegistration
-            if (registration.scopes.orEmpty().any { it != MCP_SCOPE }) {
-                throw invalidRegistration(OAuth2ErrorCodes.INVALID_SCOPE, "scope")
-            }
-            if (registration.grantTypes.orEmpty().any { grant -> MCP_GRANT_TYPES.none { it.value == grant } }) {
-                throw invalidRegistration(INVALID_CLIENT_METADATA, "grant_types")
-            }
-            if (registration.tokenEndpointAuthenticationMethod != ClientAuthenticationMethod.NONE.value) {
-                throw invalidRegistration(INVALID_CLIENT_METADATA, "token_endpoint_auth_method")
-            }
-        }
-
-private const val INVALID_CLIENT_METADATA = "invalid_client_metadata"
-
-private fun invalidRegistration(errorCode: String, field: String) = OAuth2AuthenticationException(
-    OAuth2Error(
-        errorCode,
-        "Invalid Client Registration: $field",
-        "https://datatracker.ietf.org/doc/html/rfc7591#section-3.2.2",
-    ),
-)
 
 /** How long a client stays logged in without being used. Refresh tokens rotate on every use. */
 private val REFRESH_TOKEN_TIME_TO_LIVE: Duration = Duration.ofDays(30)
 
 /**
- * Every registered client may request [MCP_SCOPE], whatever it asked for at registration, must use
- * PKCE, and gets rotating refresh tokens. Its grants and client authentication are set again here,
- * on top of what [mcpClientRegistrationValidator] lets through.
+ * Every registered client is a public client limited to [MCP_GRANT_TYPES] and [MCP_SCOPE], whatever
+ * it asked for, must use PKCE, and gets rotating refresh tokens.
+ *
+ * Registration is open to anyone and every client gets [MCP_SCOPE], so the grants matter: a client
+ * allowed e.g. token exchange could trade a user's token for fresh ones indefinitely, without the user
+ * ever consenting. The request is rewritten before Spring converts it, so a client asking for a secret
+ * doesn't get one issued.
  */
 private val grantMcpScopeOnRegistration = object : ObjectPostProcessor<OAuth2ClientRegistrationAuthenticationProvider> {
     override fun <O : OAuth2ClientRegistrationAuthenticationProvider> postProcess(provider: O): O {
         val defaultConverter = OAuth2ClientRegistrationRegisteredClientConverter()
         provider.setRegisteredClientConverter { registration ->
-            val client = defaultConverter.convert(registration)
-            RegisteredClient.from(client)
-                .authorizationGrantTypes {
-                    it.clear()
-                    it.addAll(MCP_GRANT_TYPES)
+            val mcpRegistration = OAuth2ClientRegistration.withClaims(registration.claims)
+                .grantTypes { grantTypes ->
+                    grantTypes.clear()
+                    grantTypes.addAll(MCP_GRANT_TYPES.map { it.value })
                 }
-                .clientAuthenticationMethods {
-                    it.clear()
-                    it.add(ClientAuthenticationMethod.NONE)
-                }
+                .tokenEndpointAuthenticationMethod(ClientAuthenticationMethod.NONE.value)
+                // The requested scope arrives as one space-separated string, which scopes { } can't edit.
+                .claims { it.remove(OAuth2ParameterNames.SCOPE) }
                 .scope(MCP_SCOPE)
+                .build()
+            val client = defaultConverter.convert(mcpRegistration)
+            RegisteredClient.from(client)
                 .clientSettings(
                     ClientSettings.withSettings(client.clientSettings.settings).requireProofKey(true).build(),
                 )

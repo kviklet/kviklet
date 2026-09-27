@@ -14,6 +14,8 @@ import dev.kviklet.kviklet.telemetry.Telemetry
 import io.mockk.verify
 import jakarta.servlet.http.Cookie
 import org.assertj.core.api.Assertions.assertThat
+import org.hamcrest.Matchers.contains
+import org.hamcrest.Matchers.containsInAnyOrder
 import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -166,29 +168,39 @@ open class McpOAuthTest {
     }
 
     @Test
-    fun `registering with any other scope is refused`() {
-        mockMvc.perform(
-            post("/oauth2/register").contentType(MediaType.APPLICATION_JSON)
-                .content(registrationRequest(scope = "mcp admin")),
-        ).andExpect(status().isBadRequest)
-            .andExpect(jsonPath("$.error").value("invalid_scope"))
+    fun `a client asking for more at registration gets a public client with only the login and refresh grants`() {
+        // Registration is open to anyone and every client gets the mcp scope, so any other grant,
+        // e.g. token exchange, would let a client mint tokens for users who never consented.
+        val response = mockMvc.perform(
+            post("/oauth2/register").contentType(MediaType.APPLICATION_JSON).content(
+                registrationRequest(
+                    scope = "mcp admin",
+                    grantTypes = """["authorization_code", "refresh_token", "client_credentials",
+                        "urn:ietf:params:oauth:grant-type:token-exchange",
+                        "urn:ietf:params:oauth:grant-type:jwt-bearer"]""",
+                    authMethod = "client_secret_basic",
+                ),
+            ),
+        ).andExpect(status().isCreated)
+            .andExpect(jsonPath("$.token_endpoint_auth_method").value("none"))
+            .andExpect(jsonPath("$.grant_types").value(containsInAnyOrder("authorization_code", "refresh_token")))
+            .andExpect(jsonPath("$.scope").value("mcp"))
+            .andExpect(jsonPath("$.client_secret").doesNotExist())
+            .andReturn().response.contentAsString
+        val clientId = objectMapper.readTree(response)["client_id"].asString()
+
+        callWhoami(obtainTokens(userHelper.createUser(), clientId)["access_token"].asString())
+            .andExpect(status().isOk)
     }
 
     @Test
-    fun `only public clients limited to the login and refresh grants can register`() {
-        // Registration is open to anyone and every client gets the mcp scope, so any other grant,
-        // e.g. token exchange, would let a client mint tokens for users who never consented.
-        val requests = listOf(
-            registrationRequest(grantTypes = """["urn:ietf:params:oauth:grant-type:token-exchange"]"""),
-            registrationRequest(grantTypes = """["authorization_code", "client_credentials"]"""),
-            registrationRequest(authMethod = "client_secret_basic"),
-            registrationRequest(authMethod = null),
-        )
-        requests.forEach { request ->
-            mockMvc.perform(post("/oauth2/register").contentType(MediaType.APPLICATION_JSON).content(request))
-                .andExpect(status().isBadRequest)
-                .andExpect(jsonPath("$.error").value("invalid_client_metadata"))
-        }
+    fun `a client that names no client authentication at registration is registered as a public client`() {
+        mockMvc.perform(
+            post("/oauth2/register").contentType(MediaType.APPLICATION_JSON)
+                .content(registrationRequest(authMethod = null)),
+        ).andExpect(status().isCreated)
+            .andExpect(jsonPath("$.token_endpoint_auth_method").value("none"))
+            .andExpect(jsonPath("$.client_secret").doesNotExist())
     }
 
     @Test
@@ -230,6 +242,10 @@ open class McpOAuthTest {
             .andExpect(jsonPath("$.issuer").value(backendUrl))
             .andExpect(jsonPath("$.authorization_endpoint").value("$backendUrl/oauth2/authorize"))
             .andExpect(jsonPath("$.registration_endpoint").value("$backendUrl/oauth2/register"))
+            .andExpect(
+                jsonPath("$.grant_types_supported").value(containsInAnyOrder("authorization_code", "refresh_token")),
+            )
+            .andExpect(jsonPath("$.token_endpoint_auth_methods_supported").value(contains("none")))
     }
 
     @Test
