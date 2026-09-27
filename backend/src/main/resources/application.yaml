@@ -1,4 +1,8 @@
 spring:
+  jackson:
+    # Keep Jackson 2's defaults so API responses and the event payloads stored as JSON stay
+    # byte-compatible across the Jackson 3 upgrade.
+    use-jackson2-defaults: true
   liquibase:
     change-log: classpath:changelog/000-changelog.yaml
   datasource:

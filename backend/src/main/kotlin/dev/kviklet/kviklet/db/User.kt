@@ -202,7 +202,7 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
             githubId = user.githubId,
             email = user.email,
             active = user.active,
-            roles = roleRepository.findAllById(user.roles.map { it.getId() }.toSet()).toMutableSet(),
+            roles = roleRepository.findAllById(user.roles.mapNotNull { it.getId() }.toSet()).toMutableSet(),
         )
         val savedUserEntity = userRepository.save(userEntity)
         return savedUserEntity.toDto()
@@ -225,7 +225,7 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
             userEntity.githubId = user.githubId
             userEntity.email = user.email
             userEntity.active = user.active
-            userEntity.roles = roleRepository.findAllById(user.roles.map { it.getId() }.toSet()).toMutableSet()
+            userEntity.roles = roleRepository.findAllById(user.roles.mapNotNull { it.getId() }.toSet()).toMutableSet()
             val savedUserEntity = userRepository.save(userEntity)
             return savedUserEntity.toDto()
         }
@@ -233,7 +233,7 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
 
     @Transactional
     fun updateUser(user: User): User {
-        val userEntity = userRepository.findByIdOrNull(user.getId()) ?: throw EntityNotFound(
+        val userEntity = user.getId()?.let { userRepository.findByIdOrNull(it) } ?: throw EntityNotFound(
             "User not found",
             "User with id ${user.getId()} does not exist",
         )
@@ -246,7 +246,7 @@ class UserAdapter(private val userRepository: UserRepository, private val roleRe
         userEntity.active = user.active
         // update Roles
         user.roles.let { newRoleIds ->
-            val newRoles = roleRepository.findAllById(newRoleIds.map { it.getId() }.toSet())
+            val newRoles = roleRepository.findAllById(newRoleIds.mapNotNull { it.getId() }.toSet())
             userEntity.roles = newRoles.toMutableSet()
         }
         val savedUserEntity = userRepository.save(userEntity)

@@ -20,7 +20,7 @@ class OidcUser(
 
     override fun getIdToken(): OidcIdToken = oidcUser.idToken
 
-    override fun getUserInfo(): OidcUserInfo = oidcUser.userInfo
+    override fun getUserInfo(): OidcUserInfo? = oidcUser.userInfo
 
     override fun getName(): String = oidcUser.name
 

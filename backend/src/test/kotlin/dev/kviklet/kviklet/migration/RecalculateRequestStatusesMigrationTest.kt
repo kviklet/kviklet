@@ -1,6 +1,5 @@
 package dev.kviklet.kviklet.migration
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import dev.kviklet.kviklet.db.ConnectionAdapter
 import dev.kviklet.kviklet.db.EventRepository
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
@@ -27,6 +26,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
+import tools.jackson.databind.ObjectMapper
 import java.time.LocalDateTime
 import javax.sql.DataSource
 

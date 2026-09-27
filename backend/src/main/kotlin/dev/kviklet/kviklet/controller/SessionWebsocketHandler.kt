@@ -2,7 +2,6 @@ package dev.kviklet.kviklet.controller
 
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
-import com.fasterxml.jackson.databind.ObjectMapper
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.security.UserDetailsWithId
@@ -27,6 +26,7 @@ import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.handler.TextWebSocketHandler
 import org.springframework.web.util.UriComponentsBuilder
 import org.springframework.web.util.UriUtils
+import tools.jackson.databind.ObjectMapper
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
@@ -92,10 +92,10 @@ class SessionWebsocketHandler(
             ExecutionRequestId(requestId),
         )
         sessionToLiveSessionMap[session.id] = liveSession.id!!
-        val principal = SecurityContextHolder.getContext().authentication.principal
+        val principal = SecurityContextHolder.getContext().authentication?.principal
         val userDetailsWithId = when (principal) {
             is UserDetailsWithId -> principal
-            else -> throw IllegalStateException("Expected UserDetailsWithId but got: ${principal.javaClass}")
+            else -> throw IllegalStateException("Expected UserDetailsWithId but got: ${principal?.javaClass}")
         }
         logger.info("User id: ${userDetailsWithId.id}")
         val user = userService.getUser(UserId(userDetailsWithId.id))
@@ -172,12 +172,12 @@ class SessionWebsocketHandler(
                 }
 
                 is ExecuteMessage -> {
-                    val principal = securityContext.authentication.principal
+                    val principal = securityContext.authentication?.principal
                     val userId = when (principal) {
                         is UserDetailsWithId -> principal.id
 
                         else -> throw IllegalStateException(
-                            "Expected UserDetailsWithId but got: ${principal.javaClass}",
+                            "Expected UserDetailsWithId but got: ${principal?.javaClass}",
                         )
                     }
                     // Run execution in background thread with SecurityContext propagation
