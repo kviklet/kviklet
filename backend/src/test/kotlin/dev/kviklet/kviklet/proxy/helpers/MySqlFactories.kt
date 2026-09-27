@@ -69,11 +69,11 @@ fun mysqlProxyServerFactory(
     additionalOptions: String = "",
     connAuth: AuthenticationDetails = AuthenticationDetails.UserPassword("test", "test"),
     rdsIamTokenProvider: RdsIamTokenProvider = AwsRdsIamTokenProvider(),
+    port: Int = (12000..20000).random(),
 ): MySqlProxyInstance {
     val executionRequestFactory = ExecutionRequestFactory()
     val request = executionRequestFactory.createDatasourceExecutionRequest()
     val eventService = eventServiceOverride ?: EventServiceMock(executionRequestAdapter, eventAdapter, request)
-    val port = (12000..20000).random()
     val proxy = ProxyServer(
         port,
         MySqlProtocol(eventService, tlsCertificate, rdsIamTokenProvider),

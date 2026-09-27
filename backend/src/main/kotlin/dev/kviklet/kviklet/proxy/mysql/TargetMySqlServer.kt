@@ -74,6 +74,12 @@ class TargetMySqlSocketFactory(
         props.setProperty("enableBulkUnitResult", "false")
         props.setProperty("enableSkipMeta", "false")
         props.setProperty("useServerPrepStmts", "false")
+        // Never advertise CLIENT_LOCAL_FILES upstream (the driver's default is on): LOAD DATA LOCAL would
+        // make the server ask the client for a file, and the file contents would then flow through the
+        // relay as raw packets the audit log cannot account for. Without the capability the server refuses
+        // the statement itself, so a downstream client may advertise LOCAL_FILES (the mysql CLI always
+        // does) without ever getting to use it.
+        props.setProperty("allowLocalInfile", "false")
 
         val database = if (databaseName.isNotEmpty()) "/$databaseName" else ""
         val conn = try {
