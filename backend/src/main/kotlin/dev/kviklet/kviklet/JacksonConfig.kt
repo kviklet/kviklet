@@ -1,12 +1,12 @@
 package dev.kviklet.kviklet
 
-import com.fasterxml.jackson.core.JsonGenerator
-import com.fasterxml.jackson.databind.JsonSerializer
-import com.fasterxml.jackson.databind.Module
-import com.fasterxml.jackson.databind.SerializerProvider
-import com.fasterxml.jackson.databind.module.SimpleModule
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import tools.jackson.core.JsonGenerator
+import tools.jackson.databind.JacksonModule
+import tools.jackson.databind.SerializationContext
+import tools.jackson.databind.ValueSerializer
+import tools.jackson.databind.module.SimpleModule
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 
@@ -18,13 +18,13 @@ import java.time.ZoneOffset
 @Configuration
 class JacksonConfig {
     @Bean
-    fun localDateTimeUtcModule(): Module = SimpleModule().apply {
+    fun localDateTimeUtcModule(): JacksonModule = SimpleModule().apply {
         addSerializer(LocalDateTime::class.java, UtcLocalDateTimeSerializer())
     }
 }
 
-private class UtcLocalDateTimeSerializer : JsonSerializer<LocalDateTime>() {
-    override fun serialize(value: LocalDateTime, gen: JsonGenerator, serializers: SerializerProvider) {
+private class UtcLocalDateTimeSerializer : ValueSerializer<LocalDateTime>() {
+    override fun serialize(value: LocalDateTime, gen: JsonGenerator, ctxt: SerializationContext) {
         gen.writeString(value.toInstant(ZoneOffset.UTC).toString())
     }
 }

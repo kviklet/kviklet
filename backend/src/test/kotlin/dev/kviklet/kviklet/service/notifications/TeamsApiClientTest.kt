@@ -1,6 +1,5 @@
 package dev.kviklet.kviklet.service.notifications
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -12,6 +11,7 @@ import org.springframework.http.HttpEntity
 import org.springframework.http.HttpMethod
 import org.springframework.http.ResponseEntity
 import org.springframework.web.client.RestTemplate
+import tools.jackson.databind.ObjectMapper
 import java.net.URI
 
 class TeamsApiClientTest {
@@ -45,16 +45,16 @@ class TeamsApiClientTest {
         val json = objectMapper.readTree(bodySlot.captured.body as String)
 
         // It's an Adaptive Card, not the legacy MessageCard.
-        assertEquals("AdaptiveCard", json["type"].asText())
-        assertEquals("http://adaptivecards.io/schemas/adaptive-card.json", json["\$schema"].asText())
+        assertEquals("AdaptiveCard", json["type"].asString())
+        assertEquals("http://adaptivecards.io/schemas/adaptive-card.json", json["\$schema"].asString())
 
         // Title is the first block, rendered as a bold heading.
         val titleBlock = json["body"][0]
-        assertEquals("New Request: \"Deploy\"", titleBlock["text"].asText())
-        assertEquals("Bolder", titleBlock["weight"].asText())
+        assertEquals("New Request: \"Deploy\"", titleBlock["text"].asString())
+        assertEquals("Bolder", titleBlock["weight"].asString())
 
         // Message lines are present and URLs are linkified.
-        val bodyText = json["body"].joinToString(" ") { it["text"].asText() }
+        val bodyText = json["body"].joinToString(" ") { it["text"].asString() }
         assertTrue(bodyText.contains("Created by Alice."), "message lines should be present: $bodyText")
         assertTrue(
             bodyText.contains("[https://kviklet.example.com/requests/42](https://kviklet.example.com/requests/42)"),
@@ -63,9 +63,9 @@ class TeamsApiClientTest {
 
         // A single "Open in Kviklet" button links to the request.
         val action = json["actions"][0]
-        assertEquals("Action.OpenUrl", action["type"].asText())
-        assertEquals("Open in Kviklet", action["title"].asText())
-        assertEquals("https://kviklet.example.com/requests/42", action["url"].asText())
+        assertEquals("Action.OpenUrl", action["type"].asString())
+        assertEquals("Open in Kviklet", action["title"].asString())
+        assertEquals("https://kviklet.example.com/requests/42", action["url"].asString())
 
         verify {
             restTemplate.exchange(

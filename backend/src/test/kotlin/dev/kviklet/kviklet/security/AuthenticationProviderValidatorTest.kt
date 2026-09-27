@@ -6,8 +6,7 @@ import dev.kviklet.kviklet.security.saml.SamlProperties
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.boot.autoconfigure.AutoConfigurations
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
-import org.springframework.boot.autoconfigure.ldap.LdapAutoConfiguration
+import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
 
 class AuthenticationProviderValidatorTest {
@@ -16,7 +15,6 @@ class AuthenticationProviderValidatorTest {
         .withConfiguration(
             AutoConfigurations.of(
                 DataSourceAutoConfiguration::class.java,
-                LdapAutoConfiguration::class.java,
             ),
         )
         .withUserConfiguration(
