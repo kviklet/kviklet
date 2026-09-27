@@ -67,14 +67,14 @@ class MySqlProxyUpstreamTLSTest {
         // values (REQUIRED), a MariaDB connection's carry MariaDB driver values (trust).
         @JvmStatic
         fun tlsFlavors() = listOf(
-            arrayOf(DatasourceType.MYSQL, "?sslMode=REQUIRED"),
-            arrayOf(DatasourceType.MARIADB, "?sslMode=trust"),
+            arrayOf<Any>(DatasourceType.MYSQL, "?sslMode=REQUIRED"),
+            arrayOf<Any>(DatasourceType.MARIADB, "?sslMode=trust"),
         )
 
         @JvmStatic
         fun verifyFlavors() = listOf(
-            arrayOf(DatasourceType.MYSQL, "?sslMode=VERIFY_IDENTITY&serverSslCert="),
-            arrayOf(DatasourceType.MARIADB, "?sslMode=verify-full&serverSslCert="),
+            arrayOf<Any>(DatasourceType.MYSQL, "?sslMode=VERIFY_IDENTITY&serverSslCert="),
+            arrayOf<Any>(DatasourceType.MARIADB, "?sslMode=verify-full&serverSslCert="),
         )
 
         private fun tlsContainer(type: DatasourceType): JdbcDatabaseContainer<*> = when (type) {

@@ -18,12 +18,12 @@ class OidcLoginSuccessHandler(private val baseUrlResolver: BaseUrlResolver) :
 
     @Transactional
     override fun onAuthenticationSuccess(
-        request: HttpServletRequest?,
-        response: HttpServletResponse?,
-        authentication: Authentication?,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        authentication: Authentication,
     ) {
         // Convert OAuth/OIDC authentication to use UserDetailsWithId as principal
-        val principal = authentication?.principal
+        val principal = authentication.principal
         if (principal is KvikletOAuthPrincipal) {
             val userDetails = principal.getUserDetails()
             val newAuth = UsernamePasswordAuthenticationToken(
@@ -34,9 +34,9 @@ class OidcLoginSuccessHandler(private val baseUrlResolver: BaseUrlResolver) :
             SecurityContextHolder.getContext().authentication = newAuth
         }
 
-        val baseUrl = request?.let { baseUrlResolver.resolve(it) }
+        val baseUrl = baseUrlResolver.resolve(request)
         // Back to the page that sent the user to the login, or the frontend's index page.
-        val target = request?.let { LoginRedirectTargetFilter.consume(it) } ?: "/"
+        val target = LoginRedirectTargetFilter.consume(request) ?: "/"
         redirectStrategy.sendRedirect(request, response, "$baseUrl$target")
     }
 }

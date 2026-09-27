@@ -1,8 +1,6 @@
 // This file is not MIT licensed
 package dev.kviklet.kviklet.service
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import dev.kviklet.kviklet.db.LicenseAdapter
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.security.NoPolicy
@@ -12,10 +10,11 @@ import dev.kviklet.kviklet.service.dto.License
 import dev.kviklet.kviklet.service.dto.LicenseFile
 import dev.kviklet.kviklet.telemetry.LicenseUploaded
 import dev.kviklet.kviklet.telemetry.Telemetry
-import jakarta.annotation.PostConstruct
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
+import tools.jackson.module.kotlin.jacksonObjectMapper
+import tools.jackson.module.kotlin.readValue
 import java.security.PublicKey
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -33,11 +32,6 @@ class LicenseService(
 
     private val logger = LoggerFactory.getLogger(this::class.java)
 
-    @PostConstruct
-    fun init() {
-        mapper.findAndRegisterModules() // For handling LocalDateTime, etc.
-    }
-
     @NoPolicy
     fun getLicenses(): List<License> = licenseAdapter.getLicenses().map { createLicenseFromLicenseFile(it) }
 
@@ -50,7 +44,7 @@ class LicenseService(
             // Parse the entire JSON
             val rootNode = mapper.readTree(licenseFile.fileContent)
             licenseDataString = rootNode.get("license_data").toString()
-            signature = rootNode.get("signature").asText()
+            signature = rootNode.get("signature").asString()
 
             publicKey = LicenseVerifier().loadPublicKey(pem)
         } catch (e: Exception) {

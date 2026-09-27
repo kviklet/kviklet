@@ -136,7 +136,7 @@ class MyAuthorizationManager(val permissionResolver: PermissionResolver) {
             is String -> return AuthorizationDecision(false)
 
             // anonymous user
-            else -> throw RuntimeException("Expected UserDetailsWithId but got: ${auth.principal.javaClass}")
+            else -> throw RuntimeException("Expected UserDetailsWithId but got: ${auth.principal?.javaClass}")
         }
 
         val policies = permissionResolver.policiesFor(userDetailsWithId.id)

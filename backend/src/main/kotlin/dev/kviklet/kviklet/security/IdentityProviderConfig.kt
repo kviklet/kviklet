@@ -11,9 +11,9 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.oauth2.client.CommonOAuth2Provider
 import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClientService
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService
-import org.springframework.security.oauth2.client.endpoint.DefaultAuthorizationCodeTokenResponseClient
 import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient
 import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCodeGrantRequest
+import org.springframework.security.oauth2.client.endpoint.RestClientAuthorizationCodeTokenResponseClient
 import org.springframework.security.oauth2.client.registration.ClientRegistration
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository
 import org.springframework.security.oauth2.client.registration.ClientRegistrations
@@ -59,6 +59,8 @@ data class IdentityProviderConfig(
     @Order(2)
     @Bean
     fun clientRegistrationRepository(): ClientRegistrationRepository {
+        val type = requireNotNull(properties.type) { "kviklet.identity-provider.type must be set" }
+        val clientId = requireNotNull(properties.clientId) { "kviklet.identity-provider.client-id must be set" }
         val activeProfiles = environment.activeProfiles
         val redirectUri = if (!activeProfiles.contains("test") &&
             !activeProfiles.contains("local") &&
@@ -71,7 +73,7 @@ data class IdentityProviderConfig(
         if (properties.type == "github") {
             val registration = CommonOAuth2Provider.GITHUB
                 .getBuilder("github")
-                .clientId(properties.clientId)
+                .clientId(clientId)
                 .clientSecret(properties.clientSecret)
                 .redirectUri(redirectUri)
                 .scope("read:user", "user:email", "read:org")
@@ -95,29 +97,29 @@ data class IdentityProviderConfig(
         }
         val clientRegistration = if (!properties.getIssuer().isNullOrBlank()) {
             ClientRegistrations
-                .fromIssuerLocation(properties.getIssuer())
-                .registrationId(properties.type)
-                .clientId(properties.clientId)
+                .fromIssuerLocation(properties.getIssuer()!!)
+                .registrationId(type)
+                .clientId(clientId)
                 .clientSecret(properties.clientSecret)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .redirectUri(redirectUri)
                 .scope("openid", "email", "profile")
                 .userNameAttributeName(IdTokenClaimNames.SUB)
-                .clientName(properties.type!!.replaceFirstChar { it.uppercase() })
+                .clientName(type.replaceFirstChar { it.uppercase() })
                 .build()
         } else {
-            ClientRegistration.withRegistrationId(properties.type)
-                .clientId(properties.clientId)
+            ClientRegistration.withRegistrationId(type)
+                .clientId(clientId)
                 .clientSecret(properties.clientSecret)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .redirectUri(redirectUri)
                 .scope("openid", "email", "profile")
                 .authorizationUri(properties.authorizationUri)
-                .tokenUri(properties.tokenUri)
+                .tokenUri(properties.tokenUri!!)
                 .jwkSetUri(properties.jwkSetUri)
                 .userInfoUri(properties.userInfoUri)
                 .userNameAttributeName(IdTokenClaimNames.SUB)
-                .clientName(properties.type!!.replaceFirstChar { it.uppercase() })
+                .clientName(type.replaceFirstChar { it.uppercase() })
                 .build()
         }
 
@@ -131,7 +133,7 @@ data class IdentityProviderConfig(
 
     @Bean
     fun accessTokenResponseClient(): OAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> =
-        DefaultAuthorizationCodeTokenResponseClient()
+        RestClientAuthorizationCodeTokenResponseClient()
 
     @Bean
     fun oauth2UserService(): OAuth2UserService<OAuth2UserRequest, OAuth2User> = DefaultOAuth2UserService()

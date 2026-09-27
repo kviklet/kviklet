@@ -1,6 +1,5 @@
 package dev.kviklet.kviklet.db.util
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import dev.kviklet.kviklet.db.Payload
 import dev.kviklet.kviklet.service.dto.ReviewConfig
 import jakarta.persistence.AttributeConverter
@@ -8,6 +7,7 @@ import jakarta.persistence.Converter
 import org.apache.commons.text.StringEscapeUtils
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Component
+import tools.jackson.databind.ObjectMapper
 
 @Component
 abstract class PayloadConverter<T> : AttributeConverter<T, String> {

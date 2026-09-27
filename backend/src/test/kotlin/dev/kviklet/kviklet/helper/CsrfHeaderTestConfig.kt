@@ -2,7 +2,7 @@ package dev.kviklet.kviklet.helper
 
 import dev.kviklet.kviklet.security.CsrfHeaderFilter
 import org.springframework.boot.autoconfigure.AutoConfiguration
-import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcBuilderCustomizer
+import org.springframework.boot.webmvc.test.autoconfigure.MockMvcBuilderCustomizer
 import org.springframework.context.annotation.Bean
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
 
