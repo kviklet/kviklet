@@ -3,6 +3,13 @@ spring:
     # Keep Jackson 2's defaults so API responses and the event payloads stored as JSON stay
     # byte-compatible across the Jackson 3 upgrade.
     use-jackson2-defaults: true
+  ai:
+    mcp:
+      server:
+        name: kviklet
+        version: ${app.version}
+        # No MCP sessions: every request carries its token and is served on its own.
+        protocol: STATELESS
   liquibase:
     change-log: classpath:changelog/000-changelog.yaml
   datasource:
