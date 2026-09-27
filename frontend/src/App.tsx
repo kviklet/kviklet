@@ -25,6 +25,8 @@ import RequirePermission from "./components/RequirePermission";
 import NotAuthorized from "./components/NotAuthorized";
 import Spinner from "./components/Spinner";
 import { loginPathFor } from "./hooks/loginRedirect";
+import McpAuthorize from "./routes/mcp/McpAuthorize";
+import McpConsent from "./routes/mcp/McpConsent";
 
 export interface ProtectedRouteProps {
   children: ReactElement;
@@ -163,6 +165,23 @@ function App() {
                     element={<SessionRedirect />}
                   />
                   <Route path="login" element={<Login />} />
+                  {/* The login and consent steps of an MCP client's OAuth flow. */}
+                  <Route
+                    path="oauth/authorize"
+                    element={
+                      <ProtectedRoute>
+                        <McpAuthorize />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="oauth/consent"
+                    element={
+                      <ProtectedRoute>
+                        <McpConsent />
+                      </ProtectedRoute>
+                    }
+                  />
                 </Route>
               </Routes>
             </ConfigProvider>

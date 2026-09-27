@@ -5,6 +5,7 @@ import dev.kviklet.kviklet.db.ConfigurationAdapter
 import dev.kviklet.kviklet.security.ApiKeyAuthentication
 import dev.kviklet.kviklet.security.KvikletOAuthPrincipal
 import dev.kviklet.kviklet.security.UserDetailsWithId
+import dev.kviklet.kviklet.security.mcp.McpAuthentication
 import dev.kviklet.kviklet.service.BaseUrlResolver
 import org.slf4j.LoggerFactory
 import org.springframework.boot.context.event.ApplicationReadyEvent
@@ -140,6 +141,7 @@ class Telemetry(
     private fun clientOf(authentication: Authentication?): TelemetryClient? = when (authentication) {
         null -> null
         is ApiKeyAuthentication -> TelemetryClient.API_KEY
+        is McpAuthentication -> TelemetryClient.MCP
         else -> TelemetryClient.WEB
     }
 

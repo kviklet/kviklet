@@ -29,6 +29,8 @@ group = "com.example"
 version = "0.0.1-SNAPSHOT"
 val queryDslVersion = "5.1.0"
 val testcontainersVersion = "2.0.5"
+val springAiVersion = "2.0.1"
+val mcpSecurityVersion = "0.1.14"
 java.sourceCompatibility = JavaVersion.VERSION_21
 
 configurations {
@@ -53,6 +55,12 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-session-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-liquibase")
     implementation("org.springframework.boot:spring-boot-starter-websocket")
+    implementation(platform("org.springframework.ai:spring-ai-bom:$springAiVersion"))
+    implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc")
+    implementation("org.springframework.boot:spring-boot-starter-security-oauth2-authorization-server")
+    implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
+    implementation("org.springaicommunity:mcp-server-security:$mcpSecurityVersion")
+    implementation("org.springaicommunity:mcp-authorization-server:$mcpSecurityVersion")
     implementation("org.springframework.security:spring-security-ldap")
     implementation("org.springframework.ldap:spring-ldap-core")
     implementation("org.springframework.security:spring-security-saml2-service-provider")

@@ -149,3 +149,6 @@ databaseChangeLog:
   - include:
       file: 051-add-user-active.yaml
       relativeToChangelogFile: true
+  - include:
+      file: 052-add-mcp-oauth.yaml
+      relativeToChangelogFile: true
