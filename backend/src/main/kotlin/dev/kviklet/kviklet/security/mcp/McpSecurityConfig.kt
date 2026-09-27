@@ -25,7 +25,9 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.Order
 import org.springframework.http.HttpMethod
 import org.springframework.jdbc.core.JdbcOperations
+import org.springframework.security.authentication.AuthenticationEventPublisher
 import org.springframework.security.config.ObjectPostProcessor
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.McpDefaultJwtCustomizer
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer
@@ -201,6 +203,7 @@ class McpSecurityConfig(
         }
 
         addPublicUrlAndLicenseFilters(http)
+        publishNoAuthenticationEvents(http)
         http.addFilterAfter(McpAuthorizationPrincipalFilter(), SecurityContextHolderFilter::class.java)
         http.addFilterAfter(McpConsentSubmissionFilter(jsonMapper), SecurityContextHolderFilter::class.java)
         if (corsSettings.allowedOrigins.isNotEmpty()) {
@@ -243,6 +246,7 @@ class McpSecurityConfig(
             }
         }
         addPublicUrlAndLicenseFilters(http)
+        publishNoAuthenticationEvents(http)
         http.authorizeHttpRequests {
             it.requestMatchers("/.well-known/**").permitAll()
             it.anyRequest().authenticated()
@@ -268,6 +272,23 @@ class McpSecurityConfig(
                 beanType == McpStatelessSyncServer::class.java ||
                     beanType.packageName == KvikletMcpTools::class.java.packageName
             }
+    }
+
+    /**
+     * Nobody logs in on these chains: users log in to Kviklet as usual, and what is authenticated here
+     * are clients and tokens. Spring would still report each of those as a successful authentication,
+     * which the login telemetry counts as a password login.
+     */
+    private fun publishNoAuthenticationEvents(http: HttpSecurity) {
+        http.getSharedObject(AuthenticationManagerBuilder::class.java)
+            .authenticationEventPublisher(object : AuthenticationEventPublisher {
+                override fun publishAuthenticationSuccess(authentication: Authentication) = Unit
+
+                override fun publishAuthenticationFailure(
+                    exception: AuthenticationException,
+                    authentication: Authentication,
+                ) = Unit
+            })
     }
 
     private fun addPublicUrlAndLicenseFilters(http: HttpSecurity) {

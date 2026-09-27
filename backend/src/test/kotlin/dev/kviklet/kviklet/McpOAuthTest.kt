@@ -5,6 +5,7 @@ import dev.kviklet.kviklet.db.LicenseAdapter
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
+import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.dto.LicenseFile
 import jakarta.servlet.http.Cookie
 import org.assertj.core.api.Assertions.assertThat
@@ -18,9 +19,12 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.security.authentication.event.AuthenticationSuccessEvent
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity
 import org.springframework.session.web.http.SessionRepositoryFilter
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.context.event.ApplicationEvents
+import org.springframework.test.context.event.RecordApplicationEvents
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
@@ -45,6 +49,7 @@ import java.util.Base64
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@RecordApplicationEvents
 open class McpOAuthTest {
 
     /** The public base URL of the backend. Differs from the frontend's behind the bundled nginx. */
@@ -73,6 +78,9 @@ open class McpOAuthTest {
 
     @Autowired
     private lateinit var objectMapper: ObjectMapper
+
+    @Autowired
+    private lateinit var applicationEvents: ApplicationEvents
 
     private val redirectUri = "http://localhost:53682/callback"
     private val mcpResource get() = "$backendUrl/mcp"
@@ -104,6 +112,22 @@ open class McpOAuthTest {
         val whoami = objectMapper.readTree(result["content"][0]["text"].asString())
         assertThat(whoami["email"].asString()).isEqualTo(user.email)
         assertThat(whoami["id"].asString()).isEqualTo(user.getId())
+    }
+
+    @Test
+    fun `only the user's own Kviklet login counts as a login, not the clients and tokens of the flow`() {
+        // Login telemetry counts every successful authentication Spring reports.
+        val user = userHelper.createUser()
+        val clientId = registerClient()
+        val tokens = obtainTokens(user, clientId)
+        val refreshed = refresh(clientId, tokens["refresh_token"].asString()).andExpect(status().isOk)
+            .andReturn().response.contentAsString.let { objectMapper.readTree(it) }
+        callWhoami(refreshed["access_token"].asString()).andExpect(status().isOk)
+
+        val authentications = applicationEvents.stream(AuthenticationSuccessEvent::class.java)
+            .map { it.authentication.principal }.toList()
+        assertThat(authentications).hasSize(1)
+        assertThat(authentications.single()).isInstanceOf(UserDetailsWithId::class.java)
     }
 
     @Test

@@ -11,9 +11,10 @@ import {
   submitMcpConsent,
 } from "../../api/McpOAuthApi";
 
+// Custom-scheme redirects of native apps (com.example.app:/callback) have no host; show them whole.
 const hostOf = (url: string): string => {
   try {
-    return new URL(url).host;
+    return new URL(url).host || url;
   } catch {
     return url;
   }
