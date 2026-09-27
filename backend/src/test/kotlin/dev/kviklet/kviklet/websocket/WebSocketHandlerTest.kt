@@ -1,7 +1,5 @@
 package dev.kviklet.kviklet.websocket
 
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.helper.ConnectionHelper
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper
@@ -16,9 +14,9 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
@@ -33,6 +31,8 @@ import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.ObjectMapper
 import java.net.URI
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
@@ -176,11 +176,11 @@ class WebSocketHandlerTest {
 
         val receivedMessages = waitForResponses(messages, 2)
         val statusMessage = receivedMessages.last()
-        assertEquals("SELECT * FROM users", statusMessage.get("consoleContent").asText())
+        assertEquals("SELECT * FROM users", statusMessage.get("consoleContent").asString())
         val observer = statusMessage.get("observers").first()
-        assertEquals(observer.get("id").asText(), testUser.getId())
-        assertEquals(observer.get("email").asText(), testUser.email)
-        assertEquals(observer.get("fullName").asText(), testUser.fullName)
+        assertEquals(observer.get("id").asString(), testUser.getId())
+        assertEquals(observer.get("email").asString(), testUser.email)
+        assertEquals(observer.get("fullName").asString(), testUser.fullName)
         session.close()
     }
 
@@ -213,7 +213,7 @@ class WebSocketHandlerTest {
 
         val firstResult = results[0]
         assertTrue(firstResult.has("type"))
-        assertEquals("RECORDS", firstResult.get("type").asText())
+        assertEquals("RECORDS", firstResult.get("type").asString())
 
         if (firstResult.has("rows") && firstResult.get("rows").isArray()) {
             val firstRow = firstResult.get("rows")[0]
@@ -232,7 +232,7 @@ class WebSocketHandlerTest {
 
         val receivedMessages = waitForResponses(messages, 2)
         val errorMessage = receivedMessages.last()
-        assert(errorMessage.get("error").asText().contains("Error processing message"))
+        assert(errorMessage.get("error").asString().contains("Error processing message"))
 
         session.close()
     }
@@ -258,7 +258,7 @@ class WebSocketHandlerTest {
         )
         val observerResults = waitForResponses(observerMessages, 2)
         val statusMessage = observerResults.last()
-        assertEquals("SELECT * FROM users", statusMessage.get("consoleContent").asText())
+        assertEquals("SELECT * FROM users", statusMessage.get("consoleContent").asString())
         session.close()
         observerSession.close()
     }
@@ -323,7 +323,7 @@ class WebSocketHandlerTest {
         val errorMessage = receivedMessages.last()
         // Execution runs in a background thread since #366; access denial is reported
         // with a dedicated error message rather than the generic processing error
-        assert(errorMessage.get("error").asText().contains("You don't have permission to execute on this session"))
+        assert(errorMessage.get("error").asString().contains("You don't have permission to execute on this session"))
         session.close()
     }
 

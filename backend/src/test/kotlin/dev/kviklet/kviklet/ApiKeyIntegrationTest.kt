@@ -1,6 +1,5 @@
 package dev.kviklet.kviklet
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import dev.kviklet.kviklet.db.ApiKeyRepository
 import dev.kviklet.kviklet.db.ConnectionRepository
 import dev.kviklet.kviklet.db.ExecutionRequestRepository
@@ -14,8 +13,8 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
@@ -26,6 +25,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import tools.jackson.databind.ObjectMapper
 import java.time.LocalDateTime
 
 @SpringBootTest
@@ -110,7 +110,7 @@ class ApiKeyIntegrationTest {
             .andReturn()
 
         val response = objectMapper.readTree(result.response.contentAsString)
-        return response["key"]?.asText() ?: throw IllegalStateException("API key creation failed - no key returned")
+        return response["key"]?.asString() ?: throw IllegalStateException("API key creation failed - no key returned")
     }
 
     // ============= Deactivation =============
@@ -525,7 +525,7 @@ class ApiKeyIntegrationTest {
 
         val apiKeysJson = objectMapper.readTree(apiKeysResponse.response.contentAsString)
         val apiKeys = apiKeysJson["apiKeys"]
-        val apiKeyId = apiKeys[0]["id"].asText()
+        val apiKeyId = apiKeys[0]["id"].asString()
 
         // Check initial lastUsedAt (should be null)
         val initialApiKey = mockMvc.perform(

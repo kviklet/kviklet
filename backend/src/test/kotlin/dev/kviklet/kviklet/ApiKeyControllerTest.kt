@@ -1,6 +1,5 @@
 package dev.kviklet.kviklet
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import dev.kviklet.kviklet.db.ApiKeyRepository
 import dev.kviklet.kviklet.db.LicenseAdapter
 import dev.kviklet.kviklet.helper.RoleHelper
@@ -13,8 +12,8 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
@@ -23,6 +22,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import tools.jackson.databind.ObjectMapper
 import java.time.LocalDateTime
 
 @SpringBootTest
@@ -252,7 +252,7 @@ class ApiKeyControllerTest {
         // Extract the ID from the response
         val responseBody = createResult.response.contentAsString
         val jsonNode = objectMapper.readTree(responseBody)
-        val apiKeyId = jsonNode.get("id").asText()
+        val apiKeyId = jsonNode.get("id").asString()
 
         // Get specific API key
         mockMvc.perform(
@@ -295,7 +295,7 @@ class ApiKeyControllerTest {
         // Extract the ID
         val responseBody = createResult.response.contentAsString
         val jsonNode = objectMapper.readTree(responseBody)
-        val apiKeyId = jsonNode.get("id").asText()
+        val apiKeyId = jsonNode.get("id").asString()
 
         // Delete the API key
         mockMvc.perform(
@@ -338,7 +338,7 @@ class ApiKeyControllerTest {
         // Extract the ID
         val responseBody = createResult.response.contentAsString
         val jsonNode = objectMapper.readTree(responseBody)
-        val apiKeyId = jsonNode.get("id").asText()
+        val apiKeyId = jsonNode.get("id").asString()
 
         // Try to delete without permission
         mockMvc.perform(

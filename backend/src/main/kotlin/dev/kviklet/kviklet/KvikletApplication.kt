@@ -2,19 +2,13 @@ package dev.kviklet.kviklet
 
 import org.springframework.boot.Banner
 import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
-import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
+import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories
 import org.springframework.transaction.annotation.EnableTransactionManagement
 
-@SpringBootApplication(
-    exclude = [
-        SecurityAutoConfiguration::class,
-        MongoAutoConfiguration::class,
-    ],
-)
+@SpringBootApplication(exclude = [SecurityAutoConfiguration::class])
 @EnableJpaRepositories(basePackages = ["dev.kviklet.kviklet.db"])
 @EnableTransactionManagement(order = 0)
 @EnableConfigurationProperties

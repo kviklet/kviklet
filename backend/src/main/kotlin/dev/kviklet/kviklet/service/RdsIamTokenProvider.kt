@@ -1,6 +1,8 @@
 package dev.kviklet.kviklet.service
 
+import com.zaxxer.hikari.HikariCredentialsProvider
 import com.zaxxer.hikari.HikariDataSource
+import com.zaxxer.hikari.util.Credentials
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider
@@ -83,8 +85,8 @@ fun rdsRegionFromHost(host: String): Region {
     }
 }
 
-// A Hikari pool whose password is a freshly minted RDS IAM token on every physical connect: Hikari calls
-// getPassword() each time it opens a connection. RDS checks the token only then, so an established
+// A Hikari pool whose password is a freshly minted RDS IAM token on every physical connect: Hikari asks its
+// credentials provider each time it opens a connection. RDS checks the token only then, so an established
 // connection outliving its 15-minute token is fine and no special pool lifetime is needed.
 //
 // The host is validated as an RDS endpoint up front: a bad host must fail with a plain
@@ -101,6 +103,7 @@ class AwsIamDataSource(
     init {
         rdsRegionFromHost(uri.host)
         jdbcUrl = url
+        credentialsProvider = HikariCredentialsProvider { Credentials.of(username, generateToken()) }
     }
 
     // A token that cannot be minted (STS refuses the role, no credentials in the environment, ...) is
@@ -108,7 +111,7 @@ class AwsIamDataSource(
     // a connection failure (a failed connection test, an error result on an execution), and it is the only
     // type Hikari unwraps from its pool-initialization failure. The AWS SDK's own RuntimeExceptions would
     // instead escape the executor's error handling as a bare 500.
-    override fun getPassword(): String = try {
+    private fun generateToken(): String = try {
         tokenProvider.generateToken(uri.host, uri.port, username, roleArn)
     } catch (e: RuntimeException) {
         throw SQLException("Could not obtain an RDS IAM authentication token: ${e.message}", e)
