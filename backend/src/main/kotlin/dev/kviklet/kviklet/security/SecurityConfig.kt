@@ -20,6 +20,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.Order
+import org.springframework.http.HttpMethod
 import org.springframework.ldap.core.DirContextAdapter
 import org.springframework.ldap.core.DirContextOperations
 import org.springframework.ldap.core.support.LdapContextSource
@@ -51,7 +52,7 @@ import org.springframework.security.web.access.intercept.AuthorizationFilter
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler
 import org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher
 import org.springframework.security.web.util.matcher.RequestMatcher
 import org.springframework.stereotype.Service
 import org.springframework.web.cors.CorsConfiguration
@@ -254,7 +255,7 @@ class SecurityConfig(
             }
 
             logout {
-                logoutRequestMatcher = AntPathRequestMatcher("/logout", "POST")
+                logoutRequestMatcher = PathPatternRequestMatcher.withDefaults().matcher(HttpMethod.POST, "/logout")
                 invalidateHttpSession = true
                 deleteCookies("JSESSIONID")
                 logoutSuccessHandler = HttpStatusReturningLogoutSuccessHandler()
@@ -306,11 +307,11 @@ class MvcConfig : WebMvcConfigurer {
 
 class CustomAccessDeniedHandler : AccessDeniedHandler {
     override fun handle(
-        request: HttpServletRequest?,
-        response: HttpServletResponse?,
-        accessDeniedException: AccessDeniedException?,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        accessDeniedException: AccessDeniedException,
     ) {
-        response?.sendError(HttpServletResponse.SC_FORBIDDEN, "Unauthorized")
+        response.sendError(HttpServletResponse.SC_FORBIDDEN, "Unauthorized")
     }
 }
 
@@ -335,8 +336,8 @@ class CustomAuthenticationEntryPoint : AuthenticationEntryPoint {
 class CustomAuthenticationProvider(val userAdapter: UserAdapter, val passwordEncoder: PasswordEncoder) :
     AuthenticationProvider {
 
-    override fun authenticate(authentication: Authentication?): Authentication? {
-        val email = authentication?.name!!
+    override fun authenticate(authentication: Authentication): Authentication? {
+        val email = authentication.name
         val password = authentication.credentials.toString()
 
         val user = userAdapter.findByEmail(email)

@@ -17,6 +17,7 @@ import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Entity
 @Table(name = "role_sync_config")
@@ -97,6 +98,7 @@ class RoleSyncConfigAdapter(
         const val DEFAULT_CONFIG_ID = 1
     }
 
+    @Transactional
     fun getConfig(): RoleSyncConfig {
         val config = configRepository.findById(DEFAULT_CONFIG_ID).orElseGet {
             configRepository.save(
@@ -112,6 +114,7 @@ class RoleSyncConfigAdapter(
         return config.toDto(mappings)
     }
 
+    @Transactional
     fun updateConfig(
         enabled: Boolean? = null,
         syncMode: SyncMode? = null,
@@ -129,6 +132,7 @@ class RoleSyncConfigAdapter(
         return configRepository.save(config).toDto(mappings)
     }
 
+    @Transactional
     fun addMapping(idpGroupName: String, roleId: String): RoleSyncMapping {
         val role = roleRepository.findById(roleId).orElseThrow {
             IllegalArgumentException("Role with id $roleId not found")
@@ -150,8 +154,10 @@ class RoleSyncConfigAdapter(
         mappingRepository.deleteAll()
     }
 
+    @Transactional(readOnly = true)
     fun getMappings(): List<RoleSyncMapping> = mappingRepository.findAll().map { it.toDto() }
 
+    @Transactional(readOnly = true)
     fun getMappingsByGroupNames(groupNames: List<String>): List<RoleSyncMapping> {
         if (groupNames.isEmpty()) return emptyList()
         return mappingRepository.findByIdpGroupNameIn(groupNames).map { it.toDto() }
