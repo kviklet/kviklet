@@ -18,6 +18,7 @@ import org.springframework.web.context.request.RequestContextHolder
 import org.springframework.web.context.request.ServletRequestAttributes
 import org.springframework.web.filter.OncePerRequestFilter
 import tools.jackson.databind.json.JsonMapper
+import java.net.URI
 
 /**
  * Answers 402 on every MCP and authorization server endpoint unless an enterprise license is
@@ -35,21 +36,23 @@ class McpLicenseFilter(private val licenseService: LicenseService) : OncePerRequ
 }
 
 /**
- * Makes the request look like it arrived on its public URL, including the path prefix the bundled
- * nginx serves the backend under (`/api`, see `app.in-docker`).
+ * Makes the request look like it arrived on the backend's public URL.
  *
  * The OAuth metadata, the issuer, the token audience and the `resource_metadata` challenge are all
  * absolute URLs built from the request, and an MCP client compares them with the URL it was given.
- * The rest of the backend builds its few public URLs with the prefix spelled out instead (see
- * SamlConfig), which is why this is scoped to the MCP chains rather than done by nginx sending
- * `X-Forwarded-Prefix` for everything.
+ * Behind the bundled nginx (`app.in-docker`) that public URL is Kviklet's base URL plus `/api`. A
+ * configured `kviklet.baseUrl` is used as is, so it doesn't matter which host, port or scheme the
+ * proxies in front of Kviklet pass on; without one it falls back to the request's own origin. The
+ * rest of the backend spells out the `/api` prefix where it builds public URLs too (see SamlConfig).
+ * Without [publicBackendUrl], e.g. in local development where the backend is reached directly, the
+ * request is passed on unchanged.
  *
- * Also exposes the wrapped request through [RequestContextHolder], which the MCP security library
- * reads the request from when it validates the token audience.
+ * Also exposes the request through [RequestContextHolder], which the MCP security library reads the
+ * request from when it validates the token audience.
  */
-class McpPublicUrlFilter(private val pathPrefix: String) : OncePerRequestFilter() {
+class McpPublicUrlFilter(private val publicBackendUrl: ((HttpServletRequest) -> String)?) : OncePerRequestFilter() {
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
-        val publicRequest = if (pathPrefix.isEmpty()) request else PrefixedRequest(request, pathPrefix)
+        val publicRequest = publicBackendUrl?.let { PublicRequest(request, URI.create(it(request))) } ?: request
         val previousAttributes = RequestContextHolder.getRequestAttributes()
         RequestContextHolder.setRequestAttributes(ServletRequestAttributes(publicRequest, response))
         try {
@@ -59,17 +62,28 @@ class McpPublicUrlFilter(private val pathPrefix: String) : OncePerRequestFilter(
         }
     }
 
-    private class PrefixedRequest(request: HttpServletRequest, private val prefix: String) :
+    private class PublicRequest(request: HttpServletRequest, private val publicUrl: URI) :
         HttpServletRequestWrapper(request) {
-        override fun getContextPath(): String = prefix + super.getContextPath()
+        private val pathPrefix = publicUrl.rawPath.orEmpty().trimEnd('/')
 
-        override fun getRequestURI(): String = prefix + super.getRequestURI()
+        override fun getScheme(): String = publicUrl.scheme
 
-        override fun getRequestURL(): StringBuffer {
-            val defaultPort = (scheme == "http" && serverPort == 80) || (scheme == "https" && serverPort == 443)
-            val port = if (defaultPort) "" else ":$serverPort"
-            return StringBuffer("$scheme://$serverName$port$requestURI")
+        override fun isSecure(): Boolean = publicUrl.scheme == "https"
+
+        override fun getServerName(): String = publicUrl.host
+
+        override fun getServerPort(): Int = when {
+            publicUrl.port != -1 -> publicUrl.port
+            publicUrl.scheme == "https" -> 443
+            else -> 80
         }
+
+        override fun getContextPath(): String = pathPrefix + super.getContextPath()
+
+        override fun getRequestURI(): String = pathPrefix + super.getRequestURI()
+
+        override fun getRequestURL(): StringBuffer =
+            StringBuffer("${publicUrl.scheme}://${publicUrl.rawAuthority}$requestURI")
     }
 }
 

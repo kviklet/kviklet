@@ -60,6 +60,9 @@ open class McpOAuthTest {
     /** The public base URL of the backend. Differs from the frontend's behind the bundled nginx. */
     protected open val backendUrl = "http://localhost"
 
+    /** The public base URL of the frontend, where the user is sent to log in and consent. */
+    protected open val frontendUrl = "http://localhost"
+
     @Autowired
     private lateinit var mockMvc: MockMvc
 
@@ -295,7 +298,7 @@ open class McpOAuthTest {
             .andExpect(status().isFound)
             .andReturn().response.getHeader(HttpHeaders.LOCATION)!!
 
-        assertThat(location).startsWith("http://localhost/oauth/authorize?")
+        assertThat(location).startsWith("$frontendUrl/oauth/authorize?")
         assertThat(location).contains("client_id=$clientId")
     }
 
@@ -325,7 +328,7 @@ open class McpOAuthTest {
         val frontendLocation = mockMvc.perform(get(consentLocation.removePrefix(backendUrl)).cookie(cookie))
             .andExpect(status().isFound)
             .andReturn().response.getHeader(HttpHeaders.LOCATION)!!
-        assertThat(frontendLocation).startsWith("http://localhost/oauth/consent?")
+        assertThat(frontendLocation).startsWith("$frontendUrl/oauth/consent?")
 
         val state = queryParam(consentLocation, "state")
         mockMvc.perform(get("/oauth2/consent/details").param("state", state).cookie(cookie))

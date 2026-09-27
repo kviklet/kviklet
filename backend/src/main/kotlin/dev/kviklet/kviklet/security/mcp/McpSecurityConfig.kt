@@ -307,9 +307,13 @@ class McpSecurityConfig(
     }
 
     private fun addPublicUrlAndLicenseFilters(http: HttpSecurity) {
-        val pathPrefix = if (applicationProperties.inDocker) "/api" else ""
+        val publicBackendUrl = if (applicationProperties.inDocker) {
+            { request: HttpServletRequest -> baseUrlResolver.resolve(request) + "/api" }
+        } else {
+            null
+        }
         http.addFilterBefore(ForwardedHeaderFilter(), WebAsyncManagerIntegrationFilter::class.java)
-        http.addFilterBefore(McpPublicUrlFilter(pathPrefix), WebAsyncManagerIntegrationFilter::class.java)
+        http.addFilterBefore(McpPublicUrlFilter(publicBackendUrl), WebAsyncManagerIntegrationFilter::class.java)
         http.addFilterBefore(McpLicenseFilter(licenseService), WebAsyncManagerIntegrationFilter::class.java)
     }
 }
