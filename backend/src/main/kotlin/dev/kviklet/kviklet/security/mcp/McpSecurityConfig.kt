@@ -14,6 +14,9 @@ import dev.kviklet.kviklet.mcp.KvikletMcpTools
 import dev.kviklet.kviklet.security.CorsSettings
 import dev.kviklet.kviklet.service.BaseUrlResolver
 import dev.kviklet.kviklet.service.LicenseService
+import dev.kviklet.kviklet.telemetry.McpClient
+import dev.kviklet.kviklet.telemetry.McpClientConnected
+import dev.kviklet.kviklet.telemetry.Telemetry
 import io.modelcontextprotocol.server.McpStatelessSyncServer
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -113,6 +116,7 @@ class McpSecurityConfig(
     private val corsSettings: CorsSettings,
     private val userAdapter: UserAdapter,
     private val jsonMapper: JsonMapper,
+    private val telemetry: Telemetry,
 ) {
 
     @Bean
@@ -127,11 +131,22 @@ class McpSecurityConfig(
 
     /**
      * Consent is never stored. The authorization server counts scopes the user approved before as
-     * approved again, so a stored consent would turn a later "Cancel" into an approval.
+     * approved again, so a stored consent would turn a later "Cancel" into an approval. It asks to
+     * store the consent exactly when the user approves, which is reported to telemetry instead.
      */
     @Bean
-    fun authorizationConsentService(): OAuth2AuthorizationConsentService = object : OAuth2AuthorizationConsentService {
-        override fun save(authorizationConsent: OAuth2AuthorizationConsent) = Unit
+    fun authorizationConsentService(
+        registeredClientRepository: RegisteredClientRepository,
+    ): OAuth2AuthorizationConsentService = object : OAuth2AuthorizationConsentService {
+        override fun save(authorizationConsent: OAuth2AuthorizationConsent) {
+            val clientName = registeredClientRepository.findById(authorizationConsent.registeredClientId)
+                ?.clientName ?: ""
+            // The principal name is the user id, see McpAuthorizationPrincipalFilter.
+            telemetry.track(
+                McpClientConnected(McpClient.fromClientName(clientName)),
+                userId = authorizationConsent.principalName,
+            )
+        }
 
         override fun remove(authorizationConsent: OAuth2AuthorizationConsent) = Unit
 

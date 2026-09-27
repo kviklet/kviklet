@@ -4,6 +4,7 @@ import dev.kviklet.kviklet.ApplicationProperties
 import dev.kviklet.kviklet.db.ConfigurationAdapter
 import dev.kviklet.kviklet.security.ApiKeyAuthentication
 import dev.kviklet.kviklet.security.UserDetailsWithId
+import dev.kviklet.kviklet.security.mcp.McpAuthentication
 import dev.kviklet.kviklet.service.BaseUrlResolver
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import io.kotest.matchers.collections.shouldBeEmpty
@@ -97,6 +98,24 @@ class TelemetryTest {
         val payload = sink.sent.single()
         payload.distinctId shouldBe "instance-1:user-42"
         payload.properties["client"] shouldBe "API_KEY"
+    }
+
+    @Test
+    fun `an mcp caller is reported as such`() {
+        val user = UserDetailsWithId("user-42", "someone@example.com", "secret", emptyList())
+        SecurityContextHolder.getContext().authentication = McpAuthentication(user, emptyList())
+
+        telemetry().track(RequestClosed)
+
+        sink.sent.single().properties["client"] shouldBe "MCP"
+    }
+
+    @Test
+    fun `mcp clients are reported by kind, never by the name they registered with`() {
+        McpClient.fromClientName("Claude Code (kviklet)") shouldBe McpClient.CLAUDE_CODE
+        McpClient.fromClientName("Cursor") shouldBe McpClient.CURSOR
+        McpClient.fromClientName("Visual Studio Code") shouldBe McpClient.VS_CODE
+        McpClient.fromClientName("Acme Corp internal agent") shouldBe McpClient.OTHER
     }
 
     @Test

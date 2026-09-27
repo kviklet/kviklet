@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet
 
+import com.ninjasquad.springmockk.MockkBean
 import dev.kviklet.kviklet.db.ApiKeyRepository
 import dev.kviklet.kviklet.db.LicenseAdapter
 import dev.kviklet.kviklet.db.User
@@ -7,6 +8,10 @@ import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.dto.LicenseFile
+import dev.kviklet.kviklet.telemetry.McpClient
+import dev.kviklet.kviklet.telemetry.McpClientConnected
+import dev.kviklet.kviklet.telemetry.Telemetry
+import io.mockk.verify
 import jakarta.servlet.http.Cookie
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.containsString
@@ -82,6 +87,9 @@ open class McpOAuthTest {
     @Autowired
     private lateinit var applicationEvents: ApplicationEvents
 
+    @MockkBean(relaxed = true)
+    private lateinit var telemetry: Telemetry
+
     private val redirectUri = "http://localhost:53682/callback"
     private val mcpResource get() = "$backendUrl/mcp"
     private val codeVerifier = "a-code-verifier-that-is-long-enough-for-pkce-0123456789"
@@ -128,6 +136,20 @@ open class McpOAuthTest {
             .map { it.authentication.principal }.toList()
         assertThat(authentications).hasSize(1)
         assertThat(authentications.single()).isInstanceOf(UserDetailsWithId::class.java)
+    }
+
+    @Test
+    fun `approving a client is reported to telemetry, as the kind of client only`() {
+        val user = userHelper.createUser()
+        val clientId = registerClient()
+        val cookie = login(user)
+
+        val denied = queryParam(startAuthorization(cookie, clientId, mcpResource), "state")
+        submitConsent(cookie, clientId, denied, approve = false)
+        verify(exactly = 0) { telemetry.track(ofType<McpClientConnected>(), any()) }
+
+        obtainTokens(user, clientId)
+        verify(exactly = 1) { telemetry.track(McpClientConnected(McpClient.CLAUDE_CODE), user.getId()) }
     }
 
     @Test
