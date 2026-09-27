@@ -32,6 +32,7 @@ import org.springframework.test.web.servlet.setup.DefaultMockMvcBuilder
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.context.WebApplicationContext
 import org.springframework.web.util.UriComponentsBuilder
+import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
 import java.security.MessageDigest
 import java.time.LocalDateTime
@@ -291,8 +292,41 @@ open class McpOAuthTest {
         ).andExpect(status().isForbidden)
     }
 
-    private fun obtainAccessToken(user: User, resource: String? = mcpResource): String {
+    @Test
+    fun `a client refreshes its token without the user, and every refresh token works once`() {
+        val user = userHelper.createUser()
         val clientId = registerClient()
+        val tokens = obtainTokens(user, clientId)
+
+        // Clients may leave out the resource on refresh; the token must still work on /mcp.
+        val refreshed = refresh(clientId, tokens["refresh_token"].asString()).andExpect(status().isOk)
+            .andReturn().response.contentAsString.let { objectMapper.readTree(it) }
+        assertThat(refreshed["refresh_token"].asString()).isNotEqualTo(tokens["refresh_token"].asString())
+        callWhoami(refreshed["access_token"].asString()).andExpect(status().isOk)
+
+        refresh(clientId, tokens["refresh_token"].asString()).andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `a refresh token only works for the client it was issued to`() {
+        val user = userHelper.createUser()
+        val tokens = obtainTokens(user, registerClient())
+
+        refresh(registerClient(), tokens["refresh_token"].asString()).andExpect(status().isBadRequest)
+    }
+
+    private fun refresh(clientId: String, refreshToken: String) = mockMvc.perform(
+        post("/oauth2/token")
+            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+            .param("grant_type", "refresh_token")
+            .param("refresh_token", refreshToken)
+            .param("client_id", clientId),
+    )
+
+    private fun obtainAccessToken(user: User, resource: String? = mcpResource): String =
+        obtainTokens(user, registerClient(), resource)["access_token"].asString()
+
+    private fun obtainTokens(user: User, clientId: String, resource: String? = mcpResource): JsonNode {
         val cookie = login(user)
         val state = queryParam(startAuthorization(cookie, clientId, resource), "state")
         val clientRedirect = submitConsent(cookie, clientId, state, approve = true)
@@ -307,7 +341,7 @@ open class McpOAuthTest {
             .param("code_verifier", codeVerifier)
         resource?.let { tokenRequest.param("resource", it) }
         val response = mockMvc.perform(tokenRequest).andExpect(status().isOk).andReturn().response
-        return objectMapper.readTree(response.contentAsString)["access_token"].asString()
+        return objectMapper.readTree(response.contentAsString)
     }
 
     private fun registerClient(): String {

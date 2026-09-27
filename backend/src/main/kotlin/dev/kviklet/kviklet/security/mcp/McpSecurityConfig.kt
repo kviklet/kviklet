@@ -27,6 +27,7 @@ import org.springframework.http.HttpMethod
 import org.springframework.jdbc.core.JdbcOperations
 import org.springframework.security.config.ObjectPostProcessor
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
+import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.McpDefaultJwtCustomizer
 import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.core.Authentication
@@ -34,6 +35,7 @@ import org.springframework.security.core.AuthenticationException
 import org.springframework.security.oauth2.jwt.JwtClaimNames
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService
@@ -47,10 +49,14 @@ import org.springframework.security.oauth2.server.authorization.client.JdbcRegis
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository
 import org.springframework.security.oauth2.server.authorization.converter.OAuth2ClientRegistrationRegisteredClientConverter
+import org.springframework.security.oauth2.server.authorization.mcp.token.ResourceIdentifierAudienceTokenCustomizer
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings
+import org.springframework.security.oauth2.server.authorization.settings.TokenSettings
+import org.springframework.security.oauth2.server.authorization.token.DelegatingOAuth2TokenGenerator
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext
-import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer
+import org.springframework.security.oauth2.server.authorization.token.JwtGenerator
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator
 import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.AuthenticationConverter
@@ -64,6 +70,7 @@ import org.springframework.web.context.request.ServletRequestAttributes
 import org.springframework.web.filter.ForwardedHeaderFilter
 import org.springframework.web.util.UriComponentsBuilder
 import tools.jackson.databind.json.JsonMapper
+import java.time.Duration
 import java.util.UUID
 
 /** The one scope MCP clients are granted: acting as the user, with the user's own permissions. */
@@ -127,21 +134,28 @@ class McpSecurityConfig(
     }
 
     /**
-     * Tokens are audience-restricted to the MCP endpoint. Clients name it in the `resource`
-     * parameter, which the MCP authorization server turns into the audience; this covers clients
-     * that leave it out, which would otherwise get a token `/mcp` rejects.
+     * Access tokens are JWTs audience-restricted to the MCP endpoint; refresh tokens are issued to
+     * public clients as well (see [PublicClientRefreshTokenGenerator]). The JWT customizers are the
+     * ones the MCP configurer would use by default, plus a fallback audience.
      */
     @Bean
-    fun mcpAudienceCustomizer(): OAuth2TokenCustomizer<JwtEncodingContext> = OAuth2TokenCustomizer { context ->
-        val grant = context.getAuthorizationGrant<Authentication>() as? OAuth2AuthorizationGrantAuthenticationToken
-        if (context.tokenType == OAuth2TokenType.ACCESS_TOKEN && grant?.additionalParameters?.get("resource") == null) {
-            context.claims.claim(JwtClaimNames.AUD, listOf(currentIssuer() + MCP_ENDPOINT))
+    fun tokenGenerator(jwkSource: JWKSource<SecurityContext>): OAuth2TokenGenerator<*> {
+        val jwtGenerator = JwtGenerator(NimbusJwtEncoder(jwkSource))
+        val resourceAudience = ResourceIdentifierAudienceTokenCustomizer()
+        jwtGenerator.setJwtCustomizer { context ->
+            McpDefaultJwtCustomizer.DEFAULT_JWT_CUSTOMIZER.customize(context)
+            resourceAudience.customize(context)
+            defaultToMcpAudience(context)
         }
+        return DelegatingOAuth2TokenGenerator(jwtGenerator, PublicClientRefreshTokenGenerator())
     }
 
     @Bean
     @Order(-2)
-    fun mcpAuthorizationServerFilterChain(http: HttpSecurity): SecurityFilterChain {
+    fun mcpAuthorizationServerFilterChain(
+        http: HttpSecurity,
+        registeredClientRepository: RegisteredClientRepository,
+    ): SecurityFilterChain {
         // The authorization server's endpoints are only known once the MCP configurer has set it up
         // while the chain is built, so they are looked up when the first request is matched.
         val endpointsMatcher by lazy {
@@ -154,6 +168,14 @@ class McpSecurityConfig(
                     endpoint.consentPage(MCP_CONSENT_ENDPOINT)
                     endpoint.authorizationRequestConverters { converters ->
                         converters.replaceAll(::DefaultScopeAuthorizationRequestConverter)
+                    }
+                }
+                authServer.clientAuthentication { clientAuthentication ->
+                    clientAuthentication.authenticationConverters {
+                        it.add(0, PublicClientRefreshTokenAuthenticationConverter())
+                    }
+                    clientAuthentication.authenticationProviders {
+                        it.add(0, PublicClientRefreshTokenAuthenticationProvider(registeredClientRepository))
                     }
                 }
                 // Added after the MCP configurer's own post-processors, so these win.
@@ -260,8 +282,23 @@ private val alwaysRequireConsent = object : ObjectPostProcessor<OAuth2Authorizat
 }
 
 /**
- * Every registered client may request [MCP_SCOPE], whatever it asked for at registration, and must
- * use PKCE.
+ * Tokens are audience-restricted to the MCP endpoint. Clients name it in the `resource` parameter,
+ * which the MCP authorization server turns into the audience; this covers clients that leave it out
+ * (some do on refresh), which would otherwise get a token `/mcp` rejects.
+ */
+private fun defaultToMcpAudience(context: JwtEncodingContext) {
+    val grant = context.getAuthorizationGrant<Authentication>() as? OAuth2AuthorizationGrantAuthenticationToken
+    if (context.tokenType == OAuth2TokenType.ACCESS_TOKEN && grant?.additionalParameters?.get("resource") == null) {
+        context.claims.claim(JwtClaimNames.AUD, listOf(currentIssuer() + MCP_ENDPOINT))
+    }
+}
+
+/** How long a client stays logged in without being used. Refresh tokens rotate on every use. */
+private val REFRESH_TOKEN_TIME_TO_LIVE: Duration = Duration.ofDays(30)
+
+/**
+ * Every registered client may request [MCP_SCOPE], whatever it asked for at registration, must use
+ * PKCE, and gets rotating refresh tokens.
  */
 private val grantMcpScopeOnRegistration = object : ObjectPostProcessor<OAuth2ClientRegistrationAuthenticationProvider> {
     override fun <O : OAuth2ClientRegistrationAuthenticationProvider> postProcess(provider: O): O {
@@ -272,6 +309,12 @@ private val grantMcpScopeOnRegistration = object : ObjectPostProcessor<OAuth2Cli
                 .scope(MCP_SCOPE)
                 .clientSettings(
                     ClientSettings.withSettings(client.clientSettings.settings).requireProofKey(true).build(),
+                )
+                .tokenSettings(
+                    TokenSettings.withSettings(client.tokenSettings.settings)
+                        .reuseRefreshTokens(false)
+                        .refreshTokenTimeToLive(REFRESH_TOKEN_TIME_TO_LIVE)
+                        .build(),
                 )
                 .build()
         }
