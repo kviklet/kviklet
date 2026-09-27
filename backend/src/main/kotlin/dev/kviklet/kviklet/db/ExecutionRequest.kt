@@ -197,11 +197,11 @@ class CustomExecutionRequestRepositoryImpl(private val entityManager: EntityMana
         after: LocalDateTime?,
         limit: Int,
     ): List<ExecutionRequestEntity> {
-        val query = JPAQuery<ExecutionRequestEntity>(entityManager)
+        // Page over ids first, then fetch-join only that page. Limiting the fetch-join query itself makes
+        // Hibernate paginate over the joined events collection, which it cannot do correctly in SQL.
+        val query = JPAQuery<String>(entityManager)
+            .select(qExecutionRequestEntity.id)
             .from(qExecutionRequestEntity)
-            .leftJoin(qExecutionRequestEntity.events).fetchJoin()
-            .leftJoin(qExecutionRequestEntity.connection).fetchJoin()
-            .leftJoin(qExecutionRequestEntity.author).fetchJoin()
 
         // Apply filters
         reviewStatuses?.let {
@@ -245,10 +245,19 @@ class CustomExecutionRequestRepositoryImpl(private val entityManager: EntityMana
             query.where(qExecutionRequestEntity.createdAt.lt(it))
         }
 
-        // Order and limit
-        return query
+        val ids = query
             .orderBy(qExecutionRequestEntity.createdAt.desc())
             .limit(limit.toLong())
+            .fetch()
+        if (ids.isEmpty()) return emptyList()
+
+        return JPAQuery<ExecutionRequestEntity>(entityManager)
+            .from(qExecutionRequestEntity)
+            .leftJoin(qExecutionRequestEntity.events).fetchJoin()
+            .leftJoin(qExecutionRequestEntity.connection).fetchJoin()
+            .leftJoin(qExecutionRequestEntity.author).fetchJoin()
+            .where(qExecutionRequestEntity.id.`in`(ids))
+            .orderBy(qExecutionRequestEntity.createdAt.desc())
             .fetch()
     }
 }

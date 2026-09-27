@@ -20,10 +20,10 @@ class CurrentUserArgumentResolver : HandlerMethodArgumentResolver {
         webRequest: NativeWebRequest,
         binderFactory: WebDataBinderFactory?,
     ): Any? {
-        val principal = SecurityContextHolder.getContext().authentication.principal
+        val principal = SecurityContextHolder.getContext().authentication?.principal
         return when (principal) {
             is UserDetailsWithId -> principal
-            else -> throw RuntimeException("Expected UserDetailsWithId but got: ${principal.javaClass}")
+            else -> throw RuntimeException("Expected UserDetailsWithId but got: ${principal?.javaClass}")
         }
     }
 }

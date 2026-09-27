@@ -34,14 +34,12 @@ class SamlLoginSuccessHandler(
     private val logger = LoggerFactory.getLogger(SamlLoginSuccessHandler::class.java)
 
     override fun onAuthenticationSuccess(
-        request: HttpServletRequest?,
-        response: HttpServletResponse?,
-        authentication: Authentication?,
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        authentication: Authentication,
     ) {
-        if (request == null || response == null) return
-
         // Convert SAML authentication to use UserDetailsWithId
-        if (authentication?.principal is Saml2AuthenticatedPrincipal) {
+        if (authentication.principal is Saml2AuthenticatedPrincipal) {
             val samlPrincipal = authentication.principal as Saml2AuthenticatedPrincipal
 
             try {

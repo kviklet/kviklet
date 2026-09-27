@@ -30,6 +30,7 @@ import org.apache.commons.lang3.builder.ToStringStyle.SHORT_PREFIX_STYLE
 import org.hibernate.annotations.ColumnTransformer
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.time.Duration
 import java.time.LocalDateTime
 
@@ -177,6 +178,7 @@ class EventAdapter(private val eventRepository: EventRepository, private val con
     fun countExecutionsSince(since: LocalDateTime): Long =
         eventRepository.countByTypeAndCreatedAtGreaterThanEqual(EventType.EXECUTE, since)
 
+    @Transactional(readOnly = true)
     fun getExecutions(from: LocalDateTime? = null, to: LocalDateTime? = null): List<ExecuteEvent> {
         val events = eventRepository.findExecutionsFiltered(from, to)
         return events.map {
@@ -186,6 +188,7 @@ class EventAdapter(private val eventRepository: EventRepository, private val con
         }.filterIsInstance<ExecuteEvent>()
     }
 
+    @Transactional
     fun updateEvent(id: EventId, payload: Payload): Event {
         val event = eventRepository.findById(id.toString()).orElseThrow { IllegalArgumentException("Event not found") }
         event.payload = payload
@@ -195,6 +198,7 @@ class EventAdapter(private val eventRepository: EventRepository, private val con
         )
     }
 
+    @Transactional(readOnly = true)
     fun getEvent(id: EventId): Event {
         val event = eventRepository.findById(id.toString()).orElseThrow { IllegalArgumentException("Event not found") }
         return event.toDto(

@@ -47,6 +47,7 @@ class LiveSessionAdapter(
     private val executionRequestAdapter: ExecutionRequestAdapter,
 ) {
 
+    @Transactional(readOnly = true)
     fun findByExecutionRequestId(executionRequestId: ExecutionRequestId): LiveSession? {
         val liveSessionEntity = liveSessionRepository.findByExecutionRequestId(executionRequestId.toString())
         return liveSessionEntity?.toDto(connectionAdapter.toDto(liveSessionEntity.executionRequest.connection))

@@ -1,6 +1,5 @@
 package dev.kviklet.kviklet.migration
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import liquibase.change.custom.CustomTaskChange
 import liquibase.database.Database
 import liquibase.database.jvm.JdbcConnection
@@ -8,6 +7,7 @@ import liquibase.exception.CustomChangeException
 import liquibase.exception.SetupException
 import liquibase.exception.ValidationErrors
 import liquibase.resource.ResourceAccessor
+import tools.jackson.databind.ObjectMapper
 import java.time.LocalDateTime
 
 /**
@@ -162,7 +162,7 @@ class RecalculateRequestStatuses : CustomTaskChange {
         val hasRejection = reviewEvents.any { event ->
             try {
                 val payload = objectMapper.readTree(event.payload)
-                payload.get("action")?.asText() == "REJECT"
+                payload.get("action")?.asString() == "REJECT"
             } catch (e: Exception) {
                 false
             }
@@ -193,7 +193,7 @@ class RecalculateRequestStatuses : CustomTaskChange {
         val changesRequested = reviewEvents.filter { event ->
             try {
                 val payload = objectMapper.readTree(event.payload)
-                payload.get("action")?.asText() == "REQUEST_CHANGE"
+                payload.get("action")?.asString() == "REQUEST_CHANGE"
             } catch (e: Exception) {
                 false
             }
@@ -202,7 +202,7 @@ class RecalculateRequestStatuses : CustomTaskChange {
         val approvals = reviewEvents.filter { event ->
             try {
                 val payload = objectMapper.readTree(event.payload)
-                payload.get("action")?.asText() == "APPROVE"
+                payload.get("action")?.asString() == "APPROVE"
             } catch (e: Exception) {
                 false
             }
@@ -225,7 +225,7 @@ class RecalculateRequestStatuses : CustomTaskChange {
         }.filter { event ->
             try {
                 val payload = objectMapper.readTree(event.payload)
-                payload.get("action")?.asText() == "APPROVE"
+                payload.get("action")?.asString() == "APPROVE"
             } catch (e: Exception) {
                 false
             }
@@ -255,7 +255,7 @@ class RecalculateRequestStatuses : CustomTaskChange {
                     val payload = objectMapper.readTree(event.payload)
                     val results = payload.get("results")
                     results?.any { result ->
-                        result.get("type")?.asText() == "ERROR"
+                        result.get("type")?.asString() == "ERROR"
                     } ?: false
                 } catch (e: Exception) {
                     false
@@ -289,7 +289,7 @@ class RecalculateRequestStatuses : CustomTaskChange {
                         val payload = objectMapper.readTree(event.payload)
                         val results = payload.get("results")
                         val hasError = results?.any { result ->
-                            result.get("type")?.asText() == "ERROR"
+                            result.get("type")?.asString() == "ERROR"
                         } ?: false
                         !hasError
                     } catch (e: Exception) {
