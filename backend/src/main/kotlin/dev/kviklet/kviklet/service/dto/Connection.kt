@@ -154,32 +154,59 @@ data class DatasourceConnection(
             }
         }
 
+        // RDS only accepts IAM tokens over TLS, so the driver is told to require it unless the connection's
+        // own options already ask for that or more. The driver setting is appended, and every driver lets
+        // the last value win, so it is only appended when it does not downgrade a configured verify-* mode.
         is AuthenticationDetails.AwsIam -> {
-            when (type) {
-                DatasourceType.POSTGRESQL -> {
-                    val baseUrl = "jdbc:postgresql://$hostname:$port/$databaseName"
-                    val delimiter = if (additionalOptions.isEmpty()) "?" else "&"
-                    baseUrl + additionalOptions + delimiter + "sslmode=require"
-                }
+            val options = parseUrlOptions(additionalOptions)
+            val (baseUrl, requiredSsl) = when (type) {
+                DatasourceType.POSTGRESQL -> Pair(
+                    "jdbc:postgresql://$hostname:$port/$databaseName",
+                    // ssl=true without sslmode means verify-full in pgjdbc; sslmode takes precedence over ssl.
+                    "sslmode=require".takeUnless {
+                        options["sslmode"]?.lowercase() in setOf("require", "verify-ca", "verify-full") ||
+                            (options["sslmode"] == null && options["ssl"]?.lowercase()?.let { it != "false" } == true)
+                    },
+                )
 
-                DatasourceType.MYSQL -> {
-                    val baseUrl = "jdbc:mysql://$hostname:$port/$databaseName"
-                    val delimiter = if (additionalOptions.isEmpty()) "?" else "&"
-                    baseUrl + additionalOptions + delimiter + "sslMode=REQUIRED"
-                }
+                DatasourceType.MYSQL -> Pair(
+                    "jdbc:mysql://$hostname:$port/$databaseName",
+                    "sslMode=REQUIRED".takeUnless {
+                        options["sslmode"]?.uppercase() in setOf("REQUIRED", "VERIFY_CA", "VERIFY_IDENTITY") ||
+                            (options["sslmode"] == null && options["verifyservercertificate"]?.lowercase() == "true")
+                    },
+                )
 
-                DatasourceType.MARIADB -> {
-                    val baseUrl = "jdbc:mariadb://$hostname:$port/$databaseName"
-                    val delimiter = if (additionalOptions.isEmpty()) "?" else "&"
+                DatasourceType.MARIADB -> Pair(
+                    "jdbc:mariadb://$hostname:$port/$databaseName",
                     // MariaDB Connector/J has no REQUIRED mode; trust enforces TLS without cert verification
-                    baseUrl + additionalOptions + delimiter + "sslMode=trust"
-                }
+                    "sslMode=trust".takeUnless {
+                        options["sslmode"]?.lowercase() in setOf("trust", "verify-ca", "verify-full")
+                    },
+                )
 
                 else -> throw IllegalArgumentException("AWS IAM is not supported for $type")
+            }
+            if (requiredSsl == null) {
+                baseUrl + additionalOptions
+            } else {
+                val delimiter = if (additionalOptions.isEmpty()) "?" else "&"
+                baseUrl + additionalOptions + delimiter + requiredSsl
             }
         }
     }
 }
+
+// The key=value pairs of a JDBC URL's query string, keys lower-cased so lookups are spelling-insensitive
+// (pgjdbc keys are lower-case, Connector/J's are camelCase).
+private fun parseUrlOptions(additionalOptions: String): Map<String, String> = additionalOptions
+    .removePrefix("?")
+    .split("&")
+    .mapNotNull { param ->
+        val separator = param.indexOf('=')
+        if (separator <= 0) null else param.substring(0, separator).trim().lowercase() to param.substring(separator + 1)
+    }
+    .toMap()
 
 data class KubernetesConnection(
     override val id: ConnectionId,

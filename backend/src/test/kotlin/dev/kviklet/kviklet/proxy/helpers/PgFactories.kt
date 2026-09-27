@@ -9,6 +9,8 @@ import dev.kviklet.kviklet.proxy.core.ProxySession
 import dev.kviklet.kviklet.proxy.core.TLSCertificate
 import dev.kviklet.kviklet.proxy.mocks.EventServiceMock
 import dev.kviklet.kviklet.proxy.postgres.PostgresProtocol
+import dev.kviklet.kviklet.service.AwsRdsIamTokenProvider
+import dev.kviklet.kviklet.service.RdsIamTokenProvider
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import org.testcontainers.containers.PostgreSQLContainer
@@ -60,15 +62,16 @@ fun startPostgresProxy(
     handshakeTimeoutMs: Int = 10_000,
     maxConnectionsPerSession: Int = 15,
     additionalOptions: String = "",
+    connAuth: AuthenticationDetails = AuthenticationDetails.UserPassword("test", "test"),
+    rdsIamTokenProvider: RdsIamTokenProvider = AwsRdsIamTokenProvider(),
 ): ProxyServerHandle {
-    val connAuth = AuthenticationDetails.UserPassword("test", "test")
     val executionRequestFactory = ExecutionRequestFactory()
     val request = executionRequestFactory.createDatasourceExecutionRequest()
     val eventService = eventServiceOverride ?: EventServiceMock(executionRequestAdapter, eventAdapter, request)
     val port = (12000..20000).random()
     val proxy = ProxyServer(
         port,
-        PostgresProtocol(eventService, tlsCertificate),
+        PostgresProtocol(eventService, tlsCertificate, rdsIamTokenProvider),
         handshakeTimeoutMs,
         maxConnectionsPerSession,
     )

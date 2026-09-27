@@ -28,7 +28,9 @@ class ProxySession(
     // protocol-agnostic: some wire protocols serve more than one flavor (MySQL and MariaDB share one
     // listener), and the ProxyProtocol reads this to build the right upstream connection.
     val datasourceType: DatasourceType,
-    val authenticationDetails: AuthenticationDetails.UserPassword,
+    // How the proxy authenticates to the upstream. UserPassword is used as-is; AwsIam mints a fresh RDS
+    // token per upstream connection (the token is only valid for 15 minutes, a session can live for hours).
+    val authenticationDetails: AuthenticationDetails,
     // The connection's raw additionalOptions string (the query-string tail of its JDBC URL). Carried so the
     // upstream leg honors the same TLS configuration (sslmode/sslMode, root certs) that JDBC executions of
     // this connection already honor; each ProxyProtocol parses the keys its driver understands.

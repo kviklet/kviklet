@@ -165,6 +165,25 @@ class ProxyGateTest {
     }
 
     @Test
+    fun `starting the proxy for an IAM connection with a non-RDS host returns 400 before any session starts`() {
+        installTestLicense()
+        configurationAdapter.setConfiguration(Configuration(teamsUrl = null, slackUrl = null, proxyEnabled = true))
+        val request = executionRequestHelper.createApprovedRequest(
+            author = adminUser,
+            approver = reviewerUser,
+            connection = connectionHelper.createIamConnection(hostname = "db.example.com"),
+            requestType = RequestType.TemporaryAccess,
+        )
+        val cookie = userHelper.login(email = adminUser.email, mockMvc = mockMvc)
+
+        // Checked ahead of the listener-availability check (which is what a valid host would hit here, as
+        // 500), so a misconfigured IAM host is reported instead of a session that no client can use.
+        mockMvc.perform(post("/execution-requests/${request.getId()}/proxy").cookie(cookie))
+            .andExpect(status().isBadRequest)
+            .andExpect(jsonPath("$.message", containsString("Invalid RDS endpoint format")))
+    }
+
+    @Test
     fun `enabling the proxy without a license is rejected`() {
         val cookie = userHelper.login(email = adminUser.email, mockMvc = mockMvc)
 

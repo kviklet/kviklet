@@ -2,10 +2,13 @@
 package dev.kviklet.kviklet.proxy.postgres
 
 import dev.kviklet.kviklet.proxy.core.parseAdditionalOptions
+import dev.kviklet.kviklet.proxy.core.upstreamPassword
+import dev.kviklet.kviklet.service.RdsIamTokenProvider
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import org.postgresql.core.PGStream
 import org.postgresql.core.QueryExecutorBase
 import org.postgresql.core.v3.ConnectionFactoryImpl
+import org.postgresql.jdbc.SslMode
 import org.postgresql.util.HostSpec
 import java.util.*
 import kotlin.reflect.full.memberProperties
@@ -18,11 +21,12 @@ class TargetPostgresConnection(private val connInfo: Pair<PGStream, Map<String, 
 }
 
 class TargetPostgresSocketFactory(
-    authenticationDetails: AuthenticationDetails.UserPassword,
+    private val authenticationDetails: AuthenticationDetails,
     databaseName: String,
-    targetHost: String,
-    targetPort: Int,
+    private val targetHost: String,
+    private val targetPort: Int,
     additionalOptions: String = "",
+    private val rdsIamTokenProvider: RdsIamTokenProvider,
 ) {
     private val targetPgConnProps: Properties
     private val hostSpec: Array<HostSpec>
@@ -42,22 +46,31 @@ class TargetPostgresSocketFactory(
     init {
         val props = Properties()
         props.setProperty("user", authenticationDetails.username)
-        props.setProperty("password", authenticationDetails.password)
         val database = if (databaseName != "") databaseName else authenticationDetails.username
         props.setProperty("PGDBNAME", database)
         parseAdditionalOptions(additionalOptions)
             .filterKeys { it.lowercase() in UPSTREAM_TLS_OPTIONS }
             .forEach { (key, value) -> props.setProperty(key.lowercase(), value) }
+        if (authenticationDetails is AuthenticationDetails.AwsIam && !SslMode.of(props).requireEncryption()) {
+            // RDS only accepts IAM tokens over TLS, and the token is a bearer credential that must not
+            // travel in the clear. Raise anything weaker than require; verify-ca/verify-full are kept.
+            props.setProperty("sslmode", SslMode.REQUIRE.value)
+        }
 
         this.targetPgConnProps = props
         this.hostSpec = arrayOf(HostSpec(targetHost, targetPort))
     }
 
     fun createTargetPgConnection(): TargetPostgresConnection {
+        val props = Properties().apply { putAll(targetPgConnProps) }
+        props.setProperty(
+            "password",
+            authenticationDetails.upstreamPassword(targetHost, targetPort, rdsIamTokenProvider),
+        )
         val factory = ConnectionFactoryImpl()
         val queryExecutor = factory.openConnectionImpl(
             this.hostSpec,
-            this.targetPgConnProps,
+            props,
         ) as QueryExecutorBase
 
         val queryExecutorClass = QueryExecutorBase::class

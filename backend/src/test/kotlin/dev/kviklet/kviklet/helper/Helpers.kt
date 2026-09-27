@@ -237,6 +237,34 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
         return connection
     }
 
+    // An AWS IAM connection to an arbitrary host. Nothing can connect to it (no AWS involved), which is
+    // the point: it exercises the validation that runs before any connection is attempted.
+    @Transactional
+    fun createIamConnection(hostname: String, type: DatasourceType = DatasourceType.POSTGRESQL): Connection {
+        val connection = connectionAdapter.createDatasourceConnection(
+            ConnectionId("ds-conn-test-$connectionCount"),
+            "Test IAM Connection $connectionCount",
+            AuthenticationType.AWS_IAM,
+            "testdb",
+            1,
+            "iamdbuser",
+            null,
+            "A test IAM connection",
+            ReviewConfig(numTotalRequired = 1),
+            5432,
+            hostname,
+            type,
+            type.toProtocol(),
+            additionalJDBCOptions = "",
+            dumpsEnabled = false,
+            temporaryAccessEnabled = true,
+            explainEnabled = false,
+            storeResults = false,
+        )
+        connectionCount++
+        return connection
+    }
+
     @Transactional
     fun createMongoDBConnection(container: MongoDBContainer, databaseName: String = "db"): Connection {
         val connection = connectionAdapter.createDatasourceConnection(

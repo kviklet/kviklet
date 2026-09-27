@@ -5,6 +5,7 @@ import dev.kviklet.kviklet.proxy.core.ProxyServer
 import dev.kviklet.kviklet.proxy.core.TlsCertEnvConfig
 import dev.kviklet.kviklet.proxy.core.tlsCertificateFactory
 import dev.kviklet.kviklet.service.EventService
+import dev.kviklet.kviklet.service.RdsIamTokenProvider
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -25,9 +26,11 @@ class ProxyServerConfig {
     fun postgresProxyServer(
         eventService: EventService,
         tlsCertConfig: TlsCertEnvConfig,
+        rdsIamTokenProvider: RdsIamTokenProvider,
         @Value("\${kviklet.proxy.postgres.port:5432}") port: Int,
     ): ProxyServer {
-        val server = ProxyServer(port, PostgresProtocol(eventService, tlsCertificateFactory(tlsCertConfig)))
+        val protocol = PostgresProtocol(eventService, tlsCertificateFactory(tlsCertConfig), rdsIamTokenProvider)
+        val server = ProxyServer(port, protocol)
         server.start()
         return server
     }

@@ -4,6 +4,8 @@ import com.zaxxer.hikari.HikariDataSource
 import dev.kviklet.kviklet.controller.SessionWebsocketHandler
 import dev.kviklet.kviklet.proxy.core.TlsCertEnvConfig
 import dev.kviklet.kviklet.security.CorsSettings
+import dev.kviklet.kviklet.service.AwsIamDataSource
+import dev.kviklet.kviklet.service.RdsIamTokenProvider
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.context.properties.ConfigurationProperties
@@ -14,10 +16,6 @@ import org.springframework.stereotype.Component
 import org.springframework.web.socket.config.annotation.EnableWebSocket
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
-import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.rds.RdsUtilities
-import java.net.URI
 import javax.sql.DataSource
 
 @Component
@@ -101,15 +99,11 @@ class DataSourceConfig(
 
     @Bean
     @Primary
-    fun dataSource(): DataSource {
+    fun dataSource(rdsIamTokenProvider: RdsIamTokenProvider): DataSource {
         if (iamAuth) {
-            val dataSource = KvikletAwsIamDataSource().apply {
-                jdbcUrl = url
-                maxLifetime = 840000
+            return AwsIamDataSource(rdsIamTokenProvider, url, username).apply {
                 username = this@DataSourceConfig.username
-                initialize()
             }
-            return dataSource
         }
 
         return HikariDataSource().apply {
@@ -131,52 +125,4 @@ class DataSourceConfig(
 
     private fun isCertificateAuthEnabled(): Boolean =
         keyFile.isNotBlank() && certFile.isNotBlank() && rootCert.isNotBlank()
-}
-
-class KvikletAwsIamDataSource : HikariDataSource() {
-    private lateinit var rdsUtilities: RdsUtilities
-    private lateinit var uri: URI
-    private lateinit var region: Region
-
-    fun initialize() {
-        uri = URI.create(jdbcUrl.removePrefix("jdbc:"))
-        region = extractRegionFromHost(uri.host)
-
-        rdsUtilities = RdsUtilities.builder()
-            .region(region)
-            .credentialsProvider(DefaultCredentialsProvider.create())
-            .build()
-    }
-
-    private fun extractRegionFromHost(host: String): Region {
-        // Expected format: <db-instance>.<region>.rds.amazonaws.com
-        val parts = host.split(".")
-        if (parts.size < 5 ||
-            parts[parts.size - 3] != "rds" ||
-            parts[parts.size - 2] != "amazonaws" ||
-            parts[parts.size - 1] != "com"
-        ) {
-            throw IllegalArgumentException(
-                "Invalid RDS endpoint format. Expected: <db-instance>.<region>.rds.amazonaws.com",
-            )
-        }
-
-        // The region is the second-to-last segment before "rds.amazonaws.com"
-        val regionString = parts[parts.size - 4]
-
-        return try {
-            Region.of(regionString)
-        } catch (e: IllegalArgumentException) {
-            throw IllegalArgumentException("Invalid AWS region: $regionString", e)
-        }
-    }
-
-    override fun getPassword(): String {
-        val token = rdsUtilities.generateAuthenticationToken { builder ->
-            builder.hostname(uri.host)
-                .port(uri.port)
-                .username(username)
-        }
-        return token
-    }
 }

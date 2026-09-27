@@ -60,6 +60,35 @@ class ConnectionStringTest {
     }
 
     @Test
+    fun `IAM connection strings keep a configured verification mode instead of downgrading it`() {
+        connection(DatasourceType.POSTGRESQL, iamAuth, additionalOptions = "?sslmode=verify-full&sslrootcert=/ca.crt")
+            .getConnectionString() shouldBe
+            "jdbc:postgresql://db.example.com:3306/testdb?sslmode=verify-full&sslrootcert=/ca.crt"
+        connection(DatasourceType.POSTGRESQL, iamAuth, additionalOptions = "?ssl=true")
+            .getConnectionString() shouldBe
+            "jdbc:postgresql://db.example.com:3306/testdb?ssl=true"
+        connection(DatasourceType.MYSQL, iamAuth, additionalOptions = "?sslMode=VERIFY_IDENTITY")
+            .getConnectionString() shouldBe
+            "jdbc:mysql://db.example.com:3306/testdb?sslMode=VERIFY_IDENTITY"
+        connection(DatasourceType.MARIADB, iamAuth, additionalOptions = "?sslMode=verify-ca&serverSslCert=/ca.crt")
+            .getConnectionString() shouldBe
+            "jdbc:mariadb://db.example.com:3306/testdb?sslMode=verify-ca&serverSslCert=/ca.crt"
+    }
+
+    @Test
+    fun `IAM connection strings raise a configured weaker ssl mode`() {
+        connection(DatasourceType.POSTGRESQL, iamAuth, additionalOptions = "?sslmode=prefer")
+            .getConnectionString() shouldBe
+            "jdbc:postgresql://db.example.com:3306/testdb?sslmode=prefer&sslmode=require"
+        connection(DatasourceType.MYSQL, iamAuth, additionalOptions = "?sslMode=DISABLED")
+            .getConnectionString() shouldBe
+            "jdbc:mysql://db.example.com:3306/testdb?sslMode=DISABLED&sslMode=REQUIRED"
+        connection(DatasourceType.MARIADB, iamAuth, additionalOptions = "?sslMode=disable")
+            .getConnectionString() shouldBe
+            "jdbc:mariadb://db.example.com:3306/testdb?sslMode=disable&sslMode=trust"
+    }
+
+    @Test
     fun `mssql IAM connection string is not supported`() {
         assertThrows<IllegalArgumentException> {
             connection(DatasourceType.MSSQL, iamAuth).getConnectionString()

@@ -12,8 +12,10 @@ import dev.kviklet.kviklet.proxy.helpers.mysqlProxyServerFactory
 import dev.kviklet.kviklet.proxy.mocks.FailingEventServiceMock
 import dev.kviklet.kviklet.proxy.mysql.TargetMySqlSocketFactory
 import dev.kviklet.kviklet.proxy.mysql.readPacket
+import dev.kviklet.kviklet.service.RdsIamTokenProvider
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.DatasourceType
+import io.mockk.mockk
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -542,6 +544,7 @@ class MySqlProxyQueriesAuditTest {
             "testdb",
             "localhost",
             proxy.port,
+            rdsIamTokenProvider = mockk<RdsIamTokenProvider>(),
         ).createTargetMySqlConnection()
         try {
             val comBinlogDump = mysqlPacket(0, byteArrayOf(0x12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
