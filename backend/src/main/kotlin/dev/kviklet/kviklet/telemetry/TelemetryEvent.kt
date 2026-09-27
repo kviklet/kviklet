@@ -19,8 +19,32 @@ sealed class TelemetryEvent(val name: String)
 
 enum class LoginMethod { PASSWORD, LDAP, OIDC, SAML }
 
-/** How the acting user reached Kviklet: the web frontend (any browser session) or an API key. */
-enum class TelemetryClient { WEB, API_KEY }
+/** How the acting user reached Kviklet: the web frontend (any browser session), an API key, or an MCP client. */
+enum class TelemetryClient { WEB, API_KEY, MCP }
+
+/**
+ * The kind of MCP client a user connected. Clients name themselves freely at registration, so the
+ * name is only matched against a few known clients and never sent itself.
+ */
+enum class McpClient {
+    CLAUDE_CODE,
+    CURSOR,
+    VS_CODE,
+    OTHER,
+    ;
+
+    companion object {
+        fun fromClientName(clientName: String): McpClient {
+            val name = clientName.lowercase()
+            return when {
+                name.startsWith("claude code") -> CLAUDE_CODE
+                name.startsWith("cursor") -> CURSOR
+                name.startsWith("visual studio code") || name.startsWith("vs code") -> VS_CODE
+                else -> OTHER
+            }
+        }
+    }
+}
 
 enum class ExecutionMode { EXECUTE, DRY_RUN, DOWNLOAD, EXPLAIN, DUMP }
 
@@ -68,6 +92,9 @@ data class UserCreated(val authMethod: LoginMethod) : TelemetryEvent("user_creat
 data class UserMigratedToSso(val authMethod: LoginMethod) : TelemetryEvent("user_migrated_to_sso")
 
 data class UserLoggedIn(val authMethod: LoginMethod) : TelemetryEvent("user_logged_in")
+
+/** A user approved an MCP client on the consent screen. */
+data class McpClientConnected(val mcpClient: McpClient) : TelemetryEvent("mcp_client_connected")
 
 object RoleCreated : TelemetryEvent("role_created")
 

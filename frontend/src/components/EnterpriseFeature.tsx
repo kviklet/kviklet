@@ -84,6 +84,21 @@ const enterpriseFeatures = {
       </>
     ),
   },
+  mcpServer: {
+    title: "MCP Server",
+    pitch: (
+      <>
+        <p>
+          Connect Claude Code or any other MCP client to Kviklet, so agents can
+          work with requests through the same review process as everyone else.
+        </p>
+        <p>
+          Clients log in with your normal Kviklet login and act with your own
+          permissions, and every action lands in the audit log.
+        </p>
+      </>
+    ),
+  },
 } satisfies Record<string, { title: string; pitch: ReactNode }>;
 
 type EnterpriseFeatureKey = keyof typeof enterpriseFeatures;

@@ -37,4 +37,14 @@ class BaseUrlResolverTest {
 
         assertThat(resolver.resolve(request("http", "localhost", 8081))).isEqualTo("http://localhost:8081")
     }
+
+    @Test
+    fun `a base url that is not an absolute http url is ignored`() {
+        listOf("kviklet.example.com", "kviklet.example.com:8080", "ftp://kviklet.example.com", "https://").forEach {
+            val resolver = BaseUrlResolver(it)
+
+            assertThat(resolver.resolve(request("http", "localhost", 8081))).isEqualTo("http://localhost:8081")
+            assertThat(resolver.resolve()).isNotEqualTo(it)
+        }
+    }
 }
