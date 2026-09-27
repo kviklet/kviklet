@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Button from "../../components/Button";
 import Spinner from "../../components/Spinner";
-import { Error } from "../../components/Alert";
+import { Error, WarningBanner } from "../../components/Alert";
 import { EnterpriseFeaturePage } from "../../components/EnterpriseFeature";
 import { UserStatusContext } from "../../components/UserStatusProvider";
 import {
@@ -72,34 +72,33 @@ const McpConsent = () => {
     <div className="mx-auto mt-10 max-w-md">
       <div className="rounded-md bg-white p-6 shadow-xl dark:bg-slate-900 dark:shadow-none">
         <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-50">
-          Allow <span data-testid="mcp-client-name">{details.clientName}</span>{" "}
-          to use Kviklet as you?
+          Connect an MCP client to Kviklet
         </h1>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          The application chose this name itself; Kviklet has not verified it.
+        <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+          <dt className="text-slate-500 dark:text-slate-400">Client</dt>
+          <dd
+            className="font-medium text-slate-900 dark:text-slate-50"
+            data-testid="mcp-client-name"
+          >
+            {details.clientName}
+          </dd>
+          <dt className="text-slate-500 dark:text-slate-400">Returns to</dt>
+          <dd className="font-mono text-slate-900 dark:text-slate-50">
+            {hostOf(details.redirectUri)}
+          </dd>
+        </dl>
+        <p className="mt-4 text-sm text-slate-700 dark:text-slate-300">
+          It will act as{" "}
+          {userStatus ? (
+            <span className="font-medium">{userStatus.email}</span>
+          ) : (
+            "you"
+          )}
+          : it can see and do everything you can in Kviklet, and nothing more.
         </p>
-        <div className="mt-4 space-y-3 text-sm text-slate-700 dark:text-slate-300">
-          <p>
-            If you allow access, this MCP client can do everything you can do in
-            Kviklet
-            {userStatus ? (
-              <>
-                {" "}
-                as <span className="font-medium">{userStatus.email}</span>
-              </>
-            ) : null}
-            , with your permissions, until its login expires or your account is
-            deactivated.
-          </p>
-          <p>
-            You will be sent back to{" "}
-            <span className="font-mono font-medium">
-              {hostOf(details.redirectUri)}
-            </span>
-            . Only allow access if you just started this login from an MCP
-            client like Claude Code yourself.
-          </p>
-        </div>
+        <WarningBanner className="mt-4">
+          Only continue if you just started this from your MCP client yourself.
+        </WarningBanner>
         {submitFailed && (
           <div className="mt-4">
             <Error>
@@ -114,7 +113,7 @@ const McpConsent = () => {
             variant={submitting ? "disabled" : undefined}
             dataTestId="mcp-consent-deny"
           >
-            Deny
+            Cancel
           </Button>
           <Button
             onClick={() => void decide(true)}
