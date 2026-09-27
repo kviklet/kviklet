@@ -19,6 +19,8 @@ import io.mockk.mockk
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
@@ -27,6 +29,8 @@ import org.junit.jupiter.params.provider.MethodSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
+import org.testcontainers.Testcontainers
+import org.testcontainers.containers.Container
 import org.testcontainers.containers.JdbcDatabaseContainer
 import org.testcontainers.containers.MariaDBContainer
 import org.testcontainers.containers.MySQLContainer
@@ -57,23 +61,33 @@ class MySqlProxyQueriesAuditTest {
         // server (MariaDB defaults to 16MB, which would reject the split-packet test at the database).
         private const val LARGE_PACKET_BYTES = "134217728"
 
+        // local_infile is switched ON server-side (MySQL defaults it off) so the LOAD DATA LOCAL test proves
+        // that it is the proxy's upstream connection, not the server default, that refuses the file request.
         private val mysqlContainer: MySQLContainer<*> = MySQLContainer(DockerImageName.parse("mysql:8.2")).apply {
             withDatabaseName("testdb")
             withUsername("test")
             withPassword("test")
-            withCommand("--max_allowed_packet=$LARGE_PACKET_BYTES")
+            withCommand("--max_allowed_packet=$LARGE_PACKET_BYTES", "--local-infile=1")
         }
         private val mariadbContainer: MariaDBContainer<*> = MariaDBContainer(DockerImageName.parse("mariadb:11.4"))
             .apply {
                 withDatabaseName("testdb")
                 withUsername("test")
                 withPassword("test")
-                withCommand("--max_allowed_packet=$LARGE_PACKET_BYTES")
+                withCommand("--max_allowed_packet=$LARGE_PACKET_BYTES", "--local-infile=1")
             }
+
+        // The mysql CLI tests run the stock client inside the MySQL container and reach the proxy on the host
+        // through host.testcontainers.internal. That alias only forwards ports exposed before the container
+        // starts, so those proxies get fixed ports chosen up front instead of one picked per test.
+        private val cliProxyPorts: Map<DatasourceType, Int> = (12000..20000).shuffled().take(2).let { ports ->
+            mapOf(DatasourceType.MYSQL to ports[0], DatasourceType.MARIADB to ports[1])
+        }
 
         @JvmStatic
         @BeforeAll
         fun startContainers() {
+            Testcontainers.exposeHostPorts(*cliProxyPorts.values.toIntArray())
             Startables.deepStart(listOf(mysqlContainer, mariadbContainer)).join()
         }
 
@@ -102,11 +116,23 @@ class MySqlProxyQueriesAuditTest {
         startedProxies.clear()
     }
 
-    private fun startProxy(type: DatasourceType): MySqlProxyInstance {
-        val instance = mysqlProxyServerFactory(container(type), type, executionRequestAdapter, eventAdapter)
+    private fun startProxy(type: DatasourceType, port: Int = (12000..20000).random()): MySqlProxyInstance {
+        val instance =
+            mysqlProxyServerFactory(container(type), type, executionRequestAdapter, eventAdapter, port = port)
         startedProxies.add(instance.proxy)
         return instance
     }
+
+    // Runs the stock mysql 8 CLI (from the MySQL container) against the proxy on the host. The CLI is the
+    // client the temporary-access instructions tell users to use, and it advertises capability flags
+    // (CLIENT_LOCAL_FILES, lenenc auth data) that no JDBC driver sends.
+    private fun mysqlCli(proxy: MySqlProxyInstance, arguments: String): Container.ExecResult =
+        mysqlContainer.execInContainer(
+            "sh",
+            "-c",
+            "MYSQL_PWD=${proxy.password} mysql --protocol=tcp -h host.testcontainers.internal -P ${proxy.port} " +
+                "-u ${proxy.username} --ssl-mode=DISABLED testdb $arguments",
+        )
 
     private fun directConnection(type: DatasourceType): Connection =
         mysqlDirectConnectionFactory(container(type)).also { openedConnections.add(it) }
@@ -119,6 +145,49 @@ class MySqlProxyQueriesAuditTest {
                 setProperty("password", proxy.password)
             },
         ).also { openedConnections.add(it) }
+
+    // --- 0. Client coverage: the stock mysql CLI ------------------------------------------------------------
+
+    @ParameterizedTest
+    @MethodSource("datasourceTypes")
+    fun `the stock mysql CLI can connect and its query is audited`(type: DatasourceType) {
+        val proxy = startProxy(type, port = cliProxyPorts.getValue(type))
+
+        val result = mysqlCli(proxy, "-e 'SELECT 42 AS answer'")
+
+        assertEquals(0, result.exitCode, "mysql CLI failed: ${result.stderr}")
+        assertTrue(result.stdout.contains("42"), result.stdout)
+        proxy.eventService.assertQueryIsAudited("SELECT 42 AS answer")
+    }
+
+    @ParameterizedTest
+    @MethodSource("datasourceTypes")
+    fun `LOAD DATA LOCAL from the mysql CLI is refused by the database and audited`(type: DatasourceType) {
+        val proxy = startProxy(type, port = cliProxyPorts.getValue(type))
+        directConnection(type).createStatement().use { stmt ->
+            stmt.execute("DROP TABLE IF EXISTS audit_local_infile")
+            stmt.execute("CREATE TABLE audit_local_infile (line VARCHAR(255))")
+        }
+
+        val result = mysqlCli(
+            proxy,
+            "--local-infile=1 -e \"LOAD DATA LOCAL INFILE '/etc/hostname' INTO TABLE audit_local_infile\"",
+        )
+
+        // The CLI advertises LOCAL_FILES, but the proxy's upstream connection does not, so the server
+        // refuses the statement itself: the error comes from the database, not from a proxy abort, and no
+        // file contents ever crossed the relay.
+        assertNotEquals(0, result.exitCode, "LOAD DATA LOCAL must not succeed through the proxy: ${result.stdout}")
+        assertTrue(result.stderr.contains("ERROR"), result.stderr)
+        assertFalse(result.stderr.contains("Kviklet proxy"), result.stderr)
+        directConnection(type).createStatement().use { stmt ->
+            stmt.executeQuery("SELECT count(*) FROM audit_local_infile").use { rs ->
+                assertTrue(rs.next())
+                assertEquals(0, rs.getInt(1))
+            }
+        }
+        proxy.eventService.assertAuditedQueryContains("LOAD DATA LOCAL INFILE '/etc/hostname'")
+    }
 
     // --- A. Statement coverage: the right text reaches the audit log ------------------------------------
 

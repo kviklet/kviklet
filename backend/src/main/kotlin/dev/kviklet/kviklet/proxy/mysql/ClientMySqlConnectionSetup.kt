@@ -25,8 +25,8 @@ const val NATIVE_PASSWORD_PLUGIN = "mysql_native_password"
 private const val CLIENT_SSL = 0x0800
 private const val CLIENT_PROTOCOL_41 = 0x0200
 private const val CLIENT_COMPRESS = 0x0020
-private const val CLIENT_LOCAL_FILES = 0x0080
 private const val CLIENT_ZSTD_COMPRESSION = 0x04000000
+private const val CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA = 0x00200000
 private const val COM_QUIT = 0x01
 
 // Generous cap on any client packet during the handshake. A HandshakeResponse is far smaller; a declared
@@ -98,10 +98,17 @@ fun authenticateClientMySql(
     }
 
     // The relay parses every packet on this connection for the audit log, which becomes impossible if the
-    // client switches the stream to a form the parser does not understand (compressed packets) or opens a
-    // side channel the audit never sees (LOAD DATA LOCAL file transfers). None of these capabilities are
-    // advertised in the initial handshake, so a well-behaved client never requests them; one that does
-    // anyway is refused up front (fail closed) instead of trusted to not use them.
+    // client switches the stream to a form the parser does not understand (compressed packets). Neither
+    // compression capability is advertised in the initial handshake, so a well-behaved client never
+    // requests them; one that does anyway is refused up front (fail closed) instead of trusted to not use
+    // them.
+    //
+    // CLIENT_LOCAL_FILES is deliberately NOT refused, although LOAD DATA LOCAL would open a file-transfer
+    // side channel the audit never sees: libmysqlclient (the mysql CLI) sends the flag regardless of what
+    // the server advertised and of --local-infile, so refusing it locks out the stock CLI. The channel is
+    // closed on the upstream side instead -- the proxy's own upstream connection never advertises
+    // CLIENT_LOCAL_FILES (see TargetMySqlServer.kt), so the server refuses every LOAD DATA LOCAL with an
+    // error before it ever requests a file, and the statement itself is audited like any other query.
     if (payload.size < 4) {
         throw IOException("Malformed HandshakeResponse packet (truncated)")
     }
@@ -113,7 +120,6 @@ fun authenticateClientMySql(
     val unsupportedCapabilities = listOfNotNull(
         "COMPRESS".takeIf { (clientCapabilities and CLIENT_COMPRESS) != 0 },
         "ZSTD_COMPRESSION".takeIf { (clientCapabilities and CLIENT_ZSTD_COMPRESSION) != 0 },
-        "LOCAL_FILES".takeIf { (clientCapabilities and CLIENT_LOCAL_FILES) != 0 },
     )
     if (unsupportedCapabilities.isNotEmpty()) {
         val names = unsupportedCapabilities.joinToString(", ")
@@ -309,15 +315,23 @@ class HandshakeResponse(
                 }
                 val username = String(usernameBytes.toByteArray(), Charsets.UTF_8)
 
-                // Reject lenenc-encoded auth data -- we don't advertise this capability
-                if ((capabilities and 0x00200000) != 0) {
-                    throw IOException("CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA is not supported by this proxy")
-                }
-
+                // The auth response is a length-encoded string when the client set
+                // CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA, a 1-byte-length string with CLIENT_SECURE_CONNECTION
+                // and a NUL-terminated string otherwise. The proxy never advertises the lenenc form, but
+                // libmysqlclient and PyMySQL send the flag unconditionally (a 20-byte native scramble is
+                // encoded identically either way), so it is parsed rather than refused.
+                val hasLenencAuthData = (capabilities and CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA) != 0
                 val hasSecureConnection = (capabilities and 0x8000) != 0
-                val authResponse = if (hasSecureConnection) {
-                    val authResponseLen = buffer.get().toInt() and 0xFF
-                    val authBytes = ByteArray(authResponseLen)
+                val authResponse = if (hasLenencAuthData || hasSecureConnection) {
+                    val authResponseLen = if (hasLenencAuthData) {
+                        readLengthEncodedInt(buffer)
+                    } else {
+                        (buffer.get().toInt() and 0xFF).toLong()
+                    }
+                    if (authResponseLen > buffer.remaining()) {
+                        throw IOException("Malformed HandshakeResponse packet (truncated)")
+                    }
+                    val authBytes = ByteArray(authResponseLen.toInt())
                     buffer.get(authBytes)
                     authBytes
                 } else {
@@ -355,6 +369,25 @@ class HandshakeResponse(
                 return HandshakeResponse(username, authResponse, database, authPluginName)
             } catch (e: BufferUnderflowException) {
                 throw IOException("Malformed HandshakeResponse packet (truncated)", e)
+            }
+        }
+
+        // MySQL length-encoded integer: one byte below 0xFB, or a 0xFC/0xFD/0xFE prefix followed by 2, 3 or
+        // 8 little-endian bytes.
+        private fun readLengthEncodedInt(buffer: ByteBuffer): Long {
+            val first = buffer.get().toInt() and 0xFF
+            return when (first) {
+                0xFC -> (buffer.short.toLong() and 0xFFFF)
+
+                0xFD -> (buffer.get().toLong() and 0xFF) or
+                    ((buffer.get().toLong() and 0xFF) shl 8) or
+                    ((buffer.get().toLong() and 0xFF) shl 16)
+
+                0xFE -> buffer.long
+
+                0xFB, 0xFF -> throw IOException("Malformed HandshakeResponse packet (invalid length prefix)")
+
+                else -> first.toLong()
             }
         }
     }
