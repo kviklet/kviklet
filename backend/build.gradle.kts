@@ -22,6 +22,9 @@ kapt {
     correctErrorTypes = true
 }
 
+// Liquibase 5 moved to the Functional Source License; stay on the last Apache-2.0 release.
+extra["liquibase.version"] = "4.33.0"
+
 group = "com.example"
 version = "0.0.1-SNAPSHOT"
 val queryDslVersion = "5.1.0"
