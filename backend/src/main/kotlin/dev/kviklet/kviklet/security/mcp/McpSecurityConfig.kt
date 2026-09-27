@@ -219,6 +219,8 @@ class McpSecurityConfig(
             mcp.validateAudienceClaim(true)
             mcp.protectedResourceMetadataCustomizer { metadata ->
                 metadata.authorizationServer(currentIssuer()).resourceName("Kviklet").scope(MCP_SCOPE)
+                    // Spring's default claims certificate-bound tokens, which these are not.
+                    .tlsClientCertificateBoundAccessTokens(false)
             }
             mcp.oauth2ResourceServer { resourceServer ->
                 resourceServer.jwt { it.jwtAuthenticationConverter(McpJwtAuthenticationConverter(userAdapter)) }

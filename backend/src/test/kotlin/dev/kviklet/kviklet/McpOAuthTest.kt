@@ -139,6 +139,7 @@ open class McpOAuthTest {
             .andExpect(jsonPath("$.resource").value(mcpResource))
             .andExpect(jsonPath("$.authorization_servers[0]").value(backendUrl))
             .andExpect(jsonPath("$.scopes_supported[0]").value("mcp"))
+            .andExpect(jsonPath("$.tls_client_certificate_bound_access_tokens").value(false))
 
         mockMvc.perform(get("/.well-known/oauth-authorization-server"))
             .andExpect(status().isOk)
