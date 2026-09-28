@@ -267,7 +267,6 @@ class SessionWebsocketHandler(
 
     private fun sendMessage(session: WebSocketSession, message: ResponseMessage) {
         try {
-            logger.info("Sending message to ${session.id}: $message")
             synchronized(session) {
                 session.sendMessage(TextMessage(objectMapper.writeValueAsString(message)))
             }
