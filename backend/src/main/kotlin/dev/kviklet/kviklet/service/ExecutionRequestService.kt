@@ -688,11 +688,17 @@ class ExecutionRequestService(
             throw RuntimeException("This should never happen! Probably there is a way to refactor this code")
         }
 
+        val commandToExecute = when (executionRequest.request.type) {
+            RequestType.SingleExecution -> executionRequest.request.command!!
+            RequestType.TemporaryAccess -> statement ?: executionRequest.request.command!!
+            RequestType.Dump -> throw RuntimeException("Dump requests can't be executed via the /execute endpoint")
+        }
+
         val event = eventService.saveEvent(
             id,
             userId,
             ExecutePayload(
-                command = statement ?: executionRequest.request.command!!,
+                command = commandToExecute,
                 containerName = executionRequest.request.containerName,
                 podName = executionRequest.request.podName,
                 namespace = executionRequest.request.namespace,
@@ -705,7 +711,7 @@ class ExecutionRequestService(
         val result = kubernetesApi.executeCommandOnPod(
             namespace = executionRequest.request.namespace!!,
             podName = executionRequest.request.podName!!,
-            command = statement ?: executionRequest.request.command!!,
+            command = commandToExecute,
             containerName = containerName,
             initialWaitTimeoutSeconds = connection.kubernetesExecInitialWaitTimeoutSeconds,
             timeoutMinutes = connection.kubernetesExecTimeoutMinutes,
