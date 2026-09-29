@@ -10,6 +10,7 @@ import dev.kviklet.kviklet.shell.KubernetesApi
 import dev.kviklet.kviklet.shell.KubernetesResult
 import io.kubernetes.client.Exec
 import io.mockk.every
+import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -99,5 +100,29 @@ class KubernetesExecuteTest {
         ).andExpect(
             MockMvcResultMatchers.jsonPath("$.exitCode").value(0),
         )
+    }
+
+    @Test
+    fun `executing an approved kubernetes single execution runs the approved command, not one from the body`() {
+        val author = userHelper.createUser(permissions = listOf("*"))
+        val approver = userHelper.createUser(permissions = listOf("*"))
+        val executor = userHelper.createUser(permissions = listOf("*"))
+        val cookie = userHelper.login(email = executor.email, mockMvc = mockMvc)
+        val executionRequest = executionRequestHelper.createApprovedKubernetesExecutionRequest(author, approver)
+        val injectedCommand = "cat /var/run/secrets/kubernetes.io/serviceaccount/token"
+
+        mockMvc.perform(
+            MockMvcRequestBuilders.post("/execution-requests/${executionRequest.getId()}/execute")
+                .cookie(cookie)
+                .content("""{"query": "$injectedCommand"}""")
+                .contentType("application/json"),
+        ).andExpect(MockMvcResultMatchers.status().isOk)
+
+        verify(exactly = 0) {
+            kubernetesApi.executeCommandOnPod(any(), any(), any(), injectedCommand, any(), any(), any())
+        }
+        verify(exactly = 1) {
+            kubernetesApi.executeCommandOnPod(any(), any(), any(), "echo 'Hello, World!'", any(), any(), any())
+        }
     }
 }
