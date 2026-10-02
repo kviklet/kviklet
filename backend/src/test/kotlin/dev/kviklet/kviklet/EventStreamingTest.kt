@@ -7,6 +7,7 @@ import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.helper.EventFactory
 import dev.kviklet.kviklet.helper.ExecutionRequestDetailsFactory
+import dev.kviklet.kviklet.helper.ExecutionRequestFactory
 import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.EventStreamingService
 import dev.kviklet.kviklet.service.LicenseService
@@ -20,6 +21,7 @@ import dev.kviklet.kviklet.service.dto.UpdateResultLog
 import dev.kviklet.kviklet.service.eventstream.EventFileWriter
 import dev.kviklet.kviklet.service.eventstream.accessFields
 import dev.kviklet.kviklet.service.eventstream.executionResultFields
+import dev.kviklet.kviklet.service.eventstream.requestFields
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.AfterEach
@@ -131,6 +133,50 @@ class EventStreamingTest {
         assertFalse(statement.contains('\uFFFD'))
         assertEquals(true, fields["statement_truncated"])
         assertEquals(text.toByteArray().size.toLong(), fields["statement_original_bytes"])
+    }
+
+    @Test fun `access reason retains long text and truncates only beyond 64 KiB without splitting UTF8`() {
+        val prefix = "Investigate ticket SEC-42\n\"Customer access\" ".repeat(400)
+        val fields = EventStreamingService.reason(prefix)
+        assertEquals(prefix, fields["reason"])
+        assertEquals(false, fields["reason_truncated"])
+        val text = "x".repeat(64 * 1024 - 1) + "한😀"
+        val truncated = EventStreamingService.reason(text)
+        assertEquals("x".repeat(64 * 1024 - 1), truncated["reason"])
+        assertEquals(true, truncated["reason_truncated"])
+        assertEquals(text.toByteArray(Charsets.UTF_8).size.toLong(), truncated["reason_original_bytes"])
+        assertEquals("", EventStreamingService.reason("")["reason"])
+        val missing = ExecutionRequestFactory().createDatasourceExecutionRequest(description = null)
+        assertFalse(requestFields(missing).containsKey("request"))
+    }
+
+    @Test fun `review and proxy execution fields carry the reason without review comment text`() {
+        val request = ExecutionRequestFactory().createDatasourceExecutionRequest(description = "Investigate SEC-42")
+        val review = EventFactory().createReviewApprovedEvent(request = request, comment = "private review comment")
+        val proxy = EventFactory().createExecuteEvent(request = request)
+        for (fields in listOf(accessFields(review, "web"), accessFields(proxy, "database_proxy"))) {
+            val json = mapper.writeValueAsString(fields)
+            assertEquals("Investigate SEC-42", mapper.readTree(json)["request"]["reason"].asText())
+            assertFalse(json.contains("private review comment"))
+        }
+    }
+
+    @Test fun `fully escaped reasons and statements fit together in one bounded JSONL event`() {
+        val text = "\u0001".repeat(64 * 1024)
+        val request = ExecutionRequestFactory().createDatasourceExecutionRequest(description = text)
+        val event = EventFactory().createExecuteEvent(request = request, query = text)
+        val stream = service()
+        stream.emit("execution.attempted", "database", fields = { accessFields(event, "web") })
+        val line = lines().single()
+        val json = mapper.readTree(line)
+        assertEquals(text, json["kviklet"]["request"]["reason"].asText())
+        assertEquals(text, json["kviklet"]["execution"]["statement"].asText())
+        assertEquals(false, json["kviklet"]["request"]["reason_truncated"].asBoolean())
+        assertTrue(line.toByteArray(Charsets.UTF_8).size < 1024 * 1024)
+        assertEquals(0, stream.getConfiguration().status.detectedFailures)
+        stream.emit("too_large", "configuration", fields = mapOf("extra" to "x".repeat(1024 * 1024)))
+        assertEquals(1, lines().size)
+        assertEquals(1, stream.getConfiguration().status.detectedFailures)
     }
 
     @Test fun `execution metadata excludes stored values and error messages`() {

@@ -40,7 +40,7 @@ Common fields are `@timestamp` (UTC event capture time), `ecs.version`, `service
 
 | Activity | Actions/details |
 | --- | --- |
-| Requests and reviews | `request.created`, `request.edited`, `request.closed`, `review.approve`, `review.reject`, `review.request_change`, `comment.added`; request and connection IDs, no comment text |
+| Requests and reviews | `request.created`, `request.edited`, `request.reason_changed`, `request.closed`, `review.approve`, `review.reject`, `review.request_change`, `comment.added`; request and connection IDs and access reason, no comment text |
 | SQL, downloads, dumps, dry runs | `execution.attempted`, `execution.completed`; statement, mode, channel, duration and result metadata when available |
 | Database proxies | Attempts with `database_proxy` channel, session correlation and protocol; `proxy.session_created` / `proxy.session_ended` |
 | Kubernetes commands | Attempts and actual completion callback, including background completion, exit code and timeout; output excluded |
@@ -52,7 +52,9 @@ Coverage is limited to activity Kviklet observes. Direct database administration
 
 Browser/API SQL metadata includes the rows returned by Kviklet's executor, column count, affected rows, dump byte count, numeric error codes and elapsed duration when available. Counts reflect executor behavior and configured result limits; they are not an estimate of rows that the database would have returned without those limits. Empty result lists produce unknown outcomes.
 
-The stream excludes stored rows, returned values, column names, passwords, API-key values/hashes, proxy credentials, license contents, connection strings, raw exception messages, comment/description text, and Kubernetes stdout/stderr. Statements and shell commands **are included** and can themselves contain secrets or personal information. Secure the log files and downstream SIEM appropriately. Statements are bounded to 64 KiB of valid UTF-8, with `statement_truncated` and `statement_original_bytes`. JSON escaping preserves embedded newlines within a single physical line. An event exceeding 128 KiB is dropped and counted. Large permission sets can therefore cause a dropped record; no silent partial permission diff is emitted.
+The requester's access reason (the request description) is included as `kviklet.request.reason` on creation, reviews, request edits/closure, and execution attempts/completions, including database-proxy attempts. It reflects the request description captured when that event is prepared. A changed reason produces `request.reason_changed` with the new value after a successful transaction commit, including when cleared to an empty string. Saving an unchanged reason does not produce that event. A missing description omits the reason fields. Reasons are bounded to 64 KiB of valid UTF-8, with `kviklet.request.reason_truncated` and `kviklet.request.reason_original_bytes` describing any truncation; the original request in Kviklet is unchanged.
+
+The stream excludes stored rows, returned values, column names, passwords, API-key values/hashes, proxy credentials, license contents, connection strings, raw exception messages, review/comment text, other object descriptions, and Kubernetes stdout/stderr. Access reasons, statements, and shell commands **are included** and can themselves contain secrets or personal information. Secure the log files and downstream SIEM appropriately. Statements are bounded to 64 KiB of valid UTF-8, with `statement_truncated` and `statement_original_bytes`. JSON escaping preserves embedded newlines within a single physical line. The overall record limit is 1 MiB, allowing a full reason and statement even when JSON escaping expands their contents. An event exceeding that limit is dropped and counted. Large permission sets can therefore cause a dropped record; no silent partial permission diff is emitted.
 
 A completed browser query, for example, has this shape (illustrative IDs):
 
@@ -70,6 +72,7 @@ A completed browser query, for example, has this shape (illustrative IDs):
   "source": {"ip": "127.0.0.1"},
   "kviklet": {
     "schema_version": "1.0.0", "request_id": "request-id", "audit_event_id": "audit-id",
+    "request": {"reason": "Investigate ticket SEC-42", "reason_truncated": false, "reason_original_bytes": 25},
     "connection": {"id": "connection-id", "type": "DATASOURCE", "name": "Production", "database_type": "POSTGRESQL"},
     "execution": {"channel": "web", "mode": "query", "statement": "SELECT id FROM users", "statement_truncated": false, "statement_original_bytes": 20},
     "duration_ms": 42,

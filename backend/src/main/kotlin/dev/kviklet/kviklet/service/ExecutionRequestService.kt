@@ -53,6 +53,7 @@ import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.UpdateQueryResult
 import dev.kviklet.kviklet.service.dto.utcTimeNow
+import dev.kviklet.kviklet.service.eventstream.requestFields
 import dev.kviklet.kviklet.shell.KubernetesApi
 import dev.kviklet.kviklet.telemetry.ExecutionMode
 import dev.kviklet.kviklet.telemetry.ProxySessionStarted
@@ -163,11 +164,12 @@ class ExecutionRequestService(
         eventStreamingService?.emit(
             "request.created",
             "configuration",
-            fields = mapOf(
-                "request_id" to executionRequestDetails.request.getId(),
-                "connection_id" to connection.getId(),
-                "request_type" to executionRequestDetails.request.type.name,
-            ),
+            fields = {
+                requestFields(executionRequestDetails.request) + mapOf(
+                    "connection_id" to connection.getId(),
+                    "request_type" to executionRequestDetails.request.type.name,
+                )
+            },
             actorId = userId,
         )
         return executionRequestDetails
@@ -394,6 +396,14 @@ class ExecutionRequestService(
             command = request.command,
             temporaryAccessDuration = request.temporaryAccessDuration?.let { Duration.ofMinutes(it) },
         )
+        if (result.request.description != executionRequestDetails.request.description) {
+            eventStreamingService?.emit(
+                "request.reason_changed",
+                "configuration",
+                fields = { requestFields(result.request) },
+                actorId = userId,
+            )
+        }
         return resolveRoles(result)
     }
 
@@ -534,7 +544,7 @@ class ExecutionRequestService(
         eventStreamingService?.emit(
             "request.closed",
             "configuration",
-            fields = mapOf("request_id" to id.toString()),
+            fields = { requestFields(executionRequest.request) },
             actorId = authorId,
         )
         return reviewEvent

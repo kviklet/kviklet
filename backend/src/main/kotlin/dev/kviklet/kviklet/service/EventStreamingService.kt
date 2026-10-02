@@ -288,9 +288,10 @@ class EventStreamingService(
     private fun append(event: Map<String, Any?>) {
         try {
             val json = mapper.writeValueAsString(event)
-            if (json.toByteArray().size > 128 * 1024) {
+            // Allow two 64 KiB text fields even when JSON escaping expands each byte sixfold.
+            if (json.toByteArray(Charsets.UTF_8).size > 1024 * 1024) {
                 failures++
-                logger.warn("Event exceeded the 128 KiB record limit")
+                logger.warn("Event exceeded the 1 MiB record limit")
                 return
             }
             val output = writer ?: run {
@@ -384,9 +385,13 @@ class EventStreamingService(
             }
         }
 
-        fun statement(text: String?): Map<String, Any?> {
+        fun statement(text: String?): Map<String, Any?> = boundedText(text, "statement")
+
+        fun reason(text: String?): Map<String, Any?> = boundedText(text, "reason")
+
+        private fun boundedText(text: String?, field: String): Map<String, Any?> {
             if (text == null) return emptyMap()
-            // Bound temporary allocations too: do not encode an arbitrarily large query in full.
+            // Bound temporary allocations too: do not encode arbitrarily large text in full.
             val bytes = text.take(64 * 1024 + 1).toByteArray(Charsets.UTF_8)
             var originalBytes = 0L
             var index = 0
@@ -414,9 +419,9 @@ class EventStreamingService(
             // Stop before a partial UTF-8 code point.
             if (end < bytes.size) while (end > 0 && bytes[end].toInt() and 0xc0 == 0x80) end--
             return mapOf(
-                "statement" to String(bytes, 0, end, Charsets.UTF_8),
-                "statement_truncated" to (end < originalBytes),
-                "statement_original_bytes" to originalBytes,
+                field to String(bytes, 0, end, Charsets.UTF_8),
+                "${field}_truncated" to (end < originalBytes),
+                "${field}_original_bytes" to originalBytes,
             )
         }
     }

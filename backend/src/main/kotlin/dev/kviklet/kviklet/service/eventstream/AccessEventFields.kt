@@ -7,6 +7,7 @@ import dev.kviklet.kviklet.service.dto.DumpResultLog
 import dev.kviklet.kviklet.service.dto.ErrorResultLog
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.ExecuteEvent
+import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import dev.kviklet.kviklet.service.dto.KubernetesOutputResultLog
 import dev.kviklet.kviklet.service.dto.QueryResultLog
 import dev.kviklet.kviklet.service.dto.ReviewEvent
@@ -14,8 +15,13 @@ import dev.kviklet.kviklet.service.dto.UpdateResultLog
 import java.time.ZoneOffset
 
 /** Do not serialize Event/Connection/User directly: they contain credentials and stored result contents. */
+fun requestFields(request: ExecutionRequest): Map<String, Any?> = buildMap {
+    put("request_id", request.getId())
+    request.description?.let { put("request", EventStreamingService.reason(it)) }
+}
+
 fun accessFields(event: Event, channel: String): Map<String, Any?> = buildMap {
-    put("request_id", event.request.getId())
+    putAll(requestFields(event.request))
     put("audit_event_id", event.getId())
     put(
         "connection",

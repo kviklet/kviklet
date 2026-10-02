@@ -22,6 +22,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -118,6 +119,32 @@ class EventStreamingIntegrationTest {
                 viewer,
                 "SELECT value FROM event_stream_sensitive",
             )
+            val reason = "Investigate ticket SEC-42\n\"Customer access\" " + "한".repeat(8000)
+            val createdResponse = mockMvc.perform(
+                post("/execution-requests/").cookie(newCookie).contentType("application/json")
+                    .content(
+                        mapper.writeValueAsString(
+                            mapOf(
+                                "connectionType" to "DATASOURCE",
+                                "connectionId" to request.request.connection.getId(),
+                                "title" to "Reason capture",
+                                "type" to "SingleExecution",
+                                "description" to reason,
+                                "statement" to "SELECT 1;",
+                            ),
+                        ),
+                    ),
+            ).andExpect(status().isOk).andReturn()
+            val createdId = mapper.readTree(createdResponse.response.contentAsString)["id"].asText()
+            val changedReason = "Investigate SEC-43 instead"
+            for (description in listOf(changedReason, changedReason, "")) {
+                mockMvc.perform(
+                    patch("/execution-requests/$createdId").cookie(newCookie).contentType("application/json")
+                        .content(
+                            mapper.writeValueAsString(mapOf("description" to description, "statement" to "SELECT 1;")),
+                        ),
+                ).andExpect(status().isOk)
+            }
             mockMvc.perform(post("/execution-requests/${request.getId()}/execute").cookie(newCookie))
                 .andExpect(status().isOk)
             val viewerCookie = userHelper.login(email = viewer.email, mockMvc = mockMvc)
@@ -131,6 +158,14 @@ class EventStreamingIntegrationTest {
             val events = lines.map { mapper.readTree(it) }
             val actions = events.map { it["event"]["action"].asText() }
             val completed = events.first { it["event"]["action"].asText() == "execution.completed" }
+            val created = events.single { it["event"]["action"].asText() == "request.created" }
+            assertEquals(createdId, created["kviklet"]["request_id"].asText())
+            assertEquals(reason, created["kviklet"]["request"]["reason"].asText())
+            assertFalse(created["kviklet"]["request"]["reason_truncated"].asBoolean())
+            val changed = events.filter { it["event"]["action"].asText() == "request.reason_changed" }
+            assertEquals(listOf(changedReason, ""), changed.map { it["kviklet"]["request"]["reason"].asText() })
+            assertTrue(changed.all { it["user"]["id"].asText() == admin.getId() })
+            assertEquals("A test execution request", completed["kviklet"]["request"]["reason"].asText())
             assertEquals(2, completed["kviklet"]["results"][0]["rows_returned"].asInt())
             assertEquals("web", completed["kviklet"]["execution"]["channel"].asText())
             assertFalse(lines.joinToString().contains("seeded-secret"))
