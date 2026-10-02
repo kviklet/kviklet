@@ -200,6 +200,114 @@ class EventStreamingIntegrationTest {
         }
     }
 
+    @Test fun `connection target changes are captured at every level without credentials or JDBC options`() {
+        val admin = userHelper.createUser()
+        val cookie = userHelper.login(email = admin.email, mockMvc = mockMvc)
+        val settings = EventStreamingSettings(true, directory.toString(), 1, 7, 2)
+        val password = "connection-password-secret"
+        val options = "?password=jdbc-options-secret"
+        fun records() = Files.readAllLines(directory.resolve("events.jsonl")).map { mapper.readTree(it) }
+        try {
+            licenses.createLicense(
+                LicenseFile(
+                    javaClass.getResource("/event-stream-test-license.json")!!.readText(),
+                    "test",
+                    LocalDateTime.now(),
+                ),
+            )
+            for (level in EventLoggingLevel.entries) {
+                streaming.configure(settings.copy(loggingLevel = level))
+                val id = "target-${level.name.lowercase().replace('_', '-')}"
+                val expected = mutableMapOf<String, Any?>(
+                    "hostname" to "db-old.internal",
+                    "port" to 5432,
+                    "database_name" to null,
+                    "database_type" to "POSTGRESQL",
+                    "protocol" to "POSTGRESQL",
+                )
+                mockMvc.perform(
+                    post("/connections/").cookie(cookie).contentType("application/json")
+                        .content(
+                            mapper.writeValueAsString(
+                                mapOf(
+                                    "connectionType" to "DATASOURCE",
+                                    "id" to id,
+                                    "displayName" to "Target audit test",
+                                    "username" to "connection-username-secret",
+                                    "password" to password,
+                                    "reviewConfig" to mapOf("numTotalRequired" to 1),
+                                    "type" to "POSTGRESQL",
+                                    "protocol" to "POSTGRESQL",
+                                    "hostname" to expected["hostname"],
+                                    "port" to expected["port"],
+                                    "additionalJDBCOptions" to options,
+                                ),
+                            ),
+                        ),
+                ).andExpect(status().isOk)
+                val created = records().single {
+                    it["event"]["action"].asText() == "connection.created" &&
+                        it["kviklet"]["connection_id"].asText() == id
+                }
+                assertEquals(admin.getId(), created["user"]["id"].asText())
+                for ((field, value) in expected) {
+                    assertEquals(mapper.valueToTree<JsonNode>(value), created["kviklet"]["security"][field])
+                }
+                val changes = listOf(
+                    Triple("hostname", "hostname", "db-new.internal"),
+                    Triple("port", "port", 3306),
+                    Triple("databaseName", "database_name", "payments"),
+                    Triple("type", "database_type", "MYSQL"),
+                    Triple("protocol", "protocol", "MYSQL"),
+                )
+                for ((apiField, eventField, value) in changes) {
+                    val start = records().size
+                    val update = mapper.writeValueAsString(
+                        mapOf("connectionType" to "DATASOURCE", apiField to value),
+                    )
+                    mockMvc.perform(
+                        patch("/connections/$id").cookie(cookie).contentType("application/json").content(update),
+                    ).andExpect(status().isOk)
+                    val changed = records().drop(start).single {
+                        it["event"]["action"].asText() == "connection.security_changed"
+                    }
+                    assertEquals(id, changed["kviklet"]["connection_id"].asText())
+                    assertEquals(admin.getId(), changed["user"]["id"].asText())
+                    assertFalse(changed["kviklet"]["credentials_changed"].asBoolean())
+                    for ((field, oldValue) in expected) {
+                        assertEquals(mapper.valueToTree<JsonNode>(oldValue), changed["kviklet"]["before"][field])
+                    }
+                    expected[eventField] = value
+                    for ((field, newValue) in expected) {
+                        assertEquals(mapper.valueToTree<JsonNode>(newValue), changed["kviklet"]["after"][field])
+                    }
+                    val afterChange = records().size
+                    mockMvc.perform(
+                        patch("/connections/$id").cookie(cookie).contentType("application/json").content(update),
+                    ).andExpect(status().isOk)
+                    assertEquals(afterChange, records().size)
+                }
+                mockMvc.perform(delete("/connections/$id").cookie(cookie)).andExpect(status().isNoContent)
+                assertTrue(
+                    records().any {
+                        it["event"]["action"].asText() == "connection.deleted" &&
+                            it["kviklet"]["connection_id"].asText() == id
+                    },
+                )
+            }
+            val output = Files.readString(directory.resolve("events.jsonl"))
+            for (secret in listOf(password, "connection-username-secret", "jdbc-options-secret")) {
+                assertFalse(output.contains(secret))
+            }
+        } finally {
+            streaming.configure(settings.copy(enabled = false))
+            licenses.deleteAll()
+            connections.deleteAll()
+            userHelper.deleteAll()
+            roleHelper.deleteAll()
+        }
+    }
+
     @Test fun `logging levels persist through the API and filter real query execution without changing its results`() {
         val admin = userHelper.createUser()
         val viewer = userHelper.createUser(permissions = listOf("configuration:get"))

@@ -476,6 +476,11 @@ class ConnectionService(
         )
         put("max_executions", connection.maxExecutions)
         if (connection is DatasourceConnection) {
+            put("hostname", connection.hostname)
+            put("port", connection.port)
+            put("database_name", connection.databaseName)
+            put("database_type", connection.type.name)
+            put("protocol", connection.protocol.name)
             put("temporary_access_enabled", connection.temporaryAccessEnabled)
             put("max_access_minutes", connection.maxTemporaryAccessDuration)
             put("dumps_enabled", connection.dumpsEnabled)
