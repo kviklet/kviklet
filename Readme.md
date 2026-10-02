@@ -679,3 +679,7 @@ If you have any questions, want to provide feedback, or need help with setup, jo
 If you want to contribute, feel free to fork and create PRs for small things. If you plan bigger features, I'd appreciate some discussion upfront in a GitHub issue or on Discord.
 
 You can also contact me at jascha@kviklet.dev.
+
+### Enterprise Event Log Streaming
+
+Stream security activities to rotating JSON Lines files for collection by a SIEM agent. Enable it under **Settings → Event Streaming** with a valid Enterprise license. See the [event format, configuration, delivery limitations and deployment instructions](docs/event-streaming/README.md).

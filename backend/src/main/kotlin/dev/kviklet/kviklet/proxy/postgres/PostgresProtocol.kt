@@ -72,6 +72,7 @@ class PostgresProtocol(
                 session.executionRequest,
                 session.userId,
                 rawClientSocket = authenticatedClient.rawClientSocket,
+                eventSessionId = session.eventSessionId,
             )
         } catch (e: Exception) {
             // The upstream is open but the session never started, close it so it is not leaked.

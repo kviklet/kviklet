@@ -44,6 +44,7 @@ class ConnectionService(
     private val roleAdapter: RoleAdapter,
     private val permissionResolver: PermissionResolver,
     private val telemetry: Telemetry,
+    private val eventStreamingService: EventStreamingService? = null,
 ) {
 
     @Transactional
@@ -204,13 +205,32 @@ class ConnectionService(
             connectionId,
         )
 
-        if (request is UpdateDatasourceConnectionRequest && connection is DatasourceConnection) {
-            return updateDatasourceConnection(connectionId, request).withPermissions()
+        val updated = if (request is UpdateDatasourceConnectionRequest && connection is DatasourceConnection) {
+            updateDatasourceConnection(connectionId, request)
         } else if (request is UpdateKubernetesConnectionRequest && connection is KubernetesConnection) {
-            return updateKubernetesConnection(connectionId, request).withPermissions()
+            updateKubernetesConnection(connectionId, request)
         } else {
             throw EntityNotFound("Connection not found", "Connection with id $connectionId not found")
         }
+        val before = securitySettings(connection)
+        val after = securitySettings(updated)
+        val credentialsChanged =
+            connection is DatasourceConnection && updated is DatasourceConnection && connection.auth != updated.auth
+        if (before != after ||
+            credentialsChanged
+        ) {
+            eventStreamingService?.emit(
+                "connection.security_changed",
+                "configuration",
+                fields = mapOf(
+                    "connection_id" to connectionId.toString(),
+                    "before" to before,
+                    "after" to after,
+                    "credentials_changed" to credentialsChanged,
+                ),
+            )
+        }
+        return updated.withPermissions()
     }
 
     @Transactional
@@ -274,6 +294,14 @@ class ConnectionService(
             dryRunEnabled,
             dryRunRequiresApproval,
         ).withPermissions().also {
+            eventStreamingService?.emit(
+                "connection.created",
+                "configuration",
+                fields = mapOf(
+                    "connection_id" to connectionId.toString(),
+                    "security" to securitySettings(it.connection),
+                ),
+            )
             telemetry.track(
                 ConnectionCreated(
                     connectionType = ConnectionType.DATASOURCE,
@@ -396,6 +424,14 @@ class ConnectionService(
             kubernetesExecInitialWaitTimeoutSeconds = kubernetesExecInitialWaitTimeoutSeconds ?: 5L,
             kubernetesExecTimeoutMinutes = kubernetesExecTimeoutMinutes ?: 60L,
         ).withPermissions().also {
+            eventStreamingService?.emit(
+                "connection.created",
+                "configuration",
+                fields = mapOf(
+                    "connection_id" to connectionId.toString(),
+                    "security" to securitySettings(it.connection),
+                ),
+            )
             telemetry.track(
                 ConnectionCreated(
                     connectionType = ConnectionType.KUBERNETES,
@@ -414,6 +450,11 @@ class ConnectionService(
     @Policy(Permission.DATASOURCE_CONNECTION_EDIT)
     fun deleteDatasourceConnection(connectionId: ConnectionId) {
         connectionAdapter.deleteConnection(connectionId)
+        eventStreamingService?.emit(
+            "connection.deleted",
+            "configuration",
+            fields = mapOf("connection_id" to connectionId.toString()),
+        )
     }
 
     @Transactional
@@ -421,6 +462,33 @@ class ConnectionService(
     fun getDatasourceConnection(connectionId: ConnectionId): Connection = connectionAdapter.getConnection(
         connectionId = connectionId,
     )
+
+    private fun securitySettings(connection: Connection): Map<String, Any?> = buildMap {
+        put("required_approvals", connection.reviewConfig.numTotalRequired)
+        put(
+            "role_requirements",
+            connection.reviewConfig.roleRequirements?.map {
+                mapOf(
+                    "role_id" to it.roleId,
+                    "required" to it.numRequired,
+                )
+            },
+        )
+        put("max_executions", connection.maxExecutions)
+        if (connection is DatasourceConnection) {
+            put("temporary_access_enabled", connection.temporaryAccessEnabled)
+            put("max_access_minutes", connection.maxTemporaryAccessDuration)
+            put("dumps_enabled", connection.dumpsEnabled)
+            put("dry_run_enabled", connection.dryRunEnabled)
+            put("dry_run_requires_approval", connection.dryRunRequiresApproval)
+            put("store_results", connection.storeResults)
+            put("authentication_type", connection.authenticationType.name)
+        }
+        if (connection is KubernetesConnection) {
+            put("store_results", connection.storeResults)
+            put("exec_timeout_minutes", connection.kubernetesExecTimeoutMinutes)
+        }
+    }
 
     private fun ensureConnectionIdIsAvailable(connectionId: ConnectionId) {
         if (connectionAdapter.connectionExists(connectionId)) {

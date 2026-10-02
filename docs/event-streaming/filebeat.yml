@@ -1,0 +1,17 @@
+# Console validation example, compatible with Filebeat 8.17.
+filebeat.inputs:
+  - type: filestream
+    id: kviklet-event-stream
+    enabled: true
+    paths:
+      - /var/log/kviklet/events/events*.jsonl
+    file_identity.native: ~
+    message_max_bytes: 262144
+    parsers:
+      - ndjson:
+          target: ""
+          overwrite_keys: true
+          add_error_key: true
+output.console:
+  pretty: false
+logging.level: warning

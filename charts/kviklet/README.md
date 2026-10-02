@@ -76,3 +76,7 @@ The certificate must match the DNS name under which database clients reach the p
 ## Example
 
 There is a [demo deployment on GCS](../kviklet-demo/README.md) that makes use of this base chart.
+
+## Event log storage
+
+Enterprise Event Log Streaming can use an existing PVC through `eventStreaming.existingClaim` and `eventStreaming.mountPath` (default `/var/log/kviklet/events`). With the claim configured, deployment uses `Recreate` to avoid concurrent writers. Provision directory ownership and a persistent collector registry separately; enable streaming in settings. See [the event streaming guide](../../docs/event-streaming/README.md).

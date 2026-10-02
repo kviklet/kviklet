@@ -25,12 +25,13 @@ class ProxyServerConfig {
     @Lazy(false)
     fun postgresProxyServer(
         eventService: EventService,
+        eventStreamingService: dev.kviklet.kviklet.service.EventStreamingService,
         tlsCertConfig: TlsCertEnvConfig,
         rdsIamTokenProvider: RdsIamTokenProvider,
         @Value("\${kviklet.proxy.postgres.port:5432}") port: Int,
     ): ProxyServer {
         val protocol = PostgresProtocol(eventService, tlsCertificateFactory(tlsCertConfig), rdsIamTokenProvider)
-        val server = ProxyServer(port, protocol)
+        val server = ProxyServer(port, protocol, eventStreamingService = eventStreamingService)
         server.start()
         return server
     }

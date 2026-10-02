@@ -102,6 +102,7 @@ class ExecutionRequestService(
     private val configService: ConfigService,
     private val baseUrlResolver: BaseUrlResolver,
     private val telemetry: Telemetry,
+    private val eventStreamingService: EventStreamingService? = null,
     transactionManager: PlatformTransactionManager,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -158,6 +159,16 @@ class ExecutionRequestService(
                 datasourceType = (connection as? DatasourceConnection)?.type,
                 requiredReviews = connection.reviewConfig.numTotalRequired,
             ),
+        )
+        eventStreamingService?.emit(
+            "request.created",
+            "configuration",
+            fields = mapOf(
+                "request_id" to executionRequestDetails.request.getId(),
+                "connection_id" to connection.getId(),
+                "request_type" to executionRequestDetails.request.type.name,
+            ),
+            actorId = userId,
         )
         return executionRequestDetails
     }
@@ -263,7 +274,12 @@ class ExecutionRequestService(
         )
 
         val command = constructSQLDumpCommand(connection)
-        val process = ProcessBuilder(command).start()
+        val process = try {
+            ProcessBuilder(command).start()
+        } catch (e: Exception) {
+            emitExecutionFailure(event, userId, e)
+            throw e
+        }
         val inputStream = BufferedInputStream(process.inputStream)
         var totalBytesRead = 0L
         try {
@@ -515,6 +531,12 @@ class ExecutionRequestService(
         }
         endProxySessionsIfRejected(updatedExecutionRequestDetails)
         telemetry.track(RequestClosed)
+        eventStreamingService?.emit(
+            "request.closed",
+            "configuration",
+            fields = mapOf("request_id" to id.toString()),
+            actorId = authorId,
+        )
         return reviewEvent
     }
 
@@ -545,6 +567,17 @@ class ExecutionRequestService(
             authorId,
             CommentPayload(comment = request.comment),
         )
+
+    private fun emitExecutionFailure(event: Event, userId: String, error: Exception) {
+        eventStreamingService?.emit(
+            "execution.completed",
+            "database",
+            "failure",
+            dev.kviklet.kviklet.service.eventstream.accessFields(event, EventStreamingService.channel()) +
+                mapOf("error_class" to error.javaClass.simpleName),
+            actorId = userId,
+        )
+    }
 
     private fun executeDatasourceRequest(
         id: ExecutionRequestId,
@@ -578,25 +611,30 @@ class ExecutionRequestService(
 
         val maxRowsToStore = if (connection.storeResults) MAX_STORED_ROWS else null
 
-        val result = when (connection.type) {
-            DatasourceType.MONGODB -> {
-                mongoDBExecutor.execute(
-                    connectionString = connection.getConnectionString(),
-                    databaseName = connection.databaseName ?: "db",
-                    query = queryToExecute,
-                    maxRowsToStore = maxRowsToStore,
-                )
-            }
+        val result = try {
+            when (connection.type) {
+                DatasourceType.MONGODB -> {
+                    mongoDBExecutor.execute(
+                        connectionString = connection.getConnectionString(),
+                        databaseName = connection.databaseName ?: "db",
+                        query = queryToExecute,
+                        maxRowsToStore = maxRowsToStore,
+                    )
+                }
 
-            else -> {
-                JDBCExecutor.execute(
-                    executionRequestId = id,
-                    connectionString = connection.getConnectionString(),
-                    authenticationDetails = connection.auth,
-                    query = queryToExecute,
-                    maxRowsToStore = maxRowsToStore,
-                )
+                else -> {
+                    JDBCExecutor.execute(
+                        executionRequestId = id,
+                        connectionString = connection.getConnectionString(),
+                        authenticationDetails = connection.auth,
+                        query = queryToExecute,
+                        maxRowsToStore = maxRowsToStore,
+                    )
+                }
             }
+        } catch (e: Exception) {
+            emitExecutionFailure(event, userId, e)
+            throw e
         }
 
         // Status will be recalculated automatically after adding result logs via event
@@ -648,20 +686,25 @@ class ExecutionRequestService(
 
         val maxRowsToStore = if (connection.storeResults) MAX_STORED_ROWS else 0
 
-        val result = when (connection.type) {
-            DatasourceType.MONGODB -> {
-                throw IllegalArgumentException("Dry run is not supported for MongoDB")
-            }
+        val result = try {
+            when (connection.type) {
+                DatasourceType.MONGODB -> {
+                    throw IllegalArgumentException("Dry run is not supported for MongoDB")
+                }
 
-            else -> {
-                JDBCExecutor.executeDryRun(
-                    executionRequestId = id,
-                    connectionString = connection.getConnectionString(),
-                    authenticationDetails = connection.auth,
-                    query = queryToExecute,
-                    maxRowsToStore = maxRowsToStore,
-                )
+                else -> {
+                    JDBCExecutor.executeDryRun(
+                        executionRequestId = id,
+                        connectionString = connection.getConnectionString(),
+                        authenticationDetails = connection.auth,
+                        query = queryToExecute,
+                        maxRowsToStore = maxRowsToStore,
+                    )
+                }
             }
+        } catch (e: Exception) {
+            emitExecutionFailure(event, userId, e)
+            throw e
         }
 
         // Store results
@@ -708,14 +751,43 @@ class ExecutionRequestService(
         // only pass container name if it's not empty
         val containerName = executionRequest.request.containerName?.takeIf { it.isNotBlank() }
 
-        val result = kubernetesApi.executeCommandOnPod(
-            namespace = executionRequest.request.namespace!!,
-            podName = executionRequest.request.podName!!,
-            command = commandToExecute,
-            containerName = containerName,
-            initialWaitTimeoutSeconds = connection.kubernetesExecInitialWaitTimeoutSeconds,
-            timeoutMinutes = connection.kubernetesExecTimeoutMinutes,
-        )
+        val executionChannel = EventStreamingService.channel()
+        val executionStarted = System.nanoTime()
+        val result = try {
+            kubernetesApi.executeCommandOnPod(
+                namespace = executionRequest.request.namespace!!,
+                podName = executionRequest.request.podName!!,
+                command = commandToExecute,
+                containerName = containerName,
+                initialWaitTimeoutSeconds = connection.kubernetesExecInitialWaitTimeoutSeconds,
+                timeoutMinutes = connection.kubernetesExecTimeoutMinutes,
+                onCompletion = { exitCode, timedOut ->
+                    eventStreamingService?.emit(
+                        "execution.completed",
+                        "process",
+                        if (timedOut || exitCode != 0) "failure" else "success",
+                        dev.kviklet.kviklet.service.eventstream.accessFields(event, executionChannel) +
+                            mapOf(
+                                "exit_code" to exitCode,
+                                "timed_out" to timedOut,
+                                "duration_ms" to ((System.nanoTime() - executionStarted) / 1_000_000),
+                            ),
+                        actorId = userId,
+                        authentication = null,
+                    )
+                },
+            )
+        } catch (e: Exception) {
+            eventStreamingService?.emit(
+                "execution.completed",
+                "process",
+                "failure",
+                dev.kviklet.kviklet.service.eventstream.accessFields(event, executionChannel) +
+                    mapOf("error_class" to e.javaClass.simpleName),
+                actorId = userId,
+            )
+            throw e
+        }
 
         // Store results if storeResults is enabled
         val connection = executionRequest.request.connection as KubernetesConnection
@@ -1123,6 +1195,19 @@ class ExecutionRequestService(
         if (session.username == username) {
             logger.info("Registered proxy session $username on port ${proxyServer.listenPort}")
             telemetry.track(ProxySessionStarted(connection.type))
+            eventStreamingService?.emit(
+                "proxy.session_created",
+                "network",
+                fields = mapOf(
+                    "request_id" to executionRequestId.toString(),
+                    "connection_id" to connection.getId(),
+                    "proxy" to mapOf(
+                        "session_id" to session.eventSessionId,
+                        "protocol" to connection.type.name.lowercase(),
+                    ),
+                ),
+                actorId = userDetails.id,
+            )
         } else {
             logger.info(
                 "Reusing existing proxy session ${session.username} on port ${proxyServer.listenPort}",

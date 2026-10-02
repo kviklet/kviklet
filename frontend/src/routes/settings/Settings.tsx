@@ -30,6 +30,7 @@ import ConnectionDetails from "./connection/details/ConnectionDetails";
 import LicenseSettings from "./LicenseSettings";
 import ApiKeyPage from "./ApiKeySettings";
 import RoleSyncSettings from "./RoleSyncSettings";
+import EventStreamingSettings from "./EventStreamingSettings";
 import useConfig from "../../components/ConfigProvider";
 import { UserStatusContext } from "../../components/UserStatusProvider";
 import { Permission } from "../../api/Permissions";
@@ -203,6 +204,18 @@ const Settings = () => {
       permission: "configuration:get",
     },
     {
+      name: "event-streaming",
+      permission: "configuration:get",
+      tabContent: (
+        <div className={tabStyles}>
+          <ClipboardDocumentListIcon className="mr-2 h-6" />
+          <span>Event Streaming</span>
+          {!config?.licenseValid && <LockClosedIcon className="ml-1 h-4 w-4" />}
+        </div>
+      ),
+      link: "/settings/event-streaming",
+    },
+    {
       name: "api-keys",
       tabContent: (
         <div className="flex flex-col">
@@ -298,6 +311,19 @@ const Settings = () => {
               />
               <Route path="profile" element={<ProfileSettings />} />
               <Route path="license" element={<LicenseSettings />} />
+              <Route
+                path="event-streaming"
+                element={
+                  <RequirePermission
+                    permission="configuration:get"
+                    fallback={
+                      <NotAuthorized resource="the event streaming settings" />
+                    }
+                  >
+                    <EventStreamingSettings />
+                  </RequirePermission>
+                }
+              />
               <Route
                 path="api-keys"
                 element={

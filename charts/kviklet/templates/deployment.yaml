@@ -12,10 +12,14 @@ spec:
     matchLabels:
       {{- include "kviklet.selectorLabels" . | nindent 8 }}
   strategy:
+    {{- if .Values.eventStreaming.existingClaim }}
+    type: Recreate
+    {{- else }}
     rollingUpdate:
       maxSurge: 1
       maxUnavailable: 0
     type: RollingUpdate
+    {{- end }}
   template:
     metadata:
       labels:
@@ -28,6 +32,11 @@ spec:
             items:
               - key: application.yaml
                 path: application.yaml
+        {{- if .Values.eventStreaming.existingClaim }}
+        - name: event-stream
+          persistentVolumeClaim:
+            claimName: {{ .Values.eventStreaming.existingClaim | quote }}
+        {{- end }}
       containers:
         - name: {{ include "fullname" . }}
           image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -53,6 +62,10 @@ spec:
             - name: config-volume
               mountPath: /app/application.yaml
               subPath: application.yaml
+            {{- if .Values.eventStreaming.existingClaim }}
+            - name: event-stream
+              mountPath: {{ .Values.eventStreaming.mountPath | quote }}
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /api/health

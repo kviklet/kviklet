@@ -86,3 +86,9 @@ tolerations: []
 
 # -- see https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#scheduling
 affinity: {}
+
+# Optional persistent storage for Enterprise Event Log Streaming.
+# Provision the claim and ensure the directory is writable by the container user.
+eventStreaming:
+  existingClaim: ""
+  mountPath: /var/log/kviklet/events

@@ -27,6 +27,7 @@ class SamlLoginSuccessHandler(
     private val samlUserService: SamlUserService,
     private val baseUrlResolver: BaseUrlResolver,
     private val telemetry: Telemetry,
+    private val eventStreamingService: dev.kviklet.kviklet.service.EventStreamingService,
 ) : SimpleUrlAuthenticationSuccessHandler() {
 
     private val securityContextRepository = HttpSessionSecurityContextRepository()
@@ -60,6 +61,13 @@ class SamlLoginSuccessHandler(
                 securityContextRepository.saveContext(context, request, response)
                 // Not reported by LoginTelemetryListener: the Kviklet user only exists from this point on.
                 telemetry.track(UserLoggedIn(LoginMethod.SAML), userId = user.getId())
+                eventStreamingService.emit(
+                    "authentication.login",
+                    "authentication",
+                    fields =
+                    dev.kviklet.kviklet.security.SecurityEventRequestFilter.fields(request) + mapOf("method" to "saml"),
+                    actorId = user.getId(),
+                )
             } catch (e: Exception) {
                 // Clear any partial authentication and invalidate session
                 SecurityContextHolder.clearContext()
@@ -68,6 +76,14 @@ class SamlLoginSuccessHandler(
                 // Redirect to the login page with a reason; only messages written for the user are
                 // forwarded, the cause itself stays in the log.
                 logger.warn("SAML login failed", e)
+                eventStreamingService.emit(
+                    "authentication.login",
+                    "authentication",
+                    "failure",
+                    dev.kviklet.kviklet.security.SecurityEventRequestFilter.fields(request) +
+                        mapOf("method" to "saml", "reason" to e.javaClass.simpleName),
+                    authentication = null,
+                )
                 val baseUrl = baseUrlResolver.resolve(request)
                 val errorMessage = java.net.URLEncoder.encode(userFacingLoginFailureMessage(e), "UTF-8")
                 redirectStrategy.sendRedirect(request, response, "$baseUrl/login?error=$errorMessage")

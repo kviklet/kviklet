@@ -92,6 +92,8 @@ class SecurityConfig(
     private val passwordEncoder: PasswordEncoder,
     private val corsSettings: CorsSettings,
     private val userAdapter: UserAdapter,
+    private val eventStreamingService: dev.kviklet.kviklet.service.EventStreamingService,
+    private val baseUrlResolver: dev.kviklet.kviklet.service.BaseUrlResolver,
 ) {
 
     @Autowired(required = false)
@@ -152,6 +154,7 @@ class SecurityConfig(
                 ApiKeyAuthFilter(
                     apiKeyService = apiKeyService,
                     passwordEncoder = passwordEncoder,
+                    eventStreamingService = eventStreamingService,
                 ),
             )
 
@@ -163,7 +166,7 @@ class SecurityConfig(
             // Exception handling
             exceptionHandling {
                 authenticationEntryPoint = CustomAuthenticationEntryPoint()
-                accessDeniedHandler = CustomAccessDeniedHandler()
+                accessDeniedHandler = CustomAccessDeniedHandler(eventStreamingService)
             }
 
             // Authorization rules
@@ -217,6 +220,24 @@ class SecurityConfig(
             if (samlProperties.isSamlEnabled()) {
                 saml2Login {
                     samlLoginSuccessHandler?.let { authenticationSuccessHandler = it }
+                    authenticationFailureHandler =
+                        org.springframework.security.web.authentication.AuthenticationFailureHandler {
+                                request,
+                                response,
+                                exception,
+                            ->
+                            eventStreamingService.emit(
+                                "authentication.login",
+                                "authentication",
+                                "failure",
+                                SecurityEventRequestFilter.fields(request) +
+                                    mapOf("method" to "saml", "reason" to exception.javaClass.simpleName),
+                                authentication = null,
+                            )
+                            response.sendRedirect(
+                                "${baseUrlResolver.resolve(request)}/login?error=SAML+authentication+failed",
+                            )
+                        }
                 }
 
                 saml2Metadata { }
@@ -224,7 +245,7 @@ class SecurityConfig(
 
             exceptionHandling {
                 authenticationEntryPoint = entryPoint
-                accessDeniedHandler = CustomAccessDeniedHandler()
+                accessDeniedHandler = CustomAccessDeniedHandler(eventStreamingService)
             }
 
             authorizeHttpRequests {
@@ -257,7 +278,20 @@ class SecurityConfig(
                 logoutRequestMatcher = AntPathRequestMatcher("/logout", "POST")
                 invalidateHttpSession = true
                 deleteCookies("JSESSIONID")
-                logoutSuccessHandler = HttpStatusReturningLogoutSuccessHandler()
+                logoutSuccessHandler =
+                    org.springframework.security.web.authentication.logout.LogoutSuccessHandler {
+                            request,
+                            response,
+                            authentication,
+                        ->
+                        eventStreamingService.emit(
+                            "authentication.logout",
+                            "authentication",
+                            fields = SecurityEventRequestFilter.fields(request),
+                            authentication = authentication,
+                        )
+                        HttpStatusReturningLogoutSuccessHandler().onLogoutSuccess(request, response, authentication)
+                    }
             }
             // Token-based CSRF protection is disabled in favor of CsrfHeaderFilter,
             // which requires a custom header on state-changing requests (see its docs)
@@ -304,12 +338,20 @@ class MvcConfig : WebMvcConfigurer {
     }
 }
 
-class CustomAccessDeniedHandler : AccessDeniedHandler {
+class CustomAccessDeniedHandler(
+    private val eventStreamingService: dev.kviklet.kviklet.service.EventStreamingService? = null,
+) : AccessDeniedHandler {
     override fun handle(
         request: HttpServletRequest?,
         response: HttpServletResponse?,
         accessDeniedException: AccessDeniedException?,
     ) {
+        eventStreamingService?.emit(
+            "authorization.denied",
+            "iam",
+            "failure",
+            SecurityEventRequestFilter.fields(request),
+        )
         response?.sendError(HttpServletResponse.SC_FORBIDDEN, "Unauthorized")
     }
 }

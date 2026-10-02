@@ -11,12 +11,33 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
 @Service
-class RoleService(private val roleAdapter: RoleAdapter, private val telemetry: Telemetry) {
+class RoleService(
+    private val roleAdapter: RoleAdapter,
+    private val telemetry: Telemetry,
+    private val eventStreamingService: EventStreamingService? = null,
+) {
 
     @dev.kviklet.kviklet.security.Policy(Permission.ROLE_EDIT)
     @Transactional
     fun updateRole(roleToUpdate: Role): Role {
+        val before = roleAdapter.findById(RoleId(roleToUpdate.getId()!!))
         val savedRole = roleAdapter.update(roleToUpdate)
+        val oldPermissions = before.policies.map { it.action to it.resource }.toSet()
+        val newPermissions = savedRole.policies.map { it.action to it.resource }.toSet()
+        val added = newPermissions - oldPermissions
+        val removed = oldPermissions - newPermissions
+        if (added.isNotEmpty() || removed.isNotEmpty() || before.name != savedRole.name) {
+            eventStreamingService?.emit(
+                "role.changed",
+                "iam",
+                fields = mapOf(
+                    "role_id" to savedRole.getId(),
+                    "name_changed" to (before.name != savedRole.name),
+                    "permissions_added" to added.map { mapOf("action" to it.first, "resource" to it.second) },
+                    "permissions_removed" to removed.map { mapOf("action" to it.first, "resource" to it.second) },
+                ),
+            )
+        }
         return savedRole
     }
 
@@ -46,7 +67,18 @@ class RoleService(private val roleAdapter: RoleAdapter, private val telemetry: T
             description = description,
             policies = policies ?: emptySet(),
         )
-        return roleAdapter.create(role).also { telemetry.track(RoleCreated) }
+        return roleAdapter.create(role).also {
+            telemetry.track(RoleCreated)
+            eventStreamingService?.emit(
+                "role.created",
+                "iam",
+                fields = mapOf(
+                    "role_id" to it.getId(),
+                    "permissions" to
+                        it.policies.map { policy -> mapOf("action" to policy.action, "resource" to policy.resource) },
+                ),
+            )
+        }
     }
 
     @dev.kviklet.kviklet.security.Policy(Permission.ROLE_GET)
@@ -65,5 +97,6 @@ class RoleService(private val roleAdapter: RoleAdapter, private val telemetry: T
             throw IllegalArgumentException("Cannot delete default role")
         }
         roleAdapter.delete(id)
+        eventStreamingService?.emit("role.deleted", "iam", fields = mapOf("role_id" to id.toString()))
     }
 }

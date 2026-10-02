@@ -34,6 +34,7 @@ class Connection(
     // relay threads and frees the fd, so teardown closes this rather than the SSL wrapper. Defaults to
     // clientSocket for the plain (non-TLS) case, where they are the same socket.
     private val rawClientSocket: Socket = clientSocket,
+    private val eventSessionId: String = java.util.UUID.randomUUID().toString(),
 ) : ProxyConnection {
     private var clientInput: InputStream = clientSocket.getInputStream()
     private var clientOutput: OutputStream = clientSocket.getOutputStream()
@@ -234,7 +235,7 @@ class Connection(
 
     private fun handleQuery(parsedMessage: QueryMessage) {
         val executePayload = ExecutePayload(query = parsedMessage.query)
-        eventService.saveEvent(executionRequest.id!!, userId, executePayload)
+        eventService.saveProxyEvent(executionRequest.id!!, userId, executePayload, eventSessionId, "postgresql")
     }
 
     private fun handleExecute(parsedMessage: ExecuteMessage) {
@@ -248,7 +249,7 @@ class Connection(
             return
         }
         val executePayload = ExecutePayload(query = portal.statement.interpolateQuery())
-        eventService.saveEvent(executionRequest.id!!, userId, executePayload)
+        eventService.saveProxyEvent(executionRequest.id!!, userId, executePayload, eventSessionId, "postgresql")
         portal.audited = true
     }
 

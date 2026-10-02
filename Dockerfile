@@ -62,6 +62,8 @@ ENV APP_VERSION=${VERSION}
 ENV APP_BUILD_DATE=${BUILD_DATE}
 ENV APP_GIT_COMMIT=${GIT_COMMIT}
 
+RUN mkdir -p /var/log/kviklet/events && chown nginx:nginx /var/log/kviklet/events && chmod 750 /var/log/kviklet/events
+
 USER nginx
 
 COPY --chown=nginx:nginx ./frontend/docker/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf

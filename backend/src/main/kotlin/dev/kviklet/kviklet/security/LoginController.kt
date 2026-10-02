@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.security
 
+import dev.kviklet.kviklet.security.ldap.LdapUserDetailsWithId
 import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -7,6 +8,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.AuthenticationException
 import org.springframework.security.core.context.SecurityContext
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken
@@ -16,12 +18,14 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
-import javax.naming.AuthenticationException
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 @RestController
-class LoginController(private val authenticationManager: AuthenticationManager) {
+class LoginController(
+    private val authenticationManager: AuthenticationManager,
+    private val eventStreamingService: dev.kviklet.kviklet.service.EventStreamingService,
+) {
 
     private val securityContextHolderStrategy = SecurityContextHolder
         .getContextHolderStrategy()
@@ -46,12 +50,29 @@ class LoginController(private val authenticationManager: AuthenticationManager) 
                 context.authentication = authentication
                 this.securityContextHolderStrategy.context = context
                 this.securityContextRepository.saveContext(context, request, response)
+                eventStreamingService.emit(
+                    "authentication.login",
+                    "authentication",
+                    fields =
+                    SecurityEventRequestFilter.fields(request) + mapOf(
+                        "method" to
+                            if (authentication.principal is LdapUserDetailsWithId) "ldap" else "password",
+                    ),
+                    authentication = authentication,
+                )
                 return ResponseEntity.ok(LoginResponse(Base64.encode(sessionId.toByteArray())))
             } else {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
             }
         } catch (e: AuthenticationException) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+            eventStreamingService.emit(
+                "authentication.login",
+                "authentication",
+                "failure",
+                SecurityEventRequestFilter.fields(request) + mapOf("reason" to e.javaClass.simpleName),
+                authentication = null,
+            )
+            throw e
         }
     }
 }

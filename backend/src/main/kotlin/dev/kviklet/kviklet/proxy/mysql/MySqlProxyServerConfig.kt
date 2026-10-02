@@ -26,12 +26,13 @@ class MySqlProxyServerConfig {
     @Lazy(false)
     fun mysqlProxyServer(
         eventService: EventService,
+        eventStreamingService: dev.kviklet.kviklet.service.EventStreamingService,
         tlsCertConfig: TlsCertEnvConfig,
         rdsIamTokenProvider: RdsIamTokenProvider,
         @Value("\${kviklet.proxy.mysql.port:3306}") port: Int,
     ): ProxyServer {
         val protocol = MySqlProtocol(eventService, tlsCertificateFactory(tlsCertConfig), rdsIamTokenProvider)
-        val server = ProxyServer(port, protocol)
+        val server = ProxyServer(port, protocol, eventStreamingService = eventStreamingService)
         server.start()
         return server
     }
