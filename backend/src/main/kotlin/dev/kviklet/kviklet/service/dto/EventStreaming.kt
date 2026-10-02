@@ -21,7 +21,7 @@ enum class EventLoggingLevel {
 data class EventStreamingSettings(
     val enabled: Boolean = false,
     val directory: String = "/var/log/kviklet/events",
-    val maxFileSizeMiB: Int = 100,
+    val maxFileSizeMiB: Int = 10,
     val retentionDays: Int = 180,
     val maxArchiveSizeMiB: Int = 100,
     val loggingLevel: EventLoggingLevel = EventLoggingLevel.FULL,

@@ -59,9 +59,10 @@ export default function EventStreamingSettings() {
   }, [reset]);
 
   const save = async (settings: Settings) => {
-    if (settings.maxArchiveSizeMiB < settings.maxFileSizeMiB) {
+    if (settings.maxArchiveSizeMiB <= settings.maxFileSizeMiB) {
       setFieldError("maxArchiveSizeMiB", {
-        message: "The archive budget must cover at least one rotated file.",
+        message:
+          "The archive budget must be at least 1 MiB larger than the file-size threshold.",
       });
       return;
     }

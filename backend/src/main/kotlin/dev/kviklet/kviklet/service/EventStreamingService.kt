@@ -35,6 +35,7 @@ import java.nio.file.Path
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
+import java.util.concurrent.locks.ReentrantLock
 
 @Service
 @Lazy(false)
@@ -57,6 +58,7 @@ class EventStreamingService(
     private var recoveryAt = Instant.EPOCH
     private var expired = false
     private val instanceId = UUID.randomUUID().toString()
+    private val configurationLock = ReentrantLock()
 
     @Policy(Permission.CONFIGURATION_GET, checkIsPresentOnly = true)
     @Synchronized
@@ -67,11 +69,11 @@ class EventStreamingService(
 
     @Policy(Permission.CONFIGURATION_EDIT, checkIsPresentOnly = true)
     @Transactional
-    fun configure(next: EventStreamingSettings): EventStreamingResponse {
+    fun configure(next: EventStreamingSettings): EventStreamingResponse = serializeConfiguration {
         require(next.maxFileSizeMiB in 1..1024) { "File size must be between 1 and 1024 MiB" }
         require(next.retentionDays in 1..365) { "Retention must be between 1 and 365 days" }
-        require(next.maxArchiveSizeMiB in next.maxFileSizeMiB..102400) {
-            "Archive budget must cover at least one file and be at most 102400 MiB"
+        require(next.maxArchiveSizeMiB in (next.maxFileSizeMiB + 1)..102400) {
+            "Archive budget must be at least 1 MiB larger than the file-size threshold and at most 102400 MiB"
         }
         require(Path.of(next.directory).isAbsolute) { "Event output directory must be absolute" }
         // Never wait for a database connection while holding the writer monitor.
@@ -88,7 +90,7 @@ class EventStreamingService(
         }
         val replacement = if (needsReplacement) {
             try {
-                EventFileWriter(next)
+                EventFileWriter(next, activateImmediately = false)
             } catch (e: Exception) {
                 throw IllegalArgumentException(
                     "Cannot open the event directory; check permissions, storage and other writers",
@@ -143,7 +145,32 @@ class EventStreamingService(
                 }
             }
         }
-        return synchronized(this) { response().copy(settings = next) }
+        synchronized(this) { response().copy(settings = next) }
+    }
+
+    /** Serialize saves through transaction completion without holding the file-writer monitor. */
+    private fun <T> serializeConfiguration(operation: () -> T): T {
+        configurationLock.lock()
+        val transactional = TransactionSynchronizationManager.isActualTransactionActive() &&
+            TransactionSynchronizationManager.isSynchronizationActive()
+        try {
+            return operation()
+        } finally {
+            if (transactional) {
+                try {
+                    TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+                        override fun afterCompletion(status: Int) {
+                            configurationLock.unlock()
+                        }
+                    })
+                } catch (e: Exception) {
+                    configurationLock.unlock()
+                    throw e
+                }
+            } else {
+                configurationLock.unlock()
+            }
+        }
     }
 
     /** Callers pass explicit safe fields, never domain objects carrying credentials or result values. */
@@ -233,9 +260,14 @@ class EventStreamingService(
                 return
             }
             if (writer == null && !Instant.now().isBefore(recoveryAt)) {
+                if (settings.maxArchiveSizeMiB <= settings.maxFileSizeMiB) {
+                    failure("Archive budget must be at least 1 MiB larger than the file-size threshold")
+                    return
+                }
                 writer = EventFileWriter(settings)
                 lastError = null
             }
+            writer?.activate()
             writer?.maintain()
         } catch (e: Exception) {
             failure("Event file output is unavailable; check the directory, permissions and storage")
@@ -295,7 +327,7 @@ class EventStreamingService(
         try {
             val json = mapper.writeValueAsString(EventLoggingPolicy.apply(event, settings.loggingLevel))
             // Allow two 64 KiB text fields even when JSON escaping expands each byte sixfold.
-            if (json.toByteArray(Charsets.UTF_8).size > 1024 * 1024) {
+            if (json.toByteArray(Charsets.UTF_8).size + 1 > EventFileWriter.MAX_RECORD_BYTES) {
                 failures++
                 logger.warn("Event exceeded the 1 MiB record limit")
                 return

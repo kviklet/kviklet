@@ -329,6 +329,10 @@ class EventStreamingIntegrationTest {
                         .content(mapper.writeValueAsString(invalid)),
                 ).andExpect(status().isBadRequest)
             }
+            mockMvc.perform(
+                put("/config/event-streaming").cookie(cookie).contentType("application/json")
+                    .content(mapper.writeValueAsString(settings.copy(maxArchiveSizeMiB = settings.maxFileSizeMiB))),
+            ).andExpect(status().isBadRequest)
             for (level in EventLoggingLevel.entries) {
                 val start = if (Files.exists(directory.resolve("events.jsonl"))) {
                     Files.readAllLines(directory.resolve("events.jsonl")).size

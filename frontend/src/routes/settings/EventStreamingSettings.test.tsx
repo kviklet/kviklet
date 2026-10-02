@@ -22,7 +22,7 @@ const response = {
   settings: {
     enabled: false,
     directory: "/var/log/kviklet/events",
-    maxFileSizeMiB: 100,
+    maxFileSizeMiB: 10,
     retentionDays: 180,
     maxArchiveSizeMiB: 100,
     loggingLevel: "FULL" as const,
@@ -116,11 +116,11 @@ describe("Event streaming settings", () => {
     );
     expect(screen.getByText(/leaves existing files/)).toBeVisible();
     fireEvent.change(screen.getByLabelText("Maximum archive size (MiB)"), {
-      target: { value: "1" },
+      target: { value: "10" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(
-      await screen.findByText(/must cover at least one rotated file/),
+      await screen.findByText(/must be at least 1 MiB larger/),
     ).toBeVisible();
     expect(putEventStreaming).not.toHaveBeenCalled();
   });

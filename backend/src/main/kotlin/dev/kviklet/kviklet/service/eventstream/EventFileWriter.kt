@@ -24,7 +24,8 @@ import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicBoolean
 
 /** A private Logback context: event payloads never propagate to the application's console logger. */
-class EventFileWriter(settings: EventStreamingSettings) : AutoCloseable {
+class EventFileWriter(private val settings: EventStreamingSettings, activateImmediately: Boolean = true) :
+    AutoCloseable {
     private val context = LoggerContext()
     private val appender = object : RollingFileAppender<String>() {
         override fun openFile(fileName: String) {
@@ -62,6 +63,9 @@ class EventFileWriter(settings: EventStreamingSettings) : AutoCloseable {
     private val retention = EventArchiveRetention(directory, settings.retentionDays, settings.maxArchiveSizeMiB)
 
     init {
+        require(settings.maxArchiveSizeMiB > settings.maxFileSizeMiB) {
+            "Archive budget must be at least 1 MiB larger than the file-size threshold"
+        }
         prepareDirectory(directory)
         lockChannel = FileChannel.open(
             directory.resolve("events.lock"),
@@ -75,6 +79,30 @@ class EventFileWriter(settings: EventStreamingSettings) : AutoCloseable {
             lockChannel.close()
             throw e
         }
+        try {
+            // Opening without truncation validates access while reserving an uncommitted directory.
+            FileChannel.open(
+                directory.resolve("events.jsonl"),
+                setOf(
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.READ,
+                    StandardOpenOption.WRITE,
+                    LinkOption.NOFOLLOW_LINKS,
+                ),
+                PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-r-----")),
+            ).use { }
+            if (activateImmediately) activate()
+        } catch (e: Exception) {
+            close()
+            throw e
+        }
+    }
+
+    /** Activate only after the settings commit; reservations must not repair tails or delete archives. */
+    @Synchronized
+    fun activate() {
+        if (appender.isStarted) return
+        check(lock.isValid) { "Event writer reservation is closed" }
         try {
             discardIncompleteTail()
             context.name = "kviklet-event-stream"
@@ -113,10 +141,7 @@ class EventFileWriter(settings: EventStreamingSettings) : AutoCloseable {
             secureFiles()
             maintain()
         } catch (e: Exception) {
-            appender.stop()
-            context.stop()
-            lock.release()
-            lockChannel.close()
+            close()
             throw e
         }
     }
@@ -196,11 +221,13 @@ class EventFileWriter(settings: EventStreamingSettings) : AutoCloseable {
     override fun close() {
         appender.stop()
         context.stop()
-        lock.release()
+        if (lock.isValid) lock.release()
         lockChannel.close()
     }
 
     companion object {
+        const val MAX_RECORD_BYTES = 1024 * 1024
+
         private fun managed(path: Path): Boolean = path.fileName.toString().let {
             it == "events.jsonl" || it == "events.lock" ||
                 Regex("events\\.\\d{4}-\\d{2}-\\d{2}\\.\\d+\\.jsonl").matches(it)
