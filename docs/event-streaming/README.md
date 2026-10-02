@@ -14,9 +14,20 @@ This feature writes activities to a dedicated UTF-8 JSON Lines stream. Each phys
   "directory": "/var/log/kviklet/events",
   "maxFileSizeMiB": 100,
   "retentionDays": 180,
-  "maxArchiveSizeMiB": 100
+  "maxArchiveSizeMiB": 100,
+  "loggingLevel": "FULL"
 }
 ```
+
+`loggingLevel` controls this application-wide stream. Only users with `configuration:edit` can change it. Missing values in existing saved settings or API requests default to `FULL`, preserving the previous behavior. Unknown values are rejected.
+
+| Configuration view | API value | Coverage |
+| --- | --- | --- |
+| Level 1 — Security events only | `SECURITY_ONLY` | Authentication, permission denials, user and role changes, API keys, connection security settings, role-sync settings, and event-stream settings. Routine request/review activity, proxy sessions, and executions are omitted. |
+| Level 2 — All events, without query text | `WITHOUT_QUERY_TEXT` | All covered activities, including access reasons, approvals, proxy activity, and result metadata. SQL statements and Kubernetes command text and their truncation metadata are omitted. |
+| Level 3 — All events, with query text | `FULL` | All covered activities and fields, including access reasons, SQL statements, and Kubernetes commands. |
+
+Security-only coverage uses an explicit action allowlist, not the broad ECS categories. New actions must be classified when introduced. Excluded events skip field preparation; Level 2 skips statement/command processing. The active level is checked again before a committed event is written, so a downgrade also filters events pending in a transaction. An upgrade does not restore text omitted during preparation. Level changes are captured by `event_stream.configuration_changed` with the previous and new settings, including at Level 1. Changes apply to future writes; existing files retain their contents. These settings do not alter the audit data stored in Kviklet or its normal application logs.
 
 The examples use the public `/api` prefix supplied by the bundled web server. When connecting directly to the development backend on port 8081, omit `/api`. The directory must be an absolute path, writable by the application user, with no group or world write access. The directory itself and managed output files must not be symlinks. Newly created directories use mode 700; event files use 640. A collector may share the application's group for read access. A file lock prevents a second writer in the same directory; use local storage with reliable file locking and rename semantics.
 
@@ -52,9 +63,9 @@ Coverage is limited to activity Kviklet observes. Direct database administration
 
 Browser/API SQL metadata includes the rows returned by Kviklet's executor, column count, affected rows, dump byte count, numeric error codes and elapsed duration when available. Counts reflect executor behavior and configured result limits; they are not an estimate of rows that the database would have returned without those limits. Empty result lists produce unknown outcomes.
 
-The requester's access reason (the request description) is included as `kviklet.request.reason` on creation, reviews, request edits/closure, and execution attempts/completions, including database-proxy attempts. It reflects the request description captured when that event is prepared. A changed reason produces `request.reason_changed` with the new value after a successful transaction commit, including when cleared to an empty string. Saving an unchanged reason does not produce that event. A missing description omits the reason fields. Reasons are bounded to 64 KiB of valid UTF-8, with `kviklet.request.reason_truncated` and `kviklet.request.reason_original_bytes` describing any truncation; the original request in Kviklet is unchanged.
+At Levels 2 and 3, the requester's access reason (the request description) is included as `kviklet.request.reason` on creation, reviews, request edits/closure, and execution attempts/completions, including database-proxy attempts. It reflects the request description captured when that event is prepared. A changed reason produces `request.reason_changed` with the new value after a successful transaction commit, including when cleared to an empty string. Saving an unchanged reason does not produce that event. A missing description omits the reason fields. Reasons are bounded to 64 KiB of valid UTF-8, with `kviklet.request.reason_truncated` and `kviklet.request.reason_original_bytes` describing any truncation; the original request in Kviklet is unchanged.
 
-The stream excludes stored rows, returned values, column names, passwords, API-key values/hashes, proxy credentials, license contents, connection strings, raw exception messages, review/comment text, other object descriptions, and Kubernetes stdout/stderr. Access reasons, statements, and shell commands **are included** and can themselves contain secrets or personal information. Secure the log files and downstream SIEM appropriately. Statements are bounded to 64 KiB of valid UTF-8, with `statement_truncated` and `statement_original_bytes`. JSON escaping preserves embedded newlines within a single physical line. The overall record limit is 1 MiB, allowing a full reason and statement even when JSON escaping expands their contents. An event exceeding that limit is dropped and counted. Large permission sets can therefore cause a dropped record; no silent partial permission diff is emitted.
+The stream excludes stored rows, returned values, column names, passwords, API-key values/hashes, proxy credentials, license contents, connection strings, raw exception messages, review/comment text, other object descriptions, and Kubernetes stdout/stderr. Access reasons are included at Levels 2 and 3; statements and shell commands are included at Level 3. These text fields can themselves contain secrets or personal information. Level 2 omits the dedicated statement/command fields but does not redact SQL pasted into an access reason. Secure the log files and downstream SIEM appropriately. Statements are bounded to 64 KiB of valid UTF-8, with `statement_truncated` and `statement_original_bytes`. JSON escaping preserves embedded newlines within a single physical line. The overall record limit is 1 MiB, allowing a full reason and statement even when JSON escaping expands their contents. An event exceeding that limit is dropped and counted. Large permission sets can therefore cause a dropped record; no silent partial permission diff is emitted.
 
 A completed browser query, for example, has this shape (illustrative IDs):
 

@@ -12,6 +12,7 @@ import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.EventStreamingService
 import dev.kviklet.kviklet.service.LicenseService
 import dev.kviklet.kviklet.service.dto.ErrorResultLog
+import dev.kviklet.kviklet.service.dto.EventLoggingLevel
 import dev.kviklet.kviklet.service.dto.EventStreamingSettings
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.License
@@ -51,9 +52,12 @@ class EventStreamingTest {
     private var licensed = true
     private val streams = mutableListOf<EventStreamingService>()
 
-    private fun service(enabled: Boolean = true): EventStreamingService {
+    private fun service(
+        enabled: Boolean = true,
+        level: EventLoggingLevel = EventLoggingLevel.FULL,
+    ): EventStreamingService {
         every { configuration.getConfiguration(EventStreamingService.CONFIG_KEY) } returns
-            mapper.writeValueAsString(settings(enabled))
+            mapper.writeValueAsString(settings(enabled).copy(loggingLevel = level))
         every { licenseService.getActiveLicense() } answers {
             if (licensed) {
                 License(
@@ -89,6 +93,158 @@ class EventStreamingTest {
         assertTrue(lines().isEmpty())
         licensed = false
         service().emit("test", "iam")
+        assertTrue(lines().isEmpty())
+    }
+
+    @Test fun `legacy persisted settings default to full logging`() {
+        every { configuration.getConfiguration(EventStreamingService.CONFIG_KEY) } returns
+            """{"enabled":false,"directory":"/var/log/kviklet/events","retentionDays":180}"""
+        val stream = EventStreamingService(configuration, licenseService, mapper, ApplicationProperties())
+        streams.add(stream)
+        stream.refresh()
+        assertEquals(EventLoggingLevel.FULL, stream.getConfiguration().settings.loggingLevel)
+    }
+
+    @Test fun `security-only logging excludes routine events before preparing fields`() {
+        val stream = service(level = EventLoggingLevel.SECURITY_ONLY)
+        val included = listOf(
+            "authentication.login",
+            "authentication.logout",
+            "authorization.denied",
+            "user.roles_changed",
+            "role.created",
+            "api_key.revoked",
+            "role_sync.mapping_created",
+            "connection.security_changed",
+        )
+        included.forEach { action -> stream.emit(action, "configuration") }
+        val excluded = listOf(
+            "request.created",
+            "request.reason_changed",
+            "review.approve",
+            "comment.added",
+            "execution.attempted",
+            "execution.completed",
+            "proxy.session_created",
+            "unknown.security_event",
+        )
+        excluded.forEach { action ->
+            stream.emit(action, "iam", fields = { error("Excluded events must never prepare fields") })
+        }
+        assertEquals(included, lines().map { mapper.readTree(it)["event"]["action"].asText() })
+        assertEquals(0, stream.getConfiguration().status.detectedFailures)
+    }
+
+    @Test fun `without-query-text logging preserves reasons and results across execution channels`() {
+        val stream = service(level = EventLoggingLevel.WITHOUT_QUERY_TEXT)
+        val request = ExecutionRequestFactory().createDatasourceExecutionRequest(description = "Investigate SEC-42")
+        val query = EventFactory().createExecuteEvent(
+            request = request,
+            query = "SELECT sensitive_literal",
+            results = listOf(UpdateResultLog(3)),
+        )
+        for (channel in listOf("web", "api", "database_proxy", "kubernetes")) {
+            val event = if (channel ==
+                "kubernetes"
+            ) {
+                query.copy(query = null, command = "echo sensitive_literal")
+            } else {
+                query
+            }
+            stream.emit("execution.completed", "database", fields = { level ->
+                assertEquals(EventLoggingLevel.WITHOUT_QUERY_TEXT, level)
+                val fields = accessFields(event, channel, level)
+                assertFalse((fields["execution"] as Map<*, *>).containsKey("statement"))
+                fields + executionResultFields(event)
+            })
+        }
+        for (line in lines()) {
+            val fields = mapper.readTree(line)["kviklet"]
+            assertEquals("Investigate SEC-42", fields["request"]["reason"].asText())
+            assertEquals(3, fields["results"][0]["rows_affected"].asInt())
+            assertFalse(fields["execution"].has("statement"))
+            assertFalse(fields["execution"].has("statement_truncated"))
+            assertFalse(fields["execution"].has("statement_original_bytes"))
+            assertFalse(line.contains("sensitive_literal"))
+        }
+        assertEquals(4, lines().size)
+    }
+
+    @Test fun `downgrade before transaction commit removes already prepared query text and audits the change`() {
+        val stream = service()
+        val event = EventFactory().createExecuteEvent(query = "SELECT private_literal")
+        TransactionSynchronizationManager.setActualTransactionActive(true)
+        TransactionSynchronizationManager.initSynchronization()
+        stream.emit("execution.attempted", "database", fields = { accessFields(event, "web", it) })
+        val pending = TransactionSynchronizationManager.getSynchronizations()
+        TransactionSynchronizationManager.clearSynchronization()
+        TransactionSynchronizationManager.setActualTransactionActive(false)
+        stream.configure(settings().copy(loggingLevel = EventLoggingLevel.WITHOUT_QUERY_TEXT))
+        pending.forEach { it.afterCommit() }
+        val records = lines().map { mapper.readTree(it) }
+        val change = records.first { it["event"]["action"].asText() == "event_stream.configuration_changed" }
+        assertEquals("FULL", change["kviklet"]["before"]["loggingLevel"].asText())
+        assertEquals("WITHOUT_QUERY_TEXT", change["kviklet"]["after"]["loggingLevel"].asText())
+        val execution = records.first { it["event"]["action"].asText() == "execution.attempted" }
+        assertEquals("query", execution["kviklet"]["execution"]["mode"].asText())
+        assertFalse(execution["kviklet"]["execution"].has("statement"))
+        assertFalse(lines().joinToString().contains("private_literal"))
+    }
+
+    @Test fun `security-only downgrade excludes pending execution while retaining the settings audit`() {
+        val stream = service()
+        TransactionSynchronizationManager.setActualTransactionActive(true)
+        TransactionSynchronizationManager.initSynchronization()
+        stream.emit("execution.completed", "database")
+        val pending = TransactionSynchronizationManager.getSynchronizations()
+        TransactionSynchronizationManager.clearSynchronization()
+        TransactionSynchronizationManager.setActualTransactionActive(false)
+        stream.configure(settings().copy(loggingLevel = EventLoggingLevel.SECURITY_ONLY))
+        pending.forEach { it.afterCommit() }
+        assertEquals(
+            listOf("event_stream.configuration_changed"),
+            lines().map {
+                mapper.readTree(it)["event"]["action"].asText()
+            },
+        )
+        stream.configure(settings().copy(loggingLevel = EventLoggingLevel.WITHOUT_QUERY_TEXT))
+        assertEquals(2, lines().size)
+    }
+
+    @Test fun `upgrade does not add text to an event captured without query text`() {
+        val stream = service(level = EventLoggingLevel.WITHOUT_QUERY_TEXT)
+        val event = EventFactory().createExecuteEvent(query = "SELECT private_literal")
+        TransactionSynchronizationManager.setActualTransactionActive(true)
+        TransactionSynchronizationManager.initSynchronization()
+        stream.emit("execution.attempted", "database", fields = { accessFields(event, "web", it) })
+        // Explicit maps must obey the capture-time level even without the standard field helper.
+        stream.emit(
+            "execution.attempted",
+            "database",
+            fields = mapOf(
+                "execution" to mapOf("mode" to "query", "statement" to "SELECT private_literal"),
+            ),
+        )
+        val pending = TransactionSynchronizationManager.getSynchronizations()
+        TransactionSynchronizationManager.clearSynchronization()
+        TransactionSynchronizationManager.setActualTransactionActive(false)
+        stream.configure(settings())
+        pending.forEach { it.afterCommit() }
+        assertFalse(lines().joinToString().contains("private_literal"))
+        assertEquals(3, lines().size)
+    }
+
+    @Test fun `rolled-back settings changes do not change the active logging level`() {
+        val stream = service()
+        TransactionSynchronizationManager.setActualTransactionActive(true)
+        TransactionSynchronizationManager.initSynchronization()
+        stream.configure(settings().copy(loggingLevel = EventLoggingLevel.SECURITY_ONLY))
+        TransactionSynchronizationManager.getSynchronizations().forEach {
+            it.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK)
+        }
+        TransactionSynchronizationManager.clearSynchronization()
+        TransactionSynchronizationManager.setActualTransactionActive(false)
+        assertEquals(EventLoggingLevel.FULL, stream.getConfiguration().settings.loggingLevel)
         assertTrue(lines().isEmpty())
     }
 

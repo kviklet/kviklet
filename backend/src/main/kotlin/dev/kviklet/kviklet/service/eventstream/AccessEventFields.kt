@@ -6,6 +6,7 @@ import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DumpResultLog
 import dev.kviklet.kviklet.service.dto.ErrorResultLog
 import dev.kviklet.kviklet.service.dto.Event
+import dev.kviklet.kviklet.service.dto.EventLoggingLevel
 import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import dev.kviklet.kviklet.service.dto.KubernetesOutputResultLog
@@ -20,38 +21,43 @@ fun requestFields(request: ExecutionRequest): Map<String, Any?> = buildMap {
     request.description?.let { put("request", EventStreamingService.reason(it)) }
 }
 
-fun accessFields(event: Event, channel: String): Map<String, Any?> = buildMap {
-    putAll(requestFields(event.request))
-    put("audit_event_id", event.getId())
-    put(
-        "connection",
-        mapOf(
-            "id" to event.request.connection.getId(),
-            "type" to event.request.connection.connectionType.name,
-            "name" to event.request.connection.displayName,
-            "database_type" to (event.request.connection as? DatasourceConnection)?.type?.name,
-        ),
-    )
-    if (event is ExecuteEvent) {
+fun accessFields(event: Event, channel: String, level: EventLoggingLevel = EventLoggingLevel.FULL): Map<String, Any?> =
+    buildMap {
+        putAll(requestFields(event.request))
+        put("audit_event_id", event.getId())
         put(
-            "execution",
+            "connection",
             mapOf(
-                "channel" to channel,
-                "mode" to when {
-                    event.isDump -> "dump"
-                    event.isDownload -> "download"
-                    event.isDryRun -> "dry_run"
-                    event.command != null -> "kubernetes"
-                    else -> "query"
-                },
-            ) + EventStreamingService.statement(event.query ?: event.command),
+                "id" to event.request.connection.getId(),
+                "type" to event.request.connection.connectionType.name,
+                "name" to event.request.connection.displayName,
+                "database_type" to (event.request.connection as? DatasourceConnection)?.type?.name,
+            ),
         )
-        event.namespace?.let { put("namespace", it) }
-        event.podName?.let { put("pod_name", it) }
-        event.containerName?.let { put("container_name", it) }
+        if (event is ExecuteEvent) {
+            put(
+                "execution",
+                mapOf(
+                    "channel" to channel,
+                    "mode" to when {
+                        event.isDump -> "dump"
+                        event.isDownload -> "download"
+                        event.isDryRun -> "dry_run"
+                        event.command != null -> "kubernetes"
+                        else -> "query"
+                    },
+                ) + if (level == EventLoggingLevel.FULL) {
+                    EventStreamingService.statement(event.query ?: event.command)
+                } else {
+                    emptyMap()
+                },
+            )
+            event.namespace?.let { put("namespace", it) }
+            event.podName?.let { put("pod_name", it) }
+            event.containerName?.let { put("container_name", it) }
+        }
+        if (event is ReviewEvent) put("review_action", event.action.name.lowercase())
     }
-    if (event is ReviewEvent) put("review_action", event.action.name.lowercase())
-}
 
 fun executionResultFields(event: ExecuteEvent): Map<String, Any?> = mapOf(
     "duration_ms" to

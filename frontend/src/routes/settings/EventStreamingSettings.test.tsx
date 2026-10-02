@@ -5,6 +5,7 @@ import EventStreamingSettings from "./EventStreamingSettings";
 import {
   getEventStreaming,
   putEventStreaming,
+  EventStreamingSettingsSchema,
 } from "../../api/EventStreamingApi";
 import { UserStatusContext } from "../../components/UserStatusProvider";
 import { StatusResponse } from "../../api/StatusApi";
@@ -24,6 +25,7 @@ const response = {
     maxFileSizeMiB: 100,
     retentionDays: 180,
     maxArchiveSizeMiB: 100,
+    loggingLevel: "FULL" as const,
   },
   status: {
     state: "disabled" as const,
@@ -87,6 +89,9 @@ describe("Event streaming settings", () => {
       screen.getByLabelText("Output directory (absolute path)"),
     ).toBeDisabled();
     expect(
+      screen.getByRole("combobox", { name: "Logging level" }),
+    ).toBeDisabled();
+    expect(
       screen.queryByRole("button", { name: "Save" }),
     ).not.toBeInTheDocument();
   });
@@ -118,5 +123,46 @@ describe("Event streaming settings", () => {
       await screen.findByText(/must cover at least one rotated file/),
     ).toBeVisible();
     expect(putEventStreaming).not.toHaveBeenCalled();
+  });
+  it.each(["SECURITY_ONLY", "WITHOUT_QUERY_TEXT", "FULL"] as const)(
+    "saves the selected logging level %s",
+    async (loggingLevel) => {
+      const saved = {
+        ...response,
+        settings: { ...response.settings, loggingLevel },
+      };
+      vi.mocked(putEventStreaming).mockResolvedValue(saved);
+      page();
+      const select = await screen.findByRole("combobox", {
+        name: "Logging level",
+      });
+      expect(select).toHaveValue("FULL");
+      fireEvent.change(select, { target: { value: loggingLevel } });
+      if (loggingLevel === "WITHOUT_QUERY_TEXT") {
+        expect(
+          screen.getByText(
+            /SQL statements and Kubernetes commands are omitted/,
+          ),
+        ).toBeVisible();
+      }
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      expect(await screen.findByRole("status")).toHaveTextContent(
+        "Settings saved.",
+      );
+      expect(putEventStreaming).toHaveBeenCalledWith(saved.settings);
+    },
+  );
+  it("defaults older settings to full logging and rejects unknown levels", () => {
+    const legacy: Record<string, unknown> = { ...response.settings };
+    delete legacy.loggingLevel;
+    expect(EventStreamingSettingsSchema.parse(legacy).loggingLevel).toBe(
+      "FULL",
+    );
+    expect(
+      EventStreamingSettingsSchema.safeParse({
+        ...legacy,
+        loggingLevel: "DEBUG",
+      }).success,
+    ).toBe(false);
   });
 });

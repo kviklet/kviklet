@@ -583,8 +583,8 @@ class ExecutionRequestService(
             "execution.completed",
             "database",
             "failure",
-            {
-                dev.kviklet.kviklet.service.eventstream.accessFields(event, EventStreamingService.channel()) +
+            { level ->
+                dev.kviklet.kviklet.service.eventstream.accessFields(event, EventStreamingService.channel(), level) +
                     mapOf("error_class" to error.javaClass.simpleName)
             },
             actorId = userId,
@@ -778,8 +778,8 @@ class ExecutionRequestService(
                         "execution.completed",
                         "process",
                         if (timedOut || exitCode != 0) "failure" else "success",
-                        {
-                            dev.kviklet.kviklet.service.eventstream.accessFields(event, executionChannel) +
+                        { level ->
+                            dev.kviklet.kviklet.service.eventstream.accessFields(event, executionChannel, level) +
                                 mapOf(
                                     "exit_code" to exitCode,
                                     "timed_out" to timedOut,
@@ -796,8 +796,8 @@ class ExecutionRequestService(
                 "execution.completed",
                 "process",
                 "failure",
-                {
-                    dev.kviklet.kviklet.service.eventstream.accessFields(event, executionChannel) +
+                { level ->
+                    dev.kviklet.kviklet.service.eventstream.accessFields(event, executionChannel, level) +
                         mapOf("error_class" to e.javaClass.simpleName)
                 },
                 actorId = userId,

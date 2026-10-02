@@ -17,6 +17,14 @@ import Button from "../../components/Button";
 import InputField from "../../components/InputField";
 import ReadOnlyNotice from "../../components/ReadOnlyNotice";
 
+const levelDescriptions: Record<Settings["loggingLevel"], string> = {
+  SECURITY_ONLY:
+    "Authentication, permission denials, user and role changes, API keys, and security configuration changes. Routine request, review, proxy session, and execution activity is omitted.",
+  WITHOUT_QUERY_TEXT:
+    "All covered events, including access reasons, approvals, proxy activity, and execution metadata. SQL statements and Kubernetes commands are omitted. Access reasons may still contain query text pasted by users.",
+  FULL: "All covered events, including access reasons, SQL statements, Kubernetes commands, and execution metadata. These text fields may contain sensitive information.",
+};
+
 export default function EventStreamingSettings() {
   const { config } = useConfig();
   const canEdit = useHasPermission("configuration:edit");
@@ -75,6 +83,7 @@ export default function EventStreamingSettings() {
   const directoryChanged =
     data && watch("directory") !== data.settings.directory;
   const licenseValid = config?.licenseValid === true;
+  const loggingLevel = watch("loggingLevel") ?? "FULL";
   return (
     <div className="max-w-3xl space-y-4">
       <div className="flex items-center gap-2">
@@ -160,6 +169,45 @@ export default function EventStreamingSettings() {
                 />
                 Enable event file output
               </label>
+              <div>
+                <label
+                  htmlFor="event-stream-loggingLevel"
+                  className="block text-sm font-medium"
+                >
+                  Logging level
+                </label>
+                <select
+                  id="event-stream-loggingLevel"
+                  {...register("loggingLevel")}
+                  aria-describedby="event-stream-level-description"
+                  className="mt-1 w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"
+                >
+                  <option value="SECURITY_ONLY">
+                    Level 1 — Security events only
+                  </option>
+                  <option value="WITHOUT_QUERY_TEXT">
+                    Level 2 — All events, without query text
+                  </option>
+                  <option value="FULL">
+                    Level 3 — All events, with query text
+                  </option>
+                </select>
+                <p
+                  id="event-stream-level-description"
+                  className="mt-1 text-sm text-slate-600 dark:text-slate-400"
+                >
+                  {levelDescriptions[loggingLevel]} Changes apply to future
+                  events; existing files retain their contents.
+                </p>
+                {errors.loggingLevel && (
+                  <p
+                    role="alert"
+                    className="text-sm text-red-700 dark:text-red-400"
+                  >
+                    {errors.loggingLevel.message}
+                  </p>
+                )}
+              </div>
               <InputField
                 label="Output directory (absolute path)"
                 id="event-stream-directory"
@@ -208,9 +256,8 @@ export default function EventStreamingSettings() {
               Kubernetes and use one writer per directory.
             </p>
             <p className="text-sm text-slate-600 dark:text-slate-400">
-              SQL statements and commands are included and may contain sensitive
-              literals. Returned data, passwords and tokens are excluded. File
-              output is best effort: failed writes are counted and are not
+              Returned data, passwords and tokens are excluded at every level.
+              File output is best effort: failed writes are counted and are not
               replayed. Proxy queries include session details; their result
               counts and outcome are unknown.
             </p>

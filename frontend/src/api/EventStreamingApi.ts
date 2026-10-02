@@ -9,6 +9,9 @@ export const EventStreamingSettingsSchema = z.object({
   maxFileSizeMiB: z.number().int().min(1).max(1024),
   retentionDays: z.number().int().min(1).max(365),
   maxArchiveSizeMiB: z.number().int().min(1).max(102400),
+  loggingLevel: z
+    .enum(["SECURITY_ONLY", "WITHOUT_QUERY_TEXT", "FULL"])
+    .default("FULL"),
 });
 const ResponseSchema = z.object({
   settings: EventStreamingSettingsSchema,

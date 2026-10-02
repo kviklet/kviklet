@@ -1,6 +1,8 @@
 package dev.kviklet.kviklet
 
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.LicenseAdapter
 import dev.kviklet.kviklet.helper.ConnectionHelper
@@ -8,6 +10,7 @@ import dev.kviklet.kviklet.helper.ExecutionRequestHelper
 import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.EventStreamingService
+import dev.kviklet.kviklet.service.dto.EventLoggingLevel
 import dev.kviklet.kviklet.service.dto.EventStreamingSettings
 import dev.kviklet.kviklet.service.dto.LicenseFile
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -151,7 +154,7 @@ class EventStreamingIntegrationTest {
             mockMvc.perform(get("/config/event-streaming").cookie(viewerCookie)).andExpect(status().isOk)
             mockMvc.perform(
                 put("/config/event-streaming").cookie(viewerCookie).contentType("application/json")
-                    .content(mapper.writeValueAsString(settings)),
+                    .content(mapper.writeValueAsString(settings.copy(loggingLevel = EventLoggingLevel.SECURITY_ONLY))),
             ).andExpect(status().isForbidden)
             mockMvc.perform(post("/logout").cookie(newCookie)).andExpect(status().isOk)
             val lines = Files.readAllLines(directory.resolve("events.jsonl"))
@@ -187,6 +190,84 @@ class EventStreamingIntegrationTest {
             assertEquals("127.0.0.1", failedLogin["source"]["ip"].asText())
             assertFalse(lines.joinToString().contains("sensitive-password"))
             assertFalse(lines.joinToString().contains("secret-description"))
+        } finally {
+            streaming.configure(settings.copy(enabled = false))
+            licenses.deleteAll()
+            requestAdapter.deleteAll()
+            connections.deleteAll()
+            userHelper.deleteAll()
+            roleHelper.deleteAll()
+        }
+    }
+
+    @Test fun `logging levels persist through the API and filter real query execution without changing its results`() {
+        val admin = userHelper.createUser()
+        val viewer = userHelper.createUser(permissions = listOf("configuration:get"))
+        val cookie = userHelper.login(email = admin.email, mockMvc = mockMvc)
+        val settings = EventStreamingSettings(true, directory.toString(), 1, 7, 2)
+        try {
+            licenses.createLicense(
+                LicenseFile(
+                    javaClass.getResource("/event-stream-test-license.json")!!.readText(),
+                    "test",
+                    LocalDateTime.now(),
+                ),
+            )
+            val invalid = mapper.valueToTree<ObjectNode>(settings)
+            for (value in listOf("DEBUG", 0)) {
+                invalid.set<JsonNode>("loggingLevel", mapper.valueToTree<JsonNode>(value))
+                mockMvc.perform(
+                    put("/config/event-streaming").cookie(cookie).contentType("application/json")
+                        .content(mapper.writeValueAsString(invalid)),
+                ).andExpect(status().isBadRequest)
+            }
+            for (level in EventLoggingLevel.entries) {
+                val start = if (Files.exists(directory.resolve("events.jsonl"))) {
+                    Files.readAllLines(directory.resolve("events.jsonl")).size
+                } else {
+                    0
+                }
+                mockMvc.perform(
+                    put("/config/event-streaming").cookie(cookie).contentType("application/json")
+                        .content(mapper.writeValueAsString(settings.copy(loggingLevel = level))),
+                ).andExpect(status().isOk)
+                val configured = mockMvc.perform(get("/config/event-streaming").cookie(cookie))
+                    .andExpect(status().isOk).andReturn()
+                assertEquals(
+                    level.name,
+                    mapper.readTree(configured.response.contentAsString)["settings"]["loggingLevel"].asText(),
+                )
+                val request = requests.createApprovedRequest(database, admin, viewer, "SELECT 7")
+                mockMvc.perform(post("/execution-requests/${request.getId()}/execute").cookie(cookie))
+                    .andExpect(status().isOk)
+                val role = mockMvc.perform(
+                    post("/roles/").cookie(cookie).contentType("application/json")
+                        .content("""{"name":"Level $level","description":"private-role-description","policies":[]}"""),
+                ).andExpect(status().isOk).andReturn()
+                val roleId = mapper.readTree(role.response.contentAsString)["id"].asText()
+                mockMvc.perform(delete("/roles/$roleId").cookie(cookie)).andExpect(status().isOk)
+                val records = Files.readAllLines(directory.resolve("events.jsonl")).drop(start).map {
+                    mapper.readTree(it)
+                }
+                assertTrue(records.any { it["event"]["action"].asText() == "role.created" })
+                assertTrue(records.any { it["event"]["action"].asText() == "role.deleted" })
+                val executions = records.filter { it["event"]["action"].asText().startsWith("execution.") }
+                if (level == EventLoggingLevel.SECURITY_ONLY) {
+                    assertTrue(executions.isEmpty())
+                } else {
+                    assertEquals(2, executions.size)
+                    val completed = executions.first { it["event"]["action"].asText() == "execution.completed" }
+                    assertEquals(1, completed["kviklet"]["results"][0]["rows_returned"].asInt())
+                    assertEquals("A test execution request", completed["kviklet"]["request"]["reason"].asText())
+                    for (execution in executions) {
+                        assertEquals(
+                            level == EventLoggingLevel.FULL,
+                            execution["kviklet"]["execution"].has("statement"),
+                        )
+                    }
+                }
+                assertFalse(records.joinToString().contains("private-role-description"))
+            }
         } finally {
             streaming.configure(settings.copy(enabled = false))
             licenses.deleteAll()

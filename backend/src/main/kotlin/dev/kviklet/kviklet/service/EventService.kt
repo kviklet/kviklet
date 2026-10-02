@@ -91,8 +91,8 @@ class EventService(
             },
             category = if (event is ExecuteEvent && event.command == null) "database" else "configuration",
             outcome = if (event is ExecuteEvent) "unknown" else "success",
-            fields = {
-                accessFields(event, if (proxy != null) "database_proxy" else EventStreamingService.channel()) +
+            fields = { level ->
+                accessFields(event, if (proxy != null) "database_proxy" else EventStreamingService.channel(), level) +
                     if (proxy != null) mapOf("proxy" to proxy) else emptyMap()
             },
             actorId = authorId,
@@ -123,7 +123,10 @@ class EventService(
                 "execution.completed",
                 "database",
                 executionOutcome(updatedEvent),
-                { accessFields(updatedEvent, EventStreamingService.channel()) + executionResultFields(updatedEvent) },
+                { level ->
+                    accessFields(updatedEvent, EventStreamingService.channel(), level) +
+                        executionResultFields(updatedEvent)
+                },
                 actorId = event.author.getId(),
             )
         }

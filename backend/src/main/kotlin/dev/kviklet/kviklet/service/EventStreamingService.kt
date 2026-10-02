@@ -12,10 +12,12 @@ import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.security.SecurityEventRequestFilter
 import dev.kviklet.kviklet.security.UserDetailsWithId
+import dev.kviklet.kviklet.service.dto.EventLoggingLevel
 import dev.kviklet.kviklet.service.dto.EventStreamingResponse
 import dev.kviklet.kviklet.service.dto.EventStreamingSettings
 import dev.kviklet.kviklet.service.dto.EventStreamingStatus
 import dev.kviklet.kviklet.service.eventstream.EventFileWriter
+import dev.kviklet.kviklet.service.eventstream.EventLoggingPolicy
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
 import org.slf4j.LoggerFactory
@@ -161,19 +163,23 @@ class EventStreamingService(
         action: String,
         category: String,
         outcome: String = "success",
-        fields: () -> Map<String, Any?>,
+        fields: (EventLoggingLevel) -> Map<String, Any?>,
         actorId: String? = null,
         authentication: Authentication? = SecurityContextHolder.getContext().authentication,
     ) {
         try {
-            synchronized(this) {
+            val captureLevel = synchronized(this) {
                 maintainWriter()
-                if (!eligible()) return
+                if (!eligible() || !EventLoggingPolicy.includes(action, settings.loggingLevel)) return
+                settings.loggingLevel
             }
-            val event = record(action, category, outcome, fields(), actor(authentication, actorId))
+            val event = EventLoggingPolicy.apply(
+                record(action, category, outcome, fields(captureLevel), actor(authentication, actorId)),
+                captureLevel,
+            )
             afterCommit {
                 synchronized(this) {
-                    if (eligible()) append(event)
+                    if (eligible() && EventLoggingPolicy.includes(action, settings.loggingLevel)) append(event)
                 }
             }
         } catch (e: Exception) {
@@ -287,7 +293,7 @@ class EventStreamingService(
 
     private fun append(event: Map<String, Any?>) {
         try {
-            val json = mapper.writeValueAsString(event)
+            val json = mapper.writeValueAsString(EventLoggingPolicy.apply(event, settings.loggingLevel))
             // Allow two 64 KiB text fields even when JSON escaping expands each byte sixfold.
             if (json.toByteArray(Charsets.UTF_8).size > 1024 * 1024) {
                 failures++
