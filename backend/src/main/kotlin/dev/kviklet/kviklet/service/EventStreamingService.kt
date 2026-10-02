@@ -16,6 +16,7 @@ import dev.kviklet.kviklet.service.dto.EventStreamingResponse
 import dev.kviklet.kviklet.service.dto.EventStreamingSettings
 import dev.kviklet.kviklet.service.dto.EventStreamingStatus
 import dev.kviklet.kviklet.service.eventstream.EventFileWriter
+import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Lazy
@@ -44,6 +45,7 @@ class EventStreamingService(
     private val logger = LoggerFactory.getLogger(javaClass)
     private var settings = EventStreamingSettings()
     private var initialized = false
+    private var configurationRevision = 0L
     private var licensedUntil: LocalDate? = null
     private var licenseCheckedAt = Instant.EPOCH
     private var writer: EventFileWriter? = null
@@ -57,29 +59,32 @@ class EventStreamingService(
     @Policy(Permission.CONFIGURATION_GET, checkIsPresentOnly = true)
     @Synchronized
     fun getConfiguration(): EventStreamingResponse {
-        refresh()
+        maintainWriter()
         return response()
     }
 
     @Policy(Permission.CONFIGURATION_EDIT, checkIsPresentOnly = true)
     @Transactional
-    @Synchronized
     fun configure(next: EventStreamingSettings): EventStreamingResponse {
-        refresh()
         require(next.maxFileSizeMiB in 1..1024) { "File size must be between 1 and 1024 MiB" }
         require(next.retentionDays in 1..365) { "Retention must be between 1 and 365 days" }
         require(next.maxArchiveSizeMiB in next.maxFileSizeMiB..102400) {
             "Archive budget must cover at least one file and be at most 102400 MiB"
         }
         require(Path.of(next.directory).isAbsolute) { "Event output directory must be absolute" }
-        if (next.enabled && licenseService.getActiveLicense() == null) {
+        // Never wait for a database connection while holding the writer monitor.
+        val license = if (next.enabled) licenseService.getActiveLicense() else null
+        if (next.enabled && license == null) {
             throw EnterpriseFeatureException("Event Log Streaming requires a valid enterprise license")
         }
         if (next.enabled) EventFileWriter.prepareDirectory(Path.of(next.directory))
-        val previous = settings
+        val previous = synchronized(this) { settings }
         val actor = actor()
         // Validate and lock a replacement directory before changing the saved configuration.
-        val replacement = if (next.enabled && (writer == null || next.directory != previous.directory)) {
+        val needsReplacement = synchronized(this) {
+            next.enabled && (writer == null || next.directory != settings.directory)
+        }
+        val replacement = if (needsReplacement) {
             try {
                 EventFileWriter(next)
             } catch (e: Exception) {
@@ -123,16 +128,20 @@ class EventStreamingService(
                 runCatching { writer?.close() }
                 writer = replacement
                 settings = next
+                initialized = true
+                configurationRevision++
                 expired = false
-                licenseCheckedAt = Instant.EPOCH
+                licensedUntil = license?.validUntil
+                licenseCheckedAt = Instant.now()
                 recoveryAt = Instant.EPOCH
-                refresh()
+                lastError = null
+                maintainWriter()
                 if (!previous.enabled && eligible()) {
                     append(record("event_stream.enabled", "configuration", "success", emptyMap(), actor))
                 }
             }
         }
-        return response().copy(settings = next)
+        return synchronized(this) { response().copy(settings = next) }
     }
 
     /** Callers pass explicit safe fields, never domain objects carrying credentials or result values. */
@@ -144,14 +153,24 @@ class EventStreamingService(
         fields: Map<String, Any?> = emptyMap(),
         actorId: String? = null,
         authentication: Authentication? = SecurityContextHolder.getContext().authentication,
+    ) = emit(action, category, outcome, { fields }, actorId, authentication)
+
+    /** Expensive field preparation belongs inside the capture gate and failure boundary. */
+    @NoPolicy
+    fun emit(
+        action: String,
+        category: String,
+        outcome: String = "success",
+        fields: () -> Map<String, Any?>,
+        actorId: String? = null,
+        authentication: Authentication? = SecurityContextHolder.getContext().authentication,
     ) {
         try {
-            val event: Map<String, Any?>
             synchronized(this) {
-                refresh()
+                maintainWriter()
                 if (!eligible()) return
-                event = record(action, category, outcome, fields, actor(authentication, actorId))
             }
+            val event = record(action, category, outcome, fields(), actor(authentication, actorId))
             afterCommit {
                 synchronized(this) {
                     if (eligible()) append(event)
@@ -163,20 +182,44 @@ class EventStreamingService(
     }
 
     @NoPolicy
+    @PostConstruct
     @Scheduled(fixedDelay = 5000)
-    @Synchronized
     fun refresh() {
+        val snapshot = synchronized(this) {
+            if (initialized && (!settings.enabled || Instant.now().isBefore(licenseCheckedAt.plusSeconds(5)))) {
+                maintainWriter()
+                return
+            }
+            RefreshSnapshot(settings, initialized, configurationRevision)
+        }
         try {
-            if (!initialized) {
-                settings = (configurationAdapter.getConfiguration(CONFIG_KEY) as? String)?.let {
+            val loaded = if (snapshot.initialized) {
+                snapshot.settings
+            } else {
+                (configurationAdapter.getConfiguration(CONFIG_KEY) as? String)?.let {
                     mapper.readValue(it, EventStreamingSettings::class.java)
                 } ?: EventStreamingSettings()
+            }
+            val license = if (loaded.enabled) licenseService.getActiveLicense() else null
+            synchronized(this) {
+                // Ignore a refresh that raced with a committed settings change.
+                if (configurationRevision != snapshot.revision) return
+                settings = loaded
                 initialized = true
-            }
-            if (settings.enabled && Instant.now().isAfter(licenseCheckedAt.plusSeconds(5))) {
-                licensedUntil = licenseService.getActiveLicense()?.validUntil
+                licensedUntil = license?.validUntil
                 licenseCheckedAt = Instant.now()
+                maintainWriter()
             }
+        } catch (e: Exception) {
+            synchronized(this) {
+                if (configurationRevision == snapshot.revision) failure("Event streaming configuration is unavailable")
+            }
+        }
+    }
+
+    /** Only cached state and file operations are allowed here; the caller holds the writer monitor. */
+    private fun maintainWriter() {
+        try {
             if (settings.enabled && !hasLicense()) expired = true
             if (!eligible()) {
                 runCatching { writer?.close() }
@@ -292,6 +335,12 @@ class EventStreamingService(
         runCatching { writer?.close() }
         writer = null
     }
+
+    private data class RefreshSnapshot(
+        val settings: EventStreamingSettings,
+        val initialized: Boolean,
+        val revision: Long,
+    )
 
     companion object {
         const val CONFIG_KEY = "eventStreaming"

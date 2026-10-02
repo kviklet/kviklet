@@ -4,7 +4,9 @@ package dev.kviklet.kviklet.service.eventstream
 import ch.qos.logback.classic.LoggerContext
 import ch.qos.logback.core.encoder.EncoderBase
 import ch.qos.logback.core.rolling.RollingFileAppender
+import ch.qos.logback.core.rolling.RolloverFailure
 import ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy
+import ch.qos.logback.core.rolling.helper.RenameUtil
 import ch.qos.logback.core.status.Status
 import ch.qos.logback.core.util.FileSize
 import dev.kviklet.kviklet.service.dto.EventStreamingSettings
@@ -38,13 +40,26 @@ class EventFileWriter(settings: EventStreamingSettings) : AutoCloseable {
             super.openFile(fileName)
         }
     }
-    private val policy = SizeAndTimeBasedRollingPolicy<String>()
+    private val policy = object : SizeAndTimeBasedRollingPolicy<String>() {
+        override fun rollover() {
+            try {
+                super.rollover()
+                cleanupRequired.set(true)
+            } catch (e: RolloverFailure) {
+                // RollingFileAppender otherwise swallows this as a WARN and keeps growing the active file.
+                failed.set(true)
+                throw e
+            }
+        }
+    }
     private var cleanup: Future<*>? = null
     private var cleanedAt = Instant.EPOCH
     private val failed = AtomicBoolean(false)
+    private val cleanupRequired = AtomicBoolean(true)
     private val lockChannel: FileChannel
     private val lock: FileLock
     private val directory = Path.of(settings.directory).toAbsolutePath().normalize()
+    private val retention = EventArchiveRetention(directory, settings.retentionDays, settings.maxArchiveSizeMiB)
 
     init {
         prepareDirectory(directory)
@@ -64,7 +79,11 @@ class EventFileWriter(settings: EventStreamingSettings) : AutoCloseable {
             discardIncompleteTail()
             context.name = "kviklet-event-stream"
             context.statusManager.add { status ->
-                if (status.level == Status.ERROR) failed.set(true)
+                if (status.level == Status.ERROR ||
+                    (status.level == Status.WARN && status.origin is RenameUtil)
+                ) {
+                    failed.set(true)
+                }
             }
             context.start()
             appender.context = context
@@ -85,15 +104,14 @@ class EventFileWriter(settings: EventStreamingSettings) : AutoCloseable {
             policy.setParent(appender)
             policy.fileNamePattern = directory.resolve("events.%d{yyyy-MM-dd,UTC}.%i.jsonl").toString()
             policy.setMaxFileSize(FileSize.valueOf("${settings.maxFileSizeMiB}MB"))
-            policy.maxHistory = settings.retentionDays
-            policy.setTotalSizeCap(FileSize.valueOf("${settings.maxArchiveSizeMiB}MB"))
-            policy.isCleanHistoryOnStart = true
+            // Own the complete retention scan; Logback's remover skips archives beyond its startup window.
+            policy.maxHistory = 0
             policy.start()
             appender.rollingPolicy = policy
-            appender.triggeringPolicy = policy
             appender.start()
             checkHealthy()
             secureFiles()
+            maintain()
         } catch (e: Exception) {
             appender.stop()
             context.stop()
@@ -109,15 +127,23 @@ class EventFileWriter(settings: EventStreamingSettings) : AutoCloseable {
         require(!Files.isSymbolicLink(directory.resolve("events.jsonl"))) { "Event output must not be a symbolic link" }
         appender.doAppend(json)
         checkHealthy()
+        maintain()
     }
 
     /** Keep archive retention working even when there are no new events to trigger rotation. */
     @Synchronized
     fun maintain() {
         checkHealthy()
-        if (Instant.now().isAfter(cleanedAt.plusSeconds(60)) && cleanup?.isDone != false) {
-            cleanup = policy.timeBasedFileNamingAndTriggeringPolicy.archiveRemover.cleanAsynchronously(Instant.now())
+        if ((cleanupRequired.get() || Instant.now().isAfter(cleanedAt.plusSeconds(60))) && cleanup?.isDone != false) {
+            cleanupRequired.set(false)
             cleanedAt = Instant.now()
+            cleanup = context.alternateExecutorService.submit {
+                try {
+                    retention.clean()
+                } catch (e: Exception) {
+                    failed.set(true)
+                }
+            }
         }
     }
 

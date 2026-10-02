@@ -33,7 +33,13 @@ import java.nio.file.Path
 import java.sql.DriverManager
 import java.time.LocalDateTime
 
-@SpringBootTest
+@SpringBootTest(
+    properties = [
+        // Test cleanup must never run against a developer's database, even with datasource env overrides.
+        "spring.datasource.url=jdbc:tc:postgresql:16-alpine:///event_stream_test",
+        "spring.datasource.driver-class-name=org.testcontainers.jdbc.ContainerDatabaseDriver",
+    ],
+)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Testcontainers

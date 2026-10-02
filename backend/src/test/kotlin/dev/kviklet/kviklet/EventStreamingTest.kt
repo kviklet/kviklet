@@ -66,6 +66,7 @@ class EventStreamingTest {
         }
         return EventStreamingService(configuration, licenseService, mapper, ApplicationProperties()).also {
             streams.add(it)
+            it.refresh()
         }
     }
     private fun settings(enabled: Boolean = true) = EventStreamingSettings(enabled, directory.toString(), 1, 7, 2)

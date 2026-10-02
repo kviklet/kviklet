@@ -573,8 +573,10 @@ class ExecutionRequestService(
             "execution.completed",
             "database",
             "failure",
-            dev.kviklet.kviklet.service.eventstream.accessFields(event, EventStreamingService.channel()) +
-                mapOf("error_class" to error.javaClass.simpleName),
+            {
+                dev.kviklet.kviklet.service.eventstream.accessFields(event, EventStreamingService.channel()) +
+                    mapOf("error_class" to error.javaClass.simpleName)
+            },
             actorId = userId,
         )
     }
@@ -766,12 +768,14 @@ class ExecutionRequestService(
                         "execution.completed",
                         "process",
                         if (timedOut || exitCode != 0) "failure" else "success",
-                        dev.kviklet.kviklet.service.eventstream.accessFields(event, executionChannel) +
-                            mapOf(
-                                "exit_code" to exitCode,
-                                "timed_out" to timedOut,
-                                "duration_ms" to ((System.nanoTime() - executionStarted) / 1_000_000),
-                            ),
+                        {
+                            dev.kviklet.kviklet.service.eventstream.accessFields(event, executionChannel) +
+                                mapOf(
+                                    "exit_code" to exitCode,
+                                    "timed_out" to timedOut,
+                                    "duration_ms" to ((System.nanoTime() - executionStarted) / 1_000_000),
+                                )
+                        },
                         actorId = userId,
                         authentication = null,
                     )
@@ -782,8 +786,10 @@ class ExecutionRequestService(
                 "execution.completed",
                 "process",
                 "failure",
-                dev.kviklet.kviklet.service.eventstream.accessFields(event, executionChannel) +
-                    mapOf("error_class" to e.javaClass.simpleName),
+                {
+                    dev.kviklet.kviklet.service.eventstream.accessFields(event, executionChannel) +
+                        mapOf("error_class" to e.javaClass.simpleName)
+                },
                 actorId = userId,
             )
             throw e
