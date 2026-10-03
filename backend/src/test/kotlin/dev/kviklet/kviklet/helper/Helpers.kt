@@ -209,6 +209,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
         storeResults: Boolean = false,
         dryRunEnabled: Boolean = false,
         dryRunRequiresApproval: Boolean = true,
+        maxTemporaryAccessDuration: Long? = null,
     ): Connection {
         val connection = connectionAdapter.createDatasourceConnection(
             ConnectionId("ds-conn-test-$connectionCount"),
@@ -233,6 +234,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             storeResults = storeResults,
             dryRunEnabled = dryRunEnabled,
             dryRunRequiresApproval = dryRunRequiresApproval,
+            maxTemporaryAccessDuration = maxTemporaryAccessDuration,
         )
         connectionCount++
         return connection
@@ -359,6 +361,7 @@ class ExecutionRequestHelper(
         sql: String = "SELECT 1;",
         connection: Connection? = null,
         requestType: RequestType = RequestType.SingleExecution,
+        temporaryAccessDuration: Duration? = null,
     ): ExecutionRequestDetails {
         val executionConnection = connection ?: connectionHelper.createPostgresConnection(dbcontainer!!)
         val executionRequest = executionRequestAdapter.createExecutionRequest(
@@ -370,6 +373,7 @@ class ExecutionRequestHelper(
             executionStatus = ExecutionStatus.EXECUTABLE,
             reviewStatus = ReviewStatus.AWAITING_APPROVAL,
             authorId = author.getId()!!,
+            temporaryAccessDuration = temporaryAccessDuration,
         )
         executionRequestAdapter.addEvent(
             ExecutionRequestId(executionRequest.getId()),

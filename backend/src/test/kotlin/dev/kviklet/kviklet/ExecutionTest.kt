@@ -55,6 +55,7 @@ import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
+import java.time.Duration
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -472,6 +473,52 @@ class ExecutionTest {
                     )
                     .contentType("application/json"),
             ).andExpect(status().isForbidden)
+        }
+
+        @Test
+        fun `editing only the title of an approved request keeps its approval`() {
+            val request = executionRequestHelper.createApprovedRequest(
+                author = testUser,
+                approver = testReviewer,
+                connection = testConnection,
+            )
+            val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+            editRequest(request.getId(), """{"title": "A new title"}""", cookie).andExpect(status().isOk)
+
+            verifyRequestStatus(request.getId(), "APPROVED", cookie)
+        }
+
+        @Test
+        fun `changing the statement of an approved request resets its approval`() {
+            val request = executionRequestHelper.createApprovedRequest(
+                author = testUser,
+                approver = testReviewer,
+                connection = testConnection,
+            )
+            val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+            editRequest(request.getId(), """{"statement": "SELECT 2;"}""", cookie).andExpect(status().isOk)
+
+            verifyRequestStatus(request.getId(), "AWAITING_APPROVAL", cookie)
+        }
+
+        @Test
+        fun `editing only the title of a limited temporary access request keeps its duration and approval`() {
+            val request = executionRequestHelper.createApprovedRequest(
+                author = testUser,
+                approver = testReviewer,
+                connection = connectionHelper.createPostgresConnection(db, maxTemporaryAccessDuration = 120),
+                requestType = RequestType.TemporaryAccess,
+                temporaryAccessDuration = Duration.ofMinutes(60),
+            )
+            val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+            editRequest(request.getId(), """{"title": "A new title"}""", cookie)
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.temporaryAccessDuration").value(60))
+
+            verifyRequestStatus(request.getId(), "APPROVED", cookie)
         }
 
         @Test
@@ -1022,6 +1069,13 @@ class ExecutionTest {
                 .contentType("application/json"),
         ).andExpect(status().isOk)
     }
+
+    private fun editRequest(executionRequestId: String, body: String, cookie: Cookie) = mockMvc.perform(
+        patch("/execution-requests/$executionRequestId")
+            .cookie(cookie)
+            .content(body)
+            .contentType("application/json"),
+    )
 
     private fun verifyRequestStatus(executionRequestId: String, expectedStatus: String, cookie: Cookie) {
         mockMvc.perform(
