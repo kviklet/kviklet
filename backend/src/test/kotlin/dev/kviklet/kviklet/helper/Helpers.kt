@@ -35,6 +35,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers
 import org.springframework.transaction.annotation.Transactional
 import org.testcontainers.containers.JdbcDatabaseContainer
 import org.testcontainers.containers.MongoDBContainer
+import java.time.Duration
 
 @Component
 class UserHelper(
@@ -208,6 +209,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
         storeResults: Boolean = false,
         dryRunEnabled: Boolean = false,
         dryRunRequiresApproval: Boolean = true,
+        maxTemporaryAccessDuration: Long? = null,
     ): Connection {
         val connection = connectionAdapter.createDatasourceConnection(
             ConnectionId("ds-conn-test-$connectionCount"),
@@ -232,6 +234,7 @@ class ConnectionHelper(private val connectionAdapter: ConnectionAdapter) {
             storeResults = storeResults,
             dryRunEnabled = dryRunEnabled,
             dryRunRequiresApproval = dryRunRequiresApproval,
+            maxTemporaryAccessDuration = maxTemporaryAccessDuration,
         )
         connectionCount++
         return connection
@@ -358,6 +361,7 @@ class ExecutionRequestHelper(
         sql: String = "SELECT 1;",
         connection: Connection? = null,
         requestType: RequestType = RequestType.SingleExecution,
+        temporaryAccessDuration: Duration? = null,
     ): ExecutionRequestDetails {
         val executionConnection = connection ?: connectionHelper.createPostgresConnection(dbcontainer!!)
         val executionRequest = executionRequestAdapter.createExecutionRequest(
@@ -369,6 +373,7 @@ class ExecutionRequestHelper(
             executionStatus = ExecutionStatus.EXECUTABLE,
             reviewStatus = ReviewStatus.AWAITING_APPROVAL,
             authorId = author.getId()!!,
+            temporaryAccessDuration = temporaryAccessDuration,
         )
         executionRequestAdapter.addEvent(
             ExecutionRequestId(executionRequest.getId()),
@@ -385,12 +390,17 @@ class ExecutionRequestHelper(
     }
 
     @Transactional
-    fun createApprovedKubernetesExecutionRequest(author: User, approver: User): ExecutionRequestDetails {
+    fun createApprovedKubernetesExecutionRequest(
+        author: User,
+        approver: User,
+        requestType: RequestType = RequestType.SingleExecution,
+        temporaryAccessDuration: Duration? = null,
+    ): ExecutionRequestDetails {
         val connection = connectionHelper.createKubernetesConnection()
         val executionRequestDetails = executionRequestAdapter.createExecutionRequest(
             connectionId = connection.id,
             title = "Test Kubernetes Execution",
-            type = RequestType.SingleExecution,
+            type = requestType,
             description = "A test kubernetes execution request",
             executionStatus = ExecutionStatus.EXECUTABLE,
             reviewStatus = ReviewStatus.AWAITING_APPROVAL,
@@ -399,6 +409,7 @@ class ExecutionRequestHelper(
             podName = "test-pod",
             containerName = "test-container",
             command = "echo 'Hello, World!'",
+            temporaryAccessDuration = temporaryAccessDuration,
         )
 
         executionRequestAdapter.addEvent(

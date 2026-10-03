@@ -316,51 +316,47 @@ class ExecutionRequestService(
     ): ExecutionRequestDetailsWithRoles {
         val executionRequestDetails = executionRequestAdapter.getExecutionRequestDetailsForUpdate(id)
 
-        when (executionRequestDetails.request) {
-            is DatasourceExecutionRequest -> {
-                if (request.statement != executionRequestDetails.request.statement) {
-                    eventService.saveEvent(
-                        id,
-                        userId,
-                        EditPayload(previousQuery = executionRequestDetails.request.statement ?: ""),
-                    )
-                }
-                val newDuration = request.temporaryAccessDuration?.let { Duration.ofMinutes(it) }
-                if (newDuration != executionRequestDetails.request.temporaryAccessDuration) {
-                    // Validate the new duration if it's for a temporary access request
-                    if (executionRequestDetails.request.type == RequestType.TemporaryAccess) {
-                        val connection = connectionService.getDatasourceConnection(
-                            executionRequestDetails.request.connection.id,
-                        )
-                        if (connection is DatasourceConnection) {
-                            validateTemporaryAccessDuration(connection, request.temporaryAccessDuration)
-                        }
-                    }
-                    eventService.saveEvent(
-                        id,
-                        userId,
-                        EditPayload(
-                            previousAccessDurationInMinutes = executionRequestDetails.request.temporaryAccessDuration,
-                        ),
-                    )
-                }
-            }
+        val existing = executionRequestDetails.request
 
-            is KubernetesExecutionRequest -> {
-                if (request.command != executionRequestDetails.request.command) {
-                    eventService.saveEvent(
-                        id,
-                        userId,
-                        EditPayload(
-                            previousCommand = request.command?.let { executionRequestDetails.request.command },
-                            previousContainerName = request.containerName
-                                ?.let { executionRequestDetails.request.containerName ?: "" },
-                            previousPodName = request.podName?.let { executionRequestDetails.request.podName },
-                            previousNamespace = request.namespace?.let { executionRequestDetails.request.namespace },
-                        ),
-                    )
-                }
+        // A null field is left untouched by the update, so only a non-null, different value is a change.
+        fun <T> changed(new: T?, old: T?) = new != null && new != old
+
+        val newDuration = request.temporaryAccessDuration?.let { Duration.ofMinutes(it) }
+        val durationChanged = changed(newDuration, existing.temporaryAccessDuration)
+        if (durationChanged && existing is DatasourceExecutionRequest && existing.type == RequestType.TemporaryAccess) {
+            val connection = connectionService.getDatasourceConnection(existing.connection.id)
+            if (connection is DatasourceConnection) {
+                validateTemporaryAccessDuration(connection, request.temporaryAccessDuration)
             }
+        }
+
+        val contentChanged = when (existing) {
+            is DatasourceExecutionRequest -> changed(request.statement, existing.statement)
+
+            is KubernetesExecutionRequest -> listOf(
+                request.command to existing.command,
+                request.namespace to existing.namespace,
+                request.podName to existing.podName,
+                request.containerName to existing.containerName,
+            ).any { (new, old) -> changed(new, old) }
+        }
+
+        if (contentChanged || durationChanged) {
+            val previousState = when (existing) {
+                is DatasourceExecutionRequest -> EditPayload(
+                    previousQuery = existing.statement,
+                    previousAccessDurationInMinutes = existing.temporaryAccessDuration,
+                )
+
+                is KubernetesExecutionRequest -> EditPayload(
+                    previousCommand = existing.command,
+                    previousNamespace = existing.namespace,
+                    previousPodName = existing.podName,
+                    previousContainerName = existing.containerName,
+                    previousAccessDurationInMinutes = existing.temporaryAccessDuration,
+                )
+            }
+            eventService.saveEvent(id, userId, previousState)
         }
 
         // Recalculate statuses after edit event
