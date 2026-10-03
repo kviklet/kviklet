@@ -35,6 +35,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers
 import org.springframework.transaction.annotation.Transactional
 import org.testcontainers.containers.JdbcDatabaseContainer
 import org.testcontainers.containers.MongoDBContainer
+import java.time.Duration
 
 @Component
 class UserHelper(
@@ -385,12 +386,17 @@ class ExecutionRequestHelper(
     }
 
     @Transactional
-    fun createApprovedKubernetesExecutionRequest(author: User, approver: User): ExecutionRequestDetails {
+    fun createApprovedKubernetesExecutionRequest(
+        author: User,
+        approver: User,
+        requestType: RequestType = RequestType.SingleExecution,
+        temporaryAccessDuration: Duration? = null,
+    ): ExecutionRequestDetails {
         val connection = connectionHelper.createKubernetesConnection()
         val executionRequestDetails = executionRequestAdapter.createExecutionRequest(
             connectionId = connection.id,
             title = "Test Kubernetes Execution",
-            type = RequestType.SingleExecution,
+            type = requestType,
             description = "A test kubernetes execution request",
             executionStatus = ExecutionStatus.EXECUTABLE,
             reviewStatus = ReviewStatus.AWAITING_APPROVAL,
@@ -399,6 +405,7 @@ class ExecutionRequestHelper(
             podName = "test-pod",
             containerName = "test-container",
             command = "echo 'Hello, World!'",
+            temporaryAccessDuration = temporaryAccessDuration,
         )
 
         executionRequestAdapter.addEvent(

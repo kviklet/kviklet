@@ -1,11 +1,14 @@
 package dev.kviklet.kviklet
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.ninjasquad.springmockk.MockkBean
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
+import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.helper.ConnectionHelper
 import dev.kviklet.kviklet.helper.ExecutionRequestHelper
 import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
+import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.shell.KubernetesApi
 import dev.kviklet.kviklet.shell.KubernetesResult
 import io.kubernetes.client.Exec
@@ -14,6 +17,8 @@ import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
@@ -21,6 +26,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers
+import java.time.Duration
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -47,6 +53,9 @@ class KubernetesExecuteTest {
 
     @Autowired
     lateinit var mockMvc: MockMvc
+
+    @Autowired
+    private lateinit var objectMapper: ObjectMapper
 
     @BeforeEach
     fun setup() {
@@ -124,5 +133,72 @@ class KubernetesExecuteTest {
         verify(exactly = 1) {
             kubernetesApi.executeCommandOnPod(any(), any(), any(), "echo 'Hello, World!'", any(), any(), any())
         }
+    }
+
+    // The full request as created by the helper, so an edit only changes the fields a test overrides.
+    private val unchangedFields = mapOf(
+        "title" to "Test Kubernetes Execution",
+        "namespace" to "default",
+        "podName" to "test-pod",
+        "containerName" to "test-container",
+        "command" to "echo 'Hello, World!'",
+    )
+
+    private fun editRequest(author: User, id: String, changes: Map<String, Any>) {
+        val cookie = userHelper.login(email = author.email, mockMvc = mockMvc)
+        mockMvc.perform(
+            MockMvcRequestBuilders.patch("/execution-requests/$id")
+                .cookie(cookie)
+                .content(objectMapper.writeValueAsString(unchangedFields + changes))
+                .contentType("application/json"),
+        ).andExpect(MockMvcResultMatchers.status().isOk)
+    }
+
+    private fun assertReviewStatus(id: String, expected: String) {
+        val cookie = userHelper.login(mockMvc = mockMvc)
+        mockMvc.perform(MockMvcRequestBuilders.get("/execution-requests/$id").cookie(cookie))
+            .andExpect(MockMvcResultMatchers.status().isOk)
+            .andExpect(MockMvcResultMatchers.jsonPath("$.reviewStatus").value(expected))
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["namespace", "podName", "containerName"])
+    fun `retargeting an approved kubernetes request to another pod resets its approval`(field: String) {
+        val author = userHelper.createUser(permissions = listOf("*"))
+        val approver = userHelper.createUser(permissions = listOf("*"))
+        val id = executionRequestHelper.createApprovedKubernetesExecutionRequest(author, approver).getId()
+        assertReviewStatus(id, "APPROVED")
+
+        editRequest(author, id, mapOf(field to "somewhere-else"))
+
+        assertReviewStatus(id, "AWAITING_APPROVAL")
+    }
+
+    @Test
+    fun `extending an approved kubernetes temporary access window resets its approval`() {
+        val author = userHelper.createUser(permissions = listOf("*"))
+        val approver = userHelper.createUser(permissions = listOf("*"))
+        val id = executionRequestHelper.createApprovedKubernetesExecutionRequest(
+            author,
+            approver,
+            requestType = RequestType.TemporaryAccess,
+            temporaryAccessDuration = Duration.ofMinutes(60),
+        ).getId()
+        assertReviewStatus(id, "APPROVED")
+
+        editRequest(author, id, mapOf("temporaryAccessDuration" to 600))
+
+        assertReviewStatus(id, "AWAITING_APPROVAL")
+    }
+
+    @Test
+    fun `editing only the title of an approved kubernetes request keeps its approval`() {
+        val author = userHelper.createUser(permissions = listOf("*"))
+        val approver = userHelper.createUser(permissions = listOf("*"))
+        val id = executionRequestHelper.createApprovedKubernetesExecutionRequest(author, approver).getId()
+
+        editRequest(author, id, mapOf("title" to "A new title"))
+
+        assertReviewStatus(id, "APPROVED")
     }
 }

@@ -347,16 +347,30 @@ class ExecutionRequestService(
             }
 
             is KubernetesExecutionRequest -> {
-                if (request.command != executionRequestDetails.request.command) {
+                val existing = executionRequestDetails.request
+
+                // A null field is left untouched by the update, so only a non-null, different value is a change.
+                fun <T> changed(new: T?, old: T?) = new != null && new != old
+                val newDuration = request.temporaryAccessDuration?.let { Duration.ofMinutes(it) }
+                val commandChanged = changed(request.command, existing.command)
+                val containerNameChanged = changed(request.containerName, existing.containerName)
+                val podNameChanged = changed(request.podName, existing.podName)
+                val namespaceChanged = changed(request.namespace, existing.namespace)
+                val durationChanged = changed(newDuration, existing.temporaryAccessDuration)
+                if (commandChanged || containerNameChanged || podNameChanged || namespaceChanged || durationChanged) {
                     eventService.saveEvent(
                         id,
                         userId,
                         EditPayload(
-                            previousCommand = request.command?.let { executionRequestDetails.request.command },
-                            previousContainerName = request.containerName
-                                ?.let { executionRequestDetails.request.containerName ?: "" },
-                            previousPodName = request.podName?.let { executionRequestDetails.request.podName },
-                            previousNamespace = request.namespace?.let { executionRequestDetails.request.namespace },
+                            previousCommand = if (commandChanged) existing.command else null,
+                            previousContainerName = if (containerNameChanged) existing.containerName ?: "" else null,
+                            previousPodName = if (podNameChanged) existing.podName else null,
+                            previousNamespace = if (namespaceChanged) existing.namespace else null,
+                            previousAccessDurationInMinutes = if (durationChanged) {
+                                existing.temporaryAccessDuration
+                            } else {
+                                null
+                            },
                         ),
                     )
                 }
