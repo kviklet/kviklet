@@ -22,6 +22,7 @@ class ApiKeyService(
     private val apiKeyAdapter: ApiKeyAdapter,
     private val userAdapter: UserAdapter,
     private val passwordEncoder: PasswordEncoder,
+    private val eventStreamingService: EventStreamingService? = null,
 ) {
 
     private fun hashApiKey(apiKey: String): String {
@@ -59,6 +60,14 @@ class ApiKeyService(
             key = keyValue,
         )
         val savedApiKey = apiKeyAdapter.create(apiKey)
+        eventStreamingService?.emit(
+            "api_key.created",
+            "iam",
+            fields = mapOf(
+                "key_id" to savedApiKey.id.toString(),
+                "target_user_id" to userId,
+            ),
+        )
         return savedApiKey.copy(key = keyValue) // ensuring we return the keyvalue on create
     }
 
@@ -69,7 +78,16 @@ class ApiKeyService(
     @Transactional
     @Policy(Permission.API_KEY_EDIT)
     fun deleteApiKey(id: ApiKeyId) {
+        val key = apiKeyAdapter.findById(id)
         apiKeyAdapter.deleteApiKey(id)
+        eventStreamingService?.emit(
+            "api_key.revoked",
+            "iam",
+            fields = mapOf(
+                "key_id" to id.toString(),
+                "target_user_id" to key.user.getId(),
+            ),
+        )
     }
 
     @Transactional(readOnly = true)

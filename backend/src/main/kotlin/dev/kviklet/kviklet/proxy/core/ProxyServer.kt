@@ -31,6 +31,7 @@ class ProxyServer(
     // longer starve everyone else; the global cap is a total-resource ceiling across all sessions.
     private val maxConnectionsPerSession: Int = 15,
     private val maxConnections: Int = 100,
+    private val eventStreamingService: dev.kviklet.kviklet.service.EventStreamingService? = null,
 ) {
     private val threadPool = Executors.newCachedThreadPool()
 
@@ -138,6 +139,7 @@ class ProxyServer(
     fun shutdownServer() {
         isRunning = false
         sessions.values.forEach {
+            sessionEnded(it, "server_shutdown")
             it.active = false
             it.expiryFuture?.cancel(false)
         }
@@ -179,6 +181,28 @@ class ProxyServer(
         session.active = false
         session.expiryFuture?.cancel(false)
         session.connections.forEach { it.close() }
+        sessionEnded(
+            session,
+            if (session.expiresAt?.isBefore(Instant.now()) ==
+                true
+            ) {
+                "access_expired"
+            } else {
+                "access_revoked"
+            },
+        )
+    }
+
+    private fun sessionEnded(session: ProxySession, reason: String) {
+        eventStreamingService?.emit(
+            "proxy.session_ended",
+            "network",
+            fields = mapOf(
+                "request_id" to session.executionRequest.getId(),
+                "proxy" to mapOf("session_id" to session.eventSessionId, "reason" to reason),
+            ),
+            actorId = session.userId,
+        )
     }
 
     private fun acceptLoop() {

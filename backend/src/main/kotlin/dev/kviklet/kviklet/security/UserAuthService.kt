@@ -35,6 +35,7 @@ class UserAuthService(
     private val licenseService: LicenseService,
     private val roleSyncService: RoleSyncService,
     private val telemetry: Telemetry,
+    private val eventStreamingService: dev.kviklet.kviklet.service.EventStreamingService? = null,
 ) {
     /**
      * Find existing user or create new one during authentication.
@@ -94,6 +95,7 @@ class UserAuthService(
             throw AccountDeactivatedException()
         }
 
+        val previousRoles = user.roles.mapNotNull { it.getId() }.toSet()
         // 5. Update user with current IdP identifier, clear others consistently
         user = updateUserIdentifier(user, idpIdentifier, email, fullName)
 
@@ -102,6 +104,28 @@ class UserAuthService(
         user = user.copy(roles = resolvedRoles)
 
         val saved = userAdapter.createOrUpdateUser(user)
+        val currentRoles = saved.roles.mapNotNull { it.getId() }.toSet()
+        if (isNewUser) {
+            eventStreamingService?.emit(
+                "user.created",
+                "iam",
+                fields = mapOf("target_user_id" to saved.getId(), "change_source" to "identity_provider"),
+                authentication = null,
+            )
+        }
+        if (previousRoles != currentRoles) {
+            eventStreamingService?.emit(
+                "user.roles_changed",
+                "iam",
+                fields = mapOf(
+                    "target_user_id" to saved.getId(),
+                    "roles_added" to (currentRoles - previousRoles),
+                    "roles_removed" to (previousRoles - currentRoles),
+                    "change_source" to "identity_provider",
+                ),
+                authentication = null,
+            )
+        }
         if (isNewUser) telemetry.track(UserCreated(idpIdentifier.toLoginMethod()))
         if (isMigratedUser) telemetry.track(UserMigratedToSso(idpIdentifier.toLoginMethod()))
         return saved

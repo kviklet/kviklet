@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional
 class ConfigService(
     private val configurationAdapter: ConfigurationAdapter,
     private val licenseService: LicenseService,
+    private val eventStreamingService: EventStreamingService? = null,
 ) {
 
     @Policy(Permission.CONFIGURATION_GET)
@@ -32,7 +33,20 @@ class ConfigService(
         ) {
             throw LicenseRestrictionException("Enabling the database proxy requires a valid enterprise license")
         }
-        return configurationAdapter.setConfiguration(configuration)
+        val before = configurationAdapter.getConfiguration("proxyEnabled") == "true"
+        val saved = configurationAdapter.setConfiguration(configuration)
+        if (configuration.proxyEnabled != null && before != saved.proxyEnabled) {
+            eventStreamingService?.emit(
+                "configuration.changed",
+                "configuration",
+                fields = mapOf(
+                    "setting" to "proxy_enabled",
+                    "before" to before,
+                    "after" to saved.proxyEnabled,
+                ),
+            )
+        }
+        return saved
     }
 
     // Read by the review page (and the proxy gate) for every user, so no permission is required:

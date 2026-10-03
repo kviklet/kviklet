@@ -43,6 +43,7 @@ class KubernetesApi(private val coreV1Api: CoreV1Api) {
         initialWaitTimeoutSeconds: Long = 5,
         timeoutMinutes: Long = 60,
         exec: Exec = Exec(Config.defaultClient()),
+        onCompletion: ((Int?, Boolean) -> Unit)? = null,
     ): KubernetesResult {
         val commands = arrayOf("/bin/sh", "-c", command)
         val process = when (containerName != null) {
@@ -72,10 +73,13 @@ class KubernetesApi(private val coreV1Api: CoreV1Api) {
 
         if (!completed) {
             CompletableFuture.runAsync {
-                process.waitFor(timeoutMinutes, TimeUnit.MINUTES)
+                val finished = process.waitFor(timeoutMinutes, TimeUnit.MINUTES)
+                val exitCode = if (finished) process.exitValue() else null
                 process.destroy()
+                onCompletion?.invoke(exitCode, !finished)
             }
         }
+        if (completed) onCompletion?.invoke(process.exitValue(), false)
         return KubernetesResult(
             errors = errorLines,
             messages = outputLines,

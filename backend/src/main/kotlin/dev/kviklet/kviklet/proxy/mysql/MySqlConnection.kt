@@ -71,6 +71,7 @@ class MySqlConnection(
     // that is garbage-collected without close()) and closed quietly on teardown to release driver
     // bookkeeping.
     private val upstreamJdbcConnection: AutoCloseable? = null,
+    private val eventSessionId: String = java.util.UUID.randomUUID().toString(),
 ) : ProxyConnection {
     private var clientInput: InputStream = clientSocket.getInputStream()
     private var clientOutput: OutputStream = clientSocket.getOutputStream()
@@ -234,7 +235,7 @@ class MySqlConnection(
     private fun auditQuery(query: String) {
         try {
             val executePayload = ExecutePayload(query = query)
-            eventService.saveEvent(executionRequest.id!!, userId, executePayload)
+            eventService.saveProxyEvent(executionRequest.id!!, userId, executePayload, eventSessionId, "mysql")
         } catch (e: RequestNotExecutableException) {
             // The request was rejected while this session was live: the statement was not
             // recorded and must not run, and the session is over. The client is told why.

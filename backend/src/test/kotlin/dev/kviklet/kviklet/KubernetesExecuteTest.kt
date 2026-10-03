@@ -66,6 +66,7 @@ class KubernetesExecuteTest {
                 any<Long>(),
                 any<Long>(),
                 any<Exec>(),
+                any(),
             )
         } returns mockExecuteResponse
     }
@@ -119,10 +120,10 @@ class KubernetesExecuteTest {
         ).andExpect(MockMvcResultMatchers.status().isOk)
 
         verify(exactly = 0) {
-            kubernetesApi.executeCommandOnPod(any(), any(), any(), injectedCommand, any(), any(), any())
+            kubernetesApi.executeCommandOnPod(any(), any(), any(), injectedCommand, any(), any(), any(), any())
         }
         verify(exactly = 1) {
-            kubernetesApi.executeCommandOnPod(any(), any(), any(), "echo 'Hello, World!'", any(), any(), any())
+            kubernetesApi.executeCommandOnPod(any(), any(), any(), "echo 'Hello, World!'", any(), any(), any(), any())
         }
     }
 }

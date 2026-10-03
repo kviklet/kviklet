@@ -172,7 +172,9 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
         return rejectedReview != null
     }
 
-    fun getApproversAfterReset(): List<User> {
+    fun getApproversAfterReset(): List<User> = getApprovalsAfterReset().map { it.author }
+
+    fun getApprovalsAfterReset(): List<ReviewEvent> {
         val resetTimestamp = latestResetTimestamp()
         val reviewEventsAfterReset = events.filter {
             it.type == EventType.REVIEW && it is ReviewEvent && it.createdAt > resetTimestamp
@@ -180,8 +182,8 @@ data class ExecutionRequestDetails(val request: ExecutionRequest, val events: Mu
 
         return reviewEventsAfterReset
             .groupBy { it.author.getId() }
-            .filter { (_, userEvents) -> userEvents.maxByOrNull { it.createdAt }?.action == ReviewAction.APPROVE }
-            .map { (_, userEvents) -> userEvents.first().author }
+            .map { (_, userEvents) -> userEvents.maxBy { it.createdAt } }
+            .filter { it.action == ReviewAction.APPROVE }
     }
 
     fun getApprovalCount(): Int = getApproversAfterReset().size

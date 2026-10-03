@@ -13,8 +13,10 @@ import org.springframework.security.web.authentication.SimpleUrlAuthenticationSu
 import org.springframework.stereotype.Component
 
 @Component
-class OidcLoginSuccessHandler(private val baseUrlResolver: BaseUrlResolver) :
-    SimpleUrlAuthenticationSuccessHandler() {
+class OidcLoginSuccessHandler(
+    private val baseUrlResolver: BaseUrlResolver,
+    private val eventStreamingService: dev.kviklet.kviklet.service.EventStreamingService,
+) : SimpleUrlAuthenticationSuccessHandler() {
 
     @Transactional
     override fun onAuthenticationSuccess(
@@ -34,6 +36,13 @@ class OidcLoginSuccessHandler(private val baseUrlResolver: BaseUrlResolver) :
             SecurityContextHolder.getContext().authentication = newAuth
         }
 
+        eventStreamingService.emit(
+            "authentication.login",
+            "authentication",
+            fields =
+            dev.kviklet.kviklet.security.SecurityEventRequestFilter.fields(request) + mapOf("method" to "oidc"),
+            authentication = authentication,
+        )
         val baseUrl = request?.let { baseUrlResolver.resolve(it) }
         // Back to the page that sent the user to the login, or the frontend's index page.
         val target = request?.let { LoginRedirectTargetFilter.consume(it) } ?: "/"

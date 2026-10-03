@@ -24,6 +24,9 @@ import dev.kviklet.kviklet.service.dto.QueryResultLog
 import dev.kviklet.kviklet.service.dto.ResultLog
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.UpdateResultLog
+import dev.kviklet.kviklet.service.eventstream.accessFields
+import dev.kviklet.kviklet.service.eventstream.executionOutcome
+import dev.kviklet.kviklet.service.eventstream.executionResultFields
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
 import java.time.LocalDateTime
@@ -32,7 +35,27 @@ import java.time.LocalDateTime
 class EventService(
     private val executionRequestAdapter: ExecutionRequestAdapter,
     private val eventAdapter: EventAdapter,
+    private val eventStreamingService: EventStreamingService? = null,
 ) {
+    private val proxyOrigin = ThreadLocal<Map<String, String>>()
+
+    // The protocol path is authoritative; clients cannot choose their execution channel.
+    @Policy(Permission.EXECUTION_REQUEST_GET)
+    @Transactional
+    fun saveProxyEvent(
+        id: ExecutionRequestId,
+        authorId: String,
+        payload: Payload,
+        sessionId: String,
+        protocol: String,
+    ): Event {
+        proxyOrigin.set(mapOf("session_id" to sessionId, "protocol" to protocol))
+        try {
+            return saveEvent(id, authorId, payload)
+        } finally {
+            proxyOrigin.remove()
+        }
+    }
 
     @Policy(Permission.EXECUTION_REQUEST_GET)
     @Transactional
@@ -57,7 +80,31 @@ class EventService(
 
             else -> Unit
         }
-        val (_, event) = executionRequestAdapter.addEvent(id, authorId, payload)
+        val (updatedDetails, event) = executionRequestAdapter.addEvent(id, authorId, payload)
+        // Dry runs stream their outcome only; keep the stored attempt for existing audit semantics.
+        if (event is ExecuteEvent && event.isDryRun) return event
+        // The update service streams edits after saving the new request contents.
+        if (event is dev.kviklet.kviklet.service.dto.EditEvent) return event
+        val proxy = proxyOrigin.get()
+        eventStreamingService?.emit(
+            action = when (event) {
+                is ExecuteEvent -> "execution.attempted"
+                is dev.kviklet.kviklet.service.dto.ReviewEvent -> "review.${event.action.name.lowercase()}"
+                else -> "comment.added"
+            },
+            category = if (event is ExecuteEvent && event.command == null) "database" else "configuration",
+            outcome = if (event is ExecuteEvent) "unknown" else "success",
+            fields = { level ->
+                accessFields(
+                    event,
+                    if (proxy != null) "database_proxy" else EventStreamingService.channel(),
+                    level,
+                    updatedDetails,
+                ) +
+                    if (proxy != null) mapOf("proxy" to proxy) else emptyMap()
+            },
+            actorId = authorId,
+        )
         return event
     }
 
@@ -78,7 +125,25 @@ class EventService(
         val updatedEvent = event.copy(
             results = resultLogs,
         )
-        return eventAdapter.updateEvent(id, updatedEvent.toPayload())
+        val saved = eventAdapter.updateEvent(id, updatedEvent.toPayload())
+        if (event.command == null) {
+            eventStreamingService?.emit(
+                "execution.completed",
+                "database",
+                executionOutcome(updatedEvent),
+                { level ->
+                    accessFields(
+                        updatedEvent,
+                        EventStreamingService.channel(),
+                        level,
+                        executionRequestAdapter.getExecutionRequestDetails(updatedEvent.request.id!!),
+                    ) +
+                        executionResultFields(updatedEvent)
+                },
+                actorId = event.author.getId(),
+            )
+        }
+        return saved
     }
 
     @Policy(Permission.EXECUTION_REQUEST_GET)

@@ -75,6 +75,7 @@ class MySqlProtocol(
                 session.executionRequest,
                 session.userId,
                 rawClientSocket = authenticatedClient.rawClientSocket,
+                eventSessionId = session.eventSessionId,
                 upstreamJdbcConnection = targetConnection.jdbcConnection,
             )
         } catch (e: Exception) {

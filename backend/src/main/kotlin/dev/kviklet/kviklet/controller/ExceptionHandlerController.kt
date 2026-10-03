@@ -29,7 +29,10 @@ import org.springframework.web.servlet.HandlerMapping
 data class ErrorResponse(val message: String)
 
 @ControllerAdvice
-class ExceptionHandlerController(private val telemetry: Telemetry) {
+class ExceptionHandlerController(
+    private val telemetry: Telemetry,
+    private val eventStreamingService: dev.kviklet.kviklet.service.EventStreamingService,
+) {
     @ExceptionHandler(InvalidReviewException::class, RequestNotExecutableException::class)
     fun handleInvalidRequest(ex: RuntimeException): ResponseEntity<ErrorResponse> =
         ResponseEntity(ErrorResponse(ex.message ?: "Unknown Error"), HttpStatus.BAD_REQUEST)
@@ -98,6 +101,13 @@ class ExceptionHandlerController(private val telemetry: Telemetry) {
     @ExceptionHandler(AccessDeniedException::class)
     fun handleAccessDeniedException(ex: AccessDeniedException, request: HttpServletRequest): ResponseEntity<Any> {
         logger.warn("Access denied at ${request.requestURI}: ${ex.message}")
+        eventStreamingService.emit(
+            "authorization.denied",
+            "iam",
+            "failure",
+            dev.kviklet.kviklet.security.SecurityEventRequestFilter.fields(request) +
+                mapOf("route" to request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE)),
+        )
         return ResponseEntity(ErrorResponse("Access denied"), HttpStatus.FORBIDDEN)
     }
 

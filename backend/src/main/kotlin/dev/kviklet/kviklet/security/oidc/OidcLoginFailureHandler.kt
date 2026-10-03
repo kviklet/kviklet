@@ -17,8 +17,10 @@ import java.net.URLEncoder
  * the actual exception stays in the log.
  */
 @Component
-class OidcLoginFailureHandler(private val baseUrlResolver: BaseUrlResolver) :
-    SimpleUrlAuthenticationFailureHandler() {
+class OidcLoginFailureHandler(
+    private val baseUrlResolver: BaseUrlResolver,
+    private val eventStreamingService: dev.kviklet.kviklet.service.EventStreamingService,
+) : SimpleUrlAuthenticationFailureHandler() {
 
     private val logger = LoggerFactory.getLogger(OidcLoginFailureHandler::class.java)
 
@@ -28,6 +30,14 @@ class OidcLoginFailureHandler(private val baseUrlResolver: BaseUrlResolver) :
         exception: AuthenticationException,
     ) {
         logger.warn("OAuth2 login failed", exception)
+        eventStreamingService.emit(
+            "authentication.login",
+            "authentication",
+            "failure",
+            dev.kviklet.kviklet.security.SecurityEventRequestFilter.fields(request) +
+                mapOf("method" to "oidc", "reason" to exception.javaClass.simpleName),
+            authentication = null,
+        )
         val message = URLEncoder.encode(userFacingLoginFailureMessage(exception), "UTF-8")
         redirectStrategy.sendRedirect(request, response, "${baseUrlResolver.resolve(request)}/login?error=$message")
     }

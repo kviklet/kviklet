@@ -23,6 +23,7 @@ class UserService(
     private val licenseService: LicenseService,
     private val applicationEventPublisher: ApplicationEventPublisher,
     private val telemetry: Telemetry,
+    private val eventStreamingService: EventStreamingService? = null,
 ) {
 
     @Transactional
@@ -50,7 +51,17 @@ class UserService(
             password = passwordEncoder.encode(password),
             roles = setOf(defaultRole),
         )
-        return userAdapter.createUser(user).also { telemetry.track(UserCreated(LoginMethod.PASSWORD)) }
+        return userAdapter.createUser(user).also {
+            telemetry.track(UserCreated(LoginMethod.PASSWORD))
+            eventStreamingService?.emit(
+                "user.created",
+                "iam",
+                fields = mapOf(
+                    "target_user_id" to it.getId(),
+                    "change_source" to "manual",
+                ),
+            )
+        }
     }
 
     @Transactional
@@ -74,6 +85,29 @@ class UserService(
             roles = newRoles,
         )
         val savedUser = userAdapter.updateUser(updatedUser)
+        val before = user.roles.mapNotNull { it.getId() }.toSet()
+        val after = savedUser.roles.mapNotNull { it.getId() }.toSet()
+        if (before != after) {
+            eventStreamingService?.emit(
+                "user.roles_changed",
+                "iam",
+                fields = mapOf(
+                    "target_user_id" to userId.toString(),
+                    "roles_added" to (after - before),
+                    "roles_removed" to (before - after),
+                    "change_source" to "manual",
+                ),
+            )
+        }
+        if (password !=
+            null
+        ) {
+            eventStreamingService?.emit(
+                "user.password_changed",
+                "iam",
+                fields = mapOf("target_user_id" to userId.toString()),
+            )
+        }
         return savedUser
     }
 
@@ -90,6 +124,15 @@ class UserService(
             password = password?.let { passwordEncoder.encode(it) } ?: user.password,
         )
         val savedUser = userAdapter.updateUser(updatedUser)
+        if (password !=
+            null
+        ) {
+            eventStreamingService?.emit(
+                "user.password_changed",
+                "iam",
+                fields = mapOf("target_user_id" to userId.toString()),
+            )
+        }
         return savedUser
     }
 
@@ -121,6 +164,12 @@ class UserService(
             licenseService.assertSeatAvailable()
         }
         val savedUser = userAdapter.updateUser(user.copy(active = active))
+        eventStreamingService?.emit(
+            if (active) "user.activated" else "user.deactivated",
+            "iam",
+            fields = mapOf("target_user_id" to userId.toString()),
+            actorId = currentUserId,
+        )
         if (!active) {
             applicationEventPublisher.publishEvent(
                 UserDeactivatedEvent(userId = savedUser.getId()!!, email = savedUser.email),

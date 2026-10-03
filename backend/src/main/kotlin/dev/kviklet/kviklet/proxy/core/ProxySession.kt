@@ -36,6 +36,9 @@ class ProxySession(
     // this connection already honor; each ProxyProtocol parses the keys its driver understands.
     val additionalOptions: String = "",
 ) {
+    // Independent correlation id, never a temporary credential.
+    val eventSessionId: String = java.util.UUID.randomUUID().toString()
+
     // Live relay connections for this session, closed when the session expires so an in-flight client cannot
     // keep relaying past the access window. CopyOnWriteArrayList: added by handler threads, iterated by the
     // expiry task / shutdown.
