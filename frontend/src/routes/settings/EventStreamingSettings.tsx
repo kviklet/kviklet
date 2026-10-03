@@ -106,7 +106,7 @@ export default function EventStreamingSettings() {
           >
             Manage license
           </Link>
-          . After renewal, save with streaming enabled to resume.
+          . An enabled stream resumes automatically after renewal.
         </p>
       )}
       {error && (
@@ -213,8 +213,15 @@ export default function EventStreamingSettings() {
                 label="Output directory (absolute path)"
                 id="event-stream-directory"
                 {...register("directory")}
+                disabled={data.settings.enabled}
                 error={errors.directory?.message}
               />
+              {data.settings.enabled && (
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Disable streaming and save before changing the output
+                  directory.
+                </p>
+              )}
               {directoryChanged && (
                 <p className="text-sm text-amber-700 dark:text-amber-400">
                   Changing the directory leaves existing files in the previous

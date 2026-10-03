@@ -4,6 +4,7 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import dev.kviklet.kviklet.db.ConfigurationAdapter
+import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.service.EventStreamingService
 import dev.kviklet.kviklet.service.LicenseService
 import dev.kviklet.kviklet.service.dto.EventStreamingSettings
@@ -73,7 +74,14 @@ class EventStreamingReliabilityTest {
                 100u,
             )
         every { licenses.getActiveLicense() } returns license
-        val service = EventStreamingService(configuration, licenses, mapper, ApplicationProperties())
+        val service =
+            EventStreamingService(
+                configuration,
+                licenses,
+                mapper,
+                ApplicationProperties(),
+                mockk<UserAdapter>(relaxed = true),
+            )
         service.refresh()
         EventStreamingService::class.java.getDeclaredField("licenseCheckedAt").also {
             it.isAccessible = true
@@ -123,7 +131,14 @@ class EventStreamingReliabilityTest {
         for (enabled in listOf(false, true)) {
             every { configuration.getConfiguration(EventStreamingService.CONFIG_KEY) } returns
                 mapper.writeValueAsString(settings().copy(enabled = enabled))
-            val service = EventStreamingService(configuration, licenses, mapper, ApplicationProperties())
+            val service =
+                EventStreamingService(
+                    configuration,
+                    licenses,
+                    mapper,
+                    ApplicationProperties(),
+                    mockk<UserAdapter>(relaxed = true),
+                )
             try {
                 service.refresh()
                 var prepared = false
@@ -179,7 +194,7 @@ class EventStreamingReliabilityTest {
             Files.writeString(old, "{}\n")
             Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("r-x------"))
             try {
-                // Advance the maintenance deadline without making the test wait a full minute.
+                // Advance the maintenance deadline without making the test wait a full hour.
                 EventFileWriter::class.java.getDeclaredField("cleanedAt").also {
                     it.isAccessible = true
                 }.set(writer, Instant.EPOCH)
@@ -198,6 +213,25 @@ class EventStreamingReliabilityTest {
         }
     }
 
+    @Test fun `idle retention waits an hour but still removes old archives`() {
+        EventFileWriter(settings()).use { writer ->
+            awaitCleanup(writer)
+            val archive = directory.resolve("events.${LocalDate.now(ZoneOffset.UTC).minusDays(90)}.0.jsonl")
+            Files.writeString(archive, "{}\n")
+            val cleanedAt = EventFileWriter::class.java.getDeclaredField("cleanedAt").also {
+                it.isAccessible = true
+            }
+            cleanedAt.set(writer, Instant.now().minusSeconds(90))
+            writer.maintain()
+            awaitCleanup(writer)
+            assertTrue(Files.exists(archive))
+            cleanedAt.set(writer, Instant.now().minusSeconds(3601))
+            writer.maintain()
+            awaitCleanup(writer)
+            assertFalse(Files.exists(archive))
+        }
+    }
+
     @Test fun `a refresh started before disabling cannot restore the old settings`() {
         val mapper = jacksonObjectMapper().findAndRegisterModules()
         val configuration = mockk<ConfigurationAdapter>(relaxed = true)
@@ -211,7 +245,14 @@ class EventStreamingReliabilityTest {
             100u,
         )
         every { licenses.getActiveLicense() } returns license
-        val service = EventStreamingService(configuration, licenses, mapper, ApplicationProperties())
+        val service =
+            EventStreamingService(
+                configuration,
+                licenses,
+                mapper,
+                ApplicationProperties(),
+                mockk<UserAdapter>(relaxed = true),
+            )
         service.refresh()
         EventStreamingService::class.java.getDeclaredField("licenseCheckedAt").also {
             it.isAccessible = true
@@ -256,6 +297,14 @@ class EventStreamingReliabilityTest {
             LocalDateTime.now(),
             100u,
         )
-        return EventStreamingService(configuration, licenses, mapper, ApplicationProperties()).also { it.refresh() }
+        return EventStreamingService(
+            configuration,
+            licenses,
+            mapper,
+            ApplicationProperties(),
+            mockk<UserAdapter>(relaxed = true),
+        ).also {
+            it.refresh()
+        }
     }
 }

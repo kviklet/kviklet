@@ -18,22 +18,32 @@ import java.time.ZoneOffset
 /** Do not serialize Event/Connection/User directly: they contain credentials and stored result contents. */
 fun requestFields(request: ExecutionRequest): Map<String, Any?> = buildMap {
     put("request_id", request.getId())
-    request.description?.let { put("request", EventStreamingService.reason(it)) }
+    val connection = request.connection
+    put(
+        "connection",
+        buildMap {
+            put("id", connection.getId())
+            put("type", connection.connectionType.name)
+            put("name", connection.displayName)
+            if (connection is DatasourceConnection) {
+                put("database_type", connection.type.name)
+                put("hostname", connection.hostname)
+                put("port", connection.port)
+                put("database_name", connection.databaseName)
+            }
+        },
+    )
+    val details = buildMap {
+        if (request.title.isNotBlank()) put("title", request.title)
+        request.description?.let { putAll(EventStreamingService.reason(it)) }
+    }
+    if (details.isNotEmpty()) put("request", details)
 }
 
 fun accessFields(event: Event, channel: String, level: EventLoggingLevel = EventLoggingLevel.FULL): Map<String, Any?> =
     buildMap {
         putAll(requestFields(event.request))
         put("audit_event_id", event.getId())
-        put(
-            "connection",
-            mapOf(
-                "id" to event.request.connection.getId(),
-                "type" to event.request.connection.connectionType.name,
-                "name" to event.request.connection.displayName,
-                "database_type" to (event.request.connection as? DatasourceConnection)?.type?.name,
-            ),
-        )
         if (event is ExecuteEvent) {
             put(
                 "execution",

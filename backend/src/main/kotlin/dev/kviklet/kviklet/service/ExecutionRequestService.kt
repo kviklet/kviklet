@@ -166,7 +166,6 @@ class ExecutionRequestService(
             "configuration",
             fields = {
                 requestFields(executionRequestDetails.request) + mapOf(
-                    "connection_id" to connection.getId(),
                     "request_type" to executionRequestDetails.request.type.name,
                 )
             },
@@ -1041,16 +1040,40 @@ class ExecutionRequestService(
             selectStatements.joinToString(";") { "EXPLAIN $it" }
         }
 
-        val result = JDBCExecutor.execute(
-            executionRequestId = id,
-            connectionString = connection.getConnectionString(),
-            authenticationDetails = connection.auth,
-            query = explainStatements,
-            MSSQLexplain = connection.type == DatasourceType.MSSQL,
+        val result = try {
+            JDBCExecutor.execute(
+                executionRequestId = id,
+                connectionString = connection.getConnectionString(),
+                authenticationDetails = connection.auth,
+                query = explainStatements,
+                MSSQLexplain = connection.type == DatasourceType.MSSQL,
+            )
+        } catch (e: Exception) {
+            emitExplainOutcome(executionRequest, userId, "failure")
+            throw e
+        }
+        emitExplainOutcome(
+            executionRequest,
+            userId,
+            if (result.any { it is ErrorQueryResult }) "failure" else "success",
         )
 
         return DBExecutionResult(results = result, executionRequest = executionRequest)
             .also { trackExecution(executionRequest, ExecutionMode.EXPLAIN, it) }
+    }
+
+    private fun emitExplainOutcome(executionRequest: ExecutionRequestDetails, userId: String, outcome: String) {
+        eventStreamingService?.emit(
+            "execution.explain.completed",
+            "database",
+            outcome,
+            fields = {
+                requestFields(executionRequest.request) + mapOf(
+                    "execution" to mapOf("channel" to EventStreamingService.channel(), "mode" to "explain"),
+                )
+            },
+            actorId = userId,
+        )
     }
 
     @Transactional

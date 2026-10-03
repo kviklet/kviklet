@@ -32,6 +32,8 @@ class RoleService(
                 "iam",
                 fields = mapOf(
                     "role_id" to savedRole.getId(),
+                    "before" to mapOf("name" to before.name),
+                    "after" to mapOf("name" to savedRole.name),
                     "name_changed" to (before.name != savedRole.name),
                     "permissions_added" to added.map { mapOf("action" to it.first, "resource" to it.second) },
                     "permissions_removed" to removed.map { mapOf("action" to it.first, "resource" to it.second) },
@@ -74,6 +76,8 @@ class RoleService(
                 "iam",
                 fields = mapOf(
                     "role_id" to it.getId(),
+                    "before" to mapOf("name" to null),
+                    "after" to mapOf("name" to it.name),
                     "permissions" to
                         it.policies.map { policy -> mapOf("action" to policy.action, "resource" to policy.resource) },
                 ),
@@ -97,6 +101,14 @@ class RoleService(
             throw IllegalArgumentException("Cannot delete default role")
         }
         roleAdapter.delete(id)
-        eventStreamingService?.emit("role.deleted", "iam", fields = mapOf("role_id" to id.toString()))
+        eventStreamingService?.emit(
+            "role.deleted",
+            "iam",
+            fields = mapOf(
+                "role_id" to id.toString(),
+                "before" to mapOf("name" to role.name),
+                "after" to mapOf("name" to null),
+            ),
+        )
     }
 }

@@ -24,8 +24,7 @@ import java.util.concurrent.Future
 import java.util.concurrent.atomic.AtomicBoolean
 
 /** A private Logback context: event payloads never propagate to the application's console logger. */
-class EventFileWriter(private val settings: EventStreamingSettings, activateImmediately: Boolean = true) :
-    AutoCloseable {
+class EventFileWriter(private val settings: EventStreamingSettings) : AutoCloseable {
     private val context = LoggerContext()
     private val appender = object : RollingFileAppender<String>() {
         override fun openFile(fileName: String) {
@@ -80,70 +79,50 @@ class EventFileWriter(private val settings: EventStreamingSettings, activateImme
             throw e
         }
         try {
-            // Opening without truncation validates access while reserving an uncommitted directory.
-            FileChannel.open(
-                directory.resolve("events.jsonl"),
-                setOf(
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.READ,
-                    StandardOpenOption.WRITE,
-                    LinkOption.NOFOLLOW_LINKS,
-                ),
-                PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-r-----")),
-            ).use { }
-            if (activateImmediately) activate()
+            start()
         } catch (e: Exception) {
             close()
             throw e
         }
     }
 
-    /** Activate only after the settings commit; reservations must not repair tails or delete archives. */
-    @Synchronized
-    fun activate() {
-        if (appender.isStarted) return
-        check(lock.isValid) { "Event writer reservation is closed" }
-        try {
-            discardIncompleteTail()
-            context.name = "kviklet-event-stream"
-            context.statusManager.add { status ->
-                if (status.level == Status.ERROR ||
-                    (status.level == Status.WARN && status.origin is RenameUtil)
-                ) {
-                    failed.set(true)
-                }
+    private fun start() {
+        discardIncompleteTail()
+        context.name = "kviklet-event-stream"
+        context.statusManager.add { status ->
+            if (status.level == Status.ERROR ||
+                (status.level == Status.WARN && status.origin is RenameUtil)
+            ) {
+                failed.set(true)
             }
-            context.start()
-            appender.context = context
-            appender.name = "EVENT_STREAM"
-            appender.file = directory.resolve("events.jsonl").toString()
-            appender.isAppend = true
-            appender.isImmediateFlush = true
-            val encoder = object : EncoderBase<String>() {
-                override fun headerBytes(): ByteArray? = null
-                override fun footerBytes(): ByteArray? = null
-                override fun encode(event: String): ByteArray = (event + "\n").toByteArray(Charsets.UTF_8)
-            }
-            encoder.context = context
-            encoder.start()
-            appender.encoder = encoder
-
-            policy.context = context
-            policy.setParent(appender)
-            policy.fileNamePattern = directory.resolve("events.%d{yyyy-MM-dd,UTC}.%i.jsonl").toString()
-            policy.setMaxFileSize(FileSize.valueOf("${settings.maxFileSizeMiB}MB"))
-            // Own the complete retention scan; Logback's remover skips archives beyond its startup window.
-            policy.maxHistory = 0
-            policy.start()
-            appender.rollingPolicy = policy
-            appender.start()
-            checkHealthy()
-            secureFiles()
-            maintain()
-        } catch (e: Exception) {
-            close()
-            throw e
         }
+        context.start()
+        appender.context = context
+        appender.name = "EVENT_STREAM"
+        appender.file = directory.resolve("events.jsonl").toString()
+        appender.isAppend = true
+        appender.isImmediateFlush = true
+        val encoder = object : EncoderBase<String>() {
+            override fun headerBytes(): ByteArray? = null
+            override fun footerBytes(): ByteArray? = null
+            override fun encode(event: String): ByteArray = (event + "\n").toByteArray(Charsets.UTF_8)
+        }
+        encoder.context = context
+        encoder.start()
+        appender.encoder = encoder
+
+        policy.context = context
+        policy.setParent(appender)
+        policy.fileNamePattern = directory.resolve("events.%d{yyyy-MM-dd,UTC}.%i.jsonl").toString()
+        policy.setMaxFileSize(FileSize.valueOf("${settings.maxFileSizeMiB}MB"))
+        // Own the complete retention scan; Logback's remover skips archives beyond its startup window.
+        policy.maxHistory = 0
+        policy.start()
+        appender.rollingPolicy = policy
+        appender.start()
+        checkHealthy()
+        secureFiles()
+        maintain()
     }
 
     @Synchronized
@@ -159,7 +138,7 @@ class EventFileWriter(private val settings: EventStreamingSettings, activateImme
     @Synchronized
     fun maintain() {
         checkHealthy()
-        if ((cleanupRequired.get() || Instant.now().isAfter(cleanedAt.plusSeconds(60))) && cleanup?.isDone != false) {
+        if ((cleanupRequired.get() || Instant.now().isAfter(cleanedAt.plusSeconds(3600))) && cleanup?.isDone != false) {
             cleanupRequired.set(false)
             cleanedAt = Instant.now()
             cleanup = context.alternateExecutorService.submit {

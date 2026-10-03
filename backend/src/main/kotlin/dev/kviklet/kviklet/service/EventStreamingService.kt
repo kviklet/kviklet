@@ -4,6 +4,7 @@ package dev.kviklet.kviklet.service
 import com.fasterxml.jackson.databind.ObjectMapper
 import dev.kviklet.kviklet.ApplicationProperties
 import dev.kviklet.kviklet.db.ConfigurationAdapter
+import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.security.ApiKeyAuthentication
 import dev.kviklet.kviklet.security.EnterpriseFeatureException
 import dev.kviklet.kviklet.security.KvikletOAuthPrincipal
@@ -44,6 +45,7 @@ class EventStreamingService(
     private val licenseService: LicenseService,
     private val mapper: ObjectMapper,
     private val applicationProperties: ApplicationProperties,
+    private val userAdapter: UserAdapter,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
     private var settings = EventStreamingSettings()
@@ -56,7 +58,6 @@ class EventStreamingService(
     private var lastError: String? = null
     private var failures = 0L
     private var recoveryAt = Instant.EPOCH
-    private var expired = false
     private val instanceId = UUID.randomUUID().toString()
     private val configurationLock = ReentrantLock()
 
@@ -76,42 +77,17 @@ class EventStreamingService(
             "Archive budget must be at least 1 MiB larger than the file-size threshold and at most 102400 MiB"
         }
         require(Path.of(next.directory).isAbsolute) { "Event output directory must be absolute" }
+        val previous = synchronized(this) { settings }
+        require(!previous.enabled || next.directory == previous.directory) {
+            "Disable streaming and save before changing the output directory"
+        }
         // Never wait for a database connection while holding the writer monitor.
         val license = if (next.enabled) licenseService.getActiveLicense() else null
         if (next.enabled && license == null) {
             throw EnterpriseFeatureException("Event Log Streaming requires a valid enterprise license")
         }
-        if (next.enabled) EventFileWriter.prepareDirectory(Path.of(next.directory))
-        val previous = synchronized(this) { settings }
         val actor = actor()
-        // Validate and lock a replacement directory before changing the saved configuration.
-        val needsReplacement = synchronized(this) {
-            next.enabled && (writer == null || next.directory != settings.directory)
-        }
-        val replacement = if (needsReplacement) {
-            try {
-                EventFileWriter(next, activateImmediately = false)
-            } catch (e: Exception) {
-                throw IllegalArgumentException(
-                    "Cannot open the event directory; check permissions, storage and other writers",
-                )
-            }
-        } else {
-            null
-        }
-        try {
-            configurationAdapter.setConfiguration(CONFIG_KEY, mapper.writeValueAsString(next))
-        } catch (e: Exception) {
-            replacement?.close()
-            throw e
-        }
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
-                override fun afterCompletion(status: Int) {
-                    if (status != TransactionSynchronization.STATUS_COMMITTED) replacement?.close()
-                }
-            })
-        }
+        configurationAdapter.setConfiguration(CONFIG_KEY, mapper.writeValueAsString(next))
         afterCommit {
             synchronized(this) {
                 // The disable event belongs to the previously enabled stream.
@@ -130,11 +106,10 @@ class EventStreamingService(
                     )
                 }
                 runCatching { writer?.close() }
-                writer = replacement
+                writer = null
                 settings = next
                 initialized = true
                 configurationRevision++
-                expired = false
                 licensedUntil = license?.validUntil
                 licenseCheckedAt = Instant.now()
                 recoveryAt = Instant.EPOCH
@@ -216,10 +191,10 @@ class EventStreamingService(
 
     @NoPolicy
     @PostConstruct
-    @Scheduled(fixedDelay = 5000)
+    @Scheduled(fixedDelay = 60000)
     fun refresh() {
         val snapshot = synchronized(this) {
-            if (initialized && (!settings.enabled || Instant.now().isBefore(licenseCheckedAt.plusSeconds(5)))) {
+            if (initialized && (!settings.enabled || Instant.now().isBefore(licenseCheckedAt.plusSeconds(60)))) {
                 maintainWriter()
                 return
             }
@@ -253,7 +228,6 @@ class EventStreamingService(
     /** Only cached state and file operations are allowed here; the caller holds the writer monitor. */
     private fun maintainWriter() {
         try {
-            if (settings.enabled && !hasLicense()) expired = true
             if (!eligible()) {
                 runCatching { writer?.close() }
                 writer = null
@@ -267,7 +241,6 @@ class EventStreamingService(
                 writer = EventFileWriter(settings)
                 lastError = null
             }
-            writer?.activate()
             writer?.maintain()
         } catch (e: Exception) {
             failure("Event file output is unavailable; check the directory, permissions and storage")
@@ -275,14 +248,14 @@ class EventStreamingService(
     }
 
     private fun hasLicense() = licensedUntil?.isAfter(LocalDate.now()) == true
-    private fun eligible() = settings.enabled && !expired && hasLicense()
+    private fun eligible() = settings.enabled && hasLicense()
 
     private fun record(
         action: String,
         category: String,
         outcome: String,
         fields: Map<String, Any?>,
-        actor: Map<String, String>,
+        actor: Map<String, Any?>,
     ): Map<String, Any?> {
         val request = (RequestContextHolder.getRequestAttributes() as? ServletRequestAttributes)?.request
         val sourceIp = fields["source_ip"] ?: request?.getAttribute(SecurityEventRequestFilter.PEER_ATTRIBUTE)
@@ -357,7 +330,7 @@ class EventStreamingService(
         EventStreamingStatus(
             state = when {
                 !settings.enabled -> "disabled"
-                expired || !hasLicense() -> "license_expired"
+                !hasLicense() -> "license_expired"
                 writer == null || lastError != null -> "degraded"
                 else -> "active"
             },
@@ -381,26 +354,32 @@ class EventStreamingService(
         val revision: Long,
     )
 
+    private fun actor(
+        authentication: Authentication? = SecurityContextHolder.getContext().authentication,
+        id: String? = null,
+    ): Map<String, Any?> {
+        val principal = authentication?.principal
+        val details = when (principal) {
+            is UserDetailsWithId -> principal
+            is KvikletOAuthPrincipal -> principal.getUserDetails()
+            else -> null
+        }
+        val actorId = id ?: details?.id ?: return emptyMap()
+        // Read before taking the writer lock; only selected identity fields enter the record.
+        val user = userAdapter.findById(actorId)
+        return mapOf(
+            "id" to actorId,
+            "name" to user.fullName,
+            "email" to user.email,
+            "roles" to user.roles.map { it.name }.sorted(),
+        )
+    }
+
     companion object {
         const val CONFIG_KEY = "eventStreaming"
 
         fun channel(): String =
             if (SecurityContextHolder.getContext().authentication is ApiKeyAuthentication) "api" else "web"
-
-        fun actor(
-            authentication: Authentication? = SecurityContextHolder.getContext().authentication,
-            id: String? = null,
-        ): Map<String, String> {
-            val principal = authentication?.principal
-            val details = when (principal) {
-                is UserDetailsWithId -> principal
-                is KvikletOAuthPrincipal -> principal.getUserDetails()
-                else -> null
-            }
-            return buildMap {
-                (id ?: details?.id)?.let { put("id", it) }
-            }
-        }
 
         fun afterCommit(callback: () -> Unit) {
             if (TransactionSynchronizationManager.isActualTransactionActive() &&
@@ -431,36 +410,10 @@ class EventStreamingService(
             if (text == null) return emptyMap()
             // Bound temporary allocations too: do not encode arbitrarily large text in full.
             val bytes = text.take(64 * 1024 + 1).toByteArray(Charsets.UTF_8)
-            var originalBytes = 0L
-            var index = 0
-            while (index < text.length) {
-                val character = text[index]
-                originalBytes += when {
-                    character.code < 0x80 -> 1
-
-                    character.code < 0x800 -> 2
-
-                    Character.isHighSurrogate(character) && index + 1 < text.length &&
-                        Character.isLowSurrogate(text[index + 1]) -> {
-                        index++
-                        4
-                    }
-
-                    // The UTF-8 encoder substitutes an invalid surrogate with one byte.
-                    Character.isSurrogate(character) -> 1
-
-                    else -> 3
-                }
-                index++
-            }
             var end = minOf(bytes.size, 64 * 1024)
             // Stop before a partial UTF-8 code point.
             if (end < bytes.size) while (end > 0 && bytes[end].toInt() and 0xc0 == 0x80) end--
-            return mapOf(
-                field to String(bytes, 0, end, Charsets.UTF_8),
-                "${field}_truncated" to (end < originalBytes),
-                "${field}_original_bytes" to originalBytes,
-            )
+            return mapOf(field to String(bytes, 0, end, Charsets.UTF_8))
         }
     }
 }

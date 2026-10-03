@@ -30,7 +30,6 @@ internal object EventLoggingPolicy {
         "event_stream.configuration_changed",
         "event_stream.enabled",
     )
-    private val queryTextFields = setOf("statement", "statement_truncated", "statement_original_bytes")
 
     fun includes(action: String, level: EventLoggingLevel): Boolean =
         level != EventLoggingLevel.SECURITY_ONLY || action in securityActions
@@ -40,7 +39,7 @@ internal object EventLoggingPolicy {
         if (level == EventLoggingLevel.FULL) return event
         val fields = event["kviklet"] as? Map<*, *> ?: return event
         val execution = fields["execution"] as? Map<*, *> ?: return event
-        if (execution.keys.none { it in queryTextFields }) return event
-        return event + ("kviklet" to (fields + ("execution" to execution.filterKeys { it !in queryTextFields })))
+        if (!execution.containsKey("statement")) return event
+        return event + ("kviklet" to (fields + ("execution" to execution.filterKeys { it != "statement" })))
     }
 }

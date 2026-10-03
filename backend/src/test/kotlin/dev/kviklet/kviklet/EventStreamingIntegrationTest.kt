@@ -12,6 +12,7 @@ import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.EventStreamingService
 import dev.kviklet.kviklet.service.dto.EventLoggingLevel
 import dev.kviklet.kviklet.service.dto.EventStreamingSettings
+import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.LicenseFile
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -28,6 +29,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.junit.jupiter.Container
@@ -97,6 +99,13 @@ class EventStreamingIntegrationTest {
                     .content(mapper.writeValueAsString(settings)),
             ).andExpect(status().isOk)
             mockMvc.perform(
+                put("/config/event-streaming").cookie(cookie).contentType("application/json")
+                    .content(
+                        mapper.writeValueAsString(settings.copy(directory = directory.resolve("other").toString())),
+                    ),
+            ).andExpect(status().isBadRequest)
+            assertFalse(Files.exists(directory.resolve("other")))
+            mockMvc.perform(
                 post("/login").contentType("application/json")
                     .header("X-Forwarded-For", "198.51.100.77")
                     .content("""{"email":"missing@example.com","password":"sensitive-password"}"""),
@@ -108,6 +117,16 @@ class EventStreamingIntegrationTest {
             )
                 .andExpect(status().isOk).andReturn()
             val roleId = mapper.readTree(role.response.contentAsString)["id"].asText()
+            mockMvc.perform(
+                patch("/roles/$roleId").cookie(newCookie).contentType("application/json")
+                    .content("""{"id":"$roleId","name":"Renamed event role"}"""),
+            ).andExpect(status().isOk)
+            mockMvc.perform(
+                patch("/roles/$roleId").cookie(newCookie).contentType("application/json")
+                    .content(
+                        """{"id":"$roleId","policies":[{"id":null,"action":"datasource_connection:get","resource":"*"}]}""",
+                    ),
+            ).andExpect(status().isOk)
             mockMvc.perform(delete("/roles/$roleId").cookie(newCookie)).andExpect(status().isOk)
             val viewer = userHelper.createUser(permissions = listOf("configuration:get"))
             DriverManager.getConnection(database.jdbcUrl, database.username, database.password).use { connection ->
@@ -122,6 +141,16 @@ class EventStreamingIntegrationTest {
                 viewer,
                 "SELECT value FROM event_stream_sensitive",
             )
+            val reviewRequest = requests.createExecutionRequest(
+                author = viewer,
+                connection = request.request.connection,
+            )
+            mockMvc.perform(
+                post("/execution-requests/${reviewRequest.getId()}/reviews").cookie(newCookie)
+                    .contentType(
+                        "application/json",
+                    ).content("""{"action":"APPROVE","comment":"private-review-comment"}"""),
+            ).andExpect(status().isOk)
             val reason = "Investigate ticket SEC-42\n\"Customer access\" " + "한".repeat(8000)
             val createdResponse = mockMvc.perform(
                 post("/execution-requests/").cookie(newCookie).contentType("application/json")
@@ -163,12 +192,33 @@ class EventStreamingIntegrationTest {
             val completed = events.first { it["event"]["action"].asText() == "execution.completed" }
             val created = events.single { it["event"]["action"].asText() == "request.created" }
             assertEquals(createdId, created["kviklet"]["request_id"].asText())
+            assertEquals("Reason capture", created["kviklet"]["request"]["title"].asText())
+            val approval = events.single { it["event"]["action"].asText() == "review.approve" }
+            assertEquals(reviewRequest.getId(), approval["kviklet"]["request_id"].asText())
+            assertEquals(reviewRequest.request.title, approval["kviklet"]["request"]["title"].asText())
+            val expectedConnection = mapper.valueToTree<JsonNode>(
+                mapOf(
+                    "id" to request.request.connection.getId(),
+                    "name" to request.request.connection.displayName,
+                    "type" to "DATASOURCE",
+                    "database_type" to "POSTGRESQL",
+                    "hostname" to database.host,
+                    "port" to database.firstMappedPort,
+                    "database_name" to database.databaseName,
+                ),
+            )
+            for (event in listOf(created, approval, completed)) {
+                assertEquals(expectedConnection, event["kviklet"]["connection"])
+                assertFalse(event["kviklet"].has("connection_id"))
+            }
+            assertFalse(lines.joinToString().contains("private-review-comment"))
             assertEquals(reason, created["kviklet"]["request"]["reason"].asText())
-            assertFalse(created["kviklet"]["request"]["reason_truncated"].asBoolean())
+            assertFalse(created["kviklet"]["request"].has("reason_truncated"))
             val changed = events.filter { it["event"]["action"].asText() == "request.reason_changed" }
             assertEquals(listOf(changedReason, ""), changed.map { it["kviklet"]["request"]["reason"].asText() })
             assertTrue(changed.all { it["user"]["id"].asText() == admin.getId() })
             assertEquals("A test execution request", completed["kviklet"]["request"]["reason"].asText())
+            assertEquals(request.request.title, completed["kviklet"]["request"]["title"].asText())
             assertEquals(2, completed["kviklet"]["results"][0]["rows_returned"].asInt())
             assertEquals("web", completed["kviklet"]["execution"]["channel"].asText())
             assertFalse(lines.joinToString().contains("seeded-secret"))
@@ -188,6 +238,22 @@ class EventStreamingIntegrationTest {
                     it["event"]["outcome"].asText() == "failure"
             }
             assertEquals("127.0.0.1", failedLogin["source"]["ip"].asText())
+            assertFalse(failedLogin.has("user"))
+            val roleEvents = events.filter { it["kviklet"]?.get("role_id")?.asText() == roleId }
+            assertEquals(4, roleEvents.size)
+            val createdRole = roleEvents.single { it["event"]["action"].asText() == "role.created" }
+            assertTrue(createdRole["kviklet"]["before"]["name"].isNull)
+            assertEquals("Event role", createdRole["kviklet"]["after"]["name"].asText())
+            val renamedRole = roleEvents.single { it["kviklet"]["name_changed"]?.asBoolean() == true }
+            assertEquals("Event role", renamedRole["kviklet"]["before"]["name"].asText())
+            assertEquals("Renamed event role", renamedRole["kviklet"]["after"]["name"].asText())
+            val permissionChange = roleEvents.single { it["kviklet"]["name_changed"]?.asBoolean() == false }
+            assertEquals("Renamed event role", permissionChange["kviklet"]["before"]["name"].asText())
+            assertEquals("Renamed event role", permissionChange["kviklet"]["after"]["name"].asText())
+            assertEquals(1, permissionChange["kviklet"]["permissions_added"].size())
+            val deletedRole = roleEvents.single { it["event"]["action"].asText() == "role.deleted" }
+            assertEquals("Renamed event role", deletedRole["kviklet"]["before"]["name"].asText())
+            assertTrue(deletedRole["kviklet"]["after"]["name"].isNull)
             assertFalse(lines.joinToString().contains("sensitive-password"))
             assertFalse(lines.joinToString().contains("secret-description"))
         } finally {
@@ -308,7 +374,7 @@ class EventStreamingIntegrationTest {
         }
     }
 
-    @Test fun `logging levels persist through the API and filter real query execution without changing its results`() {
+    @Test fun `logging levels filter query explain and dry run usage without changing execution behavior`() {
         val admin = userHelper.createUser()
         val viewer = userHelper.createUser(permissions = listOf("configuration:get"))
         val cookie = userHelper.login(email = admin.email, mockMvc = mockMvc)
@@ -349,9 +415,52 @@ class EventStreamingIntegrationTest {
                     level.name,
                     mapper.readTree(configured.response.contentAsString)["settings"]["loggingLevel"].asText(),
                 )
-                val request = requests.createApprovedRequest(database, admin, viewer, "SELECT 7")
+                val connection = connections.createPostgresConnection(database, dryRunEnabled = true)
+                val request = requests.createApprovedRequest(
+                    author = admin,
+                    approver = viewer,
+                    sql = "SELECT 7",
+                    connection = connection,
+                )
+                mockMvc.perform(
+                    post("/execution-requests/${request.getId()}/execute").cookie(cookie)
+                        .contentType("application/json").content("""{"explain":true}"""),
+                ).andExpect(status().isOk)
+                assertTrue(
+                    requestAdapter.getExecutionRequestDetails(request.request.id!!).events
+                        .filterIsInstance<ExecuteEvent>().isEmpty(),
+                )
                 mockMvc.perform(post("/execution-requests/${request.getId()}/execute").cookie(cookie))
                     .andExpect(status().isOk)
+                val failedExplain = requests.createExecutionRequest(
+                    author = admin,
+                    statement = "SELECT * FROM missing_explain_stream_table",
+                    connection = connection,
+                )
+                mockMvc.perform(
+                    post("/execution-requests/${failedExplain.getId()}/execute").cookie(cookie)
+                        .contentType("application/json").content("""{"explain":true}"""),
+                ).andExpect(status().isOk).andExpect(jsonPath("$.results[0].type").value("ERROR"))
+                val dryRunRequest = requests.createApprovedRequest(
+                    author = admin,
+                    approver = viewer,
+                    sql = "SELECT 7",
+                    connection = connection,
+                )
+                mockMvc.perform(
+                    post("/execution-requests/${dryRunRequest.getId()}/execute").cookie(cookie)
+                        .contentType("application/json").content("""{"dryRun":true}"""),
+                ).andExpect(status().isOk)
+                val failedDryRun = requests.createApprovedRequest(
+                    author = admin,
+                    approver = viewer,
+                    sql = "SELECT * FROM missing_explain_stream_table",
+                    connection = connection,
+                )
+                mockMvc.perform(
+                    post("/execution-requests/${failedDryRun.getId()}/execute").cookie(cookie)
+                        .contentType("application/json").content("""{"dryRun":true}"""),
+                ).andExpect(status().isOk).andExpect(jsonPath("$.results[0].type").value("ERROR"))
                 val role = mockMvc.perform(
                     post("/roles/").cookie(cookie).contentType("application/json")
                         .content("""{"name":"Level $level","description":"private-role-description","policies":[]}"""),
@@ -361,17 +470,61 @@ class EventStreamingIntegrationTest {
                 val records = Files.readAllLines(directory.resolve("events.jsonl")).drop(start).map {
                     mapper.readTree(it)
                 }
+                val actorEvents = records.filter { it["user"]?.get("id")?.asText() == admin.getId() }
+                assertTrue(actorEvents.isNotEmpty())
+                for (record in actorEvents) {
+                    assertEquals(admin.fullName, record["user"]["name"].asText())
+                    assertEquals(admin.email, record["user"]["email"].asText())
+                    assertEquals(admin.roles.map { it.name }.sorted(), record["user"]["roles"].map { it.asText() })
+                }
                 assertTrue(records.any { it["event"]["action"].asText() == "role.created" })
                 assertTrue(records.any { it["event"]["action"].asText() == "role.deleted" })
                 val executions = records.filter { it["event"]["action"].asText().startsWith("execution.") }
                 if (level == EventLoggingLevel.SECURITY_ONLY) {
                     assertTrue(executions.isEmpty())
                 } else {
-                    assertEquals(2, executions.size)
-                    val completed = executions.first { it["event"]["action"].asText() == "execution.completed" }
+                    assertEquals(6, executions.size)
+                    assertTrue(executions.all { it["kviklet"]["request"]["title"].asText() == "Test Execution" })
+                    for (execution in executions) {
+                        val target = execution["kviklet"]["connection"]
+                        assertEquals(connection.getId(), target["id"].asText())
+                        assertEquals(database.host, target["hostname"].asText())
+                        assertEquals(database.firstMappedPort, target["port"].asInt())
+                        assertEquals(database.databaseName, target["database_name"].asText())
+                    }
+                    val explanations = executions.filter {
+                        it["event"]["action"].asText() ==
+                            "execution.explain.completed"
+                    }
+                    assertEquals(2, explanations.size)
+                    val explain = explanations.single { it["kviklet"]["request_id"].asText() == request.getId() }
+                    assertEquals(admin.getId(), explain["user"]["id"].asText())
+                    assertEquals(request.getId(), explain["kviklet"]["request_id"].asText())
+                    assertEquals(connection.getId(), explain["kviklet"]["connection"]["id"].asText())
+                    assertEquals("explain", explain["kviklet"]["execution"]["mode"].asText())
+                    assertEquals("web", explain["kviklet"]["execution"]["channel"].asText())
+                    assertEquals("success", explain["event"]["outcome"].asText())
+                    assertEquals("end", explain["event"]["type"][0].asText())
+                    val failure = explanations.single { it["kviklet"]["request_id"].asText() == failedExplain.getId() }
+                    assertEquals("failure", failure["event"]["outcome"].asText())
+                    assertTrue(explanations.all { !it["kviklet"]["execution"].has("statement") })
+                    assertTrue(explanations.all { !it["kviklet"].has("results") })
+                    val dryRuns = executions.filter { it["kviklet"]["execution"]["mode"].asText() == "dry_run" }
+                    assertEquals(2, dryRuns.size)
+                    assertEquals(
+                        setOf("execution.completed"),
+                        dryRuns.map { it["event"]["action"].asText() }.toSet(),
+                    )
+                    val failedDryRunEvent = dryRuns.single {
+                        it["kviklet"]["request_id"].asText() ==
+                            failedDryRun.getId()
+                    }
+                    assertEquals("failure", failedDryRunEvent["event"]["outcome"].asText())
+                    val completed = dryRuns.single { it["kviklet"]["request_id"].asText() == dryRunRequest.getId() }
+                    assertEquals("success", completed["event"]["outcome"].asText())
                     assertEquals(1, completed["kviklet"]["results"][0]["rows_returned"].asInt())
                     assertEquals("A test execution request", completed["kviklet"]["request"]["reason"].asText())
-                    for (execution in executions) {
+                    for (execution in executions.filter { it["kviklet"]["execution"]["mode"].asText() != "explain" }) {
                         assertEquals(
                             level == EventLoggingLevel.FULL,
                             execution["kviklet"]["execution"].has("statement"),

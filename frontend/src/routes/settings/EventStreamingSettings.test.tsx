@@ -95,6 +95,26 @@ describe("Event streaming settings", () => {
       screen.queryByRole("button", { name: "Save" }),
     ).not.toBeInTheDocument();
   });
+  it("keeps the directory locked until disabling has been saved", async () => {
+    vi.mocked(getEventStreaming).mockResolvedValueOnce({
+      ...response,
+      settings: { ...response.settings, enabled: true },
+      status: { ...response.status, state: "active" },
+    });
+    page();
+    const directory = await screen.findByLabelText(
+      "Output directory (absolute path)",
+    );
+    expect(directory).toBeDisabled();
+    fireEvent.click(screen.getByRole("checkbox"));
+    expect(directory).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Settings saved.",
+    );
+    expect(directory).toBeEnabled();
+    expect(putEventStreaming).toHaveBeenCalledWith(response.settings);
+  });
   it("shows backend failures without a success notification", async () => {
     vi.mocked(putEventStreaming).mockResolvedValue({
       message: "Cannot open event directory",

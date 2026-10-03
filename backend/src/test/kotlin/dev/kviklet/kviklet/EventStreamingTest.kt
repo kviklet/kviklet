@@ -5,6 +5,9 @@ import dev.kviklet.kviklet.db.ConfigurationAdapter
 import dev.kviklet.kviklet.db.EventAdapter
 import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
+import dev.kviklet.kviklet.db.User
+import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.helper.EventFactory
 import dev.kviklet.kviklet.helper.ExecutionRequestDetailsFactory
 import dev.kviklet.kviklet.helper.ExecutionRequestFactory
@@ -18,6 +21,8 @@ import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.License
 import dev.kviklet.kviklet.service.dto.LicenseFile
 import dev.kviklet.kviklet.service.dto.QueryResultLog
+import dev.kviklet.kviklet.service.dto.Role
+import dev.kviklet.kviklet.service.dto.RoleId
 import dev.kviklet.kviklet.service.dto.UpdateResultLog
 import dev.kviklet.kviklet.service.eventstream.EventFileWriter
 import dev.kviklet.kviklet.service.eventstream.accessFields
@@ -25,6 +30,7 @@ import dev.kviklet.kviklet.service.eventstream.executionResultFields
 import dev.kviklet.kviklet.service.eventstream.requestFields
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -38,6 +44,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.concurrent.Executors
@@ -55,6 +62,7 @@ class EventStreamingTest {
     private fun service(
         enabled: Boolean = true,
         level: EventLoggingLevel = EventLoggingLevel.FULL,
+        users: UserAdapter = mockk(relaxed = true),
     ): EventStreamingService {
         every { configuration.getConfiguration(EventStreamingService.CONFIG_KEY) } returns
             mapper.writeValueAsString(settings(enabled).copy(loggingLevel = level))
@@ -70,7 +78,7 @@ class EventStreamingTest {
                 null
             }
         }
-        return EventStreamingService(configuration, licenseService, mapper, ApplicationProperties()).also {
+        return EventStreamingService(configuration, licenseService, mapper, ApplicationProperties(), users).also {
             streams.add(it)
             it.refresh()
         }
@@ -88,6 +96,36 @@ class EventStreamingTest {
         streams.forEach { it.shutdown() }
     }
 
+    @Test fun `actor fields snapshot current identity and roles without secrets or unverified login identity`() {
+        val users = mockk<UserAdapter>()
+        val admin = Role.create(RoleId("admin"), "Admin", "private-role-description", emptySet())
+        val reviewer = Role.create(RoleId("reviewer"), "Reviewer", "", emptySet())
+        var user = User(
+            UserId("actor"),
+            fullName = "Dan Nguyen",
+            email = "dan@example.com",
+            password = "private-password-hash",
+            roles = setOf(reviewer, admin),
+        )
+        every { users.findById("actor") } answers { user }
+        val stream = service(users = users)
+        stream.emit("execution.completed", "database", actorId = "actor", authentication = null)
+        user = user.copy(fullName = "Daniel Nguyen", roles = setOf(reviewer))
+        stream.emit("role.changed", "iam", actorId = "actor", authentication = null)
+        stream.emit("authentication.login", "authentication", "failure", authentication = null)
+        val records = lines().map { mapper.readTree(it) }
+        assertEquals("actor", records[0]["user"]["id"].asText())
+        assertEquals("Dan Nguyen", records[0]["user"]["name"].asText())
+        assertEquals("dan@example.com", records[0]["user"]["email"].asText())
+        assertEquals(listOf("Admin", "Reviewer"), records[0]["user"]["roles"].map { it.asText() })
+        assertEquals("Daniel Nguyen", records[1]["user"]["name"].asText())
+        assertEquals(listOf("Reviewer"), records[1]["user"]["roles"].map { it.asText() })
+        assertFalse(records[2].has("user"))
+        assertFalse(lines().joinToString().contains("private-password-hash"))
+        assertFalse(lines().joinToString().contains("private-role-description"))
+        verify(exactly = 2) { users.findById(any()) }
+    }
+
     @Test fun `disabled and unlicensed streams never write`() {
         service(false).emit("test", "iam")
         assertTrue(lines().isEmpty())
@@ -99,7 +137,14 @@ class EventStreamingTest {
     @Test fun `legacy persisted settings default to full logging`() {
         every { configuration.getConfiguration(EventStreamingService.CONFIG_KEY) } returns
             """{"enabled":false,"directory":"/var/log/kviklet/events","retentionDays":180}"""
-        val stream = EventStreamingService(configuration, licenseService, mapper, ApplicationProperties())
+        val stream =
+            EventStreamingService(
+                configuration,
+                licenseService,
+                mapper,
+                ApplicationProperties(),
+                mockk<UserAdapter>(relaxed = true),
+            )
         streams.add(stream)
         stream.refresh()
         assertEquals(EventLoggingLevel.FULL, stream.getConfiguration().settings.loggingLevel)
@@ -287,32 +332,48 @@ class EventStreamingTest {
         val statement = fields["statement"] as String
         assertTrue(statement.toByteArray().size <= 64 * 1024)
         assertFalse(statement.contains('\uFFFD'))
-        assertEquals(true, fields["statement_truncated"])
-        assertEquals(text.toByteArray().size.toLong(), fields["statement_original_bytes"])
+        assertEquals(setOf("statement"), fields.keys)
     }
 
     @Test fun `access reason retains long text and truncates only beyond 64 KiB without splitting UTF8`() {
         val prefix = "Investigate ticket SEC-42\n\"Customer access\" ".repeat(400)
         val fields = EventStreamingService.reason(prefix)
         assertEquals(prefix, fields["reason"])
-        assertEquals(false, fields["reason_truncated"])
+        assertEquals(setOf("reason"), fields.keys)
         val text = "x".repeat(64 * 1024 - 1) + "한😀"
         val truncated = EventStreamingService.reason(text)
         assertEquals("x".repeat(64 * 1024 - 1), truncated["reason"])
-        assertEquals(true, truncated["reason_truncated"])
-        assertEquals(text.toByteArray(Charsets.UTF_8).size.toLong(), truncated["reason_original_bytes"])
+        assertEquals(setOf("reason"), truncated.keys)
+        val exact = "x".repeat(64 * 1024 - 4) + "😀"
+        assertEquals(exact, EventStreamingService.reason(exact)["reason"])
         assertEquals("", EventStreamingService.reason("")["reason"])
         val missing = ExecutionRequestFactory().createDatasourceExecutionRequest(description = null)
-        assertFalse(requestFields(missing).containsKey("request"))
+        val missingFields = mapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(requestFields(missing))
+        assertEquals(missing.title, missingFields["request"]["title"].asText())
+        assertFalse(missingFields["request"].has("reason"))
+        val untitled = ExecutionRequestFactory().createDatasourceExecutionRequest(title = "", description = null)
+        assertFalse(requestFields(untitled).containsKey("request"))
     }
 
     @Test fun `review and proxy execution fields carry the reason without review comment text`() {
         val request = ExecutionRequestFactory().createDatasourceExecutionRequest(description = "Investigate SEC-42")
         val review = EventFactory().createReviewApprovedEvent(request = request, comment = "private review comment")
         val proxy = EventFactory().createExecuteEvent(request = request)
+        val expectedConnection = mapOf(
+            "id" to request.connection.getId(),
+            "type" to "DATASOURCE",
+            "name" to request.connection.displayName,
+            "database_type" to request.connection.type.name,
+            "hostname" to request.connection.hostname,
+            "port" to request.connection.port,
+            "database_name" to request.connection.databaseName,
+        )
+        assertEquals(expectedConnection, requestFields(request)["connection"])
         for (fields in listOf(accessFields(review, "web"), accessFields(proxy, "database_proxy"))) {
+            assertEquals(expectedConnection, fields["connection"])
             val json = mapper.writeValueAsString(fields)
             assertEquals("Investigate SEC-42", mapper.readTree(json)["request"]["reason"].asText())
+            assertEquals(request.title, mapper.readTree(json)["request"]["title"].asText())
             assertFalse(json.contains("private review comment"))
         }
     }
@@ -327,7 +388,7 @@ class EventStreamingTest {
         val json = mapper.readTree(line)
         assertEquals(text, json["kviklet"]["request"]["reason"].asText())
         assertEquals(text, json["kviklet"]["execution"]["statement"].asText())
-        assertEquals(false, json["kviklet"]["request"]["reason_truncated"].asBoolean())
+        assertFalse(json["kviklet"]["request"].has("reason_truncated"))
         assertTrue(line.toByteArray(Charsets.UTF_8).size < 1024 * 1024)
         assertEquals(0, stream.getConfiguration().status.detectedFailures)
         stream.emit("too_large", "configuration", fields = mapOf("extra" to "x".repeat(1024 * 1024)))
@@ -455,18 +516,26 @@ class EventStreamingTest {
         assertEquals(listOf("{\"n\":1}", "{\"n\":2}"), lines())
     }
 
-    @Test fun `a rejected directory change keeps the old stream running`() {
+    @Test fun `directory changes require a separately saved disable`() {
         val stream = service()
         stream.emit("first", "iam")
         val nextDirectory = directory.resolve("replacement")
-        EventFileWriter(settings().copy(directory = nextDirectory.toString())).use {
+        for (enabled in listOf(true, false)) {
             assertThrows(IllegalArgumentException::class.java) {
-                stream.configure(settings().copy(directory = nextDirectory.toString()))
+                stream.configure(settings(enabled).copy(directory = nextDirectory.toString()))
             }
-            stream.emit("second", "iam")
-            assertEquals(directory.toString(), stream.getConfiguration().settings.directory)
-            assertEquals(2, lines().size)
         }
+        assertFalse(Files.exists(nextDirectory))
+        stream.emit("second", "iam")
+        assertEquals(directory.toString(), stream.getConfiguration().settings.directory)
+        assertEquals(2, lines().size)
+        stream.configure(settings(false))
+        stream.configure(settings(false).copy(directory = nextDirectory.toString()))
+        assertFalse(Files.exists(nextDirectory))
+        stream.configure(settings().copy(directory = nextDirectory.toString()))
+        stream.emit("new_directory", "iam")
+        assertEquals(directory.resolve("replacement").toString(), stream.getConfiguration().settings.directory)
+        assertTrue(Files.readString(nextDirectory.resolve("events.jsonl")).contains("new_directory"))
     }
 
     @Test fun `output errors are visible and do not fail caller`() {
@@ -477,15 +546,31 @@ class EventStreamingTest {
         assertTrue(stream.getConfiguration().status.detectedFailures > 0)
     }
 
-    @Test fun `expired license requires explicit reenable`() {
+    @Test fun `enabled stream resumes after license renewal without another settings save`() {
         validUntil = LocalDate.now()
         val stream = service()
         stream.emit("test", "iam")
         assertEquals("license_expired", stream.getConfiguration().status.state)
         validUntil = LocalDate.now().plusDays(10)
-        stream.configure(settings())
+        EventStreamingService::class.java.getDeclaredField("licenseCheckedAt").also {
+            it.isAccessible = true
+        }.set(stream, Instant.EPOCH)
+        stream.refresh()
         stream.emit("test", "iam")
         assertEquals("active", stream.getConfiguration().status.state)
         assertTrue(lines().isNotEmpty())
+    }
+
+    @Test fun `license refresh waits a minute between checks`() {
+        val stream = service()
+        val checkedAt = EventStreamingService::class.java.getDeclaredField("licenseCheckedAt").also {
+            it.isAccessible = true
+        }
+        checkedAt.set(stream, Instant.now().minusSeconds(30))
+        stream.refresh()
+        verify(exactly = 1) { licenseService.getActiveLicense() }
+        checkedAt.set(stream, Instant.now().minusSeconds(61))
+        stream.refresh()
+        verify(exactly = 2) { licenseService.getActiveLicense() }
     }
 }

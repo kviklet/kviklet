@@ -2,6 +2,7 @@ package dev.kviklet.kviklet
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import dev.kviklet.kviklet.db.ConfigurationAdapter
+import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.service.EventStreamingService
 import dev.kviklet.kviklet.service.LicenseService
 import dev.kviklet.kviklet.service.dto.EventLoggingLevel
@@ -52,7 +53,15 @@ class EventStreamingConfigurationTest {
     private fun service(settings: EventStreamingSettings = settings()): EventStreamingService {
         val adapter = mockk<ConfigurationAdapter>(relaxed = true)
         every { adapter.getConfiguration(EventStreamingService.CONFIG_KEY) } returns mapper.writeValueAsString(settings)
-        return EventStreamingService(adapter, licenses(), mapper, ApplicationProperties()).also { it.refresh() }
+        return EventStreamingService(
+            adapter,
+            licenses(),
+            mapper,
+            ApplicationProperties(),
+            mockk<UserAdapter>(relaxed = true),
+        ).also {
+            it.refresh()
+        }
     }
 
     @Test fun `settings saves preserve commit order without blocking ordinary events`() {
@@ -69,7 +78,14 @@ class EventStreamingConfigurationTest {
             jdbc.update("UPDATE settings SET payload=? WHERE id=1", secondArg<String>())
             Unit
         }
-        val stream = EventStreamingService(adapter, licenses(), mapper, ApplicationProperties())
+        val stream =
+            EventStreamingService(
+                adapter,
+                licenses(),
+                mapper,
+                ApplicationProperties(),
+                mockk<UserAdapter>(relaxed = true),
+            )
         stream.refresh()
         val committed = CountDownLatch(1)
         val release = CountDownLatch(1)
@@ -136,12 +152,12 @@ class EventStreamingConfigurationTest {
         }
     }
 
-    @Test fun `directory rollback preserves archives and incomplete tails and releases its reservation`() {
+    @Test fun `rolled-back enable leaves destination files untouched and the save lock released`() {
         val tx =
             TransactionTemplate(
                 DataSourceTransactionManager(DriverManagerDataSource("jdbc:h2:mem:rollback_${UUID.randomUUID()}")),
             )
-        val initial = settings().copy(directory = directory.resolve("live").toString())
+        val initial = settings().copy(enabled = false, directory = directory.resolve("live").toString())
         val stream = service(initial)
         val target = Files.createDirectory(directory.resolve("destination"))
         val archive = target.resolve("events.${LocalDate.now(ZoneOffset.UTC).minusDays(10)}.0.jsonl")
@@ -149,7 +165,7 @@ class EventStreamingConfigurationTest {
         val tail = "{\"keep\":true}\n{\"unfinished\":"
         Files.writeString(archive, "{\"archive\":true}\n")
         Files.writeString(active, tail)
-        val next = initial.copy(directory = target.toString(), retentionDays = 2)
+        val next = initial.copy(enabled = true, directory = target.toString(), retentionDays = 2)
         try {
             tx.executeWithoutResult { status ->
                 stream.configure(next)
@@ -160,6 +176,7 @@ class EventStreamingConfigurationTest {
             assertEquals(initial, stream.getConfiguration().settings)
             assertEquals(tail, Files.readString(active))
             assertTrue(Files.exists(archive))
+            assertFalse(Files.exists(target.resolve("events.lock")))
             // A different thread must be able to save after rollback, including the same directory.
             val executor = Executors.newSingleThreadExecutor()
             try {
@@ -168,7 +185,10 @@ class EventStreamingConfigurationTest {
                 executor.shutdownNow()
             }
             assertEquals(next, stream.getConfiguration().settings)
-            assertEquals("{\"keep\":true}\n", Files.readString(active))
+            val records = Files.readAllLines(active).map { mapper.readTree(it) }
+            assertEquals(2, records.size)
+            assertTrue(records.first()["keep"].asBoolean())
+            assertEquals("event_stream.enabled", records.last()["event"]["action"].asText())
             val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3)
             while (Files.exists(archive) && System.nanoTime() < deadline) Thread.sleep(10)
             assertFalse(Files.exists(archive))
@@ -178,10 +198,18 @@ class EventStreamingConfigurationTest {
     }
 
     @Test fun `failed settings persistence preserves destination data and releases the save lock`() {
-        val initial = settings().copy(directory = directory.resolve("live").toString())
+        val initial = settings().copy(enabled = false, directory = directory.resolve("live").toString())
         val adapter = mockk<ConfigurationAdapter>(relaxed = true)
         every { adapter.getConfiguration(EventStreamingService.CONFIG_KEY) } returns mapper.writeValueAsString(initial)
-        val stream = EventStreamingService(adapter, licenses(), mapper, ApplicationProperties()).also { it.refresh() }
+        val stream = EventStreamingService(
+            adapter,
+            licenses(),
+            mapper,
+            ApplicationProperties(),
+            mockk<UserAdapter>(relaxed = true),
+        ).also {
+            it.refresh()
+        }
         val target = Files.createDirectory(directory.resolve("destination"))
         val archive = target.resolve("events.${LocalDate.now(ZoneOffset.UTC).minusDays(10)}.0.jsonl")
         Files.writeString(archive, "{\"keep\":true}\n")
@@ -189,12 +217,13 @@ class EventStreamingConfigurationTest {
             TransactionTemplate(
                 DataSourceTransactionManager(DriverManagerDataSource("jdbc:h2:mem:failure_${UUID.randomUUID()}")),
             )
-        val next = initial.copy(directory = target.toString(), retentionDays = 2)
+        val next = initial.copy(enabled = true, directory = target.toString(), retentionDays = 2)
         every { adapter.setConfiguration(any<String>(), any<String>()) } throws
             IllegalStateException("database unavailable")
         try {
             assertThrows(IllegalStateException::class.java) { tx.executeWithoutResult { stream.configure(next) } }
             assertTrue(Files.exists(archive))
+            assertFalse(Files.exists(target.resolve("events.lock")))
             assertEquals(initial, stream.getConfiguration().settings)
             every { adapter.setConfiguration(any<String>(), any<String>()) } returns Unit
             val executor = Executors.newSingleThreadExecutor()
@@ -204,6 +233,26 @@ class EventStreamingConfigurationTest {
             } finally {
                 executor.shutdownNow()
             }
+        } finally {
+            stream.shutdown()
+        }
+    }
+
+    @Test fun `committed enable reports degraded health when the directory cannot be opened`() {
+        val tx = TransactionTemplate(
+            DataSourceTransactionManager(DriverManagerDataSource("jdbc:h2:mem:enable_${UUID.randomUUID()}")),
+        )
+        val initial = settings().copy(enabled = false)
+        val stream = service(initial)
+        val target = Files.writeString(directory.resolve("not-a-directory"), "keep")
+        val next = initial.copy(enabled = true, directory = target.toString())
+        try {
+            tx.executeWithoutResult { stream.configure(next) }
+            val response = stream.getConfiguration()
+            assertEquals(next, response.settings)
+            assertEquals("degraded", response.status.state)
+            assertTrue(response.status.lastError!!.contains("Event file output is unavailable"))
+            assertEquals("keep", Files.readString(target))
         } finally {
             stream.shutdown()
         }

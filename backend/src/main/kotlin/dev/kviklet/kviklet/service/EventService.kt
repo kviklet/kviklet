@@ -81,6 +81,8 @@ class EventService(
             else -> Unit
         }
         val (_, event) = executionRequestAdapter.addEvent(id, authorId, payload)
+        // Dry runs stream their outcome only; keep the stored attempt for existing audit semantics.
+        if (event is ExecuteEvent && event.isDryRun) return event
         val proxy = proxyOrigin.get()
         eventStreamingService?.emit(
             action = when (event) {
