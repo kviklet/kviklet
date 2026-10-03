@@ -3,6 +3,7 @@ package dev.kviklet.kviklet.service.eventstream
 
 import dev.kviklet.kviklet.service.EventStreamingService
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
+import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
 import dev.kviklet.kviklet.service.dto.DumpResultLog
 import dev.kviklet.kviklet.service.dto.ErrorResultLog
 import dev.kviklet.kviklet.service.dto.Event
@@ -11,6 +12,7 @@ import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
 import dev.kviklet.kviklet.service.dto.KubernetesOutputResultLog
 import dev.kviklet.kviklet.service.dto.QueryResultLog
+import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewEvent
 import dev.kviklet.kviklet.service.dto.UpdateResultLog
 import java.time.ZoneOffset
@@ -38,6 +40,15 @@ fun requestFields(request: ExecutionRequest): Map<String, Any?> = buildMap {
         request.description?.let { putAll(EventStreamingService.reason(it)) }
     }
     if (details.isNotEmpty()) put("request", details)
+}
+
+fun requestStatementFields(request: ExecutionRequest, level: EventLoggingLevel): Map<String, Any?> {
+    if (level != EventLoggingLevel.FULL || request !is DatasourceExecutionRequest ||
+        request.type != RequestType.SingleExecution || request.statement == null
+    ) {
+        return emptyMap()
+    }
+    return mapOf("execution" to EventStreamingService.statement(request.statement))
 }
 
 fun accessFields(event: Event, channel: String, level: EventLoggingLevel = EventLoggingLevel.FULL): Map<String, Any?> =

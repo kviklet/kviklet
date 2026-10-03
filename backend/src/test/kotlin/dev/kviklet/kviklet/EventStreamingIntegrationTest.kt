@@ -416,6 +416,28 @@ class EventStreamingIntegrationTest {
                     mapper.readTree(configured.response.contentAsString)["settings"]["loggingLevel"].asText(),
                 )
                 val connection = connections.createPostgresConnection(database, dryRunEnabled = true)
+                val submitted = mockMvc.perform(
+                    post("/execution-requests/").cookie(cookie).contentType("application/json")
+                        .content(
+                            mapper.writeValueAsString(
+                                mapOf(
+                                    "connectionType" to "DATASOURCE",
+                                    "connectionId" to connection.getId(),
+                                    "title" to "Submitted SQL",
+                                    "type" to "SingleExecution",
+                                    "description" to "Validate submitted SQL capture",
+                                    "statement" to "SELECT 11;",
+                                ),
+                            ),
+                        ),
+                ).andExpect(status().isOk).andReturn()
+                val submittedId = mapper.readTree(submitted.response.contentAsString)["id"].asText()
+                repeat(2) {
+                    mockMvc.perform(
+                        patch("/execution-requests/$submittedId").cookie(cookie).contentType("application/json")
+                            .content("""{"title":"Edited SQL","statement":"SELECT 12;"}"""),
+                    ).andExpect(status().isOk)
+                }
                 val request = requests.createApprovedRequest(
                     author = admin,
                     approver = viewer,
@@ -480,9 +502,31 @@ class EventStreamingIntegrationTest {
                 assertTrue(records.any { it["event"]["action"].asText() == "role.created" })
                 assertTrue(records.any { it["event"]["action"].asText() == "role.deleted" })
                 val executions = records.filter { it["event"]["action"].asText().startsWith("execution.") }
+                val submissions = records.filter {
+                    it["event"]["action"].asText() in setOf("request.created", "request.edited") &&
+                        it["kviklet"]["request_id"].asText() == submittedId
+                }
                 if (level == EventLoggingLevel.SECURITY_ONLY) {
+                    assertTrue(submissions.isEmpty())
                     assertTrue(executions.isEmpty())
                 } else {
+                    assertEquals(
+                        listOf("request.created", "request.edited"),
+                        submissions.map {
+                            it["event"]["action"].asText()
+                        },
+                    )
+                    assertEquals("Edited SQL", submissions[1]["kviklet"]["request"]["title"].asText())
+                    if (level == EventLoggingLevel.FULL) {
+                        assertEquals(
+                            listOf("SELECT 11;", "SELECT 12;"),
+                            submissions.map {
+                                it["kviklet"]["execution"]["statement"].asText()
+                            },
+                        )
+                    } else {
+                        assertTrue(submissions.all { !it["kviklet"].has("execution") })
+                    }
                     assertEquals(6, executions.size)
                     assertTrue(executions.all { it["kviklet"]["request"]["title"].asText() == "Test Execution" })
                     for (execution in executions) {

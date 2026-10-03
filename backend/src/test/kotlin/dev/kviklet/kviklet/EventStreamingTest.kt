@@ -21,6 +21,7 @@ import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.License
 import dev.kviklet.kviklet.service.dto.LicenseFile
 import dev.kviklet.kviklet.service.dto.QueryResultLog
+import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.Role
 import dev.kviklet.kviklet.service.dto.RoleId
 import dev.kviklet.kviklet.service.dto.UpdateResultLog
@@ -28,6 +29,7 @@ import dev.kviklet.kviklet.service.eventstream.EventFileWriter
 import dev.kviklet.kviklet.service.eventstream.accessFields
 import dev.kviklet.kviklet.service.eventstream.executionResultFields
 import dev.kviklet.kviklet.service.eventstream.requestFields
+import dev.kviklet.kviklet.service.eventstream.requestStatementFields
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -353,6 +355,22 @@ class EventStreamingTest {
         assertFalse(missingFields["request"].has("reason"))
         val untitled = ExecutionRequestFactory().createDatasourceExecutionRequest(title = "", description = null)
         assertFalse(requestFields(untitled).containsKey("request"))
+    }
+
+    @Test fun `submitted statements are bounded and only included for full single execution requests`() {
+        val request = ExecutionRequestFactory().createDatasourceExecutionRequest(statement = "한".repeat(30000))
+        val fields = mapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(
+            requestStatementFields(request, EventLoggingLevel.FULL),
+        )
+        val statement = fields["execution"]["statement"].asText()
+        assertTrue(statement.toByteArray(Charsets.UTF_8).size <= 64 * 1024)
+        assertFalse(statement.contains('\uFFFD'))
+        for (level in listOf(EventLoggingLevel.WITHOUT_QUERY_TEXT, EventLoggingLevel.SECURITY_ONLY)) {
+            assertTrue(requestStatementFields(request, level).isEmpty())
+        }
+        for (type in listOf(RequestType.TemporaryAccess, RequestType.Dump)) {
+            assertTrue(requestStatementFields(request.copy(type = type), EventLoggingLevel.FULL).isEmpty())
+        }
     }
 
     @Test fun `review and proxy execution fields carry the reason without review comment text`() {

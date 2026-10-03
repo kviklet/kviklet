@@ -53,7 +53,9 @@ import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.UpdateQueryResult
 import dev.kviklet.kviklet.service.dto.utcTimeNow
+import dev.kviklet.kviklet.service.eventstream.accessFields
 import dev.kviklet.kviklet.service.eventstream.requestFields
+import dev.kviklet.kviklet.service.eventstream.requestStatementFields
 import dev.kviklet.kviklet.shell.KubernetesApi
 import dev.kviklet.kviklet.telemetry.ExecutionMode
 import dev.kviklet.kviklet.telemetry.ProxySessionStarted
@@ -164,10 +166,11 @@ class ExecutionRequestService(
         eventStreamingService?.emit(
             "request.created",
             "configuration",
-            fields = {
-                requestFields(executionRequestDetails.request) + mapOf(
-                    "request_type" to executionRequestDetails.request.type.name,
-                )
+            fields = { level ->
+                requestFields(executionRequestDetails.request) +
+                    requestStatementFields(executionRequestDetails.request, level) + mapOf(
+                        "request_type" to executionRequestDetails.request.type.name,
+                    )
             },
             actorId = userId,
         )
@@ -332,14 +335,17 @@ class ExecutionRequestService(
         userId: String,
     ): ExecutionRequestDetailsWithRoles {
         val executionRequestDetails = executionRequestAdapter.getExecutionRequestDetailsForUpdate(id)
+        val editEvents = mutableListOf<Event>()
 
         when (executionRequestDetails.request) {
             is DatasourceExecutionRequest -> {
                 if (request.statement != executionRequestDetails.request.statement) {
-                    eventService.saveEvent(
-                        id,
-                        userId,
-                        EditPayload(previousQuery = executionRequestDetails.request.statement ?: ""),
+                    editEvents.add(
+                        eventService.saveEvent(
+                            id,
+                            userId,
+                            EditPayload(previousQuery = executionRequestDetails.request.statement ?: ""),
+                        ),
                     )
                 }
                 val newDuration = request.temporaryAccessDuration?.let { Duration.ofMinutes(it) }
@@ -353,11 +359,14 @@ class ExecutionRequestService(
                             validateTemporaryAccessDuration(connection, request.temporaryAccessDuration)
                         }
                     }
-                    eventService.saveEvent(
-                        id,
-                        userId,
-                        EditPayload(
-                            previousAccessDurationInMinutes = executionRequestDetails.request.temporaryAccessDuration,
+                    editEvents.add(
+                        eventService.saveEvent(
+                            id,
+                            userId,
+                            EditPayload(
+                                previousAccessDurationInMinutes =
+                                executionRequestDetails.request.temporaryAccessDuration,
+                            ),
                         ),
                     )
                 }
@@ -365,15 +374,21 @@ class ExecutionRequestService(
 
             is KubernetesExecutionRequest -> {
                 if (request.command != executionRequestDetails.request.command) {
-                    eventService.saveEvent(
-                        id,
-                        userId,
-                        EditPayload(
-                            previousCommand = request.command?.let { executionRequestDetails.request.command },
-                            previousContainerName = request.containerName
-                                ?.let { executionRequestDetails.request.containerName ?: "" },
-                            previousPodName = request.podName?.let { executionRequestDetails.request.podName },
-                            previousNamespace = request.namespace?.let { executionRequestDetails.request.namespace },
+                    editEvents.add(
+                        eventService.saveEvent(
+                            id,
+                            userId,
+                            EditPayload(
+                                previousCommand = request.command?.let { executionRequestDetails.request.command },
+                                previousContainerName = request.containerName
+                                    ?.let { executionRequestDetails.request.containerName ?: "" },
+                                previousPodName = request.podName?.let {
+                                    executionRequestDetails.request.podName
+                                },
+                                previousNamespace = request.namespace?.let {
+                                    executionRequestDetails.request.namespace
+                                },
+                            ),
                         ),
                     )
                 }
@@ -395,6 +410,17 @@ class ExecutionRequestService(
             command = request.command,
             temporaryAccessDuration = request.temporaryAccessDuration?.let { Duration.ofMinutes(it) },
         )
+        for (event in editEvents) {
+            eventStreamingService?.emit(
+                "request.edited",
+                "configuration",
+                fields = { level ->
+                    accessFields(event, EventStreamingService.channel(), level) + requestFields(result.request) +
+                        requestStatementFields(result.request, level)
+                },
+                actorId = userId,
+            )
+        }
         if (result.request.description != executionRequestDetails.request.description) {
             eventStreamingService?.emit(
                 "request.reason_changed",

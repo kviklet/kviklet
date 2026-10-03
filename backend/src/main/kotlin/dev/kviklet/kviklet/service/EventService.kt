@@ -83,12 +83,13 @@ class EventService(
         val (_, event) = executionRequestAdapter.addEvent(id, authorId, payload)
         // Dry runs stream their outcome only; keep the stored attempt for existing audit semantics.
         if (event is ExecuteEvent && event.isDryRun) return event
+        // The update service streams edits after saving the new request contents.
+        if (event is dev.kviklet.kviklet.service.dto.EditEvent) return event
         val proxy = proxyOrigin.get()
         eventStreamingService?.emit(
             action = when (event) {
                 is ExecuteEvent -> "execution.attempted"
                 is dev.kviklet.kviklet.service.dto.ReviewEvent -> "review.${event.action.name.lowercase()}"
-                is dev.kviklet.kviklet.service.dto.EditEvent -> "request.edited"
                 else -> "comment.added"
             },
             category = if (event is ExecuteEvent && event.command == null) "database" else "configuration",
