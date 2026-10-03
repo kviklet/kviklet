@@ -76,6 +76,15 @@ class EventStreamingIntegrationTest {
 
     @TempDir lateinit var directory: Path
 
+    private fun assertStoredTimestamp(stored: LocalDateTime, streamed: String) {
+        val difference = java.time.Duration.between(
+            stored.toInstant(java.time.ZoneOffset.UTC),
+            java.time.Instant.parse(streamed),
+        ).abs()
+        // PostgreSQL stores microseconds; a freshly saved Java timestamp can retain nanoseconds.
+        assertTrue(difference <= java.time.Duration.ofNanos(1000), "Timestamp differs by $difference")
+    }
+
     @Test fun `licensed settings enforce permissions and capture login role changes and logout without secrets`() {
         val admin = userHelper.createUser()
         val cookie = userHelper.login(email = admin.email, mockMvc = mockMvc)
@@ -204,15 +213,15 @@ class EventStreamingIntegrationTest {
             assertEquals(admin.email, participants["approvers"][0]["email"].asText())
             assertEquals(admin.getId(), approval["user"]["id"].asText())
             val storedReview = requestAdapter.getExecutionRequestDetails(reviewRequest.request.id!!)
-            assertEquals(
-                storedReview.getApprovalsAfterReset().single().createdAt.toInstant(java.time.ZoneOffset.UTC).toString(),
+            assertStoredTimestamp(
+                storedReview.getApprovalsAfterReset().single().createdAt,
                 participants["approvers"][0]["approved_at"].asText(),
             )
             val storedCreated = requestAdapter.getExecutionRequestDetails(
                 dev.kviklet.kviklet.service.dto.ExecutionRequestId(createdId),
             )
-            assertEquals(
-                storedCreated.request.createdAt.toInstant(java.time.ZoneOffset.UTC).toString(),
+            assertStoredTimestamp(
+                storedCreated.request.createdAt,
                 created["kviklet"]["request"]["created_at"].asText(),
             )
             assertEquals(admin.getId(), created["kviklet"]["request"]["requester"]["id"].asText())
