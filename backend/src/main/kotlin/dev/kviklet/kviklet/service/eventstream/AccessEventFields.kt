@@ -1,6 +1,7 @@
 // This file is not MIT licensed
 package dev.kviklet.kviklet.service.eventstream
 
+import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.service.EventStreamingService
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DatasourceExecutionRequest
@@ -10,6 +11,7 @@ import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventLoggingLevel
 import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
+import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.KubernetesOutputResultLog
 import dev.kviklet.kviklet.service.dto.QueryResultLog
 import dev.kviklet.kviklet.service.dto.RequestType
@@ -18,7 +20,17 @@ import dev.kviklet.kviklet.service.dto.UpdateResultLog
 import java.time.ZoneOffset
 
 /** Do not serialize Event/Connection/User directly: they contain credentials and stored result contents. */
-fun requestFields(request: ExecutionRequest): Map<String, Any?> = buildMap {
+internal fun userFields(user: User): Map<String, Any?> = mapOf(
+    "id" to user.getId(),
+    "name" to user.fullName,
+    "email" to user.email,
+    "roles" to user.roles.map { it.name }.sorted(),
+)
+
+fun requestFields(details: ExecutionRequestDetails): Map<String, Any?> =
+    requestFields(details.request, details.getApprovalsAfterReset())
+
+fun requestFields(request: ExecutionRequest, approvals: List<ReviewEvent> = emptyList()): Map<String, Any?> = buildMap {
     put("request_id", request.getId())
     val connection = request.connection
     put(
@@ -36,10 +48,18 @@ fun requestFields(request: ExecutionRequest): Map<String, Any?> = buildMap {
         },
     )
     val details = buildMap {
+        put("created_at", request.createdAt.toInstant(ZoneOffset.UTC).toString())
+        put("requester", userFields(request.author))
+        put(
+            "approvers",
+            approvals.sortedBy { it.author.getId() }.map {
+                userFields(it.author) + ("approved_at" to it.createdAt.toInstant(ZoneOffset.UTC).toString())
+            },
+        )
         if (request.title.isNotBlank()) put("title", request.title)
         request.description?.let { putAll(EventStreamingService.reason(it)) }
     }
-    if (details.isNotEmpty()) put("request", details)
+    put("request", details)
 }
 
 fun requestStatementFields(request: ExecutionRequest, level: EventLoggingLevel): Map<String, Any?> {
@@ -51,34 +71,44 @@ fun requestStatementFields(request: ExecutionRequest, level: EventLoggingLevel):
     return mapOf("execution" to EventStreamingService.statement(request.statement))
 }
 
-fun accessFields(event: Event, channel: String, level: EventLoggingLevel = EventLoggingLevel.FULL): Map<String, Any?> =
-    buildMap {
-        putAll(requestFields(event.request))
-        put("audit_event_id", event.getId())
-        if (event is ExecuteEvent) {
-            put(
-                "execution",
-                mapOf(
-                    "channel" to channel,
-                    "mode" to when {
-                        event.isDump -> "dump"
-                        event.isDownload -> "download"
-                        event.isDryRun -> "dry_run"
-                        event.command != null -> "kubernetes"
-                        else -> "query"
-                    },
-                ) + if (level == EventLoggingLevel.FULL) {
-                    EventStreamingService.statement(event.query ?: event.command)
-                } else {
-                    emptyMap()
-                },
-            )
-            event.namespace?.let { put("namespace", it) }
-            event.podName?.let { put("pod_name", it) }
-            event.containerName?.let { put("container_name", it) }
-        }
-        if (event is ReviewEvent) put("review_action", event.action.name.lowercase())
+fun accessFields(
+    event: Event,
+    channel: String,
+    level: EventLoggingLevel = EventLoggingLevel.FULL,
+    details: ExecutionRequestDetails,
+): Map<String, Any?> = buildMap {
+    // Completion results or later edits can reset approvals; retain those applicable at execution start.
+    val approvalContext = if (event is ExecuteEvent) {
+        details.copy(events = details.events.filter { it.createdAt < event.createdAt }.toMutableSet())
+    } else {
+        details
     }
+    putAll(requestFields(event.request, approvalContext.getApprovalsAfterReset()))
+    put("audit_event_id", event.getId())
+    if (event is ExecuteEvent) {
+        put(
+            "execution",
+            mapOf(
+                "channel" to channel,
+                "mode" to when {
+                    event.isDump -> "dump"
+                    event.isDownload -> "download"
+                    event.isDryRun -> "dry_run"
+                    event.command != null -> "kubernetes"
+                    else -> "query"
+                },
+            ) + if (level == EventLoggingLevel.FULL) {
+                EventStreamingService.statement(event.query ?: event.command)
+            } else {
+                emptyMap()
+            },
+        )
+        event.namespace?.let { put("namespace", it) }
+        event.podName?.let { put("pod_name", it) }
+        event.containerName?.let { put("container_name", it) }
+    }
+    if (event is ReviewEvent) put("review_action", event.action.name.lowercase())
+}
 
 fun executionResultFields(event: ExecuteEvent): Map<String, Any?> = mapOf(
     "duration_ms" to

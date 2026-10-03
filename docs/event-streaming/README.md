@@ -61,6 +61,8 @@ Common fields are `@timestamp` (UTC event capture time), `ecs.version`, `service
 | Identity and authorization | User creation, activation/deactivation, password-change marker, role assignment/removal including identity-provider sync, role creation/change/deletion with permission diffs, API-key creation/revocation, permission denials |
 | Security settings | Connection creation/deletion and security-setting changes, credential-change marker, proxy-enabled changes, role-sync configuration/mapping changes, event-stream settings changes |
 
+Request creation, edits, reviews, closure, execution attempts/completions, Explain and Dry Run include `kviklet.request.requester` and `kviklet.request.approvers`. Each identity has `id`, `name`, `email` and sorted `roles`; these are selected identity fields, without credentials. `request.created_at` is the stored request creation time in UTC. Each approver also has `approved_at`, the UTC time of that person's latest applicable approval. Multiple approvers are listed once each, sorted by ID; no applicable approvals produces an empty array. Approval selection reuses the application's latest-review and approval-reset rules. Execution records retain the approvals applicable at execution start, including on failures that reset approvals and completions after a later edit. Other request records show the applicable approval state at capture. Names, emails and roles reflect the loaded user profiles rather than immutable historical identity snapshots. The top-level `user` continues identifying the actor of each event. Database-proxy query attempts include this context; proxy session lifecycle records remain limited to their existing fields.
+
 At Level 3, single-execution database request creation includes the submitted SQL in `kviklet.execution.statement`. Request edit records include the new saved SQL, title and reason after the request is updated; their stored audit event IDs are retained. The statement uses the same 64 KiB UTF-8 limit as executed SQL. Level 2 omits this field, and Level 1 omits these routine request events. Temporary-access and dump request creation/edit events do not include submitted SQL.
 
 Request, review and execution records share `kviklet.connection`, containing `id`, `name` (display name) and `type`. Database connections also include `database_type`, `hostname`, `port` and `database_name` (which can be null). This includes Explain, Dry Run and database-proxy execution attempts. The fields snapshot the connection available when the event is captured, without an additional lookup. Request creation uses `connection.id` instead of the previous standalone `connection_id`. Credentials and additional connection options remain excluded.
@@ -97,7 +99,12 @@ A completed browser query, for example, has this shape (illustrative IDs):
   "source": {"ip": "127.0.0.1"},
   "kviklet": {
     "schema_version": "1.0.0", "request_id": "request-id", "audit_event_id": "audit-id",
-    "request": {"title": "Investigate customer access", "reason": "Investigate ticket SEC-42"},
+    "request": {
+      "title": "Investigate customer access", "reason": "Investigate ticket SEC-42",
+      "created_at": "2026-01-01T11:55:00Z",
+      "requester": {"id": "actor-id", "name": "Dan Nguyen", "email": "dan@example.com", "roles": ["Default", "Requester"]},
+      "approvers": [{"id": "approver-id", "name": "Alex Example", "email": "alex@example.com", "roles": ["Admin"], "approved_at": "2026-01-01T11:58:00Z"}]
+    },
     "connection": {"id": "connection-id", "type": "DATASOURCE", "name": "Production", "database_type": "POSTGRESQL", "hostname": "db.internal", "port": 5432, "database_name": "sales"},
     "execution": {"channel": "web", "mode": "query", "statement": "SELECT id FROM users"},
     "duration_ms": 42,

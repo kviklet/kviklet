@@ -167,7 +167,7 @@ class ExecutionRequestService(
             "request.created",
             "configuration",
             fields = { level ->
-                requestFields(executionRequestDetails.request) +
+                requestFields(executionRequestDetails) +
                     requestStatementFields(executionRequestDetails.request, level) + mapOf(
                         "request_type" to executionRequestDetails.request.type.name,
                     )
@@ -281,7 +281,7 @@ class ExecutionRequestService(
         val process = try {
             ProcessBuilder(command).start()
         } catch (e: Exception) {
-            emitExecutionFailure(event, userId, e)
+            emitExecutionFailure(event, userId, e, executionRequest)
             throw e
         }
         val inputStream = BufferedInputStream(process.inputStream)
@@ -415,7 +415,7 @@ class ExecutionRequestService(
                 "request.edited",
                 "configuration",
                 fields = { level ->
-                    accessFields(event, EventStreamingService.channel(), level) + requestFields(result.request) +
+                    accessFields(event, EventStreamingService.channel(), level, result) + requestFields(result) +
                         requestStatementFields(result.request, level)
                 },
                 actorId = userId,
@@ -425,7 +425,7 @@ class ExecutionRequestService(
             eventStreamingService?.emit(
                 "request.reason_changed",
                 "configuration",
-                fields = { requestFields(result.request) },
+                fields = { requestFields(result) },
                 actorId = userId,
             )
         }
@@ -569,7 +569,7 @@ class ExecutionRequestService(
         eventStreamingService?.emit(
             "request.closed",
             "configuration",
-            fields = { requestFields(executionRequest.request) },
+            fields = { requestFields(updatedExecutionRequestDetails) },
             actorId = authorId,
         )
         return reviewEvent
@@ -603,13 +603,18 @@ class ExecutionRequestService(
             CommentPayload(comment = request.comment),
         )
 
-    private fun emitExecutionFailure(event: Event, userId: String, error: Exception) {
+    private fun emitExecutionFailure(
+        event: Event,
+        userId: String,
+        error: Exception,
+        executionRequest: ExecutionRequestDetails,
+    ) {
         eventStreamingService?.emit(
             "execution.completed",
             "database",
             "failure",
             { level ->
-                dev.kviklet.kviklet.service.eventstream.accessFields(event, EventStreamingService.channel(), level) +
+                accessFields(event, EventStreamingService.channel(), level, executionRequest) +
                     mapOf("error_class" to error.javaClass.simpleName)
             },
             actorId = userId,
@@ -670,7 +675,7 @@ class ExecutionRequestService(
                 }
             }
         } catch (e: Exception) {
-            emitExecutionFailure(event, userId, e)
+            emitExecutionFailure(event, userId, e, executionRequest)
             throw e
         }
 
@@ -740,7 +745,7 @@ class ExecutionRequestService(
                 }
             }
         } catch (e: Exception) {
-            emitExecutionFailure(event, userId, e)
+            emitExecutionFailure(event, userId, e, executionRequest)
             throw e
         }
 
@@ -804,7 +809,7 @@ class ExecutionRequestService(
                         "process",
                         if (timedOut || exitCode != 0) "failure" else "success",
                         { level ->
-                            dev.kviklet.kviklet.service.eventstream.accessFields(event, executionChannel, level) +
+                            accessFields(event, executionChannel, level, executionRequest) +
                                 mapOf(
                                     "exit_code" to exitCode,
                                     "timed_out" to timedOut,
@@ -822,7 +827,7 @@ class ExecutionRequestService(
                 "process",
                 "failure",
                 { level ->
-                    dev.kviklet.kviklet.service.eventstream.accessFields(event, executionChannel, level) +
+                    accessFields(event, executionChannel, level, executionRequest) +
                         mapOf("error_class" to e.javaClass.simpleName)
                 },
                 actorId = userId,
@@ -1094,7 +1099,7 @@ class ExecutionRequestService(
             "database",
             outcome,
             fields = {
-                requestFields(executionRequest.request) + mapOf(
+                requestFields(executionRequest) + mapOf(
                     "execution" to mapOf("channel" to EventStreamingService.channel(), "mode" to "explain"),
                 )
             },

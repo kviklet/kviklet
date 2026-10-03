@@ -14,14 +14,17 @@ import dev.kviklet.kviklet.helper.ExecutionRequestFactory
 import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.EventStreamingService
 import dev.kviklet.kviklet.service.LicenseService
+import dev.kviklet.kviklet.service.dto.EditEvent
 import dev.kviklet.kviklet.service.dto.ErrorResultLog
 import dev.kviklet.kviklet.service.dto.EventLoggingLevel
 import dev.kviklet.kviklet.service.dto.EventStreamingSettings
+import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.License
 import dev.kviklet.kviklet.service.dto.LicenseFile
 import dev.kviklet.kviklet.service.dto.QueryResultLog
 import dev.kviklet.kviklet.service.dto.RequestType
+import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.Role
 import dev.kviklet.kviklet.service.dto.RoleId
 import dev.kviklet.kviklet.service.dto.UpdateResultLog
@@ -200,7 +203,7 @@ class EventStreamingTest {
             }
             stream.emit("execution.completed", "database", fields = { level ->
                 assertEquals(EventLoggingLevel.WITHOUT_QUERY_TEXT, level)
-                val fields = accessFields(event, channel, level)
+                val fields = accessFields(event, channel, level, ExecutionRequestDetails(event.request, mutableSetOf()))
                 assertFalse((fields["execution"] as Map<*, *>).containsKey("statement"))
                 fields + executionResultFields(event)
             })
@@ -222,7 +225,9 @@ class EventStreamingTest {
         val event = EventFactory().createExecuteEvent(query = "SELECT private_literal")
         TransactionSynchronizationManager.setActualTransactionActive(true)
         TransactionSynchronizationManager.initSynchronization()
-        stream.emit("execution.attempted", "database", fields = { accessFields(event, "web", it) })
+        stream.emit("execution.attempted", "database", fields = {
+            accessFields(event, "web", it, ExecutionRequestDetails(event.request, mutableSetOf()))
+        })
         val pending = TransactionSynchronizationManager.getSynchronizations()
         TransactionSynchronizationManager.clearSynchronization()
         TransactionSynchronizationManager.setActualTransactionActive(false)
@@ -263,7 +268,9 @@ class EventStreamingTest {
         val event = EventFactory().createExecuteEvent(query = "SELECT private_literal")
         TransactionSynchronizationManager.setActualTransactionActive(true)
         TransactionSynchronizationManager.initSynchronization()
-        stream.emit("execution.attempted", "database", fields = { accessFields(event, "web", it) })
+        stream.emit("execution.attempted", "database", fields = {
+            accessFields(event, "web", it, ExecutionRequestDetails(event.request, mutableSetOf()))
+        })
         // Explicit maps must obey the capture-time level even without the standard field helper.
         stream.emit(
             "execution.attempted",
@@ -354,7 +361,73 @@ class EventStreamingTest {
         assertEquals(missing.title, missingFields["request"]["title"].asText())
         assertFalse(missingFields["request"].has("reason"))
         val untitled = ExecutionRequestFactory().createDatasourceExecutionRequest(title = "", description = null)
-        assertFalse(requestFields(untitled).containsKey("request"))
+        val untitledFields = mapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(requestFields(untitled))
+        assertFalse(untitledFields["request"].has("title"))
+        assertFalse(untitledFields["request"].has("reason"))
+    }
+
+    @Test fun `request participants retain applicable approval times through execution failure and later edits`() {
+        val time = LocalDateTime.of(2026, 10, 3, 9, 0)
+        val requester =
+            User(UserId("requester"), fullName = "Daniel", email = "dan@example.com", password = "secret-hash")
+        val alex = User(UserId("alex"), fullName = "Alex", email = "alex@example.com")
+        val sam = User(UserId("sam"), fullName = "Sam", email = "sam@example.com")
+        val request = ExecutionRequestFactory().createDatasourceExecutionRequest(author = requester, createdAt = time)
+        val first = EventFactory().createReviewApprovedEvent(
+            request = request,
+            author = alex,
+            createdAt = time.plusMinutes(1),
+            comment = "private-review-comment",
+        )
+        val latest = first.copy(
+            eventId = dev.kviklet.kviklet.service.dto.EventId("latest"),
+            createdAt = time.plusMinutes(2),
+        )
+        val second = EventFactory().createReviewApprovedEvent(
+            request = request,
+            author = sam,
+            createdAt = time.plusMinutes(3),
+        )
+        val failure = EventFactory().createExecuteEvent(
+            request = request,
+            createdAt = time.plusMinutes(4),
+            results = listOf(ErrorResultLog(0, "private-error")),
+        )
+        val edit = EditEvent(
+            eventId = dev.kviklet.kviklet.service.dto.EventId("edit"),
+            request = request,
+            author = requester,
+            createdAt = time.plusMinutes(5),
+            previousQuery = "SELECT 1;",
+        )
+        val details = ExecutionRequestDetails(request, mutableSetOf(first, latest, second, failure, edit))
+        val fields = mapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(
+            accessFields(failure, "web", details = details),
+        )
+        val context = fields["request"]
+        assertEquals("2026-10-03T09:00:00Z", context["created_at"].asText())
+        assertEquals("requester", context["requester"]["id"].asText())
+        assertEquals("Daniel", context["requester"]["name"].asText())
+        assertEquals("dan@example.com", context["requester"]["email"].asText())
+        assertTrue(context["requester"]["roles"].isArray)
+        assertEquals(listOf("alex", "sam"), context["approvers"].map { it["id"].asText() })
+        assertEquals(
+            listOf("2026-10-03T09:02:00Z", "2026-10-03T09:03:00Z"),
+            context["approvers"].map {
+                it["approved_at"].asText()
+            },
+        )
+        assertFalse(fields.toString().contains("secret-hash"))
+        assertFalse(fields.toString().contains("private-review-comment"))
+        assertTrue(details.getApproversAfterReset().isEmpty())
+        val current = mapper.valueToTree<com.fasterxml.jackson.databind.JsonNode>(requestFields(details))
+        assertTrue(current["request"]["approvers"].isEmpty)
+        val changedReview = second.copy(
+            action = ReviewAction.REQUEST_CHANGE,
+            createdAt = time.plusMinutes(3).plusSeconds(1),
+        )
+        val withdrawn = ExecutionRequestDetails(request, mutableSetOf(first, latest, second, changedReview))
+        assertEquals(listOf("alex"), withdrawn.getApprovalsAfterReset().map { it.author.getId() })
     }
 
     @Test fun `submitted statements are bounded and only included for full single execution requests`() {
@@ -387,11 +460,16 @@ class EventStreamingTest {
             "database_name" to request.connection.databaseName,
         )
         assertEquals(expectedConnection, requestFields(request)["connection"])
-        for (fields in listOf(accessFields(review, "web"), accessFields(proxy, "database_proxy"))) {
+        val details = ExecutionRequestDetails(request, mutableSetOf(review))
+        for (fields in listOf(
+            accessFields(review, "web", details = details),
+            accessFields(proxy, "database_proxy", details = details),
+        )) {
             assertEquals(expectedConnection, fields["connection"])
             val json = mapper.writeValueAsString(fields)
             assertEquals("Investigate SEC-42", mapper.readTree(json)["request"]["reason"].asText())
             assertEquals(request.title, mapper.readTree(json)["request"]["title"].asText())
+            assertEquals(review.author.getId(), mapper.readTree(json)["request"]["approvers"][0]["id"].asText())
             assertFalse(json.contains("private review comment"))
         }
     }
@@ -401,7 +479,9 @@ class EventStreamingTest {
         val request = ExecutionRequestFactory().createDatasourceExecutionRequest(description = text)
         val event = EventFactory().createExecuteEvent(request = request, query = text)
         val stream = service()
-        stream.emit("execution.attempted", "database", fields = { accessFields(event, "web") })
+        stream.emit("execution.attempted", "database", fields = {
+            accessFields(event, "web", details = ExecutionRequestDetails(event.request, mutableSetOf()))
+        })
         val line = lines().single()
         val json = mapper.readTree(line)
         assertEquals(text, json["kviklet"]["request"]["reason"].asText())
@@ -422,13 +502,18 @@ class EventStreamingTest {
                 ErrorResultLog(42, "secret raw error"),
             ),
         )
-        val json = mapper.writeValueAsString(accessFields(event, "web") + executionResultFields(event))
+        val json = mapper.writeValueAsString(
+            accessFields(event, "web", details = ExecutionRequestDetails(event.request, mutableSetOf())) +
+                executionResultFields(event),
+        )
         val parsed = mapper.readTree(json)
         assertEquals(17, parsed["results"][0]["rows_returned"].asInt())
         assertEquals(3, parsed["results"][1]["rows_affected"].asInt())
         assertFalse(json.contains("returned-sensitive-value"))
         assertFalse(json.contains("secret raw error"))
-        val proxy = mapper.writeValueAsString(accessFields(event, "database_proxy"))
+        val proxy = mapper.writeValueAsString(
+            accessFields(event, "database_proxy", details = ExecutionRequestDetails(event.request, mutableSetOf())),
+        )
         assertFalse(proxy.contains("rows_returned"))
     }
 

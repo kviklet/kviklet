@@ -80,7 +80,7 @@ class EventService(
 
             else -> Unit
         }
-        val (_, event) = executionRequestAdapter.addEvent(id, authorId, payload)
+        val (updatedDetails, event) = executionRequestAdapter.addEvent(id, authorId, payload)
         // Dry runs stream their outcome only; keep the stored attempt for existing audit semantics.
         if (event is ExecuteEvent && event.isDryRun) return event
         // The update service streams edits after saving the new request contents.
@@ -95,7 +95,12 @@ class EventService(
             category = if (event is ExecuteEvent && event.command == null) "database" else "configuration",
             outcome = if (event is ExecuteEvent) "unknown" else "success",
             fields = { level ->
-                accessFields(event, if (proxy != null) "database_proxy" else EventStreamingService.channel(), level) +
+                accessFields(
+                    event,
+                    if (proxy != null) "database_proxy" else EventStreamingService.channel(),
+                    level,
+                    updatedDetails,
+                ) +
                     if (proxy != null) mapOf("proxy" to proxy) else emptyMap()
             },
             actorId = authorId,
@@ -127,7 +132,12 @@ class EventService(
                 "database",
                 executionOutcome(updatedEvent),
                 { level ->
-                    accessFields(updatedEvent, EventStreamingService.channel(), level) +
+                    accessFields(
+                        updatedEvent,
+                        EventStreamingService.channel(),
+                        level,
+                        executionRequestAdapter.getExecutionRequestDetails(updatedEvent.request.id!!),
+                    ) +
                         executionResultFields(updatedEvent)
                 },
                 actorId = event.author.getId(),

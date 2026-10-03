@@ -196,6 +196,27 @@ class EventStreamingIntegrationTest {
             val approval = events.single { it["event"]["action"].asText() == "review.approve" }
             assertEquals(reviewRequest.getId(), approval["kviklet"]["request_id"].asText())
             assertEquals(reviewRequest.request.title, approval["kviklet"]["request"]["title"].asText())
+            val participants = approval["kviklet"]["request"]
+            assertEquals(viewer.getId(), participants["requester"]["id"].asText())
+            assertEquals(viewer.email, participants["requester"]["email"].asText())
+            assertEquals(mapper.valueToTree<JsonNode>(viewer.fullName), participants["requester"]["name"])
+            assertEquals(listOf(admin.getId()), participants["approvers"].map { it["id"].asText() })
+            assertEquals(admin.email, participants["approvers"][0]["email"].asText())
+            assertEquals(admin.getId(), approval["user"]["id"].asText())
+            val storedReview = requestAdapter.getExecutionRequestDetails(reviewRequest.request.id!!)
+            assertEquals(
+                storedReview.getApprovalsAfterReset().single().createdAt.toInstant(java.time.ZoneOffset.UTC).toString(),
+                participants["approvers"][0]["approved_at"].asText(),
+            )
+            val storedCreated = requestAdapter.getExecutionRequestDetails(
+                dev.kviklet.kviklet.service.dto.ExecutionRequestId(createdId),
+            )
+            assertEquals(
+                storedCreated.request.createdAt.toInstant(java.time.ZoneOffset.UTC).toString(),
+                created["kviklet"]["request"]["created_at"].asText(),
+            )
+            assertEquals(admin.getId(), created["kviklet"]["request"]["requester"]["id"].asText())
+            assertTrue(created["kviklet"]["request"]["approvers"].isEmpty)
             val expectedConnection = mapper.valueToTree<JsonNode>(
                 mapOf(
                     "id" to request.request.connection.getId(),
@@ -530,6 +551,13 @@ class EventStreamingIntegrationTest {
                     assertEquals(6, executions.size)
                     assertTrue(executions.all { it["kviklet"]["request"]["title"].asText() == "Test Execution" })
                     for (execution in executions) {
+                        val context = execution["kviklet"]["request"]
+                        assertEquals(admin.getId(), context["requester"]["id"].asText())
+                        java.time.Instant.parse(context["created_at"].asText())
+                        if (execution["kviklet"]["execution"]["mode"].asText() != "explain") {
+                            assertEquals(listOf(viewer.getId()), context["approvers"].map { it["id"].asText() })
+                            java.time.Instant.parse(context["approvers"][0]["approved_at"].asText())
+                        }
                         val target = execution["kviklet"]["connection"]
                         assertEquals(connection.getId(), target["id"].asText())
                         assertEquals(database.host, target["hostname"].asText())

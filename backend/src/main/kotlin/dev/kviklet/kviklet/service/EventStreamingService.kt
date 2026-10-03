@@ -19,6 +19,7 @@ import dev.kviklet.kviklet.service.dto.EventStreamingSettings
 import dev.kviklet.kviklet.service.dto.EventStreamingStatus
 import dev.kviklet.kviklet.service.eventstream.EventFileWriter
 import dev.kviklet.kviklet.service.eventstream.EventLoggingPolicy
+import dev.kviklet.kviklet.service.eventstream.userFields
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
 import org.slf4j.LoggerFactory
@@ -367,12 +368,7 @@ class EventStreamingService(
         val actorId = id ?: details?.id ?: return emptyMap()
         // Read before taking the writer lock; only selected identity fields enter the record.
         val user = userAdapter.findById(actorId)
-        return mapOf(
-            "id" to actorId,
-            "name" to user.fullName,
-            "email" to user.email,
-            "roles" to user.roles.map { it.name }.sorted(),
-        )
+        return userFields(user) + ("id" to actorId)
     }
 
     companion object {
