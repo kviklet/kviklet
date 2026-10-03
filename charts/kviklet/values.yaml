@@ -90,5 +90,12 @@ affinity: {}
 # Optional persistent storage for Enterprise Event Log Streaming.
 # Provision the claim and ensure the directory is writable by the container user.
 eventStreaming:
+  enabled: false
+  loggingLevel: FULL
+  # Empty uses mountPath as the effective output directory.
+  directory: ""
+  maxFileSizeMiB: 10
+  retentionDays: 180
+  maxArchiveSizeMiB: 100
   existingClaim: ""
   mountPath: /var/log/kviklet/events

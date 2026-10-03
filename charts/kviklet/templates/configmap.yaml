@@ -19,6 +19,13 @@ data:
     {{- end }}
 
     kviklet:
+      event-streaming:
+        enabled: {{ .Values.eventStreaming.enabled }}
+        logging-level: {{ .Values.eventStreaming.loggingLevel | quote }}
+        directory: {{ default .Values.eventStreaming.mountPath .Values.eventStreaming.directory | quote }}
+        max-file-size-mib: {{ .Values.eventStreaming.maxFileSizeMiB }}
+        retention-days: {{ .Values.eventStreaming.retentionDays }}
+        max-archive-size-mib: {{ .Values.eventStreaming.maxArchiveSizeMiB }}
       proxy:
         postgres:
           port: {{ if .Values.config.proxy.postgres.enabled }}{{ .Values.config.proxy.postgres.port }}{{ else }}-1{{ end }}

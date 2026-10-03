@@ -36,15 +36,3 @@ export const getEventStreaming = () =>
     },
     ResponseSchema,
   );
-
-export const putEventStreaming = (settings: EventStreamingSettings) =>
-  fetchWithErrorHandling(
-    `${baseUrl}/config/event-streaming`,
-    {
-      method: "PUT",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(settings),
-    },
-    ResponseSchema,
-  );

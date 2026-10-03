@@ -3,8 +3,8 @@ package dev.kviklet.kviklet
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
-import dev.kviklet.kviklet.db.ConfigurationAdapter
 import dev.kviklet.kviklet.db.UserAdapter
+import dev.kviklet.kviklet.helper.eventStreamingProperties
 import dev.kviklet.kviklet.service.EventStreamingService
 import dev.kviklet.kviklet.service.LicenseService
 import dev.kviklet.kviklet.service.dto.EventStreamingSettings
@@ -62,9 +62,6 @@ class EventStreamingReliabilityTest {
 
     @Test fun `license refresh must not block events holding database connections`() {
         val mapper = jacksonObjectMapper().findAndRegisterModules()
-        val configuration = mockk<ConfigurationAdapter>(relaxed = true)
-        every { configuration.getConfiguration(EventStreamingService.CONFIG_KEY) } returns
-            mapper.writeValueAsString(settings())
         val licenses = mockk<LicenseService>()
         val license =
             License(
@@ -76,7 +73,7 @@ class EventStreamingReliabilityTest {
         every { licenses.getActiveLicense() } returns license
         val service =
             EventStreamingService(
-                configuration,
+                eventStreamingProperties(settings()),
                 licenses,
                 mapper,
                 ApplicationProperties(),
@@ -125,15 +122,12 @@ class EventStreamingReliabilityTest {
 
     @Test fun `disabled and unlicensed capture does not prepare fields`() {
         val mapper = jacksonObjectMapper().findAndRegisterModules()
-        val configuration = mockk<ConfigurationAdapter>(relaxed = true)
         val licenses = mockk<LicenseService>()
         every { licenses.getActiveLicense() } returns null
         for (enabled in listOf(false, true)) {
-            every { configuration.getConfiguration(EventStreamingService.CONFIG_KEY) } returns
-                mapper.writeValueAsString(settings().copy(enabled = enabled))
             val service =
                 EventStreamingService(
-                    configuration,
+                    eventStreamingProperties(settings().copy(enabled = enabled)),
                     licenses,
                     mapper,
                     ApplicationProperties(),
@@ -169,7 +163,7 @@ class EventStreamingReliabilityTest {
         }
     }
 
-    @Test fun `rotation failure degrades health and saving after repair resumes capture`() {
+    @Test fun `rotation failure degrades health and capture resumes after repair and backoff`() {
         val service = licensedService()
         try {
             Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("r-x------"))
@@ -177,7 +171,9 @@ class EventStreamingReliabilityTest {
             repeat(150) { service.emit("test", "iam", fields = fields) }
             assertEquals("degraded", service.getConfiguration().status.state)
             Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwx------"))
-            service.configure(settings())
+            EventStreamingService::class.java.getDeclaredField("recoveryAt").also {
+                it.isAccessible = true
+            }.set(service, Instant.EPOCH)
             service.emit("after_repair", "iam")
             assertEquals("active", service.getConfiguration().status.state)
             assertTrue(Files.readString(directory.resolve("events.jsonl")).contains("after_repair"))
@@ -232,54 +228,6 @@ class EventStreamingReliabilityTest {
         }
     }
 
-    @Test fun `a refresh started before disabling cannot restore the old settings`() {
-        val mapper = jacksonObjectMapper().findAndRegisterModules()
-        val configuration = mockk<ConfigurationAdapter>(relaxed = true)
-        every { configuration.getConfiguration(EventStreamingService.CONFIG_KEY) } returns
-            mapper.writeValueAsString(settings())
-        val licenses = mockk<LicenseService>()
-        val license = License(
-            LicenseFile("test", "test", LocalDateTime.now()),
-            LocalDate.now().plusDays(2),
-            LocalDateTime.now(),
-            100u,
-        )
-        every { licenses.getActiveLicense() } returns license
-        val service =
-            EventStreamingService(
-                configuration,
-                licenses,
-                mapper,
-                ApplicationProperties(),
-                mockk<UserAdapter>(relaxed = true),
-            )
-        service.refresh()
-        EventStreamingService::class.java.getDeclaredField("licenseCheckedAt").also {
-            it.isAccessible = true
-        }.set(service, Instant.EPOCH)
-        val started = CountDownLatch(1)
-        val release = CountDownLatch(1)
-        every { licenses.getActiveLicense() } answers {
-            started.countDown()
-            check(release.await(3, TimeUnit.SECONDS))
-            license
-        }
-        val executor = Executors.newSingleThreadExecutor()
-        val pending = executor.submit { service.refresh() }
-        try {
-            assertTrue(started.await(2, TimeUnit.SECONDS))
-            service.configure(settings().copy(enabled = false))
-            release.countDown()
-            pending.get(3, TimeUnit.SECONDS)
-            assertEquals("disabled", service.getConfiguration().status.state)
-            assertFalse(service.getConfiguration().settings.enabled)
-        } finally {
-            release.countDown()
-            executor.shutdownNow()
-            service.shutdown()
-        }
-    }
-
     private fun awaitCleanup(writer: EventFileWriter) {
         val field = EventFileWriter::class.java.getDeclaredField("cleanup").also { it.isAccessible = true }
         (field.get(writer) as Future<*>).get(3, TimeUnit.SECONDS)
@@ -287,9 +235,6 @@ class EventStreamingReliabilityTest {
 
     private fun licensedService(): EventStreamingService {
         val mapper = jacksonObjectMapper().findAndRegisterModules()
-        val configuration = mockk<ConfigurationAdapter>(relaxed = true)
-        every { configuration.getConfiguration(EventStreamingService.CONFIG_KEY) } returns
-            mapper.writeValueAsString(settings())
         val licenses = mockk<LicenseService>()
         every { licenses.getActiveLicense() } returns License(
             LicenseFile("test", "test", LocalDateTime.now()),
@@ -298,7 +243,7 @@ class EventStreamingReliabilityTest {
             100u,
         )
         return EventStreamingService(
-            configuration,
+            eventStreamingProperties(settings()),
             licenses,
             mapper,
             ApplicationProperties(),

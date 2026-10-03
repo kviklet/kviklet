@@ -1,7 +1,6 @@
 package dev.kviklet.kviklet
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import dev.kviklet.kviklet.db.ConfigurationAdapter
 import dev.kviklet.kviklet.db.EventAdapter
 import dev.kviklet.kviklet.db.ExecutePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
@@ -11,6 +10,7 @@ import dev.kviklet.kviklet.db.UserId
 import dev.kviklet.kviklet.helper.EventFactory
 import dev.kviklet.kviklet.helper.ExecutionRequestDetailsFactory
 import dev.kviklet.kviklet.helper.ExecutionRequestFactory
+import dev.kviklet.kviklet.helper.eventStreamingProperties
 import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.EventStreamingService
 import dev.kviklet.kviklet.service.LicenseService
@@ -58,7 +58,6 @@ import java.util.concurrent.TimeUnit
 class EventStreamingTest {
     @TempDir lateinit var directory: Path
     private val mapper = jacksonObjectMapper().findAndRegisterModules()
-    private val configuration = mockk<ConfigurationAdapter>(relaxed = true)
     private val licenseService = mockk<LicenseService>()
     private var validUntil = LocalDate.now().plusDays(2)
     private var licensed = true
@@ -69,8 +68,6 @@ class EventStreamingTest {
         level: EventLoggingLevel = EventLoggingLevel.FULL,
         users: UserAdapter = mockk(relaxed = true),
     ): EventStreamingService {
-        every { configuration.getConfiguration(EventStreamingService.CONFIG_KEY) } returns
-            mapper.writeValueAsString(settings(enabled).copy(loggingLevel = level))
         every { licenseService.getActiveLicense() } answers {
             if (licensed) {
                 License(
@@ -83,7 +80,13 @@ class EventStreamingTest {
                 null
             }
         }
-        return EventStreamingService(configuration, licenseService, mapper, ApplicationProperties(), users).also {
+        return EventStreamingService(
+            eventStreamingProperties(settings(enabled).copy(loggingLevel = level)),
+            licenseService,
+            mapper,
+            ApplicationProperties(),
+            users,
+        ).also {
             streams.add(it)
             it.refresh()
         }
@@ -139,22 +142,6 @@ class EventStreamingTest {
         assertTrue(lines().isEmpty())
     }
 
-    @Test fun `legacy persisted settings default to full logging`() {
-        every { configuration.getConfiguration(EventStreamingService.CONFIG_KEY) } returns
-            """{"enabled":false,"directory":"/var/log/kviklet/events","retentionDays":180}"""
-        val stream =
-            EventStreamingService(
-                configuration,
-                licenseService,
-                mapper,
-                ApplicationProperties(),
-                mockk<UserAdapter>(relaxed = true),
-            )
-        streams.add(stream)
-        stream.refresh()
-        assertEquals(EventLoggingLevel.FULL, stream.getConfiguration().settings.loggingLevel)
-    }
-
     @Test fun `security-only logging excludes routine events before preparing fields`() {
         val stream = service(level = EventLoggingLevel.SECURITY_ONLY)
         val included = listOf(
@@ -166,6 +153,8 @@ class EventStreamingTest {
             "api_key.revoked",
             "role_sync.mapping_created",
             "connection.security_changed",
+            "connection.created",
+            "connection.deleted",
         )
         included.forEach { action -> stream.emit(action, "configuration") }
         val excluded = listOf(
@@ -175,6 +164,7 @@ class EventStreamingTest {
             "comment.added",
             "execution.attempted",
             "execution.completed",
+            "execution.explain.completed",
             "proxy.session_created",
             "unknown.security_event",
         )
@@ -220,50 +210,7 @@ class EventStreamingTest {
         assertEquals(4, lines().size)
     }
 
-    @Test fun `downgrade before transaction commit removes already prepared query text and audits the change`() {
-        val stream = service()
-        val event = EventFactory().createExecuteEvent(query = "SELECT private_literal")
-        TransactionSynchronizationManager.setActualTransactionActive(true)
-        TransactionSynchronizationManager.initSynchronization()
-        stream.emit("execution.attempted", "database", fields = {
-            accessFields(event, "web", it, ExecutionRequestDetails(event.request, mutableSetOf()))
-        })
-        val pending = TransactionSynchronizationManager.getSynchronizations()
-        TransactionSynchronizationManager.clearSynchronization()
-        TransactionSynchronizationManager.setActualTransactionActive(false)
-        stream.configure(settings().copy(loggingLevel = EventLoggingLevel.WITHOUT_QUERY_TEXT))
-        pending.forEach { it.afterCommit() }
-        val records = lines().map { mapper.readTree(it) }
-        val change = records.first { it["event"]["action"].asText() == "event_stream.configuration_changed" }
-        assertEquals("FULL", change["kviklet"]["before"]["loggingLevel"].asText())
-        assertEquals("WITHOUT_QUERY_TEXT", change["kviklet"]["after"]["loggingLevel"].asText())
-        val execution = records.first { it["event"]["action"].asText() == "execution.attempted" }
-        assertEquals("query", execution["kviklet"]["execution"]["mode"].asText())
-        assertFalse(execution["kviklet"]["execution"].has("statement"))
-        assertFalse(lines().joinToString().contains("private_literal"))
-    }
-
-    @Test fun `security-only downgrade excludes pending execution while retaining the settings audit`() {
-        val stream = service()
-        TransactionSynchronizationManager.setActualTransactionActive(true)
-        TransactionSynchronizationManager.initSynchronization()
-        stream.emit("execution.completed", "database")
-        val pending = TransactionSynchronizationManager.getSynchronizations()
-        TransactionSynchronizationManager.clearSynchronization()
-        TransactionSynchronizationManager.setActualTransactionActive(false)
-        stream.configure(settings().copy(loggingLevel = EventLoggingLevel.SECURITY_ONLY))
-        pending.forEach { it.afterCommit() }
-        assertEquals(
-            listOf("event_stream.configuration_changed"),
-            lines().map {
-                mapper.readTree(it)["event"]["action"].asText()
-            },
-        )
-        stream.configure(settings().copy(loggingLevel = EventLoggingLevel.WITHOUT_QUERY_TEXT))
-        assertEquals(2, lines().size)
-    }
-
-    @Test fun `upgrade does not add text to an event captured without query text`() {
+    @Test fun `explicit fields and pending events obey the configured text policy`() {
         val stream = service(level = EventLoggingLevel.WITHOUT_QUERY_TEXT)
         val event = EventFactory().createExecuteEvent(query = "SELECT private_literal")
         TransactionSynchronizationManager.setActualTransactionActive(true)
@@ -282,24 +229,9 @@ class EventStreamingTest {
         val pending = TransactionSynchronizationManager.getSynchronizations()
         TransactionSynchronizationManager.clearSynchronization()
         TransactionSynchronizationManager.setActualTransactionActive(false)
-        stream.configure(settings())
         pending.forEach { it.afterCommit() }
         assertFalse(lines().joinToString().contains("private_literal"))
-        assertEquals(3, lines().size)
-    }
-
-    @Test fun `rolled-back settings changes do not change the active logging level`() {
-        val stream = service()
-        TransactionSynchronizationManager.setActualTransactionActive(true)
-        TransactionSynchronizationManager.initSynchronization()
-        stream.configure(settings().copy(loggingLevel = EventLoggingLevel.SECURITY_ONLY))
-        TransactionSynchronizationManager.getSynchronizations().forEach {
-            it.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK)
-        }
-        TransactionSynchronizationManager.clearSynchronization()
-        TransactionSynchronizationManager.setActualTransactionActive(false)
-        assertEquals(EventLoggingLevel.FULL, stream.getConfiguration().settings.loggingLevel)
-        assertTrue(lines().isEmpty())
+        assertEquals(2, lines().size)
     }
 
     @Test fun `only committed successes are emitted`() {
@@ -617,28 +549,6 @@ class EventStreamingTest {
         Files.writeString(directory.resolve("events.jsonl"), "{\"n\":1}\n{\"n\":")
         EventFileWriter(settings()).use { it.write("{\"n\":2}") }
         assertEquals(listOf("{\"n\":1}", "{\"n\":2}"), lines())
-    }
-
-    @Test fun `directory changes require a separately saved disable`() {
-        val stream = service()
-        stream.emit("first", "iam")
-        val nextDirectory = directory.resolve("replacement")
-        for (enabled in listOf(true, false)) {
-            assertThrows(IllegalArgumentException::class.java) {
-                stream.configure(settings(enabled).copy(directory = nextDirectory.toString()))
-            }
-        }
-        assertFalse(Files.exists(nextDirectory))
-        stream.emit("second", "iam")
-        assertEquals(directory.toString(), stream.getConfiguration().settings.directory)
-        assertEquals(2, lines().size)
-        stream.configure(settings(false))
-        stream.configure(settings(false).copy(directory = nextDirectory.toString()))
-        assertFalse(Files.exists(nextDirectory))
-        stream.configure(settings().copy(directory = nextDirectory.toString()))
-        stream.emit("new_directory", "iam")
-        assertEquals(directory.resolve("replacement").toString(), stream.getConfiguration().settings.directory)
-        assertTrue(Files.readString(nextDirectory.resolve("events.jsonl")).contains("new_directory"))
     }
 
     @Test fun `output errors are visible and do not fail caller`() {

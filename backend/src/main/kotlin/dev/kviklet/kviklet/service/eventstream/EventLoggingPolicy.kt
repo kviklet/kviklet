@@ -27,14 +27,12 @@ internal object EventLoggingPolicy {
         "connection.deleted",
         "connection.security_changed",
         "configuration.changed",
-        "event_stream.configuration_changed",
-        "event_stream.enabled",
     )
 
     fun includes(action: String, level: EventLoggingLevel): Boolean =
         level != EventLoggingLevel.SECURITY_ONLY || action in securityActions
 
-    /** Reapply the text policy at write time in case settings changed while a transaction was running. */
+    /** Strip dedicated query text even when callers supply fields without the standard helpers. */
     fun apply(event: Map<String, Any?>, level: EventLoggingLevel): Map<String, Any?> {
         if (level == EventLoggingLevel.FULL) return event
         val fields = event["kviklet"] as? Map<*, *> ?: return event

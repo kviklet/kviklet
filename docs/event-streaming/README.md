@@ -1,47 +1,49 @@
 # Enterprise Event Log Streaming
 
-Enable **Settings → Event Streaming** with a valid Enterprise license and `configuration:edit`. `configuration:get` permits viewing settings and health. The backend enforces both permission checks and the license gate. The default is disabled. Settings are persisted in Kviklet's existing configuration table, so no migration is required.
+Configure this Enterprise feature through deployment environment variables or Helm values. **Settings → Event Streaming** is a read-only view of the effective startup settings and current health, accessible with `configuration:get`. Changing settings requires an application restart; `configuration:edit` does not allow changing or disabling the stream through the API. The default is disabled. A valid Enterprise license is required to write events, but a missing or expired license does not prevent application startup or license upload.
 
 This feature writes activities to a dedicated UTF-8 JSON Lines stream. Each physical line contains one JSON object, followed by a newline. It never forwards these records to Kviklet's console logger. A local collector can tail the directory and send the records to your SIEM. The event envelope uses [Elastic Common Schema categorization](https://www.elastic.co/docs/reference/ecs/ecs-event); Kviklet-specific details live under `kviklet`, with `schema_version: "1.0.0"`. This is an ECS-aligned application schema, not a promise of a vendor-specific ingestion integration.
 
 ## Configuration and files
 
-`GET /api/config/event-streaming` returns `{settings, status}`. `PUT` accepts these settings:
+`GET /api/config/event-streaming` returns `{settings, status}`. There is no settings write endpoint; authenticated `PUT` requests receive HTTP 405. The six settings are bound at startup under `kviklet.event-streaming` and captured as an immutable snapshot.
 
-```json
-{
-  "enabled": true,
-  "directory": "/var/log/kviklet/events",
-  "maxFileSizeMiB": 10,
-  "retentionDays": 180,
-  "maxArchiveSizeMiB": 100,
-  "loggingLevel": "FULL"
-}
-```
-
-`loggingLevel` controls this application-wide stream. Only users with `configuration:edit` can change it. Missing values in existing saved settings or API requests default to `FULL`, preserving the previous behavior. Unknown values are rejected.
-
-| Configuration view | API value | Coverage |
+| Environment variable | Default | Meaning |
 | --- | --- | --- |
-| Level 1 — Security events only | `SECURITY_ONLY` | Authentication, permission denials, user and role changes, API keys, connection security settings, role-sync settings, and event-stream settings. Routine request/review activity, proxy sessions, and executions are omitted. |
+| `KVIKLET_EVENTSTREAMING_ENABLED` | `false` | Enable file output when the Enterprise license is valid. |
+| `KVIKLET_EVENTSTREAMING_LOGGINGLEVEL` | `FULL` | `SECURITY_ONLY`, `WITHOUT_QUERY_TEXT`, or `FULL`. |
+| `KVIKLET_EVENTSTREAMING_DIRECTORY` | `/var/log/kviklet/events` | Absolute output directory in the application's filesystem. |
+| `KVIKLET_EVENTSTREAMING_MAXFILESIZEMIB` | `10` | File-size rotation threshold in MiB (1–1024). |
+| `KVIKLET_EVENTSTREAMING_RETENTIONDAYS` | `180` | Maximum archive age in days (1–365). |
+| `KVIKLET_EVENTSTREAMING_MAXARCHIVESIZEMIB` | `100` | Archive budget in MiB, excluding the active file. Must exceed the file-size threshold by at least 1 MiB; maximum 102400. |
+
+Invalid values fail application startup with a configuration error, including when output is disabled. An unavailable output directory instead reports degraded health and can recover after storage is repaired. Environment variables follow Spring Boot's standard configuration precedence over application YAML; the UI shows the effective values.
+
+**Upgrading from UI configuration:** the old `eventStreaming` row in the configuration table is ignored and left untouched. No database migration is needed. Transfer your desired settings into deployment configuration **before upgrading**, including explicitly enabling the stream; there is no fallback to the old row. Confirm the effective settings and active status after restart.
+
+`loggingLevel` controls the application-wide stream. Per-connection levels are deferred to V2.
+
+| Configuration view | Deployment value | Coverage |
+| --- | --- | --- |
+| Level 1 — Security events only | `SECURITY_ONLY` | Authentication, permission denials, user and role changes, API keys, connection security settings, role-sync settings. Routine request/review activity, proxy sessions, and executions are omitted. |
 | Level 2 — All events, without query text | `WITHOUT_QUERY_TEXT` | All covered activities, including access reasons, approvals, proxy activity, and result metadata. SQL statements and Kubernetes command text are omitted. |
 | Level 3 — All events, with query text | `FULL` | All covered activities and fields, including access reasons, SQL statements, and Kubernetes commands. |
 
-Security-only coverage uses an explicit action allowlist, not the broad ECS categories. New actions must be classified when introduced. Excluded events skip field preparation; Level 2 skips statement/command processing. The active level is checked again before a committed event is written, so a downgrade also filters events pending in a transaction. An upgrade does not restore text omitted during preparation. Level changes are captured by `event_stream.configuration_changed` with the previous and new settings, including at Level 1. Changes apply to future writes; existing files retain their contents. These settings do not alter the audit data stored in Kviklet or its normal application logs.
+Security-only coverage uses an explicit action allowlist, not the broad ECS categories. New actions must be classified when introduced. Excluded events skip field preparation; Level 2 skips statement/command processing. The configured level applies throughout the process lifetime, including events published after a transaction commits. Changes after restart apply to future events; existing files retain their contents. Deployment changes are outside this application audit stream and should be audited by your infrastructure tooling. These settings do not alter the audit data stored in Kviklet or its normal application logs.
 
 The examples use the public `/api` prefix supplied by the bundled web server. When connecting directly to the development backend on port 8081, omit `/api`. The directory must be an absolute path, writable by the application user, with no group or world write access. The directory itself and managed output files must not be symlinks. Newly created directories use mode 700; event files use 640. A collector may share the application's group for read access. A file lock prevents a second writer in the same directory; use local storage with reliable file locking and rename semantics.
 
-The active file is `events.jsonl`. Logback rotates it at midnight UTC or the configured size threshold to `events.YYYY-MM-DD.N.jsonl`. Files are not compressed, allowing collectors to finish reading after rotation. The default file-size threshold is 10 MiB, retention is 180 days, and the archive budget is 100 MiB. File size is a rotation threshold: the final record may exceed it. Valid settings are 1–1024 MiB per file, 1–365 retention days, and an archive budget at least 1 MiB larger than the file-size threshold, up to 102400 MiB. This headroom covers one maximum-size record, including its terminating newline. Existing saved settings are preserved; a saved budget without this headroom reports degraded health until corrected, preventing cleanup under that configuration.
+The active file is `events.jsonl`. Logback rotates it at midnight UTC or the configured size threshold to `events.YYYY-MM-DD.N.jsonl`. Files are not compressed, allowing collectors to finish reading after rotation. The default file-size threshold is 10 MiB, retention is 180 days, and the archive budget is 100 MiB. File size is a rotation threshold: the final record may exceed it. Valid settings are 1–1024 MiB per file, 1–365 retention days, and an archive budget at least 1 MiB larger than the file-size threshold, up to 102400 MiB. This headroom covers one maximum-size record, including its terminating newline. Invalid archive budgets fail startup before opening the writer or running cleanup.
 
-The archive budget **excludes the active file**. Cleanup runs asynchronously at startup, rotation, and during periodic maintenance, including idle periods. It is not a strict disk quota: budget for the active file, the largest event, cleanup lag, and the collector's own storage. Rotation uses Logback's [size and time based rolling policy](https://logback.qos.ch/manual/appenders.html). Kviklet applies retention in a single asynchronous directory scan at startup, after rotation, and roughly once per hour while idle. The scan includes all matching archives, including files left by prolonged downtime or a previously longer retention setting. Rotation and cleanup failures degrade stream health. Unrelated files are not retained or deleted by this policy. Disable streaming and save before changing the output directory, then re-enable streaming. Directory changes while enabled are rejected, including a combined disable-and-move request. The old directory remains untouched afterward; arrange its migration and cleanup separately.
+The archive budget **excludes the active file**. Cleanup runs asynchronously at startup, rotation, and during periodic maintenance, including idle periods. It is not a strict disk quota: budget for the active file, the largest event, cleanup lag, and the collector's own storage. Rotation uses Logback's [size and time based rolling policy](https://logback.qos.ch/manual/appenders.html). Kviklet applies retention in a single asynchronous directory scan at startup, after rotation, and roughly once per hour while idle. The scan includes all matching archives, including files left by prolonged downtime or a previously longer retention setting. Rotation and cleanup failures degrade stream health. Unrelated files are not retained or deleted by this policy. To change the output directory, update the deployment path, storage mount and collector configuration together, then restart Kviklet. Files in the previous directory remain untouched; arrange their migration and cleanup separately.
 
 ## Delivery and health
 
-Output is synchronous, serialized, immediate-flush, and best effort. A slow or stalled filesystem can delay a request; use local persistent storage. Successful activity changes are written after the database transaction commits. A rolled-back role change does not appear as a success. Settings saves are serialized through transaction completion separately from event writes. The file writer is opened only after a successful settings commit. A rolled-back save leaves destination files untouched. If the configured directory cannot be opened after commit, the saved settings remain in place and status reports degraded; correct the directory or permissions and retry. Live directory replacement is not supported. Execution attempts and completions are separate records correlated by the existing audit event ID. The original audit log's persistence and authorization behavior continue to apply.
+Output is synchronous, serialized, immediate-flush, and best effort. A slow or stalled filesystem can delay a request; use local persistent storage. Successful activity changes are written after the database transaction commits. A rolled-back role change does not appear as a success. The writer opens when startup configuration enables output and a valid license is available. If storage cannot be opened, configuration remains unchanged and status reports degraded; correct the directory or permissions and the service retries. Execution attempts and completions are separate records correlated by the existing audit event ID. The original audit log's persistence and authorization behavior continue to apply.
 
 There is no durable queue, retry of failed events, historical backfill, or SIEM delivery acknowledgment. A successful write flushes to the operating system, not an `fsync` durability guarantee. A crash, disk failure, or collector falling behind retention can lose events. On writer restart, an unterminated trailing line is discarded before appending, preserving earlier complete lines. During an output failure, application activities continue; the process counts detected failures, reports a sanitized health error, and retries opening after a 30-second backoff on subsequent activity, status checks, or periodic maintenance. Lost records are not replayed. Monitor stream health and collector freshness independently.
 
-Status is one of `disabled`, `active`, `degraded`, or `license_expired`. `lastWriteAt`, `lastError`, and `detectedFailures` describe this process and reset on restart. There is no persisted sequence or completeness watermark. A valid license is checked roughly once per minute outside the writer lock; event capture uses the cached license and checks expiry before emitting. Disabled or unlicensed capture skips statement and result-metadata preparation. Expiry stops capture. An enabled stream resumes automatically after a valid renewal is detected, normally within one minute; a disabled stream remains disabled. A fresh process evaluates the current license and persisted setting.
+Status is one of `disabled`, `active`, `degraded`, or `license_expired`. `lastWriteAt`, `lastError`, and `detectedFailures` describe this process and reset on restart. There is no persisted sequence or completeness watermark. A valid license is checked roughly once per minute outside the writer lock; event capture uses the cached license and checks expiry before emitting. Disabled or unlicensed capture skips statement and result-metadata preparation. Expiry stops capture. An enabled stream resumes automatically after a valid renewal is detected, normally within one minute; a disabled stream remains disabled. A fresh process evaluates the current license and deployment settings.
 
 ## Records and coverage
 
@@ -59,7 +61,7 @@ Common fields are `@timestamp` (UTC event capture time), `ecs.version`, `service
 | Kubernetes commands | Attempts and actual completion callback, including background completion, exit code and timeout; output excluded |
 | Authentication | `authentication.login` success/failure for password, LDAP, OIDC and SAML; `authentication.logout`; API-key authentication failures |
 | Identity and authorization | User creation, activation/deactivation, password-change marker, role assignment/removal including identity-provider sync, role creation/change/deletion with permission diffs, API-key creation/revocation, permission denials |
-| Security settings | Connection creation/deletion and security-setting changes, credential-change marker, proxy-enabled changes, role-sync configuration/mapping changes, event-stream settings changes |
+| Security settings | Connection creation/deletion and security-setting changes, credential-change marker, proxy-enabled changes, role-sync configuration/mapping changes |
 
 Request creation, edits, reviews, closure, execution attempts/completions, Explain and Dry Run include `kviklet.request.requester` and `kviklet.request.approvers`. Each identity has `id`, `name`, `email` and sorted `roles`; these are selected identity fields, without credentials. `request.created_at` is the stored request creation time in UTC. Each approver also has `approved_at`, the UTC time of that person's latest applicable approval. Multiple approvers are listed once each, sorted by ID; no applicable approvals produces an empty array. Approval selection reuses the application's latest-review and approval-reset rules. Execution records retain the approvals applicable at execution start, including on failures that reset approvals and completions after a later edit. Other request records show the applicable approval state at capture. Names, emails and roles reflect the loaded user profiles rather than immutable historical identity snapshots. The top-level `user` continues identifying the actor of each event. Database-proxy query attempts include this context; proxy session lifecycle records remain limited to their existing fields.
 
@@ -115,17 +117,50 @@ A completed browser query, for example, has this shape (illustrative IDs):
 
 ## Deployment and collection
 
-Docker images prepare `/var/log/kviklet/events` for the unprivileged `nginx` user. Mount a persistent volume there before enabling streaming. For an existing host directory, set ownership for the container UID and mode 750 (or 700). The directory owner alone may write. Changing the UI path does not create a container mount.
+Docker images prepare `/var/log/kviklet/events` for the unprivileged `nginx` user. Mount persistent storage there. For an existing host directory, set ownership for the container UID and mode 750 (or 700). The directory owner alone may write. Changing an environment variable does not create a container mount.
+
+For example, add these to your existing Compose service and preserve its database and other settings:
+
+```yaml
+services:
+  kviklet:
+    environment:
+      KVIKLET_EVENTSTREAMING_ENABLED: "true"
+      KVIKLET_EVENTSTREAMING_LOGGINGLEVEL: FULL
+      KVIKLET_EVENTSTREAMING_DIRECTORY: /var/log/kviklet/events
+      KVIKLET_EVENTSTREAMING_MAXFILESIZEMIB: "10"
+      KVIKLET_EVENTSTREAMING_RETENTIONDAYS: "180"
+      KVIKLET_EVENTSTREAMING_MAXARCHIVESIZEMIB: "100"
+    volumes:
+      - event-logs:/var/log/kviklet/events
+volumes:
+  event-logs:
+```
+
+Recreate the container after changing its environment (`docker compose up -d --force-recreate kviklet`). Upload a valid Enterprise license if needed, then check the UI for `active` status and generate a covered event. To tail the files from the running container:
+
+```bash
+docker compose exec kviklet sh -c 'tail -F /var/log/kviklet/events/events.jsonl'
+```
 
 The Helm chart accepts:
 
 ```yaml
 eventStreaming:
+  enabled: true
+  loggingLevel: FULL
   existingClaim: kviklet-event-logs
   mountPath: /var/log/kviklet/events
+  # Empty directory (the default) uses mountPath as the output directory.
+  directory: ""
+  maxFileSizeMiB: 10
+  retentionDays: 180
+  maxArchiveSizeMiB: 100
 ```
 
-Provision and set permissions on the PVC separately. The chart keeps one replica and uses `Recreate` when this claim is configured to avoid overlapping writers during rollout. Configure the same directory in settings. Do not share a directory among replicas. Give your collector read access and persist its offset/registry state across restarts.
+These values render `kviklet.event-streaming` in the application's ConfigMap. A custom `mountPath` automatically becomes the output directory unless `directory` explicitly overrides it; an override must point to separately provisioned writable storage. Provision ownership and permissions on the PVC separately. The chart keeps one replica and uses `Recreate` when this claim is configured to avoid overlapping writers during rollout. Apply changed Helm values and restart the deployment (`kubectl rollout restart deployment/<release-name> -n <namespace>`); changing a ConfigMap alone does not reload startup settings. Do not share a directory among replicas. Give your collector read access and persist its offset/registry state across restarts.
+
+The read-only view reports configured enablement separately from actual stream status, plus the logging level, directory, thresholds, last successful write, detected failures and sanitized error. Use its **Refresh status** button to fetch current health. Monitor this health and your collector's freshness; enabling output does not establish SIEM delivery.
 
 [filebeat.yml](filebeat.yml) is a local ingestion example using Filebeat 8.17's [filestream NDJSON parser](https://www.elastic.co/guide/en/beats/filebeat/8.17/filebeat-input-filestream.html). It tails both active and rotated files, parses JSON, and outputs to the console for validation. In production configure your supported SIEM output, TLS/authentication and persistent collector registry; add deployment/customer identity at the collector. Do not ingest both the source and copies of the same files unless your pipeline deduplicates by `event.id`. Do not use copy-and-truncate rotation against the active file: Kviklet owns rotation.
 

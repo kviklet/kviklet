@@ -3,10 +3,8 @@ package dev.kviklet.kviklet.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import dev.kviklet.kviklet.ApplicationProperties
-import dev.kviklet.kviklet.db.ConfigurationAdapter
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.security.ApiKeyAuthentication
-import dev.kviklet.kviklet.security.EnterpriseFeatureException
 import dev.kviklet.kviklet.security.KvikletOAuthPrincipal
 import dev.kviklet.kviklet.security.NoPolicy
 import dev.kviklet.kviklet.security.Permission
@@ -15,10 +13,10 @@ import dev.kviklet.kviklet.security.SecurityEventRequestFilter
 import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.dto.EventLoggingLevel
 import dev.kviklet.kviklet.service.dto.EventStreamingResponse
-import dev.kviklet.kviklet.service.dto.EventStreamingSettings
 import dev.kviklet.kviklet.service.dto.EventStreamingStatus
 import dev.kviklet.kviklet.service.eventstream.EventFileWriter
 import dev.kviklet.kviklet.service.eventstream.EventLoggingPolicy
+import dev.kviklet.kviklet.service.eventstream.EventStreamingProperties
 import dev.kviklet.kviklet.service.eventstream.userFields
 import jakarta.annotation.PostConstruct
 import jakarta.annotation.PreDestroy
@@ -28,30 +26,25 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.context.request.RequestContextHolder
 import org.springframework.web.context.request.ServletRequestAttributes
-import java.nio.file.Path
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
-import java.util.concurrent.locks.ReentrantLock
 
 @Service
 @Lazy(false)
 class EventStreamingService(
-    private val configurationAdapter: ConfigurationAdapter,
+    properties: EventStreamingProperties,
     private val licenseService: LicenseService,
     private val mapper: ObjectMapper,
     private val applicationProperties: ApplicationProperties,
     private val userAdapter: UserAdapter,
 ) {
     private val logger = LoggerFactory.getLogger(javaClass)
-    private var settings = EventStreamingSettings()
-    private var initialized = false
-    private var configurationRevision = 0L
+    private val settings = properties.toSettings()
     private var licensedUntil: LocalDate? = null
     private var licenseCheckedAt = Instant.EPOCH
     private var writer: EventFileWriter? = null
@@ -60,93 +53,12 @@ class EventStreamingService(
     private var failures = 0L
     private var recoveryAt = Instant.EPOCH
     private val instanceId = UUID.randomUUID().toString()
-    private val configurationLock = ReentrantLock()
 
     @Policy(Permission.CONFIGURATION_GET, checkIsPresentOnly = true)
     @Synchronized
     fun getConfiguration(): EventStreamingResponse {
         maintainWriter()
         return response()
-    }
-
-    @Policy(Permission.CONFIGURATION_EDIT, checkIsPresentOnly = true)
-    @Transactional
-    fun configure(next: EventStreamingSettings): EventStreamingResponse = serializeConfiguration {
-        require(next.maxFileSizeMiB in 1..1024) { "File size must be between 1 and 1024 MiB" }
-        require(next.retentionDays in 1..365) { "Retention must be between 1 and 365 days" }
-        require(next.maxArchiveSizeMiB in (next.maxFileSizeMiB + 1)..102400) {
-            "Archive budget must be at least 1 MiB larger than the file-size threshold and at most 102400 MiB"
-        }
-        require(Path.of(next.directory).isAbsolute) { "Event output directory must be absolute" }
-        val previous = synchronized(this) { settings }
-        require(!previous.enabled || next.directory == previous.directory) {
-            "Disable streaming and save before changing the output directory"
-        }
-        // Never wait for a database connection while holding the writer monitor.
-        val license = if (next.enabled) licenseService.getActiveLicense() else null
-        if (next.enabled && license == null) {
-            throw EnterpriseFeatureException("Event Log Streaming requires a valid enterprise license")
-        }
-        val actor = actor()
-        configurationAdapter.setConfiguration(CONFIG_KEY, mapper.writeValueAsString(next))
-        afterCommit {
-            synchronized(this) {
-                // The disable event belongs to the previously enabled stream.
-                if (previous.enabled && eligible()) {
-                    append(
-                        record(
-                            "event_stream.configuration_changed",
-                            "configuration",
-                            "success",
-                            mapOf(
-                                "before" to previous,
-                                "after" to next,
-                            ),
-                            actor,
-                        ),
-                    )
-                }
-                runCatching { writer?.close() }
-                writer = null
-                settings = next
-                initialized = true
-                configurationRevision++
-                licensedUntil = license?.validUntil
-                licenseCheckedAt = Instant.now()
-                recoveryAt = Instant.EPOCH
-                lastError = null
-                maintainWriter()
-                if (!previous.enabled && eligible()) {
-                    append(record("event_stream.enabled", "configuration", "success", emptyMap(), actor))
-                }
-            }
-        }
-        synchronized(this) { response().copy(settings = next) }
-    }
-
-    /** Serialize saves through transaction completion without holding the file-writer monitor. */
-    private fun <T> serializeConfiguration(operation: () -> T): T {
-        configurationLock.lock()
-        val transactional = TransactionSynchronizationManager.isActualTransactionActive() &&
-            TransactionSynchronizationManager.isSynchronizationActive()
-        try {
-            return operation()
-        } finally {
-            if (transactional) {
-                try {
-                    TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
-                        override fun afterCompletion(status: Int) {
-                            configurationLock.unlock()
-                        }
-                    })
-                } catch (e: Exception) {
-                    configurationLock.unlock()
-                    throw e
-                }
-            } else {
-                configurationLock.unlock()
-            }
-        }
     }
 
     /** Callers pass explicit safe fields, never domain objects carrying credentials or result values. */
@@ -182,7 +94,7 @@ class EventStreamingService(
             )
             afterCommit {
                 synchronized(this) {
-                    if (eligible() && EventLoggingPolicy.includes(action, settings.loggingLevel)) append(event)
+                    if (eligible()) append(event)
                 }
             }
         } catch (e: Exception) {
@@ -194,35 +106,22 @@ class EventStreamingService(
     @PostConstruct
     @Scheduled(fixedDelay = 60000)
     fun refresh() {
-        val snapshot = synchronized(this) {
-            if (initialized && (!settings.enabled || Instant.now().isBefore(licenseCheckedAt.plusSeconds(60)))) {
+        synchronized(this) {
+            if (!settings.enabled || Instant.now().isBefore(licenseCheckedAt.plusSeconds(60))) {
                 maintainWriter()
                 return
             }
-            RefreshSnapshot(settings, initialized, configurationRevision)
         }
         try {
-            val loaded = if (snapshot.initialized) {
-                snapshot.settings
-            } else {
-                (configurationAdapter.getConfiguration(CONFIG_KEY) as? String)?.let {
-                    mapper.readValue(it, EventStreamingSettings::class.java)
-                } ?: EventStreamingSettings()
-            }
-            val license = if (loaded.enabled) licenseService.getActiveLicense() else null
+            // Never wait for a database connection while holding the writer monitor.
+            val license = licenseService.getActiveLicense()
             synchronized(this) {
-                // Ignore a refresh that raced with a committed settings change.
-                if (configurationRevision != snapshot.revision) return
-                settings = loaded
-                initialized = true
                 licensedUntil = license?.validUntil
                 licenseCheckedAt = Instant.now()
                 maintainWriter()
             }
         } catch (e: Exception) {
-            synchronized(this) {
-                if (configurationRevision == snapshot.revision) failure("Event streaming configuration is unavailable")
-            }
+            synchronized(this) { failure("Event streaming license is unavailable") }
         }
     }
 
@@ -235,10 +134,6 @@ class EventStreamingService(
                 return
             }
             if (writer == null && !Instant.now().isBefore(recoveryAt)) {
-                if (settings.maxArchiveSizeMiB <= settings.maxFileSizeMiB) {
-                    failure("Archive budget must be at least 1 MiB larger than the file-size threshold")
-                    return
-                }
                 writer = EventFileWriter(settings)
                 lastError = null
             }
@@ -299,7 +194,7 @@ class EventStreamingService(
 
     private fun append(event: Map<String, Any?>) {
         try {
-            val json = mapper.writeValueAsString(EventLoggingPolicy.apply(event, settings.loggingLevel))
+            val json = mapper.writeValueAsString(event)
             // Allow two 64 KiB text fields even when JSON escaping expands each byte sixfold.
             if (json.toByteArray(Charsets.UTF_8).size + 1 > EventFileWriter.MAX_RECORD_BYTES) {
                 failures++
@@ -349,12 +244,6 @@ class EventStreamingService(
         writer = null
     }
 
-    private data class RefreshSnapshot(
-        val settings: EventStreamingSettings,
-        val initialized: Boolean,
-        val revision: Long,
-    )
-
     private fun actor(
         authentication: Authentication? = SecurityContextHolder.getContext().authentication,
         id: String? = null,
@@ -372,8 +261,6 @@ class EventStreamingService(
     }
 
     companion object {
-        const val CONFIG_KEY = "eventStreaming"
-
         fun channel(): String =
             if (SecurityContextHolder.getContext().authentication is ApiKeyAuthentication) "api" else "web"
 
