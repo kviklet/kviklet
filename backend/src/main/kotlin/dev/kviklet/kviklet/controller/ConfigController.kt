@@ -75,28 +75,25 @@ data class ConfigResponse(
             oAuthProvider: String?,
             ldapEnabled: Boolean,
             samlEnabled: Boolean,
-            licenses: List<License>,
+            license: License?,
             version: String,
             buildDate: String,
             gitCommit: String,
-        ): ConfigResponse {
-            val licensesSorted = licenses.sortedByDescending { it.file.createdAt }
-            return ConfigResponse(
-                oAuthProvider = oAuthProvider,
-                ldapEnabled = ldapEnabled,
-                samlEnabled = samlEnabled,
-                licenseValid = licenses.any { it.isValid() },
-                validUntil = licensesSorted.firstOrNull()?.validUntil,
-                createdAt = licensesSorted.firstOrNull()?.createdAt,
-                allowedUsers = licensesSorted.firstOrNull()?.allowedUsers,
-                proxyEnabled = configuration.proxyEnabled ?: false,
-                version = version,
-                buildDate = buildDate,
-                gitCommit = gitCommit,
-                teamsUrl = configuration.teamsUrl,
-                slackUrl = configuration.slackUrl,
-            )
-        }
+        ): ConfigResponse = ConfigResponse(
+            oAuthProvider = oAuthProvider,
+            ldapEnabled = ldapEnabled,
+            samlEnabled = samlEnabled,
+            licenseValid = license?.isValid() == true,
+            validUntil = license?.validUntil,
+            createdAt = license?.createdAt,
+            allowedUsers = license?.allowedUsers,
+            proxyEnabled = configuration.proxyEnabled ?: false,
+            version = version,
+            buildDate = buildDate,
+            gitCommit = gitCommit,
+            teamsUrl = configuration.teamsUrl,
+            slackUrl = configuration.slackUrl,
+        )
     }
 }
 
@@ -118,8 +115,7 @@ class ConfigController(
 
     @GetMapping("/")
     fun getConfig(): PublicConfigResponse {
-        val licenses = licenseService.getLicenses()
-        val licensesSorted = licenses.sortedByDescending { it.file.createdAt }
+        val license = licenseService.getDisplayedLicense()
         try {
             val config = configService.getConfiguration()
             return ConfigResponse.fromConfiguration(
@@ -127,7 +123,7 @@ class ConfigController(
                 identityProviderProperties.type?.lowercase(),
                 ldapProperties.enabled,
                 samlProperties.isSamlEnabled(),
-                licenses,
+                license,
                 applicationProperties.version,
                 applicationProperties.buildDate,
                 applicationProperties.gitCommit,
@@ -137,10 +133,10 @@ class ConfigController(
                 oAuthProvider = identityProviderProperties.type?.lowercase(),
                 ldapEnabled = ldapProperties.enabled,
                 samlEnabled = samlProperties.isSamlEnabled(),
-                licenseValid = licenses.any { it.isValid() },
-                validUntil = licensesSorted.firstOrNull()?.validUntil,
-                createdAt = licensesSorted.firstOrNull()?.createdAt,
-                allowedUsers = licensesSorted.firstOrNull()?.allowedUsers,
+                licenseValid = license?.isValid() == true,
+                validUntil = license?.validUntil,
+                createdAt = license?.createdAt,
+                allowedUsers = license?.allowedUsers,
                 proxyEnabled = configService.isProxyEnabled(),
                 version = applicationProperties.version,
                 buildDate = applicationProperties.buildDate,
@@ -151,7 +147,7 @@ class ConfigController(
 
     @PutMapping("/")
     fun createConfig(@RequestBody request: ConfigRequest): ConfigResponse {
-        val licenses = licenseService.getLicenses()
+        val license = licenseService.getDisplayedLicense()
         val config = configService.setConfiguration(
             Configuration(
                 teamsUrl = request.teamsUrl,
@@ -164,7 +160,7 @@ class ConfigController(
             identityProviderProperties.type?.lowercase(),
             ldapProperties.enabled,
             samlProperties.isSamlEnabled(),
-            licenses,
+            license,
             applicationProperties.version,
             applicationProperties.buildDate,
             applicationProperties.gitCommit,

@@ -89,6 +89,13 @@ class LicenseService(
     fun getActiveLicense(): License? = getLicenses().filter { it.isValid() }.maxByOrNull { it.file.createdAt }
 
     /**
+     * The license to show: the active one, which seats are enforced against, or without one the newest, to
+     * show what expired. Not simply the newest, which may have expired while an older one is still valid.
+     */
+    @NoPolicy
+    fun getDisplayedLicense(): License? = getActiveLicense() ?: getLicenses().maxByOrNull { it.file.createdAt }
+
+    /**
      * Seats are counted against active users only: deactivating a user frees their seat, and both creating
      * and reactivating a user need a free one. Without a license there is no seat limit.
      */
