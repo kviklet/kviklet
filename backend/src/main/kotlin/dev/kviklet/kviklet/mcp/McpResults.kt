@@ -55,6 +55,7 @@ data class ConnectionResult(
     val temporaryAccessEnabled: Boolean,
     val maxTemporaryAccessMinutes: Long?,
     val canCreateRequest: Boolean,
+    val canEditConnection: Boolean,
 ) {
     companion object {
         fun from(dto: ConnectionWithPermissions): ConnectionResult {
@@ -72,6 +73,7 @@ data class ConnectionResult(
                 },
                 maxTemporaryAccessMinutes = (connection as? DatasourceConnection)?.maxTemporaryAccessDuration,
                 canCreateRequest = Permission.EXECUTION_REQUEST_EDIT in dto.permissions,
+                canEditConnection = Permission.DATASOURCE_CONNECTION_EDIT in dto.permissions,
             )
         }
     }
