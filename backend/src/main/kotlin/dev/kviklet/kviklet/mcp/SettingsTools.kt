@@ -172,13 +172,15 @@ class SettingsTools(
     )
 
     private fun config(config: Configuration): ConfigResult {
-        val license = licenseService.getLicenses().maxByOrNull { it.file.createdAt }
+        // The active license is the one seats are enforced against. Without one, the newest shows what expired.
+        val active = licenseService.getActiveLicense()
+        val license = active ?: licenseService.getLicenses().maxByOrNull { it.file.createdAt }
         return ConfigResult(
             slackUrl = config.slackUrl?.takeIf { it.isNotEmpty() },
             teamsUrl = config.teamsUrl?.takeIf { it.isNotEmpty() },
             proxyEnabled = config.proxyEnabled ?: false,
             license = LicenseStatus(
-                valid = licenseService.getActiveLicense() != null,
+                valid = active != null,
                 validUntil = license?.validUntil,
                 seats = license?.allowedUsers,
             ),

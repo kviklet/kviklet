@@ -354,6 +354,27 @@ class McpConfigToolsTest {
     }
 
     @Test
+    fun `get_config describes the license that is in force, not a newer expired one`() {
+        // Signed like a real license, but expired on 2024-01-01 (as in ConnectionTest).
+        val expired = """
+            {"license_data":{"max_users":20,"expiry_date":"2024-01-01"},"signature":"VWT9Bo5HuN4Y+bkT6FK7EtrCXavJhyI+Tk62FnfbzkJaqyOOAh3qnyFMGz12enLQjmMLIwaqyoogjkOeJXezyfEcJRFDTadk3IdXYMZWz8MPMHVHbGmvA18+5vJRZ1cXnNClEkHg3aanbNgtRNlFzp2fen5UVUCAwn/oI0MlQqxwR6qyi2ZST5v0s1PhhI20Byo7gjCDMjOtpWSsn0rTLeDsADS7WR5/26+VhHvt3s1AQlJ6n0gOGOWBruluZkO/NOqIqF2y9NSufJjuF8WkbJt9JxhmPApScMa+nCuqDgDRXIAQa0I65xCwMWixDMz9S/vLb5XlqlJZhGJnC1KKMUzOB87wFtVFmrkhvxSaOH/ejX8rrTDMKyG9ztlKZf+qiff0nZ7GWkHltmc+YLQPoBJt39aDrpW75/2GOQKWLHjwcaB45EPzEv7Tsz4gG5eqWG4kMG3UigJKrEQwoUp10LEMH0YIOFO9WAcjNQB7RpND91VvDESsBKUbwtS/J3rG"}
+        """.trimIndent()
+        licenseAdapter.createLicense(
+            LicenseFile(
+                fileContent = expired,
+                fileName = "expired.json",
+                createdAt = LocalDateTime.now().plusMinutes(1),
+            ),
+        )
+
+        val license = call(admin, "get_config").json!!["license"]
+
+        assertThat(license["valid"].asBoolean()).isTrue()
+        assertThat(license["validUntil"].asString()).isEqualTo("2100-01-01")
+        assertThat(license["seats"].asInt()).isEqualTo(2)
+    }
+
+    @Test
     fun `an agent sets the notification webhooks and turns on the proxy`() {
         val updated = call(
             admin,
