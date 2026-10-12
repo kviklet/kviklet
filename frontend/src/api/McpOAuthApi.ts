@@ -1,6 +1,9 @@
 import { z } from "zod";
 import baseUrl, { apiFetch } from "./base";
 
+/** Where MCP clients connect: the backend's /mcp endpoint, as the browser reaches the backend. */
+export const mcpServerUrl = `${baseUrl}/mcp`;
+
 // The OAuth flow MCP clients (e.g. Claude Code) use to log in to Kviklet. The backend is the
 // authorization server; the frontend only logs the user in and asks for their consent.
 

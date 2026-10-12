@@ -13,6 +13,7 @@ import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.mcp.KvikletMcpTools
 import dev.kviklet.kviklet.security.CorsSettings
 import dev.kviklet.kviklet.service.BaseUrlResolver
+import dev.kviklet.kviklet.service.ConfigService
 import dev.kviklet.kviklet.service.LicenseService
 import dev.kviklet.kviklet.telemetry.McpClient
 import dev.kviklet.kviklet.telemetry.McpClientConnected
@@ -104,11 +105,13 @@ const val MCP_CONSENT_ENDPOINT = "/oauth2/consent"
  *   silent authorization must never happen.
  * - OAuth is the only way into `/mcp`. Its chain is ordered before the API key chain and only accepts
  *   tokens from this authorization server, so API keys and session cookies are rejected there.
- * - Everything here answers 402 without an enterprise license, like Kviklet's other enterprise features.
+ * - Everything here answers 402 without an enterprise license, like Kviklet's other enterprise features,
+ *   and 404 while an admin has turned the MCP server off.
  */
 @Configuration
 class McpSecurityConfig(
     private val licenseService: LicenseService,
+    private val configService: ConfigService,
     private val applicationProperties: ApplicationProperties,
     private val baseUrlResolver: BaseUrlResolver,
     private val corsSettings: CorsSettings,
@@ -228,7 +231,7 @@ class McpSecurityConfig(
             }
         }
 
-        addPublicUrlAndLicenseFilters(http)
+        addPublicUrlAndAvailabilityFilters(http)
         publishNoAuthenticationEvents(http)
         http.addFilterAfter(McpAuthorizationPrincipalFilter(), SecurityContextHolderFilter::class.java)
         http.addFilterAfter(McpConsentSubmissionFilter(jsonMapper), SecurityContextHolderFilter::class.java)
@@ -271,7 +274,7 @@ class McpSecurityConfig(
                 resourceServer.jwt { it.jwtAuthenticationConverter(McpJwtAuthenticationConverter(userAdapter)) }
             }
         }
-        addPublicUrlAndLicenseFilters(http)
+        addPublicUrlAndAvailabilityFilters(http)
         publishNoAuthenticationEvents(http)
         http.authorizeHttpRequests {
             it.requestMatchers("/.well-known/**").permitAll()
@@ -317,7 +320,7 @@ class McpSecurityConfig(
             })
     }
 
-    private fun addPublicUrlAndLicenseFilters(http: HttpSecurity) {
+    private fun addPublicUrlAndAvailabilityFilters(http: HttpSecurity) {
         val publicBackendUrl = if (applicationProperties.inDocker) {
             { request: HttpServletRequest -> baseUrlResolver.resolve(request) + "/api" }
         } else {
@@ -325,7 +328,10 @@ class McpSecurityConfig(
         }
         http.addFilterBefore(ForwardedHeaderFilter(), WebAsyncManagerIntegrationFilter::class.java)
         http.addFilterBefore(McpPublicUrlFilter(publicBackendUrl), WebAsyncManagerIntegrationFilter::class.java)
-        http.addFilterBefore(McpLicenseFilter(licenseService), WebAsyncManagerIntegrationFilter::class.java)
+        http.addFilterBefore(
+            McpAvailabilityFilter(licenseService, configService),
+            WebAsyncManagerIntegrationFilter::class.java,
+        )
     }
 }
 
