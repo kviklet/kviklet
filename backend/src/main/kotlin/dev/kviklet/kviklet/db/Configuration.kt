@@ -37,6 +37,7 @@ class ConfigurationAdapter(private val configurationRepository: ConfigurationRep
                 configuration.teamsUrl?.let { ConfigurationEntity("teamsUrl", it) },
                 configuration.slackUrl?.let { ConfigurationEntity("slackUrl", it) },
                 configuration.proxyEnabled?.let { ConfigurationEntity("proxyEnabled", it.toString()) },
+                configuration.mcpEnabled?.let { ConfigurationEntity("mcpEnabled", it.toString()) },
             ),
         )
         // Null fields mean "leave unchanged", so the saved entities alone are not the full picture:
@@ -49,4 +50,5 @@ fun List<ConfigurationEntity>.toDto(): Configuration = Configuration(
     teamsUrl = this.find { it.key == "teamsUrl" }?.value,
     slackUrl = this.find { it.key == "slackUrl" }?.value,
     proxyEnabled = this.find { it.key == "proxyEnabled" }?.value?.toBoolean(),
+    mcpEnabled = this.find { it.key == "mcpEnabled" }?.value?.toBoolean(),
 )

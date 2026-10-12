@@ -40,4 +40,10 @@ class ConfigService(
     @NoPolicy
     @Transactional(readOnly = true)
     fun isProxyEnabled(): Boolean = configurationAdapter.getConfiguration("proxyEnabled") == "true"
+
+    // Read by the MCP endpoints before anyone is logged in, and by the frontend for every user.
+    // On unless an admin turned it off, so the MCP server is there as soon as a license is.
+    @NoPolicy
+    @Transactional(readOnly = true)
+    fun isMcpEnabled(): Boolean = configurationAdapter.getConfiguration("mcpEnabled") != "false"
 }
