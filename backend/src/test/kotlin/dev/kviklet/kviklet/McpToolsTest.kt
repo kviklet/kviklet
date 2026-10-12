@@ -63,7 +63,9 @@ class McpToolsTest {
 
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
 
-    @MockkBean(relaxed = true)
+    // Declared exactly as in KubernetesExecuteTest, so both share one application context. Every
+    // distinct context keeps its own connection pool to the shared test database.
+    @MockkBean
     private lateinit var kubernetesApi: KubernetesApi
 
     // The test license allows two users: the agent's user and a colleague who reviews.
