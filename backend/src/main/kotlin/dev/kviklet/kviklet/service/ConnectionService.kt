@@ -92,7 +92,8 @@ class ConnectionService(
             request.displayName ?: connection.displayName,
             request.description ?: connection.description,
             request.type ?: connection.type,
-            request.protocol ?: connection.protocol,
+            // A new engine without a protocol gets the engine's default protocol, not the old engine's one.
+            request.protocol ?: request.type?.takeIf { it != connection.type }?.toProtocol() ?: connection.protocol,
             newMaxExecutions,
             request.hostname ?: connection.hostname,
             request.port ?: connection.port,
@@ -133,9 +134,10 @@ class ConnectionService(
             return when (request.authenticationType) {
                 AuthenticationType.USER_PASSWORD -> AuthenticationDetails.UserPassword(
                     username = request.username ?: currentAuth.username,
+                    // The password may be left out, e.g. to be set later in the UI instead of through an agent.
                     password = request.password
                         ?: (currentAuth as? AuthenticationDetails.UserPassword)?.password
-                        ?: throw IllegalArgumentException("Password required for USER_PASSWORD authentication"),
+                        ?: "",
                 )
 
                 AuthenticationType.AWS_IAM -> AuthenticationDetails.AwsIam(
@@ -243,9 +245,6 @@ class ConnectionService(
         dryRunEnabled: Boolean,
         dryRunRequiresApproval: Boolean,
     ): ConnectionWithPermissions {
-        if (authenticationType == AuthenticationType.USER_PASSWORD && password == null) {
-            throw IllegalArgumentException("Password is required for USER_PASSWORD authentication")
-        }
         ensureConnectionIdIsAvailable(connectionId)
         // Validate: MongoDB cannot have dry run enabled
         if (type == DatasourceType.MONGODB && dryRunEnabled) {
@@ -259,7 +258,8 @@ class ConnectionService(
             databaseName,
             maxExecutions,
             username,
-            password,
+            // The password may be left out, e.g. to be set later in the UI instead of through an agent.
+            if (authenticationType == AuthenticationType.USER_PASSWORD) password ?: "" else password,
             description,
             reviewConfig,
             port,
