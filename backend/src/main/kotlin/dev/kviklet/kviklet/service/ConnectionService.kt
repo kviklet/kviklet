@@ -85,6 +85,8 @@ class ConnectionService(
         val reviewConfigChanged = connection.reviewConfig != newReviewConfig
         val maxExecutionsChanged = connection.maxExecutions != newMaxExecutions
 
+        val newAuth = getUpdatedAuth(connection.auth, request)
+
         val updatedConnection = connectionAdapter.updateDatasourceConnection(
             connectionId,
             request.displayName ?: connection.displayName,
@@ -95,7 +97,7 @@ class ConnectionService(
             request.hostname ?: connection.hostname,
             request.port ?: connection.port,
             request.authenticationType ?: connection.authenticationType,
-            getUpdatedAuth(connection.auth, request),
+            newAuth,
             request.databaseName ?: connection.databaseName,
             newReviewConfig,
             request.additionalJDBCOptions ?: connection.additionalOptions,
@@ -103,7 +105,7 @@ class ConnectionService(
             temporaryAccessEnabled = request.temporaryAccessEnabled ?: connection.temporaryAccessEnabled,
             explainEnabled = request.explainEnabled ?: connection.explainEnabled,
             storeResults = request.storeResults ?: connection.storeResults,
-            roleArn = request.roleArn,
+            roleArn = (newAuth as? AuthenticationDetails.AwsIam)?.roleArn,
             maxTemporaryAccessDuration = if (request.clearMaxTempDuration) {
                 null
             } else {
@@ -152,6 +154,7 @@ class ConnectionService(
 
             is AuthenticationDetails.AwsIam -> currentAuth.copy(
                 username = request.username ?: currentAuth.username,
+                roleArn = request.roleArn ?: currentAuth.roleArn,
             )
         }
     }
