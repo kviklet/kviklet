@@ -3,6 +3,7 @@ package dev.kviklet.kviklet.security.mcp
 
 import dev.kviklet.kviklet.security.CsrfHeaderFilter
 import dev.kviklet.kviklet.security.UserDetailsWithId
+import dev.kviklet.kviklet.service.ConfigService
 import dev.kviklet.kviklet.service.LicenseService
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
@@ -22,13 +23,19 @@ import java.net.URI
 
 /**
  * Answers 402 on every MCP and authorization server endpoint unless an enterprise license is
- * installed, before anything else in the chain runs. 402 is what Kviklet's other enterprise features
- * answer without a license too (see EnterpriseFeatureException).
+ * installed, and 404 while an admin has turned the MCP server off, before anything else in the chain
+ * runs. 402 is what Kviklet's other enterprise features answer without a license too (see
+ * EnterpriseFeatureException).
  */
-class McpLicenseFilter(private val licenseService: LicenseService) : OncePerRequestFilter() {
+class McpAvailabilityFilter(private val licenseService: LicenseService, private val configService: ConfigService) :
+    OncePerRequestFilter() {
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, chain: FilterChain) {
         if (licenseService.getActiveLicense() == null) {
             response.sendError(HttpServletResponse.SC_PAYMENT_REQUIRED, "The MCP server requires an enterprise license")
+            return
+        }
+        if (!configService.isMcpEnabled()) {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND, "The MCP server is turned off")
             return
         }
         chain.doFilter(request, response)

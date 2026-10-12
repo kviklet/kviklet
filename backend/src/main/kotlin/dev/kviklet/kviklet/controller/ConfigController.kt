@@ -34,13 +34,20 @@ open class PublicConfigResponse(
     // Public (like licenseValid) because the review page needs it for every user, to decide
     // whether the proxy action is live, grayed out, or shown as an enterprise upsell.
     open val proxyEnabled: Boolean,
+    // Public for the same reason: every user is shown how to connect an MCP client while it is on.
+    open val mcpEnabled: Boolean,
     open val version: String,
     open val buildDate: String,
     open val gitCommit: String,
 )
 
 // Null fields mean "leave unchanged", so a partial update never wipes the other settings.
-data class ConfigRequest(val teamsUrl: String?, val slackUrl: String?, val proxyEnabled: Boolean? = null)
+data class ConfigRequest(
+    val teamsUrl: String?,
+    val slackUrl: String?,
+    val proxyEnabled: Boolean? = null,
+    val mcpEnabled: Boolean? = null,
+)
 
 data class ConfigResponse(
     override val oAuthProvider: String?,
@@ -51,6 +58,7 @@ data class ConfigResponse(
     override val createdAt: LocalDateTime?,
     override val allowedUsers: UInt?,
     override val proxyEnabled: Boolean,
+    override val mcpEnabled: Boolean,
     override val version: String,
     override val buildDate: String,
     override val gitCommit: String,
@@ -65,6 +73,7 @@ data class ConfigResponse(
     createdAt,
     allowedUsers,
     proxyEnabled,
+    mcpEnabled,
     version,
     buildDate,
     gitCommit,
@@ -90,6 +99,7 @@ data class ConfigResponse(
                 createdAt = licensesSorted.firstOrNull()?.createdAt,
                 allowedUsers = licensesSorted.firstOrNull()?.allowedUsers,
                 proxyEnabled = configuration.proxyEnabled ?: false,
+                mcpEnabled = configuration.mcpEnabled ?: true,
                 version = version,
                 buildDate = buildDate,
                 gitCommit = gitCommit,
@@ -142,6 +152,7 @@ class ConfigController(
                 createdAt = licensesSorted.firstOrNull()?.createdAt,
                 allowedUsers = licensesSorted.firstOrNull()?.allowedUsers,
                 proxyEnabled = configService.isProxyEnabled(),
+                mcpEnabled = configService.isMcpEnabled(),
                 version = applicationProperties.version,
                 buildDate = applicationProperties.buildDate,
                 gitCommit = applicationProperties.gitCommit,
@@ -157,6 +168,7 @@ class ConfigController(
                 teamsUrl = request.teamsUrl,
                 slackUrl = request.slackUrl,
                 proxyEnabled = request.proxyEnabled,
+                mcpEnabled = request.mcpEnabled,
             ),
         )
         return ConfigResponse.fromConfiguration(

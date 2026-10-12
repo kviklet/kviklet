@@ -108,6 +108,7 @@ open class McpOAuthTest {
     fun tearDown() {
         jdbcTemplate.update("DELETE FROM oauth2_authorization")
         jdbcTemplate.update("DELETE FROM oauth2_registered_client")
+        jdbcTemplate.update("DELETE FROM configuration WHERE key = 'mcpEnabled'")
         apiKeyRepository.deleteAll()
         userHelper.deleteAll()
         roleHelper.deleteAll()
@@ -304,6 +305,46 @@ open class McpOAuthTest {
         ).andExpect(status().isPaymentRequired)
         mockMvc.perform(get("/oauth2/consent/details").param("state", "any").cookie(login(user)))
             .andExpect(status().isPaymentRequired)
+    }
+
+    @Test
+    fun `the MCP server is on with a license, and every user can see that`() {
+        val user = userHelper.createUser(permissions = listOf("execution_request:get"))
+
+        mockMvc.perform(get("/config/").cookie(login(user)))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.mcpEnabled").value(true))
+    }
+
+    @Test
+    fun `everything MCP answers 404 while an admin has turned it off, and works again once turned on`() {
+        val user = userHelper.createUser()
+        val token = obtainAccessToken(user)
+        val admin = userHelper.createUser(email = "admin@example.com")
+        val adminCookie = userHelper.login(mockMvc = mockMvc, email = admin.email)
+
+        setMcpEnabled(adminCookie, false).andExpect(jsonPath("$.mcpEnabled").value(false))
+
+        callWhoami(token).andExpect(status().isNotFound)
+        mockMvc.perform(get("/.well-known/oauth-protected-resource/mcp")).andExpect(status().isNotFound)
+        mockMvc.perform(get("/.well-known/oauth-authorization-server")).andExpect(status().isNotFound)
+        mockMvc.perform(
+            post("/oauth2/register").contentType(MediaType.APPLICATION_JSON).content(registrationRequest()),
+        ).andExpect(status().isNotFound)
+        mockMvc.perform(get("/config/").cookie(login(user)))
+            .andExpect(jsonPath("$.mcpEnabled").value(false))
+
+        setMcpEnabled(adminCookie, true)
+        callWhoami(token).andExpect(status().isOk)
+    }
+
+    @Test
+    fun `only admins can turn the MCP server off`() {
+        val user = userHelper.createUser(permissions = listOf("configuration:get"))
+
+        setMcpEnabled(login(user), false, expectOk = false).andExpect(status().isForbidden)
+        mockMvc.perform(get("/config/").cookie(login(user)))
+            .andExpect(jsonPath("$.mcpEnabled").value(true))
     }
 
     @Test
@@ -530,6 +571,12 @@ open class McpOAuthTest {
     """.trimIndent()
 
     private fun login(user: User) = userHelper.login(mockMvc = mockMvc, email = user.email)
+
+    private fun setMcpEnabled(cookie: Cookie, enabled: Boolean, expectOk: Boolean = true) = mockMvc.perform(
+        put("/config/").cookie(cookie).header("X-Kviklet-Request", "true")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("""{"mcpEnabled": $enabled}"""),
+    ).also { if (expectOk) it.andExpect(status().isOk) }
 
     private fun codeChallenge(): String = Base64.getUrlEncoder().withoutPadding()
         .encodeToString(MessageDigest.getInstance("SHA-256").digest(codeVerifier.toByteArray()))

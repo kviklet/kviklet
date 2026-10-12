@@ -17,6 +17,7 @@ import {
   hasActiveFilters,
 } from "./RequestFilters";
 import UserName from "../components/UserName";
+import McpNudge from "../components/McpNudge";
 
 function timeSince(date: Date) {
   const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -270,6 +271,9 @@ function Requests() {
         </div>
       </div>
       <div className="h-full bg-slate-50 dark:bg-slate-950">
+        <div className="mx-auto max-w-3xl px-4 pt-4 empty:hidden">
+          <McpNudge />
+        </div>
         <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-2 px-4 pt-4">
           <RequestFilterBar filters={filters} onChange={setFilters} />
           <SearchInput
