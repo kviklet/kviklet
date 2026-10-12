@@ -1,3 +1,4 @@
+import { useState } from "react";
 import useConfig from "../../components/ConfigProvider";
 import McpInstallCommands, {
   CopyableCommand,
@@ -13,6 +14,16 @@ import { mcpServerUrl } from "../../api/McpOAuthApi";
 export default function McpSettings() {
   const { config, updateConfig } = useConfig();
   const canEditConfig = useHasPermission("configuration:edit");
+  // The value being saved: the toggle shows it right away and ignores clicks until the save is
+  // done. A failed save falls back to the stored value.
+  const [saving, setSaving] = useState<boolean | null>(null);
+
+  const toggle = async () => {
+    if (!config || saving !== null) return;
+    setSaving(!config.mcpEnabled);
+    await updateConfig({ mcpEnabled: !config.mcpEnabled });
+    setSaving(null);
+  };
 
   if (!config?.licenseValid) {
     return <EnterpriseFeaturePage feature="mcpServer" />;
@@ -38,10 +49,9 @@ export default function McpSettings() {
             </span>
           </div>
           <Toggle
-            active={config.mcpEnabled}
-            onClick={() =>
-              void updateConfig({ mcpEnabled: !config.mcpEnabled })
-            }
+            active={saving ?? config.mcpEnabled}
+            disabled={saving !== null}
+            onClick={() => void toggle()}
           />
         </div>
       )}
