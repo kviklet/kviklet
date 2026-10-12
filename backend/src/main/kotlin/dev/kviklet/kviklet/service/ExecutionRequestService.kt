@@ -112,13 +112,24 @@ class ExecutionRequestService(
         const val MAX_STORED_CHARS_K8S = 51200
     }
 
-    private fun validateTemporaryAccessDuration(connection: DatasourceConnection, requestedDurationMinutes: Long?) {
-        if (requestedDurationMinutes != null && requestedDurationMinutes == 0L) {
+    // Applies to every request kind and caller: a duration of zero or less would expire the access the
+    // moment it is first used.
+    private fun requirePositiveDuration(requestedDurationMinutes: Long?) {
+        if (requestedDurationMinutes != null && requestedDurationMinutes <= 0L) {
             throw IllegalArgumentException(
-                "Duration cannot be 0. Use null for infinite access or a positive value for limited access",
+                "Duration must be at least 1 minute. Use null for infinite access or a positive value for " +
+                    "limited access",
             )
         }
+    }
 
+    private fun requireTitle(title: String?) {
+        if (title != null && title.isBlank()) {
+            throw IllegalArgumentException("A request needs a title")
+        }
+    }
+
+    private fun validateTemporaryAccessDuration(connection: DatasourceConnection, requestedDurationMinutes: Long?) {
         connection.maxTemporaryAccessDuration?.let { maxDuration ->
             if (requestedDurationMinutes == null) {
                 throw IllegalArgumentException(
@@ -138,6 +149,8 @@ class ExecutionRequestService(
         request: CreateExecutionRequestRequest,
         userId: String,
     ): ExecutionRequestDetails {
+        requireTitle(request.title)
+        requirePositiveDuration(request.temporaryAccessDuration)
         val executionRequestDetails = when (request) {
             is CreateDatasourceExecutionRequestRequest -> {
                 createDatasourceRequest(connectionId, request, userId)
@@ -199,20 +212,29 @@ class ExecutionRequestService(
         connectionId: ConnectionId,
         request: CreateKubernetesExecutionRequestRequest,
         userId: String,
-    ): ExecutionRequestDetails = executionRequestAdapter.createExecutionRequest(
-        connectionId = connectionId,
-        title = request.title,
-        type = request.type,
-        description = request.description,
-        executionStatus = ExecutionStatus.EXECUTABLE,
-        reviewStatus = ReviewStatus.AWAITING_APPROVAL,
-        authorId = userId,
-        namespace = request.namespace,
-        podName = request.podName,
-        containerName = request.containerName,
-        command = request.command,
-        temporaryAccessDuration = request.temporaryAccessDuration?.let { Duration.ofMinutes(it) },
-    )
+    ): ExecutionRequestDetails {
+        val connection = connectionService.getDatasourceConnection(connectionId)
+        if (request.type == RequestType.TemporaryAccess &&
+            connection is KubernetesConnection &&
+            !connection.temporaryAccessEnabled
+        ) {
+            throw IllegalStateException("Temporary access is not enabled for this connection")
+        }
+        return executionRequestAdapter.createExecutionRequest(
+            connectionId = connectionId,
+            title = request.title,
+            type = request.type,
+            description = request.description,
+            executionStatus = ExecutionStatus.EXECUTABLE,
+            reviewStatus = ReviewStatus.AWAITING_APPROVAL,
+            authorId = userId,
+            namespace = request.namespace,
+            podName = request.podName,
+            containerName = request.containerName,
+            command = request.command,
+            temporaryAccessDuration = request.temporaryAccessDuration?.let { Duration.ofMinutes(it) },
+        )
+    }
 
     private fun constructSQLDumpCommand(connection: DatasourceConnection, outputFile: String? = null): List<String> {
         if (connection.auth !is AuthenticationDetails.UserPassword) {
@@ -314,9 +336,15 @@ class ExecutionRequestService(
         request: UpdateExecutionRequestRequest,
         userId: String,
     ): ExecutionRequestDetailsWithRoles {
+        requirePositiveDuration(request.temporaryAccessDuration)
         val executionRequestDetails = executionRequestAdapter.getExecutionRequestDetailsForUpdate(id)
 
         val existing = executionRequestDetails.request
+        requireTitle(request.title)
+        // Recording a duration on a request that has none would count as an edit and reset its approvals.
+        if (request.temporaryAccessDuration != null && existing.type != RequestType.TemporaryAccess) {
+            throw IllegalArgumentException("Only temporary access requests have a duration")
+        }
 
         // A null field is left untouched by the update, so only a non-null, different value is a change.
         fun <T> changed(new: T?, old: T?) = new != null && new != old

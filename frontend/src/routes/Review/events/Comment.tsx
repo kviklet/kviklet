@@ -10,6 +10,7 @@ import { AbsoluteInitialBubble as InitialBubble } from "../../../components/Init
 import { componentMap } from "../components/Highlighter";
 import TimelineItem from "./TimelineItem";
 import UserName from "../../../components/UserName";
+import ViaSource from "../../../components/ViaSource";
 
 function Comment({
   event,
@@ -58,6 +59,7 @@ function Comment({
             {((event?.createdAt && timeSince(event.createdAt)) as
               | string
               | undefined) || ""}
+            <ViaSource source={event?.source} />
           </div>
         </p>
         <div className="rounded-b-md px-4 py-3 dark:bg-slate-900">

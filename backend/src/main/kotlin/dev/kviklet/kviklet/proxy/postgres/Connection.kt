@@ -17,6 +17,7 @@ import dev.kviklet.kviklet.proxy.postgres.messages.readyForQuery
 import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.RequestNotExecutableException
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
+import dev.kviklet.kviklet.service.dto.RequestSource
 import org.slf4j.LoggerFactory
 import java.io.InputStream
 import java.io.OutputStream
@@ -234,7 +235,7 @@ class Connection(
 
     private fun handleQuery(parsedMessage: QueryMessage) {
         val executePayload = ExecutePayload(query = parsedMessage.query)
-        eventService.saveEvent(executionRequest.id!!, userId, executePayload)
+        eventService.saveEvent(executionRequest.id!!, userId, executePayload, RequestSource.PROXY)
     }
 
     private fun handleExecute(parsedMessage: ExecuteMessage) {
@@ -248,7 +249,7 @@ class Connection(
             return
         }
         val executePayload = ExecutePayload(query = portal.statement.interpolateQuery())
-        eventService.saveEvent(executionRequest.id!!, userId, executePayload)
+        eventService.saveEvent(executionRequest.id!!, userId, executePayload, RequestSource.PROXY)
         portal.audited = true
     }
 

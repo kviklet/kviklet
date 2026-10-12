@@ -6,6 +6,7 @@ import { AbsoluteInitialBubble as InitialBubble } from "../../components/Initial
 import { Highlighter } from "./components/Highlighter";
 import { UserStatusContext } from "../../components/UserStatusProvider";
 import UserName from "../../components/UserName";
+import ViaSource from "../../components/ViaSource";
 
 function DatasourceRequestBox({
   request,
@@ -47,6 +48,7 @@ function DatasourceRequestBox({
             }
           >
             requested {timeSince(new Date(request?.createdAt ?? ""))}
+            <ViaSource source={request?.source} />
           </span>
         </div>
         <div className="py-3">

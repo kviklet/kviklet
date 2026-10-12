@@ -1,6 +1,7 @@
 package dev.kviklet.kviklet
 
 import dev.kviklet.kviklet.controller.CreateDatasourceExecutionRequestRequest
+import dev.kviklet.kviklet.controller.CreateKubernetesExecutionRequestRequest
 import dev.kviklet.kviklet.controller.UpdateDatasourceConnectionRequest
 import dev.kviklet.kviklet.controller.UpdateExecutionRequestRequest
 import dev.kviklet.kviklet.db.User
@@ -174,9 +175,68 @@ class MaxTemporaryAccessDurationTest {
         }
 
         assertEquals(
-            "Duration cannot be 0. Use null for infinite access or a positive value for limited access",
+            "Duration must be at least 1 minute. Use null for infinite access or a positive value for limited access",
             exception.message,
         )
+    }
+
+    @Test
+    fun `create temporary access request with a negative duration fails`() {
+        val connection = createConnectionWithMaxDuration(null)
+
+        val request = CreateDatasourceExecutionRequestRequest(
+            connectionId = connection.id,
+            title = "Test Request",
+            type = RequestType.TemporaryAccess,
+            description = "Test temporary access",
+            statement = null,
+            temporaryAccessDuration = -60L,
+        )
+
+        assertThrows<IllegalArgumentException> {
+            executionRequestService.create(connectionId = connection.id, request = request, userId = testUser.getId()!!)
+        }
+    }
+
+    @Test
+    fun `create kubernetes access request with a negative duration fails`() {
+        val connection = connectionHelper.createKubernetesConnection()
+
+        val request = CreateKubernetesExecutionRequestRequest(
+            connectionId = connection.id,
+            title = "Test Request",
+            type = RequestType.TemporaryAccess,
+            description = "Test temporary access",
+            namespace = "default",
+            podName = "test-pod",
+            containerName = null,
+            command = null,
+            temporaryAccessDuration = -60L,
+        )
+
+        assertThrows<IllegalArgumentException> {
+            executionRequestService.create(connectionId = connection.id, request = request, userId = testUser.getId()!!)
+        }
+    }
+
+    @Test
+    fun `update execution request to a negative duration fails`() {
+        val connection = createConnectionWithMaxDuration(null)
+        val executionRequest = createTemporaryAccessRequest(connection, 30L)
+
+        val updateRequest = UpdateExecutionRequestRequest(
+            title = null,
+            description = null,
+            temporaryAccessDuration = -60L,
+        )
+
+        assertThrows<IllegalArgumentException> {
+            executionRequestService.update(
+                id = executionRequest.request.id!!,
+                request = updateRequest,
+                userId = testUser.getId()!!,
+            )
+        }
     }
 
     @Test
