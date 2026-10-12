@@ -6,6 +6,7 @@ import { AbsoluteInitialBubble as InitialBubble } from "../../../components/Init
 import { Highlighter } from "../components/Highlighter";
 import TimelineItem from "./TimelineItem";
 import UserName from "../../../components/UserName";
+import ViaSource from "../../../components/ViaSource";
 
 function EditEvent({
   event,
@@ -40,6 +41,7 @@ function EditEvent({
             {((event?.createdAt && timeSince(event.createdAt)) as
               | string
               | undefined) || ""}
+            <ViaSource source={event?.source} />
           </div>
           {event?.previousQuery && (
             <div>

@@ -6,6 +6,7 @@ import { Highlighter } from "./components/Highlighter";
 import { FC, useContext, useEffect, useState, MouseEvent } from "react";
 import { UserStatusContext } from "../../components/UserStatusProvider";
 import UserName from "../../components/UserName";
+import ViaSource from "../../components/ViaSource";
 
 interface KubernetesRequestBoxProps {
   request: KubernetesExecutionRequestResponseWithComments;
@@ -51,6 +52,7 @@ const KubernetesRequestBox: FC<KubernetesRequestBoxProps> = ({
             }
           >
             requested {timeSince(new Date(request?.createdAt ?? ""))}
+            <ViaSource source={request?.source} />
           </span>
         </div>
         <div className="px-4 py-3">

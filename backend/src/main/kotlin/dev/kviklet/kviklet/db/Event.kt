@@ -14,6 +14,7 @@ import dev.kviklet.kviklet.service.dto.EventId
 import dev.kviklet.kviklet.service.dto.EventType
 import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
+import dev.kviklet.kviklet.service.dto.RequestSource
 import dev.kviklet.kviklet.service.dto.ResultType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.utcTimeNow
@@ -124,6 +125,9 @@ class EventEntity(
     @ColumnTransformer(write = "?::json")
     var payload: Payload,
     var createdAt: LocalDateTime = utcTimeNow(),
+
+    @Enumerated(EnumType.STRING)
+    val source: RequestSource = RequestSource.WEB,
 ) : BaseEntity() {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
@@ -138,6 +142,7 @@ class EventEntity(
         payload = payload,
         author = author.toDto(),
         request = request ?: executionRequest.toDto(connection),
+        source = source,
     )
 }
 

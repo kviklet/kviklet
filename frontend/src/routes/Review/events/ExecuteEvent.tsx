@@ -10,6 +10,7 @@ import { Highlighter } from "../components/Highlighter";
 import JsonViewer from "../../../components/JsonViewer";
 import TimelineItem from "./TimelineItem";
 import UserName from "../../../components/UserName";
+import ViaSource from "../../../components/ViaSource";
 
 function ExecuteEvent({
   event,
@@ -72,6 +73,7 @@ function ExecuteEvent({
             {((event?.createdAt && timeSince(event.createdAt)) as
               | string
               | undefined) || ""}
+            <ViaSource source={event?.source} />
           </div>
         </div>
         {event?.query && (

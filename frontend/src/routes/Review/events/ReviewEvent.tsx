@@ -8,6 +8,7 @@ import { componentMap } from "../components/Highlighter";
 import { ReactElement } from "react";
 import TimelineItem from "./TimelineItem";
 import UserName from "../../../components/UserName";
+import ViaSource from "../../../components/ViaSource";
 
 function ReviewEvent({
   event,
@@ -25,6 +26,7 @@ function ReviewEvent({
     >
       {" "}
       · {timeSince(event.createdAt)}
+      <ViaSource source={event.source} />
     </span>
   );
 

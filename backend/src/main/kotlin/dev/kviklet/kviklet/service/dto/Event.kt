@@ -53,6 +53,7 @@ abstract class Event(
 ) : SecuredDomainObject {
     abstract val eventId: EventId?
     abstract val author: User
+    abstract val source: RequestSource
 
     fun getId(): String? = eventId?.toString()
     override fun getSecuredObjectId(): String? = request.getSecuredObjectId()
@@ -69,15 +70,16 @@ abstract class Event(
             author: User,
             createdAt: LocalDateTime,
             payload: Payload,
+            source: RequestSource = RequestSource.WEB,
         ): Event = when (payload) {
-            is CommentPayload -> CommentEvent(id, request, author, createdAt, payload.comment)
+            is CommentPayload -> CommentEvent(id, request, author, createdAt, payload.comment, source)
 
-            is ReviewPayload -> ReviewEvent(id, request, author, createdAt, payload.comment, payload.action)
+            is ReviewPayload -> ReviewEvent(id, request, author, createdAt, payload.comment, payload.action, source)
 
             is EditPayload -> EditEvent(
                 id, request, author, createdAt, payload.previousQuery,
                 payload.previousCommand, payload.previousContainerName, payload.previousPodName,
-                payload.previousNamespace, payload.previousAccessDurationInMinutes,
+                payload.previousNamespace, payload.previousAccessDurationInMinutes, source,
             )
 
             is ExecutePayload -> {
@@ -108,7 +110,7 @@ abstract class Event(
                 ExecuteEvent(
                     id, request, author, createdAt, payload.query, results, payload.command,
                     payload.containerName, payload.podName, payload.namespace, payload.isDownload,
-                    payload.isDump, payload.isDryRun,
+                    payload.isDump, payload.isDryRun, source,
                 )
             }
         }
@@ -121,6 +123,7 @@ data class CommentEvent(
     override val author: User,
     override val createdAt: LocalDateTime = utcTimeNow(),
     val comment: String,
+    override val source: RequestSource = RequestSource.WEB,
 ) : Event(EventType.COMMENT, createdAt, request) {
     override fun hashCode() = Objects.hash(eventId)
 }
@@ -132,6 +135,7 @@ data class ReviewEvent(
     override val createdAt: LocalDateTime = utcTimeNow(),
     val comment: String,
     val action: ReviewAction,
+    override val source: RequestSource = RequestSource.WEB,
 ) : Event(EventType.REVIEW, createdAt, request) {
     override fun hashCode() = Objects.hash(eventId)
 }
@@ -147,6 +151,7 @@ data class EditEvent(
     val previousPodName: String? = null,
     val previousNamespace: String? = null,
     val previousAccessDuration: Duration? = null,
+    override val source: RequestSource = RequestSource.WEB,
 ) : Event(EventType.EDIT, createdAt, request) {
     override fun hashCode() = Objects.hash(eventId)
 }
@@ -165,6 +170,7 @@ data class ExecuteEvent(
     val isDownload: Boolean = false,
     val isDump: Boolean = false,
     val isDryRun: Boolean = false,
+    override val source: RequestSource = RequestSource.WEB,
 ) : Event(EventType.EXECUTE, createdAt, request) {
     override fun hashCode() = Objects.hash(eventId)
 }

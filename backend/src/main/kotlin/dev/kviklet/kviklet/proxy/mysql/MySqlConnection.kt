@@ -7,6 +7,7 @@ import dev.kviklet.kviklet.proxy.core.writeAndFlush
 import dev.kviklet.kviklet.service.EventService
 import dev.kviklet.kviklet.service.RequestNotExecutableException
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
+import dev.kviklet.kviklet.service.dto.RequestSource
 import org.slf4j.LoggerFactory
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -234,7 +235,7 @@ class MySqlConnection(
     private fun auditQuery(query: String) {
         try {
             val executePayload = ExecutePayload(query = query)
-            eventService.saveEvent(executionRequest.id!!, userId, executePayload)
+            eventService.saveEvent(executionRequest.id!!, userId, executePayload, RequestSource.PROXY)
         } catch (e: RequestNotExecutableException) {
             // The request was rejected while this session was live: the statement was not
             // recorded and must not run, and the session is over. The client is told why.
