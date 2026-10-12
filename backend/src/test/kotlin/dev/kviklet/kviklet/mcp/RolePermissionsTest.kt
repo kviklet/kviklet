@@ -41,6 +41,14 @@ class RolePermissionsTest {
     }
 
     @Test
+    fun `editSelf is user edit on every user, like the UI's flag`() {
+        val permissions = RolePermissions(users = UserPermissions(editSelf = true))
+
+        assertThat(permissions.toPolicies()).containsExactly(policy("user:edit", "*"))
+        assertThat(RolePermissions.fromPolicies(permissions.toPolicies())).isEqualTo(permissions)
+    }
+
+    @Test
     fun `a connection entry always lets the role see the connection`() {
         assertThat(RolePermissions(connections = listOf(ConnectionPermissions("prod-*"))).toPolicies())
             .containsExactly(policy("datasource_connection:get", "prod-*"))

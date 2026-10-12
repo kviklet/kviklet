@@ -7,8 +7,12 @@ import org.springframework.ai.mcp.annotation.McpToolParam
 data class UserPermissions(
     val read: Boolean = false,
     val create: Boolean = false,
-    @field:McpToolParam(required = false, description = "Edit every user's profile")
-    val edit: Boolean = false,
+    // user:edit on every user, but a user may only edit themselves (see User.auth), as in the UI's editSelf.
+    @field:McpToolParam(
+        required = false,
+        description = "Edit their own profile, needed to change their password. Usually wanted on every role.",
+    )
+    val editSelf: Boolean = false,
 )
 
 data class RoleReadPermission(val read: Boolean = false)
@@ -40,7 +44,7 @@ data class RolePermissions(
         val policies = mutableSetOf<Policy>()
         if (users.read) policies += policy("user:get", "*")
         if (users.create) policies += policy("user:create", "*")
-        if (users.edit) policies += policy("user:edit", "*")
+        if (users.editSelf) policies += policy("user:edit", "*")
         if (roles.read) policies += policy("role:get", "*")
         connections.forEach {
             policies += policy("datasource_connection:get", it.selector)
@@ -69,7 +73,7 @@ data class RolePermissions(
                     "user" -> when (action) {
                         "get" -> users = users.copy(read = true)
                         "create" -> users = users.copy(create = true)
-                        "edit" -> users = users.copy(edit = true)
+                        "edit" -> users = users.copy(editSelf = true)
                     }
 
                     "role" -> if (action == "get") roles = RoleReadPermission(read = true)
