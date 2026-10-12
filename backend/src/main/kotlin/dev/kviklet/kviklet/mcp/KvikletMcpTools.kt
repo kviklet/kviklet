@@ -20,10 +20,10 @@ class KvikletMcpTools {
         val user = currentUser()
         return WhoAmIResult(id = user.id, email = user.username)
     }
-
-    // @Policy lets calls without any authentication through, since those normally come from within
-    // the application. Tools are never such calls, so they must refuse to run without a user.
-    private fun currentUser(): UserDetailsWithId =
-        SecurityContextHolder.getContext().authentication?.principal as? UserDetailsWithId
-            ?: throw IllegalStateException("MCP tool called without an authenticated Kviklet user")
 }
+
+// @Policy lets calls without any authentication through, since those normally come from within
+// the application. Tools are never such calls, so they must refuse to run without a user.
+internal fun currentUser(): UserDetailsWithId =
+    SecurityContextHolder.getContext().authentication?.principal as? UserDetailsWithId
+        ?: throw IllegalStateException("MCP tool called without an authenticated Kviklet user")

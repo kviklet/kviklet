@@ -17,9 +17,13 @@ import { ExecutionRequest } from "../routes/NewRequest";
 
 const requestUrl = `${baseUrl}/execution-requests/`;
 
+const requestSourceSchema = z.enum(["WEB", "API_KEY", "MCP"]);
+type RequestSource = z.infer<typeof requestSourceSchema>;
+
 const CommentEvent = withType(
   z.object({
     author: userResponseSchema.optional(),
+    source: requestSourceSchema.optional(),
     comment: z.string(),
     createdAt: z.coerce.date(),
     id: z.string(),
@@ -31,6 +35,7 @@ const ReviewEvent = withType(
   z.object({
     type: z.literal("REVIEW"),
     author: userResponseSchema.optional(),
+    source: requestSourceSchema.optional(),
     comment: z.string(),
     createdAt: z.coerce.date(),
     action: z.enum(["APPROVE", "REQUEST_CHANGE", "REJECT"]),
@@ -43,6 +48,7 @@ const EditEvent = withType(
   z.object({
     type: z.literal("EDIT"),
     author: userResponseSchema.optional(),
+    source: requestSourceSchema.optional(),
     previousQuery: z.string().optional().nullable(),
     previousCommand: z.string().optional().nullable(),
     previousPodName: z.string().optional().nullable(),
@@ -103,6 +109,7 @@ const ExecuteEvent = withType(
   z.object({
     type: z.literal("EXECUTE"),
     author: userResponseSchema.optional(),
+    source: requestSourceSchema.optional(),
     query: z.string().optional().nullable(),
     results: z.array(ResultLog).optional(),
     command: z.string().optional().nullable(),
@@ -136,6 +143,7 @@ const RawDatasourceRequestSchema = z.object({
   id: z.string(),
   type: z.enum(["TemporaryAccess", "SingleExecution", "Dump"]),
   author: userResponseSchema,
+  source: requestSourceSchema.optional(),
   title: z.string().min(1),
   description: z.string(),
   statement: z.string().nullable().optional(),
@@ -152,6 +160,7 @@ const RawKubernetesRequestSchema = z.object({
   id: z.string(),
   type: z.enum(["TemporaryAccess", "SingleExecution"]),
   author: userResponseSchema,
+  source: requestSourceSchema.optional(),
   title: z.string().min(1),
   description: z.string(),
   connection: connectionResponseSchema,
@@ -694,5 +703,6 @@ export type {
   ProxyResponse,
   KubernetesExecuteResponse,
   RoleApprovalProgress,
+  RequestSource,
   ApprovalProgress,
 };

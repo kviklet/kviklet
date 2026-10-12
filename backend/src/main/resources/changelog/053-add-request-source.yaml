@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 053-add-request-source
+      author: Jascha
+      changes:
+        - addColumn:
+            tableName: execution_request
+            columns:
+              - column:
+                  name: source
+                  type: VARCHAR(16)
+                  defaultValue: WEB
+                  constraints:
+                    nullable: false
+        - addColumn:
+            tableName: event
+            columns:
+              - column:
+                  name: source
+                  type: VARCHAR(16)
+                  defaultValue: WEB
+                  constraints:
+                    nullable: false
