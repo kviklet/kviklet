@@ -12,6 +12,7 @@ import dev.kviklet.kviklet.db.ReviewPayload
 import dev.kviklet.kviklet.db.UpdateResultLogPayload
 import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.Policy
+import dev.kviklet.kviklet.security.currentRequestSource
 import dev.kviklet.kviklet.service.dto.DatasourceConnection
 import dev.kviklet.kviklet.service.dto.DumpResultLog
 import dev.kviklet.kviklet.service.dto.ErrorResultLog
@@ -21,6 +22,7 @@ import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.KubernetesOutputResultLog
 import dev.kviklet.kviklet.service.dto.QueryResultLog
+import dev.kviklet.kviklet.service.dto.RequestSource
 import dev.kviklet.kviklet.service.dto.ResultLog
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.UpdateResultLog
@@ -36,7 +38,12 @@ class EventService(
 
     @Policy(Permission.EXECUTION_REQUEST_GET)
     @Transactional
-    fun saveEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Event {
+    fun saveEvent(
+        id: ExecutionRequestId,
+        authorId: String,
+        payload: Payload,
+        source: RequestSource = currentRequestSource(),
+    ): Event {
         val details = executionRequestAdapter.getExecutionRequestDetailsForUpdate(id)
         when (payload) {
             is ExecutePayload -> {
@@ -57,7 +64,7 @@ class EventService(
 
             else -> Unit
         }
-        val (_, event) = executionRequestAdapter.addEvent(id, authorId, payload)
+        val (_, event) = executionRequestAdapter.addEvent(id, authorId, payload, source)
         return event
     }
 

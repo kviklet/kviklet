@@ -17,7 +17,7 @@ import { ExecutionRequest } from "../routes/NewRequest";
 
 const requestUrl = `${baseUrl}/execution-requests/`;
 
-const requestSourceSchema = z.enum(["WEB", "API_KEY", "MCP"]);
+const requestSourceSchema = z.enum(["WEB", "API_KEY", "MCP", "PROXY"]);
 type RequestSource = z.infer<typeof requestSourceSchema>;
 
 const CommentEvent = withType(

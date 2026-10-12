@@ -300,7 +300,12 @@ class ExecutionRequestAdapter(
      * in the same transaction before appending an event. EventService.saveEvent owns this sequence.
      */
     @Transactional
-    fun addEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Pair<ExecutionRequestDetails, Event> {
+    fun addEvent(
+        id: ExecutionRequestId,
+        authorId: String,
+        payload: Payload,
+        source: RequestSource = currentRequestSource(),
+    ): Pair<ExecutionRequestDetails, Event> {
         val executionRequestEntity = executionRequestRepository.findByIdOrNull(id.toString())
             ?: throw EntityNotFound("Execution Request Not Found", "Execution request $id does not exist.")
         val userEntity = getUserEntity(authorId)
@@ -309,7 +314,7 @@ class ExecutionRequestAdapter(
             author = userEntity,
             type = payload.type,
             payload = payload,
-            source = currentRequestSource(),
+            source = source,
         )
 
         val event = entityManager.merge(eventEntity)

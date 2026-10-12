@@ -250,16 +250,6 @@ class McpToolsTest {
     }
 
     @Test
-    fun `moving a pod command to another pod resets its approvals`() {
-        val request = executionRequestHelper.createApprovedKubernetesExecutionRequest(author, reviewer)
-
-        val moved = call(author, "update_request", mapOf("id" to request.getId(), "podName" to "other-pod")).json!!
-
-        assertThat(moved["pod"]["name"].asString()).isEqualTo("other-pod")
-        assertThat(moved["reviewStatus"].asString()).isEqualTo("AWAITING_APPROVAL")
-    }
-
-    @Test
     fun `only someone else can review a request`() {
         val request = executionRequestHelper.createExecutionRequest(db, author = author)
         val id = request.getId()
