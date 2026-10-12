@@ -237,36 +237,30 @@ class RequestTools(
         @McpToolParam(required = false, description = "Temporary access requests only") durationMinutes: Long?,
     ): RequestDetail {
         val requestId = ExecutionRequestId(id)
-        // The service takes a missing field as a change to null, so unchanged fields are filled in.
-        val current = executionRequestService.get(requestId).request
-        val update = when (current) {
-            is DatasourceExecutionRequest -> {
-                if (listOf(namespace, podName, containerName, command).any { it != null }) {
-                    throw IllegalArgumentException("$id is a database request, it has no pod or command")
+        // Only the kind is read, to point the agent at the right fields: it never changes, so unlike the
+        // field values it can't go stale before the update. The service leaves missing fields unchanged.
+        when (executionRequestService.get(requestId).request) {
+            is DatasourceExecutionRequest -> if (listOf(namespace, podName, containerName, command).any {
+                    it != null
                 }
-                UpdateExecutionRequestRequest(
-                    title = title ?: current.title,
-                    description = description ?: current.description,
-                    statement = statement ?: current.statement,
-                    temporaryAccessDuration = durationMinutes ?: current.temporaryAccessDuration?.toMinutes(),
-                )
+            ) {
+                throw IllegalArgumentException("$id is a database request, it has no pod or command")
             }
 
-            is KubernetesExecutionRequest -> {
-                if (statement != null) {
-                    throw IllegalArgumentException("$id is a Kubernetes request, change its command instead")
-                }
-                UpdateExecutionRequestRequest(
-                    title = title ?: current.title,
-                    description = description ?: current.description,
-                    namespace = namespace ?: current.namespace,
-                    podName = podName ?: current.podName,
-                    containerName = containerName ?: current.containerName,
-                    command = command ?: current.command,
-                    temporaryAccessDuration = durationMinutes ?: current.temporaryAccessDuration?.toMinutes(),
-                )
+            is KubernetesExecutionRequest -> if (statement != null) {
+                throw IllegalArgumentException("$id is a Kubernetes request, change its command instead")
             }
         }
+        val update = UpdateExecutionRequestRequest(
+            title = title,
+            description = description,
+            statement = statement,
+            namespace = namespace,
+            podName = podName,
+            containerName = containerName,
+            command = command,
+            temporaryAccessDuration = durationMinutes,
+        )
         return views().detail(executionRequestService.update(requestId, update, currentUser().id))
     }
 

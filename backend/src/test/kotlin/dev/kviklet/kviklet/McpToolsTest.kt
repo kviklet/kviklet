@@ -250,6 +250,29 @@ class McpToolsTest {
     }
 
     @Test
+    fun `retitling a pod command keeps its pod, command and approvals`() {
+        val request = executionRequestHelper.createApprovedKubernetesExecutionRequest(author, reviewer)
+
+        val retitled = call(author, "update_request", mapOf("id" to request.getId(), "title" to "Renamed")).json!!
+
+        assertThat(retitled["title"].asString()).isEqualTo("Renamed")
+        assertThat(retitled["pod"]["name"].asString()).isEqualTo("test-pod")
+        assertThat(retitled["pod"]["containerName"].asString()).isEqualTo("test-container")
+        assertThat(retitled["command"].asString()).isEqualTo("echo 'Hello, World!'")
+        assertThat(retitled["reviewStatus"].asString()).isEqualTo("APPROVED")
+    }
+
+    @Test
+    fun `update_request points out fields the request doesn't have`() {
+        val request = executionRequestHelper.createExecutionRequest(db, author = author)
+
+        val result = call(author, "update_request", mapOf("id" to request.getId(), "podName" to "api-1"))
+
+        assertThat(result.isError).isTrue()
+        assertThat(result.text).contains("database request")
+    }
+
+    @Test
     fun `only someone else can review a request`() {
         val request = executionRequestHelper.createExecutionRequest(db, author = author)
         val id = request.getId()
