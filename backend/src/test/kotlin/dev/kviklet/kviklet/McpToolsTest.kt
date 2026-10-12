@@ -1,6 +1,7 @@
 package dev.kviklet.kviklet
 
 import com.ninjasquad.springmockk.MockkBean
+import dev.kviklet.kviklet.db.ConnectionRepository
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.LicenseAdapter
 import dev.kviklet.kviklet.db.User
@@ -57,6 +58,8 @@ class McpToolsTest {
     @Autowired private lateinit var executionRequestAdapter: ExecutionRequestAdapter
 
     @Autowired private lateinit var licenseAdapter: LicenseAdapter
+
+    @Autowired private lateinit var connectionRepository: ConnectionRepository
 
     @Autowired private lateinit var jdbcTemplate: JdbcTemplate
 
@@ -284,6 +287,66 @@ class McpToolsTest {
 
         assertThat(result.isError).isTrue()
         assertThat(result.text).contains("database request")
+    }
+
+    @Test
+    fun `a duration on a request without one is refused and keeps its approval`() {
+        val request = executionRequestHelper.createApprovedRequest(db, author, reviewer)
+
+        val result = call(author, "update_request", mapOf("id" to request.getId(), "durationMinutes" to 30))
+
+        assertThat(result.isError).isTrue()
+        assertThat(result.text).contains("Only temporary access requests have a duration")
+        val fetched = call(author, "get_request", mapOf("id" to request.getId())).json!!
+        assertThat(fetched["reviewStatus"].asString()).isEqualTo("APPROVED")
+    }
+
+    @Test
+    fun `requests need a title`() {
+        val connection = connectionHelper.createPostgresConnection(db)
+        val request = executionRequestHelper.createExecutionRequest(author = author, connection = connection)
+
+        val created = call(
+            author,
+            "create_query_request",
+            mapOf(
+                "connectionId" to connection.getId(),
+                "title" to " ",
+                "description" to "d",
+                "statement" to "SELECT 1",
+            ),
+        )
+        val updated = call(author, "update_request", mapOf("id" to request.getId(), "title" to ""))
+
+        assertThat(created.isError).isTrue()
+        assertThat(created.text).contains("needs a title")
+        assertThat(updated.isError).isTrue()
+    }
+
+    @Test
+    fun `pod access is refused when the connection doesn't allow temporary access`() {
+        val connection = connectionHelper.createKubernetesConnection()
+        // Kubernetes connections have no setting for this yet, so it is switched off directly.
+        connectionRepository.findById(connection.getId()).get().let {
+            it.temporaryAccessEnabled = false
+            connectionRepository.save(it)
+        }
+
+        val result = call(
+            author,
+            "create_pod_access_request",
+            mapOf(
+                "connectionId" to connection.getId(),
+                "title" to "Shell",
+                "description" to "d",
+                "namespace" to "default",
+                "podName" to "api-1",
+                "durationMinutes" to 15,
+            ),
+        )
+
+        assertThat(result.isError).isTrue()
+        assertThat(result.text).contains("Temporary access is not enabled")
     }
 
     @Test
