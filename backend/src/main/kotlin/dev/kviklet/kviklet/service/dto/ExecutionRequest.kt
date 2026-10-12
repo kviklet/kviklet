@@ -59,6 +59,7 @@ sealed class ExecutionRequest(
     open val createdAt: LocalDateTime = utcTimeNow(),
     open val author: User,
     open val temporaryAccessDuration: Duration? = null,
+    open val source: RequestSource = RequestSource.WEB,
 ) : SecuredDomainObject {
     fun getId() = id.toString()
     override fun getSecuredObjectId() = connection.getSecuredObjectId()
@@ -103,10 +104,12 @@ data class DatasourceExecutionRequest(
     override val createdAt: LocalDateTime = utcTimeNow(),
     override val author: User,
     override val temporaryAccessDuration: Duration?,
+    override val source: RequestSource = RequestSource.WEB,
 ) : ExecutionRequest(
     id, connection, title, type, description, executionStatus, reviewStatus, createdAt,
     author,
     temporaryAccessDuration,
+    source,
 )
 
 data class KubernetesExecutionRequest(
@@ -124,6 +127,7 @@ data class KubernetesExecutionRequest(
     val containerName: String?,
     val command: String?,
     override val temporaryAccessDuration: Duration?,
+    override val source: RequestSource = RequestSource.WEB,
 ) : ExecutionRequest(
     id,
     connection,
@@ -135,6 +139,7 @@ data class KubernetesExecutionRequest(
     createdAt,
     author,
     temporaryAccessDuration,
+    source,
 )
 
 data class ExecutionRequestDetails(val request: ExecutionRequest, val events: MutableSet<Event>) :

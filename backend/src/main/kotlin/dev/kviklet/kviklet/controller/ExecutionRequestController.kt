@@ -34,6 +34,7 @@ import dev.kviklet.kviklet.service.dto.MongoRecordsQueryResult
 import dev.kviklet.kviklet.service.dto.QueryResult
 import dev.kviklet.kviklet.service.dto.QueryResultLog
 import dev.kviklet.kviklet.service.dto.RecordsQueryResult
+import dev.kviklet.kviklet.service.dto.RequestSource
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ResultType
 import dev.kviklet.kviklet.service.dto.ReviewAction
@@ -151,6 +152,7 @@ sealed class ExecutionRequestResponse(open val id: ExecutionRequestId) {
                         dto.request.connection,
                     ),
                     temporaryAccessDuration = dto.request.temporaryAccessDuration?.toMinutes(),
+                    source = dto.request.source,
                 )
 
                 is KubernetesExecutionRequest -> KubernetesExecutionRequestResponse(
@@ -170,6 +172,7 @@ sealed class ExecutionRequestResponse(open val id: ExecutionRequestId) {
                     containerName = dto.request.containerName,
                     command = dto.request.command,
                     temporaryAccessDuration = dto.request.temporaryAccessDuration?.toMinutes(),
+                    source = dto.request.source,
                 )
             }
         }
@@ -187,6 +190,7 @@ sealed class ExecutionRequestResponse(open val id: ExecutionRequestId) {
         val executionStatus: ExecutionStatus,
         val createdAt: LocalDateTime = utcTimeNow(),
         val temporaryAccessDuration: Long? = null,
+        val source: RequestSource = RequestSource.WEB,
     ) : ExecutionRequestResponse(id = id)
 
     data class KubernetesExecutionRequestResponse(
@@ -204,6 +208,7 @@ sealed class ExecutionRequestResponse(open val id: ExecutionRequestId) {
         val containerName: String?,
         val command: String?,
         val temporaryAccessDuration: Long? = null,
+        val source: RequestSource = RequestSource.WEB,
     ) : ExecutionRequestResponse(id = id)
 }
 
@@ -231,6 +236,7 @@ sealed class ExecutionRequestDetailResponse(open val id: ExecutionRequestId, ope
                         dto.resolvedRoles,
                     ),
                     permissions = dto.permissions.toPermissionStrings(),
+                    source = request.source,
                 )
 
                 is KubernetesExecutionRequest -> KubernetesExecutionRequestDetailResponse(
@@ -254,6 +260,7 @@ sealed class ExecutionRequestDetailResponse(open val id: ExecutionRequestId, ope
                         dto.resolvedRoles,
                     ),
                     permissions = dto.permissions.toPermissionStrings(),
+                    source = request.source,
                 )
             }
         }
@@ -280,6 +287,7 @@ data class DatasourceExecutionRequestDetailResponse(
      * request" are not included; the frontend has `author` and `reviewStatus` for those.
      */
     val permissions: List<String>,
+    val source: RequestSource = RequestSource.WEB,
 ) : ExecutionRequestDetailResponse(
     id = id,
     events = events,
@@ -343,6 +351,7 @@ data class KubernetesExecutionRequestDetailResponse(
     val approvalProgress: ApprovalProgressResponse,
     /** See [DatasourceExecutionRequestDetailResponse.permissions]. */
     val permissions: List<String>,
+    val source: RequestSource = RequestSource.WEB,
 ) : ExecutionRequestDetailResponse(
     id = id,
     events = events,
@@ -462,6 +471,7 @@ data class ErrorQueryResultResponse(val errorCode: Int, val message: String?) :
 abstract class EventResponse(val type: EventType, open val createdAt: LocalDateTime = utcTimeNow()) {
     abstract val id: String
     abstract val author: UserResponse
+    abstract val source: RequestSource
 
     companion object {
         fun fromEvent(event: Event): EventResponse = when (event) {
@@ -470,6 +480,7 @@ abstract class EventResponse(val type: EventType, open val createdAt: LocalDateT
                 UserResponse(event.author),
                 event.createdAt,
                 event.comment,
+                event.source,
             )
 
             is ReviewEvent -> ReviewEventResponse(
@@ -478,6 +489,7 @@ abstract class EventResponse(val type: EventType, open val createdAt: LocalDateT
                 event.createdAt,
                 event.comment,
                 event.action,
+                event.source,
             )
 
             is EditEvent -> EditEventResponse(
@@ -490,6 +502,7 @@ abstract class EventResponse(val type: EventType, open val createdAt: LocalDateT
                 event.previousPodName,
                 event.previousNamespace,
                 event.previousAccessDuration,
+                event.source,
             )
 
             is ExecuteEvent -> ExecuteEventResponse(
@@ -505,6 +518,7 @@ abstract class EventResponse(val type: EventType, open val createdAt: LocalDateT
                 event.isDownload,
                 event.isDump,
                 event.isDryRun,
+                event.source,
             )
 
             else -> {
@@ -520,6 +534,7 @@ data class CommentEventResponse(
     override val author: UserResponse,
     override val createdAt: LocalDateTime = utcTimeNow(),
     val comment: String,
+    override val source: RequestSource = RequestSource.WEB,
 ) : EventResponse(EventType.COMMENT, createdAt)
 
 @JsonTypeName("REVIEW")
@@ -529,6 +544,7 @@ data class ReviewEventResponse(
     override val createdAt: LocalDateTime = utcTimeNow(),
     val comment: String,
     val action: ReviewAction,
+    override val source: RequestSource = RequestSource.WEB,
 ) : EventResponse(EventType.REVIEW, createdAt)
 
 @JsonTypeName("EDIT")
@@ -542,6 +558,7 @@ data class EditEventResponse(
     val previousPodName: String? = null,
     val previousNamespace: String? = null,
     val previousAccessDuration: Duration? = null,
+    override val source: RequestSource = RequestSource.WEB,
 ) : EventResponse(EventType.EDIT, createdAt)
 
 @JsonTypeName("EXECUTE")
@@ -558,6 +575,7 @@ data class ExecuteEventResponse(
     val isDownload: Boolean = false,
     val isDump: Boolean = false,
     val isDryRun: Boolean = false,
+    override val source: RequestSource = RequestSource.WEB,
 ) : EventResponse(EventType.EXECUTE, createdAt)
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")

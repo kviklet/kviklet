@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.db
 
 import com.querydsl.jpa.impl.JPAQuery
 import dev.kviklet.kviklet.db.util.BaseEntity
+import dev.kviklet.kviklet.security.currentRequestSource
 import dev.kviklet.kviklet.service.EntityNotFound
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
@@ -15,6 +16,7 @@ import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.ExecutionStatus
 import dev.kviklet.kviklet.service.dto.KubernetesConnection
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
+import dev.kviklet.kviklet.service.dto.RequestSource
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewStatus
 import dev.kviklet.kviklet.service.dto.utcTimeNow
@@ -88,6 +90,9 @@ class ExecutionRequestEntity(
 
     var temporaryAccessDuration: Long? = null,
 
+    @Enumerated(EnumType.STRING)
+    val source: RequestSource = RequestSource.WEB,
+
 ) : BaseEntity() {
 
     override fun toString(): String = ToStringBuilder(this, SHORT_PREFIX_STYLE)
@@ -107,6 +112,7 @@ class ExecutionRequestEntity(
             createdAt = createdAt,
             author = author.toDto(),
             temporaryAccessDuration = temporaryAccessDuration?.let { Duration.ofMinutes(it) },
+            source = source,
         )
 
         ExecutionRequestType.KUBERNETES -> KubernetesExecutionRequest(
@@ -124,6 +130,7 @@ class ExecutionRequestEntity(
             containerName = containerName,
             command = command,
             temporaryAccessDuration = temporaryAccessDuration?.let { Duration.ofMinutes(it) },
+            source = source,
         )
     }
 
@@ -293,7 +300,12 @@ class ExecutionRequestAdapter(
      * in the same transaction before appending an event. EventService.saveEvent owns this sequence.
      */
     @Transactional
-    fun addEvent(id: ExecutionRequestId, authorId: String, payload: Payload): Pair<ExecutionRequestDetails, Event> {
+    fun addEvent(
+        id: ExecutionRequestId,
+        authorId: String,
+        payload: Payload,
+        source: RequestSource = currentRequestSource(),
+    ): Pair<ExecutionRequestDetails, Event> {
         val executionRequestEntity = executionRequestRepository.findByIdOrNull(id.toString())
             ?: throw EntityNotFound("Execution Request Not Found", "Execution request $id does not exist.")
         val userEntity = getUserEntity(authorId)
@@ -302,6 +314,7 @@ class ExecutionRequestAdapter(
             author = userEntity,
             type = payload.type,
             payload = payload,
+            source = source,
         )
 
         val event = entityManager.merge(eventEntity)
@@ -382,6 +395,7 @@ class ExecutionRequestAdapter(
                 containerName = containerName,
                 command = command,
                 temporaryAccessDuration = temporaryAccessDuration?.toMinutes(),
+                source = currentRequestSource(),
             ),
         ).toDetailDto(
             connectionAdapter.toDto(connection),
