@@ -57,7 +57,7 @@ interface ApiKeyRepository : JpaRepository<ApiKeyEntity, String> {
 }
 
 @Service
-class ApiKeyAdapter(private val apiKeyRepository: ApiKeyRepository) {
+class ApiKeyAdapter(private val apiKeyRepository: ApiKeyRepository, private val userRepository: UserRepository) {
     @Transactional(readOnly = true)
     fun findById(id: ApiKeyId): ApiKey = apiKeyRepository.findByIdOrNull(id.toString())?.toDto()
         ?: throw EntityNotFound("API Key not found", "API Key with id $id does not exist")
@@ -77,14 +77,11 @@ class ApiKeyAdapter(private val apiKeyRepository: ApiKeyRepository) {
                     "API key hash not found",
                     "API key ${apiKey.id} has no hash",
                 )
-                this.user = UserEntity().apply {
-                    this.id = apiKey.user.getId()
-                }
+                // A reference rather than a bare entity with an id, so the returned key has its user's details.
+                this.user = userRepository.getReferenceById(apiKey.user.getId()!!)
             },
         )
-        // Reload the entity to fetch the user relationship
-        return apiKeyRepository.findByIdOrNull(savedEntity.id!!)?.toDto()
-            ?: throw EntityNotFound("API Key not found", "Failed to reload API key after creation")
+        return savedEntity.toDto()
     }
 
     @Transactional
