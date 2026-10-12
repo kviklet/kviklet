@@ -8,6 +8,7 @@ import {
   UsersIcon,
   LockClosedIcon,
   ArrowPathIcon,
+  CommandLineIcon,
 } from "@heroicons/react/20/solid";
 
 import {
@@ -30,6 +31,7 @@ import ConnectionDetails from "./connection/details/ConnectionDetails";
 import LicenseSettings from "./LicenseSettings";
 import ApiKeyPage from "./ApiKeySettings";
 import RoleSyncSettings from "./RoleSyncSettings";
+import McpSettings from "./McpSettings";
 import useConfig from "../../components/ConfigProvider";
 import { UserStatusContext } from "../../components/UserStatusProvider";
 import { Permission } from "../../api/Permissions";
@@ -220,6 +222,23 @@ const Settings = () => {
       link: "/settings/api-keys",
       permission: "api_key:get",
     },
+    {
+      name: "mcp",
+      tabContent: (
+        <div className="flex flex-col">
+          <div className={tabStyles}>
+            <div className="flex items-center">
+              <CommandLineIcon className="mr-2 h-6" />
+              <span>MCP</span>
+              {!config?.licenseValid && (
+                <LockClosedIcon className="ml-1 h-4 w-4" />
+              )}
+            </div>
+          </div>
+        </div>
+      ),
+      link: "/settings/mcp",
+    },
   ];
 
   return (
@@ -298,6 +317,7 @@ const Settings = () => {
               />
               <Route path="profile" element={<ProfileSettings />} />
               <Route path="license" element={<LicenseSettings />} />
+              <Route path="mcp" element={<McpSettings />} />
               <Route
                 path="api-keys"
                 element={
