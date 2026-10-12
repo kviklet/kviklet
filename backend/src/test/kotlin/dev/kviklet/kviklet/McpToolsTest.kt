@@ -193,6 +193,20 @@ class McpToolsTest {
     }
 
     @Test
+    fun `access requests need a duration of at least a minute`() {
+        val connection = connectionHelper.createPostgresConnection(db)
+
+        val result = call(
+            author,
+            "create_database_access_request",
+            mapOf("connectionId" to connection.getId(), "title" to "t", "description" to "d", "durationMinutes" to -60),
+        )
+
+        assertThat(result.isError).isTrue()
+        assertThat(result.text).contains("at least 1 minute")
+    }
+
+    @Test
     fun `an agent asks to run a command in a pod and for access to a pod`() {
         val connection = connectionHelper.createKubernetesConnection()
         val pod = mapOf("connectionId" to connection.getId(), "namespace" to "default", "podName" to "api-1")

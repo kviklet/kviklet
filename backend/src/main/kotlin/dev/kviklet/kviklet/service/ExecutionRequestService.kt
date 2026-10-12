@@ -112,13 +112,18 @@ class ExecutionRequestService(
         const val MAX_STORED_CHARS_K8S = 51200
     }
 
-    private fun validateTemporaryAccessDuration(connection: DatasourceConnection, requestedDurationMinutes: Long?) {
-        if (requestedDurationMinutes != null && requestedDurationMinutes == 0L) {
+    // Applies to every request kind and caller: a duration of zero or less would expire the access the
+    // moment it is first used.
+    private fun requirePositiveDuration(requestedDurationMinutes: Long?) {
+        if (requestedDurationMinutes != null && requestedDurationMinutes <= 0L) {
             throw IllegalArgumentException(
-                "Duration cannot be 0. Use null for infinite access or a positive value for limited access",
+                "Duration must be at least 1 minute. Use null for infinite access or a positive value for " +
+                    "limited access",
             )
         }
+    }
 
+    private fun validateTemporaryAccessDuration(connection: DatasourceConnection, requestedDurationMinutes: Long?) {
         connection.maxTemporaryAccessDuration?.let { maxDuration ->
             if (requestedDurationMinutes == null) {
                 throw IllegalArgumentException(
@@ -138,6 +143,7 @@ class ExecutionRequestService(
         request: CreateExecutionRequestRequest,
         userId: String,
     ): ExecutionRequestDetails {
+        requirePositiveDuration(request.temporaryAccessDuration)
         val executionRequestDetails = when (request) {
             is CreateDatasourceExecutionRequestRequest -> {
                 createDatasourceRequest(connectionId, request, userId)
@@ -314,6 +320,7 @@ class ExecutionRequestService(
         request: UpdateExecutionRequestRequest,
         userId: String,
     ): ExecutionRequestDetailsWithRoles {
+        requirePositiveDuration(request.temporaryAccessDuration)
         val executionRequestDetails = executionRequestAdapter.getExecutionRequestDetailsForUpdate(id)
 
         val existing = executionRequestDetails.request
