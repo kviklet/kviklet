@@ -23,8 +23,11 @@ describe("McpNudge", () => {
     config.mcpEnabled = true;
   });
 
-  it("shows the commands with this instance's MCP URL", () => {
+  it("shows the commands with this instance's MCP URL once expanded", () => {
     renderNudge();
+    expect(screen.queryByText(/^claude mcp add/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("mcp-nudge-expand"));
 
     expect(
       screen.getByText(/^claude mcp add --transport http kviklet http.*\/mcp$/),
