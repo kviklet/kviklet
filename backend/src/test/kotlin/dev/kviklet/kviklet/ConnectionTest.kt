@@ -498,6 +498,68 @@ class ConnectionTest(
     }
 
     @Test
+    fun `updating an IAM connection without roleArn keeps the stored role ARN`() {
+        val roleArn = "arn:aws:iam::123456789012:role/example-role"
+        datasourceConnectionController.createConnection(
+            CreateDatasourceConnectionRequest(
+                id = "aws-iam-keep-arn",
+                displayName = "AWS IAM Connection",
+                username = "iam_user",
+                reviewConfig = ReviewConfigRequest(
+                    numTotalRequired = 1,
+                ),
+                type = DatasourceType.POSTGRESQL,
+                hostname = "example.amazonaws.com",
+                port = 5432,
+                authenticationType = AuthenticationType.AWS_IAM,
+                roleArn = roleArn,
+            ),
+        )
+
+        val updatedConnection = datasourceConnectionController.updateConnection(
+            "aws-iam-keep-arn",
+            UpdateDatasourceConnectionRequest(
+                displayName = "Renamed IAM Connection",
+            ),
+        ) as DatasourceConnectionResponse
+
+        updatedConnection.displayName shouldBe "Renamed IAM Connection"
+        updatedConnection.roleArn shouldBe roleArn
+        (datasourceConnectionController.getConnection("aws-iam-keep-arn") as DatasourceConnectionResponse)
+            .roleArn shouldBe roleArn
+    }
+
+    @Test
+    fun `switching an IAM connection to user and password clears the role ARN`() {
+        datasourceConnectionController.createConnection(
+            CreateDatasourceConnectionRequest(
+                id = "aws-iam-clear-arn",
+                displayName = "AWS IAM Connection",
+                username = "iam_user",
+                reviewConfig = ReviewConfigRequest(
+                    numTotalRequired = 1,
+                ),
+                type = DatasourceType.POSTGRESQL,
+                hostname = "example.amazonaws.com",
+                port = 5432,
+                authenticationType = AuthenticationType.AWS_IAM,
+                roleArn = "arn:aws:iam::123456789012:role/example-role",
+            ),
+        )
+
+        val updatedConnection = datasourceConnectionController.updateConnection(
+            "aws-iam-clear-arn",
+            UpdateDatasourceConnectionRequest(
+                authenticationType = AuthenticationType.USER_PASSWORD,
+                password = "postgres",
+            ),
+        ) as DatasourceConnectionResponse
+
+        updatedConnection.authenticationType shouldBe AuthenticationType.USER_PASSWORD
+        updatedConnection.roleArn shouldBe null
+    }
+
+    @Test
     fun `test temporary access execution requests are not allowed on connections with temporary access disabled`() {
         // Create a connection with temporary access disabled
         val connection = datasourceConnectionController.createConnection(
