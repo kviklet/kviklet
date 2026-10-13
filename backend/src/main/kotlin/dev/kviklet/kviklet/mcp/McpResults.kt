@@ -200,12 +200,10 @@ data class ProxyResult(
     }
 }
 
-enum class ExecutionResultKind { DATABASE, KUBERNETES }
-
-sealed class ToolExecutionResult(val kind: ExecutionResultKind)
+sealed class ToolExecutionResult(val kind: ConnectionKind)
 
 data class DatabaseExecutionResult(val results: List<StatementResult>) :
-    ToolExecutionResult(ExecutionResultKind.DATABASE)
+    ToolExecutionResult(ConnectionKind.DATABASE)
 
 data class KubernetesToolExecutionResult(
     val stdout: String,
@@ -213,7 +211,7 @@ data class KubernetesToolExecutionResult(
     val exitCode: Int?,
     val finished: Boolean,
     val truncated: Boolean,
-) : ToolExecutionResult(ExecutionResultKind.KUBERNETES)
+) : ToolExecutionResult(ConnectionKind.KUBERNETES)
 
 /** One statement's outcome. Exactly one of the fields is set. */
 data class StatementResult(

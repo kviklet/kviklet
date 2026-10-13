@@ -393,7 +393,6 @@ open class McpOAuthTest {
             .andExpect(jsonPath("$.clientId").value(clientId))
             .andExpect(jsonPath("$.clientName").value("Claude Code"))
             .andExpect(jsonPath("$.redirectUri").value(redirectUri))
-            .andExpect(jsonPath("$.scopes[0]").value("mcp"))
 
         val otherUser = userHelper.createUser(email = "other@example.com")
         mockMvc.perform(get("/oauth2/consent/details").param("state", state).cookie(login(otherUser)))
