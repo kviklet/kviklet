@@ -17,18 +17,12 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.net.URI
 
-data class McpConsentResponse(
-    val clientId: String,
-    val clientName: String,
-    val redirectUri: String,
-    val scopes: Set<String>,
-) {
+data class McpConsentResponse(val clientId: String, val clientName: String, val redirectUri: String) {
     companion object {
         fun fromDto(dto: McpConsentRequest) = McpConsentResponse(
             clientId = dto.clientId,
             clientName = dto.clientName,
             redirectUri = dto.redirectUri,
-            scopes = dto.scopes,
         )
     }
 }
