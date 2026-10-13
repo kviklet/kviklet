@@ -14,6 +14,7 @@ import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DatabaseProtocol
 import dev.kviklet.kviklet.service.dto.DatasourceType
 import dev.kviklet.kviklet.service.dto.ExecutionStatus
+import dev.kviklet.kviklet.service.dto.RequestSource
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewConfig
 import dev.kviklet.kviklet.service.dto.ReviewStatus
@@ -205,6 +206,7 @@ class OidcWebSocketTest {
             executionStatus = ExecutionStatus.EXECUTABLE,
             reviewStatus = ReviewStatus.APPROVED,
             authorId = oidcUser.getId()!!,
+            source = RequestSource.WEB,
         )
 
         // Step 3: Try to connect to WebSocket with OIDC session

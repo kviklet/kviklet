@@ -4,7 +4,6 @@ import com.querydsl.core.BooleanBuilder
 import com.querydsl.core.types.Predicate
 import com.querydsl.jpa.impl.JPAQuery
 import dev.kviklet.kviklet.db.util.BaseEntity
-import dev.kviklet.kviklet.security.currentRequestSource
 import dev.kviklet.kviklet.service.EntityNotFound
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ConnectionId
@@ -288,7 +287,7 @@ class ExecutionRequestAdapter(
         id: ExecutionRequestId,
         authorId: String,
         payload: Payload,
-        source: RequestSource = currentRequestSource(),
+        source: RequestSource,
     ): Pair<ExecutionRequestDetails, Event> {
         val executionRequestEntity = executionRequestRepository.findByIdOrNull(id.toString())
             ?: throw EntityNotFound("Execution Request Not Found", "Execution request $id does not exist.")
@@ -337,6 +336,7 @@ class ExecutionRequestAdapter(
         containerName: String? = null,
         command: String? = null,
         temporaryAccessDuration: Duration? = null,
+        source: RequestSource,
     ): ExecutionRequestDetails {
         val connection = connectionRepository.findByIdOrNull(connectionId.toString())
             ?: throw EntityNotFound("Connection Not Found", "Connection with id $connectionId does not exist.")
@@ -379,7 +379,7 @@ class ExecutionRequestAdapter(
                 containerName = containerName,
                 command = command,
                 temporaryAccessDuration = temporaryAccessDuration?.toMinutes(),
-                source = currentRequestSource(),
+                source = source,
             ),
         ).toDetailDto(
             connectionAdapter.toDto(connection),
