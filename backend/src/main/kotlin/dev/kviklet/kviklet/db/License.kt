@@ -3,6 +3,7 @@ package dev.kviklet.kviklet.db
 import dev.kviklet.kviklet.db.util.BaseEntity
 import dev.kviklet.kviklet.service.dto.LicenseFile
 import jakarta.persistence.Entity
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Service
 import java.time.Instant
@@ -24,8 +25,14 @@ class LicenseEntity(
 
 interface LicenseRepository : JpaRepository<LicenseEntity, String>
 
+/** Published after the stored licenses changed, so cached license data can be dropped. */
+object LicensesChanged
+
 @Service
-class LicenseAdapter(private val licenseRepository: LicenseRepository) {
+class LicenseAdapter(
+    private val licenseRepository: LicenseRepository,
+    private val eventPublisher: ApplicationEventPublisher,
+) {
     fun getLicenses(): List<LicenseFile> = licenseRepository.findAll().map { it.toDto() }
 
     fun createLicense(license: LicenseFile): LicenseFile = licenseRepository.save(
@@ -33,9 +40,10 @@ class LicenseAdapter(private val licenseRepository: LicenseRepository) {
             fileContent = license.fileContent,
             fileName = license.fileName,
         ),
-    ).toDto()
+    ).toDto().also { eventPublisher.publishEvent(LicensesChanged) }
 
     fun deleteAll() {
         licenseRepository.deleteAll()
+        eventPublisher.publishEvent(LicensesChanged)
     }
 }
