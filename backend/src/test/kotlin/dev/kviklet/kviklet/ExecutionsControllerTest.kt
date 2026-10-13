@@ -12,6 +12,7 @@ import dev.kviklet.kviklet.helper.RoleHelper
 import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.LicenseFile
+import dev.kviklet.kviklet.service.dto.RequestSource
 import org.hamcrest.CoreMatchers.containsString
 import org.hamcrest.CoreMatchers.`is`
 import org.junit.jupiter.api.AfterEach
@@ -106,6 +107,7 @@ class ExecutionsControllerTest {
                     QueryResultLogPayload(columnCount = 5, rowCount = 10),
                 ),
             ),
+            source = RequestSource.WEB,
         )
 
         // Test getting executions list
@@ -151,6 +153,7 @@ class ExecutionsControllerTest {
                     QueryResultLogPayload(columnCount = 1, rowCount = 1),
                 ),
             ),
+            source = RequestSource.WEB,
         )
 
         executionRequestAdapter.addEvent(
@@ -162,6 +165,7 @@ class ExecutionsControllerTest {
                     UpdateResultLogPayload(rowsUpdated = 1),
                 ),
             ),
+            source = RequestSource.WEB,
         )
 
         // Test export endpoint
@@ -244,6 +248,7 @@ class ExecutionsControllerTest {
                     QueryResultLogPayload(columnCount = 5, rowCount = 100),
                 ),
             ),
+            source = RequestSource.WEB,
         )
 
         // Create request with update result
@@ -261,6 +266,7 @@ class ExecutionsControllerTest {
                     UpdateResultLogPayload(rowsUpdated = 50),
                 ),
             ),
+            source = RequestSource.WEB,
         )
 
         // Create request with error result
@@ -278,6 +284,7 @@ class ExecutionsControllerTest {
                     ErrorResultLogPayload(errorCode = 42, message = "Table 'non_existent_table' does not exist"),
                 ),
             ),
+            source = RequestSource.WEB,
         )
 
         // Test export endpoint includes all result types

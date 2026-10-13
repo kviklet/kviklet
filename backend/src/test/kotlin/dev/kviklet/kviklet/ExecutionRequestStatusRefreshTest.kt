@@ -13,6 +13,7 @@ import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.ExecutionStatus
+import dev.kviklet.kviklet.service.dto.RequestSource
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewStatus
@@ -97,6 +98,7 @@ class ExecutionRequestStatusRefreshTest {
             reviewStatus = ReviewStatus.AWAITING_APPROVAL,
             authorId = testUser.getId()!!,
             temporaryAccessDuration = Duration.ofMinutes(60),
+            source = RequestSource.WEB,
         )
         val requestId: ExecutionRequestId = createdRequest.request.id!!
 
@@ -107,6 +109,7 @@ class ExecutionRequestStatusRefreshTest {
                 action = ReviewAction.APPROVE,
                 comment = "approved",
             ),
+            source = RequestSource.WEB,
         )
 
         val (_, executeEvent) = executionRequestAdapter.addEvent(
@@ -115,6 +118,7 @@ class ExecutionRequestStatusRefreshTest {
             ExecutePayload(
                 query = "SELECT 1",
             ),
+            source = RequestSource.WEB,
         )
 
         val expiredAt = utcTimeNow().minusMinutes(90)
@@ -169,6 +173,7 @@ class ExecutionRequestStatusRefreshTest {
             executionStatus = ExecutionStatus.EXECUTABLE,
             reviewStatus = ReviewStatus.AWAITING_APPROVAL,
             authorId = testUser.getId()!!,
+            source = RequestSource.WEB,
         )
         val requestId = createdRequest.request.id!!
 
@@ -179,6 +184,7 @@ class ExecutionRequestStatusRefreshTest {
                 action = ReviewAction.APPROVE,
                 comment = "approved",
             ),
+            source = RequestSource.WEB,
         )
 
         jdbcTemplate.update(
@@ -215,6 +221,7 @@ class ExecutionRequestStatusRefreshTest {
             executionStatus = ExecutionStatus.EXECUTABLE,
             reviewStatus = ReviewStatus.AWAITING_APPROVAL,
             authorId = testUser.getId()!!,
+            source = RequestSource.WEB,
         )
         val requestId = createdRequest.request.id!!
 
@@ -225,6 +232,7 @@ class ExecutionRequestStatusRefreshTest {
                 action = ReviewAction.APPROVE,
                 comment = "approved",
             ),
+            source = RequestSource.WEB,
         )
 
         jdbcTemplate.update(

@@ -20,6 +20,7 @@ import dev.kviklet.kviklet.security.Permission
 import dev.kviklet.kviklet.security.PermissionResolver
 import dev.kviklet.kviklet.security.Policy
 import dev.kviklet.kviklet.security.UserDetailsWithId
+import dev.kviklet.kviklet.security.currentRequestSource
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.ConnectionId
 import dev.kviklet.kviklet.service.dto.DBExecutionResult
@@ -48,6 +49,7 @@ import dev.kviklet.kviklet.service.dto.KubernetesOutputResultLog
 import dev.kviklet.kviklet.service.dto.MongoRecordsQueryResult
 import dev.kviklet.kviklet.service.dto.QueryResult
 import dev.kviklet.kviklet.service.dto.RecordsQueryResult
+import dev.kviklet.kviklet.service.dto.RequestSource
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewStatus
@@ -148,16 +150,17 @@ class ExecutionRequestService(
         connectionId: ConnectionId,
         request: CreateExecutionRequestRequest,
         userId: String,
+        source: RequestSource = currentRequestSource(),
     ): ExecutionRequestDetails {
         requireTitle(request.title)
         requirePositiveDuration(request.temporaryAccessDuration)
         val executionRequestDetails = when (request) {
             is CreateDatasourceExecutionRequestRequest -> {
-                createDatasourceRequest(connectionId, request, userId)
+                createDatasourceRequest(connectionId, request, userId, source)
             }
 
             is CreateKubernetesExecutionRequestRequest -> {
-                createKubernetesRequest(connectionId, request, userId)
+                createKubernetesRequest(connectionId, request, userId, source)
             }
         }
         RequestCreatedEvent.fromRequest(executionRequestDetails).let {
@@ -179,6 +182,7 @@ class ExecutionRequestService(
         connectionId: ConnectionId,
         request: CreateDatasourceExecutionRequestRequest,
         userId: String,
+        source: RequestSource,
     ): ExecutionRequestDetails {
         val connection = connectionService.getDatasourceConnection(connectionId)
         if (connection !is DatasourceConnection) {
@@ -205,6 +209,7 @@ class ExecutionRequestService(
             reviewStatus = ReviewStatus.AWAITING_APPROVAL,
             authorId = userId,
             temporaryAccessDuration = request.temporaryAccessDuration?.let { Duration.ofMinutes(it) },
+            source = source,
         )
     }
 
@@ -212,6 +217,7 @@ class ExecutionRequestService(
         connectionId: ConnectionId,
         request: CreateKubernetesExecutionRequestRequest,
         userId: String,
+        source: RequestSource,
     ): ExecutionRequestDetails {
         val connection = connectionService.getDatasourceConnection(connectionId)
         if (request.type == RequestType.TemporaryAccess &&
@@ -233,6 +239,7 @@ class ExecutionRequestService(
             containerName = request.containerName,
             command = request.command,
             temporaryAccessDuration = request.temporaryAccessDuration?.let { Duration.ofMinutes(it) },
+            source = source,
         )
     }
 

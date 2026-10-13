@@ -20,6 +20,7 @@ import dev.kviklet.kviklet.service.dto.ExecutionStatus
 import dev.kviklet.kviklet.service.dto.LiveSession
 import dev.kviklet.kviklet.service.dto.LiveSessionId
 import dev.kviklet.kviklet.service.dto.Policy
+import dev.kviklet.kviklet.service.dto.RequestSource
 import dev.kviklet.kviklet.service.dto.RequestType
 import dev.kviklet.kviklet.service.dto.ReviewAction
 import dev.kviklet.kviklet.service.dto.ReviewConfig
@@ -350,6 +351,7 @@ class ExecutionRequestHelper(
             executionStatus = executionStatus,
             reviewStatus = reviewStatus,
             authorId = author.getId()!!,
+            source = RequestSource.WEB,
         )
     }
 
@@ -374,6 +376,7 @@ class ExecutionRequestHelper(
             reviewStatus = ReviewStatus.AWAITING_APPROVAL,
             authorId = author.getId()!!,
             temporaryAccessDuration = temporaryAccessDuration,
+            source = RequestSource.WEB,
         )
         executionRequestAdapter.addEvent(
             ExecutionRequestId(executionRequest.getId()),
@@ -382,6 +385,7 @@ class ExecutionRequestHelper(
                 action = ReviewAction.APPROVE,
                 comment = "lgtm",
             ),
+            source = RequestSource.WEB,
         )
 
         return executionRequestAdapter.getExecutionRequestDetails(
@@ -410,6 +414,7 @@ class ExecutionRequestHelper(
             containerName = "test-container",
             command = "echo 'Hello, World!'",
             temporaryAccessDuration = temporaryAccessDuration,
+            source = RequestSource.WEB,
         )
 
         executionRequestAdapter.addEvent(
@@ -419,6 +424,7 @@ class ExecutionRequestHelper(
                 action = ReviewAction.APPROVE,
                 comment = "lgtm",
             ),
+            source = RequestSource.WEB,
         )
         return executionRequestAdapter.getExecutionRequestDetails(
             ExecutionRequestId(executionRequestDetails.getId()),
