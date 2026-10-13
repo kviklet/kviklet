@@ -2,6 +2,7 @@
 package dev.kviklet.kviklet.service
 
 import dev.kviklet.kviklet.db.LicenseAdapter
+import dev.kviklet.kviklet.db.LicensesChanged
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.security.NoPolicy
 import dev.kviklet.kviklet.security.Permission
@@ -11,11 +12,14 @@ import dev.kviklet.kviklet.service.dto.LicenseFile
 import dev.kviklet.kviklet.telemetry.LicenseUploaded
 import dev.kviklet.kviklet.telemetry.Telemetry
 import org.slf4j.LoggerFactory
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import org.springframework.web.multipart.MultipartFile
 import tools.jackson.module.kotlin.jacksonObjectMapper
 import tools.jackson.module.kotlin.readValue
 import java.security.PublicKey
+import java.time.Duration
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -31,6 +35,11 @@ class LicenseService(
     private val mapper = jacksonObjectMapper()
 
     private val logger = LoggerFactory.getLogger(this::class.java)
+
+    private class CachedLicense(val license: License, val loadedAt: Instant)
+
+    @Volatile
+    private var cachedActiveLicense: CachedLicense? = null
 
     @NoPolicy
     fun getLicenses(): List<License> = licenseAdapter.getLicenses().map { createLicenseFromLicenseFile(it) }
@@ -79,8 +88,30 @@ class LicenseService(
         telemetry.track(LicenseUploaded)
     }
 
+    /**
+     * The newest valid license. It is checked on every MCP and API key request, before anyone is logged
+     * in, so a valid license is cached instead of being read and verified again each time. Without one
+     * nothing is cached: a license uploaded on any instance counts right away. The cached license is
+     * dropped when licenses change here, when it expires, and after [ACTIVE_LICENSE_TTL], so a newer or
+     * removed license on another instance is picked up too.
+     */
     @NoPolicy
-    fun getActiveLicense(): License? = getLicenses().filter { it.isValid() }.maxByOrNull { it.file.createdAt }
+    fun getActiveLicense(): License? {
+        cachedActiveLicense?.let {
+            if (it.license.isValid() && it.loadedAt.isAfter(Instant.now().minus(ACTIVE_LICENSE_TTL))) {
+                return it.license
+            }
+        }
+        val license = getLicenses().filter { it.isValid() }.maxByOrNull { it.file.createdAt }
+        cachedActiveLicense = license?.let { CachedLicense(it, Instant.now()) }
+        return license
+    }
+
+    @NoPolicy
+    @EventListener(LicensesChanged::class)
+    fun forgetActiveLicense() {
+        cachedActiveLicense = null
+    }
 
     /**
      * The license to show: the active one, which seats are enforced against, or without one the newest, to
@@ -101,6 +132,8 @@ class LicenseService(
         }
     }
 }
+
+private val ACTIVE_LICENSE_TTL = Duration.ofMinutes(1)
 
 class InvalidLicenseException(message: String, e: Exception? = null) : IllegalArgumentException(message, e)
 
