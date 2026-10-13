@@ -1,5 +1,7 @@
 package dev.kviklet.kviklet.db
 
+import com.querydsl.core.BooleanBuilder
+import com.querydsl.core.types.Predicate
 import com.querydsl.jpa.impl.JPAQuery
 import dev.kviklet.kviklet.db.util.BaseEntity
 import dev.kviklet.kviklet.security.currentRequestSource
@@ -204,68 +206,50 @@ class CustomExecutionRequestRepositoryImpl(private val entityManager: EntityMana
         after: LocalDateTime?,
         limit: Int,
     ): List<ExecutionRequestEntity> {
+        val filter = BooleanBuilder()
+        reviewStatuses?.takeIf { it.isNotEmpty() }?.let { filter.and(qExecutionRequestEntity.reviewStatus.`in`(it)) }
+        executionStatuses?.takeIf { it.isNotEmpty() }?.let {
+            filter.and(qExecutionRequestEntity.executionStatus.`in`(it))
+        }
+        types?.takeIf { it.isNotEmpty() }?.let { filter.and(qExecutionRequestEntity.executionType.`in`(it)) }
+        connectionIds?.takeIf { it.isNotEmpty() }?.let {
+            filter.and(qExecutionRequestEntity.connection.id.`in`(it.map { id -> id.toString() }))
+        }
+        authorId?.let { filter.and(qExecutionRequestEntity.author.id.eq(it)) }
+        createdAfter?.let { filter.and(qExecutionRequestEntity.createdAt.goe(it)) }
+        createdBefore?.let { filter.and(qExecutionRequestEntity.createdAt.loe(it)) }
+        // Cursor-based pagination
+        after?.let { filter.and(qExecutionRequestEntity.createdAt.lt(it)) }
+
+        // Without a limit there is nothing to page, so one fetch-join query loads everything.
+        if (limit == Int.MAX_VALUE) return fetchWithDetails(filter)
+
         // Page over ids first, then fetch-join only that page. Limiting the fetch-join query itself makes
         // Hibernate paginate over the joined events collection, which it cannot do correctly in SQL.
-        val query = JPAQuery<String>(entityManager)
+        val ids = JPAQuery<String>(entityManager)
             .select(qExecutionRequestEntity.id)
             .from(qExecutionRequestEntity)
-
-        // Apply filters
-        reviewStatuses?.let {
-            if (it.isNotEmpty()) {
-                query.where(qExecutionRequestEntity.reviewStatus.`in`(it))
-            }
-        }
-
-        executionStatuses?.let {
-            if (it.isNotEmpty()) {
-                query.where(qExecutionRequestEntity.executionStatus.`in`(it))
-            }
-        }
-
-        types?.let {
-            if (it.isNotEmpty()) {
-                query.where(qExecutionRequestEntity.executionType.`in`(it))
-            }
-        }
-
-        connectionIds?.let {
-            if (it.isNotEmpty()) {
-                query.where(qExecutionRequestEntity.connection.id.`in`(it.map { id -> id.toString() }))
-            }
-        }
-
-        authorId?.let {
-            query.where(qExecutionRequestEntity.author.id.eq(it))
-        }
-
-        createdAfter?.let {
-            query.where(qExecutionRequestEntity.createdAt.goe(it))
-        }
-
-        createdBefore?.let {
-            query.where(qExecutionRequestEntity.createdAt.loe(it))
-        }
-
-        // Apply cursor-based pagination
-        after?.let {
-            query.where(qExecutionRequestEntity.createdAt.lt(it))
-        }
-
-        val ids = query
+            .where(filter)
             .orderBy(qExecutionRequestEntity.createdAt.desc())
             .limit(limit.toLong())
             .fetch()
-        if (ids.isEmpty()) return emptyList()
+        // Every id is bound as its own parameter, and Postgres allows at most 65,535 per statement.
+        // The ids are in order, so the chunks are too.
+        return ids.chunked(MAX_IDS_PER_QUERY).flatMap { fetchWithDetails(qExecutionRequestEntity.id.`in`(it)) }
+    }
 
-        return JPAQuery<ExecutionRequestEntity>(entityManager)
+    private fun fetchWithDetails(filter: Predicate): List<ExecutionRequestEntity> =
+        JPAQuery<ExecutionRequestEntity>(entityManager)
             .from(qExecutionRequestEntity)
             .leftJoin(qExecutionRequestEntity.events).fetchJoin()
             .leftJoin(qExecutionRequestEntity.connection).fetchJoin()
             .leftJoin(qExecutionRequestEntity.author).fetchJoin()
-            .where(qExecutionRequestEntity.id.`in`(ids))
+            .where(filter)
             .orderBy(qExecutionRequestEntity.createdAt.desc())
             .fetch()
+
+    companion object {
+        private const val MAX_IDS_PER_QUERY = 1000
     }
 }
 
