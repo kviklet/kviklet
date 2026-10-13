@@ -9,12 +9,7 @@ import org.springframework.security.oauth2.server.authorization.OAuth2TokenType
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository
 import org.springframework.stereotype.Service
 
-data class McpConsentRequest(
-    val clientId: String,
-    val clientName: String,
-    val redirectUri: String,
-    val scopes: Set<String>,
-)
+data class McpConsentRequest(val clientId: String, val clientName: String, val redirectUri: String)
 
 @Service
 class McpConsentService(
@@ -43,7 +38,6 @@ class McpConsentService(
             clientId = client.clientId,
             clientName = client.clientName,
             redirectUri = request.redirectUri ?: client.redirectUris.first(),
-            scopes = request.scopes,
         )
     }
 }

@@ -11,7 +11,6 @@ const mcpConsentDetailsSchema = z.object({
   clientId: z.string(),
   clientName: z.string(),
   redirectUri: z.string(),
-  scopes: z.array(z.string()),
 });
 
 export type McpConsentDetails = z.infer<typeof mcpConsentDetailsSchema>;
