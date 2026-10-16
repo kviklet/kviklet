@@ -31,6 +31,8 @@ val queryDslVersion = "5.1.0"
 val testcontainersVersion = "2.0.5"
 val springAiVersion = "2.0.1"
 val mcpSecurityVersion = "0.1.14"
+// Newer than what Spring AI 2.0.1 brings, for McpSyncListFilter (per-user tools/list). Drop once Spring AI ships it.
+val mcpSdkVersion = "2.1.0"
 java.sourceCompatibility = JavaVersion.VERSION_21
 
 configurations {
@@ -57,6 +59,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-websocket")
     implementation(platform("org.springframework.ai:spring-ai-bom:$springAiVersion"))
     implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc")
+    implementation(platform("io.modelcontextprotocol.sdk:mcp-bom:$mcpSdkVersion"))
     implementation("org.springframework.boot:spring-boot-starter-security-oauth2-authorization-server")
     implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
     implementation("org.springaicommunity:mcp-server-security:$mcpSecurityVersion")
