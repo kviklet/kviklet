@@ -131,5 +131,6 @@ data class InstanceHeartbeat(
     val samlEnabled: Boolean,
     val licenseValid: Boolean,
     val proxyEnabled: Boolean,
+    val mcpEnabled: Boolean,
     val encryptionEnabled: Boolean,
 ) : TelemetryEvent("instance_heartbeat")

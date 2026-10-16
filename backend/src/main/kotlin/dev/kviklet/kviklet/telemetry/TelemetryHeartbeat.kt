@@ -81,6 +81,7 @@ class TelemetryHeartbeat(
             samlEnabled = samlProperties.isSamlEnabled(),
             licenseValid = licenseService.getLicenses().any { it.isValid() },
             proxyEnabled = configurationAdapter.getConfiguration("proxyEnabled") == "true",
+            mcpEnabled = configurationAdapter.getConfiguration("mcpEnabled") != "false",
             encryptionEnabled = encryptionConfigProperties.enabled,
         )
     }
