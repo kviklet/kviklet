@@ -54,6 +54,8 @@ class RequestTools(
         executionStatuses: List<ExecutionStatus>?,
         @McpToolParam(required = false, description = "Only requests on this connection")
         connectionId: String?,
+        @McpToolParam(required = false, description = "Only the user's own requests")
+        mine: Boolean?,
         @McpToolParam(required = false, description = "Page size, 20 by default and at most 100")
         limit: Int?,
         @McpToolParam(required = false, description = "The nextCursor of the previous page")
@@ -71,7 +73,7 @@ class RequestTools(
             executionStatuses = executionStatuses?.toSet(),
             types = null,
             connectionIds = connectionId?.let { setOf(ConnectionId(it)) },
-            authorId = null,
+            authorId = if (mine == true) currentUser().id else null,
             createdAfter = null,
             createdBefore = null,
             after = after,

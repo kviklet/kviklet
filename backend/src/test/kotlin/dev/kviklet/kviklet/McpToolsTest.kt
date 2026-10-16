@@ -253,6 +253,19 @@ class McpToolsTest {
     }
 
     @Test
+    fun `list_requests with mine lists only the user's own requests`() {
+        val connection = connectionHelper.createPostgresConnection(db)
+        val own = executionRequestHelper.createExecutionRequest(author = author, connection = connection)
+        executionRequestHelper.createExecutionRequest(author = reviewer, connection = connection)
+
+        val all = call(author, "list_requests").json!!
+        val mine = call(author, "list_requests", mapOf("mine" to true)).json!!
+
+        assertThat(all["requests"].size()).isEqualTo(2)
+        assertThat(mine["requests"].single()["id"].asString()).isEqualTo(own.getId())
+    }
+
+    @Test
     fun `update_request changes only the given fields and resets approvals when the statement changes`() {
         val request = executionRequestHelper.createApprovedRequest(db, author, reviewer, sql = "SELECT 1")
         val id = request.getId()
