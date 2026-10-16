@@ -393,6 +393,36 @@ class McpConfigToolsTest {
     }
 
     @Test
+    fun `configuration tools are only listed for users who may use them`() {
+        val user = userHelper.createUser(permissions = listOf("datasource_connection:get", "execution_request:*"))
+        roleHelper.removeDefaultRolePermissions()
+        val configTools = listOf(
+            "create_database_connection", "update_kubernetes_connection", "list_roles", "create_role",
+            "list_users", "set_user_roles", "get_role_sync", "add_role_sync_mapping", "list_api_keys",
+            "create_api_key", "get_config", "update_config",
+        )
+
+        assertThat(listed(admin)).contains(*configTools.toTypedArray())
+        assertThat(listed(user))
+            .contains("list_connections", "get_connection", "create_query_request", "review_request")
+            .doesNotContainAnyElementsOf(configTools)
+    }
+
+    @Test
+    fun `a user who may only read roles sees only the tools that read them`() {
+        val user = userHelper.createUser(permissions = listOf("role:get"))
+        roleHelper.removeDefaultRolePermissions()
+
+        assertThat(listed(user))
+            .contains("list_roles", "get_role")
+            .doesNotContain("create_role", "update_role", "delete_role", "list_users")
+    }
+
+    private fun listed(user: User): List<String> = mcp.listTools(mockMvc, token(user)).toList().map {
+        it["name"].asString()
+    }
+
+    @Test
     fun `users without the permissions can't change the configuration`() {
         val user = userHelper.createUser(permissions = listOf("datasource_connection:get"))
         roleHelper.removeDefaultRolePermissions()
