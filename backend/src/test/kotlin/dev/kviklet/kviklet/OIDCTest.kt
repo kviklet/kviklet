@@ -6,6 +6,7 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage
 import dev.kviklet.kviklet.db.User
 import dev.kviklet.kviklet.db.UserAdapter
 import dev.kviklet.kviklet.helper.FrontendStub
+import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.security.AccountDeactivatedException
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
@@ -20,6 +21,7 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.testcontainers.containers.BindMode
 import org.testcontainers.containers.GenericContainer
@@ -78,6 +80,9 @@ class OIDCTest {
     @Autowired
     private lateinit var mockMvc: MockMvc
 
+    @Autowired
+    private lateinit var userHelper: UserHelper
+
     @AfterEach
     fun tearDown() {
         userAdapter.deleteAll()
@@ -88,6 +93,18 @@ class OIDCTest {
         mockMvc.perform(
             get("/oauth2/authorization/dex"),
         ).andExpect(status().is3xxRedirection)
+    }
+
+    @Test
+    fun `config names the OAuth provider the way the login page reads it`() {
+        mockMvc.perform(get("/config/"))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.oauthProvider").value("dex"))
+
+        val user = userHelper.createUser()
+        mockMvc.perform(get("/config/").cookie(userHelper.login(email = user.email, mockMvc = mockMvc)))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.oauthProvider").value("dex"))
     }
 
     @Test

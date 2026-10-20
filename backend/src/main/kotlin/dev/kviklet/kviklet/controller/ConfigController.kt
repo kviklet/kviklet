@@ -1,5 +1,6 @@
 package dev.kviklet.kviklet.controller
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import dev.kviklet.kviklet.ApplicationProperties
 import dev.kviklet.kviklet.security.IdentityProviderProperties
 import dev.kviklet.kviklet.security.ldap.LdapProperties
@@ -24,6 +25,8 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 open class PublicConfigResponse(
+    // Jackson 3 would serialize this as "OAuthProvider", but the login page reads "oauthProvider".
+    @get:JsonProperty("oauthProvider")
     open val oAuthProvider: String?,
     open val ldapEnabled: Boolean,
     open val samlEnabled: Boolean,
