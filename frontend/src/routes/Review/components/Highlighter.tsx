@@ -1,4 +1,4 @@
-import { ReactNode, useContext } from "react";
+import { useContext } from "react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import {
   a11yDark,
@@ -9,6 +9,7 @@ import {
   ThemeStatusContext,
 } from "../../../components/ThemeStatusProvider";
 import { CodeProps } from "react-markdown/lib/ast-to-react";
+import { markdownComponents } from "../../../components/Markdown";
 
 const Highlighter = ({
   children,
@@ -36,13 +37,12 @@ const Highlighter = ({
   );
 };
 
+// Comments share the Markdown look of the rest of the app, but their code is SQL.
 const componentMap = {
+  ...markdownComponents,
   code: ({ children }: CodeProps) => {
     return <Highlighter>{children as string}</Highlighter>;
   },
-  ul: ({ children }: { children: ReactNode }) => (
-    <ul className="ml-4 mt-4 list-disc">{children}</ul>
-  ),
 };
 
 export { componentMap, Highlighter };

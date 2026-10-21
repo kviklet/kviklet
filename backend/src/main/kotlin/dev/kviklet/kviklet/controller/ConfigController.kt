@@ -9,6 +9,8 @@ import dev.kviklet.kviklet.service.ConfigService
 import dev.kviklet.kviklet.service.LicenseService
 import dev.kviklet.kviklet.service.dto.Configuration
 import dev.kviklet.kviklet.service.dto.License
+import dev.kviklet.kviklet.updatecheck.UpdateChecker
+import dev.kviklet.kviklet.updatecheck.UpdateInfo
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.AccessDeniedException
@@ -42,6 +44,8 @@ open class PublicConfigResponse(
     open val version: String,
     open val buildDate: String,
     open val gitCommit: String,
+    // Public so the login page can show it too; null when this instance is up to date or GitHub can't be reached.
+    open val update: UpdateInfo?,
 )
 
 // Null fields mean "leave unchanged", so a partial update never wipes the other settings.
@@ -65,6 +69,7 @@ data class ConfigResponse(
     override val version: String,
     override val buildDate: String,
     override val gitCommit: String,
+    override val update: UpdateInfo?,
     val teamsUrl: String?,
     val slackUrl: String?,
 ) : PublicConfigResponse(
@@ -80,6 +85,7 @@ data class ConfigResponse(
     version,
     buildDate,
     gitCommit,
+    update,
 ) {
     companion object {
         fun fromConfiguration(
@@ -91,6 +97,7 @@ data class ConfigResponse(
             version: String,
             buildDate: String,
             gitCommit: String,
+            update: UpdateInfo?,
         ): ConfigResponse = ConfigResponse(
             oAuthProvider = oAuthProvider,
             ldapEnabled = ldapEnabled,
@@ -104,6 +111,7 @@ data class ConfigResponse(
             version = version,
             buildDate = buildDate,
             gitCommit = gitCommit,
+            update = update,
             teamsUrl = configuration.teamsUrl,
             slackUrl = configuration.slackUrl,
         )
@@ -124,6 +132,7 @@ class ConfigController(
     val configService: ConfigService,
     val licenseService: LicenseService,
     val applicationProperties: ApplicationProperties,
+    val updateChecker: UpdateChecker,
 ) {
 
     @GetMapping("/")
@@ -140,6 +149,7 @@ class ConfigController(
                 applicationProperties.version,
                 applicationProperties.buildDate,
                 applicationProperties.gitCommit,
+                updateChecker.current(),
             )
         } catch (e: AccessDeniedException) {
             return PublicConfigResponse(
@@ -155,6 +165,7 @@ class ConfigController(
                 version = applicationProperties.version,
                 buildDate = applicationProperties.buildDate,
                 gitCommit = applicationProperties.gitCommit,
+                update = updateChecker.current(),
             )
         }
     }
@@ -179,6 +190,7 @@ class ConfigController(
             applicationProperties.version,
             applicationProperties.buildDate,
             applicationProperties.gitCommit,
+            updateChecker.current(),
         )
     }
 
