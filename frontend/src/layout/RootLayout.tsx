@@ -1,5 +1,6 @@
 import TopBanner from "./TopBanner";
 import Footer from "./Footer";
+import UpdateBanner from "../components/UpdateBanner";
 import { Outlet } from "react-router-dom";
 import Notification, { ErrorNotification } from "../components/Notification";
 import { NotificationContext } from "../components/NotifcationStatusProvider";
@@ -54,6 +55,7 @@ function RootLayout() {
   return (
     <div className="flex min-h-screen flex-col">
       <TopBanner />
+      <UpdateBanner />
       <main className="flex-1 pb-10">
         <Outlet />
       </main>

@@ -7,6 +7,34 @@ import {
   isApiErrorResponse,
 } from "./Errors";
 
+const UpdateInfoSchema = z.object({
+  channel: z.enum(["RELEASE", "MAIN"]),
+  latestVersion: z.string().nullable().optional(),
+  releases: z
+    .array(
+      z.object({
+        tag: z.string(),
+        name: z.string().nullable().optional(),
+        body: z.string(),
+        publishedAt: z.coerce.date(),
+        url: z.string(),
+      }),
+    )
+    .default([]),
+  behindBy: z.number().nullable().optional(),
+  commits: z
+    .array(
+      z.object({
+        sha: z.string(),
+        message: z.string(),
+        committedAt: z.coerce.date(),
+        url: z.string(),
+      }),
+    )
+    .default([]),
+  url: z.string(),
+});
+
 const ConfigResponseSchema = z.object({
   oauthProvider: z.string().nullable().optional(),
   ldapEnabled: z.boolean(),
@@ -22,6 +50,8 @@ const ConfigResponseSchema = z.object({
   version: z.string(),
   buildDate: z.string(),
   gitCommit: z.string(),
+  // Null while this instance is up to date or GitHub could not be reached.
+  update: UpdateInfoSchema.nullable().optional(),
 });
 
 export const ConfigPayloadSchema = ConfigResponseSchema.omit({
@@ -35,6 +65,7 @@ export const ConfigPayloadSchema = ConfigResponseSchema.omit({
   version: true,
   buildDate: true,
   gitCommit: true,
+  update: true,
 }).extend({
   // Optional on writes: a PUT that leaves it out keeps the stored value, so the
   // notification form can never flip the proxy toggle as a side effect.
@@ -43,6 +74,7 @@ export const ConfigPayloadSchema = ConfigResponseSchema.omit({
 });
 
 export type ConfigResponse = z.infer<typeof ConfigResponseSchema>;
+export type UpdateInfo = z.infer<typeof UpdateInfoSchema>;
 export type ConfigPayload = z.infer<typeof ConfigPayloadSchema>;
 
 export async function getConfig(): Promise<ApiResponse<ConfigResponse>> {
