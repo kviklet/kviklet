@@ -31,7 +31,7 @@ RUN npm ci --production
 COPY ./frontend .
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.27
+FROM nginxinc/nginx-unprivileged:1.30
 
 # Build arguments for version info
 ARG VERSION=dev
