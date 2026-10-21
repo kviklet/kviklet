@@ -3,7 +3,6 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   ArrowTopRightOnSquareIcon,
-  ArrowUpCircleIcon,
   ChevronDownIcon,
   XMarkIcon,
 } from "@heroicons/react/20/solid";
@@ -200,7 +199,6 @@ const UpdateBanner = () => {
     >
       <div className="mx-4 px-2 py-2 sm:px-8">
         <div className="flex items-center gap-2">
-          <ArrowUpCircleIcon className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
           <span className="text-slate-700 dark:text-slate-200">{summary}</span>
           <button
             type="button"
