@@ -236,8 +236,10 @@ const UpdateBanner = () => {
           </button>
         </div>
         {expanded && (
+          // Centred at the width of the requests list (max-w-3xl minus its px-4), so the
+          // panel lines up with the page content below it instead of the banner's left edge.
           <div
-            className="mb-2 mt-3 max-w-3xl rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
+            className="mx-auto mb-2 mt-3 max-w-[46rem] rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
             data-testid="update-changelog"
           >
             {/* The fade over the bottom padding hints that the list scrolls; at the end of the
