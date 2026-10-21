@@ -682,6 +682,75 @@ class ExecutionTest {
     }
 
     @Test
+    fun `when downloading temporary access CSV with a large query in the body then succeed and audit query`() {
+        val csvRequest = executionRequestHelper.createApprovedRequest(
+            author = testUser,
+            approver = testReviewer,
+            connection = testConnection,
+            requestType = RequestType.TemporaryAccess,
+        )
+        val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+        val query = "SELECT * FROM foo.simple_table /* ${"x".repeat(32768)} + & % ? café */"
+
+        val result = mockMvc.perform(
+            post("/execution-requests/${csvRequest.getId()}/download")
+                .cookie(userCookie)
+                .contentType("application/json")
+                .content("""{"query":"$query"}"""),
+        ).andExpect(status().isOk)
+            .andExpect(header().string("Content-Disposition", containsString("attachment; filename=")))
+            .andReturn()
+        verifyCSVContent(result.response.contentAsString)
+        mockMvc.perform(get("/execution-requests/${csvRequest.getId()}").cookie(userCookie))
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.events[1].type").value("EXECUTE"))
+            .andExpect(jsonPath("$.events[1].query").value(query))
+            .andExpect(jsonPath("$.events[1].isDownload").value(true))
+    }
+
+    @Test
+    fun `when downloading without approval then reject without executing`() {
+        val request = executionRequestHelper.createExecutionRequest(
+            author = testUser,
+            connection = testConnection,
+        )
+        val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+        downloadResults(request.getId(), cookie).andExpect(status().isForbidden)
+        verifyRequestEvents(request.getId(), 0, cookie)
+    }
+
+    @Test
+    fun `when downloading without execute permission then reject`() {
+        val request = executionRequestHelper.createApprovedRequest(
+            author = testUser,
+            approver = testReviewer,
+            connection = testConnection,
+        )
+        roleHelper.removeDefaultRolePermissions()
+        val user = userHelper.createUser(permissions = listOf("execution_request:get"))
+        val cookie = userHelper.login(email = user.email, mockMvc = mockMvc)
+
+        downloadResults(request.getId(), cookie).andExpect(status().isForbidden)
+    }
+
+    @Test
+    fun `legacy GET download remains available`() {
+        val request = executionRequestHelper.createApprovedRequest(
+            author = testUser,
+            approver = testReviewer,
+            connection = testConnection,
+            sql = "SELECT * FROM foo.simple_table",
+        )
+        val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+        val result = mockMvc.perform(get("/execution-requests/${request.getId()}/download").cookie(cookie))
+            .andExpect(status().isOk)
+            .andReturn()
+        verifyCSVContent(result.response.contentAsString)
+    }
+
+    @Test
     fun `when downloading CSV with invalid query then return useful error`() {
         val csvRequest = executionRequestHelper.createApprovedRequest(
             author = testUser,
@@ -1154,7 +1223,7 @@ class ExecutionTest {
     }
 
     private fun downloadResults(executionRequestId: String, cookie: Cookie): ResultActions = mockMvc.perform(
-        get("/execution-requests/$executionRequestId/download")
+        post("/execution-requests/$executionRequestId/download")
             .cookie(cookie)
             .contentType("application/json"),
     )

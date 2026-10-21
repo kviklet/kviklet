@@ -495,13 +495,15 @@ const downloadResults = async (
   executionRequestId: string,
   query?: string,
 ): Promise<void> => {
-  const downloadUrl =
-    `${requestUrl}${executionRequestId}/download` +
-    (query ? `?query=${encodeURIComponent(query)}` : "");
-  const response = await apiFetch(downloadUrl, {
-    method: "GET",
-    credentials: "include",
-  });
+  const response = await apiFetch(
+    `${requestUrl}${executionRequestId}/download`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
+    },
+  );
 
   if (!response.ok) {
     const json: unknown = await response.json().catch(() => null);

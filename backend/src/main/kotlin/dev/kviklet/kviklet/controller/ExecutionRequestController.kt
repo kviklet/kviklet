@@ -126,6 +126,8 @@ data class ExecuteExecutionRequestRequest(
     val dryRun: Boolean = false,
 )
 
+data class DownloadExecutionRequestRequest(val query: String? = null)
+
 data class CreateReviewRequest(val comment: String, val action: ReviewAction)
 
 data class CreateCommentRequest(val comment: String)
@@ -811,12 +813,32 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
         summary = "Execute Execution Request and Download Results",
         description = "Run the query and download the results as a file (or ZIP for multiple results).",
     )
-    @GetMapping("/{executionRequestId}/download")
+    @PostMapping("/{executionRequestId}/download")
     fun download(
         @PathVariable executionRequestId: ExecutionRequestId,
         @CurrentUser userDetails: UserDetailsWithId,
         response: HttpServletResponse,
+        @RequestBody(required = false) request: DownloadExecutionRequestRequest?,
+    ) = writeDownload(executionRequestId, userDetails, response, request?.query)
+
+    @Operation(
+        summary = "Execute Execution Request and Download Results (legacy)",
+        description = "Use POST with a JSON body to avoid URL length limits for large queries.",
+        deprecated = true,
+    )
+    @GetMapping("/{executionRequestId}/download")
+    fun downloadLegacy(
+        @PathVariable executionRequestId: ExecutionRequestId,
+        @CurrentUser userDetails: UserDetailsWithId,
+        response: HttpServletResponse,
         @RequestParam query: String?,
+    ) = writeDownload(executionRequestId, userDetails, response, query)
+
+    private fun writeDownload(
+        executionRequestId: ExecutionRequestId,
+        userDetails: UserDetailsWithId,
+        response: HttpServletResponse,
+        query: String?,
     ) {
         // Errors (failed query, missing approval, access denied) propagate to the
         // ExceptionHandlerController before anything is written to the response.
