@@ -76,11 +76,11 @@ describe("UpdateBanner", () => {
 
     expect(screen.getAllByTestId("update-release")).toHaveLength(2);
     expect(screen.getByText("What's Changed")).toBeVisible();
-    expect(
-      screen.getByRole("link", {
-        name: "https://github.com/kviklet/kviklet/pull/593",
-      }),
-    ).toHaveAttribute("href", "https://github.com/kviklet/kviklet/pull/593");
+    // Bare pull request links read "#593", like on GitHub and in the commit list.
+    expect(screen.getByRole("link", { name: "#593" })).toHaveAttribute(
+      "href",
+      "https://github.com/kviklet/kviklet/pull/593",
+    );
   });
 
   it("shows how far a main build is behind and the commit messages", () => {

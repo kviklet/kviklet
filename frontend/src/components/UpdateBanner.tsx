@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -9,6 +9,8 @@ import {
 } from "@heroicons/react/20/solid";
 import useConfig from "./ConfigProvider";
 import { UpdateInfo } from "../api/ConfigApi";
+import { linkClass, markdownComponents } from "./Markdown";
+import { timeSince } from "../routes/Requests";
 
 const dismissedKey = "updateBannerDismissed";
 // Dismissing only snoozes the banner: updates often carry security fixes, so it comes back.
@@ -38,48 +40,8 @@ const isDismissed = (target: string) => {
   }
 };
 
-const linkClass =
-  "text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300";
-
 // Release notes are rendered without raw HTML (skipHtml), and react-markdown drops
 // javascript: and other unsafe link targets, so notes can't inject anything into the page.
-const markdownComponents = {
-  h1: ({ children }: { children: ReactNode }) => (
-    <h4 className="mb-1 mt-3 font-semibold">{children}</h4>
-  ),
-  h2: ({ children }: { children: ReactNode }) => (
-    <h4 className="mb-1 mt-3 font-semibold">{children}</h4>
-  ),
-  h3: ({ children }: { children: ReactNode }) => (
-    <h4 className="mb-1 mt-3 font-semibold">{children}</h4>
-  ),
-  p: ({ children }: { children: ReactNode }) => (
-    <p className="my-1">{children}</p>
-  ),
-  ul: ({ children }: { children: ReactNode }) => (
-    <ul className="my-1 ml-5 list-disc">{children}</ul>
-  ),
-  ol: ({ children }: { children: ReactNode }) => (
-    <ol className="my-1 ml-5 list-decimal">{children}</ol>
-  ),
-  a: ({ href, children }: { href?: string; children: ReactNode }) => (
-    <a href={href} target="_blank" rel="noreferrer" className={linkClass}>
-      {children}
-    </a>
-  ),
-  code: ({ children }: { children: ReactNode }) => (
-    <code className="rounded bg-slate-100 px-1 font-mono text-xs dark:bg-slate-800">
-      {children}
-    </code>
-  ),
-  pre: ({ children }: { children: ReactNode }) => (
-    <pre className="my-1 overflow-x-auto">{children}</pre>
-  ),
-  img: ({ src, alt }: { src?: string; alt?: string }) => (
-    <img src={src} alt={alt} className="my-2 max-w-full" />
-  ),
-};
-
 export const ReleaseNotes = ({ body }: { body: string }) => (
   <ReactMarkdown
     remarkPlugins={[remarkGfm]}
@@ -124,12 +86,15 @@ const Changelog = ({ update }: { update: UpdateInfo }) => {
                 href={release.url}
                 target="_blank"
                 rel="noreferrer"
-                className={`font-semibold ${linkClass}`}
+                className={`text-base font-semibold ${linkClass}`}
               >
                 {release.name ?? release.tag}
               </a>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                {release.publishedAt.toLocaleDateString()}
+              <span
+                className="text-xs text-slate-500 dark:text-slate-400"
+                title={release.publishedAt.toLocaleString()}
+              >
+                {timeSince(release.publishedAt)}
               </span>
             </h3>
             <div className="text-slate-700 dark:text-slate-300">
@@ -147,22 +112,25 @@ const Changelog = ({ update }: { update: UpdateInfo }) => {
         {update.commits.map((commit) => (
           <li
             key={commit.sha}
-            className="flex items-baseline gap-3 py-1.5"
+            className="flex items-baseline gap-3 py-1.5 first:pt-0 last:pb-0"
             data-testid="update-commit"
           >
             <a
               href={commit.url}
               target="_blank"
               rel="noreferrer"
-              className={`shrink-0 font-mono text-xs ${linkClass}`}
+              className="shrink-0 font-mono text-xs text-slate-500 hover:text-blue-600 hover:underline dark:text-slate-400 dark:hover:text-blue-400"
             >
               {commit.sha.slice(0, 7)}
             </a>
             <span className="min-w-0 flex-1 text-slate-700 dark:text-slate-300">
               <CommitMessage message={commit.message} />
             </span>
-            <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
-              {commit.committedAt.toLocaleDateString()}
+            <span
+              className="shrink-0 text-xs text-slate-500 dark:text-slate-400"
+              title={commit.committedAt.toLocaleString()}
+            >
+              {timeSince(commit.committedAt)}
             </span>
           </li>
         ))}
@@ -269,10 +237,14 @@ const UpdateBanner = () => {
         </div>
         {expanded && (
           <div
-            className="mb-2 mt-3 max-h-[60vh] overflow-y-auto rounded-md border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
+            className="mb-2 mt-3 max-w-3xl rounded-md border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
             data-testid="update-changelog"
           >
-            <Changelog update={update} />
+            {/* The fade over the bottom padding hints that the list scrolls; at the end of the
+                list it only covers the padding, so no text stays faded. */}
+            <div className="max-h-[40vh] overflow-y-auto p-4 pb-8 [mask-image:linear-gradient(to_bottom,black_calc(100%-2rem),transparent)]">
+              <Changelog update={update} />
+            </div>
           </div>
         )}
       </div>
