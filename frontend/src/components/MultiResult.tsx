@@ -5,7 +5,11 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "@heroicons/react/20/solid";
-import { ExecuteResponseResult } from "../api/ExecutionRequestApi";
+import {
+  ExecuteResponse,
+  ExecuteResponseResult,
+} from "../api/ExecutionRequestApi";
+import { WarningBanner } from "./Alert";
 import Table from "./Table";
 import IconButton from "./IconButton";
 import JsonViewer from "./JsonViewer";
@@ -32,14 +36,12 @@ const summarize = (result: ExecuteResponseResult) => {
 // The panel borrows the editor's chrome so query and result read as one
 // workspace. Wide result sets get an explicit expand into a full-viewport
 // view instead of a hidden click on the header.
-const MultiResult: FC<{ resultList: ExecuteResponseResult[] }> = ({
-  resultList,
-}) => {
+const MultiResult: FC<ExecuteResponse> = ({ results, warnings }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const collapseRef = useRef<HTMLButtonElement>(null);
-  const index = Math.min(currentIndex, resultList.length - 1);
-  const result = resultList[index];
+  const index = Math.min(currentIndex, results.length - 1);
+  const result = results[index];
   const expandable = result._type === "select" || result._type === "documents";
 
   useEffect(() => {
@@ -94,7 +96,7 @@ const MultiResult: FC<{ resultList: ExecuteResponseResult[] }> = ({
       data-testid="result-component"
     >
       <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-        {resultList.length > 1 && (
+        {results.length > 1 && (
           <div className="flex items-center gap-1">
             <IconButton
               label="Previous result"
@@ -104,12 +106,12 @@ const MultiResult: FC<{ resultList: ExecuteResponseResult[] }> = ({
               <ChevronLeftIcon className="h-4 w-4" />
             </IconButton>
             <span className="tabular-nums">
-              {index + 1} / {resultList.length}
+              {index + 1} / {results.length}
             </span>
             <IconButton
               label="Next result"
               onClick={() => setCurrentIndex(index + 1)}
-              disabled={index === resultList.length - 1}
+              disabled={index === results.length - 1}
             >
               <ChevronRightIcon className="h-4 w-4" />
             </IconButton>
@@ -139,6 +141,15 @@ const MultiResult: FC<{ resultList: ExecuteResponseResult[] }> = ({
           </button>
         )}
       </div>
+      {warnings.length > 0 && (
+        <WarningBanner className="m-3" data-testid="result-warnings">
+          {warnings.map((warning, i) => (
+            <span key={i} className="block whitespace-pre-wrap font-mono">
+              {warning}
+            </span>
+          ))}
+        </WarningBanner>
+      )}
       {body}
     </div>
   );

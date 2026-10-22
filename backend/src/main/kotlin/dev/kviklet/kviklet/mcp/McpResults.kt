@@ -202,7 +202,7 @@ data class ProxyResult(
 
 sealed class ToolExecutionResult(val kind: ConnectionKind)
 
-data class DatabaseExecutionResult(val results: List<StatementResult>) :
+data class DatabaseExecutionResult(val results: List<StatementResult>, val warnings: List<String>) :
     ToolExecutionResult(ConnectionKind.DATABASE)
 
 data class KubernetesToolExecutionResult(
@@ -228,7 +228,10 @@ data class Documents(val documents: List<String>, val documentCount: Int, val tr
 data class StatementError(val errorCode: Int, val message: String?)
 
 fun ExecutionResult.toToolResult(): ToolExecutionResult = when (this) {
-    is DBExecutionResult -> DatabaseExecutionResult(results.map { it.toStatementResult() })
+    is DBExecutionResult -> DatabaseExecutionResult(
+        results.map { it.toStatementResult() },
+        warnings.take(MAX_RESULT_ROWS).map { it.take(MAX_CELL_CHARS) },
+    )
 
     is KubernetesExecutionResult -> {
         val stdout = messages.joinToString("\n")

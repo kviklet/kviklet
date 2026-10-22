@@ -1,5 +1,5 @@
 import {
-  ExecuteResponseResult,
+  ExecuteResponse,
   DatasourceExecutionRequestResponseWithComments,
 } from "../../api/ExecutionRequestApi";
 import MultiResult from "../../components/MultiResult";
@@ -15,7 +15,7 @@ function DatasourceRequestDisplay({
 }: {
   request: DatasourceExecutionRequestResponseWithComments | undefined;
   updateRequest: (request: { statement?: string }) => Promise<void>;
-  results: ExecuteResponseResult[] | undefined;
+  results: ExecuteResponse | undefined;
   dataLoading: boolean;
   executionError: string | undefined;
 }) {
@@ -31,8 +31,8 @@ function DatasourceRequestDisplay({
             <Spinner />
           </div>
         )) ||
-          (results && results.length > 0 && (
-            <MultiResult resultList={results} />
+          (results && results.results.length > 0 && (
+            <MultiResult {...results} />
           ))}
       </div>
       {executionError && (

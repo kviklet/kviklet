@@ -71,7 +71,7 @@ class JDBCExecutorDryRunTest {
             auth,
             query,
             isMSSQL = false,
-        )
+        ).results
 
         // Verify the dry run returned success
         assertEquals(1, results.size)
@@ -106,7 +106,7 @@ class JDBCExecutorDryRunTest {
             auth,
             query,
             isMSSQL = false,
-        )
+        ).results
 
         // Verify the dry run returned success
         assertEquals(1, results.size)
@@ -143,7 +143,7 @@ class JDBCExecutorDryRunTest {
             auth,
             query,
             isMSSQL = false,
-        )
+        ).results
 
         // Verify the dry run returned success
         assertEquals(1, results.size)
@@ -179,7 +179,7 @@ class JDBCExecutorDryRunTest {
             auth,
             query,
             isMSSQL = false,
-        )
+        ).results
 
         // Verify the dry run returned correct results
         assertEquals(1, results.size)
@@ -201,7 +201,7 @@ class JDBCExecutorDryRunTest {
             auth,
             query,
             isMSSQL = false,
-        )
+        ).results
 
         // Verify the dry run returned an error
         assertEquals(1, results.size)
@@ -232,7 +232,7 @@ class JDBCExecutorDryRunTest {
             auth,
             query,
             isMSSQL = false,
-        )
+        ).results
 
         // Verify all statements executed
         assertEquals(3, results.size)

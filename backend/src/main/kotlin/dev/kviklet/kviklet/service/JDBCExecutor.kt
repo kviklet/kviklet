@@ -4,6 +4,7 @@ import com.zaxxer.hikari.HikariDataSource
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.ErrorQueryResult
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
+import dev.kviklet.kviklet.service.dto.ExecutorOutput
 import dev.kviklet.kviklet.service.dto.QueryResult
 import dev.kviklet.kviklet.service.dto.RecordsQueryResult
 import dev.kviklet.kviklet.service.dto.UpdateQueryResult
@@ -42,7 +43,7 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
         query: String,
         MSSQLexplain: Boolean = false,
         maxRowsToStore: Int? = null,
-    ): List<QueryResult> {
+    ): ExecutorOutput {
         createConnection(connectionString, authenticationDetails).use { dataSource: HikariDataSource ->
             try {
                 dataSource.connection.createStatement().use { statement ->
@@ -53,20 +54,10 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
                     if (MSSQLexplain) {
                         statement.execute("SET SHOWPLAN_TEXT ON")
                     }
-                    var hasResults = statement.execute(query)
-                    val queryResults = mutableListOf<QueryResult>()
-
-                    while (hasResults || statement.updateCount != -1) {
-                        statement.resultSet?.use { resultSet ->
-                            queryResults.add(createRecordsQueryResult(resultSet, maxRowsToStore))
-                        } ?: queryResults.add(UpdateQueryResult(statement.updateCount))
-
-                        hasResults = statement.moreResults
-                    }
-                    return queryResults
+                    return collectResults(statement, query, maxRowsToStore)
                 }
             } catch (e: SQLException) {
-                return listOf(sqlExceptionToResult(e))
+                return ExecutorOutput(listOf(sqlExceptionToResult(e)))
             } finally {
                 activeStatements.remove(executionRequestId.toString())
             }
@@ -80,7 +71,7 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
         query: String,
         isMSSQL: Boolean = false,
         maxRowsToStore: Int = 0,
-    ): List<QueryResult> {
+    ): ExecutorOutput {
         createConnection(connectionString, authenticationDetails).use { dataSource: HikariDataSource ->
             try {
                 dataSource.connection.use { connection ->
@@ -99,18 +90,7 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
                                 statement.execute("SET IMPLICIT_TRANSACTIONS ON")
                             }
 
-                            var hasResults = statement.execute(query)
-                            val queryResults = mutableListOf<QueryResult>()
-
-                            while (hasResults || statement.updateCount != -1) {
-                                statement.resultSet?.use { resultSet ->
-                                    queryResults.add(createRecordsQueryResult(resultSet, maxRowsToStore))
-                                } ?: queryResults.add(UpdateQueryResult(statement.updateCount))
-
-                                hasResults = statement.moreResults
-                            }
-
-                            return queryResults
+                            return collectResults(statement, query, maxRowsToStore)
                         } finally {
                             // Always rollback the transaction to undo any changes
                             try {
@@ -124,11 +104,26 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
                     }
                 }
             } catch (e: SQLException) {
-                return listOf(sqlExceptionToResult(e))
+                return ExecutorOutput(listOf(sqlExceptionToResult(e)))
             } finally {
                 activeStatements.remove(executionRequestId.toString())
             }
         }
+    }
+
+    private fun collectResults(statement: Statement, query: String, maxRowsToStore: Int?): ExecutorOutput {
+        var hasResults = statement.execute(query)
+        val queryResults = mutableListOf<QueryResult>()
+
+        while (hasResults || statement.updateCount != -1) {
+            statement.resultSet?.use { resultSet ->
+                queryResults.add(createRecordsQueryResult(resultSet, maxRowsToStore))
+            } ?: queryResults.add(UpdateQueryResult(statement.updateCount))
+
+            hasResults = statement.moreResults
+        }
+        val warnings = generateSequence(statement.warnings) { it.nextWarning }.mapNotNull { it.message }.toList()
+        return ExecutorOutput(queryResults, warnings)
     }
 
     fun cancelQuery(executionRequestId: ExecutionRequestId) {

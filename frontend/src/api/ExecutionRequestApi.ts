@@ -586,6 +586,7 @@ const DBExecuteResponseResultSchema = z.union([
 
 const DBExecuteResponseSchema = z.object({
   results: z.array(DBExecuteResponseResultSchema),
+  warnings: z.array(z.string()),
 });
 
 const KubernetesExecuteResponseSchema = z.object({
@@ -605,17 +606,12 @@ type SelectExecuteResponse = z.infer<typeof SelectExecuteResponseSchema>;
 type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 type Column = z.infer<typeof ColumnSchema>;
 
-type QueryResult = {
-  results?: DBExecuteResponseResult[];
-  error?: ApiErrorResponse;
-};
-
 const runQuery = async (
   id: string,
   query?: string,
   explain: boolean = false,
   dryRun: boolean = false,
-): Promise<ApiResponse<QueryResult>> => {
+): Promise<ApiResponse<DBExecuteResponse>> => {
   return fetchWithErrorHandling(
     requestUrl + id + "/execute",
     {
@@ -676,7 +672,7 @@ export {
   executeCommand,
   streamDump,
   downloadResults,
-  DBExecuteResponseResultSchema,
+  DBExecuteResponseSchema,
 };
 
 export type {
@@ -699,7 +695,6 @@ export type {
   Execute,
   Column,
   ApiErrorResponse,
-  QueryResult,
   ProxyResponse,
   KubernetesExecuteResponse,
   RoleApprovalProgress,

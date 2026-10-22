@@ -38,7 +38,7 @@ abstract class AbstractJDBCExecutorTest(@Autowired val JDBCExecutorService: JDBC
         url,
         AuthenticationDetails.UserPassword(username, password),
         query,
-    ).get(0)
+    ).results[0]
 
     @BeforeEach
     fun setup() {

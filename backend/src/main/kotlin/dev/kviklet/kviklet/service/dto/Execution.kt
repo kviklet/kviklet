@@ -11,6 +11,8 @@ sealed class QueryResult {
     abstract fun toResultLog(): ResultLog
 }
 
+data class ExecutorOutput(val results: List<QueryResult>, val warnings: List<String> = emptyList())
+
 data class RecordsQueryResult(
     val columns: List<ColumnInfo>,
     val data: List<Map<String, String>>,

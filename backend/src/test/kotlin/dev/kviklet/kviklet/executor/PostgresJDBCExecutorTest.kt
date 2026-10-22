@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.executor
 
 import dev.kviklet.kviklet.service.ColumnInfo
 import dev.kviklet.kviklet.service.JDBCExecutor
+import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.ErrorQueryResult
 import dev.kviklet.kviklet.service.dto.RecordsQueryResult
 import io.kotest.matchers.shouldBe
@@ -69,6 +70,19 @@ class PostgresJDBCExecutorTest(@Autowired override val JDBCExecutorService: JDBC
                 0,
                 "FATAL: password authentication failed for user \"root\"",
             )
+    }
+
+    @Test
+    fun testWarnings() {
+        val result = JDBCExecutorService.execute(
+            executionRequestId,
+            db.jdbcUrl,
+            AuthenticationDetails.UserPassword(db.username, db.password),
+            "SELECT 1; DO $$ BEGIN RAISE NOTICE 'first'; RAISE WARNING 'second'; END $$;",
+        )
+
+        result.results.size shouldBe 2
+        result.warnings shouldBe listOf("first", "second")
     }
 
     @Test

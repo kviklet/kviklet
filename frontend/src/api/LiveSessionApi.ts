@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { userResponseSchema } from "./UserApi";
-import { DBExecuteResponseResultSchema } from "./ExecutionRequestApi";
+import { DBExecuteResponseSchema } from "./ExecutionRequestApi";
 
 // Helper function to transform 'type' to '_type' for consistency with ExecutionRequestApi
 function withType<T, U extends string>(schema: z.ZodSchema<T>, typeValue: U) {
@@ -52,10 +52,9 @@ const statusMessage = z.object({
   ref: z.string(),
 });
 
-const resultMessage = z.object({
+const resultMessage = DBExecuteResponseSchema.extend({
   type: z.literal("result"),
   sessionId: z.string(),
-  results: z.array(DBExecuteResponseResultSchema),
   event: executeEventResponseSchema.optional(),
 });
 

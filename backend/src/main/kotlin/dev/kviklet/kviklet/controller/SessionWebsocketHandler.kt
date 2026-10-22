@@ -60,6 +60,7 @@ data class ResultMessage(
     val type: String = "result",
     override val sessionId: LiveSessionId,
     val results: List<ExecutionResultResponse>,
+    val warnings: List<String>,
     val event: EventResponse? = null,
 ) : ResponseMessage(sessionId)
 
@@ -193,6 +194,7 @@ class SessionWebsocketHandler(
                                     val resultMessage = ResultMessage(
                                         sessionId = liveSessionId,
                                         results = executionResult.results.map { ExecutionResultResponse.fromDto(it) },
+                                        warnings = executionResult.warnings,
                                         event = executionResult.event?.let { EventResponse.fromEvent(it) },
                                     )
                                     broadcastResultMessage(liveSessionId, resultMessage)

@@ -387,6 +387,7 @@ sealed class ExecutionResponse {
         fun fromDto(results: ExecutionResult): ExecutionResponse = when (results) {
             is DBExecutionResult -> DatasourceExecutionResponse(
                 results.results.map { it -> ExecutionResultResponse.fromDto(it) },
+                results.warnings,
             )
 
             is KubernetesExecutionResult -> KubernetesExecutionResponse(
@@ -398,7 +399,8 @@ sealed class ExecutionResponse {
         }
     }
 
-    data class DatasourceExecutionResponse(val results: List<ExecutionResultResponse>) : ExecutionResponse()
+    data class DatasourceExecutionResponse(val results: List<ExecutionResultResponse>, val warnings: List<String>) :
+        ExecutionResponse()
 
     data class KubernetesExecutionResponse(
         val errors: List<String>,
