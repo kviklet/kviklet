@@ -54,12 +54,14 @@ class MSSQLJDBCExecutorTest(@Autowired override val JDBCExecutorService: JDBCExe
             ErrorQueryResult(
                 208,
                 "Invalid object name 'foo.non_existent_table'.",
+                "S0002",
             )
 
         executeQuery("FOOBAR") shouldBe
             ErrorQueryResult(
                 2812,
                 "Could not find stored procedure 'FOOBAR'.",
+                "S0062",
             )
     }
 

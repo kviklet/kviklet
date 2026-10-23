@@ -2,6 +2,9 @@ package dev.kviklet.kviklet.executor
 
 import dev.kviklet.kviklet.service.ColumnInfo
 import dev.kviklet.kviklet.service.JDBCExecutor
+import dev.kviklet.kviklet.service.dto.AuthenticationDetails
+import dev.kviklet.kviklet.service.dto.ExecutionMessage
+import dev.kviklet.kviklet.service.dto.MessageLevel
 import dev.kviklet.kviklet.service.dto.RecordsQueryResult
 import io.kotest.matchers.shouldBe
 import org.junit.jupiter.api.Test
@@ -110,5 +113,18 @@ class MysqlJDBCExecutorTest(@Autowired override val JDBCExecutorService: JDBCExe
                 ),
             ),
         )
+    }
+
+    @Test
+    fun testMessages() {
+        // MySQL answers a division by zero with NULL and a warning; its driver reports no level
+        val result = JDBCExecutorService.execute(
+            executionRequestId,
+            db.jdbcUrl,
+            AuthenticationDetails.UserPassword(db.username, db.password),
+            "SELECT 1/0;",
+        )
+
+        result.messages shouldBe listOf(ExecutionMessage(MessageLevel.WARNING, "Division by 0"))
     }
 }

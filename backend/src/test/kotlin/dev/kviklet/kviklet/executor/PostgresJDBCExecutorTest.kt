@@ -4,6 +4,8 @@ import dev.kviklet.kviklet.service.ColumnInfo
 import dev.kviklet.kviklet.service.JDBCExecutor
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.ErrorQueryResult
+import dev.kviklet.kviklet.service.dto.ExecutionMessage
+import dev.kviklet.kviklet.service.dto.MessageLevel
 import dev.kviklet.kviklet.service.dto.RecordsQueryResult
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -55,12 +57,14 @@ class PostgresJDBCExecutorTest(@Autowired override val JDBCExecutorService: JDBC
             ErrorQueryResult(
                 0,
                 "ERROR: relation \"foo.non_existent_table\" does not exist\n  Position: 15",
+                "42P01",
             )
 
         executeQuery("FOOBAR") shouldBe
             ErrorQueryResult(
                 0,
                 "ERROR: syntax error at or near \"FOOBAR\"\n  Position: 1",
+                "42601",
             )
     }
 
@@ -70,11 +74,12 @@ class PostgresJDBCExecutorTest(@Autowired override val JDBCExecutorService: JDBC
             ErrorQueryResult(
                 0,
                 "FATAL: password authentication failed for user \"root\"",
+                "28P01",
             )
     }
 
     @Test
-    fun testWarnings() {
+    fun testMessages() {
         val result = JDBCExecutorService.execute(
             executionRequestId,
             db.jdbcUrl,
@@ -83,11 +88,14 @@ class PostgresJDBCExecutorTest(@Autowired override val JDBCExecutorService: JDBC
         )
 
         result.results.size shouldBe 2
-        result.warnings shouldBe listOf("first", "second")
+        result.messages shouldBe listOf(
+            ExecutionMessage(MessageLevel.NOTICE, "first"),
+            ExecutionMessage(MessageLevel.WARNING, "second"),
+        )
     }
 
     @Test
-    fun testWarningsBeforeError() {
+    fun testMessagesBeforeError() {
         val result = JDBCExecutorService.execute(
             executionRequestId,
             db.jdbcUrl,
@@ -95,8 +103,10 @@ class PostgresJDBCExecutorTest(@Autowired override val JDBCExecutorService: JDBC
             "DO $$ BEGIN RAISE NOTICE 'before'; RAISE EXCEPTION 'boom'; END $$;",
         )
 
-        (result.results.single() as ErrorQueryResult).message shouldContain "boom"
-        result.warnings shouldBe listOf("before")
+        val error = result.results.single() as ErrorQueryResult
+        error.message shouldContain "boom"
+        error.sqlState shouldBe "P0001"
+        result.messages shouldBe listOf(ExecutionMessage(MessageLevel.NOTICE, "before"))
     }
 
     @Test

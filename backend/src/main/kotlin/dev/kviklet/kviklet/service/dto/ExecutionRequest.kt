@@ -81,7 +81,7 @@ sealed class ExecutionResult(open val executionRequest: ExecutionRequestDetails)
 data class DBExecutionResult(
     override val executionRequest: ExecutionRequestDetails,
     val results: List<QueryResult>,
-    val warnings: List<String>,
+    val messages: List<ExecutionMessage>,
     val event: Event? = null,
 ) : ExecutionResult(executionRequest)
 

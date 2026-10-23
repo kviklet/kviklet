@@ -4,11 +4,9 @@ import { timeSince } from "../../Requests";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { solid } from "@fortawesome/fontawesome-svg-core/import.macro";
 import { AbsoluteInitialBubble as InitialBubble } from "../../../components/InitialBubble";
-import { Disclosure } from "@headlessui/react";
-import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import { Highlighter } from "../components/Highlighter";
-import JsonViewer from "../../../components/JsonViewer";
 import TimelineItem from "./TimelineItem";
+import ExecuteEventResults from "./ExecuteEventResults";
 import UserName from "../../../components/UserName";
 import ViaSource from "../../../components/ViaSource";
 
@@ -88,158 +86,7 @@ function ExecuteEvent({
           </div>
         )}
         {event.results && event.results.length > 0 && (
-          <div className="px-4 dark:bg-slate-900">
-            <Disclosure>
-              {({ open }) => (
-                <>
-                  <Disclosure.Button className="w-full py-2 ">
-                    <div className="flex w-full flex-row justify-start">
-                      <p className="text-xs">Results</p>
-                      {open ? (
-                        <ChevronDownIcon className="h-4 w-4 text-slate-400 dark:text-slate-500"></ChevronDownIcon>
-                      ) : (
-                        <ChevronRightIcon className="h-4 w-4 text-slate-400 dark:text-slate-500"></ChevronRightIcon>
-                      )}
-                    </div>
-                  </Disclosure.Button>
-                  <Disclosure.Panel>
-                    <div className="mb-2 flex flex-col space-y-2 text-sm dark:text-slate-300">
-                      {event.results?.map((result, index) => {
-                        const renderResult = () => {
-                          if (result.type === "QUERY") {
-                            return (
-                              <div>
-                                <div className="flex justify-between">
-                                  <span>
-                                    Returned {result.columnCount} Column(s) with{" "}
-                                    {result.rowCount} row(s).
-                                  </span>
-                                </div>
-                                {result.storedRows &&
-                                  result.storedRows.length > 0 && (
-                                    <>
-                                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                        Stored {result.storedRowCount} of{" "}
-                                        {result.rowCount} rows
-                                      </div>
-                                      {connectionType ===
-                                      DatabaseType.MONGODB ? (
-                                        <div className="mt-2">
-                                          <JsonViewer
-                                            data={result.storedRows}
-                                          />
-                                        </div>
-                                      ) : (
-                                        <div className="mt-2 max-h-96 overflow-auto rounded border border-slate-200 dark:border-slate-700">
-                                          <table className="min-w-full text-xs">
-                                            <thead className="bg-slate-100 dark:bg-slate-800">
-                                              <tr>
-                                                {result.columns?.map(
-                                                  (col, i) => (
-                                                    <th
-                                                      key={i}
-                                                      className="px-2 py-1 text-left font-medium text-slate-600 dark:text-slate-300"
-                                                    >
-                                                      {col.label}
-                                                    </th>
-                                                  ),
-                                                )}
-                                              </tr>
-                                            </thead>
-                                            <tbody>
-                                              {result.storedRows?.map(
-                                                (row, i) => (
-                                                  <tr
-                                                    key={i}
-                                                    className="border-t border-slate-200 dark:border-slate-700"
-                                                  >
-                                                    {result.columns?.map(
-                                                      (col, j) => (
-                                                        <td
-                                                          key={j}
-                                                          className="px-2 py-1 text-slate-700 dark:text-slate-300"
-                                                        >
-                                                          {row[col.label]}
-                                                        </td>
-                                                      ),
-                                                    )}
-                                                  </tr>
-                                                ),
-                                              )}
-                                            </tbody>
-                                          </table>
-                                        </div>
-                                      )}
-                                    </>
-                                  )}
-                              </div>
-                            );
-                          } else if (result.type === "ERROR") {
-                            return (
-                              <div className="flex justify-between text-red-600 dark:text-red-400">
-                                <span>
-                                  Query resulted in Error "{result.message}""
-                                  with code "{result.errorCode}"".
-                                </span>
-                              </div>
-                            );
-                          } else if (result.type === "UPDATE") {
-                            return (
-                              <div className="flex justify-between">
-                                <span>
-                                  Statement affected {result.rowsUpdated}{" "}
-                                  row(s).
-                                </span>
-                              </div>
-                            );
-                          } else if (result.type === "KUBERNETES_OUTPUT") {
-                            return (
-                              <div>
-                                {result.storedOutput && (
-                                  <>
-                                    <div className="text-xs text-slate-500 dark:text-slate-400">
-                                      Output
-                                      {result.outputTruncated && " (truncated)"}
-                                      :
-                                    </div>
-                                    <pre className="mt-1 max-h-96 overflow-auto whitespace-pre-wrap rounded bg-slate-100 p-2 text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                      {result.storedOutput}
-                                    </pre>
-                                  </>
-                                )}
-                                {result.storedErrors && (
-                                  <>
-                                    <div className="mt-2 text-xs text-red-600 dark:text-red-400">
-                                      Errors
-                                      {result.outputTruncated && " (truncated)"}
-                                      :
-                                    </div>
-                                    <pre className="mt-1 max-h-96 overflow-auto whitespace-pre-wrap rounded bg-red-50 p-2 text-xs text-red-700 dark:bg-red-900/20 dark:text-red-400">
-                                      {result.storedErrors}
-                                    </pre>
-                                  </>
-                                )}
-                                {result.exitCode !== null &&
-                                  result.exitCode !== undefined && (
-                                    <div className="mt-2 text-xs text-slate-500">
-                                      Exit code: {result.exitCode}
-                                    </div>
-                                  )}
-                              </div>
-                            );
-                          } else {
-                            const _exhaustiveCheck: never = result;
-                            return _exhaustiveCheck;
-                          }
-                        };
-                        return <div key={index}>{renderResult()}</div>;
-                      })}
-                    </div>
-                  </Disclosure.Panel>
-                </>
-              )}
-            </Disclosure>
-          </div>
+          <ExecuteEventResults event={event} connectionType={connectionType} />
         )}
       </div>
     </TimelineItem>

@@ -8,6 +8,7 @@ import dev.kviklet.kviklet.security.UserDetailsWithId
 import dev.kviklet.kviklet.service.UserDeactivatedEvent
 import dev.kviklet.kviklet.service.UserService
 import dev.kviklet.kviklet.service.dto.DBExecutionResult
+import dev.kviklet.kviklet.service.dto.ExecutionMessage
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.LiveSession
 import dev.kviklet.kviklet.service.dto.LiveSessionId
@@ -60,7 +61,7 @@ data class ResultMessage(
     val type: String = "result",
     override val sessionId: LiveSessionId,
     val results: List<ExecutionResultResponse>,
-    val warnings: List<String>,
+    val messages: List<ExecutionMessage>,
     val event: EventResponse? = null,
 ) : ResponseMessage(sessionId)
 
@@ -194,7 +195,7 @@ class SessionWebsocketHandler(
                                     val resultMessage = ResultMessage(
                                         sessionId = liveSessionId,
                                         results = executionResult.results.map { ExecutionResultResponse.fromDto(it) },
-                                        warnings = executionResult.warnings,
+                                        messages = executionResult.messages,
                                         event = executionResult.event?.let { EventResponse.fromEvent(it) },
                                     )
                                     broadcastResultMessage(liveSessionId, resultMessage)

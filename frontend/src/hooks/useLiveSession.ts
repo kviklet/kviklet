@@ -128,7 +128,7 @@ const useLiveSession = (
         case "result": {
           setResults({
             results: messageData.results,
-            warnings: messageData.warnings,
+            messages: messageData.messages,
           });
           setIsLoading(false);
           // Add the event to websocket events if it exists

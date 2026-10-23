@@ -637,12 +637,12 @@ class ExecutionRequestService(
         val resultLogs = result.results.map {
             it.toResultLog()
         }
-        val savedEvent = eventService.addResultLogs(event.eventId!!, resultLogs)
+        val savedEvent = eventService.addResultLogs(event.eventId!!, resultLogs, result.messages)
 
         return DBExecutionResult(
             executionRequest = executionRequest,
             results = result.results,
-            warnings = result.warnings,
+            messages = result.messages,
             event = savedEvent,
         )
     }
@@ -703,12 +703,12 @@ class ExecutionRequestService(
         val resultLogs = result.results.map {
             it.toResultLog()
         }
-        val savedEvent = eventService.addResultLogs(event.eventId!!, resultLogs)
+        val savedEvent = eventService.addResultLogs(event.eventId!!, resultLogs, result.messages)
 
         return DBExecutionResult(
             executionRequest = executionRequest,
             results = result.results,
-            warnings = result.warnings,
+            messages = result.messages,
             event = savedEvent,
         )
     }
@@ -999,7 +999,7 @@ class ExecutionRequestService(
 
         return DBExecutionResult(
             results = result.results,
-            warnings = result.warnings,
+            messages = result.messages,
             executionRequest = executionRequest,
         )
             .also { trackExecution(executionRequest, ExecutionMode.EXPLAIN, it) }
@@ -1061,6 +1061,14 @@ class ExecutionRequestService(
                                 appendLine("  KUBERNETES OUTPUT (Exit Code: ${result.exitCode ?: "unknown"})")
                             }
                         }
+                    }
+                }
+                if (execution.messages.isNotEmpty()) {
+                    appendLine("Messages:")
+                    execution.messages.forEach { appendLine("  ${it.level}: ${it.message}") }
+                    val notStored = execution.messageCount - execution.messages.size
+                    if (notStored > 0) {
+                        appendLine("  ($notStored more not stored)")
                     }
                 }
                 appendLine("-".repeat(80))

@@ -3,16 +3,20 @@ package dev.kviklet.kviklet.service
 import com.zaxxer.hikari.HikariDataSource
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.ErrorQueryResult
+import dev.kviklet.kviklet.service.dto.ExecutionMessage
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.ExecutorOutput
+import dev.kviklet.kviklet.service.dto.MessageLevel
 import dev.kviklet.kviklet.service.dto.QueryResult
 import dev.kviklet.kviklet.service.dto.RecordsQueryResult
 import dev.kviklet.kviklet.service.dto.UpdateQueryResult
+import org.postgresql.util.PSQLWarning
 import org.slf4j.LoggerFactory
 import org.springframework.boot.jdbc.DataSourceBuilder
 import org.springframework.stereotype.Service
 import java.sql.ResultSet
 import java.sql.SQLException
+import java.sql.SQLWarning
 import java.sql.Statement
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -125,13 +129,28 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
             }
         } catch (e: SQLException) {
             // Notices raised before the failure often explain it, so keep them with the error
-            return ExecutorOutput(listOf(sqlExceptionToResult(e)), readWarnings(statement))
+            return ExecutorOutput(listOf(sqlExceptionToResult(e)), readMessages(statement))
         }
-        return ExecutorOutput(queryResults, readWarnings(statement))
+        return ExecutorOutput(queryResults, readMessages(statement))
     }
 
-    private fun readWarnings(statement: Statement): List<String> =
-        generateSequence(statement.warnings) { it.nextWarning }.mapNotNull { it.message }.toList()
+    private fun readMessages(statement: Statement): List<ExecutionMessage> =
+        generateSequence(statement.warnings) { it.nextWarning }
+            .mapNotNull { warning -> warning.message?.let { ExecutionMessage(messageLevel(warning), it) } }
+            .toList()
+
+    // JDBC reports notices and warnings alike as SQLWarning. Postgres sends the severity
+    // (in the server's language, hence the SQLSTATE fallback: class 00 is a notice, 01 a warning).
+    // MySQL's driver drops the level, so its messages stay warnings.
+    private fun messageLevel(warning: SQLWarning): MessageLevel {
+        val severity = (warning as? PSQLWarning)?.serverErrorMessage?.severity
+        return when {
+            severity == "WARNING" -> MessageLevel.WARNING
+            severity in setOf("NOTICE", "INFO", "LOG", "DEBUG") -> MessageLevel.NOTICE
+            warning.sqlState?.startsWith("00") == true -> MessageLevel.NOTICE
+            else -> MessageLevel.WARNING
+        }
+    }
 
     fun cancelQuery(executionRequestId: ExecutionRequestId) {
         try {
@@ -149,7 +168,7 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
             message += "--> ${cause.javaClass}: ${cause.message} "
             cause = cause.cause
         }
-        return ErrorQueryResult(e.errorCode, message)
+        return ErrorQueryResult(e.errorCode, message, e.sqlState)
     }
 
     fun testCredentials(connectionString: String, authenticationDetails: AuthenticationDetails): TestCredentialsResult {

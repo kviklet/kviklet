@@ -61,10 +61,17 @@ const EditEvent = withType(
   "EDIT",
 );
 
+// A notice or warning the database sent alongside a statement that still ran
+const ExecutionMessageSchema = z.object({
+  level: z.enum(["NOTICE", "WARNING"]),
+  message: z.string(),
+});
+
 const ErrorResultLog = z.object({
   type: z.literal("ERROR"),
   errorCode: z.number(),
   message: z.string(),
+  sqlState: z.string().optional().nullable(),
 });
 
 const UpdateResultLog = z.object({
@@ -112,6 +119,8 @@ const ExecuteEvent = withType(
     source: requestSourceSchema.optional(),
     query: z.string().optional().nullable(),
     results: z.array(ResultLog).optional(),
+    messages: z.array(ExecutionMessageSchema).optional(),
+    messageCount: z.number().optional(),
     command: z.string().optional().nullable(),
     podName: z.string().optional().nullable(),
     namespace: z.string().optional().nullable(),
@@ -560,6 +569,7 @@ const ErrorResponseSchema = withType(
   z.object({
     errorCode: z.number(),
     message: z.string().optional(),
+    sqlState: z.string().optional().nullable(),
   }),
   "error",
 );
@@ -586,7 +596,7 @@ const DBExecuteResponseResultSchema = z.union([
 
 const DBExecuteResponseSchema = z.object({
   results: z.array(DBExecuteResponseResultSchema),
-  warnings: z.array(z.string()),
+  messages: z.array(ExecutionMessageSchema),
 });
 
 const KubernetesExecuteResponseSchema = z.object({
@@ -605,6 +615,7 @@ type UpdateExecuteResponse = z.infer<typeof UpdateExecuteResponseSchema>;
 type SelectExecuteResponse = z.infer<typeof SelectExecuteResponseSchema>;
 type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 type Column = z.infer<typeof ColumnSchema>;
+type ExecutionMessage = z.infer<typeof ExecutionMessageSchema>;
 
 const runQuery = async (
   id: string,
@@ -694,6 +705,7 @@ export type {
   Event,
   Execute,
   Column,
+  ExecutionMessage,
   ApiErrorResponse,
   ProxyResponse,
   KubernetesExecuteResponse,
