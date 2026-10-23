@@ -6,6 +6,7 @@ import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.ErrorQueryResult
 import dev.kviklet.kviklet.service.dto.RecordsQueryResult
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -83,6 +84,19 @@ class PostgresJDBCExecutorTest(@Autowired override val JDBCExecutorService: JDBC
 
         result.results.size shouldBe 2
         result.warnings shouldBe listOf("first", "second")
+    }
+
+    @Test
+    fun testWarningsBeforeError() {
+        val result = JDBCExecutorService.execute(
+            executionRequestId,
+            db.jdbcUrl,
+            AuthenticationDetails.UserPassword(db.username, db.password),
+            "DO $$ BEGIN RAISE NOTICE 'before'; RAISE EXCEPTION 'boom'; END $$;",
+        )
+
+        (result.results.single() as ErrorQueryResult).message shouldContain "boom"
+        result.warnings shouldBe listOf("before")
     }
 
     @Test

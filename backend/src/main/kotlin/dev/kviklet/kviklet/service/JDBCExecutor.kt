@@ -112,19 +112,26 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
     }
 
     private fun collectResults(statement: Statement, query: String, maxRowsToStore: Int?): ExecutorOutput {
-        var hasResults = statement.execute(query)
         val queryResults = mutableListOf<QueryResult>()
+        try {
+            var hasResults = statement.execute(query)
 
-        while (hasResults || statement.updateCount != -1) {
-            statement.resultSet?.use { resultSet ->
-                queryResults.add(createRecordsQueryResult(resultSet, maxRowsToStore))
-            } ?: queryResults.add(UpdateQueryResult(statement.updateCount))
+            while (hasResults || statement.updateCount != -1) {
+                statement.resultSet?.use { resultSet ->
+                    queryResults.add(createRecordsQueryResult(resultSet, maxRowsToStore))
+                } ?: queryResults.add(UpdateQueryResult(statement.updateCount))
 
-            hasResults = statement.moreResults
+                hasResults = statement.moreResults
+            }
+        } catch (e: SQLException) {
+            // Notices raised before the failure often explain it, so keep them with the error
+            return ExecutorOutput(listOf(sqlExceptionToResult(e)), readWarnings(statement))
         }
-        val warnings = generateSequence(statement.warnings) { it.nextWarning }.mapNotNull { it.message }.toList()
-        return ExecutorOutput(queryResults, warnings)
+        return ExecutorOutput(queryResults, readWarnings(statement))
     }
+
+    private fun readWarnings(statement: Statement): List<String> =
+        generateSequence(statement.warnings) { it.nextWarning }.mapNotNull { it.message }.toList()
 
     fun cancelQuery(executionRequestId: ExecutionRequestId) {
         try {
