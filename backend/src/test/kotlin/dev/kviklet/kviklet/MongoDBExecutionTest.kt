@@ -152,6 +152,21 @@ class MongoDBExecutionTest {
             verifyExecutionsList(errorRequest.getId(), userCookie)
             verifyErrorExecutionRequestDetails(errorRequest.getId(), userCookie)
         }
+
+        @Test
+        fun `when executing a query that is not a command document then return an error result`() {
+            val invalidRequest = executionRequestHelper.createExecutionRequest(
+                author = testUser,
+                statement = "db.testCollection.find({})",
+                connection = testConnection,
+            )
+            val reviewerCookie = userHelper.login(email = testReviewer.email, mockMvc = mockMvc)
+            val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+            approveRequest(invalidRequest.getId(), "Approved", reviewerCookie)
+
+            executeErrorRequestAndAssert(invalidRequest.getId(), userCookie)
+            verifyErrorExecutionRequestDetails(invalidRequest.getId(), userCookie)
+        }
     }
 
     @Test
