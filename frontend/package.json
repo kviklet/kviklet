@@ -66,7 +66,7 @@
     "@types/wicg-file-system-access": "^2023.10.5",
     "@typescript-eslint/eslint-plugin": "^6.7.0",
     "@typescript-eslint/parser": "^6.7.0",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^4.1.12",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-react": "^7.33.2",
@@ -77,19 +77,21 @@
     "prettier": "^3.0.3",
     "prettier-plugin-tailwindcss": "^0.5.14",
     "typescript": "^5.2.2",
-    "vite": "^7.3.2",
-    "vitest": "^4.1.11"
+    "vite": "^7.3.7",
+    "vitest": "^4.1.12"
   },
   "overrides": {
     "esbuild": "^0.28.1",
     "prismjs": "^1.30.0",
     "@tootallnate/once": "^3.0.1",
-    "brace-expansion@1": "^1.1.18",
+    "brace-expansion@1": "^1.1.21",
     "brace-expansion@2": "^2.1.4",
     "flatted": "^3.4.2",
     "picomatch@2": "^2.3.2",
     "picomatch@4": "^4.0.4",
     "yaml@1": "^1.10.3",
-    "yaml@2": "^2.8.3"
+    "yaml@2": "^2.8.3",
+    "source-map-js": "^1.2.2",
+    "postcss-selector-parser": "^7.1.7"
   }
 }
