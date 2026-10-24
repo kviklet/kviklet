@@ -63,6 +63,19 @@ describe("MultiResult", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows the messages of a run that returned no results", () => {
+    render(
+      <MultiResult
+        results={[]}
+        messages={[{ level: "NOTICE", message: "printed from the batch" }]}
+      />,
+    );
+    expect(screen.getByText("No results")).toBeInTheDocument();
+    expect(screen.getByTestId("execution-messages")).toHaveTextContent(
+      "NOTICEprinted from the batch",
+    );
+  });
+
   it("collapses long message lists until asked", () => {
     const many: ExecutionMessage[] = Array.from({ length: 7 }, (_, i) => ({
       level: "NOTICE",

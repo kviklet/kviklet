@@ -272,7 +272,8 @@ export default function LiveSessionWebsockets({
           <div className="flex justify-center py-6">
             <Spinner />
           </div>
-        ) : results && results.results.length > 0 ? (
+        ) : results &&
+          (results.results.length > 0 || results.messages.length > 0) ? (
           <MultiResult {...results} />
         ) : (
           isReady && (

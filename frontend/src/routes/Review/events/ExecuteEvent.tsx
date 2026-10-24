@@ -85,7 +85,8 @@ function ExecuteEvent({
             <Highlighter>{event.command}</Highlighter>
           </div>
         )}
-        {event.results && event.results.length > 0 && (
+        {((event.results?.length ?? 0) > 0 ||
+          (event.messageCount ?? 0) > 0) && (
           <ExecuteEventResults event={event} connectionType={connectionType} />
         )}
       </div>

@@ -84,6 +84,22 @@ describe("ExecuteEventResults", () => {
     expect(screen.getByText("1,184 more not stored")).toBeInTheDocument();
   });
 
+  it("shows the messages of a run that returned no results", () => {
+    render(
+      <ExecuteEventResults
+        event={event({
+          results: [],
+          messages: [{ level: "NOTICE", message: "printed from the batch" }],
+          messageCount: 1,
+        })}
+      />,
+    );
+    userEvent.click(screen.getByRole("button", { name: /Results/ }));
+    expect(screen.getByTestId("execution-messages")).toHaveTextContent(
+      "NOTICEprinted from the batch",
+    );
+  });
+
   it("shows no count and no messages section without messages", () => {
     render(<ExecuteEventResults event={event({})} />);
     expect(screen.queryByTestId("execute-event-message-summary")).toBeNull();

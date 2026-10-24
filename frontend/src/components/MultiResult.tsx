@@ -43,8 +43,9 @@ const MultiResult: FC<ExecuteResponse> = ({ results, messages }) => {
   const [expanded, setExpanded] = useState(false);
   const collapseRef = useRef<HTMLButtonElement>(null);
   const index = Math.min(currentIndex, results.length - 1);
-  const result = results[index];
-  const expandable = result._type === "select" || result._type === "documents";
+  const result = results[index] as ExecuteResponseResult | undefined;
+  const expandable =
+    result?._type === "select" || result?._type === "documents";
 
   useEffect(() => {
     if (!expanded) return;
@@ -57,7 +58,7 @@ const MultiResult: FC<ExecuteResponse> = ({ results, messages }) => {
   }, [expanded]);
 
   const body = (() => {
-    switch (result._type) {
+    switch (result?._type) {
       case "select":
         return (
           <Table
@@ -103,6 +104,9 @@ const MultiResult: FC<ExecuteResponse> = ({ results, messages }) => {
             <JsonViewer data={result.documents} />
           </div>
         );
+      // A batch of only PRINT statements on MSSQL has no results, just messages
+      case undefined:
+        return null;
     }
   })();
 
@@ -137,10 +141,10 @@ const MultiResult: FC<ExecuteResponse> = ({ results, messages }) => {
         )}
         <span
           className={`min-w-0 truncate pl-1 ${
-            result._type === "error" ? "text-red-600 dark:text-red-400" : ""
+            result?._type === "error" ? "text-red-600 dark:text-red-400" : ""
           }`}
         >
-          {summarize(result)}
+          {result ? summarize(result) : "No results"}
         </span>
         {expandable && (
           <button
@@ -161,7 +165,11 @@ const MultiResult: FC<ExecuteResponse> = ({ results, messages }) => {
       </div>
       {body}
       {messages.length > 0 && (
-        <div className="max-h-64 overflow-auto border-t border-slate-200 px-3 py-2.5 dark:border-slate-700">
+        <div
+          className={`max-h-64 overflow-auto px-3 py-2.5 ${
+            body ? "border-t border-slate-200 dark:border-slate-700" : ""
+          }`}
+        >
           <ExecutionMessages messages={messages} />
         </div>
       )}

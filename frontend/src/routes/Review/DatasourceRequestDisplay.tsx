@@ -31,9 +31,10 @@ function DatasourceRequestDisplay({
             <Spinner />
           </div>
         )) ||
-          (results && results.results.length > 0 && (
-            <MultiResult {...results} />
-          ))}
+          (results &&
+            (results.results.length > 0 || results.messages.length > 0) && (
+              <MultiResult {...results} />
+            ))}
       </div>
       {executionError && (
         <div className="my-4 text-red-600 dark:text-red-400">
