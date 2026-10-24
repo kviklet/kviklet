@@ -133,7 +133,7 @@ const useLiveSession = (
           setIsLoading(false);
           // Add the event to websocket events if it exists
           if (messageData.event) {
-            const event = messageData.event as Execute;
+            const event = messageData.event;
             setWebsocketEvents((prev) => {
               // Check if event already exists by ID
               const existingIndex = prev.findIndex((e) => e.id === event.id);

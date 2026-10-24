@@ -3,6 +3,7 @@ package dev.kviklet.kviklet.executor
 import dev.kviklet.kviklet.service.ColumnInfo
 import dev.kviklet.kviklet.service.JDBCExecutor
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
+import dev.kviklet.kviklet.service.dto.ErrorQueryResult
 import dev.kviklet.kviklet.service.dto.ExecutionMessage
 import dev.kviklet.kviklet.service.dto.MessageLevel
 import dev.kviklet.kviklet.service.dto.RecordsQueryResult
@@ -14,6 +15,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.testcontainers.containers.JdbcDatabaseContainer
 import org.testcontainers.containers.MySQLContainer
 import org.testcontainers.utility.DockerImageName
+import kotlin.concurrent.thread
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -126,5 +128,38 @@ class MysqlJDBCExecutorTest(@Autowired override val JDBCExecutorService: JDBCExe
         )
 
         result.messages shouldBe listOf(ExecutionMessage(MessageLevel.WARNING, "Division by 0"))
+    }
+
+    @Test
+    fun testLostConnectionKeepsTheError() {
+        // When the connection drops the driver closes the statement, so reading the messages afterwards fails
+        val killer = thread {
+            db.createConnection("").use { connection ->
+                var killed = false
+                while (!killed) {
+                    Thread.sleep(200)
+                    connection.createStatement().executeQuery(
+                        "SELECT id FROM information_schema.processlist WHERE info = 'SELECT SLEEP(30)'",
+                    ).use { rows ->
+                        while (rows.next()) {
+                            connection.createStatement().execute("KILL ${rows.getLong(1)}")
+                            killed = true
+                        }
+                    }
+                }
+            }
+        }
+
+        val result = JDBCExecutorService.execute(
+            executionRequestId,
+            db.jdbcUrl,
+            AuthenticationDetails.UserPassword(db.username, db.password),
+            "SELECT SLEEP(30)",
+        )
+        killer.join()
+
+        val error = result.results.single() as ErrorQueryResult
+        error.sqlState shouldBe "08S01"
+        result.messages shouldBe emptyList()
     }
 }

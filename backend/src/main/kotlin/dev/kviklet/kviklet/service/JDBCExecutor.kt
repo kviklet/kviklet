@@ -134,10 +134,16 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
         return ExecutorOutput(queryResults, readMessages(statement))
     }
 
-    private fun readMessages(statement: Statement): List<ExecutionMessage> =
+    // MySQL and MSSQL close the statement when the connection drops, so reading the messages can fail.
+    // That must not hide the statement's own result or error.
+    private fun readMessages(statement: Statement): List<ExecutionMessage> = try {
         generateSequence(statement.warnings) { it.nextWarning }
             .mapNotNull { warning -> warning.message?.let { ExecutionMessage(messageLevel(warning), it) } }
             .toList()
+    } catch (e: SQLException) {
+        LoggerFactory.getLogger(javaClass).warn("Failed to read the database messages", e)
+        emptyList()
+    }
 
     // JDBC reports notices and warnings alike as SQLWarning. Postgres sends the severity
     // (in the server's language, hence the SQLSTATE fallback: class 00 is a notice, 01 a warning).

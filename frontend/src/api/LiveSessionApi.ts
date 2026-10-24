@@ -1,33 +1,6 @@
 import { z } from "zod";
 import { userResponseSchema } from "./UserApi";
-import { DBExecuteResponseSchema } from "./ExecutionRequestApi";
-
-// Helper function to transform 'type' to '_type' for consistency with ExecutionRequestApi
-function withType<T, U extends string>(schema: z.ZodSchema<T>, typeValue: U) {
-  return schema.transform((data) => ({
-    ...data,
-    _type: typeValue,
-  })) as z.ZodSchema<T & { _type: U }>;
-}
-
-// Schema for Execute event returned in WebSocket messages
-const executeEventResponseSchema = withType(
-  z.object({
-    type: z.literal("EXECUTE"),
-    id: z.string(),
-    author: userResponseSchema.optional(),
-    createdAt: z.coerce.date(),
-    query: z.string().optional().nullable(),
-    results: z.array(z.any()).optional(), // ResultLog array
-    command: z.string().optional().nullable(),
-    containerName: z.string().optional().nullable(),
-    podName: z.string().optional().nullable(),
-    namespace: z.string().optional().nullable(),
-    isDownload: z.boolean().optional(),
-    isDump: z.boolean().optional(),
-  }),
-  "EXECUTE",
-);
+import { DBExecuteResponseSchema, ExecuteEvent } from "./ExecutionRequestApi";
 
 const updateContentMessage = z.object({
   type: z.literal("update_content"),
@@ -55,7 +28,7 @@ const statusMessage = z.object({
 const resultMessage = DBExecuteResponseSchema.extend({
   type: z.literal("result"),
   sessionId: z.string(),
-  event: executeEventResponseSchema.optional(),
+  event: ExecuteEvent.optional(),
 });
 
 const errorMessage = z.object({

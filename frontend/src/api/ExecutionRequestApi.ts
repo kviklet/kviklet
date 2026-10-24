@@ -684,6 +684,7 @@ export {
   streamDump,
   downloadResults,
   DBExecuteResponseSchema,
+  ExecuteEvent,
 };
 
 export type {
