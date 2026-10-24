@@ -637,7 +637,9 @@ class ExecutionRequestService(
         val resultLogs = result.results.map {
             it.toResultLog()
         }
-        val savedEvent = eventService.addResultLogs(event.eventId!!, resultLogs, result.messages)
+        // Notices can carry row data (RAISE NOTICE '%', row), so they follow the result storage setting
+        val messagesToStore = if (connection.storeResults) result.messages else emptyList()
+        val savedEvent = eventService.addResultLogs(event.eventId!!, resultLogs, messagesToStore)
 
         return DBExecutionResult(
             executionRequest = executionRequest,
@@ -703,7 +705,9 @@ class ExecutionRequestService(
         val resultLogs = result.results.map {
             it.toResultLog()
         }
-        val savedEvent = eventService.addResultLogs(event.eventId!!, resultLogs, result.messages)
+        // Notices can carry row data (RAISE NOTICE '%', row), so they follow the result storage setting
+        val messagesToStore = if (connection.storeResults) result.messages else emptyList()
+        val savedEvent = eventService.addResultLogs(event.eventId!!, resultLogs, messagesToStore)
 
         return DBExecutionResult(
             executionRequest = executionRequest,

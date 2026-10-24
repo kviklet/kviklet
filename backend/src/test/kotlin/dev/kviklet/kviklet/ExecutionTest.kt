@@ -559,7 +559,7 @@ class ExecutionTest {
             val request = executionRequestHelper.createApprovedRequest(
                 author = testUser,
                 approver = testReviewer,
-                connection = testConnection,
+                connection = connectionHelper.createPostgresConnection(db, storeResults = true),
                 sql = "DO $$ BEGIN RAISE NOTICE 'first'; RAISE WARNING 'second'; " +
                     "FOR i IN 1..150 LOOP RAISE NOTICE 'row %', i; END LOOP; END $$;",
             )
@@ -579,6 +579,28 @@ class ExecutionTest {
                 .andExpect(jsonPath("$.events[1].messages.length()").value(MAX_STORED_MESSAGES))
                 .andExpect(jsonPath("$.events[1].messages[1].level").value("WARNING"))
                 .andExpect(jsonPath("$.events[1].messageCount").value(152))
+        }
+
+        @Test
+        fun `when result storage is off then return messages but store neither them nor their count`() {
+            val request = executionRequestHelper.createApprovedRequest(
+                author = testUser,
+                approver = testReviewer,
+                connection = connectionHelper.createPostgresConnection(db, storeResults = false),
+                sql = "DO $$ BEGIN RAISE NOTICE 'secret row'; RAISE WARNING 'second'; END $$;",
+            )
+            val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+            executeRequest(request.getId(), userCookie)
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.messages.length()").value(2))
+                .andExpect(jsonPath("$.messages[0].message").value("secret row"))
+
+            mockMvc.perform(get("/execution-requests/${request.getId()}").cookie(userCookie))
+                .andExpect(status().isOk)
+                .andExpect(jsonPath("$.events[1].type").value("EXECUTE"))
+                .andExpect(jsonPath("$.events[1].messages.length()").value(0))
+                .andExpect(jsonPath("$.events[1].messageCount").value(0))
         }
     }
 
