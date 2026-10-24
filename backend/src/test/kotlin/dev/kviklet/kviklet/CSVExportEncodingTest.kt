@@ -16,7 +16,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.ResultActions
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
@@ -138,7 +138,7 @@ class CSVExportEncodingTest {
     }
 
     private fun downloadCSV(executionRequestId: String, cookie: Cookie): ResultActions = mockMvc.perform(
-        get("/execution-requests/$executionRequestId/download")
+        post("/execution-requests/$executionRequestId/download")
             .cookie(cookie)
             .contentType("application/json"),
     )
