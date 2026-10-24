@@ -4,7 +4,7 @@
   "main": "index.js",
   "license": "MIT",
   "devDependencies": {
-    "@playwright/test": "^1.49.1",
+    "@playwright/test": "^1.64.1",
     "@types/node": "^20.8.2",
     "pixelmatch": "^6.0.0",
     "pngjs": "^7.0.0"

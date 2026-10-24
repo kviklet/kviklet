@@ -85,7 +85,7 @@ abstract class Event(
             is ExecutePayload -> {
                 val results = payload.results.map {
                     when (it) {
-                        is ErrorResultLogPayload -> ErrorResultLog(it.errorCode, it.message)
+                        is ErrorResultLogPayload -> ErrorResultLog(it.errorCode, it.message, it.sqlState)
 
                         is UpdateResultLogPayload -> UpdateResultLog(it.rowsUpdated)
 
@@ -111,6 +111,8 @@ abstract class Event(
                     id, request, author, createdAt, payload.query, results, payload.command,
                     payload.containerName, payload.podName, payload.namespace, payload.isDownload,
                     payload.isDump, payload.isDryRun, source,
+                    messages = payload.messages.map { ExecutionMessage(it.level, it.message) },
+                    messageCount = payload.messageCount,
                 )
             }
         }
@@ -171,6 +173,9 @@ data class ExecuteEvent(
     val isDump: Boolean = false,
     val isDryRun: Boolean = false,
     override val source: RequestSource = RequestSource.WEB,
+    val messages: List<ExecutionMessage> = emptyList(),
+    // Total the database sent; only the first MAX_STORED_MESSAGES are kept in messages
+    val messageCount: Int = messages.size,
 ) : Event(EventType.EXECUTE, createdAt, request) {
     override fun hashCode() = Objects.hash(eventId)
 }
@@ -185,7 +190,8 @@ enum class ResultType {
 
 sealed class ResultLog(val type: ResultType)
 
-data class ErrorResultLog(val errorCode: Int, val message: String) : ResultLog(ResultType.ERROR)
+data class ErrorResultLog(val errorCode: Int, val message: String, val sqlState: String? = null) :
+    ResultLog(ResultType.ERROR)
 
 data class UpdateResultLog(val rowsUpdated: Int) : ResultLog(ResultType.UPDATE)
 

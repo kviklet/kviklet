@@ -23,6 +23,7 @@ import dev.kviklet.kviklet.service.dto.ExecutionStatus
 import dev.kviklet.kviklet.service.dto.KubernetesConnection
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
+import dev.kviklet.kviklet.service.dto.MessageLevel
 import dev.kviklet.kviklet.service.dto.MongoRecordsQueryResult
 import dev.kviklet.kviklet.service.dto.QueryResult
 import dev.kviklet.kviklet.service.dto.RecordsQueryResult
@@ -202,7 +203,7 @@ data class ProxyResult(
 
 sealed class ToolExecutionResult(val kind: ConnectionKind)
 
-data class DatabaseExecutionResult(val results: List<StatementResult>) :
+data class DatabaseExecutionResult(val results: List<StatementResult>, val messages: List<StatementMessage>) :
     ToolExecutionResult(ConnectionKind.DATABASE)
 
 data class KubernetesToolExecutionResult(
@@ -225,10 +226,16 @@ data class Rows(val columns: List<String>, val rows: List<List<String?>>, val ro
 
 data class Documents(val documents: List<String>, val documentCount: Int, val truncated: Boolean)
 
-data class StatementError(val errorCode: Int, val message: String?)
+/** A notice or warning the database sent while running the statements. */
+data class StatementMessage(val level: MessageLevel, val message: String)
+
+data class StatementError(val errorCode: Int, val message: String?, val sqlState: String? = null)
 
 fun ExecutionResult.toToolResult(): ToolExecutionResult = when (this) {
-    is DBExecutionResult -> DatabaseExecutionResult(results.map { it.toStatementResult() })
+    is DBExecutionResult -> DatabaseExecutionResult(
+        results.map { it.toStatementResult() },
+        messages.take(MAX_RESULT_ROWS).map { StatementMessage(it.level, it.message.take(MAX_CELL_CHARS)) },
+    )
 
     is KubernetesExecutionResult -> {
         val stdout = messages.joinToString("\n")
@@ -268,7 +275,7 @@ private fun QueryResult.toStatementResult(): StatementResult = when (this) {
 
     is UpdateQueryResult -> StatementResult(updateCount = rowsUpdated)
 
-    is ErrorQueryResult -> StatementResult(error = StatementError(errorCode, message))
+    is ErrorQueryResult -> StatementResult(error = StatementError(errorCode, message, sqlState))
 }
 
 /** Builds the agent-facing views of a request, given what the user may do to it. */

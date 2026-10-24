@@ -43,7 +43,7 @@ class MariadbIAMAuthExecutorTest(
             username = AWS_DB_USER,
         ),
         query = query,
-    ).first()
+    ).results.first()
 
     @Test
     fun `test IAM authentication and simple query`() {

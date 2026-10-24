@@ -14,6 +14,7 @@ import dev.kviklet.kviklet.service.dto.EventId
 import dev.kviklet.kviklet.service.dto.EventType
 import dev.kviklet.kviklet.service.dto.ExecuteEvent
 import dev.kviklet.kviklet.service.dto.ExecutionRequest
+import dev.kviklet.kviklet.service.dto.MessageLevel
 import dev.kviklet.kviklet.service.dto.RequestSource
 import dev.kviklet.kviklet.service.dto.ResultType
 import dev.kviklet.kviklet.service.dto.ReviewAction
@@ -63,6 +64,8 @@ data class ExecutePayload(
     val podName: String? = null,
     val namespace: String? = null,
     val results: List<ResultLogPayload> = emptyList(),
+    val messages: List<ExecutionMessagePayload> = emptyList(),
+    val messageCount: Int = 0,
     val isDownload: Boolean = false,
     val isDump: Boolean = false,
     val isDryRun: Boolean = false,
@@ -84,7 +87,10 @@ data class ExecutePayload(
 )
 sealed class ResultLogPayload(val type: ResultType)
 
-data class ErrorResultLogPayload(val errorCode: Int, val message: String) : ResultLogPayload(ResultType.ERROR)
+data class ExecutionMessagePayload(val level: MessageLevel, val message: String)
+
+data class ErrorResultLogPayload(val errorCode: Int, val message: String, val sqlState: String? = null) :
+    ResultLogPayload(ResultType.ERROR)
 
 data class UpdateResultLogPayload(val rowsUpdated: Int) : ResultLogPayload(ResultType.UPDATE)
 

@@ -11,6 +11,16 @@ sealed class QueryResult {
     abstract fun toResultLog(): ResultLog
 }
 
+data class ExecutorOutput(val results: List<QueryResult>, val messages: List<ExecutionMessage> = emptyList())
+
+enum class MessageLevel {
+    NOTICE,
+    WARNING,
+}
+
+/** A notice or warning the database sent alongside a statement that still ran. */
+data class ExecutionMessage(val level: MessageLevel, val message: String)
+
 data class RecordsQueryResult(
     val columns: List<ColumnInfo>,
     val data: List<Map<String, String>>,
@@ -33,10 +43,11 @@ data class UpdateQueryResult(val rowsUpdated: Int) : QueryResult() {
     )
 }
 
-data class ErrorQueryResult(val errorCode: Int, val message: String) : QueryResult() {
+data class ErrorQueryResult(val errorCode: Int, val message: String, val sqlState: String? = null) : QueryResult() {
     override fun toResultLog(): ResultLog = ErrorResultLog(
         errorCode = errorCode,
         message = message,
+        sqlState = sqlState,
     )
 }
 
