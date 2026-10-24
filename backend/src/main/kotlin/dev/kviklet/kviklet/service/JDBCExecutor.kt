@@ -1,5 +1,7 @@
 package dev.kviklet.kviklet.service
 
+import com.fasterxml.jackson.annotation.JsonSetter
+import com.fasterxml.jackson.annotation.Nulls
 import com.zaxxer.hikari.HikariDataSource
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.ErrorQueryResult
@@ -23,11 +25,15 @@ import java.util.concurrent.ConcurrentHashMap
 
 data class TestCredentialsResult(val success: Boolean, val message: String)
 
+// Stored with execute events. Events written before the executor fell back to "" can hold a null
+// type, so read those as "" too instead of failing the whole event.
 data class ColumnInfo(
     val label: String,
     // "int4", "text", "timestamptz"
+    @JsonSetter(nulls = Nulls.AS_EMPTY)
     val typeName: String,
     // "java.lang.Integer", "java.lang.String", "java.sql.Timestamp"
+    @JsonSetter(nulls = Nulls.AS_EMPTY)
     val typeClass: String,
 )
 

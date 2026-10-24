@@ -1,6 +1,7 @@
 package dev.kviklet.kviklet.db
 
 import dev.kviklet.kviklet.db.util.EventPayloadConverter
+import dev.kviklet.kviklet.service.ColumnInfo
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.springframework.boot.autoconfigure.AutoConfigurations
@@ -45,5 +46,18 @@ class EventPayloadConverterTest {
         )
 
         assertEquals(payload, converter.convertToEntityAttribute(converter.convertToDatabaseColumn(payload)))
+    }
+
+    @Test
+    fun `reads columns stored without a type`() = withConverter { converter ->
+        val payload = converter.convertToEntityAttribute(
+            """
+            {"foobar":"EXECUTE","query":"SELECT x","results":[{"type":"QUERY","columnCount":1,"rowCount":1,
+            "columns":[{"label":"x","typeName":null,"typeClass":null}],"storedRows":[{"x":"1"}],"storedRowCount":1}]}
+            """.trimIndent(),
+        ) as ExecutePayload
+
+        val result = payload.results.single() as QueryResultLogPayload
+        assertEquals(listOf(ColumnInfo(label = "x", typeName = "", typeClass = "")), result.columns)
     }
 }
