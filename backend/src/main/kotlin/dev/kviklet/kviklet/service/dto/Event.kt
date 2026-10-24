@@ -199,7 +199,7 @@ data class QueryResultLog(
     val columnCount: Int,
     val rowCount: Int,
     val columns: List<ColumnInfo>? = null,
-    val storedRows: List<Map<String, String>>? = null,
+    val storedRows: List<Map<String, String?>>? = null,
     val storedRowCount: Int? = null,
 ) : ResultLog(ResultType.QUERY)
 

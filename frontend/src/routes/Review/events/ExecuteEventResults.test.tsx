@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect } from "vitest";
 import ExecuteEventResults from "./ExecuteEventResults";
-import { Execute } from "../../../api/ExecutionRequestApi";
+import { Execute, ExecuteEvent } from "../../../api/ExecutionRequestApi";
 
 const event = (overrides: Partial<Execute>): Execute => ({
   _type: "EXECUTE",
@@ -98,6 +98,36 @@ describe("ExecuteEventResults", () => {
     expect(screen.getByTestId("execution-messages")).toHaveTextContent(
       "NOTICEprinted from the batch",
     );
+  });
+
+  it("keeps NULL cells in stored rows apart from the text 'null'", () => {
+    // Parsed from the API's JSON so the schema has to keep the null
+    const parsed = ExecuteEvent.parse({
+      _type: "EXECUTE",
+      type: "EXECUTE",
+      id: "event-id",
+      createdAt: "2026-10-23T10:00:00Z",
+      query: "SELECT 1 AS id, NULL AS note, 'null' AS text",
+      results: [
+        {
+          type: "QUERY",
+          columnCount: 3,
+          rowCount: 1,
+          columns: [
+            { label: "id", typeName: "int4", typeClass: "java.lang.Integer" },
+            { label: "note", typeName: "text", typeClass: "java.lang.String" },
+            { label: "text", typeName: "text", typeClass: "java.lang.String" },
+          ],
+          storedRows: [{ id: "1", note: null, text: "null" }],
+          storedRowCount: 1,
+        },
+      ],
+    });
+    render(<ExecuteEventResults event={parsed} />);
+    userEvent.click(screen.getByRole("button", { name: /Results/ }));
+
+    expect(screen.getByText("NULL")).toHaveClass("italic");
+    expect(screen.getByText("null")).not.toHaveClass("italic");
   });
 
   it("shows no count and no messages section without messages", () => {

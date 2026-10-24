@@ -93,7 +93,10 @@ const QueryResultLog = z.object({
     )
     .optional()
     .nullable(),
-  storedRows: z.array(z.record(z.coerce.string())).optional().nullable(),
+  storedRows: z
+    .array(z.record(z.union([z.null(), z.coerce.string()])))
+    .optional()
+    .nullable(),
   storedRowCount: z.number().optional().nullable(),
 });
 

@@ -33,7 +33,9 @@ class AwsRdsIamTokenProviderTest {
         assertEquals("connect", params["Action"])
         assertEquals("iamdbuser", params["DBUser"])
         assertEquals("AWS4-HMAC-SHA256", params["X-Amz-Algorithm"])
-        assertEquals("900", params["X-Amz-Expires"])
+        // The SDK reads the clock separately for the signing time and the 15 minute expiry, so a call that
+        // straddles a second boundary yields 899.
+        assertTrue(params.getValue("X-Amz-Expires").toInt() in 899..900, params["X-Amz-Expires"])
         val credential = params.getValue("X-Amz-Credential")
         assertTrue(credential.startsWith("AKIATESTACCESSKEY/"), credential)
         assertTrue(credential.endsWith("/eu-central-1/rds-db/aws4_request"), credential)
