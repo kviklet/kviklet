@@ -2,6 +2,7 @@ package dev.kviklet.kviklet.executor
 
 import dev.kviklet.kviklet.service.ColumnInfo
 import dev.kviklet.kviklet.service.JDBCExecutor
+import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.ErrorQueryResult
 import dev.kviklet.kviklet.service.dto.RecordsQueryResult
 import io.kotest.matchers.shouldBe
@@ -54,12 +55,14 @@ class MSSQLJDBCExecutorTest(@Autowired override val JDBCExecutorService: JDBCExe
             ErrorQueryResult(
                 208,
                 "Invalid object name 'foo.non_existent_table'.",
+                "S0002",
             )
 
         executeQuery("FOOBAR") shouldBe
             ErrorQueryResult(
                 2812,
                 "Could not find stored procedure 'FOOBAR'.",
+                "S0062",
             )
     }
 
@@ -159,5 +162,19 @@ class MSSQLJDBCExecutorTest(@Autowired override val JDBCExecutorService: JDBCExe
                 ),
             ),
         )
+    }
+
+    @Test
+    fun testPrintOnlyReturnsMessages() {
+        // A batch of only PRINT statements has no results, so its messages are all there is
+        val result = JDBCExecutorService.execute(
+            executionRequestId,
+            db.jdbcUrl,
+            AuthenticationDetails.UserPassword(db.username, db.password),
+            "PRINT 'printed from the batch'",
+        )
+
+        result.results shouldBe emptyList()
+        result.messages.map { it.message } shouldBe listOf("printed from the batch")
     }
 }

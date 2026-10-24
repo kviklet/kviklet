@@ -4,6 +4,7 @@ import dev.kviklet.kviklet.db.DumpResultLogPayload
 import dev.kviklet.kviklet.db.ErrorResultLogPayload
 import dev.kviklet.kviklet.db.EventAdapter
 import dev.kviklet.kviklet.db.ExecutePayload
+import dev.kviklet.kviklet.db.ExecutionMessagePayload
 import dev.kviklet.kviklet.db.ExecutionRequestAdapter
 import dev.kviklet.kviklet.db.KubernetesOutputResultLogPayload
 import dev.kviklet.kviklet.db.Payload
@@ -19,6 +20,7 @@ import dev.kviklet.kviklet.service.dto.ErrorResultLog
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventId
 import dev.kviklet.kviklet.service.dto.ExecuteEvent
+import dev.kviklet.kviklet.service.dto.ExecutionMessage
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.KubernetesOutputResultLog
 import dev.kviklet.kviklet.service.dto.QueryResultLog
@@ -29,6 +31,9 @@ import dev.kviklet.kviklet.service.dto.UpdateResultLog
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
 import java.time.LocalDateTime
+
+// A loop raising a notice per row can send thousands; the event keeps the first ones and the total
+const val MAX_STORED_MESSAGES = 100
 
 @Service
 class EventService(
@@ -77,13 +82,15 @@ class EventService(
 
     @Policy(Permission.EXECUTION_REQUEST_EXECUTE)
     @Transactional
-    fun addResultLogs(id: EventId, resultLogs: List<ResultLog>): Event {
+    fun addResultLogs(id: EventId, resultLogs: List<ResultLog>, messages: List<ExecutionMessage> = emptyList()): Event {
         val event = eventAdapter.getEvent(id)
         if (event !is ExecuteEvent) {
             throw IllegalArgumentException("Event is not an execution event")
         }
         val updatedEvent = event.copy(
             results = resultLogs,
+            messages = messages.take(MAX_STORED_MESSAGES),
+            messageCount = messages.size,
         )
         return eventAdapter.updateEvent(id, updatedEvent.toPayload())
     }
@@ -101,7 +108,7 @@ fun ExecuteEvent.toPayload(): Payload = ExecutePayload(
     namespace = namespace,
     results = results.map {
         when (it) {
-            is ErrorResultLog -> ErrorResultLogPayload(it.errorCode, it.message)
+            is ErrorResultLog -> ErrorResultLogPayload(it.errorCode, it.message, it.sqlState)
 
             is UpdateResultLog -> UpdateResultLogPayload(it.rowsUpdated)
 
@@ -123,6 +130,8 @@ fun ExecuteEvent.toPayload(): Payload = ExecutePayload(
             )
         }
     },
+    messages = messages.map { ExecutionMessagePayload(it.level, it.message) },
+    messageCount = messageCount,
     isDownload = isDownload,
     isDump = isDump,
     isDryRun = isDryRun,

@@ -5,7 +5,12 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "@heroicons/react/20/solid";
-import { ExecuteResponseResult } from "../api/ExecutionRequestApi";
+import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/outline";
+import {
+  ExecuteResponse,
+  ExecuteResponseResult,
+} from "../api/ExecutionRequestApi";
+import ExecutionMessages from "./ExecutionMessages";
 import Table from "./Table";
 import IconButton from "./IconButton";
 import JsonViewer from "./JsonViewer";
@@ -20,10 +25,11 @@ const summarize = (result: ExecuteResponseResult) => {
         result.columns.length,
         "column",
       )}`;
+    // JDBC can't tell DDL from a write that matched nothing, so stay neutral
     case "update":
-      return "Update";
+      return `Statement · ${plural(result.rowsUpdated, "row")} affected`;
     case "error":
-      return result.errorCode ? `Error ${result.errorCode}` : "Error";
+      return result.sqlState ? `Error · SQLSTATE ${result.sqlState}` : "Error";
     case "documents":
       return plural(result.documents.length, "document");
   }
@@ -32,15 +38,14 @@ const summarize = (result: ExecuteResponseResult) => {
 // The panel borrows the editor's chrome so query and result read as one
 // workspace. Wide result sets get an explicit expand into a full-viewport
 // view instead of a hidden click on the header.
-const MultiResult: FC<{ resultList: ExecuteResponseResult[] }> = ({
-  resultList,
-}) => {
+const MultiResult: FC<ExecuteResponse> = ({ results, messages }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const collapseRef = useRef<HTMLButtonElement>(null);
-  const index = Math.min(currentIndex, resultList.length - 1);
-  const result = resultList[index];
-  const expandable = result._type === "select" || result._type === "documents";
+  const index = Math.min(currentIndex, results.length - 1);
+  const result = results[index] as ExecuteResponseResult | undefined;
+  const expandable =
+    result?._type === "select" || result?._type === "documents";
 
   useEffect(() => {
     if (!expanded) return;
@@ -53,7 +58,7 @@ const MultiResult: FC<{ resultList: ExecuteResponseResult[] }> = ({
   }, [expanded]);
 
   const body = (() => {
-    switch (result._type) {
+    switch (result?._type) {
       case "select":
         return (
           <Table
@@ -63,14 +68,30 @@ const MultiResult: FC<{ resultList: ExecuteResponseResult[] }> = ({
         );
       case "update":
         return (
-          <div className="px-3 py-3 text-sm text-slate-700 dark:text-slate-200">
-            {plural(result.rowsUpdated, "row")} updated
+          <div className="flex items-center gap-2.5 px-3.5 py-4">
+            <CheckCircleIcon className="h-5 w-5 flex-none text-emerald-600 dark:text-emerald-400" />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-medium text-slate-900 dark:text-slate-50">
+                Statement executed
+              </span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                {plural(result.rowsUpdated, "row")} affected
+              </span>
+            </div>
           </div>
         );
       case "error":
         return (
-          <div className="whitespace-pre-wrap px-3 py-3 font-mono text-xs text-red-600 dark:text-red-400">
-            {result.message}
+          <div className="flex items-start gap-2.5 bg-red-50 px-3.5 py-3.5 dark:bg-red-950/40">
+            <XCircleIcon className="h-5 w-5 flex-none text-red-700 dark:text-red-300" />
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <span className="text-sm font-medium text-red-700 dark:text-red-300">
+                Statement failed
+              </span>
+              <pre className="whitespace-pre-wrap break-words font-mono text-xs text-red-900 dark:text-red-200">
+                {result.message}
+              </pre>
+            </div>
           </div>
         );
       case "documents":
@@ -83,6 +104,9 @@ const MultiResult: FC<{ resultList: ExecuteResponseResult[] }> = ({
             <JsonViewer data={result.documents} />
           </div>
         );
+      // A batch of only PRINT statements on MSSQL has no results, just messages
+      case undefined:
+        return null;
     }
   })();
 
@@ -94,7 +118,7 @@ const MultiResult: FC<{ resultList: ExecuteResponseResult[] }> = ({
       data-testid="result-component"
     >
       <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-        {resultList.length > 1 && (
+        {results.length > 1 && (
           <div className="flex items-center gap-1">
             <IconButton
               label="Previous result"
@@ -104,12 +128,12 @@ const MultiResult: FC<{ resultList: ExecuteResponseResult[] }> = ({
               <ChevronLeftIcon className="h-4 w-4" />
             </IconButton>
             <span className="tabular-nums">
-              {index + 1} / {resultList.length}
+              {index + 1} / {results.length}
             </span>
             <IconButton
               label="Next result"
               onClick={() => setCurrentIndex(index + 1)}
-              disabled={index === resultList.length - 1}
+              disabled={index === results.length - 1}
             >
               <ChevronRightIcon className="h-4 w-4" />
             </IconButton>
@@ -117,10 +141,10 @@ const MultiResult: FC<{ resultList: ExecuteResponseResult[] }> = ({
         )}
         <span
           className={`min-w-0 truncate pl-1 ${
-            result._type === "error" ? "text-red-600 dark:text-red-400" : ""
+            result?._type === "error" ? "text-red-600 dark:text-red-400" : ""
           }`}
         >
-          {summarize(result)}
+          {result ? summarize(result) : "No results"}
         </span>
         {expandable && (
           <button
@@ -140,6 +164,15 @@ const MultiResult: FC<{ resultList: ExecuteResponseResult[] }> = ({
         )}
       </div>
       {body}
+      {messages.length > 0 && (
+        <div
+          className={`max-h-64 overflow-auto px-3 py-2.5 ${
+            body ? "border-t border-slate-200 dark:border-slate-700" : ""
+          }`}
+        >
+          <ExecutionMessages messages={messages} />
+        </div>
+      )}
     </div>
   );
 

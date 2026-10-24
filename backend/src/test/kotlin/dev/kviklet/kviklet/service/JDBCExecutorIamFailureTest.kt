@@ -36,7 +36,7 @@ class JDBCExecutorIamFailureTest {
 
     @Test
     fun `an execution reports a token failure as an error result instead of throwing`() {
-        val results = executor.execute(ExecutionRequestId("5Wb9WJxCxej5W1Rt6cTBV5"), rdsUrl, auth, "SELECT 1")
+        val results = executor.execute(ExecutionRequestId("5Wb9WJxCxej5W1Rt6cTBV5"), rdsUrl, auth, "SELECT 1").results
 
         assertEquals(1, results.size)
         val error = results.single() as ErrorQueryResult
@@ -45,7 +45,12 @@ class JDBCExecutorIamFailureTest {
 
     @Test
     fun `a dry run reports a token failure as an error result instead of throwing`() {
-        val results = executor.executeDryRun(ExecutionRequestId("5Wb9WJxCxej5W1Rt6cTBV5"), rdsUrl, auth, "SELECT 1")
+        val results = executor.executeDryRun(
+            ExecutionRequestId("5Wb9WJxCxej5W1Rt6cTBV5"),
+            rdsUrl,
+            auth,
+            "SELECT 1",
+        ).results
 
         val error = results.single() as ErrorQueryResult
         assertTrue(error.message.contains(stsMessage), error.message)

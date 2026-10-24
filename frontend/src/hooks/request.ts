@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   ChangeExecutionRequestPayload,
   DatasourceExecutionRequestResponseWithComments,
-  ExecuteResponseResult,
+  ExecuteResponse,
   ExecutionRequestResponseWithComments,
   KubernetesExecuteResponse,
   ProxyResponse,
@@ -123,7 +123,7 @@ const useRequest = (id: string) => {
     })();
   }, []);
 
-  const [results, setResults] = useState<ExecuteResponseResult[] | undefined>();
+  const [results, setResults] = useState<ExecuteResponse | undefined>();
   const [dataLoading, setDataLoading] = useState<boolean>(false);
   const [kubernetesResults, setKubernetesResults] = useState<
     KubernetesExecuteResponse | undefined
@@ -200,7 +200,7 @@ const useRequest = (id: string) => {
       if (isApiErrorResponse(response)) {
         setExecutionError(response.message);
       } else {
-        setResults(response.results);
+        setResults(response);
       }
     } else if (request?._type === "KUBERNETES") {
       const response = await executeCommand(id);

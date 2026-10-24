@@ -2,9 +2,13 @@ package dev.kviklet.kviklet.executor
 
 import dev.kviklet.kviklet.service.ColumnInfo
 import dev.kviklet.kviklet.service.JDBCExecutor
+import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.ErrorQueryResult
+import dev.kviklet.kviklet.service.dto.ExecutionMessage
+import dev.kviklet.kviklet.service.dto.MessageLevel
 import dev.kviklet.kviklet.service.dto.RecordsQueryResult
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -53,12 +57,14 @@ class PostgresJDBCExecutorTest(@Autowired override val JDBCExecutorService: JDBC
             ErrorQueryResult(
                 0,
                 "ERROR: relation \"foo.non_existent_table\" does not exist\n  Position: 15",
+                "42P01",
             )
 
         executeQuery("FOOBAR") shouldBe
             ErrorQueryResult(
                 0,
                 "ERROR: syntax error at or near \"FOOBAR\"\n  Position: 1",
+                "42601",
             )
     }
 
@@ -68,7 +74,39 @@ class PostgresJDBCExecutorTest(@Autowired override val JDBCExecutorService: JDBC
             ErrorQueryResult(
                 0,
                 "FATAL: password authentication failed for user \"root\"",
+                "28P01",
             )
+    }
+
+    @Test
+    fun testMessages() {
+        val result = JDBCExecutorService.execute(
+            executionRequestId,
+            db.jdbcUrl,
+            AuthenticationDetails.UserPassword(db.username, db.password),
+            "SELECT 1; DO $$ BEGIN RAISE NOTICE 'first'; RAISE WARNING 'second'; END $$;",
+        )
+
+        result.results.size shouldBe 2
+        result.messages shouldBe listOf(
+            ExecutionMessage(MessageLevel.NOTICE, "first"),
+            ExecutionMessage(MessageLevel.WARNING, "second"),
+        )
+    }
+
+    @Test
+    fun testMessagesBeforeError() {
+        val result = JDBCExecutorService.execute(
+            executionRequestId,
+            db.jdbcUrl,
+            AuthenticationDetails.UserPassword(db.username, db.password),
+            "DO $$ BEGIN RAISE NOTICE 'before'; RAISE EXCEPTION 'boom'; END $$;",
+        )
+
+        val error = result.results.single() as ErrorQueryResult
+        error.message shouldContain "boom"
+        error.sqlState shouldBe "P0001"
+        result.messages shouldBe listOf(ExecutionMessage(MessageLevel.NOTICE, "before"))
     }
 
     @Test

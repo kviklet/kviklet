@@ -3,15 +3,20 @@ package dev.kviklet.kviklet.service
 import com.zaxxer.hikari.HikariDataSource
 import dev.kviklet.kviklet.service.dto.AuthenticationDetails
 import dev.kviklet.kviklet.service.dto.ErrorQueryResult
+import dev.kviklet.kviklet.service.dto.ExecutionMessage
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
+import dev.kviklet.kviklet.service.dto.ExecutorOutput
+import dev.kviklet.kviklet.service.dto.MessageLevel
 import dev.kviklet.kviklet.service.dto.QueryResult
 import dev.kviklet.kviklet.service.dto.RecordsQueryResult
 import dev.kviklet.kviklet.service.dto.UpdateQueryResult
+import org.postgresql.util.PSQLWarning
 import org.slf4j.LoggerFactory
 import org.springframework.boot.jdbc.DataSourceBuilder
 import org.springframework.stereotype.Service
 import java.sql.ResultSet
 import java.sql.SQLException
+import java.sql.SQLWarning
 import java.sql.Statement
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -42,7 +47,7 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
         query: String,
         MSSQLexplain: Boolean = false,
         maxRowsToStore: Int? = null,
-    ): List<QueryResult> {
+    ): ExecutorOutput {
         createConnection(connectionString, authenticationDetails).use { dataSource: HikariDataSource ->
             try {
                 dataSource.connection.createStatement().use { statement ->
@@ -53,20 +58,10 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
                     if (MSSQLexplain) {
                         statement.execute("SET SHOWPLAN_TEXT ON")
                     }
-                    var hasResults = statement.execute(query)
-                    val queryResults = mutableListOf<QueryResult>()
-
-                    while (hasResults || statement.updateCount != -1) {
-                        statement.resultSet?.use { resultSet ->
-                            queryResults.add(createRecordsQueryResult(resultSet, maxRowsToStore))
-                        } ?: queryResults.add(UpdateQueryResult(statement.updateCount))
-
-                        hasResults = statement.moreResults
-                    }
-                    return queryResults
+                    return collectResults(statement, query, maxRowsToStore)
                 }
             } catch (e: SQLException) {
-                return listOf(sqlExceptionToResult(e))
+                return ExecutorOutput(listOf(sqlExceptionToResult(e)))
             } finally {
                 activeStatements.remove(executionRequestId.toString())
             }
@@ -80,7 +75,7 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
         query: String,
         isMSSQL: Boolean = false,
         maxRowsToStore: Int = 0,
-    ): List<QueryResult> {
+    ): ExecutorOutput {
         createConnection(connectionString, authenticationDetails).use { dataSource: HikariDataSource ->
             try {
                 dataSource.connection.use { connection ->
@@ -99,18 +94,7 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
                                 statement.execute("SET IMPLICIT_TRANSACTIONS ON")
                             }
 
-                            var hasResults = statement.execute(query)
-                            val queryResults = mutableListOf<QueryResult>()
-
-                            while (hasResults || statement.updateCount != -1) {
-                                statement.resultSet?.use { resultSet ->
-                                    queryResults.add(createRecordsQueryResult(resultSet, maxRowsToStore))
-                                } ?: queryResults.add(UpdateQueryResult(statement.updateCount))
-
-                                hasResults = statement.moreResults
-                            }
-
-                            return queryResults
+                            return collectResults(statement, query, maxRowsToStore)
                         } finally {
                             // Always rollback the transaction to undo any changes
                             try {
@@ -124,10 +108,53 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
                     }
                 }
             } catch (e: SQLException) {
-                return listOf(sqlExceptionToResult(e))
+                return ExecutorOutput(listOf(sqlExceptionToResult(e)))
             } finally {
                 activeStatements.remove(executionRequestId.toString())
             }
+        }
+    }
+
+    private fun collectResults(statement: Statement, query: String, maxRowsToStore: Int?): ExecutorOutput {
+        val queryResults = mutableListOf<QueryResult>()
+        try {
+            var hasResults = statement.execute(query)
+
+            while (hasResults || statement.updateCount != -1) {
+                statement.resultSet?.use { resultSet ->
+                    queryResults.add(createRecordsQueryResult(resultSet, maxRowsToStore))
+                } ?: queryResults.add(UpdateQueryResult(statement.updateCount))
+
+                hasResults = statement.moreResults
+            }
+        } catch (e: SQLException) {
+            // Notices raised before the failure often explain it, so keep them with the error
+            return ExecutorOutput(listOf(sqlExceptionToResult(e)), readMessages(statement))
+        }
+        return ExecutorOutput(queryResults, readMessages(statement))
+    }
+
+    // MySQL and MSSQL close the statement when the connection drops, so reading the messages can fail.
+    // That must not hide the statement's own result or error.
+    private fun readMessages(statement: Statement): List<ExecutionMessage> = try {
+        generateSequence(statement.warnings) { it.nextWarning }
+            .mapNotNull { warning -> warning.message?.let { ExecutionMessage(messageLevel(warning), it) } }
+            .toList()
+    } catch (e: SQLException) {
+        LoggerFactory.getLogger(javaClass).warn("Failed to read the database messages", e)
+        emptyList()
+    }
+
+    // JDBC reports notices and warnings alike as SQLWarning. Postgres sends the severity
+    // (in the server's language, hence the SQLSTATE fallback: class 00 is a notice, 01 a warning).
+    // MySQL's driver drops the level, so its messages stay warnings.
+    private fun messageLevel(warning: SQLWarning): MessageLevel {
+        val severity = (warning as? PSQLWarning)?.serverErrorMessage?.severity
+        return when {
+            severity == "WARNING" -> MessageLevel.WARNING
+            severity in setOf("NOTICE", "INFO", "LOG", "DEBUG") -> MessageLevel.NOTICE
+            warning.sqlState?.startsWith("00") == true -> MessageLevel.NOTICE
+            else -> MessageLevel.WARNING
         }
     }
 
@@ -147,7 +174,7 @@ class JDBCExecutor(private val rdsIamTokenProvider: RdsIamTokenProvider = AwsRds
             message += "--> ${cause.javaClass}: ${cause.message} "
             cause = cause.cause
         }
-        return ErrorQueryResult(e.errorCode, message)
+        return ErrorQueryResult(e.errorCode, message, e.sqlState)
     }
 
     fun testCredentials(connectionString: String, authenticationDetails: AuthenticationDetails): TestCredentialsResult {

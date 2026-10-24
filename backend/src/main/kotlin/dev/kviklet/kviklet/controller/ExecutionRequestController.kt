@@ -22,6 +22,7 @@ import dev.kviklet.kviklet.service.dto.ErrorResultLog
 import dev.kviklet.kviklet.service.dto.Event
 import dev.kviklet.kviklet.service.dto.EventType
 import dev.kviklet.kviklet.service.dto.ExecuteEvent
+import dev.kviklet.kviklet.service.dto.ExecutionMessage
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetailsWithRoles
 import dev.kviklet.kviklet.service.dto.ExecutionRequestId
@@ -387,6 +388,7 @@ sealed class ExecutionResponse {
         fun fromDto(results: ExecutionResult): ExecutionResponse = when (results) {
             is DBExecutionResult -> DatasourceExecutionResponse(
                 results.results.map { it -> ExecutionResultResponse.fromDto(it) },
+                results.messages,
             )
 
             is KubernetesExecutionResult -> KubernetesExecutionResponse(
@@ -398,7 +400,10 @@ sealed class ExecutionResponse {
         }
     }
 
-    data class DatasourceExecutionResponse(val results: List<ExecutionResultResponse>) : ExecutionResponse()
+    data class DatasourceExecutionResponse(
+        val results: List<ExecutionResultResponse>,
+        val messages: List<ExecutionMessage>,
+    ) : ExecutionResponse()
 
     data class KubernetesExecutionResponse(
         val errors: List<String>,
@@ -449,7 +454,7 @@ data class UpdateQueryResultResponse(val rowsUpdated: Int) :
     }
 }
 
-data class ErrorQueryResultResponse(val errorCode: Int, val message: String?) :
+data class ErrorQueryResultResponse(val errorCode: Int, val message: String?, val sqlState: String? = null) :
     ExecutionResultResponse(
         type = ExecutionResultType.ERROR,
     ) {
@@ -458,6 +463,7 @@ data class ErrorQueryResultResponse(val errorCode: Int, val message: String?) :
         fun fromDto(dto: ErrorQueryResult) = ErrorQueryResultResponse(
             errorCode = dto.errorCode,
             message = dto.message,
+            sqlState = dto.sqlState,
         )
     }
 }
@@ -519,6 +525,8 @@ abstract class EventResponse(val type: EventType, open val createdAt: LocalDateT
                 event.isDump,
                 event.isDryRun,
                 event.source,
+                event.messages,
+                event.messageCount,
             )
 
             else -> {
@@ -576,6 +584,8 @@ data class ExecuteEventResponse(
     val isDump: Boolean = false,
     val isDryRun: Boolean = false,
     override val source: RequestSource = RequestSource.WEB,
+    val messages: List<ExecutionMessage> = emptyList(),
+    val messageCount: Int = messages.size,
 ) : EventResponse(EventType.EXECUTE, createdAt)
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
@@ -591,6 +601,7 @@ abstract class ResultLogResponse(val type: ResultType) {
             is ErrorResultLog -> ErrorResultLogResponse(
                 errorCode = dto.errorCode,
                 message = dto.message,
+                sqlState = dto.sqlState,
             )
 
             is UpdateResultLog -> UpdateResultLogResponse(
@@ -619,7 +630,8 @@ abstract class ResultLogResponse(val type: ResultType) {
     }
 }
 
-data class ErrorResultLogResponse(val errorCode: Int, val message: String) : ResultLogResponse(ResultType.ERROR)
+data class ErrorResultLogResponse(val errorCode: Int, val message: String, val sqlState: String? = null) :
+    ResultLogResponse(ResultType.ERROR)
 
 data class UpdateResultLogResponse(val rowsUpdated: Int) : ResultLogResponse(ResultType.UPDATE)
 

@@ -42,6 +42,7 @@ import dev.kviklet.kviklet.service.dto.ExecutionRequestId
 import dev.kviklet.kviklet.service.dto.ExecutionRequestList
 import dev.kviklet.kviklet.service.dto.ExecutionResult
 import dev.kviklet.kviklet.service.dto.ExecutionStatus
+import dev.kviklet.kviklet.service.dto.ExecutorOutput
 import dev.kviklet.kviklet.service.dto.KubernetesConnection
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionRequest
 import dev.kviklet.kviklet.service.dto.KubernetesExecutionResult
@@ -611,11 +612,13 @@ class ExecutionRequestService(
 
         val result = when (connection.type) {
             DatasourceType.MONGODB -> {
-                mongoDBExecutor.execute(
-                    connectionString = connection.getConnectionString(),
-                    databaseName = connection.databaseName ?: "db",
-                    query = queryToExecute,
-                    maxRowsToStore = maxRowsToStore,
+                ExecutorOutput(
+                    mongoDBExecutor.execute(
+                        connectionString = connection.getConnectionString(),
+                        databaseName = connection.databaseName ?: "db",
+                        query = queryToExecute,
+                        maxRowsToStore = maxRowsToStore,
+                    ),
                 )
             }
 
@@ -631,14 +634,17 @@ class ExecutionRequestService(
         }
 
         // Status will be recalculated automatically after adding result logs via event
-        val resultLogs = result.map {
+        val resultLogs = result.results.map {
             it.toResultLog()
         }
-        val savedEvent = eventService.addResultLogs(event.eventId!!, resultLogs)
+        // Notices can carry row data (RAISE NOTICE '%', row), so they follow the result storage setting
+        val messagesToStore = if (connection.storeResults) result.messages else emptyList()
+        val savedEvent = eventService.addResultLogs(event.eventId!!, resultLogs, messagesToStore)
 
         return DBExecutionResult(
             executionRequest = executionRequest,
-            results = result,
+            results = result.results,
+            messages = result.messages,
             event = savedEvent,
         )
     }
@@ -696,14 +702,17 @@ class ExecutionRequestService(
         }
 
         // Store results
-        val resultLogs = result.map {
+        val resultLogs = result.results.map {
             it.toResultLog()
         }
-        val savedEvent = eventService.addResultLogs(event.eventId!!, resultLogs)
+        // Notices can carry row data (RAISE NOTICE '%', row), so they follow the result storage setting
+        val messagesToStore = if (connection.storeResults) result.messages else emptyList()
+        val savedEvent = eventService.addResultLogs(event.eventId!!, resultLogs, messagesToStore)
 
         return DBExecutionResult(
             executionRequest = executionRequest,
-            results = result,
+            results = result.results,
+            messages = result.messages,
             event = savedEvent,
         )
     }
@@ -992,7 +1001,11 @@ class ExecutionRequestService(
             MSSQLexplain = connection.type == DatasourceType.MSSQL,
         )
 
-        return DBExecutionResult(results = result, executionRequest = executionRequest)
+        return DBExecutionResult(
+            results = result.results,
+            messages = result.messages,
+            executionRequest = executionRequest,
+        )
             .also { trackExecution(executionRequest, ExecutionMode.EXPLAIN, it) }
     }
 
@@ -1052,6 +1065,14 @@ class ExecutionRequestService(
                                 appendLine("  KUBERNETES OUTPUT (Exit Code: ${result.exitCode ?: "unknown"})")
                             }
                         }
+                    }
+                }
+                if (execution.messages.isNotEmpty()) {
+                    appendLine("Messages:")
+                    execution.messages.forEach { appendLine("  ${it.level}: ${it.message}") }
+                    val notStored = execution.messageCount - execution.messages.size
+                    if (notStored > 0) {
+                        appendLine("  ($notStored more not stored)")
                     }
                 }
                 appendLine("-".repeat(80))

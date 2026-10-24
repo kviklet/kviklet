@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { websocketBaseUrl } from "../api/base";
-import { ExecuteResponseResult, Execute } from "../api/ExecutionRequestApi";
+import { ExecuteResponse, Execute } from "../api/ExecutionRequestApi";
 import {
   executeStatementMessage,
   responseMessage,
@@ -20,7 +20,7 @@ const useLiveSession = (
   const ws = useRef<WebSocket | null>(null);
   const executeResolverRef = useRef<ExecuteResolver | null>(null);
   const inFlightRefsRef = useRef<Set<string>>(new Set());
-  const [results, setResults] = useState<ExecuteResponseResult[] | undefined>(
+  const [results, setResults] = useState<ExecuteResponse | undefined>(
     undefined,
   );
   const [isLoading, setIsLoading] = useState(false);
@@ -126,11 +126,14 @@ const useLiveSession = (
           }
           break;
         case "result": {
-          setResults(messageData.results);
+          setResults({
+            results: messageData.results,
+            messages: messageData.messages,
+          });
           setIsLoading(false);
           // Add the event to websocket events if it exists
           if (messageData.event) {
-            const event = messageData.event as Execute;
+            const event = messageData.event;
             setWebsocketEvents((prev) => {
               // Check if event already exists by ID
               const existingIndex = prev.findIndex((e) => e.id === event.id);
