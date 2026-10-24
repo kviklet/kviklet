@@ -422,7 +422,7 @@ enum class ExecutionResultType {
     ERROR,
 }
 
-data class RecordsQueryResultResponse(val columns: List<ColumnInfo>, val data: List<Map<String, String>>) :
+data class RecordsQueryResultResponse(val columns: List<ColumnInfo>, val data: List<Map<String, String?>>) :
     ExecutionResultResponse(
         type = ExecutionResultType.RECORDS,
     ) {
@@ -641,7 +641,7 @@ data class QueryResultLogResponse(
     val columnCount: Int,
     val rowCount: Int,
     val columns: List<ColumnInfo>? = null,
-    val storedRows: List<Map<String, String>>? = null,
+    val storedRows: List<Map<String, String?>>? = null,
     val storedRowCount: Int? = null,
 ) : ResultLogResponse(ResultType.QUERY)
 

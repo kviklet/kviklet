@@ -1,9 +1,11 @@
 package dev.kviklet.kviklet.db
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import com.fasterxml.jackson.annotation.JsonSetter
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
+import com.fasterxml.jackson.annotation.Nulls
 import com.querydsl.jpa.impl.JPAQuery
 import dev.kviklet.kviklet.db.util.BaseEntity
 import dev.kviklet.kviklet.db.util.EventPayloadConverter
@@ -98,7 +100,10 @@ data class QueryResultLogPayload(
     val columnCount: Int,
     val rowCount: Int,
     val columns: List<ColumnInfo>? = null,
-    val storedRows: List<Map<String, String>>? = null,
+    // SQL NULL cells are stored as JSON null. The Kotlin module would otherwise treat the non-null
+    // row maps as "no null content" and apply that to the cell values nested inside them too.
+    @JsonSetter(contentNulls = Nulls.SET)
+    val storedRows: List<Map<String, String?>>? = null,
     val storedRowCount: Int? = null,
 ) : ResultLogPayload(ResultType.QUERY)
 

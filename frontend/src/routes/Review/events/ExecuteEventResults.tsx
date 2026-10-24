@@ -99,7 +99,13 @@ function StoredRowsTable({
                       key={j}
                       className="px-2 py-1 text-slate-700 dark:text-slate-300"
                     >
-                      {row[col.label]}
+                      {row[col.label] === null ? (
+                        <span className="italic text-slate-400 dark:text-slate-500">
+                          NULL
+                        </span>
+                      ) : (
+                        row[col.label]
+                      )}
                     </td>
                   ))}
                 </tr>

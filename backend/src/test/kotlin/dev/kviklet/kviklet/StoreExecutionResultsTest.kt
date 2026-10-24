@@ -10,6 +10,7 @@ import jakarta.servlet.http.Cookie
 import org.hamcrest.Matchers.hasSize
 import org.hamcrest.Matchers.nullValue
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -388,6 +389,74 @@ class StoreExecutionResultsTest {
                 .andExpect(jsonPath("$.events[-1].results[0].rowCount").value(10))
                 .andExpect(jsonPath("$.events[-1].results[0].storedRowCount").value(10))
                 .andExpect(jsonPath("$.events[-1].results[0].storedRows", hasSize<Collection<*>>(10)))
+        }
+    }
+
+    @Nested
+    inner class NullValueTests {
+
+        private val sql = "SELECT 1 AS id, NULL::text AS note, 'null' AS text"
+
+        @Test
+        fun `NULL cells are stored and the request can still be read`() {
+            val connectionWithStorage = connectionHelper.createPostgresConnection(db, storeResults = true)
+            val executionRequest = executionRequestHelper.createApprovedRequest(
+                author = testUser,
+                approver = testReviewer,
+                connection = connectionWithStorage,
+                sql = sql,
+            )
+
+            val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+            mockMvc.perform(
+                post("/execution-requests/${executionRequest.getId()}/execute")
+                    .cookie(userCookie)
+                    .contentType("application/json"),
+            ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.results[0].data[0].note").value(nullValue()))
+                .andExpect(jsonPath("$.results[0].data[0].text").value("null"))
+
+            mockMvc.perform(
+                get("/execution-requests/${executionRequest.getId()}").cookie(userCookie),
+            ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.events[-1].results[0].storedRows", hasSize<Collection<*>>(1)))
+                .andExpect(jsonPath("$.events[-1].results[0].storedRows[0].id").value("1"))
+                .andExpect(jsonPath("$.events[-1].results[0].storedRows[0].note").value(nullValue()))
+                .andExpect(jsonPath("$.events[-1].results[0].storedRows[0].text").value("null"))
+
+            // Listing requests and executions reads the same stored event
+            mockMvc.perform(get("/execution-requests/").cookie(userCookie))
+                .andExpect(status().isOk)
+            mockMvc.perform(get("/executions/").cookie(userCookie))
+                .andExpect(status().isOk)
+        }
+
+        @Test
+        fun `downloading results with NULL cells leaves the CSV cell empty and stores the rows`() {
+            val connectionWithStorage = connectionHelper.createPostgresConnection(db, storeResults = true)
+            val executionRequest = executionRequestHelper.createApprovedRequest(
+                author = testUser,
+                approver = testReviewer,
+                connection = connectionWithStorage,
+                sql = sql,
+            )
+
+            val userCookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
+
+            val csv = mockMvc.perform(
+                post("/execution-requests/${executionRequest.getId()}/download")
+                    .cookie(userCookie)
+                    .contentType("application/json"),
+            ).andExpect(status().isOk)
+                .andReturn().response.getContentAsString(Charsets.UTF_8)
+            assertEquals("id,note,text\n1,,null\n", csv.removePrefix("﻿"))
+
+            mockMvc.perform(
+                get("/execution-requests/${executionRequest.getId()}").cookie(userCookie),
+            ).andExpect(status().isOk)
+                .andExpect(jsonPath("$.events[-1].isDownload").value(true))
+                .andExpect(jsonPath("$.events[-1].results[0].storedRows[0].note").value(nullValue()))
         }
     }
 

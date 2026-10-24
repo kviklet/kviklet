@@ -23,8 +23,8 @@ data class ExecutionMessage(val level: MessageLevel, val message: String)
 
 data class RecordsQueryResult(
     val columns: List<ColumnInfo>,
-    val data: List<Map<String, String>>,
-    val storedRows: List<Map<String, String>>? = null,
+    val data: List<Map<String, String?>>,
+    val storedRows: List<Map<String, String?>>? = null,
     val storedRowCount: Int? = null,
 ) : QueryResult() {
     override fun toResultLog(): QueryResultLog = QueryResultLog(
