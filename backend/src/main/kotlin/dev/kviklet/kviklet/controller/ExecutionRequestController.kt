@@ -819,30 +819,10 @@ class ExecutionRequestController(val executionRequestService: ExecutionRequestSe
         @CurrentUser userDetails: UserDetailsWithId,
         response: HttpServletResponse,
         @RequestBody(required = false) request: DownloadExecutionRequestRequest?,
-    ) = writeDownload(executionRequestId, userDetails, response, request?.query)
-
-    @Operation(
-        summary = "Execute Execution Request and Download Results (legacy)",
-        description = "Use POST with a JSON body to avoid URL length limits for large queries.",
-        deprecated = true,
-    )
-    @GetMapping("/{executionRequestId}/download")
-    fun downloadLegacy(
-        @PathVariable executionRequestId: ExecutionRequestId,
-        @CurrentUser userDetails: UserDetailsWithId,
-        response: HttpServletResponse,
-        @RequestParam query: String?,
-    ) = writeDownload(executionRequestId, userDetails, response, query)
-
-    private fun writeDownload(
-        executionRequestId: ExecutionRequestId,
-        userDetails: UserDetailsWithId,
-        response: HttpServletResponse,
-        query: String?,
     ) {
         // Errors (failed query, missing approval, access denied) propagate to the
         // ExceptionHandlerController before anything is written to the response.
-        val download = executionRequestService.downloadResults(executionRequestId, userDetails.id, query)
+        val download = executionRequestService.downloadResults(executionRequestId, userDetails.id, request?.query)
         response.contentType = download.contentType
         response.setHeader(
             HttpHeaders.CONTENT_DISPOSITION,

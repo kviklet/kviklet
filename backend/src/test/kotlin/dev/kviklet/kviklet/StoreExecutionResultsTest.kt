@@ -408,7 +408,7 @@ class StoreExecutionResultsTest {
 
             // Download CSV
             mockMvc.perform(
-                get("/execution-requests/${executionRequest.getId()}/download")
+                post("/execution-requests/${executionRequest.getId()}/download")
                     .cookie(userCookie)
                     .contentType("application/json"),
             ).andExpect(status().isOk)
@@ -439,7 +439,7 @@ class StoreExecutionResultsTest {
 
             // Download CSV
             mockMvc.perform(
-                get("/execution-requests/${executionRequest.getId()}/download")
+                post("/execution-requests/${executionRequest.getId()}/download")
                     .cookie(userCookie)
                     .contentType("application/json"),
             ).andExpect(status().isOk)

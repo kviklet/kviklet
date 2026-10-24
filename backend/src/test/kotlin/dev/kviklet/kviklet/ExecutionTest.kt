@@ -735,22 +735,6 @@ class ExecutionTest {
     }
 
     @Test
-    fun `legacy GET download remains available`() {
-        val request = executionRequestHelper.createApprovedRequest(
-            author = testUser,
-            approver = testReviewer,
-            connection = testConnection,
-            sql = "SELECT * FROM foo.simple_table",
-        )
-        val cookie = userHelper.login(email = testUser.email, mockMvc = mockMvc)
-
-        val result = mockMvc.perform(get("/execution-requests/${request.getId()}/download").cookie(cookie))
-            .andExpect(status().isOk)
-            .andReturn()
-        verifyCSVContent(result.response.contentAsString)
-    }
-
-    @Test
     fun `when downloading CSV with invalid query then return useful error`() {
         val csvRequest = executionRequestHelper.createApprovedRequest(
             author = testUser,
