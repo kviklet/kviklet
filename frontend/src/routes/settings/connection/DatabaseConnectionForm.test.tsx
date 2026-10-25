@@ -168,3 +168,122 @@ describe("DatabaseConnectionForm - Max Temporary Access Duration", () => {
     });
   });
 });
+
+describe("DatabaseConnectionForm - payload and validation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const renderForm = () =>
+    render(
+      <DatabaseConnectionForm
+        createConnection={mockCreateConnection}
+        testConnection={mockTestConnection}
+        closeModal={mockCloseModal}
+      />,
+    );
+
+  const fieldError = (testId: string) =>
+    screen
+      .getByTestId(testId)
+      .closest(".flex-col")
+      ?.querySelector(".text-red-500")?.textContent;
+
+  const fillRequiredFields = () => {
+    userEvent.type(screen.getByTestId("connection-name"), "Test Connection");
+    userEvent.type(screen.getByTestId("connection-description"), "Desc");
+    userEvent.type(screen.getByTestId("connection-hostname"), "localhost");
+    userEvent.type(screen.getByTestId("connection-username"), "testuser");
+    userEvent.type(screen.getByTestId("connection-password"), "testpass");
+  };
+
+  test("submits the complete, typed connection payload", async () => {
+    renderForm();
+    fillRequiredFields();
+
+    fireEvent.click(screen.getByTestId("create-connection-button"));
+
+    await waitFor(() => expect(mockCreateConnection).toHaveBeenCalledTimes(1));
+    expect(mockCreateConnection.mock.calls[0][0]).toEqual({
+      connectionType: "DATASOURCE",
+      displayName: "Test Connection",
+      id: "test-connection",
+      description: "Desc",
+      type: "POSTGRESQL",
+      protocol: "POSTGRESQL",
+      hostname: "localhost",
+      port: 5432,
+      databaseName: "",
+      reviewConfig: { numTotalRequired: 1 },
+      additionalJDBCOptions: "",
+      maxExecutions: 1,
+      dumpsEnabled: false,
+      temporaryAccessEnabled: true,
+      explainEnabled: false,
+      dryRunEnabled: false,
+      dryRunRequiresApproval: false,
+      maxTemporaryAccessDuration: 0,
+      storeResults: false,
+      authenticationType: "USER_PASSWORD",
+      username: "testuser",
+      password: "testpass",
+    });
+    expect(mockCloseModal).toHaveBeenCalled();
+  });
+
+  test("coerces typed numbers in the payload", async () => {
+    renderForm();
+    fillRequiredFields();
+    fireEvent.click(screen.getByTestId("advanced-options-button"));
+
+    const port = screen.getByTestId("connection-port");
+    userEvent.clear(port);
+    userEvent.type(port, "6543");
+    const reviews = screen.getByTestId("connection-required-reviews");
+    userEvent.clear(reviews);
+    userEvent.type(reviews, "2");
+    const maxExecutions = screen.getByLabelText("Max executions");
+    userEvent.clear(maxExecutions);
+    userEvent.type(maxExecutions, "5");
+
+    fireEvent.click(screen.getByTestId("create-connection-button"));
+
+    await waitFor(() => expect(mockCreateConnection).toHaveBeenCalledTimes(1));
+    expect(mockCreateConnection.mock.calls[0][0]).toMatchObject({
+      port: 6543,
+      reviewConfig: { numTotalRequired: 2 },
+      maxExecutions: 5,
+    });
+  });
+
+  test("uses MySQL defaults when the type changes", async () => {
+    renderForm();
+    fillRequiredFields();
+
+    userEvent.selectOptions(screen.getByTestId("connection-type"), "MYSQL");
+    fireEvent.click(screen.getByTestId("create-connection-button"));
+
+    await waitFor(() => expect(mockCreateConnection).toHaveBeenCalledTimes(1));
+    expect(mockCreateConnection.mock.calls[0][0]).toMatchObject({
+      type: "MYSQL",
+      protocol: "MYSQL",
+      port: 3306,
+      additionalJDBCOptions: "?allowMultiQueries=true",
+    });
+  });
+
+  test("blocks submission and shows errors for invalid fields", async () => {
+    renderForm();
+
+    userEvent.type(screen.getByTestId("connection-name"), "ab");
+    fireEvent.click(screen.getByTestId("create-connection-button"));
+
+    // Zod's default messages differ between versions, so only pin that the
+    // error lands on the right field.
+    await waitFor(() => {
+      expect(fieldError("connection-name")).toMatch(/3/);
+    });
+    expect(fieldError("connection-hostname")).toMatch(/1/);
+    expect(mockCreateConnection).not.toHaveBeenCalled();
+  });
+});
