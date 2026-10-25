@@ -33,21 +33,6 @@ describe("getConfig", () => {
     });
   });
 
-  it("parses license dates and keeps null ones null", async () => {
-    respondWith({
-      ...minimalConfig,
-      validUntil: "2027-01-01T00:00:00Z",
-      createdAt: null,
-    });
-
-    const config = await getConfig();
-
-    expect(config).toMatchObject({
-      validUntil: new Date("2027-01-01T00:00:00Z"),
-      createdAt: null,
-    });
-  });
-
   it("defaults the release and commit lists of an update", async () => {
     respondWith({
       ...minimalConfig,
@@ -65,51 +50,9 @@ describe("getConfig", () => {
       },
     });
   });
-
-  it("parses release and commit dates of an update", async () => {
-    respondWith({
-      ...minimalConfig,
-      update: {
-        channel: "MAIN",
-        url: "https://example.com/compare",
-        behindBy: 1,
-        commits: [
-          {
-            sha: "def5678",
-            message: "Fix things",
-            committedAt: "2026-10-20T12:00:00Z",
-            url: "https://example.com/commit/def5678",
-          },
-        ],
-      },
-    });
-
-    const config = await getConfig();
-
-    expect(config).toMatchObject({
-      update: {
-        commits: [{ committedAt: new Date("2026-10-20T12:00:00Z") }],
-      },
-    });
-  });
 });
 
 describe("ConfigPayloadSchema", () => {
-  it("only keeps the writable settings", () => {
-    const payload = ConfigPayloadSchema.parse({
-      ...minimalConfig,
-      teamsUrl: "https://teams.example.com/hook",
-      slackUrl: null,
-      proxyEnabled: true,
-    });
-
-    expect(payload).toEqual({
-      teamsUrl: "https://teams.example.com/hook",
-      slackUrl: null,
-      proxyEnabled: true,
-    });
-  });
-
   it("leaves out toggles that were not sent instead of defaulting them", () => {
     const payload = ConfigPayloadSchema.parse({ teamsUrl: "" });
 

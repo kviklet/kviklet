@@ -39,8 +39,9 @@ export function useConnectionForm<Input extends FieldValues, Output>({
     try {
       const isValid = await form.trigger();
       if (isValid) {
-        // getValues() returns the raw input rather than the parsed output, e.g. a
-        // port typed into the form is still a string here.
+        // Deliberately the raw values, not the parsed output: a cleared number field
+        // stays "" (which the backend reads as "unchanged"), whereas z.coerce would
+        // turn it into 0. Typed numbers stay strings; the backend coerces them.
         const formData = form.getValues() as unknown as Output;
         await onSubmit({ ...formData, connectionType });
       }

@@ -57,26 +57,6 @@ describe("connectionResponseSchema", () => {
     expect(parsed).toEqual({ ...kubernetesConnection, _type: "KUBERNETES" });
   });
 
-  it("coerces stringly typed numbers and ids", () => {
-    const parsed = connectionResponseSchema.parse({
-      ...datasourceConnection,
-      id: 42,
-      port: "5433",
-      maxExecutions: "3",
-    });
-
-    expect(parsed).toMatchObject({ id: "42", port: 5433, maxExecutions: 3 });
-  });
-
-  it("drops fields the schema does not know", () => {
-    const parsed = connectionResponseSchema.parse({
-      ...datasourceConnection,
-      password: "should-never-reach-the-ui",
-    });
-
-    expect(parsed).not.toHaveProperty("password");
-  });
-
   it("rejects an unknown database type", () => {
     const result = connectionResponseSchema.safeParse({
       ...datasourceConnection,

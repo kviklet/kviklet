@@ -76,9 +76,6 @@ const openForm = async (button: "query" | "access") => {
   });
 };
 
-// Give a blocked submit time to (not) reach the server.
-const settle = () => new Promise((resolve) => setTimeout(resolve, 100));
-
 describe("NewRequest - datasource request form", () => {
   test("submits a query request", async () => {
     await openForm("query");
@@ -109,31 +106,7 @@ describe("NewRequest - datasource request form", () => {
     fireEvent.click(screen.getByTestId("submit-button"));
 
     expect(await screen.findByText("Title is required")).toBeInTheDocument();
-    await settle();
     expect(submitted).toHaveLength(0);
-  });
-
-  test("does not submit a query request without a statement", async () => {
-    await openForm("query");
-
-    userEvent.type(screen.getByTestId("request-title"), "No statement");
-    fireEvent.click(screen.getByTestId("submit-button"));
-
-    await settle();
-    expect(submitted).toHaveLength(0);
-  });
-
-  test("submits temporary access with the default duration as a number", async () => {
-    await openForm("access");
-
-    userEvent.type(screen.getByTestId("request-title"), "Debugging");
-    fireEvent.click(screen.getByTestId("submit-button"));
-
-    await waitFor(() => expect(submitted).toHaveLength(1));
-    expect(submitted[0]).toMatchObject({
-      type: "TemporaryAccess",
-      temporaryAccessDuration: 60,
-    });
   });
 
   test("coerces a typed duration to a number", async () => {

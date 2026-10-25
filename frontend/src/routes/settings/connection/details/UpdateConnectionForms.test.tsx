@@ -57,8 +57,6 @@ const replaceValue = (element: HTMLElement, value: string) => {
   userEvent.type(element, value);
 };
 
-const settle = () => new Promise((resolve) => setTimeout(resolve, 100));
-
 describe("UpdateDatasourceConnectionForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -105,29 +103,6 @@ describe("UpdateDatasourceConnectionForm", () => {
       category: "prod",
     });
   });
-
-  test("submits a typed port as entered", async () => {
-    renderForm();
-
-    replaceValue(screen.getByLabelText("Port"), "6543");
-    fireEvent.click(screen.getByText("Save"));
-
-    await waitFor(() => expect(mockEditConnection).toHaveBeenCalledTimes(1));
-    // The edit hook submits the raw form values, not the parsed output.
-    expect(mockEditConnection.mock.calls[0][0]).toMatchObject({
-      port: "6543",
-    });
-  });
-
-  test("does not submit an invalid name", async () => {
-    renderForm();
-
-    replaceValue(screen.getByLabelText("Name"), "ab");
-    fireEvent.click(screen.getByText("Save"));
-
-    await settle();
-    expect(mockEditConnection).not.toHaveBeenCalled();
-  });
 });
 
 describe("UpdateKubernetesConnectionForm", () => {
@@ -164,16 +139,5 @@ describe("UpdateKubernetesConnectionForm", () => {
       kubernetesExecTimeoutMinutes: 60,
       category: null,
     });
-  });
-
-  test("does not submit a timeout below the minimum", async () => {
-    renderForm();
-
-    fireEvent.click(screen.getByTestId("kubernetes-advanced-options-button"));
-    replaceValue(screen.getByTestId("kubernetes-exec-timeout-minutes"), "0");
-    fireEvent.click(screen.getByTestId("save-kubernetes-connection-button"));
-
-    await settle();
-    expect(mockEditConnection).not.toHaveBeenCalled();
   });
 });

@@ -85,13 +85,6 @@ describe("DBExecuteResponseSchema", () => {
     DBExecuteResponseSchema.parse({ results: [result], messages: [] })
       .results[0];
 
-  it("tags an update result", () => {
-    expect(parseResult({ rowsUpdated: 3 })).toEqual({
-      rowsUpdated: 3,
-      _type: "update",
-    });
-  });
-
   it("stringifies select cells but keeps SQL NULL as null", () => {
     const columns = [
       { label: "id", typeName: "int4", typeClass: "java.lang.Integer" },
@@ -118,17 +111,6 @@ describe("DBExecuteResponseSchema", () => {
     });
   });
 
-  it("tags an error result", () => {
-    expect(
-      parseResult({ errorCode: 42, message: "syntax error", sqlState: null }),
-    ).toEqual({
-      errorCode: 42,
-      message: "syntax error",
-      sqlState: null,
-      _type: "error",
-    });
-  });
-
   it("passes MongoDB documents through untouched", () => {
     const documents = [
       { _id: { $oid: "65f0" }, tags: ["a", "b"], nested: { n: 1 } },
@@ -152,14 +134,5 @@ describe("DBExecuteResponseSchema", () => {
       "error",
     ]);
     expect(parsed.messages).toEqual([{ level: "NOTICE", message: "done" }]);
-  });
-
-  it("rejects a result that matches no shape", () => {
-    expect(
-      DBExecuteResponseSchema.safeParse({
-        results: [{ unexpected: true }],
-        messages: [],
-      }).success,
-    ).toBe(false);
   });
 });

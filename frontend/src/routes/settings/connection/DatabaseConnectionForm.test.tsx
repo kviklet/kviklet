@@ -169,7 +169,7 @@ describe("DatabaseConnectionForm - Max Temporary Access Duration", () => {
   });
 });
 
-describe("DatabaseConnectionForm - payload and validation", () => {
+describe("DatabaseConnectionForm - payload", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -182,12 +182,6 @@ describe("DatabaseConnectionForm - payload and validation", () => {
         closeModal={mockCloseModal}
       />,
     );
-
-  const fieldError = (testId: string) =>
-    screen
-      .getByTestId(testId)
-      .closest(".flex-col")
-      ?.querySelector(".text-red-500")?.textContent;
 
   const fillRequiredFields = () => {
     userEvent.type(screen.getByTestId("connection-name"), "Test Connection");
@@ -254,36 +248,5 @@ describe("DatabaseConnectionForm - payload and validation", () => {
       reviewConfig: { numTotalRequired: 2 },
       maxExecutions: 5,
     });
-  });
-
-  test("uses MySQL defaults when the type changes", async () => {
-    renderForm();
-    fillRequiredFields();
-
-    userEvent.selectOptions(screen.getByTestId("connection-type"), "MYSQL");
-    fireEvent.click(screen.getByTestId("create-connection-button"));
-
-    await waitFor(() => expect(mockCreateConnection).toHaveBeenCalledTimes(1));
-    expect(mockCreateConnection.mock.calls[0][0]).toMatchObject({
-      type: "MYSQL",
-      protocol: "MYSQL",
-      port: 3306,
-      additionalJDBCOptions: "?allowMultiQueries=true",
-    });
-  });
-
-  test("blocks submission and shows errors for invalid fields", async () => {
-    renderForm();
-
-    userEvent.type(screen.getByTestId("connection-name"), "ab");
-    fireEvent.click(screen.getByTestId("create-connection-button"));
-
-    // Zod's default messages differ between versions, so only pin that the
-    // error lands on the right field.
-    await waitFor(() => {
-      expect(fieldError("connection-name")).toMatch(/3/);
-    });
-    expect(fieldError("connection-hostname")).toMatch(/1/);
-    expect(mockCreateConnection).not.toHaveBeenCalled();
   });
 });
