@@ -11,7 +11,7 @@
     "@fortawesome/react-fontawesome": "^0.2.0",
     "@headlessui/react": "^2",
     "@heroicons/react": "^2.0.18",
-    "@hookform/resolvers": "^3.0.0",
+    "@hookform/resolvers": "^5.9.2",
     "@monaco-editor/react": "^4.6.0",
     "@tailwindcss/line-clamp": "^0.4.4",
     "@tanstack/react-table": "^8.9.3",
@@ -28,7 +28,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-google-button": "^0.7.2",
-    "react-hook-form": "^7.43.8",
+    "react-hook-form": "^7.91.0",
     "react-markdown": "^8.0.7",
     "react-router-dom": "^7.18.0",
     "react-syntax-highlighter": "^15.5.0",
@@ -38,7 +38,7 @@
     "tailwindcss": "^3.4.19",
     "vite-plugin-babel-macros": "^1.0.6",
     "web-vitals": "^2.1.0",
-    "zod": "^3.25.23"
+    "zod": "^4.6.7"
   },
   "scripts": {
     "start": "vite",

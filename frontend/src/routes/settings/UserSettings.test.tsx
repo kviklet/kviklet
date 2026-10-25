@@ -9,7 +9,11 @@ import { UserStatusContext } from "../../components/UserStatusProvider";
 import { StatusResponse } from "../../api/StatusApi";
 
 vi.mock("../../api/UserApi");
-vi.mock("../../api/RoleApi");
+// Keep the real schemas: UserApi builds its own schemas from roleResponseSchema at import time.
+vi.mock("../../api/RoleApi", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../api/RoleApi")>()),
+  getRoles: vi.fn(),
+}));
 // The role combobox is a Headless UI popover with an `anchor`, which does not terminate in
 // jsdom; it is not what these tests are about.
 vi.mock("./RoleComboBox", () => ({

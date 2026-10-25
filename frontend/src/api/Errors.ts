@@ -1,4 +1,4 @@
-import { ZodSchema, ZodTypeDef, z } from "zod";
+import { z } from "zod";
 import { apiFetch } from "./base";
 
 export const ApiErrorResponseSchema = z.object({
@@ -14,7 +14,7 @@ export function isApiErrorResponse(
 }
 
 export const parseSchemaOrError = <Output, Input = Output>(
-  schema: ZodSchema<Output, ZodTypeDef, Input>,
+  schema: z.ZodType<Output, Input>,
   data: unknown,
 ): Output | ApiErrorResponse => {
   const result = z.union([schema, ApiErrorResponseSchema]).safeParse(data);
@@ -33,7 +33,7 @@ export type ApiResponse<T> = T | ApiErrorResponse;
 export async function fetchWithErrorHandling<Output, Input = Output>(
   url: string,
   options: RequestInit,
-  schema: ZodSchema<Output, ZodTypeDef, Input>,
+  schema: z.ZodType<Output, Input>,
 ): Promise<ApiResponse<Output>> {
   try {
     const response = await apiFetch(url, options);

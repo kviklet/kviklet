@@ -1,36 +1,47 @@
-import { useForm, UseFormReturn } from "react-hook-form";
+import {
+  DefaultValues,
+  FieldValues,
+  useForm,
+  UseFormReturn,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 type ConnectionFormType = "DATASOURCE" | "KUBERNETES";
 
-interface UseConnectionFormProps<T extends z.ZodTypeAny> {
-  initialValues: z.infer<T>;
-  schema: T;
+interface UseConnectionFormProps<Input extends FieldValues, Output> {
+  initialValues: Input;
+  schema: z.ZodType<Output, Input>;
   onSubmit: (
-    data: z.infer<T> & { connectionType: ConnectionFormType },
+    data: Output & { connectionType: ConnectionFormType },
   ) => Promise<void>;
   connectionType: ConnectionFormType;
 }
 
-export function useConnectionForm<T extends z.ZodTypeAny>({
+export function useConnectionForm<Input extends FieldValues, Output>({
   initialValues,
   schema,
   onSubmit,
   connectionType,
-}: UseConnectionFormProps<T>): UseFormReturn<z.infer<T>> & {
+}: UseConnectionFormProps<Input, Output>): UseFormReturn<
+  Input,
+  unknown,
+  Output
+> & {
   handleFormSubmit: () => Promise<void>;
 } {
-  const form = useForm<z.infer<T>>({
+  const form = useForm<Input, unknown, Output>({
     resolver: zodResolver(schema),
-    defaultValues: initialValues,
+    defaultValues: initialValues as DefaultValues<Input>,
   });
 
   const handleFormSubmit = async (): Promise<void> => {
     try {
       const isValid = await form.trigger();
       if (isValid) {
-        const formData = form.getValues();
+        // getValues() returns the raw input rather than the parsed output, e.g. a
+        // port typed into the form is still a string here.
+        const formData = form.getValues() as unknown as Output;
         await onSubmit({ ...formData, connectionType });
       }
     } catch (error) {
