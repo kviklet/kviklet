@@ -94,7 +94,7 @@ const QueryResultLog = z.object({
     .optional()
     .nullable(),
   storedRows: z
-    .array(z.record(z.union([z.null(), z.coerce.string()])))
+    .array(z.record(z.string(), z.union([z.null(), z.coerce.string()])))
     .optional()
     .nullable(),
   storedRowCount: z.number().optional().nullable(),
@@ -194,7 +194,7 @@ const ProxyResponse = z.object({
   username: z.string(),
   password: z.string(),
   databaseName: z.string(),
-  type: z.nativeEnum(DatabaseType),
+  type: z.enum(DatabaseType),
   // Not z.coerce.date().nullable(): coercion runs first and turns null into the 1970 epoch,
   // but a session without a time limit really does send null.
   expiresAt: z
@@ -540,11 +540,11 @@ const downloadResults = async (
   window.URL.revokeObjectURL(url);
 };
 
-function withType<T, U extends string>(schema: z.ZodSchema<T>, typeValue: U) {
+function withType<T, U extends string>(schema: z.ZodType<T>, typeValue: U) {
   return schema.transform((data) => ({
     ...data,
     _type: typeValue,
-  })) as z.ZodSchema<T & { _type: U }>;
+  })) as z.ZodType<T & { _type: U }>;
 }
 
 const UpdateExecuteResponseSchema = withType(
@@ -565,7 +565,7 @@ const SelectExecuteResponseSchema = withType(
     columns: z.array(ColumnSchema),
     // SQL NULL arrives as JSON null; coercing it would make it read as the
     // string "null", so the table could not tell the two apart.
-    data: z.array(z.record(z.union([z.null(), z.coerce.string()]))),
+    data: z.array(z.record(z.string(), z.union([z.null(), z.coerce.string()]))),
   }),
   "select",
 );
@@ -581,7 +581,7 @@ const ErrorResponseSchema = withType(
 
 const DocumentsResponseSchema = withType(
   z.object({
-    documents: z.array(z.record(z.unknown())),
+    documents: z.array(z.record(z.string(), z.unknown())),
   }),
   "documents",
 );

@@ -22,7 +22,7 @@ import { useRoleRequirements } from "../../../hooks/useRoleRequirements";
 
 const kubernetesConnectionPayloadSchema = z.object({
   connectionType: z.literal("KUBERNETES").default("KUBERNETES"),
-  displayName: z.coerce.string(),
+  displayName: z.string(),
   id: z.string(),
   description: z.string(),
   reviewConfig: z.object({
@@ -53,7 +53,7 @@ export default function CreateKubernetesConnectionForm(props: {
     watch,
     setValue,
     getValues,
-  } = useForm<KubernetesConnectionPayload>({
+  } = useForm({
     resolver: zodResolver(kubernetesConnectionPayloadSchema),
   });
 
@@ -148,7 +148,9 @@ export default function CreateKubernetesConnectionForm(props: {
             onAppend={handleAppendRole}
             onRemove={handleRemoveRole}
             onUpdate={handleUpdateRole}
-            numTotalRequired={watch("reviewConfig.numTotalRequired") || 0}
+            numTotalRequired={
+              Number(watch("reviewConfig.numTotalRequired")) || 0
+            }
           />
           <div className="w-full">
             <Disclosure defaultOpen={false}>

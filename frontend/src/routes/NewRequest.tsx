@@ -86,7 +86,7 @@ const queryPlaceholder = (connection: ConnectionResponse): string => {
 const DatasourceExecutionRequestSchema = z
   .object({
     connectionType: z.literal("DATASOURCE"),
-    title: z.string().min(1, { message: "Title is required" }),
+    title: z.string().min(1, { error: "Title is required" }),
     type: z.enum(["TemporaryAccess", "SingleExecution", "Dump"]),
     description: z.string(),
     statement: z.string().optional(),
@@ -99,7 +99,7 @@ const DatasourceExecutionRequestSchema = z
       data.type === "Dump" ||
       (!!data.statement && data.type === "SingleExecution"),
     {
-      message: "If you create a query request an SQL statement is required",
+      error: "If you create a query request an SQL statement is required",
     },
   )
   .refine(
@@ -107,13 +107,13 @@ const DatasourceExecutionRequestSchema = z
       data.type !== "TemporaryAccess" ||
       data.temporaryAccessDuration !== undefined,
     {
-      message: "For TemporaryAccess, a Duration is required",
+      error: "For TemporaryAccess, a Duration is required",
     },
   );
 const KubernetesExecutionRequestSchema = z
   .object({
     connectionType: z.literal("KUBERNETES"),
-    title: z.string().min(1, { message: "Title is required" }),
+    title: z.string().min(1, { error: "Title is required" }),
     type: z.enum(["TemporaryAccess", "SingleExecution"]),
     description: z.string(),
     command: z.string().optional(),
@@ -128,7 +128,7 @@ const KubernetesExecutionRequestSchema = z
       data.type === "TemporaryAccess" ||
       (!!data.command && data.type === "SingleExecution"),
     {
-      message: "If you create a command request a command is required",
+      error: "If you create a command request a command is required",
     },
   )
   .refine(
@@ -136,7 +136,7 @@ const KubernetesExecutionRequestSchema = z
       data.type !== "TemporaryAccess" ||
       data.temporaryAccessDuration !== undefined,
     {
-      message: "For TemporaryAccess, a Duration is required",
+      error: "For TemporaryAccess, a Duration is required",
     },
   );
 
@@ -439,7 +439,7 @@ const DatasourceExecutionRequestForm = ({
     handleSubmit,
     formState: { errors, isSubmitting },
     setValue,
-  } = useForm<DatasourceExecutionRequest>({
+  } = useForm({
     resolver: zodResolver(DatasourceExecutionRequestSchema),
   });
 
@@ -694,7 +694,7 @@ const KubernetesExecutionRequestForm = ({
     handleSubmit,
     formState: { errors, isSubmitting },
     setValue,
-  } = useForm<KubernetesExecutionRequest>({
+  } = useForm({
     resolver: zodResolver(KubernetesExecutionRequestSchema),
   });
 

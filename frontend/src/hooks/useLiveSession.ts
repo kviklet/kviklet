@@ -234,7 +234,7 @@ const useLiveSession = (
       ws.current.send(JSON.stringify(validatedMessage));
     } catch (error) {
       if (error instanceof z.ZodError) {
-        console.error("Invalid message format:", error.errors);
+        console.error("Invalid message format:", error.issues);
         addNotification({
           type: "error",
           title: "Websocket error",

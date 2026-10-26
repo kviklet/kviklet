@@ -31,8 +31,8 @@ import { hasPermission } from "../../../../api/Permissions";
 const baseConnectionFormSchema = z.object({
   displayName: z.string().min(3),
   description: z.string(),
-  type: z.nativeEnum(DatabaseType),
-  protocol: z.nativeEnum(DatabaseProtocol),
+  type: z.enum(DatabaseType),
+  protocol: z.enum(DatabaseProtocol),
   hostname: z.string().min(1),
   port: z.coerce.number(),
   databaseName: z.string(),
@@ -63,22 +63,20 @@ const connectionFormSchema = z.discriminatedUnion("authenticationType", [
     authenticationType: z.literal("AWS_IAM"),
     username: z.string().min(0),
     roleArn: z.string().nullable(),
-    type: z.nativeEnum(DatabaseType).refine(
-      (type) => supportsIamAuth(type),
-      (type) => ({
-        message: `AWS IAM authentication is not supported for ${type}`,
-      }),
-    ),
+    type: z.enum(DatabaseType).refine((type) => supportsIamAuth(type), {
+      error: (issue) =>
+        `AWS IAM authentication is not supported for ${String(issue.input)}`,
+    }),
   }),
 ]);
 
-type ConnectionForm = z.infer<typeof connectionFormSchema>;
+type ConnectionFormInput = z.input<typeof connectionFormSchema>;
 type BasicAuthFormType = Extract<
-  ConnectionForm,
+  ConnectionFormInput,
   { authenticationType: "USER_PASSWORD" }
 >;
 type AWSAuthFormType = Extract<
-  ConnectionForm,
+  ConnectionFormInput,
   { authenticationType: "AWS_IAM" }
 >;
 
@@ -301,7 +299,9 @@ export default function UpdateDatasourceConnectionForm({
             onAppend={handleAppendRole}
             onRemove={handleRemoveRole}
             onUpdate={handleUpdateRole}
-            numTotalRequired={watch("reviewConfig.numTotalRequired") || 0}
+            numTotalRequired={
+              Number(watch("reviewConfig.numTotalRequired")) || 0
+            }
           />
 
           <div className="w-full">
@@ -488,10 +488,10 @@ export default function UpdateDatasourceConnectionForm({
 }
 
 type AuthSectionProps = {
-  register: UseFormRegister<ConnectionForm>;
-  errors: FieldErrors<ConnectionForm>;
-  watch: UseFormWatch<ConnectionForm>;
-  setValue: UseFormSetValue<ConnectionForm>;
+  register: UseFormRegister<ConnectionFormInput>;
+  errors: FieldErrors<ConnectionFormInput>;
+  watch: UseFormWatch<ConnectionFormInput>;
+  setValue: UseFormSetValue<ConnectionFormInput>;
 };
 
 const AuthSection = ({

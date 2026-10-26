@@ -33,11 +33,11 @@ function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
 
 export default baseUrl;
 
-function withType<T, U extends string>(schema: z.ZodSchema<T>, typeValue: U) {
+function withType<T, U extends string>(schema: z.ZodType<T>, typeValue: U) {
   return schema.transform((data) => ({
     ...data,
     _type: typeValue,
-  })) as z.ZodSchema<T & { _type: U }>;
+  })) as z.ZodType<T & { _type: U }>;
 }
 
 export { withType, websocketBaseUrl, apiFetch };

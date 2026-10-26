@@ -148,7 +148,9 @@ export default function UpdateKubernetesConnectionForm({
             onAppend={handleAppendRole}
             onRemove={handleRemoveRole}
             onUpdate={handleUpdateRole}
-            numTotalRequired={watch("reviewConfig.numTotalRequired") || 0}
+            numTotalRequired={
+              Number(watch("reviewConfig.numTotalRequired")) || 0
+            }
           />
           <div className="w-full">
             {/* Plain state instead of a headlessui Disclosure: its button ignores clicks

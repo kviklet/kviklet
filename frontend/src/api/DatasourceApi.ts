@@ -51,10 +51,10 @@ const databaseConnectionResponseSchema = withType(
   z.object({
     id: z.coerce.string(),
     displayName: z.coerce.string(),
-    type: z.nativeEnum(DatabaseType),
-    protocol: z.nativeEnum(DatabaseProtocol),
+    type: z.enum(DatabaseType),
+    protocol: z.enum(DatabaseProtocol),
     maxExecutions: z.coerce.number().nullable(),
-    authenticationType: z.nativeEnum(AuthenticationType),
+    authenticationType: z.enum(AuthenticationType),
     username: z.coerce.string(),
     hostname: z.coerce.string(),
     port: z.coerce.number(),
