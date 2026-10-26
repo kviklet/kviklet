@@ -9,7 +9,7 @@ Secure access to production environments without impairing developer productivit
 
 Kviklet (pronounced Quick-let) applies the Four-Eyes Principle to production database access, with a pull request-like review and approval workflow for individual SQL statements or time-limited database sessions. Engineers can review and approve each other’s requests without routing every query through a DBA or operations team.
 
-Kviklet is self-hosted and runs as a Docker container with a PostgreSQL database for application state. Its web interface lets you submit, review, and execute requests. An optional enterprise license unlocks SAML authentication, role-based review requirements, role sync, and API keys. Request an enterprise license at [kviklet.dev](https://kviklet.dev).
+Kviklet is self-hosted and runs as a Docker container with a PostgreSQL database for application state. Its web interface lets you submit, review, and execute requests. An optional enterprise license unlocks SAML authentication, role-based review requirements, role sync, API keys, the database proxy and the MCP server for AI agents. Request an enterprise license at [kviklet.dev](https://kviklet.dev).
 
 Supported databases are **Postgres**, **MySQL**, **MariaDB**, **MS SQL Server** and **MongoDB**.
 
@@ -36,6 +36,7 @@ Kviklet records executed statements and associates them with the user and access
 - **Role-Based Review Gates**: Require approvals from specific roles before execution.
 - **Role Sync**: Automatically sync user roles from your identity provider groups.
 - **API Keys**: Programmatic access to the Kviklet API.
+- **MCP Server**: Connect AI agents like Claude Code or Codex to Kviklet. They act with the user's own permissions and go through the same reviews.
 
 <details>
 <summary>More screenshots</summary>
@@ -80,7 +81,7 @@ Most features are available for all databases (SSO, LDAP, RBAC, Review/Approval 
 
 Kviklet ships as a simple docker container.
 You can find the available versions under [Releases](https://github.com/kviklet/kviklet/releases). We recommend regularly updating the version you are using as we continue to build new features.  
-The latest one currently is `ghcr.io/kviklet/kviklet:0.8.0`, you can also use `:main` but it might happen every now and then that we accidentally merge something buggy. Though we try to avoid that.
+The latest one currently is `ghcr.io/kviklet/kviklet:0.10.0`, you can also use `:main` but it might happen every now and then that we accidentally merge something buggy. Though we try to avoid that.
 
 ### Quick Start
 
@@ -626,6 +627,33 @@ API Keys inherit the permissions of the user that creates them. Currently only a
 Some rudimentary API docs can be found at `[kviklet_host]/api/swagger-ui/index.html`. But keep in mind that this is a work in progress and the API might change in future versions.
 
 In the end the truth is in the code, so you can always look at the controller to see how the API is defined. If you have any questions feel free to open an issue.
+
+## MCP Server (Enterprise)
+
+Kviklet comes with an MCP server, so AI agents like Claude Code or Codex can work with Kviklet directly. This is an enterprise feature and requires a valid license. Once a license is uploaded, the server is on. Admins can switch it off under Settings -> MCP.
+
+Every user finds the setup commands for their instance under Settings -> MCP:
+
+![MCP Settings](images/McpSettings_light.png#gh-light-mode-only)
+![MCP Settings](images/McpSettings_dark.png#gh-dark-mode-only)
+
+```bash
+# Claude Code
+claude mcp add --transport http kviklet https://[kviklet_host]/api/mcp
+
+# Codex
+codex mcp add kviklet --url https://[kviklet_host]/api/mcp
+```
+
+The first time the agent connects, a browser window opens. Log in to Kviklet and approve the client. From then on the agent acts as you, with your own permissions:
+
+- It only sees the tools your roles allow, e.g. it can't manage users without the permission to.
+- Requests it creates need the same reviews as any other request, and the agent can't approve its own requests.
+- Everything it executes lands in the audit log, attributed to you.
+
+The agent can, among other things, list connections and requests, create query, temporary access and Kubernetes requests, review and execute requests, run statements in an approved temporary access session and start the database proxy. Admins can additionally manage connections, roles, users, role sync, API keys and notification settings.
+
+The login uses OAuth, with Kviklet as the authorization server. If Kviklet runs behind a reverse proxy that doesn't forward the original host, set the [base URL](#base-url-configuration) so the OAuth URLs point to the public address.
 
 ## Experimental Features
 

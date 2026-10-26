@@ -188,6 +188,15 @@ for (const theme of THEMES) {
       await shoot(page, "ApiKeys", theme);
     });
 
+    test(`McpSettings ${theme}`, async ({ page }) => {
+      await page.goto("/settings/mcp");
+      await expect(
+        page.getByRole("heading", { name: "MCP Server" }),
+      ).toBeVisible();
+      await expect(page.getByText(/^claude mcp add/)).toBeVisible();
+      await shoot(page, "McpSettings", theme);
+    });
+
     test(`PostgresProxy ${theme}`, async ({ page }) => {
       await page.goto(`/requests/${seeded.proxyRequestId}`);
       await expect(
