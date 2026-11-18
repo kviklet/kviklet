@@ -25,4 +25,5 @@ EXPOSE 8080
 #EXPOSE 5432
 
 # Start the application
-CMD ["java", "-jar", "app.jar"]
+# -XX:-UseBASE64Intrinsics: see run.sh (CVE-2026-114938)
+CMD ["java", "-XX:-UseBASE64Intrinsics", "-jar", "app.jar"]

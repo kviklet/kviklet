@@ -7,7 +7,9 @@ RUN gradle --version --no-daemon
 
 RUN gradle build  -x kaptTestKotlin -x compileTestKotlin -x test --no-daemon
 
-# Build a trimmed Java runtime with jlink. Module list: `jdeps --print-module-deps`
+# Build a trimmed Java runtime with jlink, from an image that is rebuilt for every JDK patch
+# release (the pinned gradle image above is not, so its JDK goes stale). Module list:
+# `jdeps --print-module-deps`
 # on the boot jar, plus modules loaded reflectively/via service-loader that jdeps
 # cannot see:
 #   jdk.crypto.ec                     - EC TLS ciphers (outbound HTTPS, SSO)
@@ -15,6 +17,7 @@ RUN gradle build  -x kaptTestKotlin -x compileTestKotlin -x test --no-daemon
 #   jdk.naming.dns                    - JNDI DNS provider (LDAP server discovery)
 #   jdk.charsets, jdk.localedata      - extended charsets/locales for DB connections
 #   jdk.zipfs, jdk.management         - nested-jar access, JVM management extensions
+FROM eclipse-temurin:21-jdk AS build-java-runtime
 RUN jlink \
     --add-modules java.base,java.compiler,java.desktop,java.instrument,java.management,java.naming,java.net.http,java.prefs,java.rmi,java.scripting,java.security.jgss,java.security.sasl,java.sql,java.sql.rowset,java.transaction.xa,java.xml,java.xml.crypto,jdk.charsets,jdk.crypto.ec,jdk.httpserver,jdk.jfr,jdk.localedata,jdk.management,jdk.naming.dns,jdk.net,jdk.security.auth,jdk.security.jgss,jdk.unsupported,jdk.zipfs \
     --strip-debug --no-man-pages --no-header-files --compress=zip-6 \
@@ -51,7 +54,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 
-COPY --from=build /opt/java-runtime /opt/java-runtime
+COPY --from=build-java-runtime /opt/java-runtime /opt/java-runtime
 
 # Set Java environment variables
 ENV JAVA_HOME=/opt/java-runtime
