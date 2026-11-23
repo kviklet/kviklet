@@ -6,6 +6,9 @@ import dev.kviklet.kviklet.proxy.core.TlsCertEnvConfig
 import dev.kviklet.kviklet.security.CorsSettings
 import dev.kviklet.kviklet.service.AwsIamDataSource
 import dev.kviklet.kviklet.service.RdsIamTokenProvider
+import jakarta.servlet.ServletContext
+import jakarta.websocket.server.ServerContainer
+import org.springframework.beans.factory.InitializingBean
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.context.properties.ConfigurationProperties
@@ -17,7 +20,6 @@ import org.springframework.stereotype.Component
 import org.springframework.web.socket.config.annotation.EnableWebSocket
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
-import org.springframework.web.socket.server.standard.ServletServerContainerFactoryBean
 import javax.sql.DataSource
 
 @Component
@@ -54,11 +56,13 @@ class WebSocketConfig : WebSocketConfigurer {
     // of 8192 characters closes the socket (status 1009) on any larger statement. Tomcat
     // allocates this buffer per open connection, so the limit is deliberately not higher.
     // Nothing injects this bean, so with spring.main.lazy-initialization it would never be
-    // created and the limit never applied without @Lazy(false).
+    // created without @Lazy(false). Spring's ServletServerContainerFactoryBean is not used
+    // because it fails when there is no websocket container, as in MockMvc tests.
     @Bean
     @Lazy(false)
-    fun webSocketContainer(): ServletServerContainerFactoryBean = ServletServerContainerFactoryBean().apply {
-        setMaxTextMessageBufferSize(MAX_WEBSOCKET_TEXT_MESSAGE_SIZE)
+    fun webSocketMessageSizeLimit(servletContext: ServletContext) = InitializingBean {
+        val container = servletContext.getAttribute(ServerContainer::class.java.name) as? ServerContainer
+        container?.defaultMaxTextMessageBufferSize = MAX_WEBSOCKET_TEXT_MESSAGE_SIZE
     }
 
     companion object {
