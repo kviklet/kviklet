@@ -52,7 +52,9 @@ image:
   registry: ghcr.io
   repository: kviklet/kviklet
   pullPolicy: Always
-  tag: main
+  # Image tag. Defaults to the chart's appVersion, the Kviklet release this chart was published for.
+  # Set to "main" to follow the latest build of the main branch.
+  tag: ""
 
 service:
   type: ClusterIP
