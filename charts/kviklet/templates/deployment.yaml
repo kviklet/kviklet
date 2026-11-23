@@ -53,21 +53,28 @@ spec:
             - name: config-volume
               mountPath: /app/application.yaml
               subPath: application.yaml
+          # Startup takes over a minute on a single CPU. The startup probe gives it up to 5 minutes
+          # and holds back the other probes until then, so a slow start is not killed as unhealthy.
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 60
           livenessProbe:
             httpGet:
               path: /api/health
               port: http
-            initialDelaySeconds: 60
             periodSeconds: 10
-            timeoutSeconds: 1
+            timeoutSeconds: 3
             failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /api/config/
               port: http
-            initialDelaySeconds: 30
             periodSeconds: 10
-            timeoutSeconds: 1
+            timeoutSeconds: 3
             failureThreshold: 3
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
