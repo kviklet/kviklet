@@ -17,7 +17,9 @@ RUN gradle build  -x kaptTestKotlin -x compileTestKotlin -x test --no-daemon
 #   jdk.naming.dns                    - JNDI DNS provider (LDAP server discovery)
 #   jdk.charsets, jdk.localedata      - extended charsets/locales for DB connections
 #   jdk.zipfs, jdk.management         - nested-jar access, JVM management extensions
-FROM eclipse-temurin:21-jdk AS build-java-runtime
+FROM amazoncorretto:21-al2023-jdk AS build-java-runtime
+# jlink --strip-debug needs objcopy, which the Corretto image does not ship
+RUN dnf install -y binutils && dnf clean all
 RUN jlink \
     --add-modules java.base,java.compiler,java.desktop,java.instrument,java.management,java.naming,java.net.http,java.prefs,java.rmi,java.scripting,java.security.jgss,java.security.sasl,java.sql,java.sql.rowset,java.transaction.xa,java.xml,java.xml.crypto,jdk.charsets,jdk.crypto.ec,jdk.httpserver,jdk.jfr,jdk.localedata,jdk.management,jdk.naming.dns,jdk.net,jdk.security.auth,jdk.security.jgss,jdk.unsupported,jdk.zipfs \
     --strip-debug --no-man-pages --no-header-files --compress=zip-6 \
