@@ -31,7 +31,7 @@ RUN npm ci --production
 COPY ./frontend .
 RUN npm run build
 
-FROM nginxinc/nginx-unprivileged:1.30
+FROM nginx/nginx-unprivileged:1.30
 
 # 1.30.7 fixes CVE-2026-123633 and CVE-2026-123007 (HTTP/2). The 1.30 tag floats, so fail the build
 # rather than ship an older nginx.
