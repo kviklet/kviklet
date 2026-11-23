@@ -11,11 +11,13 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Lazy
 import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.config.annotation.EnableWebSocket
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
+import org.springframework.web.socket.server.standard.ServletServerContainerFactoryBean
 import javax.sql.DataSource
 
 @Component
@@ -46,6 +48,21 @@ class WebSocketConfig : WebSocketConfigurer {
         registry.addHandler(sessionWebsocketHandler, "/sql/{requestId}")
             .addInterceptors(WebSocketOriginInterceptor(corsSettings.allowedOrigins), AuthHandshakeInterceptor())
             .setAllowedOriginPatterns("*")
+    }
+
+    // The live session editor sends its whole content as one text message. Tomcat's default
+    // of 8192 characters closes the socket (status 1009) on any larger statement. Tomcat
+    // allocates this buffer per open connection, so the limit is deliberately not higher.
+    // Nothing injects this bean, so with spring.main.lazy-initialization it would never be
+    // created and the limit never applied without @Lazy(false).
+    @Bean
+    @Lazy(false)
+    fun webSocketContainer(): ServletServerContainerFactoryBean = ServletServerContainerFactoryBean().apply {
+        setMaxTextMessageBufferSize(MAX_WEBSOCKET_TEXT_MESSAGE_SIZE)
+    }
+
+    companion object {
+        const val MAX_WEBSOCKET_TEXT_MESSAGE_SIZE = 1024 * 1024
     }
 }
 

@@ -7,6 +7,7 @@ import dev.kviklet.kviklet.helper.UserHelper
 import dev.kviklet.kviklet.service.dto.Connection
 import dev.kviklet.kviklet.service.dto.ExecutionRequestDetails
 import dev.kviklet.kviklet.service.dto.RequestType
+import jakarta.websocket.ContainerProvider
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -221,6 +222,33 @@ class WebSocketHandlerTest {
             assertEquals(1, firstRow.get("test").asInt())
         }
 
+        session.close()
+    }
+
+    @Test
+    fun `statements larger than the default websocket buffer are executed`() {
+        // The client has the same 8192 character default for incoming messages, and the
+        // server echoes the content back.
+        webSocketClient = StandardWebSocketClient(
+            ContainerProvider.getWebSocketContainer().apply { defaultMaxTextMessageBufferSize = 1024 * 1024 },
+        )
+        val (session, messages, _) = openSession()
+        val statement = "SELECT 1 as test /* ${"x".repeat(100_000)} */;"
+        session.sendMessage(
+            TextMessage(
+                objectMapper.writeValueAsString(
+                    mapOf("type" to "update_content", "content" to statement, "ref" to "test-ref-large"),
+                ),
+            ),
+        )
+        session.sendMessage(
+            TextMessage(objectMapper.writeValueAsString(mapOf("type" to "execute", "statement" to statement))),
+        )
+
+        val receivedMessages = waitForResponses(messages, 3)
+        assertEquals(statement, receivedMessages[1].get("consoleContent").asString())
+        assertEquals("1", receivedMessages.last().get("results")[0].get("data")[0].get("test").asString())
+        assertTrue(session.isOpen)
         session.close()
     }
 
