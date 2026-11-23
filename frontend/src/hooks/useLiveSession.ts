@@ -13,6 +13,8 @@ import useNotification from "./useNotification";
 
 type ExecuteResolver = () => void;
 
+const WEBSOCKET_CLOSE_MESSAGE_TOO_BIG = 1009;
+
 const useLiveSession = (
   requestId: string,
   setContent: (content: string) => void,
@@ -67,7 +69,14 @@ const useLiveSession = (
     socket.onclose = (event) => {
       setIsReady(false);
       console.log("WebSocket connection closed", event);
-      if (!event.wasClean) {
+      if (event.code === WEBSOCKET_CLOSE_MESSAGE_TOO_BIG) {
+        addNotification({
+          type: "error",
+          title: "Editor content too large",
+          text: "Live sessions support up to 1 MB of editor content. Please refresh the page and use a single execution request for larger statements.",
+        });
+        setIsLoading(false);
+      } else if (!event.wasClean) {
         console.error("Connection lost unexpectedly. Please refresh the page.");
         addNotification({
           type: "error",
