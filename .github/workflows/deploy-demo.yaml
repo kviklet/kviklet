@@ -26,6 +26,10 @@ jobs:
 
       - name: "Set up Cloud SDK"
         uses: "google-github-actions/setup-gcloud@v2"
+        with:
+          # gcloud 591.0.0 crashes in `config config-helper` with service account
+          # key credentials, which breaks kubectl auth via gke-gcloud-auth-plugin.
+          version: "568.0.0"
 
       - name: "Install GKE Auth Plugin"
         run: |
