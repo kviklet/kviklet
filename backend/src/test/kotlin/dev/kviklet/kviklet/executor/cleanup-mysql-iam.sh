@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+export AWS_PAGER=""
 
 # Configuration variables
 DB_INSTANCE_IDENTIFIER="test-mysql-iam"
@@ -34,8 +35,10 @@ policy_exists() {
     return $?
 }
 
-CURRENT_USER=$(aws sts get-caller-identity --query UserId --output text)
-aws iam detach-user-policy --user-name $CURRENT_USER --policy-arn $IAM_POLICY_ARN
+CURRENT_USER=$(aws sts get-caller-identity --output json --query Arn)
+
+USERNAME=$(aws iam get-user --query User.UserName --output text)
+aws iam detach-user-policy --user-name $USERNAME --policy-arn $IAM_POLICY_ARN
 
 
 # Delete RDS instance
