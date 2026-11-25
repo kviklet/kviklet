@@ -1,311 +1,392 @@
-import React from "react";
+import { useEffect } from "react";
 import {
-  useForm,
-  useFieldArray,
-  ControllerRenderProps,
   Controller,
+  FormProvider,
+  useFieldArray,
+  useForm,
+  useFormContext,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  PlusIcon,
-  QuestionMarkCircleIcon,
-  TrashIcon,
-} from "@heroicons/react/20/solid";
-import {
-  ConnectionPolicy,
-  Role,
-  RolePolicy,
-  RoleSchema,
-  UserPolicySchema,
-} from "../../hooks/roles";
-import InputField from "../../components/InputField";
-import ConnectionSelector from "./ConnectionSelector";
+import { PlusIcon, XMarkIcon } from "@heroicons/react/20/solid";
+import { Role, RoleSchema, newConnectionPolicy } from "../../hooks/roles";
+import useConnections from "../../hooks/connections";
 import Button from "../../components/Button";
+import {
+  CheckboxRow,
+  FormRow,
+  FormSection,
+  checkboxClassName,
+  inputClassName,
+} from "../../components/FormSection";
+import ConnectionSelector from "./ConnectionSelector";
 
-type ConnectionPolicyKey =
-  | "execution_request_read"
-  | "execution_request_write"
-  | "execution_request_review";
+type GlobalPermission =
+  | "isAdmin"
+  | "userPolicy.read"
+  | "userPolicy.create"
+  | "userPolicy.editSelf"
+  | "rolePolicy.read";
 
-const userPolicyMetadata: Record<string, { label: string; tooltip: string }> = {
-  read: {
-    label: "Read Access",
-    tooltip:
-      "Allows listing other users. Required to see comments, etc. usually you want this permission on everyone.",
+const globalPermissions: {
+  group: string;
+  items: {
+    name: GlobalPermission;
+    label: string;
+    description: string;
+    testId: string;
+  }[];
+}[] = [
+  {
+    group: "Users",
+    items: [
+      {
+        name: "userPolicy.read",
+        label: "View users",
+        description:
+          "See the list of users. Needed to see who wrote a comment or review, so most roles should have it.",
+        testId: "role-user-policy-read",
+      },
+      {
+        name: "userPolicy.editSelf",
+        label: "Edit own profile",
+        description:
+          "Change their own name, email and password. Users who sign in through SSO can't change their email or set a password.",
+        testId: "role-user-policy-editSelf",
+      },
+      {
+        name: "userPolicy.create",
+        label: "Create users",
+        description:
+          "Add and remove users. Rarely needed when users sign in through SSO.",
+        testId: "role-user-policy-create",
+      },
+    ],
   },
-  create: {
-    label: "Create Users",
-    tooltip:
-      "Allows creating new users and deleting existing ones. Usually an admin permission, if you use SSO noone really needs this.",
+  {
+    group: "Roles",
+    items: [
+      {
+        name: "rolePolicy.read",
+        label: "View roles",
+        description: "See the list of roles and what each one allows.",
+        testId: "role-role-policy-read",
+      },
+    ],
   },
-  editSelf: {
-    label: "Edit Own Profile",
-    tooltip:
-      "Allows editing own profile. Necessary to change password, email and displayName. Usually you want this permission on everyone. SSO Users cannot change their email and can't set a password.",
-  },
-};
+];
 
-const rolePolicyMetadata: Record<string, { label: string; tooltip: string }> = {
-  read: { label: "View Roles", tooltip: "Allows seeing a list of all roles." },
-  edit: {
-    label: "Modify Roles",
-    tooltip:
-      "Allows editing roles. Equivalent to admin permissions since the user could edit their own roles permissions.",
-  },
-};
-
-const connectionPolicyMetadata: Record<
-  ConnectionPolicyKey,
-  { label: string; tooltip: string }
-> = {
-  execution_request_read: {
+const connectionPermissions = [
+  {
+    key: "execution_request_read",
     label: "Read",
-    tooltip: "Allows seeing requests on this selector.",
+    description: "see the requests on these connections",
   },
-  execution_request_write: {
+  {
+    key: "execution_request_write",
     label: "Write",
-    tooltip:
-      "Allows creating, commenting and executing (your own) requests on this selector.",
+    description: "create, comment on and execute their own requests",
   },
-  execution_request_review: {
+  {
+    key: "execution_request_review",
     label: "Review",
-    tooltip: "Allows reviewing/approving requests on this selector.",
+    description: "approve or reject requests",
   },
-};
+] as const;
+
+// Controlled instead of register(): the permission checkboxes disappear while the role is
+// an admin, and react-hook-form resets a registered checkbox when it mounts again.
+function PermissionCheckbox(props: {
+  name: GlobalPermission;
+  label: string;
+  description: string;
+  testId: string;
+}) {
+  const { watch, setValue } = useFormContext<Role>();
+  return (
+    <CheckboxRow
+      id={props.name}
+      label={props.label}
+      description={props.description}
+    >
+      <input
+        id={props.name}
+        type="checkbox"
+        className={checkboxClassName}
+        data-testid={props.testId}
+        checked={watch(props.name)}
+        onChange={(event) =>
+          setValue(props.name, event.target.checked, { shouldDirty: true })
+        }
+      />
+    </CheckboxRow>
+  );
+}
+
+function ConnectionAccess() {
+  const {
+    control,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useFormContext<Role>();
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "connectionPolicies",
+  });
+  const { connections } = useConnections();
+  const policies = watch("connectionPolicies");
+
+  return (
+    <FormSection
+      title="Connection access"
+      description={
+        <>
+          Each rule gives access to the connections whose ID matches its
+          pattern. <code className="font-mono">*</code> stands for any text, so{" "}
+          <code className="font-mono">orders-*</code> covers every connection
+          whose ID starts with <code className="font-mono">orders-</code>, and a
+          single <code className="font-mono">*</code> covers all connections.
+        </>
+      }
+      testId="role-connection-access"
+    >
+      {fields.length > 0 && (
+        <div className="hidden grid-cols-[minmax(0,1fr)_4rem_4rem_4rem_2rem] gap-3 text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400 sm:grid">
+          <span>Connections</span>
+          {connectionPermissions.map((permission) => (
+            <span key={permission.key} className="text-center">
+              {permission.label}
+            </span>
+          ))}
+          <span />
+        </div>
+      )}
+      {fields.map((field, index) => {
+        const policy = policies[index];
+        // Writing and reviewing include seeing the requests.
+        const readImplied =
+          policy?.execution_request_write || policy?.execution_request_review;
+        return (
+          <div
+            key={field.id}
+            className="grid grid-cols-[repeat(3,auto)_1fr] items-start gap-3 border-t border-slate-200 pt-3 dark:border-slate-700 sm:grid-cols-[minmax(0,1fr)_4rem_4rem_4rem_2rem]"
+            data-testid={`role-connection-policy-${index}`}
+          >
+            <div className="col-span-full sm:col-span-1">
+              <Controller
+                name={`connectionPolicies.${index}.selector`}
+                control={control}
+                render={({ field: selector }) => (
+                  <ConnectionSelector
+                    value={selector.value}
+                    onChange={selector.onChange}
+                    connections={connections}
+                    error={
+                      errors.connectionPolicies?.[index]?.selector?.message
+                    }
+                  />
+                )}
+              />
+            </div>
+            {connectionPermissions.map((permission) => {
+              const implied =
+                permission.key === "execution_request_read" && readImplied;
+              return (
+                <label
+                  key={permission.key}
+                  className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200 sm:justify-center sm:pt-2"
+                >
+                  <input
+                    type="checkbox"
+                    className={checkboxClassName.replace("mt-0.5 ", "")}
+                    data-testid={`role-connection-policy-${index}-${permission.key}`}
+                    checked={implied || (policy?.[permission.key] ?? false)}
+                    disabled={implied}
+                    onChange={(event) =>
+                      setValue(
+                        `connectionPolicies.${index}.${permission.key}`,
+                        event.target.checked,
+                        { shouldDirty: true },
+                      )
+                    }
+                  />
+                  <span className="sm:sr-only">{permission.label}</span>
+                </label>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => remove(index)}
+              aria-label="Remove rule"
+              data-testid={`role-connection-policy-${index}-remove`}
+              className="justify-self-end rounded p-1.5 text-slate-400 transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:text-red-600 dark:hover:text-red-400"
+            >
+              <XMarkIcon className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+        );
+      })}
+      {fields.length === 0 && (
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          No rules yet, so this role gives access to no connection.
+        </p>
+      )}
+      <div>
+        <button
+          type="button"
+          data-testid="role-add-connection-policy-button"
+          onClick={() => append(newConnectionPolicy(""))}
+          className="flex items-center gap-1 rounded-md px-2 py-1.5 text-sm font-medium text-indigo-700 transition-colors disabled:cursor-not-allowed disabled:opacity-50 hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-indigo-950"
+        >
+          <PlusIcon className="h-4 w-4" aria-hidden="true" />
+          Add rule
+        </button>
+      </div>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 border-t border-slate-200 pt-3 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+        {connectionPermissions.map((permission) => (
+          <div key={permission.key} className="contents">
+            <dt className="font-medium text-slate-700 dark:text-slate-200">
+              {permission.label}
+            </dt>
+            <dd>{permission.description}</dd>
+          </div>
+        ))}
+      </dl>
+    </FormSection>
+  );
+}
 
 const RoleForm = ({
   role,
   onSubmit,
   readOnly = false,
+  submitLabel = "Save changes",
 }: {
   role: Role;
   onSubmit: (data: Role) => Promise<void>;
-  /** Renders the form as a pure viewer: no Submit button. Wrap it in a disabled fieldset too. */
+  /** Renders the form as a pure viewer: all inputs disabled, no submit button. */
   readOnly?: boolean;
+  submitLabel?: string;
 }) => {
-  const {
-    control,
-    handleSubmit,
-    register,
-    formState: { errors },
-    watch,
-  } = useForm<Role>({
+  const form = useForm<Role>({
     resolver: zodResolver(RoleSchema),
     defaultValues: role,
   });
+  const {
+    handleSubmit,
+    register,
+    reset,
+    watch,
+    formState: { errors, isDirty, isSubmitting },
+  } = form;
 
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: "connectionPolicies",
-  });
+  // A saved role comes back from the server; adopt it as the new clean state.
+  useEffect(() => {
+    reset(role);
+  }, [role, reset]);
 
-  type ConnectionSelectorField = ControllerRenderProps<
-    Role,
-    `connectionPolicies.${number}.selector`
-  >;
+  const isAdmin = watch("isAdmin");
+  const otherPolicies = watch("otherPolicies");
+  // A new role starts out clean but still has to be creatable.
+  const canSubmit = (isDirty || role.id === "") && !isSubmitting;
 
   return (
-    <form
-      onSubmit={(event) => void handleSubmit(onSubmit)(event)}
-      className="space-y-4"
-    >
-      <legend className="text-base font-semibold leading-7 text-slate-700 dark:text-slate-100">
-        General Settings
-      </legend>
-      <div className="mb-4">
-        <InputField
-          label="Role Name"
-          stacked={true}
-          error={errors.name?.message}
-          {...register("name")}
-        />
-      </div>
-
-      <div className="mb-4">
-        <InputField
-          label="Description"
-          stacked={true}
-          error={errors.description?.message}
-          {...register("description")}
-        />
-      </div>
-
-      <div className="mb-4">
-        <label
-          className="flex items-center text-sm font-medium text-slate-700 dark:text-slate-100"
-          title="Gives the role all permissions on every resource."
-        >
-          Is Admin
-          <QuestionMarkCircleIcon className="ml-1 h-4 text-slate-400" />
-        </label>
-        <input
-          className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
-          {...register("isAdmin")}
-          type="checkbox"
-        />
-      </div>
-
-      {!watch("isAdmin") && (
-        <>
-          <fieldset className="mb-4">
-            <legend className="text-base font-semibold leading-7 text-slate-700 dark:text-slate-100">
-              User Permissions
-            </legend>
-            <div className="flex space-x-4">
-              {Object.keys(UserPolicySchema.shape).map((field) => (
-                <div key={field}>
-                  <label
-                    className="flex items-center text-sm font-medium text-slate-700 dark:text-slate-300"
-                    title={userPolicyMetadata[field].tooltip}
-                  >
-                    {userPolicyMetadata[field].label}
-                    <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400" />
-                  </label>
-                  <input
-                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
-                    data-testid={`role-user-policy-${field}`}
-                    {...register(
-                      `userPolicy.${field}` as
-                        | "userPolicy.read"
-                        | "userPolicy.create"
-                        | "userPolicy.editSelf",
-                    )}
-                    type="checkbox"
-                  />
-                </div>
-              ))}
-            </div>
-          </fieldset>
-
-          <fieldset className="mb-4">
-            <legend className="text-base font-semibold leading-7 text-slate-700 dark:text-slate-100">
-              Role Permissions
-            </legend>
-            <div className="flex space-x-4">
-              {Object.keys(RolePolicy.shape).map((field) => (
-                <div key={field}>
-                  <label
-                    className="flex items-center text-sm font-medium text-slate-700 dark:text-slate-300"
-                    title={rolePolicyMetadata[field].tooltip}
-                  >
-                    {rolePolicyMetadata[field].label}
-                    <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400" />
-                  </label>
-                  <input
-                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
-                    data-testid={`role-role-policy-${field}`}
-                    {...register(`rolePolicy.${field}` as "rolePolicy.read")}
-                    type="checkbox"
-                  />
-                </div>
-              ))}
-            </div>
-          </fieldset>
-
-          <div>
-            <h2 className="text-base font-semibold leading-7 text-slate-900 dark:text-slate-100">
-              Connection Permissions
-            </h2>
-            {fields.map((field, index) => (
-              <div
-                key={field.id}
-                className="mb-4 space-y-2 rounded-md border bg-white p-4 dark:border-slate-600 dark:bg-slate-950"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="basis-3/4">
-                    <legend
-                      className="flex items-center text-base leading-7 text-slate-700 dark:text-slate-100"
-                      title="The selector used for this policy. The selector is used to match connectionIds to which this policy applies to. If you just want to match one specific connection, sepcify it's ID, but you can also use wildcards like 'my-connection-*' to match all connections starting with 'my-connection-'."
-                    >
-                      Selector
-                      <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400" />
-                    </legend>
-
-                    <Controller
-                      name={`connectionPolicies.${index}.selector`}
-                      control={control}
-                      render={({
-                        field,
-                      }: {
-                        field: ConnectionSelectorField;
-                      }) => (
-                        <ConnectionSelector
-                          value={field.value}
-                          onChange={field.onChange}
-                        />
-                      )}
-                    ></Controller>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => remove(index)}
-                    className="text-red-500"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
-                </div>
-                <div className="grid grid-cols-3">
-                  {Object.keys(ConnectionPolicy.shape)
-                    .filter((key) => key !== "selector")
-                    .map((key) => (
-                      <div key={key}>
-                        <label
-                          className="flex items-center text-sm font-medium text-slate-700 dark:text-slate-300"
-                          title={
-                            connectionPolicyMetadata[key as ConnectionPolicyKey]
-                              .tooltip
-                          }
-                        >
-                          {
-                            connectionPolicyMetadata[key as ConnectionPolicyKey]
-                              .label
-                          }
-                          <QuestionMarkCircleIcon className="ml-1 h-4 w-4 text-slate-400" />
-                        </label>
-                        <input
-                          className="h-4 w-4 rounded border-slate-300 bg-transparent text-indigo-600 focus:ring-indigo-600"
-                          type="checkbox"
-                          data-testid={`role-connection-policy-${index}-${key}`}
-                          {...register(
-                            `connectionPolicies.${index}.${
-                              key as ConnectionPolicyKey
-                            }`,
-                          )}
-                        />
-                      </div>
-                    ))}
-                </div>
-              </div>
-            ))}
-            <button
-              type="button"
-              data-testid="role-add-connection-policy-button"
-              onClick={() =>
-                append({
-                  selector: "",
-                  execution_request_read: false,
-                  execution_request_write: false,
-                  execution_request_review: false,
-                })
-              }
-              className="mt-2 flex items-center text-indigo-500"
+    <FormProvider {...form}>
+      <form
+        noValidate
+        onSubmit={(event) => void handleSubmit(onSubmit)(event)}
+        className="flex flex-col gap-6"
+        data-testid="role-form"
+      >
+        <fieldset disabled={readOnly} className="flex min-w-0 flex-col gap-6">
+          <FormSection title="General">
+            <FormRow label="Name" htmlFor="name" error={errors.name?.message}>
+              <input
+                id="name"
+                type="text"
+                className={inputClassName}
+                placeholder="Developers"
+                {...register("name")}
+              />
+            </FormRow>
+            <FormRow
+              label="Description"
+              htmlFor="description"
+              error={errors.description?.message}
             >
-              <PlusIcon className="mr-1 h-5 w-5" /> Add Connection Policy
-            </button>
-          </div>
-        </>
-      )}
+              <input
+                id="description"
+                type="text"
+                className={inputClassName}
+                placeholder="Can request access to the staging databases"
+                {...register("description")}
+              />
+            </FormRow>
+          </FormSection>
 
-      {!readOnly && (
-        <Button
-          htmlType="submit"
-          variant="primary"
-          dataTestId="role-submit-button"
-        >
-          Submit
-        </Button>
-      )}
-    </form>
+          <FormSection
+            title="Permissions"
+            description="What members of this role can do outside of individual connections."
+          >
+            <PermissionCheckbox
+              name="isAdmin"
+              label="Administrator"
+              description="Full access to everything: all connections and requests, users, roles and settings."
+              testId="role-is-admin"
+            />
+            {!isAdmin &&
+              globalPermissions.map((group) => (
+                <div
+                  key={group.group}
+                  className="flex flex-col gap-3 border-t border-slate-200 pt-3 dark:border-slate-700"
+                >
+                  <h3 className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    {group.group}
+                  </h3>
+                  {group.items.map((item) => (
+                    <PermissionCheckbox key={item.name} {...item} />
+                  ))}
+                </div>
+              ))}
+            {otherPolicies.length > 0 && (
+              <div
+                className="flex flex-col gap-2 border-t border-slate-200 pt-3 dark:border-slate-700"
+                data-testid="role-other-policies"
+              >
+                <h3 className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Other permissions
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Set through the API. They can&apos;t be changed here and are
+                  kept when you save.
+                </p>
+                <ul className="flex flex-col gap-1 font-mono text-sm text-slate-700 dark:text-slate-200">
+                  {otherPolicies.map((policy, index) => (
+                    <li key={index} className="break-all">
+                      {policy.action} on {policy.resource}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </FormSection>
+
+          {!isAdmin && <ConnectionAccess />}
+        </fieldset>
+
+        {!readOnly && (
+          <div className="flex justify-end">
+            <Button
+              htmlType="submit"
+              variant={canSubmit ? "primary" : "disabled"}
+              dataTestId="role-submit-button"
+            >
+              {submitLabel}
+            </Button>
+          </div>
+        )}
+      </form>
+    </FormProvider>
   );
 };
 
