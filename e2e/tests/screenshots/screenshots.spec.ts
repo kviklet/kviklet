@@ -161,9 +161,11 @@ for (const theme of THEMES) {
       const selectorInput = page.getByTestId("connection-selector-input");
       await selectorInput.fill("readonly-*");
       await selectorInput.press("Escape");
-      // The live match count proves the selector works against the seeded
-      // connections ("This selector matches 1 of 6 Connections.").
-      await expect(page.getByText(/This selector matches/)).toBeVisible();
+      // The live match line proves the selector works against the seeded
+      // connections ("Matches 1 of 6 connections: ...").
+      await expect(
+        page.getByTestId("connection-selector-matches"),
+      ).toContainText(/Matches \d+ of/);
 
       for (const permission of [
         "execution_request_read",
