@@ -11,7 +11,7 @@ import Spinner from "../../../../components/Spinner";
 import { checkboxClassName } from "../../../../components/FormSection";
 import {
   ConnectionFormInput,
-  connectionFormSchema,
+  newConnectionFormSchema,
   newConnectionDefaults,
   toCreatePayload,
 } from "./connectionForm";
@@ -60,7 +60,7 @@ export default function TestConnection(props: {
 
   const runTest = async () => {
     const values = getValues();
-    const parsed = connectionFormSchema.safeParse({
+    const parsed = newConnectionFormSchema.safeParse({
       ...newConnectionDefaults(),
       ...Object.fromEntries(databaseFields.map((f) => [f, values[f]])),
       // The endpoint validates a whole connection; these are never stored.
