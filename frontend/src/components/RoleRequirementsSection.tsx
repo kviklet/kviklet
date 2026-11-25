@@ -63,9 +63,7 @@ export default function RoleRequirementsSection({
   const licenseValid = config?.licenseValid ?? false;
 
   return (
-    <div className="space-y-3">
-      <hr className="border-slate-200 dark:border-slate-700" />
-
+    <div className="space-y-3 border-t border-slate-200 pt-4 dark:border-slate-700">
       <div className="flex items-center gap-2">
         <h3 className="text-sm font-medium text-slate-700 dark:text-slate-200">
           Role-Specific Requirements
@@ -267,25 +265,14 @@ function LockedUI() {
   const [showUpsellModal, setShowUpsellModal] = useState(false);
   return (
     <>
-      <div className="relative opacity-60">
-        <div className="absolute inset-0 z-10 flex items-center justify-center">
-          <button
-            type="button"
-            onClick={() => setShowUpsellModal(true)}
-            className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 shadow-lg
-                       hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:shadow-none
-                       dark:hover:bg-slate-700"
-          >
-            <LockClosedIcon className="h-5 w-5 text-slate-500" />
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Enterprise feature
-            </span>
-          </button>
-        </div>
-        <div className="pointer-events-none">
-          <div className="h-20 rounded-md bg-slate-100 dark:bg-slate-950"></div>
-        </div>
-      </div>
+      <button
+        type="button"
+        onClick={() => setShowUpsellModal(true)}
+        className="flex w-full items-center gap-2 rounded-md border border-dashed border-slate-300 px-3 py-2 text-left text-sm text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+      >
+        <LockClosedIcon className="h-4 w-4 shrink-0 text-slate-400" />
+        Available with an enterprise license
+      </button>
       {showUpsellModal && (
         <EnterpriseFeatureModal
           feature="roleRequirements"

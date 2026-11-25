@@ -190,34 +190,39 @@ class SettingsPage {
     additionalOptions?: string,
     requiredReviews?: number,
   ) {
-    // Click the Add Connection button (now in the header)
-    await this.page.getByTestId("connections-table-create-button").click();
+    await this.page.getByTestId("add-connection-button").click();
+    await this.page.waitForURL("**/settings/connections/new");
 
-    // Select Database Connection from the modal
-    await this.page.getByTestId("add-database-connection-button").click();
-
-    // Fill in the connection details
-    await this.page.getByTestId("connection-name").fill(name);
-    await this.page.getByTestId("connection-type").selectOption(type);
-    await this.page.getByTestId("connection-username").fill(username);
-    await this.page.getByTestId("connection-password").fill(password);
-    await this.page.getByTestId("connection-hostname").fill(host);
+    const typeTestIds: Record<string, string> = {
+      Postgres: "POSTGRESQL",
+      MySQL: "MYSQL",
+      MariaDB: "MARIADB",
+      "MS SQL": "MSSQL",
+      MongoDB: "MONGODB",
+    };
     await this.page
-      .getByTestId("connection-required-reviews")
-      .fill(requiredReviews?.toString() ?? "0");
-    await this.page.getByTestId("advanced-options-button").click();
+      .getByTestId(`connection-type-${typeTestIds[type] ?? type}`)
+      .click();
+    await this.page.getByTestId("connection-name").fill(name);
+    await this.page.getByTestId("connection-hostname").fill(host);
     await this.page.getByTestId("connection-port").fill(port);
     if (database) {
       await this.page.getByTestId("connection-database").fill(database);
     }
+    await this.page.getByTestId("connection-username").fill(username);
+    await this.page.getByTestId("connection-password").fill(password);
     if (additionalOptions) {
       await this.page
         .getByTestId("connection-additional-options")
         .fill(additionalOptions);
     }
+    await this.page
+      .getByTestId("connection-required-reviews")
+      .fill(requiredReviews?.toString() ?? "0");
     await this.page.getByTestId("create-connection-button").click();
 
-    // Wait for the connection to appear in the table (table structure changed)
+    // Creating returns to the connections list, where the new row shows up.
+    await this.page.waitForURL("**/settings/connections");
     await this.page.waitForSelector(`text=${name}`, { timeout: 10000 });
   }
 
@@ -230,23 +235,20 @@ class SettingsPage {
     initialWaitTimeoutSeconds?: number;
     timeoutMinutes?: number;
   }) {
-    await this.page
-      .getByTestId("connections-table-create-button")
-      .first()
-      .click();
-    await this.page.getByTestId("add-kubernetes-connection-button").click();
+    await this.page.getByTestId("add-connection-button").click();
+    await this.page.waitForURL("**/settings/connections/new");
+    await this.page.getByTestId("connection-type-KUBERNETES").click();
 
-    await this.page.getByTestId("kubernetes-connection-name").fill(params.name);
+    await this.page.getByTestId("connection-name").fill(params.name);
     await this.page
-      .getByTestId("kubernetes-connection-description")
+      .getByTestId("connection-description")
       .fill(params.description ?? "");
-    await this.page.getByTestId("kubernetes-connection-id").fill(params.id);
+    await this.page.getByTestId("connection-id").fill(params.id);
     await this.page
-      .getByTestId("kubernetes-connection-required-reviews")
+      .getByTestId("connection-required-reviews")
       .fill((params.requiredReviews ?? 1).toString());
-    await this.page.getByTestId("advanced-options-button").click();
     await this.page
-      .getByTestId("kubernetes-connection-max-executions")
+      .getByTestId("connection-max-executions")
       .fill((params.maxExecutions ?? 1).toString());
 
     if (params.initialWaitTimeoutSeconds !== undefined) {
@@ -260,8 +262,9 @@ class SettingsPage {
         .fill(params.timeoutMinutes.toString());
     }
 
-    await this.page.getByTestId("create-kubernetes-connection-button").click();
+    await this.page.getByTestId("create-connection-button").click();
 
+    await this.page.waitForURL("**/settings/connections");
     await this.page.waitForSelector(`text=${params.name}`, { timeout: 10000 });
   }
 }

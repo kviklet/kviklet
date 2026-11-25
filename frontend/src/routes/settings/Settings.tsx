@@ -27,6 +27,7 @@ import ProfileSettings from "./ProfileSettings";
 import RoleDetailsView from "./RoleDetailsView";
 import NewRoleView from "./NewRoleView";
 import GeneralSettings from "./GeneralSettings";
+import NewConnection from "./connection/NewConnection";
 import ConnectionDetails from "./connection/details/ConnectionDetails";
 import LicenseSettings from "./LicenseSettings";
 import ApiKeyPage from "./ApiKeySettings";
@@ -274,6 +275,17 @@ const Settings = () => {
                     fallback={<NotAuthorized resource="the connections" />}
                   >
                     <ConnectionSettings />
+                  </RequirePermission>
+                }
+              />
+              <Route
+                path="connections/new"
+                element={
+                  <RequirePermission
+                    permission="datasource_connection:create"
+                    fallback={<NotAuthorized resource="connection creation" />}
+                  >
+                    <NewConnection />
                   </RequirePermission>
                 }
               />

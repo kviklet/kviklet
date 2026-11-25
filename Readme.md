@@ -365,7 +365,7 @@ CORS_ALLOWEDORIGINS=https://[idp_host]
 
 ### Connections
 
-After starting Kviklet you first have to configure a database connection. Go to Settings -> Databases -> Add Connection.
+After starting Kviklet you first have to configure a database connection. Go to Settings -> Connections -> Add connection.
 
 ![Add Connection](images/CreateConnection_light.png#gh-light-mode-only)
 ![Add Connection](images/CreateConnection_dark.png#gh-dark-mode-only)

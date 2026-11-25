@@ -14,7 +14,7 @@ import {
   ChevronRightIcon,
   QuestionMarkCircleIcon,
 } from "@heroicons/react/20/solid";
-import { getJDBCOptionsPlaceholder } from "../DatabaseConnectionForm";
+import { additionalOptionsPlaceholder } from "../form/connectionForm";
 import Button from "../../../../components/Button";
 import { useEffect, useState } from "react";
 import { useConnectionForm } from "./ConnectionEditFormHook";
@@ -351,7 +351,7 @@ export default function UpdateDatasourceConnectionForm({
                 <InputField
                   id="additionalJDBCOptions"
                   label="Additional JDBC options"
-                  placeholder={getJDBCOptionsPlaceholder(watchType)}
+                  placeholder={additionalOptionsPlaceholder[watchType]}
                   {...register("additionalJDBCOptions")}
                   error={errors.additionalJDBCOptions?.message}
                 />
