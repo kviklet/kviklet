@@ -192,7 +192,6 @@ test.describe("Kubernetes Connection Timeout Settings", () => {
     await page.waitForURL("**/settings/connections/kubernetes-e2e-conn");
 
     // Defaults should be present
-    await page.getByTestId("kubernetes-advanced-options-button").click();
     await expect(
       page.getByTestId("kubernetes-exec-initial-wait-timeout-seconds"),
     ).toHaveValue("5");
@@ -206,14 +205,15 @@ test.describe("Kubernetes Connection Timeout Settings", () => {
       .fill("2");
     await page.getByTestId("kubernetes-exec-timeout-minutes").fill("30");
 
-    await page.getByTestId("save-kubernetes-connection-button").click();
-    await expect(
-      page.getByTestId("save-kubernetes-connection-button"),
-    ).toBeDisabled({ timeout: 10000 });
+    await page.getByTestId("save-connection-button").click();
+    // The button is also disabled while the save is in flight, so wait for the
+    // confirmation before reloading.
+    await expect(page.getByText("Connection saved")).toBeVisible({
+      timeout: 10000,
+    });
 
     // Reload and verify persisted
     await page.reload();
-    await page.getByTestId("kubernetes-advanced-options-button").click();
     await expect(
       page.getByTestId("kubernetes-exec-initial-wait-timeout-seconds"),
     ).toHaveValue("2");

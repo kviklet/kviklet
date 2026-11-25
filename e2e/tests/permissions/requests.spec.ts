@@ -229,10 +229,10 @@ test("connection details are read-only without edit permission", async ({
   await page.goto(`/settings/connections/${connAId}`);
   await expect(readOnlyBadge).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Save", exact: true }),
+    page.getByTestId("save-connection-button"),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "Delete", exact: true }),
+    page.getByTestId("delete-connection-button"),
   ).toHaveCount(0);
   await expect(page.locator("#displayName")).toBeDisabled();
 
@@ -243,7 +243,7 @@ test("connection details are read-only without edit permission", async ({
   await page.goto(`/settings/connections/${connAId}`);
   await expect(readOnlyBadge).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Save", exact: true }),
+    page.getByTestId("save-connection-button"),
   ).toHaveCount(0);
 
   // An admin can edit: inputs work, Save enables once the form is dirty and
@@ -251,12 +251,12 @@ test("connection details are read-only without edit permission", async ({
   await loginPage.logout();
   await loginPage.login(ADMIN.email, ADMIN.password);
   await page.goto(`/settings/connections/${connAId}`);
-  const save = page.getByRole("button", { name: "Save", exact: true });
+  const save = page.getByTestId("save-connection-button");
   await expect(save).toBeVisible();
   await page.locator("#displayName").fill(`${connA} edited`);
   await expect(save).toBeEnabled();
   await expect(
-    page.getByRole("button", { name: "Delete", exact: true }),
+    page.getByTestId("delete-connection-button"),
   ).toBeVisible();
   // Undo the rename so other tests keep finding the connection by name.
   await page.locator("#displayName").fill(connA);

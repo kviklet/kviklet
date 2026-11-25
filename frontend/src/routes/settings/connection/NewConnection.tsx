@@ -16,7 +16,7 @@ import TestConnection from "./form/TestConnection";
 import {
   ConnectionFormValues,
   ConnectionKind,
-  connectionFormSchema,
+  newConnectionFormSchema,
   defaultAdditionalOptions,
   defaultPorts,
   newConnectionDefaults,
@@ -35,7 +35,7 @@ export default function NewConnection() {
   const [databases, setDatabases] = useState<string[] | null>(null);
 
   const form = useForm({
-    resolver: zodResolver(connectionFormSchema),
+    resolver: zodResolver(newConnectionFormSchema),
     defaultValues: newConnectionDefaults(searchParams.get("category")),
   });
   const {

@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ChangeEvent, ReactNode } from "react";
 import { useFormContext } from "react-hook-form";
 import {
   FormRow,
@@ -11,6 +11,7 @@ import { supportsIamAuth } from "../../../../hooks/connections";
 import {
   ConnectionFormInput,
   additionalOptionsPlaceholder,
+  databaseTypes,
   protocolOptions,
 } from "./connectionForm";
 
@@ -20,6 +21,8 @@ const protocolLabels: Partial<Record<DatabaseProtocol, string>> = {
 };
 
 export default function DatabaseSection(props: {
+  /** Whether the database type can be changed here; the create page has its own picker. */
+  showType?: boolean;
   /** Shown on an existing connection, where an empty password keeps the stored one. */
   passwordPlaceholder?: string;
   /** Rendered at the bottom of the section, e.g. the connection test. */
@@ -28,6 +31,7 @@ export default function DatabaseSection(props: {
   const {
     register,
     watch,
+    setValue,
     formState: { errors },
   } = useFormContext<ConnectionFormInput>();
   const type = watch("type");
@@ -36,6 +40,31 @@ export default function DatabaseSection(props: {
 
   return (
     <FormSection title="Database" testId="connection-database-section">
+      {props.showType && (
+        <FormRow label="Database type" htmlFor="type">
+          <select
+            id="type"
+            className={inputClassName}
+            data-testid="connection-type"
+            {...register("type", {
+              onChange: (event: ChangeEvent<HTMLSelectElement>) => {
+                const newType = event.target.value as DatabaseType;
+                // Keep the dependent fields valid for the new type.
+                setValue("protocol", protocolOptions[newType][0]);
+                if (!supportsIamAuth(newType)) {
+                  setValue("authenticationType", "USER_PASSWORD");
+                }
+              },
+            })}
+          >
+            {databaseTypes.map((databaseType) => (
+              <option key={databaseType.value} value={databaseType.value}>
+                {databaseType.label}
+              </option>
+            ))}
+          </select>
+        </FormRow>
+      )}
       <FormRow
         label="Hostname and port"
         htmlFor="hostname"

@@ -1,6 +1,8 @@
 import { z } from "zod";
 import {
   ConnectionPayload,
+  ConnectionResponse,
+  PatchConnectionPayload,
   DatabaseProtocol,
   DatabaseType,
   roleRequirementSchema,
@@ -18,95 +20,102 @@ const optionalPositiveInt = z.preprocess(
     .nullable(),
 );
 
-const connectionFormSchema = z
-  .object({
-    connectionType: z.enum(["DATASOURCE", "KUBERNETES"]),
-    displayName: z.string().trim().min(3, "At least 3 characters"),
-    id: z
-      .string()
-      .min(3, "At least 3 characters")
-      .max(255, "At most 255 characters")
-      .regex(/^[a-zA-Z0-9-]+$/, "Only letters, numbers and dashes")
-      // /settings/connections/new is this form, so that id could never be opened.
-      .refine((id) => id !== "new", { error: '"new" is reserved' }),
-    description: z.string(),
-    category: z.string().nullable().optional(),
+const newConnectionId = z
+  .string()
+  .min(3, "At least 3 characters")
+  .max(255, "At most 255 characters")
+  .regex(/^[a-zA-Z0-9-]+$/, "Only letters, numbers and dashes")
+  // /settings/connections/new is the create form, so that id could never be opened.
+  .refine((id) => id !== "new", { error: '"new" is reserved' });
 
-    type: z.enum(DatabaseType),
-    protocol: z.enum(DatabaseProtocol),
-    hostname: z.string().trim(),
-    port: z.coerce.number("Must be a number"),
-    databaseName: z.string(),
-    additionalJDBCOptions: z.string(),
-    authenticationType: z.enum(["USER_PASSWORD", "AWS_IAM"]),
-    username: z.string(),
-    password: z.string(),
-    roleArn: z.string().nullable().optional(),
+const buildConnectionFormSchema = (id: z.ZodType<string, string>) =>
+  z
+    .object({
+      connectionType: z.enum(["DATASOURCE", "KUBERNETES"]),
+      displayName: z.string().trim().min(3, "At least 3 characters"),
+      id,
+      description: z.string(),
+      category: z.string().nullable().optional(),
 
-    reviewConfig: z.object({
-      numTotalRequired: z.coerce
-        .number("Must be a number")
-        .int("Must be a whole number")
-        .min(0, "Can't be negative"),
-      roleRequirements: z.array(roleRequirementSchema).optional(),
-    }),
+      type: z.enum(DatabaseType),
+      protocol: z.enum(DatabaseProtocol),
+      hostname: z.string().trim(),
+      port: z.coerce.number("Must be a number"),
+      databaseName: z.string(),
+      additionalJDBCOptions: z.string(),
+      authenticationType: z.enum(["USER_PASSWORD", "AWS_IAM"]),
+      username: z.string(),
+      password: z.string(),
+      roleArn: z.string().nullable().optional(),
 
-    maxExecutions: optionalPositiveInt,
-    maxTemporaryAccessDuration: optionalPositiveInt,
+      reviewConfig: z.object({
+        numTotalRequired: z.coerce
+          .number("Must be a number")
+          .int("Must be a whole number")
+          .min(0, "Can't be negative"),
+        roleRequirements: z.array(roleRequirementSchema).optional(),
+      }),
 
-    temporaryAccessEnabled: z.boolean(),
-    dryRunEnabled: z.boolean(),
-    dryRunRequiresApproval: z.boolean(),
-    explainEnabled: z.boolean(),
-    dumpsEnabled: z.boolean(),
-    storeResults: z.boolean(),
+      maxExecutions: optionalPositiveInt,
+      maxTemporaryAccessDuration: optionalPositiveInt,
 
-    kubernetesExecInitialWaitTimeoutSeconds:
-      z.coerce.number("Must be a number"),
-    kubernetesExecTimeoutMinutes: z.coerce.number("Must be a number"),
-  })
-  .superRefine((values, ctx) => {
-    if (values.connectionType === "DATASOURCE") {
-      if (values.hostname.length === 0) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["hostname"],
-          message: "Required",
-        });
-      }
-      if (!Number.isInteger(values.port) || values.port < 1) {
-        ctx.addIssue({ code: "custom", path: ["port"], message: "Required" });
-      }
-      if (
-        values.authenticationType === "AWS_IAM" &&
-        !supportsIamAuth(values.type)
-      ) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["authenticationType"],
-          message: `AWS IAM authentication is not supported for ${databaseTypeLabel(
-            values.type,
-          )}`,
-        });
-      }
-    } else {
-      for (const field of [
-        "kubernetesExecInitialWaitTimeoutSeconds",
-        "kubernetesExecTimeoutMinutes",
-      ] as const) {
-        if (!Number.isInteger(values[field]) || values[field] < 1) {
+      temporaryAccessEnabled: z.boolean(),
+      dryRunEnabled: z.boolean(),
+      dryRunRequiresApproval: z.boolean(),
+      explainEnabled: z.boolean(),
+      dumpsEnabled: z.boolean(),
+      storeResults: z.boolean(),
+
+      kubernetesExecInitialWaitTimeoutSeconds:
+        z.coerce.number("Must be a number"),
+      kubernetesExecTimeoutMinutes: z.coerce.number("Must be a number"),
+    })
+    .superRefine((values, ctx) => {
+      if (values.connectionType === "DATASOURCE") {
+        if (values.hostname.length === 0) {
           ctx.addIssue({
             code: "custom",
-            path: [field],
-            message: "Must be at least 1",
+            path: ["hostname"],
+            message: "Required",
           });
         }
+        if (!Number.isInteger(values.port) || values.port < 1) {
+          ctx.addIssue({ code: "custom", path: ["port"], message: "Required" });
+        }
+        if (
+          values.authenticationType === "AWS_IAM" &&
+          !supportsIamAuth(values.type)
+        ) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["authenticationType"],
+            message: `AWS IAM authentication is not supported for ${databaseTypeLabel(
+              values.type,
+            )}`,
+          });
+        }
+      } else {
+        for (const field of [
+          "kubernetesExecInitialWaitTimeoutSeconds",
+          "kubernetesExecTimeoutMinutes",
+        ] as const) {
+          if (!Number.isInteger(values[field]) || values[field] < 1) {
+            ctx.addIssue({
+              code: "custom",
+              path: [field],
+              message: "Must be at least 1",
+            });
+          }
+        }
       }
-    }
-  });
+    });
 
-type ConnectionFormInput = z.input<typeof connectionFormSchema>;
-type ConnectionFormValues = z.output<typeof connectionFormSchema>;
+const newConnectionFormSchema = buildConnectionFormSchema(newConnectionId);
+// An existing connection's id is fixed and predates today's rules, so it is not validated.
+const editConnectionFormSchema = buildConnectionFormSchema(z.string());
+
+type ConnectionFormInput = z.input<typeof newConnectionFormSchema>;
+type ConnectionFormValues = z.output<typeof newConnectionFormSchema>;
 
 /** What the type picker offers: every database type plus Kubernetes. */
 type ConnectionKind = DatabaseType | "KUBERNETES";
@@ -272,8 +281,115 @@ function toCreatePayload(values: ConnectionFormValues): ConnectionPayload {
   };
 }
 
+/** The form state for editing an existing connection. */
+function connectionToFormValues(
+  connection: ConnectionResponse,
+): ConnectionFormInput {
+  const shared = {
+    ...newConnectionDefaults(),
+    id: connection.id,
+    displayName: connection.displayName,
+    description: connection.description,
+    category: connection.category,
+    reviewConfig: {
+      numTotalRequired: connection.reviewConfig.numTotalRequired,
+      roleRequirements: connection.reviewConfig.roleRequirements ?? undefined,
+    },
+    // 0 is the backend's value for "no limit", which the form shows as an empty field.
+    maxExecutions: connection.maxExecutions || "",
+    storeResults: connection.storeResults,
+  };
+
+  if (connection._type === "KUBERNETES") {
+    return {
+      ...shared,
+      connectionType: "KUBERNETES",
+      kubernetesExecInitialWaitTimeoutSeconds:
+        connection.kubernetesExecInitialWaitTimeoutSeconds,
+      kubernetesExecTimeoutMinutes: connection.kubernetesExecTimeoutMinutes,
+    };
+  }
+  return {
+    ...shared,
+    connectionType: "DATASOURCE",
+    type: connection.type,
+    protocol: connection.protocol,
+    hostname: connection.hostname,
+    port: connection.port,
+    databaseName: connection.databaseName ?? "",
+    additionalJDBCOptions: connection.additionalJDBCOptions ?? "",
+    authenticationType: connection.authenticationType,
+    username: connection.username,
+    password: "",
+    roleArn: connection.roleArn ?? "",
+    maxTemporaryAccessDuration: connection.maxTemporaryAccessDuration ?? "",
+    temporaryAccessEnabled: connection.temporaryAccessEnabled,
+    dryRunEnabled: connection.dryRunEnabled,
+    dryRunRequiresApproval: connection.dryRunRequiresApproval,
+    explainEnabled: connection.explainEnabled,
+    dumpsEnabled: connection.dumpsEnabled,
+  };
+}
+
+function toPatchPayload(values: ConnectionFormValues): PatchConnectionPayload {
+  const base = {
+    displayName: values.displayName,
+    description: values.description,
+    category: values.category || null,
+    reviewConfig: reviewConfigPayload(values),
+    // 0 is the backend's value for "no limit"; null would leave the old limit in place.
+    maxExecutions: values.maxExecutions ?? 0,
+    storeResults: values.storeResults,
+  };
+
+  if (values.connectionType === "KUBERNETES") {
+    return {
+      ...base,
+      connectionType: "KUBERNETES",
+      kubernetesExecInitialWaitTimeoutSeconds:
+        values.kubernetesExecInitialWaitTimeoutSeconds,
+      kubernetesExecTimeoutMinutes: values.kubernetesExecTimeoutMinutes,
+    };
+  }
+
+  const database = {
+    ...base,
+    connectionType: "DATASOURCE" as const,
+    type: values.type,
+    protocol: values.protocol,
+    hostname: values.hostname,
+    port: values.port,
+    databaseName: values.databaseName,
+    additionalJDBCOptions: values.additionalJDBCOptions,
+    username: values.username,
+    temporaryAccessEnabled: values.temporaryAccessEnabled,
+    maxTemporaryAccessDuration: values.maxTemporaryAccessDuration,
+    dryRunEnabled: supportsDryRun(values.type) && values.dryRunEnabled,
+    dryRunRequiresApproval: values.dryRunRequiresApproval,
+    explainEnabled: values.explainEnabled,
+    dumpsEnabled: supportsDumps(values.type) && values.dumpsEnabled,
+  };
+
+  if (values.authenticationType === "AWS_IAM") {
+    return {
+      ...database,
+      authenticationType: "AWS_IAM",
+      roleArn: values.roleArn || null,
+    };
+  }
+  return {
+    ...database,
+    authenticationType: "USER_PASSWORD",
+    // Empty means "keep the stored password".
+    password: values.password === "" ? undefined : values.password,
+  };
+}
+
 export {
-  connectionFormSchema,
+  newConnectionFormSchema,
+  editConnectionFormSchema,
+  connectionToFormValues,
+  toPatchPayload,
   databaseTypes,
   databaseTypeLabel,
   protocolOptions,

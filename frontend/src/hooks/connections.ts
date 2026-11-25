@@ -28,9 +28,6 @@ const normalizeMaxTemporaryAccessDuration = <
       return {
         ...payload,
         maxTemporaryAccessDuration: null,
-        ...("clearMaxTempDuration" in payload && {
-          clearMaxTempDuration: true,
-        }),
       };
     }
   }
@@ -118,24 +115,20 @@ const useConnection = (id: string) => {
     void request();
   }, [id]);
 
+  // Returns whether the connection was saved, so the form keeps the user's input on failure.
   const editConnection = async (patchedConnection: PatchConnectionPayload) => {
     if (!connection?.id) {
-      return;
-    }
-    setLoading(true);
-    if (
-      patchedConnection.connectionType === "DATASOURCE" &&
-      patchedConnection.authenticationType === "USER_PASSWORD" &&
-      patchedConnection.password === ""
-    ) {
-      // ensure that the password is not updated if the user didn't provide a new one
-      patchedConnection.password = undefined;
+      return false;
     }
     const normalizedConnection =
       normalizeMaxTemporaryAccessDuration(patchedConnection);
-    // The PATCH endpoint can't distinguish null from "not provided", so signal an
-    // explicit clear when the category has been removed.
+    // The PATCH endpoint can't distinguish null from "not provided", so removals are
+    // signalled explicitly.
     normalizedConnection.clearCategory = !patchedConnection.category;
+    if (normalizedConnection.connectionType === "DATASOURCE") {
+      normalizedConnection.clearMaxTempDuration =
+        !normalizedConnection.maxTemporaryAccessDuration;
+    }
     const response = await patchConnection(normalizedConnection, connection.id);
     if (isApiErrorResponse(response)) {
       addNotification({
@@ -143,10 +136,15 @@ const useConnection = (id: string) => {
         text: response.message,
         type: "error",
       });
-    } else {
-      setConnection(response);
+      return false;
     }
-    setLoading(false);
+    setConnection(response);
+    addNotification({
+      title: "Connection saved",
+      text: "The connection has been updated",
+      type: "info",
+    });
+    return true;
   };
 
   const removeConnection = async () => {

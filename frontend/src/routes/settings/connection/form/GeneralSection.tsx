@@ -12,6 +12,8 @@ import { ConnectionFormInput, toConnectionId } from "./connectionForm";
 export default function GeneralSection(props: {
   /** The id can only be chosen while creating; afterwards it is fixed. */
   showId?: boolean;
+  /** An existing connection's id, shown read-only. */
+  connectionId?: string;
   /** Set when another connection already uses the entered id. */
   idTaken?: boolean;
 }) {
@@ -66,6 +68,19 @@ export default function GeneralSection(props: {
             data-testid="connection-id"
             {...register("id")}
           />
+        </FormRow>
+      )}
+      {props.connectionId !== undefined && (
+        <FormRow
+          label="ID"
+          hint="Role policies and the API refer to the connection by this ID."
+        >
+          <div
+            className="break-all py-2 font-mono text-sm text-slate-900 dark:text-slate-50"
+            data-testid="connection-id"
+          >
+            {props.connectionId}
+          </div>
         </FormRow>
       )}
       <FormRow
