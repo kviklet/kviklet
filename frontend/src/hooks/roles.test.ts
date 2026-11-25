@@ -61,7 +61,6 @@ const expectedTransformedRole = {
       execution_request_review: true,
     },
   ],
-  otherPolicies: [],
 };
 
 const mockRole = {
@@ -85,7 +84,6 @@ const mockRole = {
       execution_request_review: true,
     },
   ],
-  otherPolicies: [],
 };
 
 const expectedPayload = {
@@ -141,64 +139,6 @@ describe("transformRole", () => {
 
     const transformedRole = transformRole(adminRoleResponse);
     expect(transformedRole.isAdmin).toBe(true);
-  });
-});
-
-describe("policies the form has no control for", () => {
-  const apiRole = {
-    id: "role-1",
-    name: "Operators",
-    description: null,
-    isDefault: false,
-    policies: [
-      { id: "1", action: "configuration:get", resource: "*" },
-      { id: "2", action: "datasource_connection:get", resource: "pg-*" },
-      { id: "3", action: "datasource_connection:edit", resource: "pg-*" },
-      { id: "4", action: "execution_request:get", resource: "pg-*" },
-      // Execute without edit is not what the write flag means.
-      { id: "5", action: "execution_request:execute", resource: "pg-*" },
-      // A user permission scoped to one resource is not the global checkbox.
-      { id: "6", action: "user:get", resource: "some-user" },
-    ],
-  };
-
-  it("keeps them apart instead of folding them into the form fields", () => {
-    const role = transformRole(apiRole);
-    expect(role.userPolicy.read).toBe(false);
-    expect(role.connectionPolicies).toEqual([
-      {
-        selector: "pg-*",
-        execution_request_read: true,
-        execution_request_write: false,
-        execution_request_review: false,
-      },
-    ]);
-    expect(role.otherPolicies).toEqual([
-      { action: "configuration:get", resource: "*" },
-      { action: "datasource_connection:edit", resource: "pg-*" },
-      { action: "execution_request:execute", resource: "pg-*" },
-      { action: "user:get", resource: "some-user" },
-    ]);
-  });
-
-  it("sends them back unchanged, so saving a role loses nothing", () => {
-    const payload = transformToPayload(transformRole(apiRole));
-    const sent = payload.policies.map((p) => `${p.action} ${p.resource}`);
-    expect(sent.sort()).toEqual(
-      apiRole.policies.map((p) => `${p.action} ${p.resource}`).sort(),
-    );
-  });
-
-  it("keeps them when the role is made an admin", () => {
-    const payload = transformToPayload({
-      ...transformRole(apiRole),
-      isAdmin: true,
-    });
-    expect(payload.policies).toContainEqual({ action: "*:*", resource: "*" });
-    expect(payload.policies).toContainEqual({
-      action: "configuration:get",
-      resource: "*",
-    });
   });
 });
 

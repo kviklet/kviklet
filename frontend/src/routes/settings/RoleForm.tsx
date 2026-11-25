@@ -286,7 +286,6 @@ const RoleForm = ({
   }, [role, reset]);
 
   const isAdmin = watch("isAdmin");
-  const otherPolicies = watch("otherPolicies");
   // A new role starts out clean but still has to be creatable.
   const canSubmit = (isDirty || role.id === "") && !isSubmitting;
 
@@ -348,27 +347,6 @@ const RoleForm = ({
                   ))}
                 </div>
               ))}
-            {otherPolicies.length > 0 && (
-              <div
-                className="flex flex-col gap-2 border-t border-slate-200 pt-3 dark:border-slate-700"
-                data-testid="role-other-policies"
-              >
-                <h3 className="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Other permissions
-                </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Set through the API. They can&apos;t be changed here and are
-                  kept when you save.
-                </p>
-                <ul className="flex flex-col gap-1 font-mono text-sm text-slate-700 dark:text-slate-200">
-                  {otherPolicies.map((policy, index) => (
-                    <li key={index} className="break-all">
-                      {policy.action} on {policy.resource}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </FormSection>
 
           {!isAdmin && <ConnectionAccess />}

@@ -31,7 +31,6 @@ const role: Role = {
       execution_request_review: false,
     },
   ],
-  otherPolicies: [{ action: "configuration:get", resource: "*" }],
 };
 
 const newRole: Role = {
@@ -42,7 +41,6 @@ const newRole: Role = {
   userPolicy: { read: false, create: false, editSelf: false },
   rolePolicy: { read: false },
   connectionPolicies: [],
-  otherPolicies: [],
 };
 
 const connection = (id: string, displayName: string) =>
@@ -60,7 +58,7 @@ describe("RoleForm", () => {
     ]);
   });
 
-  test("saves an edited role and keeps what it cannot show", async () => {
+  test("saves an edited role", async () => {
     render(<RoleForm role={role} onSubmit={mockOnSubmit} />);
     expect(screen.getByTestId("role-submit-button")).toBeDisabled();
 
@@ -72,13 +70,6 @@ describe("RoleForm", () => {
       ...role,
       rolePolicy: { read: true },
     });
-  });
-
-  test("lists permissions that were set through the API", () => {
-    render(<RoleForm role={role} onSubmit={mockOnSubmit} />);
-    expect(screen.getByTestId("role-other-policies")).toHaveTextContent(
-      "configuration:get on *",
-    );
   });
 
   test("shows which connections a pattern matches", async () => {

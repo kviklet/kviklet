@@ -16,7 +16,6 @@ const newRole: Role = {
   userPolicy: { read: false, create: false, editSelf: false },
   rolePolicy: { read: false },
   connectionPolicies: [],
-  otherPolicies: [],
 };
 
 export default function NewRoleView() {

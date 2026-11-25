@@ -26,11 +26,6 @@ const ConnectionPolicy = z.object({
   execution_request_review: z.boolean(),
 });
 
-const OtherPolicy = z.object({
-  action: z.string(),
-  resource: z.string(),
-});
-
 const RoleSchema = z.object({
   id: z.string(),
   name: z.string().trim().min(1, "Required"),
@@ -39,9 +34,6 @@ const RoleSchema = z.object({
   userPolicy: UserPolicySchema,
   rolePolicy: RolePolicy,
   connectionPolicies: z.array(ConnectionPolicy),
-  // Policies the form has no control for, e.g. ones set through the API. They are
-  // carried through unchanged so that saving a role never drops them.
-  otherPolicies: z.array(OtherPolicy),
 });
 
 type Role = z.infer<typeof RoleSchema>;
@@ -95,7 +87,6 @@ const transformRole = (role: RoleResponse): Role => {
     string,
     z.infer<typeof ConnectionPolicy>
   >();
-  const otherPolicies: z.infer<typeof OtherPolicy>[] = [];
   let isAdmin = false;
 
   const connectionPolicy = (selector: string) => {
@@ -104,13 +95,6 @@ const transformRole = (role: RoleResponse): Role => {
     }
     return connectionPolicies.get(selector)!;
   };
-  // Writing covers editing and executing; execute is only expressed together with edit.
-  const editSelectors = new Set(
-    role.policies
-      .filter((policy) => policy.action === "execution_request:edit")
-      .map((policy) => policy.resource),
-  );
-
   role.policies.forEach(({ action, resource }) => {
     const global = resource === "*";
     if (action === "*:*" && global) {
@@ -131,14 +115,9 @@ const transformRole = (role: RoleResponse): Role => {
       connectionPolicy(resource).execution_request_write = true;
     } else if (action === "execution_request:review") {
       connectionPolicy(resource).execution_request_review = true;
-    } else if (
-      action === "execution_request:execute" &&
-      editSelectors.has(resource)
-    ) {
-      // Covered by the write flag of that selector.
-    } else {
-      otherPolicies.push({ action, resource });
     }
+    // Anything else is outside the model of this form: roles are only meant to be
+    // managed here or through MCP, which both produce exactly the policies above.
   });
 
   return {
@@ -149,7 +128,6 @@ const transformRole = (role: RoleResponse): Role => {
     userPolicy,
     rolePolicy,
     connectionPolicies: Array.from(connectionPolicies.values()),
-    otherPolicies,
   };
 };
 
@@ -160,7 +138,6 @@ const transformToPayload = (
 
   if (role.isAdmin) {
     policies.push({ action: "*:*", resource: "*" });
-    policies.push(...role.otherPolicies);
     return {
       id: role.id,
       name: role.name,
@@ -214,7 +191,6 @@ const transformToPayload = (
       });
     }
   });
-  policies.push(...role.otherPolicies);
 
   return {
     id: role.id,
