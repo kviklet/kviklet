@@ -57,12 +57,10 @@ async function shoot(page: Page, name: string, theme: Theme, target?: Locator) {
   }
 }
 
-/** Opens the "Add a new connection" modal on the connections settings page. */
-async function openConnectionModal(page: Page) {
-  await page.goto("/settings/connections");
-  await page.getByTestId("connections-table-create-button").click();
-  await page.getByTestId("add-database-connection-button").click();
-  await expect(page.getByText("Add a new connection")).toBeVisible();
+/** Opens the new connection page. */
+async function openNewConnectionPage(page: Page) {
+  await page.goto("/settings/connections/new");
+  await expect(page.getByTestId("new-connection-form")).toBeVisible();
 }
 
 for (const theme of THEMES) {
@@ -129,21 +127,22 @@ for (const theme of THEMES) {
     });
 
     test(`CreateConnection ${theme}`, async ({ page }) => {
-      await openConnectionModal(page);
-      // The README screenshot shows the advanced options expanded.
-      await page.getByTestId("advanced-options-button").click();
-      await expect(page.getByTestId("connection-port")).toBeVisible();
+      await openNewConnectionPage(page);
       await shoot(page, "CreateConnection", theme);
     });
 
     test(`CreateConnectionIAM ${theme}`, async ({ page }) => {
-      await openConnectionModal(page);
-      await page.getByText("AWS IAM", { exact: true }).click();
+      await openNewConnectionPage(page);
+      await page
+        .getByTestId("connection-authentication-type")
+        .selectOption("AWS_IAM");
       await expect(page.getByText("Role ARN")).toBeVisible();
-      const modal = page
-        .locator("form")
-        .filter({ hasText: "Add a new connection" });
-      await shoot(page, "CreateConnectionIAM", theme, modal);
+      await shoot(
+        page,
+        "CreateConnectionIAM",
+        theme,
+        page.getByTestId("connection-database-section"),
+      );
     });
 
     test(`CreateRole ${theme}`, async ({ page }) => {

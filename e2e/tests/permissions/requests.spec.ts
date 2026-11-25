@@ -197,18 +197,21 @@ test("the connection list hides create entry points without create permission", 
   await expect(
     page.getByTestId(`connections-table-row-${connAId}`),
   ).toBeVisible();
-  // ... but there is no way to reach the create modal.
+  // ... but there is no way to reach the create page.
+  await expect(page.getByTestId("add-connection-button")).toHaveCount(0);
   await expect(page.getByTestId("connections-table-create-button")).toHaveCount(
     0,
   );
-  await expect(page.getByTestId("add-database-connection-button")).toHaveCount(
-    0,
-  );
+  // ... and its URL lands on the forbidden state.
+  await page.goto("/settings/connections/new");
+  await expect(page.getByTestId("not-authorized")).toBeVisible();
+  await expect(page.getByTestId("new-connection-form")).toHaveCount(0);
 
   await loginPage.logout();
   await loginPage.login(ADMIN.email, ADMIN.password);
   await page.goto("/settings/connections");
   await expect(page.getByTestId("connections-table")).toBeVisible();
+  await expect(page.getByTestId("add-connection-button")).toBeVisible();
   await expect(
     page.getByTestId("connections-table-create-button").first(),
   ).toBeVisible();
